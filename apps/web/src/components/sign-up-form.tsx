@@ -80,9 +80,7 @@ export default function SignUpForm({ onSwitchToSignIn }: { onSwitchToSignIn: () 
                   onChange={(e) => field.handleChange(e.target.value)}
                 />
                 {field.state.meta.errors.length > 0 && (
-                  <p className="text-red-500 text-sm">
-                    {field.state.meta.errors.join(", ")}
-                  </p>
+                  <p className="text-red-500 text-sm">{field.state.meta.errors.join(", ")}</p>
                 )}
               </div>
             )}
@@ -103,9 +101,7 @@ export default function SignUpForm({ onSwitchToSignIn }: { onSwitchToSignIn: () 
                   onChange={(e) => field.handleChange(e.target.value)}
                 />
                 {field.state.meta.errors.length > 0 && (
-                  <p className="text-red-500 text-sm">
-                    {field.state.meta.errors.join(", ")}
-                  </p>
+                  <p className="text-red-500 text-sm">{field.state.meta.errors.join(", ")}</p>
                 )}
               </div>
             )}
@@ -126,9 +122,7 @@ export default function SignUpForm({ onSwitchToSignIn }: { onSwitchToSignIn: () 
                   onChange={(e) => field.handleChange(e.target.value)}
                 />
                 {field.state.meta.errors.length > 0 && (
-                  <p className="text-red-500 text-sm">
-                    {field.state.meta.errors.join(", ")}
-                  </p>
+                  <p className="text-red-500 text-sm">{field.state.meta.errors.join(", ")}</p>
                 )}
               </div>
             )}
@@ -137,11 +131,7 @@ export default function SignUpForm({ onSwitchToSignIn }: { onSwitchToSignIn: () 
 
         <form.Subscribe selector={(state) => [state.canSubmit, state.isSubmitting] as const}>
           {([canSubmit, isSubmitting]) => (
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={!canSubmit || isSubmitting}
-            >
+            <Button type="submit" className="w-full" disabled={!canSubmit || isSubmitting}>
               {isSubmitting ? "Submitting..." : "Sign Up"}
             </Button>
           )}

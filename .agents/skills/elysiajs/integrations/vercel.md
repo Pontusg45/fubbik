@@ -12,13 +12,13 @@ Zero-config deployment on Vercel (Bun or Node runtime).
 2. Export as default:
 
 ```typescript
-import { Elysia, t } from 'elysia'
+import { Elysia, t } from "elysia";
 
 export default new Elysia()
-  .get('/', () => 'Hello Vercel Function')
-  .post('/', ({ body }) => body, {
-    body: t.Object({ name: t.String() })
-  })
+  .get("/", () => "Hello Vercel Function")
+  .post("/", ({ body }) => body, {
+    body: t.Object({ name: t.String() }),
+  });
 ```
 
 3. Develop locally:

@@ -9,7 +9,6 @@ new Elysia()
     myPlugin
       // map decorator, rename "myProperty" to "renamedProperty"
       .decorate(({ myProperty, ...decorators }) => ({
-        
         renamedProperty: myProperty,
         ...decorators,
       }))

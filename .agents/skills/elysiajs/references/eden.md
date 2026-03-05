@@ -17,38 +17,38 @@ Export Elysia server type:
 
 ```typescript
 const app = new Elysia()
-    .get('/', () => 'Hi Elysia')
-    .get('/id/:id', ({ params: { id } }) => id)
-    .post('/mirror', ({ body }) => body, {
-        body: t.Object({
-            id: t.Number(),
-            name: t.String()
-        })
-    })
-    .listen(3000)
+  .get("/", () => "Hi Elysia")
+  .get("/id/:id", ({ params: { id } }) => id)
+  .post("/mirror", ({ body }) => body, {
+    body: t.Object({
+      id: t.Number(),
+      name: t.String(),
+    }),
+  })
+  .listen(3000);
 
-export type App = typeof app
+export type App = typeof app;
 ```
 
 Consume on client side:
 
 ```typescript
-import { treaty } from '@elysiajs/eden'
-import type { App } from './server'
+import { treaty } from "@elysiajs/eden";
+import type { App } from "./server";
 
-const client = treaty<App>('localhost:3000')
+const client = treaty<App>("localhost:3000");
 
 // response: Hi Elysia
-const { data: index } = await client.get()
+const { data: index } = await client.get();
 
 // response: 1895
-const { data: id } = await client.id({ id: 1895 }).get()
+const { data: id } = await client.id({ id: 1895 }).get();
 
 // response: { id: 1895, name: 'Skadi' }
 const { data: nendoroid } = await client.mirror.post({
-    id: 1895,
-    name: 'Skadi'
-})
+  id: 1895,
+  name: "Skadi",
+});
 ```
 
 ## Common Errors & Fixes
@@ -128,16 +128,18 @@ Must resolve to same file on frontend/backend
 ## Response
 
 ```typescript
-const { data, error, response, status, headers } = await api.user.post({ name: 'x' })
+const { data, error, response, status, headers } = await api.user.post({ name: "x" });
 
 if (error) {
   switch (error.status) {
-    case 400: throw error.value
-    default: throw error.value
+    case 400:
+      throw error.value;
+    default:
+      throw error.value;
   }
 }
 // data unwrapped after error handling
-return data
+return data;
 ```
 
 status >= 300 → `data = null`, `error` has value
@@ -147,28 +149,28 @@ status >= 300 → `data = null`, `error` has value
 Interpreted as `AsyncGenerator`:
 
 ```typescript
-const { data, error } = await treaty(app).ok.get()
-if (error) throw error
+const { data, error } = await treaty(app).ok.get();
+if (error) throw error;
 
-for await (const chunk of data) console.log(chunk)
+for await (const chunk of data) console.log(chunk);
 ```
 
 ## Utility Types
 
 ```typescript
-import { Treaty } from '@elysiajs/eden'
+import { Treaty } from "@elysiajs/eden";
 
-type UserData = Treaty.Data<typeof api.user.post>
-type UserError = Treaty.Error<typeof api.user.post>
+type UserData = Treaty.Data<typeof api.user.post>;
+type UserError = Treaty.Error<typeof api.user.post>;
 ```
 
 ## WebSocket
 
 ```typescript
-const chat = api.chat.subscribe()
+const chat = api.chat.subscribe();
 
-chat.subscribe((message) => console.log('got', message))
-chat.on('open', () => chat.send('hello'))
+chat.subscribe((message) => console.log("got", message));
+chat.on("open", () => chat.send("hello"));
 
 // Native access: chat.raw
 ```

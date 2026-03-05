@@ -15,14 +15,14 @@ wrangler init elysia-on-cloudflare
 2. Apply adapter + compile:
 
 ```typescript
-import { Elysia } from 'elysia'
-import { CloudflareAdapter } from 'elysia/adapter/cloudflare-worker'
+import { Elysia } from "elysia";
+import { CloudflareAdapter } from "elysia/adapter/cloudflare-worker";
 
 export default new Elysia({
-  adapter: CloudflareAdapter
+  adapter: CloudflareAdapter,
 })
-  .get('/', () => 'Hello Cloudflare Worker!')
-  .compile()  // Required
+  .get("/", () => "Hello Cloudflare Worker!")
+  .compile(); // Required
 ```
 
 3. Set compatibility date (min `2025-06-01`):
@@ -89,11 +89,11 @@ Access:
 Import env from `cloudflare:workers`:
 
 ```typescript
-import { env } from 'cloudflare:workers'
+import { env } from "cloudflare:workers";
 
 export default new Elysia({ adapter: CloudflareAdapter })
-  .get('/', () => `Hello ${await env.KV.get('my-key')}`)
-  .compile()
+  .get("/", () => `Hello ${await env.KV.get("my-key")}`)
+  .compile();
 ```
 
 ## AoT Compilation

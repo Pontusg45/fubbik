@@ -22,8 +22,7 @@ export const listCommand = new Command("list")
 
     console.log(`${chunks.length} chunk(s):\n`);
     for (const chunk of chunks) {
-      const tags =
-        chunk.tags.length > 0 ? ` [${chunk.tags.join(", ")}]` : "";
+      const tags = chunk.tags.length > 0 ? ` [${chunk.tags.join(", ")}]` : "";
       console.log(`  ${chunk.id}  ${chunk.title}  (${chunk.type})${tags}`);
     }
   });

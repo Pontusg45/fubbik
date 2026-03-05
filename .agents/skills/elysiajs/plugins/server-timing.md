@@ -11,13 +11,13 @@ bun add @elysiajs/server-timing
 ## Basic Usage
 
 ```typescript twoslash
-import { Elysia } from 'elysia'
-import { serverTiming } from '@elysiajs/server-timing'
+import { Elysia } from "elysia";
+import { serverTiming } from "@elysiajs/server-timing";
 
 new Elysia()
-    .use(serverTiming())
-    .get('/', () => 'hello')
-    .listen(3000)
+  .use(serverTiming())
+  .get("/", () => "hello")
+  .listen(3000);
 ```
 
 Server Timing then will append header 'Server-Timing' with log duration, function name, and detail for each life-cycle function.
@@ -67,15 +67,14 @@ Below you can find the common patterns to use the plugin.
 You may disable Server Timing on specific routes via `allow` property
 
 ```ts twoslash
-import { Elysia } from 'elysia'
-import { serverTiming } from '@elysiajs/server-timing'
+import { Elysia } from "elysia";
+import { serverTiming } from "@elysiajs/server-timing";
 
-new Elysia()
-    .use(
-        serverTiming({
-            allow: ({ request }) => {
-                return new URL(request.url).pathname !== '/no-trace'
-            }
-        })
-    )
+new Elysia().use(
+  serverTiming({
+    allow: ({ request }) => {
+      return new URL(request.url).pathname !== "/no-trace";
+    },
+  }),
+);
 ```

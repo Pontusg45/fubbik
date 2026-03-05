@@ -21,8 +21,7 @@ export const searchCommand = new Command("search")
 
     console.log(`${results.length} result(s) for "${query}":\n`);
     for (const chunk of results) {
-      const tags =
-        chunk.tags.length > 0 ? ` [${chunk.tags.join(", ")}]` : "";
+      const tags = chunk.tags.length > 0 ? ` [${chunk.tags.join(", ")}]` : "";
       console.log(`  ${chunk.id}  ${chunk.title}  (${chunk.type})${tags}`);
     }
   });

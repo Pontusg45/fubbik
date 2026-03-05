@@ -18,20 +18,9 @@ import { useState } from "react";
 import FubbikLogo from "@/components/fubbik-logo";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardDescription,
-  CardHeader,
-  CardPanel,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardDescription, CardHeader, CardPanel, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTab } from "@/components/ui/tabs";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { api } from "@/utils/api";
 
 export const Route = createFileRoute("/")({
@@ -95,11 +84,7 @@ function CopyButton({ text }: { text: string }) {
           />
         }
       >
-        {copied ? (
-          <Check className="size-3 text-green-500" />
-        ) : (
-          <Copy className="size-3" />
-        )}
+        {copied ? <Check className="size-3 text-green-500" /> : <Copy className="size-3" />}
       </TooltipTrigger>
       <TooltipContent>{copied ? "Copied!" : "Copy"}</TooltipContent>
     </Tooltip>
@@ -141,13 +126,7 @@ function CodeBlock({ code }: { code: string }) {
   );
 }
 
-function FeatureCard({
-  feature,
-  index,
-}: {
-  feature: (typeof features)[number];
-  index: number;
-}) {
+function FeatureCard({ feature, index }: { feature: (typeof features)[number]; index: number }) {
   const [hovered, setHovered] = useState(false);
 
   return (
@@ -232,9 +211,9 @@ function HomeComponent() {
 
             <h1 className="text-4xl font-bold tracking-tight">fubbik</h1>
             <p className="text-muted-foreground max-w-lg text-sm leading-relaxed">
-              A local-first knowledge framework for humans and machines. Store,
-              navigate, and evolve structured knowledge as discrete chunks — each
-              with its own metadata, history, and relationships.
+              A local-first knowledge framework for humans and machines. Store, navigate, and evolve
+              structured knowledge as discrete chunks — each with its own metadata, history, and
+              relationships.
             </p>
 
             <div className="flex gap-2">
@@ -265,9 +244,7 @@ function HomeComponent() {
 
         <div className="mb-4 flex items-center gap-2">
           <MousePointer2 className="text-muted-foreground size-3.5" />
-          <span className="text-muted-foreground text-xs">
-            Hover to explore features
-          </span>
+          <span className="text-muted-foreground text-xs">Hover to explore features</span>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

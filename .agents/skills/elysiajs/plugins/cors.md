@@ -11,10 +11,10 @@ bun add @elysiajs/cors
 ## Basic Usage
 
 ```typescript twoslash
-import { Elysia } from 'elysia'
-import { cors } from '@elysiajs/cors'
+import { Elysia } from "elysia";
+import { cors } from "@elysiajs/cors";
 
-new Elysia().use(cors()).listen(3000)
+new Elysia().use(cors()).listen(3000);
 ```
 
 This will set Elysia to accept requests from any origin.
@@ -131,17 +131,17 @@ Below you can find the common patterns to use the plugin.
 ## Allow CORS by top-level domain
 
 ```typescript twoslash
-import { Elysia } from 'elysia'
-import { cors } from '@elysiajs/cors'
+import { Elysia } from "elysia";
+import { cors } from "@elysiajs/cors";
 
 const app = new Elysia()
-	.use(
-		cors({
-			origin: /.*\.saltyaom\.com$/
-		})
-	)
-	.get('/', () => 'Hi')
-	.listen(3000)
+  .use(
+    cors({
+      origin: /.*\.saltyaom\.com$/,
+    }),
+  )
+  .get("/", () => "Hi")
+  .listen(3000);
 ```
 
 This will allow requests from top-level domains with `saltyaom.com`

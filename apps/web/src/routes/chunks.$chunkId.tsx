@@ -1,24 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import {
-  ArrowLeft,
-  Calendar,
-  Clock,
-  Edit,
-  GitBranch,
-  Hash,
-  Network,
-  Trash2,
-} from "lucide-react";
+import { ArrowLeft, Calendar, Clock, Edit, GitBranch, Hash, Network, Trash2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardDescription,
-  CardHeader,
-  CardPanel,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardDescription, CardHeader, CardPanel, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 
 export const Route = createFileRoute("/chunks/$chunkId")({
@@ -67,9 +52,7 @@ const mockChunks: Record<
     updated: "1 hour ago",
     content:
       "A collection of patterns used in the API layer.\n\n## Eden Treaty\n\nType-safe client generated from the Elysia server definition. No code generation step needed — types flow directly.\n\n## Error handling\n\nAll endpoints return `{ data, error }` via Eden. Errors include status codes and messages.\n\n## Authentication\n\nSession resolution happens in a shared `resolve` middleware. Protected routes check `session` and return 401 if missing.",
-    connections: [
-      { id: "c-001", title: "Project Architecture Notes", relation: "referenced by" },
-    ],
+    connections: [{ id: "c-001", title: "Project Architecture Notes", relation: "referenced by" }],
     history: [
       { action: "Updated content", timestamp: "1 hour ago" },
       { action: "Created", timestamp: "2026-03-01" },
@@ -160,12 +143,18 @@ function ChunkDetail() {
             return (
               <ul key={block} className="text-muted-foreground list-disc space-y-1 pl-5 text-sm">
                 {block.split("\n").map((line) => (
-                  <li key={line} dangerouslySetInnerHTML={{
-                    __html: line
-                      .replace(/^- /, "")
-                      .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-                      .replace(/`(.+?)`/g, "<code class='bg-muted rounded px-1 py-0.5 font-mono text-xs'>$1</code>"),
-                  }} />
+                  <li
+                    key={line}
+                    dangerouslySetInnerHTML={{
+                      __html: line
+                        .replace(/^- /, "")
+                        .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+                        .replace(
+                          /`(.+?)`/g,
+                          "<code class='bg-muted rounded px-1 py-0.5 font-mono text-xs'>$1</code>",
+                        ),
+                    }}
+                  />
                 ))}
               </ul>
             );

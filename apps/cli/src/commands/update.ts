@@ -10,16 +10,12 @@ export const updateCommand = new Command("update")
   .option("--type <type>", "new type")
   .option("--tags <tags>", "new comma-separated tags")
   .action(
-    (
-      id: string,
-      opts: { title?: string; content?: string; type?: string; tags?: string },
-    ) => {
+    (id: string, opts: { title?: string; content?: string; type?: string; tags?: string }) => {
       const updates: Record<string, unknown> = {};
       if (opts.title !== undefined) updates.title = opts.title;
       if (opts.content !== undefined) updates.content = opts.content;
       if (opts.type !== undefined) updates.type = opts.type;
-      if (opts.tags !== undefined)
-        updates.tags = opts.tags.split(",").map((t) => t.trim());
+      if (opts.tags !== undefined) updates.tags = opts.tags.split(",").map((t) => t.trim());
 
       if (Object.keys(updates).length === 0) {
         console.error("✗ No updates provided. Use --title, --content, --type, or --tags.");

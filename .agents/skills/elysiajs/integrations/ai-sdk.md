@@ -9,20 +9,20 @@ Seamless integration with Vercel AI SDK via response streaming.
 Return `ReadableStream` or `Response` directly:
 
 ```typescript
-import { streamText } from 'ai'
-import { openai } from '@ai-sdk/openai'
+import { streamText } from "ai";
+import { openai } from "@ai-sdk/openai";
 
-new Elysia().get('/', () => {
+new Elysia().get("/", () => {
   const stream = streamText({
-    model: openai('gpt-5'),
-    system: 'You are Yae Miko from Genshin Impact',
-    prompt: 'Hi! How are you doing?'
-  })
+    model: openai("gpt-5"),
+    system: "You are Yae Miko from Genshin Impact",
+    prompt: "Hi! How are you doing?",
+  });
 
-  return stream.textStream  // ReadableStream
+  return stream.textStream; // ReadableStream
   // or
-  return stream.toUIMessageStream()  // UI Message Stream
-})
+  return stream.toUIMessageStream(); // UI Message Stream
+});
 ```
 
 Elysia auto-handles stream.

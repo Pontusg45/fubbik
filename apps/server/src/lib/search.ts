@@ -1,12 +1,6 @@
-import type {
-  CollectionSchema,
-  CollectionUpdateSchema,
-} from "typesense/lib/Typesense/Collection";
+import type { CollectionSchema, CollectionUpdateSchema } from "typesense/lib/Typesense/Collection";
 import type { CollectionCreateSchema } from "typesense/lib/Typesense/Collections";
-import type {
-  DocumentSchema,
-  SearchResponse,
-} from "typesense/lib/Typesense/Documents";
+import type { DocumentSchema, SearchResponse } from "typesense/lib/Typesense/Documents";
 import type { SearchParams } from "typesense/lib/Typesense/Types";
 
 import Typesense from "typesense";

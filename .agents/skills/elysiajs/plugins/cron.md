@@ -11,20 +11,20 @@ bun add @elysiajs/cron
 ## Basic Usage
 
 ```typescript twoslash
-import { Elysia } from 'elysia'
-import { cron } from '@elysiajs/cron'
+import { Elysia } from "elysia";
+import { cron } from "@elysiajs/cron";
 
 new Elysia()
-	.use(
-		cron({
-			name: 'heartbeat',
-			pattern: '*/10 * * * * *',
-			run() {
-				console.log('Heartbeat')
-			}
-		})
-	)
-	.listen(3000)
+  .use(
+    cron({
+      name: "heartbeat",
+      pattern: "*/10 * * * * *",
+      run() {
+        console.log("Heartbeat");
+      },
+    }),
+  )
+  .listen(3000);
 ```
 
 The above code will log `heartbeat` every 10 seconds.
@@ -119,32 +119,32 @@ Below you can find the common patterns to use the plugin.
 You can stop cronjob manually by accessing the cronjob name registered to `store`.
 
 ```typescript
-import { Elysia } from 'elysia'
-import { cron } from '@elysiajs/cron'
+import { Elysia } from "elysia";
+import { cron } from "@elysiajs/cron";
 
 const app = new Elysia()
-	.use(
-		cron({
-			name: 'heartbeat',
-			pattern: '*/1 * * * * *',
-			run() {
-				console.log('Heartbeat')
-			}
-		})
-	)
-	.get(
-		'/stop',
-		({
-			store: {
-				cron: { heartbeat }
-			}
-		}) => {
-			heartbeat.stop()
+  .use(
+    cron({
+      name: "heartbeat",
+      pattern: "*/1 * * * * *",
+      run() {
+        console.log("Heartbeat");
+      },
+    }),
+  )
+  .get(
+    "/stop",
+    ({
+      store: {
+        cron: { heartbeat },
+      },
+    }) => {
+      heartbeat.stop();
 
-			return 'Stop heartbeat'
-		}
-	)
-	.listen(3000)
+      return "Stop heartbeat";
+    },
+  )
+  .listen(3000);
 ```
 
 ---
@@ -154,32 +154,32 @@ const app = new Elysia()
 You can use predefined patterns from `@elysiajs/cron/schedule`
 
 ```typescript
-import { Elysia } from 'elysia'
-import { cron, Patterns } from '@elysiajs/cron'
+import { Elysia } from "elysia";
+import { cron, Patterns } from "@elysiajs/cron";
 
 const app = new Elysia()
-	.use(
-		cron({
-			name: 'heartbeat',
-			pattern: Patterns.everySecond(),
-			run() {
-				console.log('Heartbeat')
-			}
-		})
-	)
-	.get(
-		'/stop',
-		({
-			store: {
-				cron: { heartbeat }
-			}
-		}) => {
-			heartbeat.stop()
+  .use(
+    cron({
+      name: "heartbeat",
+      pattern: Patterns.everySecond(),
+      run() {
+        console.log("Heartbeat");
+      },
+    }),
+  )
+  .get(
+    "/stop",
+    ({
+      store: {
+        cron: { heartbeat },
+      },
+    }) => {
+      heartbeat.stop();
 
-			return 'Stop heartbeat'
-		}
-	)
-	.listen(3000)
+      return "Stop heartbeat";
+    },
+  )
+  .listen(3000);
 ```
 
 ### Functions

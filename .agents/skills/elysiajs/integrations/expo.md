@@ -14,16 +14,14 @@ Create API routes in Expo app (SDK 50+, App Router v3).
 
 ```typescript
 // app/[...slugs]+api.ts
-import { Elysia, t } from 'elysia'
+import { Elysia, t } from "elysia";
 
-const app = new Elysia()
-  .get('/', 'hello Expo')
-  .post('/', ({ body }) => body, {
-    body: t.Object({ name: t.String() })
-  })
+const app = new Elysia().get("/", "hello Expo").post("/", ({ body }) => body, {
+  body: t.Object({ name: t.String() }),
+});
 
-export const GET = app.fetch
-export const POST = app.fetch
+export const GET = app.fetch;
+export const POST = app.fetch;
 ```
 
 ## Prefix for Non-Root
@@ -31,11 +29,10 @@ export const POST = app.fetch
 If placed in `app/api/[...slugs]+api.ts`, set prefix:
 
 ```typescript
-const app = new Elysia({ prefix: '/api' })
-  .get('/', 'Hello Expo')
+const app = new Elysia({ prefix: "/api" }).get("/", "Hello Expo");
 
-export const GET = app.fetch
-export const POST = app.fetch
+export const GET = app.fetch;
+export const POST = app.fetch;
 ```
 
 Ensures routing works in any location.
@@ -46,37 +43,35 @@ Ensures routing works in any location.
 
 ```typescript
 // app/[...slugs]+api.ts
-const app = new Elysia()
-  .get('/', 'Hello Nextjs')
-  .post('/user', ({ body }) => body, {
-    body: treaty.schema('User', { name: 'string' })
-  })
+const app = new Elysia().get("/", "Hello Nextjs").post("/user", ({ body }) => body, {
+  body: treaty.schema("User", { name: "string" }),
+});
 
-export type app = typeof app
+export type app = typeof app;
 
-export const GET = app.fetch
-export const POST = app.fetch
+export const GET = app.fetch;
+export const POST = app.fetch;
 ```
 
 2. Create client:
 
 ```typescript
 // lib/eden.ts
-import { treaty } from '@elysiajs/eden'
-import type { app } from '../app/[...slugs]+api'
+import { treaty } from "@elysiajs/eden";
+import type { app } from "../app/[...slugs]+api";
 
-export const api = treaty<app>('localhost:3000/api')
+export const api = treaty<app>("localhost:3000/api");
 ```
 
 3. Use in components:
 
 ```tsx
 // app/page.tsx
-import { api } from '../lib/eden'
+import { api } from "../lib/eden";
 
 export default async function Page() {
-  const message = await api.get()
-  return <h1>Hello, {message}</h1>
+  const message = await api.get();
+  return <h1>Hello, {message}</h1>;
 }
 ```
 

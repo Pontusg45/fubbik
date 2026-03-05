@@ -81,10 +81,7 @@ export function getChunk(id: string, dir?: string): Chunk | undefined {
   return store.chunks.find((c) => c.id === id);
 }
 
-export function listChunks(
-  opts: { type?: string; tag?: string } = {},
-  dir?: string,
-): Chunk[] {
+export function listChunks(opts: { type?: string; tag?: string } = {}, dir?: string): Chunk[] {
   const store = readStore(dir);
   let chunks = store.chunks;
   if (opts.type) {

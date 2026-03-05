@@ -40,29 +40,27 @@ Treat an Elysia instance as a controller, and define your routes directly on the
 
 ```typescript
 // Do
-import { Elysia } from 'elysia'
-import { Service } from './service'
+import { Elysia } from "elysia";
+import { Service } from "./service";
 
-new Elysia()
-    .get('/', ({ stuff }) => {
-        Service.doStuff(stuff)
-    })
+new Elysia().get("/", ({ stuff }) => {
+  Service.doStuff(stuff);
+});
 ```
 
 This approach allows Elysia to infer the `Context` type automatically, ensuring type integrity and consistency between types and runtime code.
 
 ```typescript
 // Don't
-import { Elysia, t, type Context } from 'elysia'
+import { Elysia, t, type Context } from "elysia";
 
 abstract class Controller {
-    static root(context: Context) {
-        return Service.doStuff(context.stuff)
-    }
+  static root(context: Context) {
+    return Service.doStuff(context.stuff);
+  }
 }
 
-new Elysia()
-    .get('/', Controller.root)
+new Elysia().get("/", Controller.root);
 ```
 
 This approach makes it hard to type `Context` properly, and may lead to loss of type integrity.
@@ -74,16 +72,15 @@ If you want to create a controller class, we recommend creating a class that is 
 This approach allows you to decouple the controller from Elysia, making it easier to test, reuse, and even swap a framework while still follows the MVC pattern.
 
 ```typescript
-import { Elysia } from 'elysia'
+import { Elysia } from "elysia";
 
 abstract class Controller {
-	static doStuff(stuff: string) {
-		return Service.doStuff(stuff)
-	}
+  static doStuff(stuff: string) {
+    return Service.doStuff(stuff);
+  }
 }
 
-new Elysia()
-	.get('/', ({ stuff }) => Controller.doStuff(stuff))
+new Elysia().get("/", ({ stuff }) => Controller.doStuff(stuff));
 ```
 
 Tying the controller to Elysia Context may lead to:
@@ -101,15 +98,15 @@ We recommended to keep the controller decoupled from Elysia as much as possible.
 Do not pass an entire `Context` to a controller, instead use object destructuring to extract what you need and pass it to the controller.
 
 ```typescript
-import type { Context } from 'elysia'
+import type { Context } from "elysia";
 
 abstract class Controller {
-	constructor() {}
+  constructor() {}
 
-	// Don't do this
-	static root(context: Context) {
-		return Service.doStuff(context.stuff)
-	}
+  // Don't do this
+  static root(context: Context) {
+    return Service.doStuff(context.stuff);
+  }
 }
 ```
 
@@ -120,27 +117,24 @@ This approach makes it hard to type `Context` properly, and may lead to loss of 
 If you're using Elysia as a controller, you can test your controller using `handle` to directly call a function (and it's lifecycle)
 
 ```typescript
-import { Elysia } from 'elysia'
-import { Service } from './service'
+import { Elysia } from "elysia";
+import { Service } from "./service";
 
-import { describe, it, expect } from 'bun:test'
+import { describe, it, expect } from "bun:test";
 
-const app = new Elysia()
-    .get('/', ({ stuff }) => {
-        Service.doStuff(stuff)
+const app = new Elysia().get("/", ({ stuff }) => {
+  Service.doStuff(stuff);
 
-        return 'ok'
-    })
+  return "ok";
+});
 
-describe('Controller', () => {
-	it('should work', async () => {
-		const response = await app
-			.handle(new Request('http://localhost/'))
-			.then((x) => x.text())
+describe("Controller", () => {
+  it("should work", async () => {
+    const response = await app.handle(new Request("http://localhost/")).then((x) => x.text());
 
-		expect(response).toBe('ok')
-	})
-})
+    expect(response).toBe("ok");
+  });
+});
 ```
 
 You may find more information about testing in [Unit Test](/patterns/unit-test.html).
@@ -163,23 +157,25 @@ We recommend abstracting a service class/function away from Elysia.
 If the service or function isn't tied to an HTTP request or doesn't access a `Context`, it's recommended to implement it as a static class or function.
 
 ```typescript
-import { Elysia, t } from 'elysia'
+import { Elysia, t } from "elysia";
 
 abstract class Service {
-    static fibo(number: number): number {
-        if(number < 2)
-            return number
+  static fibo(number: number): number {
+    if (number < 2) return number;
 
-        return Service.fibo(number - 1) + Service.fibo(number - 2)
-    }
+    return Service.fibo(number - 1) + Service.fibo(number - 2);
+  }
 }
 
-new Elysia()
-    .get('/fibo', ({ body }) => {
-        return Service.fibo(body)
-    }, {
-        body: t.Numeric()
-    })
+new Elysia().get(
+  "/fibo",
+  ({ body }) => {
+    return Service.fibo(body);
+  },
+  {
+    body: t.Numeric(),
+  },
+);
 ```
 
 If your service doesn't need to store a property, you may use `abstract class` and `static` instead to avoid allocating class instance.
@@ -189,27 +185,24 @@ If your service doesn't need to store a property, you may use `abstract class` a
 **If the service is a request-dependent service** or needs to process HTTP requests, we recommend abstracting it as an Elysia instance to ensure type integrity and inference:
 
 ```typescript
-import { Elysia } from 'elysia'
+import { Elysia } from "elysia";
 
 // Do
-const AuthService = new Elysia({ name: 'Auth.Service' })
-    .macro({
-        isSignIn: {
-            resolve({ cookie, status }) {
-                if (!cookie.session.value) return status(401)
+const AuthService = new Elysia({ name: "Auth.Service" }).macro({
+  isSignIn: {
+    resolve({ cookie, status }) {
+      if (!cookie.session.value) return status(401);
 
-                return {
-                	session: cookie.session.value,
-                }
-            }
-        }
-    })
+      return {
+        session: cookie.session.value,
+      };
+    },
+  },
+});
 
-const UserController = new Elysia()
-    .use(AuthService)
-    .get('/profile', ({ Auth: { user } }) => user, {
-    	isSignIn: true
-    })
+const UserController = new Elysia().use(AuthService).get("/profile", ({ Auth: { user } }) => user, {
+  isSignIn: true,
+});
 ```
 
 ### Do: Decorate only request dependent property
@@ -219,15 +212,15 @@ It's recommended to `decorate` only request-dependent properties, such as `reque
 Overusing decorators may tie your code to Elysia, making it harder to test and reuse.
 
 ```typescript
-import { Elysia } from 'elysia'
+import { Elysia } from "elysia";
 
 new Elysia()
-	.decorate('requestIP', ({ request }) => request.headers.get('x-forwarded-for') || request.ip)
-	.decorate('requestTime', () => Date.now())
-	.decorate('session', ({ cookie }) => cookie.session.value)
-	.get('/', ({ requestIP, requestTime, session }) => {
-		return { requestIP, requestTime, session }
-	})
+  .decorate("requestIP", ({ request }) => request.headers.get("x-forwarded-for") || request.ip)
+  .decorate("requestTime", () => Date.now())
+  .decorate("session", ({ cookie }) => cookie.session.value)
+  .get("/", ({ requestIP, requestTime, session }) => {
+    return { requestIP, requestTime, session };
+  });
 ```
 
 ### Don't: Pass entire `Context` to a service
@@ -237,16 +230,15 @@ new Elysia()
 Do not pass an entire `Context` to a service, instead use object destructuring to extract what you need and pass it to the service.
 
 ```typescript
-import type { Context } from 'elysia'
+import type { Context } from "elysia";
 
 class AuthService {
-	constructor() {}
+  constructor() {}
 
-	// Don't do this
-	isSignIn({ status, cookie: { session } }: Context) {
-		if (session.value)
-			return status(401)
-	}
+  // Don't do this
+  isSignIn({ status, cookie: { session } }: Context) {
+    if (session.value) return status(401);
+  }
 }
 ```
 
@@ -266,18 +258,18 @@ Instead of declaring an interface, reuse validation's model instead:
 
 ```typescript twoslash
 // Do
-import { Elysia, t } from 'elysia'
+import { Elysia, t } from "elysia";
 
 const customBody = t.Object({
-	username: t.String(),
-	password: t.String()
-})
+  username: t.String(),
+  password: t.String(),
+});
 
 // Optional if you want to get the type of the model
 // Usually if we didn't use the type, as it's already inferred by Elysia
-type CustomBody = typeof customBody.static
+type CustomBody = typeof customBody.static;
 
-export { customBody }
+export { customBody };
 ```
 
 We can get type of model by using `typeof` with `.static` property from the model.
@@ -286,12 +278,15 @@ Then you can use the `CustomBody` type to infer the type of the request body.
 
 ```typescript twoslash
 // Do
-new Elysia()
-	.post('/login', ({ body }) => {
-		return body
-	}, {
-		body: customBody
-	})
+new Elysia().post(
+  "/login",
+  ({ body }) => {
+    return body;
+  },
+  {
+    body: customBody,
+  },
+);
 ```
 
 ### Don't: Declare a class instance as a model
@@ -301,19 +296,19 @@ Do not declare a class instance as a model:
 ```typescript
 // Don't
 class CustomBody {
-	username: string
-	password: string
+  username: string;
+  password: string;
 
-	constructor(username: string, password: string) {
-		this.username = username
-		this.password = password
-	}
+  constructor(username: string, password: string) {
+    this.username = username;
+    this.password = password;
+  }
 }
 
 // Don't
 interface ICustomBody {
-	username: string
-	password: string
+  username: string;
+  password: string;
 }
 ```
 
@@ -323,25 +318,25 @@ Do not declare a type separate from the model, instead use `typeof` with `.stati
 
 ```typescript
 // Don't
-import { Elysia, t } from 'elysia'
+import { Elysia, t } from "elysia";
 
 const customBody = t.Object({
-	username: t.String(),
-	password: t.String()
-})
+  username: t.String(),
+  password: t.String(),
+});
 
 type CustomBody = {
-	username: string
-	password: string
-}
+  username: string;
+  password: string;
+};
 
 // Do
 const customBody = t.Object({
-	username: t.String(),
-	password: t.String()
-})
+  username: t.String(),
+  password: t.String(),
+});
 
-type CustomBody = typeof customBody.static
+type CustomBody = typeof customBody.static;
 ```
 
 ### Group
@@ -349,16 +344,16 @@ type CustomBody = typeof customBody.static
 You can group multiple models into a single object to make it more organized.
 
 ```typescript
-import { Elysia, t } from 'elysia'
+import { Elysia, t } from "elysia";
 
 export const AuthModel = {
-	sign: t.Object({
-		username: t.String(),
-		password: t.String()
-	})
-}
+  sign: t.Object({
+    username: t.String(),
+    password: t.String(),
+  }),
+};
 
-const models = AuthModel.models
+const models = AuthModel.models;
 ```
 
 ### Model Injection
@@ -368,28 +363,31 @@ Though this is optional, if you are strictly following MVC pattern, you may want
 Using Elysia's model reference
 
 ```typescript twoslash
-import { Elysia, t } from 'elysia'
+import { Elysia, t } from "elysia";
 
 const customBody = t.Object({
-	username: t.String(),
-	password: t.String()
-})
+  username: t.String(),
+  password: t.String(),
+});
 
-const AuthModel = new Elysia()
-    .model({
-        sign: customBody
-    })
+const AuthModel = new Elysia().model({
+  sign: customBody,
+});
 
-const models = AuthModel.models
+const models = AuthModel.models;
 
-const UserController = new Elysia({ prefix: '/auth' })
-    .use(AuthModel)
-    .prefix('model', 'auth.')
-    .post('/sign-in', async ({ body, cookie: { session } }) => {
-        return true
-    }, {
-        body: 'auth.Sign'
-    })
+const UserController = new Elysia({ prefix: "/auth" })
+  .use(AuthModel)
+  .prefix("model", "auth.")
+  .post(
+    "/sign-in",
+    async ({ body, cookie: { session } }) => {
+      return true;
+    },
+    {
+      body: "auth.Sign",
+    },
+  );
 ```
 
 This approach provide several benefits:

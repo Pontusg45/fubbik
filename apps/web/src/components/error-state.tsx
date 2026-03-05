@@ -1,8 +1,4 @@
-import {
-  type ErrorComponentProps,
-  Link,
-  useRouter,
-} from "@tanstack/react-router";
+import { type ErrorComponentProps, Link, useRouter } from "@tanstack/react-router";
 import { AlertTriangle, RefreshCw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -10,13 +6,10 @@ import { Button } from "@/components/ui/button";
 export default function ErrorState({ error, reset }: ErrorComponentProps) {
   const router = useRouter();
 
-  const message =
-    error instanceof Error ? error.message : "An unexpected error occurred";
+  const message = error instanceof Error ? error.message : "An unexpected error occurred";
 
   const isNetworkError =
-    message.includes("fetch") ||
-    message.includes("network") ||
-    message.includes("Failed to fetch");
+    message.includes("fetch") || message.includes("network") || message.includes("Failed to fetch");
 
   return (
     <div className="flex min-h-svh flex-col items-center justify-center gap-4 px-4 py-16">

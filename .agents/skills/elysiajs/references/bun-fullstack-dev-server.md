@@ -11,12 +11,12 @@ Example: [elysia-fullstack-example](https://github.com/saltyaom/elysia-fullstack
 1. Install + use Elysia Static:
 
 ```typescript
-import { Elysia } from 'elysia'
-import { staticPlugin } from '@elysiajs/static'
+import { Elysia } from "elysia";
+import { staticPlugin } from "@elysiajs/static";
 
 new Elysia()
-  .use(await staticPlugin())  // await required for HMR hooks
-  .listen(3000)
+  .use(await staticPlugin()) // await required for HMR hooks
+  .listen(3000);
 ```
 
 2. Create `public/index.html` + `public/index.tsx`:
@@ -26,9 +26,9 @@ new Elysia()
 <!doctype html>
 <html lang="en">
   <head>
-    <meta charset="UTF-8">
+    <meta charset="UTF-8" />
     <title>Elysia React App</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   </head>
   <body>
     <div id="root"></div>
@@ -39,23 +39,23 @@ new Elysia()
 
 ```tsx
 // public/index.tsx
-import { useState } from 'react'
-import { createRoot } from 'react-dom/client'
+import { useState } from "react";
+import { createRoot } from "react-dom/client";
 
 function App() {
-  const [count, setCount] = useState(0)
-  const increase = () => setCount((c) => c + 1)
+  const [count, setCount] = useState(0);
+  const increase = () => setCount((c) => c + 1);
 
   return (
     <main>
       <h2>{count}</h2>
       <button onClick={increase}>Increase</button>
     </main>
-  )
+  );
 }
 
-const root = createRoot(document.getElementById('root')!)
-root.render(<App />)
+const root = createRoot(document.getElementById("root")!);
+root.render(<App />);
 ```
 
 3. Enable JSX in `tsconfig.json`:
@@ -105,13 +105,13 @@ plugins = ["bun-plugin-tailwind"]
 4. Add to HTML or TS:
 
 ```html
-<link rel="stylesheet" href="tailwindcss">
+<link rel="stylesheet" href="tailwindcss" />
 ```
 
 Or:
 
 ```tsx
-import './global.css'
+import "./global.css";
 ```
 
 ## Path Alias
@@ -132,7 +132,7 @@ import './global.css'
 2. Use:
 
 ```tsx
-import '@public/global.css'
+import "@public/global.css";
 ```
 
 Works out of box.

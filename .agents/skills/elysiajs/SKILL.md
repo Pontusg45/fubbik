@@ -35,32 +35,36 @@ bun create elysia app
 ### Basic Server
 
 ```typescript
-import { Elysia, t, status } from 'elysia'
+import { Elysia, t, status } from "elysia";
 
 const app = new Elysia()
-  	.get('/', () => 'Hello World')
-   	.post('/user', ({ body }) => body, {
-    	body: t.Object({
-      		name: t.String(),
-        	age: t.Number()
-     	})
-    })
-    .get('/id/:id', ({ params: { id } }) => {
-   		if(id > 1_000_000) return status(404, 'Not Found')
+  .get("/", () => "Hello World")
+  .post("/user", ({ body }) => body, {
+    body: t.Object({
+      name: t.String(),
+      age: t.Number(),
+    }),
+  })
+  .get(
+    "/id/:id",
+    ({ params: { id } }) => {
+      if (id > 1_000_000) return status(404, "Not Found");
 
-     	return id
-    }, {
-    	params: t.Object({
-     		id: t.Number({
-       			minimum: 1
-       		})
-     	}),
-     	response: {
-      		200: t.Number(),
-        	404: t.Literal('Not Found')
-      	}
-    })
-    .listen(3000)
+      return id;
+    },
+    {
+      params: t.Object({
+        id: t.Number({
+          minimum: 1,
+        }),
+      }),
+      response: {
+        200: t.Number(),
+        404: t.Literal("Not Found"),
+      },
+    },
+  )
+  .listen(3000);
 ```
 
 ## Basic Usage
@@ -68,16 +72,16 @@ const app = new Elysia()
 ### HTTP Methods
 
 ```typescript
-import { Elysia } from 'elysia'
+import { Elysia } from "elysia";
 
 new Elysia()
-  .get('/', 'GET')
-  .post('/', 'POST')
-  .put('/', 'PUT')
-  .patch('/', 'PATCH')
-  .delete('/', 'DELETE')
-  .options('/', 'OPTIONS')
-  .head('/', 'HEAD')
+  .get("/", "GET")
+  .post("/", "POST")
+  .put("/", "PUT")
+  .patch("/", "PATCH")
+  .delete("/", "DELETE")
+  .options("/", "OPTIONS")
+  .head("/", "HEAD");
 ```
 
 ### Path Parameters
@@ -131,10 +135,10 @@ body: t.Object({
     name: t.String(),
     address: t.Object({
       street: t.String(),
-      city: t.String()
-    })
-  })
-})
+      city: t.String(),
+    }),
+  }),
+});
 ```
 
 ### Arrays
@@ -142,11 +146,13 @@ body: t.Object({
 ```typescript
 body: t.Object({
   tags: t.Array(t.String()),
-  users: t.Array(t.Object({
-    id: t.String(),
-    name: t.String()
-  }))
-})
+  users: t.Array(
+    t.Object({
+      id: t.String(),
+      name: t.String(),
+    }),
+  ),
+});
 ```
 
 ### File Upload
@@ -315,17 +321,15 @@ Lifecycles (hooks, middleware) **don't leak** between instances unless scoped.
 ❌ Don't:
 
 ```ts
-const app = new Elysia()
-app.state('build', 1) // loses type
-app.get('/', ({ store }) => store.build) // build doesn't exists
+const app = new Elysia();
+app.state("build", 1); // loses type
+app.get("/", ({ store }) => store.build); // build doesn't exists
 ```
 
 ✅ Do:
 
 ```ts
-new Elysia()
-  .state('build', 1)
-  .get('/', ({ store }) => store.build)
+new Elysia().state("build", 1).get("/", ({ store }) => store.build);
 ```
 
 ## Explicit Dependencies
@@ -333,16 +337,13 @@ new Elysia()
 Each instance independent. **Declare what you use.**
 
 ```ts
-const auth = new Elysia()
-	.decorate('Auth', Auth)
-	.model(Auth.models)
+const auth = new Elysia().decorate("Auth", Auth).model(Auth.models);
 
-new Elysia()
-  .get('/', ({ Auth }) => Auth.getProfile()) // Auth doesn't exists
+new Elysia().get("/", ({ Auth }) => Auth.getProfile()); // Auth doesn't exists
 
 new Elysia()
   .use(auth) // must declare
-  .get('/', ({ Auth }) => Auth.getProfile())
+  .get("/", ({ Auth }) => Auth.getProfile());
 ```
 
 **Global scope when:**
@@ -360,8 +361,8 @@ new Elysia()
 Plugins re-execute unless named:
 
 ```ts
-new Elysia() // rerun on `.use`
-new Elysia({ name: 'ip' }) // runs once across all instances
+new Elysia(); // rerun on `.use`
+new Elysia({ name: "ip" }); // runs once across all instances
 ```
 
 ## Order Matters
@@ -389,7 +390,7 @@ For controllers, destructure in inline wrapper:
 Get type from schema:
 
 ```ts
-type MyType = typeof MyType.static
+type MyType = typeof MyType.static;
 ```
 
 ## Reference Model
@@ -398,29 +399,29 @@ Model can be reference by name, especially great for documenting an API
 
 ```ts
 new Elysia()
-	.model({
-		book: t.Object({
-			name: t.String()
-		})
-	})
-	.post('/', ({ body }) => body.name, {
-		body: 'book'
-	})
+  .model({
+    book: t.Object({
+      name: t.String(),
+    }),
+  })
+  .post("/", ({ body }) => body.name, {
+    body: "book",
+  });
 ```
 
 Model can be renamed by using `.prefix` / `.suffix`
 
 ```ts
 new Elysia()
-	.model({
-		book: t.Object({
-			name: t.String()
-		})
-	})
-	.prefix('model', 'Namespace')
-	.post('/', ({ body }) => body.name, {
-		body: 'Namespace.Book'
-	})
+  .model({
+    book: t.Object({
+      name: t.String(),
+    }),
+  })
+  .prefix("model", "Namespace")
+  .post("/", ({ body }) => body.name, {
+    body: "Namespace.Book",
+  });
 ```
 
 Once `prefix`, model name will be capitalized by default.

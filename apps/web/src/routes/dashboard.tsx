@@ -1,23 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import {
-  Activity,
-  Blocks,
-  Clock,
-  Network,
-  Plus,
-  Tags,
-} from "lucide-react";
+import { Activity, Blocks, Clock, Network, Plus, Tags } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardDescription,
-  CardHeader,
-  CardPanel,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardDescription, CardHeader, CardPanel, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { getUser } from "@/functions/get-user";
 import { api } from "@/utils/api";
@@ -36,11 +23,41 @@ export const Route = createFileRoute("/dashboard")({
 });
 
 const recentChunks = [
-  { id: "c-001", title: "Project Architecture Notes", type: "document", tags: ["architecture", "planning"], updated: "2 min ago" },
-  { id: "c-002", title: "API Design Patterns", type: "reference", tags: ["api", "patterns"], updated: "1 hour ago" },
-  { id: "c-003", title: "Meeting Notes — Sprint 12", type: "note", tags: ["meetings", "sprint-12"], updated: "3 hours ago" },
-  { id: "c-004", title: "Database Schema v2", type: "schema", tags: ["database", "migration"], updated: "Yesterday" },
-  { id: "c-005", title: "Onboarding Checklist", type: "checklist", tags: ["onboarding"], updated: "2 days ago" },
+  {
+    id: "c-001",
+    title: "Project Architecture Notes",
+    type: "document",
+    tags: ["architecture", "planning"],
+    updated: "2 min ago",
+  },
+  {
+    id: "c-002",
+    title: "API Design Patterns",
+    type: "reference",
+    tags: ["api", "patterns"],
+    updated: "1 hour ago",
+  },
+  {
+    id: "c-003",
+    title: "Meeting Notes — Sprint 12",
+    type: "note",
+    tags: ["meetings", "sprint-12"],
+    updated: "3 hours ago",
+  },
+  {
+    id: "c-004",
+    title: "Database Schema v2",
+    type: "schema",
+    tags: ["database", "migration"],
+    updated: "Yesterday",
+  },
+  {
+    id: "c-005",
+    title: "Onboarding Checklist",
+    type: "checklist",
+    tags: ["onboarding"],
+    updated: "2 days ago",
+  },
 ];
 
 const stats = [
@@ -98,36 +115,34 @@ function RouteComponent() {
         <div className="lg:col-span-2">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="font-semibold">Recent Chunks</h2>
-            <Button variant="ghost" size="sm">View all</Button>
+            <Button variant="ghost" size="sm">
+              View all
+            </Button>
           </div>
           <Card>
             {recentChunks.map((chunk, i) => (
               <div key={chunk.id}>
                 {i > 0 && <Separator />}
-                <Link
-                  to="/chunks/$chunkId"
-                  params={{ chunkId: chunk.id }}
-                  className="block"
-                >
-                <CardPanel className="flex items-center justify-between gap-4 p-4 transition-colors hover:bg-muted/50">
-                  <div className="min-w-0">
-                    <p className="truncate font-medium text-sm">{chunk.title}</p>
-                    <div className="mt-1 flex items-center gap-2">
-                      <Badge variant="secondary" size="sm" className="font-mono text-[10px]">
-                        {chunk.type}
-                      </Badge>
-                      {chunk.tags.map((tag) => (
-                        <Badge key={tag} variant="outline" size="sm" className="text-[10px]">
-                          {tag}
+                <Link to="/chunks/$chunkId" params={{ chunkId: chunk.id }} className="block">
+                  <CardPanel className="flex items-center justify-between gap-4 p-4 transition-colors hover:bg-muted/50">
+                    <div className="min-w-0">
+                      <p className="truncate font-medium text-sm">{chunk.title}</p>
+                      <div className="mt-1 flex items-center gap-2">
+                        <Badge variant="secondary" size="sm" className="font-mono text-[10px]">
+                          {chunk.type}
                         </Badge>
-                      ))}
+                        {chunk.tags.map((tag) => (
+                          <Badge key={tag} variant="outline" size="sm" className="text-[10px]">
+                            {tag}
+                          </Badge>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                  <span className="text-muted-foreground shrink-0 text-xs flex items-center gap-1">
-                    <Clock className="size-3" />
-                    {chunk.updated}
-                  </span>
-                </CardPanel>
+                    <span className="text-muted-foreground shrink-0 text-xs flex items-center gap-1">
+                      <Clock className="size-3" />
+                      {chunk.updated}
+                    </span>
+                  </CardPanel>
                 </Link>
               </div>
             ))}
@@ -152,7 +167,11 @@ function RouteComponent() {
               <div className="flex items-center justify-between text-sm">
                 <span>Database</span>
                 <Badge variant={healthCheck.data ? "default" : "destructive"} size="sm">
-                  {healthCheck.isLoading ? "checking..." : healthCheck.data ? "connected" : "disconnected"}
+                  {healthCheck.isLoading
+                    ? "checking..."
+                    : healthCheck.data
+                      ? "connected"
+                      : "disconnected"}
                 </Badge>
               </div>
               <Separator />

@@ -11,13 +11,11 @@ Run Elysia on Deno via Web Standard Request/Response.
 Wrap `Elysia.fetch` in `Deno.serve`:
 
 ```typescript
-import { Elysia } from 'elysia'
+import { Elysia } from "elysia";
 
-const app = new Elysia()
-  .get('/', () => 'Hello Elysia')
-  .listen(3000)
+const app = new Elysia().get("/", () => "Hello Elysia").listen(3000);
 
-Deno.serve(app.fetch)
+Deno.serve(app.fetch);
 ```
 
 Run:
@@ -29,8 +27,8 @@ deno serve --watch src/index.ts
 ## Port Config
 
 ```typescript
-Deno.serve(app.fetch)                  // Default
-Deno.serve({ port: 8787 }, app.fetch)  // Custom port
+Deno.serve(app.fetch); // Default
+Deno.serve({ port: 8787 }, app.fetch); // Custom port
 ```
 
 ## pnpm

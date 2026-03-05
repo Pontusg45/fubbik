@@ -11,8 +11,8 @@ Run Elysia on Astro via Astro Endpoint.
 ```javascript
 // astro.config.mjs
 export default defineConfig({
-  output: 'server'
-})
+  output: "server",
+});
 ```
 
 2. Create `pages/[...slugs].ts`
@@ -20,18 +20,18 @@ export default defineConfig({
 
 ```typescript
 // pages/[...slugs].ts
-import { Elysia, t } from 'elysia'
+import { Elysia, t } from "elysia";
 
 const app = new Elysia()
-  .get('/api', () => 'hi')
-  .post('/api', ({ body }) => body, {
-    body: t.Object({ name: t.String() })
-  })
+  .get("/api", () => "hi")
+  .post("/api", ({ body }) => body, {
+    body: t.Object({ name: t.String() }),
+  });
 
-const handle = ({ request }: { request: Request }) => app.handle(request)
+const handle = ({ request }: { request: Request }) => app.handle(request);
 
-export const GET = handle
-export const POST = handle
+export const GET = handle;
+export const POST = handle;
 ```
 
 WinterCG compliance - works normally.
@@ -44,13 +44,12 @@ If placed in `pages/api/[...slugs].ts`, set prefix:
 
 ```typescript
 // pages/api/[...slugs].ts
-const app = new Elysia({ prefix: '/api' })
-  .get('/', () => 'hi')
+const app = new Elysia({ prefix: "/api" }).get("/", () => "hi");
 
-const handle = ({ request }: { request: Request }) => app.handle(request)
+const handle = ({ request }: { request: Request }) => app.handle(request);
 
-export const GET = handle
-export const POST = handle
+export const GET = handle;
+export const POST = handle;
 ```
 
 Ensures routing works in any location.

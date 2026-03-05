@@ -9,16 +9,15 @@ Reactive mutable signal for cookie interaction. Auto-encodes/decodes objects.
 No get/set - direct value access:
 
 ```typescript
-import { Elysia } from 'elysia'
+import { Elysia } from "elysia";
 
-new Elysia()
-  .get('/', ({ cookie: { name } }) => {
-    // Get
-    name.value
+new Elysia().get("/", ({ cookie: { name } }) => {
+  // Get
+  name.value;
 
-    // Set
-    name.value = "New Value"
-  })
+  // Set
+  name.value = "New Value";
+});
 ```
 
 Auto-encodes/decodes objects. Just works.
@@ -78,22 +77,25 @@ Like `set` but only overwrites defined properties.
 Strict validation + type inference with `t.Cookie`:
 
 ```typescript
-import { Elysia, t } from 'elysia'
+import { Elysia, t } from "elysia";
 
-new Elysia()
-  .get('/', ({ cookie: { name } }) => {
+new Elysia().get(
+  "/",
+  ({ cookie: { name } }) => {
     name.value = {
       id: 617,
-      name: 'Summoning 101'
-    }
-  }, {
+      name: "Summoning 101",
+    };
+  },
+  {
     cookie: t.Cookie({
       name: t.Object({
         id: t.Numeric(),
-        name: t.String()
-      })
-    })
-  })
+        name: t.String(),
+      }),
+    }),
+  },
+);
 ```
 
 ### Nullable Cookie
@@ -103,10 +105,10 @@ cookie: t.Cookie({
   name: t.Optional(
     t.Object({
       id: t.Numeric(),
-      name: t.String()
-    })
-  )
-})
+      name: t.String(),
+    }),
+  ),
+});
 ```
 
 ## Cookie Signature
@@ -114,20 +116,26 @@ cookie: t.Cookie({
 Cryptographic hash for verification. Prevents malicious modification.
 
 ```typescript
-new Elysia()
-  .get('/', ({ cookie: { profile } }) => {
-    profile.value = { id: 617, name: 'Summoning 101' }
-  }, {
-    cookie: t.Cookie({
-      profile: t.Object({
-        id: t.Numeric(),
-        name: t.String()
-      })
-    }, {
-      secrets: 'Fischl von Luftschloss Narfidort',
-      sign: ['profile']
-    })
-  })
+new Elysia().get(
+  "/",
+  ({ cookie: { profile } }) => {
+    profile.value = { id: 617, name: "Summoning 101" };
+  },
+  {
+    cookie: t.Cookie(
+      {
+        profile: t.Object({
+          id: t.Numeric(),
+          name: t.String(),
+        }),
+      },
+      {
+        secrets: "Fischl von Luftschloss Narfidort",
+        sign: ["profile"],
+      },
+    ),
+  },
+);
 ```
 
 Auto-signs/unsigns.
@@ -137,10 +145,10 @@ Auto-signs/unsigns.
 ```typescript
 new Elysia({
   cookie: {
-    secrets: 'Fischl von Luftschloss Narfidort',
-    sign: ['profile']
-  }
-})
+    secrets: "Fischl von Luftschloss Narfidort",
+    sign: ["profile"],
+  },
+});
 ```
 
 ## Cookie Rotation
@@ -150,9 +158,9 @@ Auto-handles secret rotation. Old signature verification + new signature signing
 ```typescript
 new Elysia({
   cookie: {
-    secrets: ['Vengeance will be mine', 'Fischl von Luftschloss Narfidort']
-  }
-})
+    secrets: ["Vengeance will be mine", "Fischl von Luftschloss Narfidort"],
+  },
+});
 ```
 
 Array = key rotation (retire old, replace with new).

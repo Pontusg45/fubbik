@@ -9,11 +9,9 @@ bun add @elysiajs/openapi
 ## Basic Usage
 
 ```typescript
-import { openapi } from '@elysiajs/openapi'
+import { openapi } from "@elysiajs/openapi";
 
-new Elysia()
-  .use(openapi())
-  .get('/', () => 'hello')
+new Elysia().use(openapi()).get("/", () => "hello");
 ```
 
 Docs at `/openapi`, spec at `/openapi/json`.
@@ -41,19 +39,17 @@ Extends OpenAPI Operation Object:
 openapi({
   documentation: {
     info: {
-      title: 'API',
-      version: '1.0.0'
+      title: "API",
+      version: "1.0.0",
     },
-    tags: [
-      { name: 'App', description: 'General' }
-    ],
+    tags: [{ name: "App", description: "General" }],
     components: {
       securitySchemes: {
-        bearerAuth: { type: 'http', scheme: 'bearer' }
-      }
-    }
-  }
-})
+        bearerAuth: { type: "http", scheme: "bearer" },
+      },
+    },
+  },
+});
 ```
 
 ### Standard Schema Mapping
@@ -73,12 +69,13 @@ Zod 3: `zodToJsonSchema` from `zod-to-json-schema`
 Generate docs from types:
 
 ```typescript
-import { fromTypes } from '@elysiajs/openapi'
+import { fromTypes } from "@elysiajs/openapi";
 
-export const app = new Elysia()
-  .use(openapi({
-    references: fromTypes()
-  }))
+export const app = new Elysia().use(
+  openapi({
+    references: fromTypes(),
+  }),
+);
 ```
 
 ### Production
@@ -86,20 +83,16 @@ export const app = new Elysia()
 Recommended to generate `.d.ts` file for production when using OpenAPI Type Gen
 
 ```typescript
-references: fromTypes(
-  process.env.NODE_ENV === 'production'
-    ? 'dist/index.d.ts'
-    : 'src/index.ts'
-)
+references: fromTypes(process.env.NODE_ENV === "production" ? "dist/index.d.ts" : "src/index.ts");
 ```
 
 ### Options
 
 ```typescript
-fromTypes('src/index.ts', {
-  projectRoot: path.join('..', import.meta.dir),
-  tsconfigPath: 'tsconfig.dts.json'
-})
+fromTypes("src/index.ts", {
+  projectRoot: path.join("..", import.meta.dir),
+  tsconfigPath: "tsconfig.dts.json",
+});
 ```
 
 ### Caveat: Explicit Types
@@ -107,9 +100,9 @@ fromTypes('src/index.ts', {
 Use `Prettify` helper to inline when type is not showing:
 
 ```typescript
-type Prettify<T> = { [K in keyof T]: T[K] } & {}
+type Prettify<T> = { [K in keyof T]: T[K] } & {};
 
-function getUser(): Prettify<User> { }
+function getUser(): Prettify<User> {}
 ```
 
 ## Schema Description
@@ -133,12 +126,9 @@ detail: {
 ## Response Headers
 
 ```typescript
-import { withHeader } from '@elysiajs/openapi'
+import { withHeader } from "@elysiajs/openapi";
 
-response: withHeader(
-  t.Literal('Hi'),
-  { 'x-powered-by': t.Literal('Elysia') }
-)
+response: withHeader(t.Literal("Hi"), { "x-powered-by": t.Literal("Elysia") });
 ```
 
 Annotation only - doesn't enforce. Set headers manually.
@@ -164,8 +154,7 @@ Define + assign:
 ### Instance Tags
 
 ```typescript
-new Elysia({ tags: ['user'] })
-  .get('/user', 'user')
+new Elysia({ tags: ["user"] }).get("/user", "user");
 ```
 
 ## Reference Models

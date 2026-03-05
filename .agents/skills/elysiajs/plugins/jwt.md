@@ -11,37 +11,36 @@ bun add @elysiajs/jwt
 ## Basic Usage
 
 ```typescript [cookie]
-import { Elysia } from 'elysia'
-import { jwt } from '@elysiajs/jwt'
+import { Elysia } from "elysia";
+import { jwt } from "@elysiajs/jwt";
 
 const app = new Elysia()
-    .use(
-        jwt({
-            name: 'jwt',
-            secret: 'Fischl von Luftschloss Narfidort'
-        })
-    )
-    .get('/sign/:name', async ({ jwt, params: { name }, cookie: { auth } }) => {
-    	const value = await jwt.sign({ name })
+  .use(
+    jwt({
+      name: "jwt",
+      secret: "Fischl von Luftschloss Narfidort",
+    }),
+  )
+  .get("/sign/:name", async ({ jwt, params: { name }, cookie: { auth } }) => {
+    const value = await jwt.sign({ name });
 
-        auth.set({
-            value,
-            httpOnly: true,
-            maxAge: 7 * 86400,
-            path: '/profile',
-        })
+    auth.set({
+      value,
+      httpOnly: true,
+      maxAge: 7 * 86400,
+      path: "/profile",
+    });
 
-        return `Sign in as ${value}`
-    })
-    .get('/profile', async ({ jwt, status, cookie: { auth } }) => {
-        const profile = await jwt.verify(auth.value)
+    return `Sign in as ${value}`;
+  })
+  .get("/profile", async ({ jwt, status, cookie: { auth } }) => {
+    const profile = await jwt.verify(auth.value);
 
-        if (!profile)
-            return status(401, 'Unauthorized')
+    if (!profile) return status(401, "Unauthorized");
 
-        return `Hello ${profile.name}`
-    })
-    .listen(3000)
+    return `Hello ${profile.name}`;
+  })
+  .listen(3000);
 ```
 
 ## Config
@@ -58,15 +57,15 @@ For example, `jwt` function will be registered with a custom name.
 
 ```typescript
 new Elysia()
-    .use(
-        jwt({
-            name: 'myJWTNamespace',
-            secret: process.env.JWT_SECRETS!
-        })
-    )
-    .get('/sign/:name', ({ myJWTNamespace, params }) => {
-        return myJWTNamespace.sign(params)
-    })
+  .use(
+    jwt({
+      name: "myJWTNamespace",
+      secret: process.env.JWT_SECRETS!,
+    }),
+  )
+  .get("/sign/:name", ({ myJWTNamespace, params }) => {
+    return myJWTNamespace.sign(params);
+  });
 ```
 
 Because some might need to use multiple `jwt` with different configs in a single server, explicitly registering the JWT function with a different name is needed.
@@ -215,14 +214,14 @@ By default, the config is passed to `setCookie` and inherits its value.
 
 ```typescript
 const app = new Elysia()
-    .use(
-        jwt({
-            name: 'jwt',
-            secret: 'kunikuzushi',
-            exp: '7d'
-        })
-    )
-    .get('/sign/:name', async ({ jwt, params }) => jwt.sign(params))
+  .use(
+    jwt({
+      name: "jwt",
+      secret: "kunikuzushi",
+      exp: "7d",
+    }),
+  )
+  .get("/sign/:name", async ({ jwt, params }) => jwt.sign(params));
 ```
 
 This will sign JWT with an expiration date of the next 7 days.

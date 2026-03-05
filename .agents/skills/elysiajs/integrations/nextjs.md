@@ -11,16 +11,14 @@ Run Elysia on Next.js App Router.
 
 ```typescript
 // app/api/[[...slugs]]/route.ts
-import { Elysia, t } from 'elysia'
+import { Elysia, t } from "elysia";
 
-const app = new Elysia({ prefix: '/api' })
-  .get('/', 'Hello Nextjs')
-  .post('/', ({ body }) => body, {
-    body: t.Object({ name: t.String() })
-  })
+const app = new Elysia({ prefix: "/api" }).get("/", "Hello Nextjs").post("/", ({ body }) => body, {
+  body: t.Object({ name: t.String() }),
+});
 
-export const GET = app.fetch
-export const POST = app.fetch
+export const GET = app.fetch;
+export const POST = app.fetch;
 ```
 
 WinterCG compliance - works as normal Next.js API route.
@@ -30,11 +28,10 @@ WinterCG compliance - works as normal Next.js API route.
 If placed in `app/user/[[...slugs]]/route.ts`, set prefix:
 
 ```typescript
-const app = new Elysia({ prefix: '/user' })
-  .get('/', 'Hello Nextjs')
+const app = new Elysia({ prefix: "/user" }).get("/", "Hello Nextjs");
 
-export const GET = app.fetch
-export const POST = app.fetch
+export const GET = app.fetch;
+export const POST = app.fetch;
 ```
 
 ## Eden (End-to-End Type Safety)
@@ -48,29 +45,27 @@ Isomorphic fetch pattern:
 
 ```typescript
 // app/api/[[...slugs]]/route.ts
-export const app = new Elysia({ prefix: '/api' })
-  .get('/', 'Hello Nextjs')
-  .post('/user', ({ body }) => body, {
-    body: treaty.schema('User', { name: 'string' })
-  })
+export const app = new Elysia({ prefix: "/api" })
+  .get("/", "Hello Nextjs")
+  .post("/user", ({ body }) => body, {
+    body: treaty.schema("User", { name: "string" }),
+  });
 
-export type app = typeof app
+export type app = typeof app;
 
-export const GET = app.fetch
-export const POST = app.fetch
+export const GET = app.fetch;
+export const POST = app.fetch;
 ```
 
 2. Create client:
 
 ```typescript
 // lib/eden.ts
-import { treaty } from '@elysiajs/eden'
-import type { app } from '../app/api/[[...slugs]]/route'
+import { treaty } from "@elysiajs/eden";
+import type { app } from "../app/api/[[...slugs]]/route";
 
 export const api =
-  typeof process !== 'undefined'
-    ? treaty(app).api
-    : treaty<typeof app>('localhost:3000').api
+  typeof process !== "undefined" ? treaty(app).api : treaty<typeof app>("localhost:3000").api;
 ```
 
 Use `typeof process` not `typeof window` (window undefined at build time → hydration error).
@@ -79,11 +74,11 @@ Use `typeof process` not `typeof window` (window undefined at build time → hyd
 
 ```tsx
 // app/page.tsx
-import { api } from '../lib/eden'
+import { api } from "../lib/eden";
 
 export default async function Page() {
-  const message = await api.get()
-  return <h1>Hello, {message}</h1>
+  const message = await api.get();
+  return <h1>Hello, {message}</h1>;
 }
 ```
 
@@ -92,15 +87,15 @@ Works with server/client components + ISR.
 ## React Query
 
 ```tsx
-import { useQuery } from '@tanstack/react-query'
+import { useQuery } from "@tanstack/react-query";
 
 function App() {
   const { data: response } = useQuery({
-    queryKey: ['get'],
-    queryFn: () => getTreaty().get()
-  })
+    queryKey: ["get"],
+    queryFn: () => getTreaty().get(),
+  });
 
-  return response?.data
+  return response?.data;
 }
 ```
 

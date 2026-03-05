@@ -11,12 +11,10 @@ bun add @elysiajs/static
 ## Basic Usage
 
 ```typescript twoslash
-import { Elysia } from 'elysia'
-import { staticPlugin } from '@elysiajs/static'
+import { Elysia } from "elysia";
+import { staticPlugin } from "@elysiajs/static";
 
-new Elysia()
-    .use(staticPlugin())
-    .listen(3000)
+new Elysia().use(staticPlugin()).listen(3000);
 ```
 
 By default, the static plugin default folder is `public`, and registered with `/public` prefix.
@@ -93,8 +91,7 @@ Below you can find the common patterns to use the plugin.
 Suppose you want to return just a single file, you can use `file` instead of using the static plugin
 
 ```typescript
-import { Elysia, file } from 'elysia'
+import { Elysia, file } from "elysia";
 
-new Elysia()
-    .get('/file', file('public/takodachi.png'))
+new Elysia().get("/file", file("public/takodachi.png"));
 ```

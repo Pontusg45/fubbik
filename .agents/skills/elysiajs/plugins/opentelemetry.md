@@ -9,16 +9,15 @@ bun add @elysiajs/opentelemetry
 ## Basic Usage
 
 ```typescript
-import { opentelemetry } from '@elysiajs/opentelemetry'
-import { BatchSpanProcessor } from '@opentelemetry/sdk-trace-node'
-import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-proto'
+import { opentelemetry } from "@elysiajs/opentelemetry";
+import { BatchSpanProcessor } from "@opentelemetry/sdk-trace-node";
+import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-proto";
 
-new Elysia()
-  .use(opentelemetry({
-    spanProcessors: [
-      new BatchSpanProcessor(new OTLPTraceExporter())
-    ]
-  }))
+new Elysia().use(
+  opentelemetry({
+    spanProcessors: [new BatchSpanProcessor(new OTLPTraceExporter())],
+  }),
+);
 ```
 
 Auto-collects spans from OpenTelemetry-compatible libraries. Parent/child spans applied automatically.
@@ -109,11 +108,11 @@ Elysia reads function names as span names:
 Get current span outside handler (via AsyncLocalStorage):
 
 ```typescript
-import { getCurrentSpan } from '@elysiajs/opentelemetry'
+import { getCurrentSpan } from "@elysiajs/opentelemetry";
 
 function utility() {
-  const span = getCurrentSpan()
-  span.setAttributes({ 'custom.attribute': 'value' })
+  const span = getCurrentSpan();
+  span.setAttributes({ "custom.attribute": "value" });
 }
 ```
 
@@ -122,10 +121,10 @@ function utility() {
 Sugar for `getCurrentSpan().setAttributes`:
 
 ```typescript
-import { setAttributes } from '@elysiajs/opentelemetry'
+import { setAttributes } from "@elysiajs/opentelemetry";
 
 function utility() {
-  setAttributes({ 'custom.attribute': 'value' })
+  setAttributes({ "custom.attribute": "value" });
 }
 ```
 
@@ -139,20 +138,20 @@ SDK must run before importing instrumented module.
 
 ```typescript
 // src/instrumentation.ts
-import { opentelemetry } from '@elysiajs/opentelemetry'
-import { PgInstrumentation } from '@opentelemetry/instrumentation-pg'
+import { opentelemetry } from "@elysiajs/opentelemetry";
+import { PgInstrumentation } from "@opentelemetry/instrumentation-pg";
 
 export const instrumentation = opentelemetry({
-  instrumentations: [new PgInstrumentation()]
-})
+  instrumentations: [new PgInstrumentation()],
+});
 ```
 
 2. Apply:
 
 ```typescript
 // src/index.ts
-import { instrumentation } from './instrumentation'
-new Elysia().use(instrumentation).listen(3000)
+import { instrumentation } from "./instrumentation";
+new Elysia().use(instrumentation).listen(3000);
 ```
 
 3. Preload:

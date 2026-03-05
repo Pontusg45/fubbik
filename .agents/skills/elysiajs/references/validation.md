@@ -7,16 +7,15 @@ Runtime validation + type inference + OpenAPI schema from single source. TypeBox
 ## Basic Usage
 
 ```typescript
-import { Elysia, t } from 'elysia'
+import { Elysia, t } from "elysia";
 
-new Elysia()
-  .get('/id/:id', ({ params: { id } }) => id, {
-    params: t.Object({ id: t.Number({ minimum: 1 }) }),
-    response: {
-      200: t.Number(),
-      404: t.Literal('Not Found')
-    }
-  })
+new Elysia().get("/id/:id", ({ params: { id } }) => id, {
+  params: t.Object({ id: t.Number({ minimum: 1 }) }),
+  response: {
+    200: t.Number(),
+    404: t.Literal("Not Found"),
+  },
+});
 ```
 
 ## Schema Types
@@ -49,7 +48,7 @@ Mix validators in same handler.
 ## Body
 
 ```typescript
-body: t.Object({ name: t.String() })
+body: t.Object({ name: t.String() });
 ```
 
 GET/HEAD: body-parser disabled by default (RFC2616).
@@ -58,20 +57,20 @@ GET/HEAD: body-parser disabled by default (RFC2616).
 
 ```typescript
 body: t.Object({
-  file: t.File({ format: 'image/*' }),
-  multipleFiles: t.Files()
-})
+  file: t.File({ format: "image/*" }),
+  multipleFiles: t.Files(),
+});
 // Auto-assumes multipart/form-data
 ```
 
 ### File (Standard Schema)
 
 ```typescript
-import { fileType } from 'elysia'
+import { fileType } from "elysia";
 
 body: z.object({
-  file: z.file().refine((file) => fileType(file, 'image/jpeg'))
-})
+  file: z.file().refine((file) => fileType(file, "image/jpeg")),
+});
 ```
 
 Use `fileType` for security (validates magic number, not just MIME).
@@ -79,7 +78,7 @@ Use `fileType` for security (validates magic number, not just MIME).
 ## Query
 
 ```typescript
-query: t.Object({ name: t.String() })
+query: t.Object({ name: t.String() });
 // /?name=Elysia
 ```
 
@@ -88,7 +87,7 @@ Auto-coerces to specified type.
 ### Arrays
 
 ```typescript
-query: t.Object({ name: t.Array(t.String()) })
+query: t.Object({ name: t.Array(t.String()) });
 ```
 
 Formats supported:
@@ -99,7 +98,7 @@ Formats supported:
 ## Params
 
 ```typescript
-params: t.Object({ id: t.Number() })
+params: t.Object({ id: t.Number() });
 // /id/1
 ```
 
@@ -108,7 +107,7 @@ Auto-inferred as string if schema not provided.
 ## Headers
 
 ```typescript
-headers: t.Object({ authorization: t.String() })
+headers: t.Object({ authorization: t.String() });
 ```
 
 `additionalProperties: true` by default. Always lowercase keys.
@@ -116,12 +115,15 @@ headers: t.Object({ authorization: t.String() })
 ## Cookie
 
 ```typescript
-cookie: t.Cookie({
-  name: t.String()
-}, {
-  secure: true,
-  httpOnly: true
-})
+cookie: t.Cookie(
+  {
+    name: t.String(),
+  },
+  {
+    secure: true,
+    httpOnly: true,
+  },
+);
 ```
 
 Or use `t.Object`. `additionalProperties: true` by default.
@@ -129,7 +131,7 @@ Or use `t.Object`. `additionalProperties: true` by default.
 ## Response
 
 ```typescript
-response: t.Object({ name: t.String() })
+response: t.Object({ name: t.String() });
 ```
 
 ### Per Status
@@ -147,8 +149,8 @@ response: {
 
 ```typescript
 body: t.Object({
-  x: t.Number({ error: 'x must be number' })
-})
+  x: t.Number({ error: "x must be number" }),
+});
 ```
 
 Or function:
@@ -156,9 +158,9 @@ Or function:
 ```typescript
 x: t.Number({
   error({ errors, type, validation, value }) {
-    return 'Expected x to be number'
-  }
-})
+    return "Expected x to be number";
+  },
+});
 ```
 
 ### onError Hook
@@ -225,8 +227,8 @@ Models with `prefix` will be capitalized.
 ## TypeScript Types
 
 ```typescript
-const MyType = t.Object({ hello: t.Literal('Elysia') })
-type MyType = typeof MyType.static
+const MyType = t.Object({ hello: t.Literal("Elysia") });
+type MyType = typeof MyType.static;
 ```
 
 Single schema → runtime validation + coercion + TypeScript type + OpenAPI.
@@ -238,17 +240,17 @@ Apply schema to multiple handlers. Affects all handlers after definition.
 ### Basic Usage
 
 ```typescript
-import { Elysia, t } from 'elysia'
+import { Elysia, t } from "elysia";
 
 new Elysia()
-  .get('/none', ({ query }) => 'hi')
+  .get("/none", ({ query }) => "hi")
   .guard({
     query: t.Object({
-      name: t.String()
-    })
+      name: t.String(),
+    }),
   })
-  .get('/query', ({ query }) => query)
-  .listen(3000)
+  .get("/query", ({ query }) => query)
+  .listen(3000);
 ```
 
 Ensures `query.name` string required for all handlers after guard.
@@ -309,22 +311,22 @@ Elysia.t = TypeBox with server-side pre-configuration + HTTP-specific types
 
 ```ts
 // Email format
-t.String({ format: 'email' })
+t.String({ format: "email" });
 
 // Number constraints
-t.Number({ minimum: 10, maximum: 100 })
+t.Number({ minimum: 10, maximum: 100 });
 
 // Array constraints
 t.Array(t.Number(), {
-  minItems: 1,  // min items
-  maxItems: 5   // max items
-})
+  minItems: 1, // min items
+  maxItems: 5, // max items
+});
 
 // Object - allow extra properties
 t.Object(
   { x: t.Number() },
-  { additionalProperties: true }  // default: false
-)
+  { additionalProperties: true }, // default: false
+);
 ```
 
 ## Common Patterns
@@ -332,7 +334,7 @@ t.Object(
 ### Union (Multiple Types)
 
 ```ts
-t.Union([t.String(), t.Number()])
+t.Union([t.String(), t.Number()]);
 // type: string | number
 // values: "Hello" or 123
 ```
@@ -342,8 +344,8 @@ t.Union([t.String(), t.Number()])
 ```ts
 t.Object({
   x: t.Number(),
-  y: t.Optional(t.Number())  // can be undefined
-})
+  y: t.Optional(t.Number()), // can be undefined
+});
 // type: { x: number, y?: number }
 // value: { x: 123 } or { x: 123, y: 456 }
 ```
@@ -351,10 +353,12 @@ t.Object({
 ### Partial (All Fields Optional)
 
 ```ts
-t.Partial(t.Object({
-  x: t.Number(),
-  y: t.Number()
-}))
+t.Partial(
+  t.Object({
+    x: t.Number(),
+    y: t.Number(),
+  }),
+);
 // type: { x?: number, y?: number }
 // value: {} or { y: 123 } or { x: 1, y: 2 }
 ```
@@ -364,17 +368,17 @@ t.Partial(t.Object({
 ### UnionEnum (One of Values)
 
 ```ts
-t.UnionEnum(['rapi', 'anis', 1, true, false])
+t.UnionEnum(["rapi", "anis", 1, true, false]);
 ```
 
 ### File (Single File Upload)
 
 ```ts
 t.File({
-  type: 'image',           // or ['image', 'video']
-  minSize: '1k',           // 1024 bytes
-  maxSize: '5m'            // 5242880 bytes
-})
+  type: "image", // or ['image', 'video']
+  minSize: "1k", // 1024 bytes
+  maxSize: "5m", // 5242880 bytes
+});
 ```
 
 **File unit suffixes**:
@@ -385,30 +389,33 @@ t.File({
 ### Files (Multiple Files)
 
 ```ts
-t.Files()  // extends File + array
+t.Files(); // extends File + array
 ```
 
 ### Cookie (Cookie Jar)
 
 ```ts
-t.Cookie({
-  name: t.String()
-}, {
-  secrets: 'secret-key'  // or ['key1', 'key2'] for rotation
-})
+t.Cookie(
+  {
+    name: t.String(),
+  },
+  {
+    secrets: "secret-key", // or ['key1', 'key2'] for rotation
+  },
+);
 ```
 
 ### Nullable (Allow null)
 
 ```ts
-t.Nullable(t.String())
+t.Nullable(t.String());
 // type: string | null
 ```
 
 ### MaybeEmpty (Allow null + undefined)
 
 ```ts
-t.MaybeEmpty(t.String())
+t.MaybeEmpty(t.String());
 // type: string | null | undefined
 ```
 
@@ -416,29 +423,29 @@ t.MaybeEmpty(t.String())
 
 ```ts
 t.Form({
-  someValue: t.File()
-})
+  someValue: t.File(),
+});
 // Syntax sugar for t.Object with FormData support
 ```
 
 ### UInt8Array (Buffer → Uint8Array)
 
 ```ts
-t.UInt8Array()
+t.UInt8Array();
 // For binary file uploads with arrayBuffer parser
 ```
 
 ### ArrayBuffer (Buffer → ArrayBuffer)
 
 ```ts
-t.ArrayBuffer()
+t.ArrayBuffer();
 // For binary file uploads with arrayBuffer parser
 ```
 
 ### ObjectString (String → Object)
 
 ```ts
-t.ObjectString()
+t.ObjectString();
 // Accepts: '{"x":1}' → parses to { x: 1 }
 // Use in: query string, headers, FormData
 ```
@@ -446,7 +453,7 @@ t.ObjectString()
 ### BooleanString (String → Boolean)
 
 ```ts
-t.BooleanString()
+t.BooleanString();
 // Accepts: 'true'/'false' → parses to boolean
 // Use in: query string, headers, FormData
 ```
@@ -454,7 +461,7 @@ t.BooleanString()
 ### Numeric (String/Number → Number)
 
 ```ts
-t.Numeric()
+t.Numeric();
 // Accepts: '123' or 123 → transforms to 123
 // Use in: path params, query string
 ```
@@ -513,13 +520,13 @@ Same as Number → Numeric:
 ## Usage Pattern
 
 ```ts
-import { Elysia, t } from 'elysia'
+import { Elysia, t } from "elysia";
 
 new Elysia()
-  .post('/', ({ body }) => `Hello ${body}`, {
-    body: t.String()  // validates body is string
+  .post("/", ({ body }) => `Hello ${body}`, {
+    body: t.String(), // validates body is string
   })
-  .listen(3000)
+  .listen(3000);
 ```
 
 **Validation flow**:
