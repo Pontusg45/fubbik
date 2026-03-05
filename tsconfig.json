@@ -1,0 +1,3 @@
+{
+  "extends": "@fubbik/config/tsconfig.base.json"
+}

@@ -1,0 +1,22 @@
+{
+  "name": "cli",
+  "version": "0.0.1",
+  "type": "module",
+  "bin": {
+    "fubbik": "dist/fubbik"
+  },
+  "scripts": {
+    "dev": "bun run --hot src/index.ts",
+    "build": "bun build --compile --minify --sourcemap --bytecode ./src/index.ts --outfile dist/fubbik",
+    "start": "bun run src/index.ts",
+    "check-types": "tsc -b"
+  },
+  "dependencies": {
+    "commander": "^13.1.0"
+  },
+  "devDependencies": {
+    "@fubbik/config": "workspace:*",
+    "@types/bun": "catalog:",
+    "typescript": "catalog:"
+  }
+}

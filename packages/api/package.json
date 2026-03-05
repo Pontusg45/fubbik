@@ -1,0 +1,19 @@
+{
+  "name": "@fubbik/api",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./context": "./src/context.ts"
+  },
+  "scripts": {},
+  "dependencies": {
+    "@fubbik/auth": "workspace:*",
+    "@fubbik/db": "workspace:*",
+    "@fubbik/env": "workspace:*",
+    "elysia": "catalog:"
+  },
+  "devDependencies": {
+    "@fubbik/config": "workspace:*",
+    "typescript": "catalog:"
+  }
+}

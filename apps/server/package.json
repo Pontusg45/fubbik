@@ -1,0 +1,45 @@
+{
+  "name": "server",
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "build": "tsdown",
+    "check-types": "tsc -b",
+    "compile": "bun build --compile --minify --sourcemap --bytecode ./src/index.ts --outfile server",
+    "dev": "bun run --hot src/index.ts",
+    "start": "bun run dist/index.mjs",
+    "test": "vitest"
+  },
+  "dependencies": {
+    "@elysiajs/cors": "^1.4.1",
+    "@fubbik/api": "workspace:*",
+    "@fubbik/auth": "workspace:*",
+    "@fubbik/db": "workspace:*",
+    "@fubbik/env": "workspace:*",
+    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/auto-instrumentations-node": "^0.70.1",
+    "@opentelemetry/exporter-metrics-otlp-http": "^0.212.0",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.212.0",
+    "@opentelemetry/resources": "^2.5.1",
+    "@opentelemetry/sdk-metrics": "^2.5.1",
+    "@opentelemetry/sdk-node": "^0.212.0",
+    "@opentelemetry/semantic-conventions": "^1.40.0",
+    "ai": "^6.0.3",
+    "arktype": "catalog:",
+    "better-auth": "catalog:",
+    "dotenv": "catalog:",
+    "elysia": "catalog:",
+    "typesense": "^2.0.0",
+    "winston": "^3.19.0"
+  },
+  "devDependencies": {
+    "@fubbik/config": "workspace:*",
+    "@types/bun": "catalog:",
+    "@vitest/coverage-v8": "catalog:",
+    "@vitest/ui": "catalog:",
+    "jsdom": "catalog:",
+    "tsdown": "^0.16.5",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}
