@@ -22,6 +22,10 @@ RUN bun install --frozen-lockfile
 # Copy source code
 COPY . .
 
+# Vite inlines VITE_* at build time — pass as build arg
+ARG VITE_SERVER_URL
+ENV VITE_SERVER_URL=${VITE_SERVER_URL}
+
 # Build the application
 RUN bun run build --filter=web
 
