@@ -14,6 +14,7 @@ import { Route as DashboardRouteImport } from "./routes/dashboard";
 import { Route as IndexRouteImport } from "./routes/index";
 import { Route as ChunksNewRouteImport } from "./routes/chunks.new";
 import { Route as ChunksChunkIdRouteImport } from "./routes/chunks.$chunkId";
+import { Route as ChunksChunkIdEditRouteImport } from "./routes/chunks.$chunkId.edit";
 
 const LoginRoute = LoginRouteImport.update({
   id: "/login",
@@ -40,48 +41,69 @@ const ChunksChunkIdRoute = ChunksChunkIdRouteImport.update({
   path: "/chunks/$chunkId",
   getParentRoute: () => rootRouteImport,
 } as any);
+const ChunksChunkIdEditRoute = ChunksChunkIdEditRouteImport.update({
+  id: "/edit",
+  path: "/edit",
+  getParentRoute: () => ChunksChunkIdRoute,
+} as any);
 
 export interface FileRoutesByFullPath {
   "/": typeof IndexRoute;
   "/dashboard": typeof DashboardRoute;
   "/login": typeof LoginRoute;
-  "/chunks/$chunkId": typeof ChunksChunkIdRoute;
+  "/chunks/$chunkId": typeof ChunksChunkIdRouteWithChildren;
   "/chunks/new": typeof ChunksNewRoute;
+  "/chunks/$chunkId/edit": typeof ChunksChunkIdEditRoute;
 }
 export interface FileRoutesByTo {
   "/": typeof IndexRoute;
   "/dashboard": typeof DashboardRoute;
   "/login": typeof LoginRoute;
-  "/chunks/$chunkId": typeof ChunksChunkIdRoute;
+  "/chunks/$chunkId": typeof ChunksChunkIdRouteWithChildren;
   "/chunks/new": typeof ChunksNewRoute;
+  "/chunks/$chunkId/edit": typeof ChunksChunkIdEditRoute;
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport;
   "/": typeof IndexRoute;
   "/dashboard": typeof DashboardRoute;
   "/login": typeof LoginRoute;
-  "/chunks/$chunkId": typeof ChunksChunkIdRoute;
+  "/chunks/$chunkId": typeof ChunksChunkIdRouteWithChildren;
   "/chunks/new": typeof ChunksNewRoute;
+  "/chunks/$chunkId/edit": typeof ChunksChunkIdEditRoute;
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath;
-  fullPaths: "/" | "/dashboard" | "/login" | "/chunks/$chunkId" | "/chunks/new";
+  fullPaths:
+    | "/"
+    | "/dashboard"
+    | "/login"
+    | "/chunks/$chunkId"
+    | "/chunks/new"
+    | "/chunks/$chunkId/edit";
   fileRoutesByTo: FileRoutesByTo;
-  to: "/" | "/dashboard" | "/login" | "/chunks/$chunkId" | "/chunks/new";
+  to:
+    | "/"
+    | "/dashboard"
+    | "/login"
+    | "/chunks/$chunkId"
+    | "/chunks/new"
+    | "/chunks/$chunkId/edit";
   id:
     | "__root__"
     | "/"
     | "/dashboard"
     | "/login"
     | "/chunks/$chunkId"
-    | "/chunks/new";
+    | "/chunks/new"
+    | "/chunks/$chunkId/edit";
   fileRoutesById: FileRoutesById;
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute;
   DashboardRoute: typeof DashboardRoute;
   LoginRoute: typeof LoginRoute;
-  ChunksChunkIdRoute: typeof ChunksChunkIdRoute;
+  ChunksChunkIdRoute: typeof ChunksChunkIdRouteWithChildren;
   ChunksNewRoute: typeof ChunksNewRoute;
 }
 
@@ -122,14 +144,33 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof ChunksChunkIdRouteImport;
       parentRoute: typeof rootRouteImport;
     };
+    "/chunks/$chunkId/edit": {
+      id: "/chunks/$chunkId/edit";
+      path: "/edit";
+      fullPath: "/chunks/$chunkId/edit";
+      preLoaderRoute: typeof ChunksChunkIdEditRouteImport;
+      parentRoute: typeof ChunksChunkIdRoute;
+    };
   }
 }
+
+interface ChunksChunkIdRouteChildren {
+  ChunksChunkIdEditRoute: typeof ChunksChunkIdEditRoute;
+}
+
+const ChunksChunkIdRouteChildren: ChunksChunkIdRouteChildren = {
+  ChunksChunkIdEditRoute: ChunksChunkIdEditRoute,
+};
+
+const ChunksChunkIdRouteWithChildren = ChunksChunkIdRoute._addFileChildren(
+  ChunksChunkIdRouteChildren,
+);
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DashboardRoute: DashboardRoute,
   LoginRoute: LoginRoute,
-  ChunksChunkIdRoute: ChunksChunkIdRoute,
+  ChunksChunkIdRoute: ChunksChunkIdRouteWithChildren,
   ChunksNewRoute: ChunksNewRoute,
 };
 export const routeTree = rootRouteImport
