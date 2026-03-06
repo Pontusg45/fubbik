@@ -1,11 +1,14 @@
 import { Elysia, t } from "elysia";
+import type { Session } from "../context";
 import { dbError } from "../error";
 import * as chunkService from "./service";
 
 export const chunkRoutes = new Elysia()
   .get(
     "/chunks",
-    async ({ session, set, query }) => {
+    async (ctx) => {
+      const { set, query } = ctx;
+      const session = (ctx as unknown as { session: Session }).session;
       if (!session) {
         set.status = 401;
         return { message: "Authentication required" };
@@ -25,7 +28,9 @@ export const chunkRoutes = new Elysia()
       }),
     },
   )
-  .get("/chunks/:id", async ({ session, set, params }) => {
+  .get("/chunks/:id", async (ctx) => {
+    const { set, params } = ctx;
+    const session = (ctx as unknown as { session: Session }).session;
     if (!session) {
       set.status = 401;
       return { message: "Authentication required" };
@@ -43,7 +48,9 @@ export const chunkRoutes = new Elysia()
   })
   .post(
     "/chunks",
-    async ({ session, set, body }) => {
+    async (ctx) => {
+      const { set, body } = ctx;
+      const session = (ctx as unknown as { session: Session }).session;
       if (!session) {
         set.status = 401;
         return { message: "Authentication required" };
@@ -67,7 +74,9 @@ export const chunkRoutes = new Elysia()
   )
   .patch(
     "/chunks/:id",
-    async ({ session, set, params, body }) => {
+    async (ctx) => {
+      const { set, params, body } = ctx;
+      const session = (ctx as unknown as { session: Session }).session;
       if (!session) {
         set.status = 401;
         return { message: "Authentication required" };
@@ -92,7 +101,9 @@ export const chunkRoutes = new Elysia()
       }),
     },
   )
-  .delete("/chunks/:id", async ({ session, set, params }) => {
+  .delete("/chunks/:id", async (ctx) => {
+    const { set, params } = ctx;
+    const session = (ctx as unknown as { session: Session }).session;
     if (!session) {
       set.status = 401;
       return { message: "Authentication required" };
