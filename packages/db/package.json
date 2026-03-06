@@ -19,6 +19,7 @@
         "db:watch": "docker compose -f ../../docker-compose.yml up db",
         "db:stop": "docker compose -f ../../docker-compose.yml stop db",
         "db:down": "docker compose -f ../../docker-compose.yml down db",
+        "db:migrate:trgm": "psql $DATABASE_URL -f src/migrations/0002_add_trgm.sql",
         "test": "vitest run"
     },
     "dependencies": {

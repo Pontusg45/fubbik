@@ -21,13 +21,23 @@ export function listChunks(params: ListChunksParams) {
                 conditions.push(eq(chunk.type, params.type));
             }
             if (params.search) {
-                conditions.push(or(ilike(chunk.title, `%${params.search}%`), ilike(chunk.content, `%${params.search}%`))!);
+                conditions.push(
+                    or(
+                        sql`${chunk.title} % ${params.search}`,
+                        sql`${chunk.content} % ${params.search}`,
+                        ilike(chunk.title, `%${params.search}%`),
+                        ilike(chunk.content, `%${params.search}%`)
+                    )!
+                );
             }
+            const orderClause = params.search
+                ? sql`similarity(${chunk.title}, ${params.search}) DESC`
+                : desc(chunk.updatedAt);
             const chunks = await db
                 .select()
                 .from(chunk)
                 .where(and(...conditions))
-                .orderBy(desc(chunk.updatedAt))
+                .orderBy(orderClause)
                 .limit(params.limit)
                 .offset(params.offset);
 
