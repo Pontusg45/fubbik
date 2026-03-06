@@ -42,23 +42,22 @@ export function createChunk(userId: string, body: { title: string; content?: str
 
 export function updateChunk(chunkId: string, userId: string, body: { title?: string; content?: string; type?: string; tags?: string[] }) {
     return getChunkById(chunkId, userId).pipe(
-        Effect.flatMap(existing => {
-            if (!existing) return Effect.fail(new NotFoundError({ resource: "Chunk" }));
-            return getNextVersionNumber(chunkId).pipe(
-                Effect.flatMap(version =>
-                    createVersion({
-                        id: crypto.randomUUID(),
-                        chunkId,
-                        version,
-                        title: existing.title,
-                        content: existing.content,
-                        type: existing.type,
-                        tags: existing.tags as string[]
-                    })
-                ),
-                Effect.flatMap(() => updateChunkRepo(chunkId, body))
-            );
-        })
+        Effect.flatMap(existing => (existing ? Effect.succeed(existing) : Effect.fail(new NotFoundError({ resource: "Chunk" })))),
+        Effect.flatMap(existing =>
+            Effect.all({ existing: Effect.succeed(existing), version: getNextVersionNumber(chunkId) })
+        ),
+        Effect.flatMap(({ existing, version }) =>
+            createVersion({
+                id: crypto.randomUUID(),
+                chunkId,
+                version,
+                title: existing.title,
+                content: existing.content,
+                type: existing.type,
+                tags: existing.tags as string[]
+            })
+        ),
+        Effect.flatMap(() => updateChunkRepo(chunkId, body))
     );
 }
 
