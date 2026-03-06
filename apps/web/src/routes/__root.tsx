@@ -10,6 +10,7 @@ import {
 } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 
+import { ErrorBoundary } from "@/components/error-boundary";
 import FubbikLogo from "@/components/fubbik-logo";
 import UserMenu from "@/components/user-menu";
 import { Toaster } from "@/components/ui/sonner";
@@ -63,7 +64,9 @@ function RootDocument() {
             </div>
           </header>
           <main>
-            <Outlet />
+            <ErrorBoundary>
+              <Outlet />
+            </ErrorBoundary>
           </main>
         </div>
         <Toaster richColors />
