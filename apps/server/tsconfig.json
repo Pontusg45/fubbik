@@ -5,7 +5,6 @@
     "outDir": "dist",
     "paths": {
       "@/*": ["./src/*"]
-    },
-    "jsx": "react-jsx"
+    }
   }
 }
