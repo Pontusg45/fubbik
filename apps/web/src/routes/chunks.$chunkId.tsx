@@ -91,7 +91,7 @@ function ChunkDetail() {
                     Back
                 </Button>
                 <div className="flex gap-2">
-                    <Button variant="outline" size="sm">
+                    <Button variant="outline" size="sm" render={<Link to="/chunks/$chunkId/edit" params={{ chunkId }} />}>
                         <Edit className="size-3.5" />
                         Edit
                     </Button>
