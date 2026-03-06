@@ -1,15 +1,8 @@
 import { Effect } from "effect";
 import { Elysia, t } from "elysia";
 
-import type { Session } from "../context";
-import { AuthError } from "../errors";
+import { requireSession } from "../require-session";
 import * as chunkService from "./service";
-
-function requireSession(ctx: unknown): Effect.Effect<NonNullable<Session>, AuthError> {
-    const session = (ctx as unknown as { session: Session }).session;
-    if (!session) return Effect.fail(new AuthError());
-    return Effect.succeed(session);
-}
 
 export const chunkRoutes = new Elysia()
     .get(
