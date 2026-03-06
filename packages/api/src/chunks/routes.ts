@@ -17,6 +17,35 @@ export const chunkRoutes = new Elysia()
             })
         }
     )
+    .get("/chunks/export", ctx =>
+        Effect.runPromise(
+            requireSession(ctx).pipe(
+                Effect.flatMap(session => chunkService.exportChunks(session.user.id))
+            )
+        )
+    )
+    .post(
+        "/chunks/import",
+        ctx =>
+            Effect.runPromise(
+                requireSession(ctx).pipe(
+                    Effect.flatMap(session => chunkService.importChunks(session.user.id, ctx.body.chunks)),
+                    Effect.map(created => ({ imported: created.length }))
+                )
+            ),
+        {
+            body: t.Object({
+                chunks: t.Array(
+                    t.Object({
+                        title: t.String(),
+                        content: t.Optional(t.String()),
+                        type: t.Optional(t.String()),
+                        tags: t.Optional(t.Array(t.String()))
+                    })
+                )
+            })
+        }
+    )
     .get("/chunks/:id", ctx =>
         Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(session => chunkService.getChunkDetail(ctx.params.id, session.user.id))))
     )

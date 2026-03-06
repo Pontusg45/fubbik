@@ -1,6 +1,7 @@
 import {
     createChunk as createChunkRepo,
     deleteChunk as deleteChunkRepo,
+    exportAllChunks as exportAllChunksRepo,
     getChunkById,
     getChunkConnections,
     listChunks as listChunksRepo,
@@ -40,6 +41,17 @@ export function updateChunk(chunkId: string, userId: string, body: { title?: str
     return getChunkById(chunkId, userId).pipe(
         Effect.flatMap(existing => (existing ? Effect.succeed(existing) : Effect.fail(new NotFoundError({ resource: "Chunk" })))),
         Effect.flatMap(() => updateChunkRepo(chunkId, body))
+    );
+}
+
+export function exportChunks(userId: string) {
+    return exportAllChunksRepo(userId);
+}
+
+export function importChunks(userId: string, chunks: { title: string; content?: string; type?: string; tags?: string[] }[]) {
+    return Effect.all(
+        chunks.map(c => createChunk(userId, c)),
+        { concurrency: 10 }
     );
 }
 

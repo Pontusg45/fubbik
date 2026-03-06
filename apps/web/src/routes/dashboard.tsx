@@ -1,6 +1,8 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Blocks, Clock, Network, Plus, Tags } from "lucide-react";
+import { Blocks, Clock, Download, Network, Plus, Tags, Upload } from "lucide-react";
+import { useRef } from "react";
+import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,6 +26,62 @@ export const Route = createFileRoute("/dashboard")({
 
 function RouteComponent() {
     const { session } = Route.useRouteContext();
+    const queryClient = useQueryClient();
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const exportMutation = useMutation({
+        mutationFn: async () => {
+            const { data, error } = await api.api.chunks.export.get();
+            if (error) throw new Error("Export failed");
+            return data as Exclude<typeof data, { message: string }>;
+        },
+        onSuccess: data => {
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `fubbik-export-${new Date().toISOString().slice(0, 10)}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            toast.success(`Exported ${Array.isArray(data) ? data.length : 0} chunks`);
+        },
+        onError: () => toast.error("Failed to export chunks")
+    });
+
+    const importMutation = useMutation({
+        mutationFn: async (chunks: { title: string; content?: string; type?: string; tags?: string[] }[]) => {
+            const { data, error } = await api.api.chunks.import.post({ chunks });
+            if (error) throw new Error("Import failed");
+            return data as Exclude<typeof data, { message: string }>;
+        },
+        onSuccess: data => {
+            toast.success(`Imported ${data.imported} chunks`);
+            queryClient.invalidateQueries({ queryKey: ["chunks"] });
+            queryClient.invalidateQueries({ queryKey: ["stats"] });
+        },
+        onError: () => toast.error("Failed to import chunks")
+    });
+
+    const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+            try {
+                const parsed = JSON.parse(reader.result as string);
+                const chunks = Array.isArray(parsed) ? parsed : parsed.chunks;
+                if (!Array.isArray(chunks)) {
+                    toast.error("Invalid file format: expected an array of chunks");
+                    return;
+                }
+                importMutation.mutate(chunks);
+            } catch {
+                toast.error("Failed to parse JSON file");
+            }
+        };
+        reader.readAsText(file);
+        e.target.value = "";
+    };
 
     const healthCheck = useQuery({
         queryKey: ["health"],
@@ -68,6 +126,15 @@ function RouteComponent() {
                     <p className="text-muted-foreground text-sm">Here's an overview of your knowledge base.</p>
                 </div>
                 <div className="flex items-center gap-2">
+                    <input ref={fileInputRef} type="file" accept=".json" className="hidden" onChange={handleImportFile} />
+                    <Button variant="outline" onClick={() => exportMutation.mutate()} disabled={exportMutation.isPending}>
+                        <Download className="size-4" />
+                        Export
+                    </Button>
+                    <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={importMutation.isPending}>
+                        <Upload className="size-4" />
+                        Import
+                    </Button>
                     <Button variant="outline" render={<Link to="/graph" />}>
                         <Network className="size-4" />
                         Graph

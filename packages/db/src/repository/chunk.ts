@@ -134,6 +134,13 @@ export function updateChunk(chunkId: string, params: UpdateChunkParams) {
     });
 }
 
+export function exportAllChunks(userId: string) {
+    return Effect.tryPromise({
+        try: () => db.select().from(chunk).where(eq(chunk.userId, userId)).orderBy(desc(chunk.createdAt)),
+        catch: cause => new DatabaseError({ cause })
+    });
+}
+
 export function deleteChunk(chunkId: string, userId: string) {
     return Effect.tryPromise({
         try: async () => {
