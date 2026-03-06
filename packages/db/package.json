@@ -3,9 +3,12 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./schema/auth": "./src/schema/auth.ts"
+    "./schema/auth": "./src/schema/auth.ts",
+    "./schema/chunk": "./src/schema/chunk.ts"
   },
   "scripts": {
+    "lint": "oxlint src",
+    "db:seed": "bun run src/seed.ts",
     "db:push": "drizzle-kit push",
     "db:generate": "drizzle-kit generate",
     "db:studio": "drizzle-kit studio",
