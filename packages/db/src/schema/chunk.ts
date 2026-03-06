@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm";
-import { pgTable, text, timestamp, jsonb, index } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, jsonb, index, uniqueIndex } from "drizzle-orm/pg-core";
 import { user } from "./auth";
 
 export const chunk = pgTable(
@@ -38,6 +38,7 @@ export const chunkConnection = pgTable(
   (table) => [
     index("connection_sourceId_idx").on(table.sourceId),
     index("connection_targetId_idx").on(table.targetId),
+    uniqueIndex("connection_unique_idx").on(table.sourceId, table.targetId, table.relation),
   ],
 );
 
