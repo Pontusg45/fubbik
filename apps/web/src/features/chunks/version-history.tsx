@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardPanel, CardTitle } from "@/components/ui/card";
 import { api } from "@/utils/api";
+import { unwrapEden } from "@/utils/eden";
 
 export function VersionHistory({ chunkId }: { chunkId: string }) {
     const [open, setOpen] = useState(false);
@@ -12,17 +13,7 @@ export function VersionHistory({ chunkId }: { chunkId: string }) {
     const historyQuery = useQuery({
         queryKey: ["chunk-history", chunkId],
         queryFn: async () => {
-            const { data, error } = await api.api.chunks({ id: chunkId }).history.get();
-            if (error) throw new Error("Failed to load history");
-            return data as Array<{
-                id: string;
-                version: number;
-                title: string;
-                content: string;
-                type: string;
-                tags: string[];
-                createdAt: string;
-            }>;
+            return unwrapEden(await api.api.chunks({ id: chunkId }).history.get());
         },
         enabled: open
     });
