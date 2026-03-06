@@ -1,5 +1,5 @@
 import { Command } from "commander";
-import { readStore, getServerUrl, setServerUrl, updateLastSync, addChunk, type Chunk } from "../lib/store";
+import { readStore, getServerUrl, setServerUrl, updateLastSync, addChunk } from "../lib/store";
 
 export const syncCommand = new Command("sync")
     .description("Sync local chunks with a fubbik server")
