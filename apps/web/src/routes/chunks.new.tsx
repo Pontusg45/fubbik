@@ -51,14 +51,14 @@ function NewChunk() {
                 tags
             });
             if (error) throw new Error("Failed to create chunk");
-            return data;
+            return data as Exclude<typeof data, { message: string }>;
         },
         onSuccess: data => {
             queryClient.invalidateQueries({ queryKey: ["chunks"] });
             queryClient.invalidateQueries({ queryKey: ["stats"] });
             toast.success("Chunk created");
-            if (data && "id" in data) {
-                navigate({ to: "/chunks/$chunkId", params: { chunkId: data.id } });
+            if (data && typeof data === "object" && "id" in (data as Record<string, unknown>)) {
+                navigate({ to: "/chunks/$chunkId", params: { chunkId: (data as Record<string, unknown>).id as string } });
             }
         },
         onError: () => {
