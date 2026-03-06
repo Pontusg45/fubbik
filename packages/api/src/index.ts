@@ -8,11 +8,11 @@ import { statsRoutes } from "./stats/routes";
 
 const FiberFailureCauseSymbol = Symbol.for("effect/Runtime/FiberFailure/Cause");
 
-function extractEffectError(error: unknown): { _tag: string } | null {
+function extractEffectError(error: unknown): Record<string, unknown> | null {
   if (typeof error !== "object" || error === null) return null;
   const cause = (error as Record<symbol, unknown>)[FiberFailureCauseSymbol];
   if (!cause) return null;
-  const option = Cause.failureOption(cause as Cause.Cause<{ _tag: string }>);
+  const option = Cause.failureOption(cause as Cause.Cause<Record<string, unknown>>);
   return Option.isSome(option) ? option.value : null;
 }
 
@@ -58,10 +58,10 @@ export const api = new Elysia({ prefix: "/api" })
           return { message: "Authentication required" };
         case "NotFoundError":
           set.status = 404;
-          return { message: `${(effectError as { resource: string }).resource} not found` };
+          return { message: `${effectError.resource} not found` };
         case "DatabaseError":
           set.status = 500;
-          console.error("Database error", (effectError as { cause: unknown }).cause);
+          console.error("Database error", effectError.cause);
           return { message: "Internal server error" };
       }
     }

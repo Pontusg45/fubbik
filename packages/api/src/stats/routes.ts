@@ -4,9 +4,10 @@ import type { Session } from "../context";
 import { AuthError } from "../errors";
 import * as statsService from "./service";
 
-function requireSession(ctx: unknown) {
+function requireSession(ctx: unknown): Effect.Effect<NonNullable<Session>, AuthError> {
   const session = (ctx as unknown as { session: Session }).session;
-  return session ? Effect.succeed(session) : Effect.fail(new AuthError());
+  if (!session) return Effect.fail(new AuthError());
+  return Effect.succeed(session);
 }
 
 export const statsRoutes = new Elysia().get("/stats", (ctx) =>
