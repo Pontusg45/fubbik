@@ -1,9 +1,12 @@
 import {
     createChunk as createChunkRepo,
+    createVersion,
     deleteChunk as deleteChunkRepo,
     exportAllChunks as exportAllChunksRepo,
     getChunkById,
     getChunkConnections,
+    getNextVersionNumber,
+    getVersionsByChunkId,
     listChunks as listChunksRepo,
     updateChunk as updateChunkRepo
 } from "@fubbik/db/repository";
@@ -40,7 +43,29 @@ export function createChunk(userId: string, body: { title: string; content?: str
 export function updateChunk(chunkId: string, userId: string, body: { title?: string; content?: string; type?: string; tags?: string[] }) {
     return getChunkById(chunkId, userId).pipe(
         Effect.flatMap(existing => (existing ? Effect.succeed(existing) : Effect.fail(new NotFoundError({ resource: "Chunk" })))),
-        Effect.flatMap(() => updateChunkRepo(chunkId, body))
+        Effect.flatMap(existing =>
+            getNextVersionNumber(chunkId).pipe(
+                Effect.flatMap(version =>
+                    createVersion({
+                        id: crypto.randomUUID(),
+                        chunkId,
+                        version,
+                        title: existing.title,
+                        content: existing.content,
+                        type: existing.type,
+                        tags: existing.tags as string[]
+                    })
+                ),
+                Effect.flatMap(() => updateChunkRepo(chunkId, body))
+            )
+        )
+    );
+}
+
+export function getChunkHistory(chunkId: string, userId: string) {
+    return getChunkById(chunkId, userId).pipe(
+        Effect.flatMap(existing => (existing ? Effect.succeed(existing) : Effect.fail(new NotFoundError({ resource: "Chunk" })))),
+        Effect.flatMap(() => getVersionsByChunkId(chunkId))
     );
 }
 

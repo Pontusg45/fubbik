@@ -46,6 +46,13 @@ export const chunkRoutes = new Elysia()
             })
         }
     )
+    .get("/chunks/:id/history", ctx =>
+        Effect.runPromise(
+            requireSession(ctx).pipe(
+                Effect.flatMap(session => chunkService.getChunkHistory(ctx.params.id, session.user.id))
+            )
+        )
+    )
     .get("/chunks/:id", ctx =>
         Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(session => chunkService.getChunkDetail(ctx.params.id, session.user.id))))
     )
