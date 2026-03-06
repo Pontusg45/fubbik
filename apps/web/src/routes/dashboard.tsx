@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Activity, Blocks, Clock, Network, Plus, Tags } from "lucide-react";
+import { Blocks, Clock, Network, Plus, Tags } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -22,51 +22,6 @@ export const Route = createFileRoute("/dashboard")({
   },
 });
 
-const recentChunks = [
-  {
-    id: "c-001",
-    title: "Project Architecture Notes",
-    type: "document",
-    tags: ["architecture", "planning"],
-    updated: "2 min ago",
-  },
-  {
-    id: "c-002",
-    title: "API Design Patterns",
-    type: "reference",
-    tags: ["api", "patterns"],
-    updated: "1 hour ago",
-  },
-  {
-    id: "c-003",
-    title: "Meeting Notes — Sprint 12",
-    type: "note",
-    tags: ["meetings", "sprint-12"],
-    updated: "3 hours ago",
-  },
-  {
-    id: "c-004",
-    title: "Database Schema v2",
-    type: "schema",
-    tags: ["database", "migration"],
-    updated: "Yesterday",
-  },
-  {
-    id: "c-005",
-    title: "Onboarding Checklist",
-    type: "checklist",
-    tags: ["onboarding"],
-    updated: "2 days ago",
-  },
-];
-
-const stats = [
-  { label: "Chunks", value: "128", icon: Blocks },
-  { label: "Connections", value: "342", icon: Network },
-  { label: "Tags", value: "47", icon: Tags },
-  { label: "Changes today", value: "12", icon: Activity },
-];
-
 function RouteComponent() {
   const { session } = Route.useRouteContext();
 
@@ -77,6 +32,32 @@ function RouteComponent() {
       return data;
     },
   });
+
+  const statsQuery = useQuery({
+    queryKey: ["stats"],
+    queryFn: async () => {
+      const { data, error } = await api.api.stats.get();
+      if (error) return null;
+      return data;
+    },
+  });
+
+  const chunksQuery = useQuery({
+    queryKey: ["chunks"],
+    queryFn: async () => {
+      const { data, error } = await api.api.chunks.get({ query: { limit: "5" } });
+      if (error) return null;
+      return data;
+    },
+  });
+
+  const stats = [
+    { label: "Chunks", value: statsQuery.data?.chunks ?? 0, icon: Blocks },
+    { label: "Connections", value: statsQuery.data?.connections ?? 0, icon: Network },
+    { label: "Tags", value: statsQuery.data?.tags ?? 0, icon: Tags },
+  ];
+
+  const recentChunks = chunksQuery.data?.chunks ?? [];
 
   return (
     <div className="container mx-auto max-w-5xl px-4 py-8">
@@ -89,13 +70,13 @@ function RouteComponent() {
             Here's an overview of your knowledge base.
           </p>
         </div>
-        <Button>
+        <Button render={<Link to="/chunks/new" />}>
           <Plus className="size-4" />
           New Chunk
         </Button>
       </div>
 
-      <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
+      <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-3">
         {stats.map((stat) => (
           <Card key={stat.label}>
             <CardPanel className="flex items-center gap-3 p-4">
@@ -103,7 +84,7 @@ function RouteComponent() {
                 <stat.icon className="text-muted-foreground size-4" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{stat.value}</p>
+                <p className="text-2xl font-bold">{statsQuery.isLoading ? "—" : stat.value}</p>
                 <p className="text-muted-foreground text-xs">{stat.label}</p>
               </div>
             </CardPanel>
@@ -115,37 +96,46 @@ function RouteComponent() {
         <div className="lg:col-span-2">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="font-semibold">Recent Chunks</h2>
-            <Button variant="ghost" size="sm">
-              View all
-            </Button>
           </div>
           <Card>
-            {recentChunks.map((chunk, i) => (
-              <div key={chunk.id}>
-                {i > 0 && <Separator />}
-                <Link to="/chunks/$chunkId" params={{ chunkId: chunk.id }} className="block">
-                  <CardPanel className="flex items-center justify-between gap-4 p-4 transition-colors hover:bg-muted/50">
-                    <div className="min-w-0">
-                      <p className="truncate font-medium text-sm">{chunk.title}</p>
-                      <div className="mt-1 flex items-center gap-2">
-                        <Badge variant="secondary" size="sm" className="font-mono text-[10px]">
-                          {chunk.type}
-                        </Badge>
-                        {chunk.tags.map((tag) => (
-                          <Badge key={tag} variant="outline" size="sm" className="text-[10px]">
-                            {tag}
+            {chunksQuery.isLoading ? (
+              <CardPanel className="p-8 text-center">
+                <p className="text-muted-foreground text-sm">Loading...</p>
+              </CardPanel>
+            ) : recentChunks.length === 0 ? (
+              <CardPanel className="p-8 text-center">
+                <p className="text-muted-foreground text-sm">
+                  No chunks yet. Create your first one!
+                </p>
+              </CardPanel>
+            ) : (
+              recentChunks.map((chunk, i) => (
+                <div key={chunk.id}>
+                  {i > 0 && <Separator />}
+                  <Link to="/chunks/$chunkId" params={{ chunkId: chunk.id }} className="block">
+                    <CardPanel className="flex items-center justify-between gap-4 p-4 transition-colors hover:bg-muted/50">
+                      <div className="min-w-0">
+                        <p className="truncate font-medium text-sm">{chunk.title}</p>
+                        <div className="mt-1 flex items-center gap-2">
+                          <Badge variant="secondary" size="sm" className="font-mono text-[10px]">
+                            {chunk.type}
                           </Badge>
-                        ))}
+                          {(chunk.tags as string[]).map((tag) => (
+                            <Badge key={tag} variant="outline" size="sm" className="text-[10px]">
+                              {tag}
+                            </Badge>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                    <span className="text-muted-foreground shrink-0 text-xs flex items-center gap-1">
-                      <Clock className="size-3" />
-                      {chunk.updated}
-                    </span>
-                  </CardPanel>
-                </Link>
-              </div>
-            ))}
+                      <span className="text-muted-foreground shrink-0 text-xs flex items-center gap-1">
+                        <Clock className="size-3" />
+                        {new Date(chunk.updatedAt).toLocaleDateString()}
+                      </span>
+                    </CardPanel>
+                  </Link>
+                </div>
+              ))
+            )}
           </Card>
         </div>
 
