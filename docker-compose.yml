@@ -10,14 +10,15 @@ services:
       dockerfile: apps/web/Dockerfile
     container_name: fubbik-web
     ports:
-      - "3000:3000"
+      - "3001:3000"
     env_file:
       - apps/web/.env
     environment:
       - NODE_ENV=production
     restart: unless-stopped
     depends_on:
-      - server
+      server:
+        condition: service_healthy
     networks:
       - fubbik-network
 
@@ -27,13 +28,18 @@ services:
       dockerfile: apps/server/Dockerfile
     container_name: fubbik-server
     ports:
-      - "3001:3000"
+      - "3000:3000"
     env_file:
       - apps/server/.env
     environment:
       - NODE_ENV=production
       - PORT=3000
       - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-password}@db:5432/${POSTGRES_DB:-fubbik}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
     restart: unless-stopped
     depends_on:
       - db
