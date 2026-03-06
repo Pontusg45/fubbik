@@ -4,7 +4,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./schema/auth": "./src/schema/auth.ts",
-    "./schema/chunk": "./src/schema/chunk.ts"
+    "./schema/chunk": "./src/schema/chunk.ts",
+    "./repository": "./src/repository/index.ts"
   },
   "scripts": {
     "lint": "oxlint src",
