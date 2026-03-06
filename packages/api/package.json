@@ -6,7 +6,8 @@
     "./context": "./src/context.ts"
   },
   "scripts": {
-    "lint": "oxlint src"
+    "lint": "oxlint src",
+    "test": "vitest run"
   },
   "dependencies": {
     "@fubbik/auth": "workspace:*",
@@ -16,7 +17,9 @@
     "elysia": "catalog:"
   },
   "devDependencies": {
+    "@elysiajs/eden": "^1.4.8",
     "@fubbik/config": "workspace:*",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   }
 }
