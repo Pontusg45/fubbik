@@ -10,6 +10,7 @@ import { Card, CardDescription, CardHeader, CardPanel, CardTitle } from "@/compo
 import { Separator } from "@/components/ui/separator";
 import { getUser } from "@/functions/get-user";
 import { api } from "@/utils/api";
+import { unwrapEden } from "@/utils/eden";
 
 export const Route = createFileRoute("/dashboard")({
     component: RouteComponent,
@@ -31,9 +32,7 @@ function RouteComponent() {
 
     const exportMutation = useMutation({
         mutationFn: async () => {
-            const { data, error } = await api.api.chunks.export.get();
-            if (error) throw new Error("Export failed");
-            return data as Exclude<typeof data, { message: string }>;
+            return unwrapEden(await api.api.chunks.export.get());
         },
         onSuccess: data => {
             const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
@@ -50,9 +49,7 @@ function RouteComponent() {
 
     const importMutation = useMutation({
         mutationFn: async (chunks: { title: string; content?: string; type?: string; tags?: string[] }[]) => {
-            const { data, error } = await api.api.chunks.import.post({ chunks });
-            if (error) throw new Error("Import failed");
-            return data as Exclude<typeof data, { message: string }>;
+            return unwrapEden(await api.api.chunks.import.post({ chunks }));
         },
         onSuccess: data => {
             toast.success(`Imported ${data.imported} chunks`);
@@ -86,27 +83,33 @@ function RouteComponent() {
     const healthCheck = useQuery({
         queryKey: ["health"],
         queryFn: async () => {
-            const { data, error } = await api.api.health.get();
-            if (error) return null;
-            return data as Exclude<typeof data, { message: string }>;
+            try {
+                return unwrapEden(await api.api.health.get());
+            } catch {
+                return null;
+            }
         }
     });
 
     const statsQuery = useQuery({
         queryKey: ["stats"],
         queryFn: async () => {
-            const { data, error } = await api.api.stats.get();
-            if (error) return null;
-            return data as Exclude<typeof data, { message: string }>;
+            try {
+                return unwrapEden(await api.api.stats.get());
+            } catch {
+                return null;
+            }
         }
     });
 
     const chunksQuery = useQuery({
         queryKey: ["chunks"],
         queryFn: async () => {
-            const { data, error } = await api.api.chunks.get({ query: { limit: "5" } });
-            if (error) return null;
-            return data as Exclude<typeof data, { message: string }>;
+            try {
+                return unwrapEden(await api.api.chunks.get({ query: { limit: "5" } }));
+            } catch {
+                return null;
+            }
         }
     });
 

@@ -9,6 +9,7 @@ import { Card, CardPanel } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { getUser } from "@/functions/get-user";
 import { api } from "@/utils/api";
+import { unwrapEden } from "@/utils/eden";
 
 export const Route = createFileRoute("/chunks/")({
     component: ChunksList,
@@ -37,16 +38,20 @@ function ChunksList() {
     const chunksQuery = useQuery({
         queryKey: ["chunks-list", type, q, page],
         queryFn: async () => {
-            const { data, error } = await api.api.chunks.get({
-                query: {
-                    type,
-                    search: q,
-                    limit: String(limit),
-                    offset: String(offset)
-                }
-            });
-            if (error) return null;
-            return data as Exclude<typeof data, { message: string }>;
+            try {
+                return unwrapEden(
+                    await api.api.chunks.get({
+                        query: {
+                            type,
+                            search: q,
+                            limit: String(limit),
+                            offset: String(offset)
+                        }
+                    })
+                );
+            } catch {
+                return null;
+            }
         }
     });
 

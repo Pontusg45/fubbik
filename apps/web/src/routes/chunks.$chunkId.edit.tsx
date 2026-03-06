@@ -11,6 +11,7 @@ import { Separator } from "@/components/ui/separator";
 import { getUser } from "@/functions/get-user";
 import { MarkdownEditor } from "@/features/editor/markdown-editor";
 import { api } from "@/utils/api";
+import { unwrapEden } from "@/utils/eden";
 
 export const Route = createFileRoute("/chunks/$chunkId/edit")({
     component: EditChunk,
@@ -40,9 +41,7 @@ function EditChunk() {
     const { data, isLoading, error } = useQuery({
         queryKey: ["chunk", chunkId],
         queryFn: async () => {
-            const { data, error } = await api.api.chunks({ id: chunkId }).get();
-            if (error) throw new Error("Failed to load chunk");
-            return data as Exclude<typeof data, { message: string }>;
+            return unwrapEden(await api.api.chunks({ id: chunkId }).get());
         }
     });
 
@@ -68,14 +67,14 @@ function EditChunk() {
 
     const updateMutation = useMutation({
         mutationFn: async () => {
-            const { data, error } = await api.api.chunks({ id: chunkId }).patch({
-                title,
-                content,
-                type,
-                tags
-            });
-            if (error) throw new Error("Failed to update chunk");
-            return data as Exclude<typeof data, { message: string }>;
+            return unwrapEden(
+                await api.api.chunks({ id: chunkId }).patch({
+                    title,
+                    content,
+                    type,
+                    tags
+                })
+            );
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["chunks"] });

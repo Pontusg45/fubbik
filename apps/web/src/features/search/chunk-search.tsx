@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogPopup, DialogTrigger } from "@/components/ui/dialog";
 import { Kbd } from "@/components/ui/kbd";
 import { api } from "@/utils/api";
+import { unwrapEden } from "@/utils/eden";
 
 export function ChunkSearch() {
     const [open, setOpen] = useState(false);
@@ -35,11 +36,15 @@ export function ChunkSearch() {
         queryKey: ["chunk-search", search],
         queryFn: async () => {
             if (!search.trim()) return null;
-            const { data, error } = await api.api.chunks.get({
-                query: { search, limit: "10" }
-            });
-            if (error) return null;
-            return data as Exclude<typeof data, { message: string }>;
+            try {
+                return unwrapEden(
+                    await api.api.chunks.get({
+                        query: { search, limit: "10" }
+                    })
+                );
+            } catch {
+                return null;
+            }
         },
         enabled: search.length > 1
     });

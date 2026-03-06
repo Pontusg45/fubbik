@@ -14,6 +14,7 @@ import { useEffect, useMemo } from "react";
 
 import { getUser } from "@/functions/get-user";
 import { api } from "@/utils/api";
+import { unwrapEden } from "@/utils/eden";
 
 export const Route = createFileRoute("/graph")({
     component: GraphView,
@@ -33,9 +34,7 @@ function GraphView() {
     const { data, isLoading } = useQuery({
         queryKey: ["graph"],
         queryFn: async () => {
-            const { data, error } = await api.api.graph.get();
-            if (error) throw new Error("Failed to load graph");
-            return data as Exclude<typeof data, { message: string }>;
+            return unwrapEden(await api.api.graph.get());
         }
     });
 

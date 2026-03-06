@@ -11,6 +11,7 @@ import { Separator } from "@/components/ui/separator";
 import { getUser } from "@/functions/get-user";
 import { MarkdownEditor } from "@/features/editor/markdown-editor";
 import { api } from "@/utils/api";
+import { unwrapEden } from "@/utils/eden";
 
 export const Route = createFileRoute("/chunks/new")({
     component: NewChunk,
@@ -65,14 +66,14 @@ function NewChunk() {
 
     const createMutation = useMutation({
         mutationFn: async () => {
-            const { data, error } = await api.api.chunks.post({
-                title,
-                content,
-                type,
-                tags
-            });
-            if (error) throw new Error("Failed to create chunk");
-            return data as Exclude<typeof data, { message: string }>;
+            return unwrapEden(
+                await api.api.chunks.post({
+                    title,
+                    content,
+                    type,
+                    tags
+                })
+            );
         },
         onSuccess: data => {
             queryClient.invalidateQueries({ queryKey: ["chunks"] });

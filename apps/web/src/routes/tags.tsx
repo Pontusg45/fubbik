@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardPanel } from "@/components/ui/card";
 import { getUser } from "@/functions/get-user";
 import { api } from "@/utils/api";
+import { unwrapEden } from "@/utils/eden";
 
 export const Route = createFileRoute("/tags")({
     component: TagsPage,
@@ -23,9 +24,11 @@ function TagsPage() {
     const tagsQuery = useQuery({
         queryKey: ["tags"],
         queryFn: async () => {
-            const { data, error } = await api.api.tags.get();
-            if (error) return [];
-            return data as Exclude<typeof data, { message: string }>;
+            try {
+                return unwrapEden(await api.api.tags.get());
+            } catch {
+                return [];
+            }
         }
     });
 
