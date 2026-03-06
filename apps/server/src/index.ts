@@ -4,6 +4,7 @@ import { api } from "@fubbik/api";
 import { auth } from "@fubbik/auth";
 import { env } from "@fubbik/env/server";
 import { Elysia } from "elysia";
+import { rateLimit } from "elysia-rate-limit";
 import { logger } from "./logger";
 
 new Elysia()
@@ -13,6 +14,12 @@ new Elysia()
       documentation: {
         info: { title: "Fubbik API", version: "0.1.0" },
       },
+    }),
+  )
+  .use(
+    rateLimit({
+      max: 100,
+      duration: 60_000,
     }),
   )
   .use(

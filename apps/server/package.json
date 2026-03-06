@@ -31,6 +31,7 @@
     "better-auth": "catalog:",
     "dotenv": "catalog:",
     "elysia": "catalog:",
+    "elysia-rate-limit": "^4.5.0",
     "typesense": "^2.0.0",
     "winston": "^3.19.0"
   },
