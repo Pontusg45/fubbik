@@ -1,4 +1,5 @@
 import { cors } from "@elysiajs/cors";
+import { swagger } from "@elysiajs/swagger";
 import { api } from "@fubbik/api";
 import { auth } from "@fubbik/auth";
 import { env } from "@fubbik/env/server";
@@ -6,6 +7,14 @@ import { Elysia } from "elysia";
 import { logger } from "./logger";
 
 new Elysia()
+  .use(
+    swagger({
+      path: "/docs",
+      documentation: {
+        info: { title: "Fubbik API", version: "0.1.0" },
+      },
+    }),
+  )
   .use(
     cors({
       origin: env.CORS_ORIGIN,

@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@elysiajs/cors": "^1.4.1",
+    "@elysiajs/swagger": "^1.3.1",
     "@fubbik/api": "workspace:*",
     "@fubbik/auth": "workspace:*",
     "@fubbik/db": "workspace:*",
