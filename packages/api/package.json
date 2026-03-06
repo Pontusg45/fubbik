@@ -10,9 +10,11 @@
         "test": "vitest run"
     },
     "dependencies": {
+        "@ai-sdk/openai": "^3.0.41",
         "@fubbik/auth": "workspace:*",
         "@fubbik/db": "workspace:*",
         "@fubbik/env": "workspace:*",
+        "ai": "^6.0.116",
         "effect": "^3.19.19",
         "elysia": "catalog:"
     },

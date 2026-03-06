@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Loader2, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -33,6 +33,26 @@ function NewChunk() {
     const [tagInput, setTagInput] = useState("");
     const [tags, setTags] = useState<string[]>([]);
     const [errors, setErrors] = useState<Record<string, string>>({});
+    const [aiPrompt, setAiPrompt] = useState("");
+
+    const generateMutation = useMutation({
+        mutationFn: async () => {
+            const { data, error } = await api.api.ai.generate.post({ prompt: aiPrompt });
+            if (error) throw new Error("Failed to generate chunk");
+            return data as { title: string; content: string; type: string; tags: string[] };
+        },
+        onSuccess: data => {
+            setTitle(data.title);
+            setContent(data.content);
+            if (data.type) setType(data.type);
+            if (data.tags?.length) setTags(data.tags);
+            setAiPrompt("");
+            toast.success("Chunk generated from AI");
+        },
+        onError: () => {
+            toast.error("Failed to generate chunk");
+        }
+    });
 
     function validate() {
         const e: Record<string, string> = {};
@@ -85,6 +105,42 @@ function NewChunk() {
             </div>
 
             <h1 className="mb-6 text-2xl font-bold tracking-tight">New Chunk</h1>
+
+            <Card className="mb-6">
+                <CardPanel className="p-6">
+                    <div className="flex items-center gap-2 mb-3">
+                        <Sparkles className="size-4" />
+                        <span className="text-sm font-medium">AI Generate</span>
+                    </div>
+                    <div className="flex gap-2">
+                        <input
+                            type="text"
+                            value={aiPrompt}
+                            onChange={e => setAiPrompt(e.target.value)}
+                            onKeyDown={e => {
+                                if (e.key === "Enter" && aiPrompt.trim()) {
+                                    e.preventDefault();
+                                    generateMutation.mutate();
+                                }
+                            }}
+                            placeholder="Describe what you want..."
+                            className="bg-background focus:ring-ring flex-1 rounded-md border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
+                        />
+                        <Button
+                            variant="outline"
+                            onClick={() => generateMutation.mutate()}
+                            disabled={generateMutation.isPending || !aiPrompt.trim()}
+                        >
+                            {generateMutation.isPending ? (
+                                <Loader2 className="size-4 animate-spin" />
+                            ) : (
+                                <Sparkles className="size-4" />
+                            )}
+                            {generateMutation.isPending ? "Generating..." : "Generate"}
+                        </Button>
+                    </div>
+                </CardPanel>
+            </Card>
 
             <Card>
                 <CardPanel className="space-y-4 p-6">
