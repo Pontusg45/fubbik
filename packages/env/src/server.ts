@@ -9,10 +9,12 @@ export const env = createEnv({
     BETTER_AUTH_URL: type("string.url"),
     CORS_ORIGIN: type("string.url"),
     NODE_ENV: type("'development' | 'production' | 'test'"),
+    PORT: type("string >= 1"),
   },
   runtimeEnv: {
     ...process.env,
     NODE_ENV: process.env.NODE_ENV ?? "development",
+    PORT: process.env.PORT ?? "3000",
   },
   emptyStringAsUndefined: true,
 });
