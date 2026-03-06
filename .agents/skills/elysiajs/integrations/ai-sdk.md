@@ -13,15 +13,15 @@ import { streamText } from "ai";
 import { openai } from "@ai-sdk/openai";
 
 new Elysia().get("/", () => {
-  const stream = streamText({
-    model: openai("gpt-5"),
-    system: "You are Yae Miko from Genshin Impact",
-    prompt: "Hi! How are you doing?",
-  });
+    const stream = streamText({
+        model: openai("gpt-5"),
+        system: "You are Yae Miko from Genshin Impact",
+        prompt: "Hi! How are you doing?"
+    });
 
-  return stream.textStream; // ReadableStream
-  // or
-  return stream.toUIMessageStream(); // UI Message Stream
+    return stream.textStream; // ReadableStream
+    // or
+    return stream.toUIMessageStream(); // UI Message Stream
 });
 ```
 

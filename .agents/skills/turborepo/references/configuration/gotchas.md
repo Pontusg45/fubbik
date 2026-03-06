@@ -24,7 +24,8 @@ Root `package.json` scripts for turbo tasks MUST use `turbo run`, not direct com
 }
 ```
 
-**Why this matters:** Running `bun build` or `npm run build` at root bypasses Turborepo entirely - no parallelization, no caching, no dependency graph awareness.
+**Why this matters:** Running `bun build` or `npm run build` at root bypasses Turborepo entirely - no parallelization, no caching, no
+dependency graph awareness.
 
 ## #2 Using `&&` to Chain Turbo Tasks
 
@@ -46,7 +47,8 @@ Don't use `&&` to chain tasks that turbo should orchestrate.
 }
 ```
 
-If the second command (`changeset publish`) depends on build outputs, the turbo task should run through turbo to get caching and parallelization benefits.
+If the second command (`changeset publish`) depends on build outputs, the turbo task should run through turbo to get caching and
+parallelization benefits.
 
 ## #3 Overly Broad globalDependencies
 
@@ -188,7 +190,8 @@ Root Tasks (`//#taskname`) defeat all these benefits. Only use them for tasks th
 
 ## #7 Tasks That Need Parallel Execution + Cache Invalidation
 
-Some tasks can run in parallel (don't need built output from dependencies) but must still invalidate cache when dependency source code changes. Using `dependsOn: ["^taskname"]` forces sequential execution. Using no dependencies breaks cache invalidation.
+Some tasks can run in parallel (don't need built output from dependencies) but must still invalidate cache when dependency source code
+changes. Using `dependsOn: ["^taskname"]` forces sequential execution. Using no dependencies breaks cache invalidation.
 
 **Use Transit Nodes for these tasks:**
 
@@ -217,7 +220,8 @@ Some tasks can run in parallel (don't need built output from dependencies) but m
 - Since `transit` completes instantly (no script), tasks run in parallel
 - Cache correctly invalidates when dependency source code changes
 
-**How to identify tasks that need this pattern:** Look for tasks that read source files from dependencies but don't need their build outputs.
+**How to identify tasks that need this pattern:** Look for tasks that read source files from dependencies but don't need their build
+outputs.
 
 ## Missing outputs for File-Producing Tasks
 

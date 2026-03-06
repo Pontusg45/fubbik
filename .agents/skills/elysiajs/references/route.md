@@ -6,9 +6,9 @@
 
 ```ts
 new Elysia()
-  .get("/static", "static path") // exact match
-  .get("/id/:id", "dynamic path") // captures segment
-  .get("/id/*", "wildcard path"); // captures rest
+    .get("/static", "static path") // exact match
+    .get("/id/:id", "dynamic path") // captures segment
+    .get("/id/*", "wildcard path"); // captures rest
 ```
 
 **Path Priority**: static > dynamic > wildcard
@@ -16,9 +16,7 @@ new Elysia()
 ### Dynamic Paths
 
 ```ts
-new Elysia()
-  .get("/id/:id", ({ params: { id } }) => id)
-  .get("/id/:id/:name", ({ params: { id, name } }) => id + " " + name);
+new Elysia().get("/id/:id", ({ params: { id } }) => id).get("/id/:id/:name", ({ params: { id, name } }) => id + " " + name);
 ```
 
 **Optional params**: `.get('/id/:id?', ...)`
@@ -79,25 +77,25 @@ new Elysia({ prefix: '/user' })
 import { redirect, form } from "elysia";
 
 new Elysia().get("/", ({ status, set, form }) => {
-  // Status code (type-safe)
-  status(418, "I'm a teapot");
+    // Status code (type-safe)
+    status(418, "I'm a teapot");
 
-  // Set response props
-  set.headers["x-custom"] = "value";
-  set.status = 418; // legacy, no type inference
+    // Set response props
+    set.headers["x-custom"] = "value";
+    set.status = 418; // legacy, no type inference
 
-  // Redirect
-  return redirect("https://...", 302);
+    // Redirect
+    return redirect("https://...", 302);
 
-  // Cookies (mutable signal, no get/set)
-  cookie.name.value; // get
-  cookie.name.value = "new"; // set
+    // Cookies (mutable signal, no get/set)
+    cookie.name.value; // get
+    cookie.name.value = "new"; // set
 
-  // FormData response
-  return form({ name: "Party", images: [file("a.jpg")] });
+    // FormData response
+    return form({ name: "Party", images: [file("a.jpg")] });
 
-  // Single file
-  return file("document.pdf");
+    // Single file
+    return file("document.pdf");
 });
 ```
 
@@ -149,22 +147,22 @@ new Elysia()
 
 ```ts
 new Elysia()
-  // ✅ Correct
-  .get("/", ({ store }) => store.counter++)
+    // ✅ Correct
+    .get("/", ({ store }) => store.counter++)
 
-  // ❌ Wrong - loses reference
-  .get("/", ({ store: { counter } }) => counter++);
+    // ❌ Wrong - loses reference
+    .get("/", ({ store: { counter } }) => counter++);
 ```
 
 ### decorate() - Additional Context Props
 
 ```ts
 new Elysia()
-  .decorate("logger", new Logger())
-  .get("/", ({ logger }) => logger.log("hi"))
+    .decorate("logger", new Logger())
+    .get("/", ({ logger }) => logger.log("hi"))
 
-  // Multiple
-  .decorate({ logger: new Logger(), db: connection });
+    // Multiple
+    .decorate({ logger: new Logger(), db: connection });
 ```
 
 **When**: constant/readonly values, classes with internal state, singletons
@@ -173,31 +171,29 @@ new Elysia()
 
 ```ts
 new Elysia()
-  .derive(({ headers }) => ({
-    bearer: headers.authorization?.startsWith("Bearer ") ? headers.authorization.slice(7) : null,
-  }))
-  .get("/", ({ bearer }) => bearer);
+    .derive(({ headers }) => ({
+        bearer: headers.authorization?.startsWith("Bearer ") ? headers.authorization.slice(7) : null
+    }))
+    .get("/", ({ bearer }) => bearer);
 ```
 
-**Timing**: runs at transform (before validation)
-**Type safety**: request props typed as `unknown`
+**Timing**: runs at transform (before validation) **Type safety**: request props typed as `unknown`
 
 ### resolve() - Type-Safe Derive (beforeHandle Lifecycle)
 
 ```ts
 new Elysia()
-  .guard({
-    headers: t.Object({
-      bearer: t.String({ pattern: "^Bearer .+$" }),
-    }),
-  })
-  .resolve(({ headers }) => ({
-    bearer: headers.bearer.slice(7), // typed correctly
-  }));
+    .guard({
+        headers: t.Object({
+            bearer: t.String({ pattern: "^Bearer .+$" })
+        })
+    })
+    .resolve(({ headers }) => ({
+        bearer: headers.bearer.slice(7) // typed correctly
+    }));
 ```
 
-**Timing**: runs at beforeHandle (after validation)
-**Type safety**: request props fully typed
+**Timing**: runs at beforeHandle (after validation) **Type safety**: request props fully typed
 
 ### Error from derive/resolve
 
@@ -217,14 +213,14 @@ Returns early if error returned
 
 ```ts
 const plugin = new Elysia({ name: "setup" }).decorate({
-  argon: "a",
-  boron: "b",
+    argon: "a",
+    boron: "b"
 });
 
 new Elysia()
-  .use(plugin)
-  .prefix("decorator", "setup") // setupArgon, setupBoron
-  .prefix("all", "setup"); // remap everything
+    .use(plugin)
+    .prefix("decorator", "setup") // setupArgon, setupBoron
+    .prefix("all", "setup"); // remap everything
 ```
 
 ### Assignment Patterns
@@ -259,17 +255,17 @@ See the following code:
 import { Elysia, file } from "elysia";
 
 new Elysia()
-  .onError(({ code, error, path }) => {
-    if (code === 418) return "caught";
-  })
-  .get("/throw", ({ status }) => {
-    // This will be caught by onError
-    throw status(418);
-  })
-  .get("/return", ({ status }) => {
-    // This will NOT be caught by onError
-    return status(418);
-  });
+    .onError(({ code, error, path }) => {
+        if (code === 418) return "caught";
+    })
+    .get("/throw", ({ status }) => {
+        // This will be caught by onError
+        throw status(418);
+    })
+    .get("/return", ({ status }) => {
+        // This will NOT be caught by onError
+        return status(418);
+    });
 ```
 
 ## To Throw or Return
@@ -282,13 +278,13 @@ Elysia provide a `status` function for returning HTTP status code, prefers over 
 import { Elysia, status } from "elysia";
 
 function doThing() {
-  if (Math.random() > 0.33) return status(418, "I'm a teapot");
+    if (Math.random() > 0.33) return status(418, "I'm a teapot");
 }
 
 new Elysia().get("/", ({ status }) => {
-  if (Math.random() > 0.33) return status(418);
+    if (Math.random() > 0.33) return status(418);
 
-  return "ok";
+    return "ok";
 });
 ```
 
@@ -305,17 +301,17 @@ See the following code:
 import { Elysia, file } from "elysia";
 
 new Elysia()
-  .onError(({ code, error, path }) => {
-    if (code === 418) return "caught";
-  })
-  .get("/throw", ({ status }) => {
-    // This will be caught by onError
-    throw status(418);
-  })
-  .get("/return", ({ status }) => {
-    // This will NOT be caught by onError
-    return status(418);
-  });
+    .onError(({ code, error, path }) => {
+        if (code === 418) return "caught";
+    })
+    .get("/throw", ({ status }) => {
+        // This will be caught by onError
+        throw status(418);
+    })
+    .get("/return", ({ status }) => {
+        // This will NOT be caught by onError
+        return status(418);
+    });
 ```
 
 ## Notes

@@ -12,11 +12,11 @@ No get/set - direct value access:
 import { Elysia } from "elysia";
 
 new Elysia().get("/", ({ cookie: { name } }) => {
-  // Get
-  name.value;
+    // Get
+    name.value;
 
-  // Set
-  name.value = "New Value";
+    // Set
+    name.value = "New Value";
 });
 ```
 
@@ -80,21 +80,21 @@ Strict validation + type inference with `t.Cookie`:
 import { Elysia, t } from "elysia";
 
 new Elysia().get(
-  "/",
-  ({ cookie: { name } }) => {
-    name.value = {
-      id: 617,
-      name: "Summoning 101",
-    };
-  },
-  {
-    cookie: t.Cookie({
-      name: t.Object({
-        id: t.Numeric(),
-        name: t.String(),
-      }),
-    }),
-  },
+    "/",
+    ({ cookie: { name } }) => {
+        name.value = {
+            id: 617,
+            name: "Summoning 101"
+        };
+    },
+    {
+        cookie: t.Cookie({
+            name: t.Object({
+                id: t.Numeric(),
+                name: t.String()
+            })
+        })
+    }
 );
 ```
 
@@ -102,12 +102,12 @@ new Elysia().get(
 
 ```typescript
 cookie: t.Cookie({
-  name: t.Optional(
-    t.Object({
-      id: t.Numeric(),
-      name: t.String(),
-    }),
-  ),
+    name: t.Optional(
+        t.Object({
+            id: t.Numeric(),
+            name: t.String()
+        })
+    )
 });
 ```
 
@@ -117,24 +117,24 @@ Cryptographic hash for verification. Prevents malicious modification.
 
 ```typescript
 new Elysia().get(
-  "/",
-  ({ cookie: { profile } }) => {
-    profile.value = { id: 617, name: "Summoning 101" };
-  },
-  {
-    cookie: t.Cookie(
-      {
-        profile: t.Object({
-          id: t.Numeric(),
-          name: t.String(),
-        }),
-      },
-      {
-        secrets: "Fischl von Luftschloss Narfidort",
-        sign: ["profile"],
-      },
-    ),
-  },
+    "/",
+    ({ cookie: { profile } }) => {
+        profile.value = { id: 617, name: "Summoning 101" };
+    },
+    {
+        cookie: t.Cookie(
+            {
+                profile: t.Object({
+                    id: t.Numeric(),
+                    name: t.String()
+                })
+            },
+            {
+                secrets: "Fischl von Luftschloss Narfidort",
+                sign: ["profile"]
+            }
+        )
+    }
 );
 ```
 
@@ -144,10 +144,10 @@ Auto-signs/unsigns.
 
 ```typescript
 new Elysia({
-  cookie: {
-    secrets: "Fischl von Luftschloss Narfidort",
-    sign: ["profile"],
-  },
+    cookie: {
+        secrets: "Fischl von Luftschloss Narfidort",
+        sign: ["profile"]
+    }
 });
 ```
 
@@ -157,9 +157,9 @@ Auto-handles secret rotation. Old signature verification + new signature signing
 
 ```typescript
 new Elysia({
-  cookie: {
-    secrets: ["Vengeance will be mine", "Fischl von Luftschloss Narfidort"],
-  },
+    cookie: {
+        secrets: ["Vengeance will be mine", "Fischl von Luftschloss Narfidort"]
+    }
 });
 ```
 

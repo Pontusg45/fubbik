@@ -1,9 +1,5 @@
 /* eslint-disable */
 
-/* oxlint-disable */
-
-/* oxfmt-disable */
-
 // @ts-nocheck
 
 // noinspection JSUnusedGlobalSymbols

@@ -4,72 +4,72 @@
 name: fubbik
 
 services:
-  web:
-    build:
-      context: .
-      dockerfile: apps/web/Dockerfile
-    container_name: fubbik-web
-    ports:
-      - "3001:3000"
-    env_file:
-      - apps/web/.env
-    environment:
-      - NODE_ENV=production
-    restart: unless-stopped
-    depends_on:
-      server:
-        condition: service_healthy
-    networks:
-      - fubbik-network
+    web:
+        build:
+            context: .
+            dockerfile: apps/web/Dockerfile
+        container_name: fubbik-web
+        ports:
+            - "3001:3000"
+        env_file:
+            - apps/web/.env
+        environment:
+            - NODE_ENV=production
+        restart: unless-stopped
+        depends_on:
+            server:
+                condition: service_healthy
+        networks:
+            - fubbik-network
 
-  server:
-    build:
-      context: .
-      dockerfile: apps/server/Dockerfile
-    container_name: fubbik-server
-    ports:
-      - "3000:3000"
-    env_file:
-      - apps/server/.env
-    environment:
-      - NODE_ENV=production
-      - PORT=3000
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-password}@db:5432/${POSTGRES_DB:-fubbik}
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-    restart: unless-stopped
-    depends_on:
-      - db
-    networks:
-      - fubbik-network
+    server:
+        build:
+            context: .
+            dockerfile: apps/server/Dockerfile
+        container_name: fubbik-server
+        ports:
+            - "3000:3000"
+        env_file:
+            - apps/server/.env
+        environment:
+            - NODE_ENV=production
+            - PORT=3000
+            - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-password}@db:5432/${POSTGRES_DB:-fubbik}
+        healthcheck:
+            test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+            interval: 10s
+            timeout: 5s
+            retries: 3
+        restart: unless-stopped
+        depends_on:
+            - db
+        networks:
+            - fubbik-network
 
-  db:
-    image: postgres:16-alpine
-    container_name: fubbik-postgres
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB:-fubbik}
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
-    # Uncomment to expose Postgres to host for debugging
-    # ports:
-    #   - "5432:5432"
-    volumes:
-      - fubbik_postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
-    networks:
-      - fubbik-network
+    db:
+        image: postgres:16-alpine
+        container_name: fubbik-postgres
+        environment:
+            POSTGRES_DB: ${POSTGRES_DB:-fubbik}
+            POSTGRES_USER: ${POSTGRES_USER:-postgres}
+            POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+        # Uncomment to expose Postgres to host for debugging
+        # ports:
+        #   - "5432:5432"
+        volumes:
+            - fubbik_postgres_data:/var/lib/postgresql/data
+        healthcheck:
+            test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+        restart: unless-stopped
+        networks:
+            - fubbik-network
 
 networks:
-  fubbik-network:
-    driver: bridge
+    fubbik-network:
+        driver: bridge
 
 volumes:
-  fubbik_postgres_data:
+    fubbik_postgres_data:

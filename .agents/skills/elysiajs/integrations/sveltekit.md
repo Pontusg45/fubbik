@@ -15,11 +15,11 @@ Run Elysia on SvelteKit server routes.
 import { Elysia, t } from "elysia";
 
 const app = new Elysia().get("/", "hello SvelteKit").post("/", ({ body }) => body, {
-  body: t.Object({ name: t.String() }),
+    body: t.Object({ name: t.String() })
 });
 
 interface WithRequest {
-  request: Request;
+    request: Request;
 }
 
 export const fallback = ({ request }: WithRequest) => app.handle(request);
@@ -36,10 +36,10 @@ If placed in `src/routes/api/[...slugs]/+server.ts`, set prefix:
 import { Elysia, t } from "elysia";
 
 const app = new Elysia({ prefix: "/api" })
-  .get("/", () => "hi")
-  .post("/", ({ body }) => body, {
-    body: t.Object({ name: t.String() }),
-  });
+    .get("/", () => "hi")
+    .post("/", ({ body }) => body, {
+        body: t.Object({ name: t.String() })
+    });
 
 type RequestHandler = (v: { request: Request }) => Response | Promise<Response>;
 

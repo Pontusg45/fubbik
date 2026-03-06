@@ -6,12 +6,11 @@
 const plugin = new Elysia().decorate("plugin", "hi").get("/plugin", ({ plugin }) => plugin);
 
 const app = new Elysia()
-  .use(plugin) // inherit properties
-  .get("/", ({ plugin }) => plugin);
+    .use(plugin) // inherit properties
+    .get("/", ({ plugin }) => plugin);
 ```
 
-**Inherits**: state, decorate
-**Does NOT inherit**: lifecycle (isolated by default)
+**Inherits**: state, decorate **Does NOT inherit**: lifecycle (isolated by default)
 
 ## Dependency
 
@@ -25,8 +24,8 @@ const main = new Elysia().get("/", ({ Auth }) => Auth.getProfile());
 
 // ✅ Declare dependency
 const main = new Elysia()
-  .use(auth) // required for Auth
-  .get("/", ({ Auth }) => Auth.getProfile());
+    .use(auth) // required for Auth
+    .get("/", ({ Auth }) => Auth.getProfile());
 ```
 
 ## Deduplication
@@ -35,9 +34,9 @@ const main = new Elysia()
 
 ```ts
 const ip = new Elysia({ name: "ip" }) // unique identifier
-  .derive({ as: "global" }, ({ server, request }) => ({
-    ip: server?.requestIP(request),
-  }));
+    .derive({ as: "global" }, ({ server, request }) => ({
+        ip: server?.requestIP(request)
+    }));
 
 const router1 = new Elysia().use(ip);
 const router2 = new Elysia().use(ip);
@@ -65,16 +64,12 @@ const server = new Elysia().use(router1).use(router2);
 
 ```ts
 // ❌ NOT inherited by app
-const profile = new Elysia()
-  .onBeforeHandle(({ cookie }) => throwIfNotSignIn(cookie))
-  .get("/profile", () => "Hi");
+const profile = new Elysia().onBeforeHandle(({ cookie }) => throwIfNotSignIn(cookie)).get("/profile", () => "Hi");
 
 const app = new Elysia().use(profile).patch("/rename", ({ body }) => updateProfile(body)); // No sign-in check
 
 // ✅ Exported to app
-const profile = new Elysia()
-  .onBeforeHandle({ as: "global" }, ({ cookie }) => throwIfNotSignIn(cookie))
-  .get("/profile", () => "Hi");
+const profile = new Elysia().onBeforeHandle({ as: "global" }, ({ cookie }) => throwIfNotSignIn(cookie)).get("/profile", () => "Hi");
 ```
 
 ## Scope Levels
@@ -154,9 +149,9 @@ const plugin = (app: Elysia) => app.state("counter", 0).get("/plugin", () => "Hi
 
 ```ts
 const plugin = new Elysia()
-  .derive(() => ({ hi: "ok" }))
-  .get("/child", ({ hi }) => hi)
-  .as("scoped"); // lift scope up
+    .derive(() => ({ hi: "ok" }))
+    .get("/child", ({ hi }) => hi)
+    .as("scoped"); // lift scope up
 ```
 
 `.as()` lifts scope: local → scoped → global
@@ -168,9 +163,9 @@ const plugin = new Elysia()
 ```ts
 // plugin.ts
 export const loadStatic = async (app: Elysia) => {
-  const files = await loadAllFiles();
-  files.forEach((asset) => app.get(asset, file(asset)));
-  return app;
+    const files = await loadAllFiles();
+    files.forEach(asset => app.get(asset, file(asset)));
+    return app;
 };
 
 // main.ts

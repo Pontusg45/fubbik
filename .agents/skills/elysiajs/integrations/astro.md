@@ -11,7 +11,7 @@ Run Elysia on Astro via Astro Endpoint.
 ```javascript
 // astro.config.mjs
 export default defineConfig({
-  output: "server",
+    output: "server"
 });
 ```
 
@@ -23,10 +23,10 @@ export default defineConfig({
 import { Elysia, t } from "elysia";
 
 const app = new Elysia()
-  .get("/api", () => "hi")
-  .post("/api", ({ body }) => body, {
-    body: t.Object({ name: t.String() }),
-  });
+    .get("/api", () => "hi")
+    .post("/api", ({ body }) => body, {
+        body: t.Object({ name: t.String() })
+    });
 
 const handle = ({ request }: { request: Request }) => app.handle(request);
 

@@ -1,23 +1,23 @@
 {
-  "name": "@fubbik/env",
-  "version": "0.0.0",
-  "private": true,
-  "type": "module",
-  "exports": {
-    "./server": "./src/server.ts",
-    "./web": "./src/web.ts"
-  },
-  "scripts": {
-    "lint": "oxlint src"
-  },
-  "dependencies": {
-    "@t3-oss/env-core": "^0.13.10",
-    "arktype": "catalog:",
-    "dotenv": "catalog:"
-  },
-  "devDependencies": {
-    "@fubbik/config": "workspace:*",
-    "@types/bun": "catalog:",
-    "typescript": "catalog:"
-  }
+    "name": "@fubbik/env",
+    "version": "0.0.0",
+    "private": true,
+    "type": "module",
+    "exports": {
+        "./server": "./src/server.ts",
+        "./web": "./src/web.ts"
+    },
+    "scripts": {
+        "lint": "oxlint src"
+    },
+    "dependencies": {
+        "@t3-oss/env-core": "^0.13.10",
+        "arktype": "catalog:",
+        "dotenv": "catalog:"
+    },
+    "devDependencies": {
+        "@fubbik/config": "workspace:*",
+        "@types/bun": "catalog:",
+        "typescript": "catalog:"
+    }
 }

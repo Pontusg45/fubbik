@@ -37,18 +37,18 @@ Extends OpenAPI Operation Object:
 
 ```typescript
 openapi({
-  documentation: {
-    info: {
-      title: "API",
-      version: "1.0.0",
-    },
-    tags: [{ name: "App", description: "General" }],
-    components: {
-      securitySchemes: {
-        bearerAuth: { type: "http", scheme: "bearer" },
-      },
-    },
-  },
+    documentation: {
+        info: {
+            title: "API",
+            version: "1.0.0"
+        },
+        tags: [{ name: "App", description: "General" }],
+        components: {
+            securitySchemes: {
+                bearerAuth: { type: "http", scheme: "bearer" }
+            }
+        }
+    }
 });
 ```
 
@@ -72,9 +72,9 @@ Generate docs from types:
 import { fromTypes } from "@elysiajs/openapi";
 
 export const app = new Elysia().use(
-  openapi({
-    references: fromTypes(),
-  }),
+    openapi({
+        references: fromTypes()
+    })
 );
 ```
 
@@ -90,8 +90,8 @@ references: fromTypes(process.env.NODE_ENV === "production" ? "dist/index.d.ts" 
 
 ```typescript
 fromTypes("src/index.ts", {
-  projectRoot: path.join("..", import.meta.dir),
-  tsconfigPath: "tsconfig.dts.json",
+    projectRoot: path.join("..", import.meta.dir),
+    tsconfigPath: "tsconfig.dts.json"
 });
 ```
 
@@ -220,13 +220,11 @@ Below is a config which is accepted by the `openapi({})`
 
 ### enabled
 
-@default true
-Enable/Disable the plugin
+@default true Enable/Disable the plugin
 
 ### documentation
 
-OpenAPI documentation information
-@see https://spec.openapis.org/oas/v3.0.3.html
+OpenAPI documentation information @see https://spec.openapis.org/oas/v3.0.3.html
 
 ### exclude
 
@@ -256,8 +254,7 @@ A custom mapping function from Standard schema to OpenAPI schema
 
 ### path
 
-@default '/openapi'
-The endpoint to expose OpenAPI documentation frontend
+@default '/openapi' The endpoint to expose OpenAPI documentation frontend
 
 ### provider
 

@@ -10,11 +10,11 @@ Runtime validation + type inference + OpenAPI schema from single source. TypeBox
 import { Elysia, t } from "elysia";
 
 new Elysia().get("/id/:id", ({ params: { id } }) => id, {
-  params: t.Object({ id: t.Number({ minimum: 1 }) }),
-  response: {
-    200: t.Number(),
-    404: t.Literal("Not Found"),
-  },
+    params: t.Object({ id: t.Number({ minimum: 1 }) }),
+    response: {
+        200: t.Number(),
+        404: t.Literal("Not Found")
+    }
 });
 ```
 
@@ -57,8 +57,8 @@ GET/HEAD: body-parser disabled by default (RFC2616).
 
 ```typescript
 body: t.Object({
-  file: t.File({ format: "image/*" }),
-  multipleFiles: t.Files(),
+    file: t.File({ format: "image/*" }),
+    multipleFiles: t.Files()
 });
 // Auto-assumes multipart/form-data
 ```
@@ -69,7 +69,7 @@ body: t.Object({
 import { fileType } from "elysia";
 
 body: z.object({
-  file: z.file().refine((file) => fileType(file, "image/jpeg")),
+    file: z.file().refine(file => fileType(file, "image/jpeg"))
 });
 ```
 
@@ -116,13 +116,13 @@ headers: t.Object({ authorization: t.String() });
 
 ```typescript
 cookie: t.Cookie(
-  {
-    name: t.String(),
-  },
-  {
-    secure: true,
-    httpOnly: true,
-  },
+    {
+        name: t.String()
+    },
+    {
+        secure: true,
+        httpOnly: true
+    }
 );
 ```
 
@@ -149,7 +149,7 @@ response: {
 
 ```typescript
 body: t.Object({
-  x: t.Number({ error: "x must be number" }),
+    x: t.Number({ error: "x must be number" })
 });
 ```
 
@@ -157,9 +157,9 @@ Or function:
 
 ```typescript
 x: t.Number({
-  error({ errors, type, validation, value }) {
-    return "Expected x to be number";
-  },
+    error({ errors, type, validation, value }) {
+        return "Expected x to be number";
+    }
 });
 ```
 
@@ -243,14 +243,14 @@ Apply schema to multiple handlers. Affects all handlers after definition.
 import { Elysia, t } from "elysia";
 
 new Elysia()
-  .get("/none", ({ query }) => "hi")
-  .guard({
-    query: t.Object({
-      name: t.String(),
-    }),
-  })
-  .get("/query", ({ query }) => query)
-  .listen(3000);
+    .get("/none", ({ query }) => "hi")
+    .guard({
+        query: t.Object({
+            name: t.String()
+        })
+    })
+    .get("/query", ({ query }) => query)
+    .listen(3000);
 ```
 
 Ensures `query.name` string required for all handlers after guard.
@@ -271,8 +271,7 @@ Ensures `query.name` string required for all handlers after guard.
 
 ### Schema Types
 
-1. override (default)
-   Latest schema overrides collided schema.
+1. override (default) Latest schema overrides collided schema.
 
 ```typescript
 .guard({ query: t.Object({ name: t.String() }) })
@@ -280,8 +279,7 @@ Ensures `query.name` string required for all handlers after guard.
 // Only id required, name overridden
 ```
 
-2. standalone
-   Both schemas run independently. Both validated.
+2. standalone Both schemas run independently. Both validated.
 
 ```typescript
 .guard({ query: t.Object({ name: t.String() }) }, { type: 'standalone' })
@@ -318,14 +316,14 @@ t.Number({ minimum: 10, maximum: 100 });
 
 // Array constraints
 t.Array(t.Number(), {
-  minItems: 1, // min items
-  maxItems: 5, // max items
+    minItems: 1, // min items
+    maxItems: 5 // max items
 });
 
 // Object - allow extra properties
 t.Object(
-  { x: t.Number() },
-  { additionalProperties: true }, // default: false
+    { x: t.Number() },
+    { additionalProperties: true } // default: false
 );
 ```
 
@@ -343,8 +341,8 @@ t.Union([t.String(), t.Number()]);
 
 ```ts
 t.Object({
-  x: t.Number(),
-  y: t.Optional(t.Number()), // can be undefined
+    x: t.Number(),
+    y: t.Optional(t.Number()) // can be undefined
 });
 // type: { x: number, y?: number }
 // value: { x: 123 } or { x: 123, y: 456 }
@@ -354,10 +352,10 @@ t.Object({
 
 ```ts
 t.Partial(
-  t.Object({
-    x: t.Number(),
-    y: t.Number(),
-  }),
+    t.Object({
+        x: t.Number(),
+        y: t.Number()
+    })
 );
 // type: { x?: number, y?: number }
 // value: {} or { y: 123 } or { x: 1, y: 2 }
@@ -375,9 +373,9 @@ t.UnionEnum(["rapi", "anis", 1, true, false]);
 
 ```ts
 t.File({
-  type: "image", // or ['image', 'video']
-  minSize: "1k", // 1024 bytes
-  maxSize: "5m", // 5242880 bytes
+    type: "image", // or ['image', 'video']
+    minSize: "1k", // 1024 bytes
+    maxSize: "5m" // 5242880 bytes
 });
 ```
 
@@ -396,12 +394,12 @@ t.Files(); // extends File + array
 
 ```ts
 t.Cookie(
-  {
-    name: t.String(),
-  },
-  {
-    secrets: "secret-key", // or ['key1', 'key2'] for rotation
-  },
+    {
+        name: t.String()
+    },
+    {
+        secrets: "secret-key" // or ['key1', 'key2'] for rotation
+    }
 );
 ```
 
@@ -423,7 +421,7 @@ t.MaybeEmpty(t.String());
 
 ```ts
 t.Form({
-  someValue: t.File(),
+    someValue: t.File()
 });
 // Syntax sugar for t.Object with FormData support
 ```
@@ -523,10 +521,10 @@ Same as Number → Numeric:
 import { Elysia, t } from "elysia";
 
 new Elysia()
-  .post("/", ({ body }) => `Hello ${body}`, {
-    body: t.String(), // validates body is string
-  })
-  .listen(3000);
+    .post("/", ({ body }) => `Hello ${body}`, {
+        body: t.String() // validates body is string
+    })
+    .listen(3000);
 ```
 
 **Validation flow**:

@@ -15,8 +15,8 @@ import { Elysia } from "elysia";
 import { staticPlugin } from "@elysiajs/static";
 
 new Elysia()
-  .use(await staticPlugin()) // await required for HMR hooks
-  .listen(3000);
+    .use(await staticPlugin()) // await required for HMR hooks
+    .listen(3000);
 ```
 
 2. Create `public/index.html` + `public/index.tsx`:
@@ -25,15 +25,15 @@ new Elysia()
 <!-- public/index.html -->
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <title>Elysia React App</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="./index.tsx"></script>
-  </body>
+    <head>
+        <meta charset="UTF-8" />
+        <title>Elysia React App</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    </head>
+    <body>
+        <div id="root"></div>
+        <script type="module" src="./index.tsx"></script>
+    </body>
 </html>
 ```
 
@@ -43,15 +43,15 @@ import { useState } from "react";
 import { createRoot } from "react-dom/client";
 
 function App() {
-  const [count, setCount] = useState(0);
-  const increase = () => setCount((c) => c + 1);
+    const [count, setCount] = useState(0);
+    const increase = () => setCount(c => c + 1);
 
-  return (
-    <main>
-      <h2>{count}</h2>
-      <button onClick={increase}>Increase</button>
-    </main>
-  );
+    return (
+        <main>
+            <h2>{count}</h2>
+            <button onClick={increase}>Increase</button>
+        </main>
+    );
 }
 
 const root = createRoot(document.getElementById("root")!);
@@ -62,9 +62,9 @@ root.render(<App />);
 
 ```json
 {
-  "compilerOptions": {
-    "jsx": "react-jsx"
-  }
+    "compilerOptions": {
+        "jsx": "react-jsx"
+    }
 }
 ```
 
@@ -120,12 +120,12 @@ import "./global.css";
 
 ```json
 {
-  "compilerOptions": {
-    "baseUrl": ".",
-    "paths": {
-      "@public/*": ["public/*"]
+    "compilerOptions": {
+        "baseUrl": ".",
+        "paths": {
+            "@public/*": ["public/*"]
+        }
     }
-  }
 }
 ```
 

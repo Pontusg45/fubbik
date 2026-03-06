@@ -8,7 +8,7 @@ Environment variables affecting all task hashes.
 
 ```json
 {
-  "globalEnv": ["CI", "NODE_ENV", "VERCEL_*"]
+    "globalEnv": ["CI", "NODE_ENV", "VERCEL_*"]
 }
 ```
 
@@ -20,7 +20,7 @@ Files that affect all task hashes.
 
 ```json
 {
-  "globalDependencies": ["tsconfig.json", ".env", "pnpm-lock.yaml"]
+    "globalDependencies": ["tsconfig.json", ".env", "pnpm-lock.yaml"]
 }
 ```
 
@@ -32,7 +32,7 @@ Variables available to tasks but not included in hash.
 
 ```json
 {
-  "globalPassThroughEnv": ["AWS_SECRET_KEY", "GITHUB_TOKEN"]
+    "globalPassThroughEnv": ["AWS_SECRET_KEY", "GITHUB_TOKEN"]
 }
 ```
 
@@ -44,13 +44,14 @@ Custom cache location. Default: `node_modules/.cache/turbo`.
 
 ```json
 {
-  "cacheDir": ".turbo/cache"
+    "cacheDir": ".turbo/cache"
 }
 ```
 
 ## daemon
 
-**Deprecated**: The daemon is no longer used for `turbo run` and this option will be removed in version 3.0. The daemon is still used by `turbo watch` and the Turborepo LSP.
+**Deprecated**: The daemon is no longer used for `turbo run` and this option will be removed in version 3.0. The daemon is still used by
+`turbo watch` and the Turborepo LSP.
 
 ## envMode
 
@@ -86,12 +87,12 @@ Configure remote caching.
 
 ```json
 {
-  "remoteCache": {
-    "enabled": true,
-    "signature": true,
-    "timeout": 30,
-    "uploadTimeout": 60
-  }
+    "remoteCache": {
+        "enabled": true,
+        "signature": true,
+        "timeout": 30,
+        "uploadTimeout": 60
+    }
 }
 ```
 
@@ -129,9 +130,9 @@ Enable experimental features that will become default in future versions.
 
 ```json
 {
-  "futureFlags": {
-    "errorsOnlyShowHash": true
-  }
+    "futureFlags": {
+        "errorsOnlyShowHash": true
+    }
 }
 ```
 
@@ -144,7 +145,8 @@ When using `outputLogs: "errors-only"`, show task hashes on start/completion:
 
 ### `longerSignatureKey`
 
-Enforce a minimum key length of 32 bytes for `TURBO_REMOTE_CACHE_SIGNATURE_KEY` when `remoteCache.signature` is enabled. Short keys weaken HMAC-SHA256 signatures. Fails the run immediately if the key is too short.
+Enforce a minimum key length of 32 bytes for `TURBO_REMOTE_CACHE_SIGNATURE_KEY` when `remoteCache.signature` is enabled. Short keys weaken
+HMAC-SHA256 signatures. Fails the run immediately if the key is too short.
 
 ## noUpdateNotifier
 
@@ -152,7 +154,7 @@ Disable update notifications when new turbo versions are available.
 
 ```json
 {
-  "noUpdateNotifier": true
+    "noUpdateNotifier": true
 }
 ```
 
@@ -162,7 +164,7 @@ Bypass the `packageManager` field requirement. Use for incremental migration.
 
 ```json
 {
-  "dangerouslyDisablePackageManagerCheck": true
+    "dangerouslyDisablePackageManagerCheck": true
 }
 ```
 

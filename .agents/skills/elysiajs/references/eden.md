@@ -17,15 +17,15 @@ Export Elysia server type:
 
 ```typescript
 const app = new Elysia()
-  .get("/", () => "Hi Elysia")
-  .get("/id/:id", ({ params: { id } }) => id)
-  .post("/mirror", ({ body }) => body, {
-    body: t.Object({
-      id: t.Number(),
-      name: t.String(),
-    }),
-  })
-  .listen(3000);
+    .get("/", () => "Hi Elysia")
+    .get("/id/:id", ({ params: { id } }) => id)
+    .post("/mirror", ({ body }) => body, {
+        body: t.Object({
+            id: t.Number(),
+            name: t.String()
+        })
+    })
+    .listen(3000);
 
 export type App = typeof app;
 ```
@@ -46,8 +46,8 @@ const { data: id } = await client.id({ id: 1895 }).get();
 
 // response: { id: 1895, name: 'Skadi' }
 const { data: nendoroid } = await client.mirror.post({
-  id: 1895,
-  name: "Skadi",
+    id: 1895,
+    name: "Skadi"
 });
 ```
 
@@ -67,13 +67,13 @@ Must resolve to same file on frontend/backend
 ```json
 // tsconfig.json at root
 {
-  "compilerOptions": {
-    "baseUrl": ".",
-    "paths": {
-      "@frontend/*": ["./apps/frontend/src/*"],
-      "@backend/*": ["./apps/backend/src/*"]
+    "compilerOptions": {
+        "baseUrl": ".",
+        "paths": {
+            "@frontend/*": ["./apps/frontend/src/*"],
+            "@backend/*": ["./apps/backend/src/*"]
+        }
     }
-  }
 }
 ```
 
@@ -131,12 +131,12 @@ Must resolve to same file on frontend/backend
 const { data, error, response, status, headers } = await api.user.post({ name: "x" });
 
 if (error) {
-  switch (error.status) {
-    case 400:
-      throw error.value;
-    default:
-      throw error.value;
-  }
+    switch (error.status) {
+        case 400:
+            throw error.value;
+        default:
+            throw error.value;
+    }
 }
 // data unwrapped after error handling
 return data;
@@ -169,7 +169,7 @@ type UserError = Treaty.Error<typeof api.user.post>;
 ```typescript
 const chat = api.chat.subscribe();
 
-chat.subscribe((message) => console.log("got", message));
+chat.subscribe(message => console.log("got", message));
 chat.on("open", () => chat.send("hello"));
 
 // Native access: chat.raw

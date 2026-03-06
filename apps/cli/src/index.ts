@@ -11,10 +11,7 @@ import { updateCommand } from "./commands/update";
 
 const program = new Command();
 
-program
-  .name("fubbik")
-  .description("A local-first knowledge framework for humans and machines")
-  .version("0.0.1");
+program.name("fubbik").description("A local-first knowledge framework for humans and machines").version("0.0.1");
 
 program.addCommand(initCommand);
 program.addCommand(healthCommand);

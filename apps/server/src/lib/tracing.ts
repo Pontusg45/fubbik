@@ -17,42 +17,42 @@ const otlpEndpoint = process.env.OTEL_EXPORTER_OTLP_ENDPOINT || "http://localhos
 
 // Create resource with service information
 const resource = resourceFromAttributes({
-  [ATTR_SERVICE_NAME]: serviceName,
-  [ATTR_SERVICE_VERSION]: serviceVersion,
-  "deployment.environment.name": environment,
+    [ATTR_SERVICE_NAME]: serviceName,
+    [ATTR_SERVICE_VERSION]: serviceVersion,
+    "deployment.environment.name": environment
 });
 
 // Configure trace exporter
 const traceExporter = new OTLPTraceExporter({
-  url: `${otlpEndpoint}/v1/traces`,
+    url: `${otlpEndpoint}/v1/traces`
 });
 
 // Configure metric exporter
 const metricExporter = new OTLPMetricExporter({
-  url: `${otlpEndpoint}/v1/metrics`,
+    url: `${otlpEndpoint}/v1/metrics`
 });
 
 // Initialize OpenTelemetry SDK
 const sdk = new NodeSDK({
-  resource,
-  traceExporter,
-  metricReader: new PeriodicExportingMetricReader({
-    exporter: metricExporter,
-    // Export metrics every 30 seconds
-    exportIntervalMillis: 30000,
-  }),
-  instrumentations: [
-    getNodeAutoInstrumentations({
-      // Disable fs instrumentation to reduce noise
-      "@opentelemetry/instrumentation-fs": {
-        enabled: false,
-      },
-      // Configure HTTP instrumentation
-      "@opentelemetry/instrumentation-http": {
-        enabled: true,
-      },
+    resource,
+    traceExporter,
+    metricReader: new PeriodicExportingMetricReader({
+        exporter: metricExporter,
+        // Export metrics every 30 seconds
+        exportIntervalMillis: 30000
     }),
-  ],
+    instrumentations: [
+        getNodeAutoInstrumentations({
+            // Disable fs instrumentation to reduce noise
+            "@opentelemetry/instrumentation-fs": {
+                enabled: false
+            },
+            // Configure HTTP instrumentation
+            "@opentelemetry/instrumentation-http": {
+                enabled: true
+            }
+        })
+    ]
 });
 
 /**
@@ -68,9 +68,9 @@ const sdk = new NodeSDK({
  * import { app } from './app';
  */
 export function startTracing(): void {
-  sdk.start();
-  console.log(`[OpenTelemetry] Tracing started for service: ${serviceName}`);
-  console.log(`[OpenTelemetry] Exporting to: ${otlpEndpoint}`);
+    sdk.start();
+    console.log(`[OpenTelemetry] Tracing started for service: ${serviceName}`);
+    console.log(`[OpenTelemetry] Exporting to: ${otlpEndpoint}`);
 }
 
 /**
@@ -84,12 +84,12 @@ export function startTracing(): void {
  * });
  */
 export async function shutdownTracing(): Promise<void> {
-  try {
-    await sdk.shutdown();
-    console.log("[OpenTelemetry] Tracing shutdown complete");
-  } catch (error) {
-    console.error("[OpenTelemetry] Error shutting down tracing:", error);
-  }
+    try {
+        await sdk.shutdown();
+        console.log("[OpenTelemetry] Tracing shutdown complete");
+    } catch (error) {
+        console.error("[OpenTelemetry] Error shutting down tracing:", error);
+    }
 }
 
 /**

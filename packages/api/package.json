@@ -1,25 +1,25 @@
 {
-  "name": "@fubbik/api",
-  "type": "module",
-  "exports": {
-    ".": "./src/index.ts",
-    "./context": "./src/context.ts"
-  },
-  "scripts": {
-    "lint": "oxlint src",
-    "test": "vitest run"
-  },
-  "dependencies": {
-    "@fubbik/auth": "workspace:*",
-    "@fubbik/db": "workspace:*",
-    "@fubbik/env": "workspace:*",
-    "effect": "^3.19.19",
-    "elysia": "catalog:"
-  },
-  "devDependencies": {
-    "@elysiajs/eden": "^1.4.8",
-    "@fubbik/config": "workspace:*",
-    "typescript": "catalog:",
-    "vitest": "catalog:"
-  }
+    "name": "@fubbik/api",
+    "type": "module",
+    "exports": {
+        ".": "./src/index.ts",
+        "./context": "./src/context.ts"
+    },
+    "scripts": {
+        "lint": "oxlint src",
+        "test": "vitest run"
+    },
+    "dependencies": {
+        "@fubbik/auth": "workspace:*",
+        "@fubbik/db": "workspace:*",
+        "@fubbik/env": "workspace:*",
+        "effect": "^3.19.19",
+        "elysia": "catalog:"
+    },
+    "devDependencies": {
+        "@elysiajs/eden": "^1.4.8",
+        "@fubbik/config": "workspace:*",
+        "typescript": "catalog:",
+        "vitest": "catalog:"
+    }
 }

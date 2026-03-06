@@ -9,7 +9,7 @@ process.env.CORS_ORIGIN = "http://localhost:5173";
 process.env.PORT = "3000";
 
 export default defineConfig({
-  test: {
-    environment: "node",
-  },
+    test: {
+        environment: "node"
+    }
 });

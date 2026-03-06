@@ -17,7 +17,7 @@ Create API routes in Expo app (SDK 50+, App Router v3).
 import { Elysia, t } from "elysia";
 
 const app = new Elysia().get("/", "hello Expo").post("/", ({ body }) => body, {
-  body: t.Object({ name: t.String() }),
+    body: t.Object({ name: t.String() })
 });
 
 export const GET = app.fetch;
@@ -44,7 +44,7 @@ Ensures routing works in any location.
 ```typescript
 // app/[...slugs]+api.ts
 const app = new Elysia().get("/", "Hello Nextjs").post("/user", ({ body }) => body, {
-  body: treaty.schema("User", { name: "string" }),
+    body: treaty.schema("User", { name: "string" })
 });
 
 export type app = typeof app;
@@ -70,8 +70,8 @@ export const api = treaty<app>("localhost:3000/api");
 import { api } from "../lib/eden";
 
 export default async function Page() {
-  const message = await api.get();
-  return <h1>Hello, {message}</h1>;
+    const message = await api.get();
+    return <h1>Hello, {message}</h1>;
 }
 ```
 

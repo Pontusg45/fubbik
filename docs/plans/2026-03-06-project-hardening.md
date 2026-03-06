@@ -4,7 +4,9 @@
 
 **Goal:** Harden fubbik for production readiness — error handling, testing, logging, validation, docs, and deployment fixes.
 
-**Architecture:** Bottom-up approach: fix foundational layers first (env, db, auth), then API, then frontend, then deployment. Each task is self-contained with tests. CLI improvements are deferred to a separate plan since they require a design decision (local-first vs API-connected).
+**Architecture:** Bottom-up approach: fix foundational layers first (env, db, auth), then API, then frontend, then deployment. Each task is
+self-contained with tests. CLI improvements are deferred to a separate plan since they require a design decision (local-first vs
+API-connected).
 
 **Tech Stack:** Bun, Elysia, Drizzle ORM, TanStack Start/Router/Query, Vitest, Better Auth, Arktype, Docker
 
@@ -15,6 +17,7 @@
 ### Task 1: Fix server tsconfig — remove unnecessary jsx
 
 **Files:**
+
 - Modify: `apps/server/tsconfig.json`
 
 **Step 1: Remove jsx config**
@@ -23,22 +26,21 @@ In `apps/server/tsconfig.json`, remove the `"jsx": "react-jsx"` line. The server
 
 ```json
 {
-  "extends": "@fubbik/config/tsconfig.base.json",
-  "compilerOptions": {
-    "composite": true,
-    "outDir": "dist",
-    "paths": {
-      "@/*": ["./src/*"]
-    }
-  },
-  "include": ["src"]
+    "extends": "@fubbik/config/tsconfig.base.json",
+    "compilerOptions": {
+        "composite": true,
+        "outDir": "dist",
+        "paths": {
+            "@/*": ["./src/*"]
+        }
+    },
+    "include": ["src"]
 }
 ```
 
 **Step 2: Verify type checking still passes**
 
-Run: `cd apps/server && bun run check-types`
-Expected: No errors
+Run: `cd apps/server && bun run check-types` Expected: No errors
 
 **Step 3: Commit**
 
@@ -52,6 +54,7 @@ git commit -m "fix: remove unnecessary jsx config from server tsconfig"
 ### Task 2: Add PORT to server environment config
 
 **Files:**
+
 - Modify: `packages/env/src/server.ts`
 - Modify: `apps/server/src/index.ts`
 
@@ -88,8 +91,7 @@ In `apps/server/src/index.ts`, replace the hardcoded port:
 
 **Step 3: Verify server starts**
 
-Run: `cd apps/server && bun run dev`
-Expected: Server starts on port 3000 (default)
+Run: `cd apps/server && bun run dev` Expected: Server starts on port 3000 (default)
 
 **Step 4: Commit**
 
@@ -103,6 +105,7 @@ git commit -m "feat: make server port configurable via PORT env var"
 ### Task 3: Add database migrations tracking
 
 **Files:**
+
 - Modify: `packages/db/package.json`
 - Create: `packages/db/drizzle.config.ts` (if not exists, check first)
 
@@ -114,19 +117,18 @@ Check if `packages/db/drizzle.config.ts` exists and has a migrations directory c
 import { defineConfig } from "drizzle-kit";
 
 export default defineConfig({
-  schema: "./src/schema/index.ts",
-  out: "./src/migrations",
-  dialect: "postgresql",
-  dbCredentials: {
-    url: process.env.DATABASE_URL!,
-  },
+    schema: "./src/schema/index.ts",
+    out: "./src/migrations",
+    dialect: "postgresql",
+    dbCredentials: {
+        url: process.env.DATABASE_URL!
+    }
 });
 ```
 
 **Step 2: Generate initial migration**
 
-Run: `cd packages/db && bun run db:generate`
-Expected: Migration files created in `packages/db/src/migrations/`
+Run: `cd packages/db && bun run db:generate` Expected: Migration files created in `packages/db/src/migrations/`
 
 **Step 3: Add migrate script**
 
@@ -150,6 +152,7 @@ git commit -m "feat: add tracked database migrations"
 ### Task 4: Add structured logging with Winston
 
 **Files:**
+
 - Create: `apps/server/src/logger.ts`
 - Modify: `apps/server/src/index.ts`
 
@@ -161,14 +164,12 @@ import winston from "winston";
 import { env } from "@fubbik/env/server";
 
 export const logger = winston.createLogger({
-  level: env.NODE_ENV === "production" ? "info" : "debug",
-  format: winston.format.combine(
-    winston.format.timestamp(),
-    env.NODE_ENV === "production"
-      ? winston.format.json()
-      : winston.format.combine(winston.format.colorize(), winston.format.simple()),
-  ),
-  transports: [new winston.transports.Console()],
+    level: env.NODE_ENV === "production" ? "info" : "debug",
+    format: winston.format.combine(
+        winston.format.timestamp(),
+        env.NODE_ENV === "production" ? winston.format.json() : winston.format.combine(winston.format.colorize(), winston.format.simple())
+    ),
+    transports: [new winston.transports.Console()]
 });
 ```
 
@@ -192,9 +193,7 @@ import { logger } from "./logger";
 
 **Step 3: Verify logging works**
 
-Run: `cd apps/server && bun run dev`
-Hit: `curl http://localhost:3000/api/health`
-Expected: See structured log output in console
+Run: `cd apps/server && bun run dev` Hit: `curl http://localhost:3000/api/health` Expected: See structured log output in console
 
 **Step 4: Commit**
 
@@ -208,6 +207,7 @@ git commit -m "feat: add structured logging with Winston"
 ### Task 5: Add error handling to all API database queries
 
 **Files:**
+
 - Modify: `packages/api/src/index.ts`
 - Create: `packages/api/src/error.ts`
 
@@ -216,9 +216,9 @@ git commit -m "feat: add structured logging with Winston"
 ```typescript
 // packages/api/src/error.ts
 export function dbError(set: { status: number }, message: string, err: unknown) {
-  set.status = 500;
-  console.error(message, err);
-  return { message: "Internal server error" };
+    set.status = 500;
+    console.error(message, err);
+    return { message: "Internal server error" };
 }
 ```
 
@@ -246,8 +246,7 @@ Apply the same pattern to: GET `/chunks/:id`, POST `/chunks`, PATCH `/chunks/:id
 
 **Step 3: Verify error handling works**
 
-Run: `cd apps/server && bun run dev`
-Expected: Normal requests still work. DB errors return 500 with "Internal server error".
+Run: `cd apps/server && bun run dev` Expected: Normal requests still work. DB errors return 500 with "Internal server error".
 
 **Step 4: Commit**
 
@@ -261,6 +260,7 @@ git commit -m "feat: add error handling to all API database queries"
 ### Task 6: Improve health check to verify DB connectivity
 
 **Files:**
+
 - Modify: `packages/api/src/index.ts`
 
 **Step 1: Update health endpoint**
@@ -283,8 +283,7 @@ Import `sql` from `drizzle-orm` and `db` from `@fubbik/db` if not already import
 
 **Step 2: Verify**
 
-Run: `curl http://localhost:3000/api/health`
-Expected: `{ "status": "ok", "db": "connected" }`
+Run: `curl http://localhost:3000/api/health` Expected: `{ "status": "ok", "db": "connected" }`
 
 **Step 3: Commit**
 
@@ -298,6 +297,7 @@ git commit -m "feat: health check verifies database connectivity"
 ### Task 7: Add pagination to chunks list endpoint
 
 **Files:**
+
 - Modify: `packages/api/src/index.ts`
 
 **Step 1: Add offset parameter**
@@ -359,6 +359,7 @@ git commit -m "feat: add offset pagination to chunks list endpoint"
 ### Task 8: Write API integration tests for chunk CRUD
 
 **Files:**
+
 - Create: `packages/api/src/index.test.ts`
 
 **Step 1: Write test file**
@@ -375,34 +376,34 @@ const app = new Elysia().use(api);
 const client = treaty(app);
 
 describe("GET /api/health", () => {
-  it("returns ok status", async () => {
-    const { data, status } = await client.api.health.get();
-    expect(status).toBe(200);
-    expect(data?.status).toBe("ok");
-  });
+    it("returns ok status", async () => {
+        const { data, status } = await client.api.health.get();
+        expect(status).toBe(200);
+        expect(data?.status).toBe("ok");
+    });
 });
 
 describe("Chunks API (unauthenticated)", () => {
-  it("GET /api/chunks returns 401", async () => {
-    const { status } = await client.api.chunks.get();
-    expect(status).toBe(401);
-  });
-
-  it("POST /api/chunks returns 401", async () => {
-    const { status } = await client.api.chunks.post({
-      title: "Test",
+    it("GET /api/chunks returns 401", async () => {
+        const { status } = await client.api.chunks.get();
+        expect(status).toBe(401);
     });
-    expect(status).toBe(401);
-  });
+
+    it("POST /api/chunks returns 401", async () => {
+        const { status } = await client.api.chunks.post({
+            title: "Test"
+        });
+        expect(status).toBe(401);
+    });
 });
 ```
 
-Note: Full authenticated tests require a test database and dev user. For now, test unauthenticated behavior and health. Authenticated tests can use the DEV_SESSION bypass when NODE_ENV is not production.
+Note: Full authenticated tests require a test database and dev user. For now, test unauthenticated behavior and health. Authenticated tests
+can use the DEV_SESSION bypass when NODE_ENV is not production.
 
 **Step 2: Run tests**
 
-Run: `cd packages/api && bun test`
-Expected: Tests pass
+Run: `cd packages/api && bun test` Expected: Tests pass
 
 **Step 3: Commit**
 
@@ -416,6 +417,7 @@ git commit -m "test: add API integration tests for health and auth guards"
 ### Task 9: Write database schema tests
 
 **Files:**
+
 - Create: `packages/db/src/schema/chunk.test.ts`
 
 **Step 1: Write schema validation tests**
@@ -427,28 +429,28 @@ import { getTableColumns } from "drizzle-orm";
 import { chunk, chunkConnection } from "./chunk";
 
 describe("chunk table", () => {
-  it("has expected columns", () => {
-    const columns = getTableColumns(chunk);
-    expect(columns).toHaveProperty("id");
-    expect(columns).toHaveProperty("title");
-    expect(columns).toHaveProperty("content");
-    expect(columns).toHaveProperty("type");
-    expect(columns).toHaveProperty("tags");
-    expect(columns).toHaveProperty("userId");
-    expect(columns).toHaveProperty("createdAt");
-    expect(columns).toHaveProperty("updatedAt");
-  });
+    it("has expected columns", () => {
+        const columns = getTableColumns(chunk);
+        expect(columns).toHaveProperty("id");
+        expect(columns).toHaveProperty("title");
+        expect(columns).toHaveProperty("content");
+        expect(columns).toHaveProperty("type");
+        expect(columns).toHaveProperty("tags");
+        expect(columns).toHaveProperty("userId");
+        expect(columns).toHaveProperty("createdAt");
+        expect(columns).toHaveProperty("updatedAt");
+    });
 });
 
 describe("chunkConnection table", () => {
-  it("has expected columns", () => {
-    const columns = getTableColumns(chunkConnection);
-    expect(columns).toHaveProperty("id");
-    expect(columns).toHaveProperty("sourceId");
-    expect(columns).toHaveProperty("targetId");
-    expect(columns).toHaveProperty("relation");
-    expect(columns).toHaveProperty("createdAt");
-  });
+    it("has expected columns", () => {
+        const columns = getTableColumns(chunkConnection);
+        expect(columns).toHaveProperty("id");
+        expect(columns).toHaveProperty("sourceId");
+        expect(columns).toHaveProperty("targetId");
+        expect(columns).toHaveProperty("relation");
+        expect(columns).toHaveProperty("createdAt");
+    });
 });
 ```
 
@@ -464,8 +466,7 @@ And add vitest to devDependencies if missing.
 
 **Step 3: Run tests**
 
-Run: `cd packages/db && bun test`
-Expected: Tests pass
+Run: `cd packages/db && bun test` Expected: Tests pass
 
 **Step 4: Commit**
 
@@ -479,6 +480,7 @@ git commit -m "test: add database schema structure tests"
 ### Task 10: Remove --passWithNoTests from apps that now have tests
 
 **Files:**
+
 - Modify: `apps/server/package.json`
 - Modify: `apps/web/package.json`
 
@@ -493,6 +495,7 @@ Actually, keep this flag until each app has its own tests. This task is a remind
 ### Task 11: Add error boundary to root layout
 
 **Files:**
+
 - Create: `apps/web/src/components/error-boundary.tsx`
 - Modify: `apps/web/src/routes/__root.tsx`
 
@@ -504,47 +507,43 @@ import { Component, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 
 interface Props {
-  children: ReactNode;
-  fallback?: ReactNode;
+    children: ReactNode;
+    fallback?: ReactNode;
 }
 
 interface State {
-  hasError: boolean;
-  error: Error | null;
+    hasError: boolean;
+    error: Error | null;
 }
 
 export class ErrorBoundary extends Component<Props, State> {
-  constructor(props: Props) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
-
-  static getDerivedStateFromError(error: Error): State {
-    return { hasError: true, error };
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        this.props.fallback ?? (
-          <div className="flex min-h-[50vh] flex-col items-center justify-center gap-4">
-            <h2 className="text-lg font-semibold">Something went wrong</h2>
-            <p className="text-muted-foreground text-sm">
-              {this.state.error?.message ?? "An unexpected error occurred."}
-            </p>
-            <Button onClick={() => this.setState({ hasError: false, error: null })}>
-              Try again
-            </Button>
-          </div>
-        )
-      );
+    constructor(props: Props) {
+        super(props);
+        this.state = { hasError: false, error: null };
     }
-    return this.props.children;
-  }
+
+    static getDerivedStateFromError(error: Error): State {
+        return { hasError: true, error };
+    }
+
+    render() {
+        if (this.state.hasError) {
+            return (
+                this.props.fallback ?? (
+                    <div className="flex min-h-[50vh] flex-col items-center justify-center gap-4">
+                        <h2 className="text-lg font-semibold">Something went wrong</h2>
+                        <p className="text-muted-foreground text-sm">{this.state.error?.message ?? "An unexpected error occurred."}</p>
+                        <Button onClick={() => this.setState({ hasError: false, error: null })}>Try again</Button>
+                    </div>
+                )
+            );
+        }
+        return this.props.children;
+    }
 }
 ```
 
-**Step 2: Wrap the Outlet in __root.tsx with ErrorBoundary**
+**Step 2: Wrap the Outlet in \_\_root.tsx with ErrorBoundary**
 
 In `apps/web/src/routes/__root.tsx`, wrap `<Outlet />`:
 
@@ -553,16 +552,15 @@ import { ErrorBoundary } from "@/components/error-boundary";
 
 // Inside the layout JSX, wrap <Outlet />:
 <main className="min-h-0">
-  <ErrorBoundary>
-    <Outlet />
-  </ErrorBoundary>
-</main>
+    <ErrorBoundary>
+        <Outlet />
+    </ErrorBoundary>
+</main>;
 ```
 
 **Step 3: Verify**
 
-Run: `cd apps/web && bun run dev`
-Expected: App renders normally. Errors in routes show fallback UI instead of crashing.
+Run: `cd apps/web && bun run dev` Expected: App renders normally. Errors in routes show fallback UI instead of crashing.
 
 **Step 4: Commit**
 
@@ -576,6 +574,7 @@ git commit -m "feat: add error boundary to root layout"
 ### Task 12: Add form validation to chunk creation
 
 **Files:**
+
 - Modify: `apps/web/src/routes/chunks.new.tsx`
 
 **Step 1: Add validation state and rules**
@@ -586,12 +585,12 @@ Add validation to the existing form in `chunks.new.tsx`. Keep using local state 
 const [errors, setErrors] = useState<Record<string, string>>({});
 
 function validate() {
-  const e: Record<string, string> = {};
-  if (!title.trim()) e.title = "Title is required";
-  else if (title.length > 200) e.title = "Title must be 200 characters or less";
-  if (content.length > 50000) e.content = "Content must be 50,000 characters or less";
-  setErrors(e);
-  return Object.keys(e).length === 0;
+    const e: Record<string, string> = {};
+    if (!title.trim()) e.title = "Title is required";
+    else if (title.length > 200) e.title = "Title must be 200 characters or less";
+    if (content.length > 50000) e.content = "Content must be 50,000 characters or less";
+    setErrors(e);
+    return Object.keys(e).length === 0;
 }
 ```
 
@@ -608,13 +607,14 @@ onClick={() => {
 After each input, add:
 
 ```tsx
-{errors.title && <p className="text-destructive text-xs mt-1">{errors.title}</p>}
+{
+    errors.title && <p className="text-destructive text-xs mt-1">{errors.title}</p>;
+}
 ```
 
 **Step 4: Verify**
 
-Run: `cd apps/web && bun run dev`, navigate to `/chunks/new`
-Expected: Submit with empty title shows error. Long title shows error.
+Run: `cd apps/web && bun run dev`, navigate to `/chunks/new` Expected: Submit with empty title shows error. Long title shows error.
 
 **Step 5: Commit**
 
@@ -628,6 +628,7 @@ git commit -m "feat: add form validation to chunk creation"
 ### Task 13: Wire up dark mode toggle with next-themes
 
 **Files:**
+
 - Modify: `apps/web/src/routes/__root.tsx`
 - Create: `apps/web/src/components/theme-provider.tsx`
 - Create: `apps/web/src/components/theme-toggle.tsx`
@@ -640,11 +641,11 @@ import { ThemeProvider as NextThemeProvider } from "next-themes";
 import type { ReactNode } from "react";
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  return (
-    <NextThemeProvider attribute="class" defaultTheme="dark" enableSystem>
-      {children}
-    </NextThemeProvider>
-  );
+    return (
+        <NextThemeProvider attribute="class" defaultTheme="dark" enableSystem>
+            {children}
+        </NextThemeProvider>
+    );
 }
 ```
 
@@ -657,32 +658,28 @@ import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
 
 export function ThemeToggle() {
-  const { theme, setTheme } = useTheme();
-  return (
-    <Button
-      variant="ghost"
-      size="icon"
-      onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-    >
-      <Sun className="size-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-      <Moon className="absolute size-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-      <span className="sr-only">Toggle theme</span>
-    </Button>
-  );
+    const { theme, setTheme } = useTheme();
+    return (
+        <Button variant="ghost" size="icon" onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
+            <Sun className="size-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+            <Moon className="absolute size-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+            <span className="sr-only">Toggle theme</span>
+        </Button>
+    );
 }
 ```
 
 **Step 3: Update root layout**
 
 In `apps/web/src/routes/__root.tsx`:
+
 - Remove hardcoded `className="dark"` from `<html>`
 - Wrap the layout in `<ThemeProvider>`
 - Add `<ThemeToggle />` to the header (next to UserMenu)
 
 **Step 4: Verify**
 
-Run: `cd apps/web && bun run dev`
-Expected: Toggle switches between light and dark mode.
+Run: `cd apps/web && bun run dev` Expected: Toggle switches between light and dark mode.
 
 **Step 5: Commit**
 
@@ -698,6 +695,7 @@ git commit -m "feat: add dark/light mode toggle with next-themes"
 ### Task 14: Fix docker-compose port mapping
 
 **Files:**
+
 - Modify: `docker-compose.yml`
 
 **Step 1: Fix port conflicts**
@@ -706,12 +704,12 @@ The web and server services both use port 3000 internally. Update the docker-com
 
 ```yaml
 web:
-  ports:
-    - "3001:3000"  # Web on host port 3001
+    ports:
+        - "3001:3000" # Web on host port 3001
 
 server:
-  ports:
-    - "3000:3000"  # API on host port 3000
+    ports:
+        - "3000:3000" # API on host port 3000
 ```
 
 **Step 2: Add healthchecks**
@@ -720,11 +718,11 @@ Add healthcheck to server service:
 
 ```yaml
 server:
-  healthcheck:
-    test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
-    interval: 10s
-    timeout: 5s
-    retries: 3
+    healthcheck:
+        test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+        interval: 10s
+        timeout: 5s
+        retries: 3
 ```
 
 **Step 3: Commit**
@@ -739,6 +737,7 @@ git commit -m "fix: resolve docker-compose port conflicts and add healthchecks"
 ### Task 15: Add Swagger/OpenAPI documentation
 
 **Files:**
+
 - Modify: `apps/server/package.json` (add @elysiajs/swagger dependency)
 - Modify: `apps/server/src/index.ts`
 
@@ -754,21 +753,21 @@ In `apps/server/src/index.ts`:
 import { swagger } from "@elysiajs/swagger";
 
 new Elysia()
-  .use(swagger({
-    path: "/docs",
-    documentation: {
-      info: { title: "Fubbik API", version: "0.1.0" },
-    },
-  }))
-  .use(cors(/* ... */))
-  // ... rest of server setup
+    .use(
+        swagger({
+            path: "/docs",
+            documentation: {
+                info: { title: "Fubbik API", version: "0.1.0" }
+            }
+        })
+    )
+    .use(cors(/* ... */));
+// ... rest of server setup
 ```
 
 **Step 3: Verify**
 
-Run: `cd apps/server && bun run dev`
-Navigate to: `http://localhost:3000/docs`
-Expected: Swagger UI with all endpoints listed
+Run: `cd apps/server && bun run dev` Navigate to: `http://localhost:3000/docs` Expected: Swagger UI with all endpoints listed
 
 **Step 4: Commit**
 
@@ -784,12 +783,14 @@ git commit -m "feat: add Swagger API documentation at /docs"
 ### Task 16: Update CLAUDE.md and README
 
 **Files:**
+
 - Modify: `CLAUDE.md`
 - Modify: `README.md` (if it references TRPC or has incorrect info)
 
 **Step 1: Review both files for accuracy**
 
 Read both files. Fix any references to TRPC (project uses Eden treaty, not TRPC). Update:
+
 - Tech stack should mention Eden treaty, not TRPC
 - Add `bun ci` to common commands
 - Add `PORT` env var documentation
@@ -810,6 +811,7 @@ git commit -m "docs: update project documentation to match current stack"
 ### Task 17: Add rate limiting to API
 
 **Files:**
+
 - Modify: `apps/server/package.json`
 - Modify: `apps/server/src/index.ts`
 
@@ -825,19 +827,20 @@ In `apps/server/src/index.ts`:
 import { rateLimit } from "elysia-rate-limit";
 
 new Elysia()
-  .use(swagger(/* ... */))
-  .use(rateLimit({
-    max: 100,
-    duration: 60_000, // 100 requests per minute
-  }))
-  .use(cors(/* ... */))
-  // ...
+    .use(swagger(/* ... */))
+    .use(
+        rateLimit({
+            max: 100,
+            duration: 60_000 // 100 requests per minute
+        })
+    )
+    .use(cors(/* ... */));
+// ...
 ```
 
 **Step 3: Verify**
 
-Run: `cd apps/server && bun run dev`
-Expected: Normal requests work. Rapid requests eventually get 429.
+Run: `cd apps/server && bun run dev` Expected: Normal requests work. Rapid requests eventually get 429.
 
 **Step 4: Commit**
 
@@ -851,6 +854,7 @@ git commit -m "feat: add rate limiting to API server"
 ### Task 18: Add unique constraint on chunk connections
 
 **Files:**
+
 - Modify: `packages/db/src/schema/chunk.ts`
 
 **Step 1: Add unique index**
@@ -866,8 +870,7 @@ uniqueIndex("connection_unique_idx").on(table.sourceId, table.targetId, table.re
 
 **Step 2: Generate migration**
 
-Run: `cd packages/db && bun run db:generate`
-Expected: New migration file created
+Run: `cd packages/db && bun run db:generate` Expected: New migration file created
 
 **Step 3: Commit**
 
@@ -880,17 +883,18 @@ git commit -m "feat: add unique constraint on chunk connections"
 
 ## Summary
 
-| Phase | Tasks | Focus |
-|-------|-------|-------|
-| 1 | 1-3 | Foundation: config, env, migrations |
-| 2 | 4-7 | API: logging, error handling, health, pagination |
-| 3 | 8-10 | Testing: API tests, schema tests |
-| 4 | 11-13 | Frontend: error boundary, validation, dark mode |
-| 5 | 14-15 | Deployment: docker fix, Swagger |
-| 6 | 16 | Documentation updates |
-| 7 | 17-18 | Security: rate limiting, constraints |
+| Phase | Tasks | Focus                                            |
+| ----- | ----- | ------------------------------------------------ |
+| 1     | 1-3   | Foundation: config, env, migrations              |
+| 2     | 4-7   | API: logging, error handling, health, pagination |
+| 3     | 8-10  | Testing: API tests, schema tests                 |
+| 4     | 11-13 | Frontend: error boundary, validation, dark mode  |
+| 5     | 14-15 | Deployment: docker fix, Swagger                  |
+| 6     | 16    | Documentation updates                            |
+| 7     | 17-18 | Security: rate limiting, constraints             |
 
 **Not included (separate plans):**
+
 - CLI refactor (local-first vs API-connected — needs design decision)
 - E2E tests with Playwright (needs CI pipeline first)
 - OAuth provider setup (needs provider credentials)

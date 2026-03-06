@@ -1,26 +1,25 @@
+import Typesense from "typesense";
 import type { CollectionSchema, CollectionUpdateSchema } from "typesense/lib/Typesense/Collection";
 import type { CollectionCreateSchema } from "typesense/lib/Typesense/Collections";
 import type { DocumentSchema, SearchResponse } from "typesense/lib/Typesense/Documents";
 import type { SearchParams } from "typesense/lib/Typesense/Types";
-
-import Typesense from "typesense";
 
 /**
  * Typesense client for fast, typo-tolerant search
  * @see https://typesense.org/docs/
  */
 export const searchClient = new Typesense.Client({
-  nodes: [
-    {
-      host: process.env.TYPESENSE_HOST!,
-      port: Number(process.env.TYPESENSE_PORT || 8108),
-      protocol: process.env.TYPESENSE_PROTOCOL || "http",
-    },
-  ],
-  apiKey: process.env.TYPESENSE_API_KEY!,
-  connectionTimeoutSeconds: 5,
-  numRetries: 3,
-  retryIntervalSeconds: 0.1,
+    nodes: [
+        {
+            host: process.env.TYPESENSE_HOST!,
+            port: Number(process.env.TYPESENSE_PORT || 8108),
+            protocol: process.env.TYPESENSE_PROTOCOL || "http"
+        }
+    ],
+    apiKey: process.env.TYPESENSE_API_KEY!,
+    connectionTimeoutSeconds: 5,
+    numRetries: 3,
+    retryIntervalSeconds: 0.1
 });
 
 /**
@@ -31,224 +30,198 @@ export const searchClient = new Typesense.Client({
  * Search documents in a collection
  */
 export async function search<T extends DocumentSchema>(
-  collectionName: string,
-  query: string,
-  queryBy: string,
-  options?: Omit<SearchParams<T>, "q" | "query_by">,
+    collectionName: string,
+    query: string,
+    queryBy: string,
+    options?: Omit<SearchParams<T>, "q" | "query_by">
 ): Promise<SearchResponse<T>> {
-  return searchClient
-    .collections<T>(collectionName)
-    .documents()
-    .search({
-      q: query,
-      query_by: queryBy,
-      ...options,
-    });
+    return searchClient
+        .collections<T>(collectionName)
+        .documents()
+        .search({
+            q: query,
+            query_by: queryBy,
+            ...options
+        });
 }
 
 /**
  * Add or update documents in a collection (upsert)
  */
 export async function addDocuments<T extends DocumentSchema>(
-  collectionName: string,
-  documents: T[],
-  options?: { action?: "create" | "update" | "upsert" | "emplace" },
+    collectionName: string,
+    documents: T[],
+    options?: { action?: "create" | "update" | "upsert" | "emplace" }
 ): Promise<{ success: number; failed: number }> {
-  const results = await searchClient
-    .collections<T>(collectionName)
-    .documents()
-    .import(documents, { action: options?.action || "upsert" });
+    const results = await searchClient
+        .collections<T>(collectionName)
+        .documents()
+        .import(documents, { action: options?.action || "upsert" });
 
-  let success = 0;
-  let failed = 0;
+    let success = 0;
+    let failed = 0;
 
-  for (const result of results) {
-    if (result.success) {
-      success++;
-    } else {
-      failed++;
+    for (const result of results) {
+        if (result.success) {
+            success++;
+        } else {
+            failed++;
+        }
     }
-  }
 
-  return { success, failed };
+    return { success, failed };
 }
 
 /**
  * Update a single document by ID
  */
 export async function updateDocument<T extends DocumentSchema>(
-  collectionName: string,
-  documentId: string,
-  document: Partial<T>,
+    collectionName: string,
+    documentId: string,
+    document: Partial<T>
 ): Promise<T> {
-  return searchClient
-    .collections<T>(collectionName)
-    .documents(documentId)
-    .update(document) as Promise<T>;
+    return searchClient.collections<T>(collectionName).documents(documentId).update(document) as Promise<T>;
 }
 
 /**
  * Delete a document by ID
  */
-export async function deleteDocument(
-  collectionName: string,
-  documentId: string,
-): Promise<{ id: string }> {
-  await searchClient.collections(collectionName).documents(documentId).delete();
-  return { id: documentId };
+export async function deleteDocument(collectionName: string, documentId: string): Promise<{ id: string }> {
+    await searchClient.collections(collectionName).documents(documentId).delete();
+    return { id: documentId };
 }
 
 /**
  * Delete multiple documents by filter
  */
-export async function deleteDocuments(
-  collectionName: string,
-  filterBy: string,
-): Promise<{ numDeleted: number }> {
-  const result = await searchClient
-    .collections(collectionName)
-    .documents()
-    .delete({ filter_by: filterBy });
-  return { numDeleted: result.num_deleted };
+export async function deleteDocuments(collectionName: string, filterBy: string): Promise<{ numDeleted: number }> {
+    const result = await searchClient.collections(collectionName).documents().delete({ filter_by: filterBy });
+    return { numDeleted: result.num_deleted };
 }
 
 /**
  * Delete all documents in a collection
  */
 export async function deleteAllDocuments(collectionName: string): Promise<{ numDeleted: number }> {
-  const result = await searchClient
-    .collections(collectionName)
-    .documents()
-    .delete({ truncate: true });
-  return { numDeleted: result.num_deleted };
+    const result = await searchClient.collections(collectionName).documents().delete({ truncate: true });
+    return { numDeleted: result.num_deleted };
 }
 
 /**
  * Get a single document by ID
  */
-export async function getDocument<T extends DocumentSchema>(
-  collectionName: string,
-  documentId: string,
-): Promise<T | null> {
-  try {
-    return await searchClient.collections<T>(collectionName).documents(documentId).retrieve();
-  } catch {
-    return null;
-  }
+export async function getDocument<T extends DocumentSchema>(collectionName: string, documentId: string): Promise<T | null> {
+    try {
+        return await searchClient.collections<T>(collectionName).documents(documentId).retrieve();
+    } catch {
+        return null;
+    }
 }
 
 /**
  * Export all documents from a collection
  */
-export async function exportDocuments<T extends DocumentSchema>(
-  collectionName: string,
-): Promise<T[]> {
-  const exported = await searchClient.collections<T>(collectionName).documents().export();
+export async function exportDocuments<T extends DocumentSchema>(collectionName: string): Promise<T[]> {
+    const exported = await searchClient.collections<T>(collectionName).documents().export();
 
-  return exported
-    .split("\n")
-    .filter(Boolean)
-    .map((line) => JSON.parse(line) as T);
+    return exported
+        .split("\n")
+        .filter(Boolean)
+        .map(line => JSON.parse(line) as T);
 }
 
 /**
  * Create a collection if it doesn't exist
  */
 export async function createCollection(schema: CollectionCreateSchema): Promise<CollectionSchema> {
-  return searchClient.collections().create(schema);
+    return searchClient.collections().create(schema);
 }
 
 /**
  * Delete a collection
  */
 export async function deleteCollection(collectionName: string): Promise<CollectionSchema> {
-  return searchClient.collections(collectionName).delete();
+    return searchClient.collections(collectionName).delete();
 }
 
 /**
  * Get all collections
  */
 export async function getCollections(): Promise<{ name: string; numDocuments: number }[]> {
-  const collections = await searchClient.collections().retrieve();
-  return collections.map((collection) => ({
-    name: collection.name,
-    numDocuments: collection.num_documents,
-  }));
+    const collections = await searchClient.collections().retrieve();
+    return collections.map(collection => ({
+        name: collection.name,
+        numDocuments: collection.num_documents
+    }));
 }
 
 /**
  * Get collection info
  */
 export async function getCollection(collectionName: string): Promise<CollectionSchema | null> {
-  try {
-    return await searchClient.collections(collectionName).retrieve();
-  } catch {
-    return null;
-  }
+    try {
+        return await searchClient.collections(collectionName).retrieve();
+    } catch {
+        return null;
+    }
 }
 
 /**
  * Update collection schema (add/drop fields)
  */
-export async function updateCollectionSchema(
-  collectionName: string,
-  updates: CollectionUpdateSchema,
-): Promise<CollectionSchema> {
-  return searchClient.collections(collectionName).update(updates);
+export async function updateCollectionSchema(collectionName: string, updates: CollectionUpdateSchema): Promise<CollectionSchema> {
+    return searchClient.collections(collectionName).update(updates);
 }
 
 /**
  * Create or update a collection alias
  */
-export async function upsertAlias(
-  aliasName: string,
-  collectionName: string,
-): Promise<{ name: string; collection_name: string }> {
-  return searchClient.aliases().upsert(aliasName, { collection_name: collectionName });
+export async function upsertAlias(aliasName: string, collectionName: string): Promise<{ name: string; collection_name: string }> {
+    return searchClient.aliases().upsert(aliasName, { collection_name: collectionName });
 }
 
 /**
  * Delete a collection alias
  */
 export async function deleteAlias(aliasName: string): Promise<{ name: string }> {
-  return searchClient.aliases(aliasName).delete();
+    return searchClient.aliases(aliasName).delete();
 }
 
 /**
  * Get all aliases
  */
 export async function getAliases(): Promise<{ name: string; collectionName: string }[]> {
-  const { aliases } = await searchClient.aliases().retrieve();
-  return aliases.map((alias) => ({
-    name: alias.name,
-    collectionName: alias.collection_name,
-  }));
+    const { aliases } = await searchClient.aliases().retrieve();
+    return aliases.map(alias => ({
+        name: alias.name,
+        collectionName: alias.collection_name
+    }));
 }
 
 /**
  * Multi-search across multiple collections
  */
 export async function multiSearch<T extends DocumentSchema>(
-  searches: Array<{
-    collection: string;
-    q: string;
-    query_by: string;
-    filter_by?: string;
-    sort_by?: string;
-    per_page?: number;
-  }>,
+    searches: Array<{
+        collection: string;
+        q: string;
+        query_by: string;
+        filter_by?: string;
+        sort_by?: string;
+        per_page?: number;
+    }>
 ): Promise<{ results: SearchResponse<T>[] }> {
-  return searchClient.multiSearch.perform({ searches });
+    return searchClient.multiSearch.perform({ searches });
 }
 
 /**
  * Health check for Typesense
  */
 export async function healthCheck(): Promise<{ status: "available" | "unavailable" }> {
-  try {
-    await searchClient.health.retrieve();
-    return { status: "available" };
-  } catch {
-    return { status: "unavailable" };
-  }
+    try {
+        await searchClient.health.retrieve();
+        return { status: "available" };
+    } catch {
+        return { status: "unavailable" };
+    }
 }

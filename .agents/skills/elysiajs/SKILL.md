@@ -9,7 +9,9 @@ Always consult [elysiajs.com/llms.txt](https://elysiajs.com/llms.txt) for code e
 
 ## Overview
 
-ElysiaJS is a TypeScript framework for building Bun-first (but not limited to Bun) type-safe, high-performance backend servers. This skill provides comprehensive guidance for developing with Elysia, including routing, validation, authentication, plugins, integrations, and deployment.
+ElysiaJS is a TypeScript framework for building Bun-first (but not limited to Bun) type-safe, high-performance backend servers. This skill
+provides comprehensive guidance for developing with Elysia, including routing, validation, authentication, plugins, integrations, and
+deployment.
 
 ## When to Use This Skill
 
@@ -38,33 +40,33 @@ bun create elysia app
 import { Elysia, t, status } from "elysia";
 
 const app = new Elysia()
-  .get("/", () => "Hello World")
-  .post("/user", ({ body }) => body, {
-    body: t.Object({
-      name: t.String(),
-      age: t.Number(),
-    }),
-  })
-  .get(
-    "/id/:id",
-    ({ params: { id } }) => {
-      if (id > 1_000_000) return status(404, "Not Found");
+    .get("/", () => "Hello World")
+    .post("/user", ({ body }) => body, {
+        body: t.Object({
+            name: t.String(),
+            age: t.Number()
+        })
+    })
+    .get(
+        "/id/:id",
+        ({ params: { id } }) => {
+            if (id > 1_000_000) return status(404, "Not Found");
 
-      return id;
-    },
-    {
-      params: t.Object({
-        id: t.Number({
-          minimum: 1,
-        }),
-      }),
-      response: {
-        200: t.Number(),
-        404: t.Literal("Not Found"),
-      },
-    },
-  )
-  .listen(3000);
+            return id;
+        },
+        {
+            params: t.Object({
+                id: t.Number({
+                    minimum: 1
+                })
+            }),
+            response: {
+                200: t.Number(),
+                404: t.Literal("Not Found")
+            }
+        }
+    )
+    .listen(3000);
 ```
 
 ## Basic Usage
@@ -75,13 +77,13 @@ const app = new Elysia()
 import { Elysia } from "elysia";
 
 new Elysia()
-  .get("/", "GET")
-  .post("/", "POST")
-  .put("/", "PUT")
-  .patch("/", "PATCH")
-  .delete("/", "DELETE")
-  .options("/", "OPTIONS")
-  .head("/", "HEAD");
+    .get("/", "GET")
+    .post("/", "POST")
+    .put("/", "PUT")
+    .patch("/", "PATCH")
+    .delete("/", "DELETE")
+    .options("/", "OPTIONS")
+    .head("/", "HEAD");
 ```
 
 ### Path Parameters
@@ -131,13 +133,13 @@ import { Elysia, t } from 'elysia'
 
 ```typescript
 body: t.Object({
-  user: t.Object({
-    name: t.String(),
-    address: t.Object({
-      street: t.String(),
-      city: t.String(),
-    }),
-  }),
+    user: t.Object({
+        name: t.String(),
+        address: t.Object({
+            street: t.String(),
+            city: t.String()
+        })
+    })
 });
 ```
 
@@ -145,13 +147,13 @@ body: t.Object({
 
 ```typescript
 body: t.Object({
-  tags: t.Array(t.String()),
-  users: t.Array(
-    t.Object({
-      id: t.String(),
-      name: t.String(),
-    }),
-  ),
+    tags: t.Array(t.String()),
+    users: t.Array(
+        t.Object({
+            id: t.String(),
+            name: t.String()
+        })
+    )
 });
 ```
 
@@ -249,7 +251,8 @@ import { z } from 'zod'
 
 ### Project Structure (Recommended)
 
-Elysia takes an unopinionated approach but based on user request. But without any specific preference, we recommend a feature-based and domain driven folder structure where each feature has its own folder containing controllers, services, and models.
+Elysia takes an unopinionated approach but based on user request. But without any specific preference, we recommend a feature-based and
+domain driven folder structure where each feature has its own folder containing controllers, services, and models.
 
 ```
 src/
@@ -281,19 +284,20 @@ Each file has its own responsibility as follows:
 Elysia is unopinionated on design pattern, but if not provided, we can relies on MVC pattern pair with feature based folder structure.
 
 - Controller:
-  - Prefers Elysia as a controller for HTTP dependant controller
-  - For non HTTP dependent, prefers service instead unless explicitly asked
-  - Use `onError` to handle local custom errors
-  - Register Model to Elysia instance via `Elysia.models({ ...models })` and prefix model by namespace `Elysia.prefix('model', 'Namespace.')
-  - Prefers Reference Model by name provided by Elysia instead of using an actual `Model.name`
+    - Prefers Elysia as a controller for HTTP dependant controller
+    - For non HTTP dependent, prefers service instead unless explicitly asked
+    - Use `onError` to handle local custom errors
+    - Register Model to Elysia instance via `Elysia.models({ ...models })` and prefix model by namespace `Elysia.prefix('model',
+      'Namespace.')
+    - Prefers Reference Model by name provided by Elysia instead of using an actual `Model.name`
 - Service:
-  - Prefers class (or abstract class if possible)
-  - Prefers interface/type derive from `Model`
-  - Return `status` (`import { status } from 'elysia'`) for error
-  - Prefers `return Error` instead of `throw Error`
+    - Prefers class (or abstract class if possible)
+    - Prefers interface/type derive from `Model`
+    - Return `status` (`import { status } from 'elysia'`) for error
+    - Prefers `return Error` instead of `throw Error`
 - Models:
-  - Always export validation model and type of validation model
-  - Custom Error should be in contains in Model
+    - Always export validation model and type of validation model
+    - Custom Error should be in contains in Model
 
 ## Elysia Key Concept
 
@@ -342,8 +346,8 @@ const auth = new Elysia().decorate("Auth", Auth).model(Auth.models);
 new Elysia().get("/", ({ Auth }) => Auth.getProfile()); // Auth doesn't exists
 
 new Elysia()
-  .use(auth) // must declare
-  .get("/", ({ Auth }) => Auth.getProfile());
+    .use(auth) // must declare
+    .get("/", ({ Auth }) => Auth.getProfile());
 ```
 
 **Global scope when:**
@@ -399,29 +403,29 @@ Model can be reference by name, especially great for documenting an API
 
 ```ts
 new Elysia()
-  .model({
-    book: t.Object({
-      name: t.String(),
-    }),
-  })
-  .post("/", ({ body }) => body.name, {
-    body: "book",
-  });
+    .model({
+        book: t.Object({
+            name: t.String()
+        })
+    })
+    .post("/", ({ body }) => body.name, {
+        body: "book"
+    });
 ```
 
 Model can be renamed by using `.prefix` / `.suffix`
 
 ```ts
 new Elysia()
-  .model({
-    book: t.Object({
-      name: t.String(),
-    }),
-  })
-  .prefix("model", "Namespace")
-  .post("/", ({ body }) => body.name, {
-    body: "Namespace.Book",
-  });
+    .model({
+        book: t.Object({
+            name: t.String()
+        })
+    })
+    .prefix("model", "Namespace")
+    .post("/", ({ body }) => body.name, {
+        body: "Namespace.Book"
+    });
 ```
 
 Once `prefix`, model name will be capitalized by default.
@@ -450,7 +454,8 @@ Detailed documentation split by topic:
 - `deployment.md` - Production deployment guide / Docker
 - `eden.md` - e2e type safe RPC client for share type from backend to frontend
 - `guard.md` - Setting validation/lifecycle all at once
-- `macro.md` - Compose multiple schema/lifecycle as a reusable Elysia via key-value (recommended for complex setup, eg. authentication, authorization, Role-based Access Check)
+- `macro.md` - Compose multiple schema/lifecycle as a reusable Elysia via key-value (recommended for complex setup, eg. authentication,
+  authorization, Role-based Access Check)
 - `plugin.md` - Decouple part of Elysia into a standalone component
 - `route.md` - Elysia foundation building block: Routing, Handler and Context
 - `testing.md` - Unit tests with examples

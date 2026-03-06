@@ -40,12 +40,12 @@ my-monorepo/
 ```json
 // apps/web/package.json
 {
-  "name": "web",
-  "private": true,
-  "dependencies": {
-    "@repo/ui": "workspace:*",
-    "next": "latest"
-  }
+    "name": "web",
+    "private": true,
+    "dependencies": {
+        "@repo/ui": "workspace:*",
+        "next": "latest"
+    }
 }
 ```
 
@@ -58,11 +58,11 @@ my-monorepo/
 ```json
 // packages/ui/package.json
 {
-  "name": "@repo/ui",
-  "exports": {
-    "./button": "./src/button.tsx",
-    "./card": "./src/card.tsx"
-  }
+    "name": "@repo/ui",
+    "exports": {
+        "./button": "./src/button.tsx",
+        "./card": "./src/card.tsx"
+    }
 }
 ```
 
@@ -74,15 +74,14 @@ Export TypeScript directly; let the app's bundler compile it.
 
 ```json
 {
-  "name": "@repo/ui",
-  "exports": {
-    "./button": "./src/button.tsx"
-  }
+    "name": "@repo/ui",
+    "exports": {
+        "./button": "./src/button.tsx"
+    }
 }
 ```
 
-**Pros**: Zero build config, instant changes
-**Cons**: Can't cache builds, requires app bundler support
+**Pros**: Zero build config, instant changes **Cons**: Can't cache builds, requires app bundler support
 
 ### Compiled (Recommended for Libraries)
 
@@ -90,21 +89,20 @@ Package compiles itself with `tsc` or bundler.
 
 ```json
 {
-  "name": "@repo/ui",
-  "exports": {
-    "./button": {
-      "types": "./src/button.tsx",
-      "default": "./dist/button.js"
+    "name": "@repo/ui",
+    "exports": {
+        "./button": {
+            "types": "./src/button.tsx",
+            "default": "./dist/button.js"
+        }
+    },
+    "scripts": {
+        "build": "tsc"
     }
-  },
-  "scripts": {
-    "build": "tsc"
-  }
 }
 ```
 
-**Pros**: Cacheable by Turborepo, works everywhere
-**Cons**: More configuration
+**Pros**: Cacheable by Turborepo, works everywhere **Cons**: More configuration
 
 ## Dependency Management
 
@@ -146,11 +144,11 @@ Use workspace protocol for internal packages:
 
 ```json
 {
-  "exports": {
-    ".": "./src/index.ts",
-    "./button": "./src/button.tsx",
-    "./utils": "./src/utils.ts"
-  }
+    "exports": {
+        ".": "./src/index.ts",
+        "./button": "./src/button.tsx",
+        "./utils": "./src/utils.ts"
+    }
 }
 ```
 

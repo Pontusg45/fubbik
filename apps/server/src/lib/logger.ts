@@ -6,31 +6,27 @@ const isDevelopment = process.env.NODE_ENV !== "production";
 
 // Custom format for development with colors
 const devFormat = winston.format.combine(
-  winston.format.colorize(),
-  winston.format.timestamp({ format: "YYYY-MM-DD HH:mm:ss" }),
-  winston.format.printf(({ timestamp, level, message, ...meta }) => {
-    const metaStr = Object.keys(meta).length ? ` ${JSON.stringify(meta)}` : "";
-    return `${timestamp} [${level}]: ${message}${metaStr}`;
-  }),
+    winston.format.colorize(),
+    winston.format.timestamp({ format: "YYYY-MM-DD HH:mm:ss" }),
+    winston.format.printf(({ timestamp, level, message, ...meta }) => {
+        const metaStr = Object.keys(meta).length ? ` ${JSON.stringify(meta)}` : "";
+        return `${timestamp} [${level}]: ${message}${metaStr}`;
+    })
 );
 
 // JSON format for production
-const prodFormat = winston.format.combine(
-  winston.format.timestamp(),
-  winston.format.errors({ stack: true }),
-  winston.format.json(),
-);
+const prodFormat = winston.format.combine(winston.format.timestamp(), winston.format.errors({ stack: true }), winston.format.json());
 
 // Create logger instance
 const logger = winston.createLogger({
-  level: logLevel,
-  format: isDevelopment ? devFormat : prodFormat,
-  defaultMeta: { env: process.env.NODE_ENV || "development" },
-  transports: [
-    new winston.transports.Console({
-      stderrLevels: ["error"],
-    }),
-  ],
+    level: logLevel,
+    format: isDevelopment ? devFormat : prodFormat,
+    defaultMeta: { env: process.env.NODE_ENV || "development" },
+    transports: [
+        new winston.transports.Console({
+            stderrLevels: ["error"]
+        })
+    ]
 });
 
 /**
@@ -42,7 +38,7 @@ const logger = winston.createLogger({
  * requestLogger.info('Processing request');
  */
 export function createChildLogger(bindings: Record<string, unknown>): winston.Logger {
-  return logger.child(bindings);
+    return logger.child(bindings);
 }
 
 /**

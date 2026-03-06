@@ -19,10 +19,10 @@ import { Elysia } from "elysia";
 import { CloudflareAdapter } from "elysia/adapter/cloudflare-worker";
 
 export default new Elysia({
-  adapter: CloudflareAdapter,
+    adapter: CloudflareAdapter
 })
-  .get("/", () => "Hello Cloudflare Worker!")
-  .compile(); // Required
+    .get("/", () => "Hello Cloudflare Worker!")
+    .compile(); // Required
 ```
 
 3. Set compatibility date (min `2025-06-01`):
@@ -30,9 +30,9 @@ export default new Elysia({
 ```json
 // wrangler.json
 {
-  "name": "elysia-on-cloudflare",
-  "main": "src/index.ts",
-  "compatibility_date": "2025-06-01"
+    "name": "elysia-on-cloudflare",
+    "main": "src/index.ts",
+    "compatibility_date": "2025-06-01"
 }
 ```
 
@@ -67,7 +67,7 @@ Use Cloudflare's built-in static serving:
 ```json
 // wrangler.json
 {
-  "assets": { "directory": "public" }
+    "assets": { "directory": "public" }
 }
 ```
 
@@ -91,9 +91,7 @@ Import env from `cloudflare:workers`:
 ```typescript
 import { env } from "cloudflare:workers";
 
-export default new Elysia({ adapter: CloudflareAdapter })
-  .get("/", () => `Hello ${await env.KV.get("my-key")}`)
-  .compile();
+export default new Elysia({ adapter: CloudflareAdapter }).get("/", () => `Hello ${await env.KV.get("my-key")}`).compile();
 ```
 
 ## AoT Compilation

@@ -35,10 +35,10 @@ Value can be one of the following:
 - **boolean** - If set to true, Access-Control-Allow-Origin will be set to `*` (any origins)
 - **RegExp** - Pattern to match request's URL, allowed if matched.
 - **Function** - Custom logic to allow resource sharing, allow if `true` is returned.
-  - Expected to have the type of:
-  ```typescript
-  cors(context: Context) => boolean | void
-  ```
+    - Expected to have the type of:
+    ```typescript
+    cors(context: Context) => boolean | void
+    ```
 - **Array<string | RegExp | Function>** - iterate through all cases above in order, allowed if any of the values are `true`.
 
 ---
@@ -54,9 +54,9 @@ Value can be one of the following:
 - **undefined | null | ''** - Ignore all methods.
 - **\*** - Allows all methods.
 - **string** - Expects either a single method or a comma-delimited string
-  - (eg: `'GET, PUT, POST'`)
+    - (eg: `'GET, PUT, POST'`)
 - **string[]** - Allow multiple HTTP methods.
-  - eg: `['GET', 'PUT', 'POST']`
+    - eg: `['GET', 'PUT', 'POST']`
 
 ---
 
@@ -69,9 +69,9 @@ Allowed headers for an incoming request by assign `Access-Control-Allow-Headers`
 Value can be one of the following:
 
 - **string** - Expects either a single header or a comma-delimited string
-  - eg: `'Content-Type, Authorization'`.
+    - eg: `'Content-Type, Authorization'`.
 - **string[]** - Allow multiple HTTP headers.
-  - eg: `['Content-Type', 'Authorization']`
+    - eg: `['Content-Type', 'Authorization']`
 
 ---
 
@@ -84,9 +84,9 @@ Response CORS with specified headers by sssign Access-Control-Expose-Headers hea
 Value can be one of the following:
 
 - **string** - Expects either a single header or a comma-delimited string.
-  - eg: `'Content-Type, X-Powered-By'`.
+    - eg: `'Content-Type, X-Powered-By'`.
 - **string[]** - Allow multiple HTTP headers.
-  - eg: `['Content-Type', 'X-Powered-By']`
+    - eg: `['Content-Type', 'X-Powered-By']`
 
 ---
 
@@ -94,7 +94,8 @@ Value can be one of the following:
 
 @default `true`
 
-The Access-Control-Allow-Credentials response header tells browsers whether to expose the response to the frontend JavaScript code when the request's credentials mode Request.credentials is `include`.
+The Access-Control-Allow-Credentials response header tells browsers whether to expose the response to the frontend JavaScript code when the
+request's credentials mode Request.credentials is `include`.
 
 Credentials are cookies, authorization headers, or TLS client certificates by assign `Access-Control-Allow-Credentials` header.
 
@@ -104,7 +105,8 @@ Credentials are cookies, authorization headers, or TLS client certificates by as
 
 @default `5`
 
-Indicates how long the results of a preflight request that is the information contained in the `Access-Control-Allow-Methods` and `Access-Control-Allow-Headers` headers) can be cached.
+Indicates how long the results of a preflight request that is the information contained in the `Access-Control-Allow-Methods` and
+`Access-Control-Allow-Headers` headers) can be cached.
 
 Assign `Access-Control-Max-Age` header.
 
@@ -112,7 +114,8 @@ Assign `Access-Control-Max-Age` header.
 
 ### preflight
 
-The preflight request is a request sent to check if the CORS protocol is understood and if a server is aware of using specific methods and headers.
+The preflight request is a request sent to check if the CORS protocol is understood and if a server is aware of using specific methods and
+headers.
 
 Response with **OPTIONS** request with 3 HTTP request headers:
 
@@ -135,13 +138,13 @@ import { Elysia } from "elysia";
 import { cors } from "@elysiajs/cors";
 
 const app = new Elysia()
-  .use(
-    cors({
-      origin: /.*\.saltyaom\.com$/,
-    }),
-  )
-  .get("/", () => "Hi")
-  .listen(3000);
+    .use(
+        cors({
+            origin: /.*\.saltyaom\.com$/
+        })
+    )
+    .get("/", () => "Hi")
+    .listen(3000);
 ```
 
 This will allow requests from top-level domains with `saltyaom.com`

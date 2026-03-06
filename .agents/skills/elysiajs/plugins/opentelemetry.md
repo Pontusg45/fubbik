@@ -14,9 +14,9 @@ import { BatchSpanProcessor } from "@opentelemetry/sdk-trace-node";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-proto";
 
 new Elysia().use(
-  opentelemetry({
-    spanProcessors: [new BatchSpanProcessor(new OTLPTraceExporter())],
-  }),
+    opentelemetry({
+        spanProcessors: [new BatchSpanProcessor(new OTLPTraceExporter())]
+    })
 );
 ```
 
@@ -111,8 +111,8 @@ Get current span outside handler (via AsyncLocalStorage):
 import { getCurrentSpan } from "@elysiajs/opentelemetry";
 
 function utility() {
-  const span = getCurrentSpan();
-  span.setAttributes({ "custom.attribute": "value" });
+    const span = getCurrentSpan();
+    span.setAttributes({ "custom.attribute": "value" });
 }
 ```
 
@@ -124,7 +124,7 @@ Sugar for `getCurrentSpan().setAttributes`:
 import { setAttributes } from "@elysiajs/opentelemetry";
 
 function utility() {
-  setAttributes({ "custom.attribute": "value" });
+    setAttributes({ "custom.attribute": "value" });
 }
 ```
 
@@ -142,7 +142,7 @@ import { opentelemetry } from "@elysiajs/opentelemetry";
 import { PgInstrumentation } from "@opentelemetry/instrumentation-pg";
 
 export const instrumentation = opentelemetry({
-  instrumentations: [new PgInstrumentation()],
+    instrumentations: [new PgInstrumentation()]
 });
 ```
 
@@ -173,11 +173,11 @@ Package.json:
 
 ```json
 {
-  "dependencies": { "pg": "^8.15.6" },
-  "devDependencies": {
-    "@elysiajs/opentelemetry": "^1.2.0",
-    "@opentelemetry/instrumentation-pg": "^0.52.0"
-  }
+    "dependencies": { "pg": "^8.15.6" },
+    "devDependencies": {
+        "@elysiajs/opentelemetry": "^1.2.0",
+        "@opentelemetry/instrumentation-pg": "^0.52.0"
+    }
 }
 ```
 

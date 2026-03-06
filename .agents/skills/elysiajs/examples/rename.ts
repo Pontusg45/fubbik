@@ -5,23 +5,23 @@ import { Elysia, t } from "elysia";
 const myPlugin = new Elysia().decorate("myProperty", 42).model("salt", t.String());
 
 new Elysia()
-  .use(
-    myPlugin
-      // map decorator, rename "myProperty" to "renamedProperty"
-      .decorate(({ myProperty, ...decorators }) => ({
-        renamedProperty: myProperty,
-        ...decorators,
-      }))
-      // map model, rename "salt" to "pepper"
-      .model(({ salt, ...models }) => ({
-        ...models,
-        pepper: t.String(),
-      }))
-      // Add prefix
-      .prefix("decorator", "unstable"),
-  )
-  .get("/mapped", ({ unstableRenamedProperty }) => unstableRenamedProperty)
-  .post("/pepper", ({ body }) => body, {
-    body: "pepper",
-    // response: t.String()
-  });
+    .use(
+        myPlugin
+            // map decorator, rename "myProperty" to "renamedProperty"
+            .decorate(({ myProperty, ...decorators }) => ({
+                renamedProperty: myProperty,
+                ...decorators
+            }))
+            // map model, rename "salt" to "pepper"
+            .model(({ salt, ...models }) => ({
+                ...models,
+                pepper: t.String()
+            }))
+            // Add prefix
+            .prefix("decorator", "unstable")
+    )
+    .get("/mapped", ({ unstableRenamedProperty }) => unstableRenamedProperty)
+    .post("/pepper", ({ body }) => body, {
+        body: "pepper"
+        // response: t.String()
+    });

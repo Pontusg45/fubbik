@@ -1,21 +1,21 @@
 {
-  "name": "@fubbik/auth",
-  "type": "module",
-  "exports": {
-    ".": "./src/index.ts"
-  },
-  "scripts": {
-    "lint": "oxlint src"
-  },
-  "dependencies": {
-    "@better-auth/drizzle-adapter": "^1.5.1",
-    "@fubbik/db": "workspace:*",
-    "@fubbik/env": "workspace:*",
-    "better-auth": "catalog:",
-    "dotenv": "catalog:"
-  },
-  "devDependencies": {
-    "@fubbik/config": "workspace:*",
-    "typescript": "catalog:"
-  }
+    "name": "@fubbik/auth",
+    "type": "module",
+    "exports": {
+        ".": "./src/index.ts"
+    },
+    "scripts": {
+        "lint": "oxlint src"
+    },
+    "dependencies": {
+        "@better-auth/drizzle-adapter": "^1.5.1",
+        "@fubbik/db": "workspace:*",
+        "@fubbik/env": "workspace:*",
+        "better-auth": "catalog:",
+        "dotenv": "catalog:"
+    },
+    "devDependencies": {
+        "@fubbik/config": "workspace:*",
+        "typescript": "catalog:"
+    }
 }

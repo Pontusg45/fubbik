@@ -47,25 +47,26 @@ Package tasks enable parallelization, individual caching, and filtering. Define 
 ```json
 // Root package.json - delegates to turbo
 {
-  "scripts": {
-    "build": "turbo run build",
-    "lint": "turbo run lint",
-    "test": "turbo run test",
-    "typecheck": "turbo run typecheck"
-  }
+    "scripts": {
+        "build": "turbo run build",
+        "lint": "turbo run lint",
+        "test": "turbo run test",
+        "typecheck": "turbo run typecheck"
+    }
 }
 ```
 
 When you run `turbo run lint`, Turborepo finds all packages with a `lint` script and runs them **in parallel**.
 
-**Root Tasks are a fallback**, not the default. Only use them for tasks that truly cannot run per-package (e.g., repo-level CI scripts, workspace-wide config generation).
+**Root Tasks are a fallback**, not the default. Only use them for tasks that truly cannot run per-package (e.g., repo-level CI scripts,
+workspace-wide config generation).
 
 ```json
 // AVOID: Task logic in root defeats parallelization
 {
-  "scripts": {
-    "lint": "eslint apps/web && eslint apps/api && eslint packages/ui"
-  }
+    "scripts": {
+        "lint": "eslint apps/web && eslint apps/api && eslint packages/ui"
+    }
 }
 ```
 
@@ -73,19 +74,19 @@ When you run `turbo run lint`, Turborepo finds all packages with a `lint` script
 
 ```json
 {
-  "$schema": "https://v2-8-14-canary-8.turborepo.dev/schema.json",
-  "globalEnv": ["CI"],
-  "globalDependencies": ["tsconfig.json"],
-  "tasks": {
-    "build": {
-      "dependsOn": ["^build"],
-      "outputs": ["dist/**"]
-    },
-    "dev": {
-      "cache": false,
-      "persistent": true
+    "$schema": "https://v2-8-14-canary-8.turborepo.dev/schema.json",
+    "globalEnv": ["CI"],
+    "globalDependencies": ["tsconfig.json"],
+    "tasks": {
+        "build": {
+            "dependsOn": ["^build"],
+            "outputs": ["dist/**"]
+        },
+        "dev": {
+            "cache": false,
+            "persistent": true
+        }
     }
-  }
 }
 ```
 
@@ -110,12 +111,12 @@ Use `turbo.json` in individual packages to override root settings:
 ```json
 // packages/web/turbo.json
 {
-  "extends": ["//"],
-  "tasks": {
-    "build": {
-      "outputs": [".next/**", "!.next/cache/**"]
+    "extends": ["//"],
+    "tasks": {
+        "build": {
+            "outputs": [".next/**", "!.next/cache/**"]
+        }
     }
-  }
 }
 ```
 
@@ -135,7 +136,7 @@ You can extend from config packages instead of just root:
 ```json
 // packages/web/turbo.json
 {
-  "extends": ["//", "@repo/turbo-config"]
+    "extends": ["//", "@repo/turbo-config"]
 }
 ```
 
@@ -146,24 +147,24 @@ By default, array fields in Package Configurations **replace** root values. Use 
 ```json
 // Root turbo.json
 {
-  "tasks": {
-    "build": {
-      "outputs": ["dist/**"]
+    "tasks": {
+        "build": {
+            "outputs": ["dist/**"]
+        }
     }
-  }
 }
 ```
 
 ```json
 // packages/web/turbo.json
 {
-  "extends": ["//"],
-  "tasks": {
-    "build": {
-      // Inherits "dist/**" from root, adds ".next/**"
-      "outputs": ["$TURBO_EXTENDS$", ".next/**", "!.next/cache/**"]
+    "extends": ["//"],
+    "tasks": {
+        "build": {
+            // Inherits "dist/**" from root, adds ".next/**"
+            "outputs": ["$TURBO_EXTENDS$", ".next/**", "!.next/cache/**"]
+        }
     }
-  }
 }
 ```
 
@@ -185,12 +186,12 @@ Use `extends: false` to exclude a task from a package:
 ```json
 // packages/ui/turbo.json
 {
-  "extends": ["//"],
-  "tasks": {
-    "e2e": {
-      "extends": false // UI package doesn't have e2e tests
+    "extends": ["//"],
+    "tasks": {
+        "e2e": {
+            "extends": false // UI package doesn't have e2e tests
+        }
     }
-  }
 }
 ```
 
@@ -201,11 +202,11 @@ Use `turbo.jsonc` extension to add comments with IDE support:
 ```jsonc
 // turbo.jsonc
 {
-  "tasks": {
-    "build": {
-      // Next.js outputs
-      "outputs": [".next/**", "!.next/cache/**"],
-    },
-  },
+    "tasks": {
+        "build": {
+            // Next.js outputs
+            "outputs": [".next/**", "!.next/cache/**"]
+        }
+    }
 }
 ```

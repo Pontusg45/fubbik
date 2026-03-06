@@ -3,6 +3,7 @@
 **Goal:** Restructure the monorepo to use feature-based folder organization and split the API into routes → services → repositories.
 
 **Decisions:**
+
 - Repositories (DB query functions) live in `packages/db/src/repository/`
 - Services (business logic) + routes live in `packages/api/src/<feature>/`
 - Web app uses `src/features/` for feature-specific components; routes stay flat (TanStack Router requirement)
@@ -28,7 +29,8 @@ packages/db/src/
 └── migrations/
 ```
 
-Each repository exports plain async functions. No Elysia/HTTP awareness — pure data access. Functions take typed params and return typed results.
+Each repository exports plain async functions. No Elysia/HTTP awareness — pure data access. Functions take typed params and return typed
+results.
 
 ## packages/api — Routes + Services
 
@@ -48,7 +50,8 @@ packages/api/src/
 └── index.test.ts
 ```
 
-`index.ts` composes feature routes via `.use()`. Route handlers are thin — they extract params and call services. Services handle business logic and call repositories. No direct DB imports in route files.
+`index.ts` composes feature routes via `.use()`. Route handlers are thin — they extract params and call services. Services handle business
+logic and call repositories. No direct DB imports in route files.
 
 ## apps/web — Feature folders + flat routes
 

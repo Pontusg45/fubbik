@@ -16,10 +16,10 @@ import { Elysia } from "elysia";
 import { html, Html } from "@elysiajs/html";
 
 new Elysia()
-  .use(html())
-  .get(
-    "/html",
-    () => `
+    .use(html())
+    .get(
+        "/html",
+        () => `
             <html lang='en'>
                 <head>
                     <title>Hello World</title>
@@ -27,22 +27,23 @@ new Elysia()
                 <body>
                     <h1>Hello World</h1>
                 </body>
-            </html>`,
-  )
-  .get("/jsx", () => (
-    <html lang="en">
-      <head>
-        <title>Hello World</title>
-      </head>
-      <body>
-        <h1>Hello World</h1>
-      </body>
-    </html>
-  ))
-  .listen(3000);
+            </html>`
+    )
+    .get("/jsx", () => (
+        <html lang="en">
+            <head>
+                <title>Hello World</title>
+            </head>
+            <body>
+                <h1>Hello World</h1>
+            </body>
+        </html>
+    ))
+    .listen(3000);
 ```
 
-This plugin will automatically add `Content-Type: text/html; charset=utf8` header to the response, add `<!doctype html>`, and convert it into a Response object.
+This plugin will automatically add `Content-Type: text/html; charset=utf8` header to the response, add `<!doctype html>`, and convert it
+into a Response object.
 
 ## JSX
 
@@ -58,11 +59,11 @@ Elysia can use JSX
 ```jsonc
 // tsconfig.json
 {
-  "compilerOptions": {
-    "jsx": "react",
-    "jsxFactory": "Html.createElement",
-    "jsxFragmentFactory": "Html.Fragment",
-  },
+    "compilerOptions": {
+        "jsx": "react",
+        "jsxFactory": "Html.createElement",
+        "jsxFragmentFactory": "Html.Fragment"
+    }
 }
 ```
 
@@ -74,18 +75,18 @@ import { Elysia } from "elysia";
 import { html, Html } from "@elysiajs/html";
 
 new Elysia()
-  .use(html())
-  .get("/", () => (
-    <html lang="en">
-      <head>
-        <title>Hello World</title>
-      </head>
-      <body>
-        <h1>Hello World</h1>
-      </body>
-    </html>
-  ))
-  .listen(3000);
+    .use(html())
+    .get("/", () => (
+        <html lang="en">
+            <head>
+                <title>Hello World</title>
+            </head>
+            <body>
+                <h1>Hello World</h1>
+            </body>
+        </html>
+    ))
+    .listen(3000);
 ```
 
 If the error `Cannot find name 'Html'. Did you mean 'html'?` occurs, this import must be added to the JSX template:
@@ -107,24 +108,24 @@ import { Elysia, t } from "elysia";
 import { html, Html } from "@elysiajs/html";
 
 new Elysia()
-  .use(html())
-  .post(
-    "/",
-    ({ body }) => (
-      <html lang="en">
-        <head>
-          <title>Hello World</title>
-        </head>
-        <body>
-          <h1 safe>{body}</h1>
-        </body>
-      </html>
-    ),
-    {
-      body: t.String(),
-    },
-  )
-  .listen(3000);
+    .use(html())
+    .post(
+        "/",
+        ({ body }) => (
+            <html lang="en">
+                <head>
+                    <title>Hello World</title>
+                </head>
+                <body>
+                    <h1 safe>{body}</h1>
+                </body>
+            </html>
+        ),
+        {
+            body: t.String()
+        }
+    )
+    .listen(3000);
 ```
 
 However, when are building a large-scale app, it's best to have a type reminder to detect possible XSS vulnerabilities in your codebase.
@@ -140,12 +141,12 @@ Then appends the following **tsconfig.json**
 ```jsonc
 // tsconfig.json
 {
-  "compilerOptions": {
-    "jsx": "react",
-    "jsxFactory": "Html.createElement",
-    "jsxFragmentFactory": "Html.Fragment",
-    "plugins": [{ "name": "@kitajs/ts-html-plugin" }],
-  },
+    "compilerOptions": {
+        "jsx": "react",
+        "jsxFactory": "Html.createElement",
+        "jsxFragmentFactory": "Html.Fragment",
+        "plugins": [{ "name": "@kitajs/ts-html-plugin" }]
+    }
 }
 ```
 
@@ -189,6 +190,7 @@ app.get("/", ({ html }) => html("<html></html>"));
 - Type: `(value: string) => boolean`
 - Default: `isHtml` (exported function)
 
-The function is used to detect if a string is a html or not. Default implementation if length is greater than 7, starts with `<` and ends with `>`.
+The function is used to detect if a string is a html or not. Default implementation if length is greater than 7, starts with `<` and ends
+with `>`.
 
 Keep in mind there's no real way to validate HTML, so the default implementation is a best guess.

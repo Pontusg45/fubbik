@@ -15,10 +15,10 @@ Zero-config deployment on Vercel (Bun or Node runtime).
 import { Elysia, t } from "elysia";
 
 export default new Elysia()
-  .get("/", () => "Hello Vercel Function")
-  .post("/", ({ body }) => body, {
-    body: t.Object({ name: t.String() }),
-  });
+    .get("/", () => "Hello Vercel Function")
+    .post("/", ({ body }) => body, {
+        body: t.Object({ name: t.String() })
+    });
 ```
 
 3. Develop locally:
@@ -39,8 +39,8 @@ Set in `package.json`:
 
 ```json
 {
-  "name": "elysia-app",
-  "type": "module"
+    "name": "elysia-app",
+    "type": "module"
 }
 ```
 
@@ -50,8 +50,8 @@ Set in `vercel.json`:
 
 ```json
 {
-  "$schema": "https://openapi.vercel.sh/vercel.json",
-  "bunVersion": "1.x"
+    "$schema": "https://openapi.vercel.sh/vercel.json",
+    "bunVersion": "1.x"
 }
 ```
 

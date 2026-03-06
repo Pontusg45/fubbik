@@ -1,35 +1,35 @@
 {
-  "version": 1,
-  "skills": {
-    "better-auth-best-practices": {
-      "source": "better-auth/skills",
-      "sourceType": "github",
-      "computedHash": "a4c830509e85557b59339d8d93a4e243e9e59c686e7678854d39230e12c2a6dc"
-    },
-    "elysiajs": {
-      "source": "elysiajs/skills",
-      "sourceType": "github",
-      "computedHash": "55268e69a2c766ed67e56a0db57544f60cc52dba0c7f024a974baf965e525e1b"
-    },
-    "turborepo": {
-      "source": "vercel/turborepo",
-      "sourceType": "github",
-      "computedHash": "cdb7f47b38f7d635dabab0a94001a6a3e1a2b322836c2ecf42a5e2fe8b9e7ec2"
-    },
-    "vercel-composition-patterns": {
-      "source": "vercel-labs/agent-skills",
-      "sourceType": "github",
-      "computedHash": "f98931159fa9c7fed043bcd18a891a46dcf89ababa38df13a4c5b7b30dc0ce07"
-    },
-    "vercel-react-best-practices": {
-      "source": "vercel-labs/agent-skills",
-      "sourceType": "github",
-      "computedHash": "3462ec83f862abb2d532953df33a4dbf87f4616849da5d4b5cc7c13601aaf997"
-    },
-    "web-design-guidelines": {
-      "source": "vercel-labs/agent-skills",
-      "sourceType": "github",
-      "computedHash": "a6a44d5498f7e8f68289902f3dedfc6f38ae0cee1e96527c80724cf27f727c2a"
+    "version": 1,
+    "skills": {
+        "better-auth-best-practices": {
+            "source": "better-auth/skills",
+            "sourceType": "github",
+            "computedHash": "a4c830509e85557b59339d8d93a4e243e9e59c686e7678854d39230e12c2a6dc"
+        },
+        "elysiajs": {
+            "source": "elysiajs/skills",
+            "sourceType": "github",
+            "computedHash": "55268e69a2c766ed67e56a0db57544f60cc52dba0c7f024a974baf965e525e1b"
+        },
+        "turborepo": {
+            "source": "vercel/turborepo",
+            "sourceType": "github",
+            "computedHash": "cdb7f47b38f7d635dabab0a94001a6a3e1a2b322836c2ecf42a5e2fe8b9e7ec2"
+        },
+        "vercel-composition-patterns": {
+            "source": "vercel-labs/agent-skills",
+            "sourceType": "github",
+            "computedHash": "f98931159fa9c7fed043bcd18a891a46dcf89ababa38df13a4c5b7b30dc0ce07"
+        },
+        "vercel-react-best-practices": {
+            "source": "vercel-labs/agent-skills",
+            "sourceType": "github",
+            "computedHash": "3462ec83f862abb2d532953df33a4dbf87f4616849da5d4b5cc7c13601aaf997"
+        },
+        "web-design-guidelines": {
+            "source": "vercel-labs/agent-skills",
+            "sourceType": "github",
+            "computedHash": "a6a44d5498f7e8f68289902f3dedfc6f38ae0cee1e96527c80724cf27f727c2a"
+        }
     }
-  }
 }

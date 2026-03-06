@@ -1,41 +1,37 @@
 {
-  "$schema": "https://unpkg.com/knip@5/schema.json",
-  "ignore": [".agents/**", ".claude/**", ".kiro/**"],
-  "ignoreDependencies": ["dotenv"],
-  "workspaces": {
-    ".": {
-      "ignoreDependencies": ["@fubbik/config", "@fubbik/env"]
-    },
-    "apps/web": {
-      "entry": ["src/routes/**/*.{ts,tsx}", "src/router.tsx"],
-      "project": ["src/**/*.{ts,tsx}"],
-      "ignoreDependencies": [
-        "@tanstack/router-plugin",
-        "@fontsource-variable/inter",
-        "@tanstack/react-router-with-query"
-      ],
-      "ignore": ["src/components/ui/**"]
-    },
-    "apps/server": {
-      "entry": ["src/**/*.ts"],
-      "project": ["src/**/*.ts"],
-      "ignoreDependencies": ["better-auth"]
-    },
-    "packages/api": {
-      "project": ["src/**/*.ts"],
-      "ignoreDependencies": ["@fubbik/db", "@fubbik/env"]
-    },
-    "packages/auth": {
-      "project": ["src/**/*.ts"]
-    },
-    "packages/db": {
-      "project": ["src/**/*.ts"]
-    },
-    "packages/env": {
-      "project": ["src/**/*.ts"]
-    },
-    "packages/config": {
-      "ignore": ["**/*"]
+    "$schema": "https://unpkg.com/knip@5/schema.json",
+    "ignore": [".agents/**", ".claude/**", ".kiro/**"],
+    "ignoreDependencies": ["dotenv"],
+    "workspaces": {
+        ".": {
+            "ignoreDependencies": ["@fubbik/config", "@fubbik/env"]
+        },
+        "apps/web": {
+            "entry": ["src/routes/**/*.{ts,tsx}", "src/router.tsx"],
+            "project": ["src/**/*.{ts,tsx}"],
+            "ignoreDependencies": ["@tanstack/router-plugin", "@fontsource-variable/inter", "@tanstack/react-router-with-query"],
+            "ignore": ["src/components/ui/**"]
+        },
+        "apps/server": {
+            "entry": ["src/**/*.ts"],
+            "project": ["src/**/*.ts"],
+            "ignoreDependencies": ["better-auth"]
+        },
+        "packages/api": {
+            "project": ["src/**/*.ts"],
+            "ignoreDependencies": ["@fubbik/db", "@fubbik/env"]
+        },
+        "packages/auth": {
+            "project": ["src/**/*.ts"]
+        },
+        "packages/db": {
+            "project": ["src/**/*.ts"]
+        },
+        "packages/env": {
+            "project": ["src/**/*.ts"]
+        },
+        "packages/config": {
+            "ignore": ["**/*"]
+        }
     }
-  }
 }

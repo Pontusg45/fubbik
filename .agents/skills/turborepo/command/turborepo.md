@@ -1,8 +1,11 @@
 ---
-description: Load Turborepo skill for creating workflows, tasks, and pipelines in monorepos. Use when users ask to "create a workflow", "make a task", "generate a pipeline", or set up build orchestration.
+description:
+    Load Turborepo skill for creating workflows, tasks, and pipelines in monorepos. Use when users ask to "create a workflow", "make a
+    task", "generate a pipeline", or set up build orchestration.
 ---
 
-Load the Turborepo skill and help with monorepo task orchestration: creating workflows, configuring tasks, setting up pipelines, and optimizing builds.
+Load the Turborepo skill and help with monorepo task orchestration: creating workflows, configuring tasks, setting up pipelines, and
+optimizing builds.
 
 ## Workflow
 

@@ -76,27 +76,27 @@ import { UserPlain, UserPlainInputCreate } from "../generated/prismabox/User";
 const prisma = new PrismaClient();
 
 new Elysia()
-  .put("/", async ({ body }) => prisma.user.create({ data: body }), {
-    body: UserPlainInputCreate,
-    response: UserPlain,
-  })
-  .get(
-    "/id/:id",
-    async ({ params: { id }, status }) => {
-      const user = await prisma.user.findUnique({ where: { id } });
+    .put("/", async ({ body }) => prisma.user.create({ data: body }), {
+        body: UserPlainInputCreate,
+        response: UserPlain
+    })
+    .get(
+        "/id/:id",
+        async ({ params: { id }, status }) => {
+            const user = await prisma.user.findUnique({ where: { id } });
 
-      if (!user) return status(404, "User not found");
+            if (!user) return status(404, "User not found");
 
-      return user;
-    },
-    {
-      response: {
-        200: UserPlain,
-        404: t.String(),
-      },
-    },
-  )
-  .listen(3000);
+            return user;
+        },
+        {
+            response: {
+                200: UserPlain,
+                404: t.String()
+            }
+        }
+    )
+    .listen(3000);
 ```
 
 Reuses DB schema in Elysia validation models.

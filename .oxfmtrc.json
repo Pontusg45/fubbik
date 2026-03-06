@@ -1,0 +1,26 @@
+{
+    "$schema": "./node_modules/oxfmt/configuration_schema.json",
+    "tabWidth": 4,
+    "useTabs": false,
+    "printWidth": 140,
+    "proseWrap": "always",
+    "trailingComma": "none",
+    "semi": true,
+    "singleQuote": false,
+    "quoteProps": "as-needed",
+    "bracketSpacing": true,
+    "jsxSingleQuote": false,
+    "arrowParens": "avoid",
+    "objectWrap": "preserve",
+    "endOfLine": "lf",
+    "experimentalTailwindcss": {
+        "preserveWhitespace": false,
+        "preserveDuplicates": false
+    },
+    "experimentalSortImports": {
+        "groups": [["builtin"], ["external"], ["internal"], ["parent", "sibling", "index"]],
+        "internalPattern": ["~/tests/", "@/", "@api/", "@repo/", "~/"],
+        "newlinesBetween": true
+    },
+    "ignorePatterns": ["**/_generated/**", "**/*.gen.ts"]
+}

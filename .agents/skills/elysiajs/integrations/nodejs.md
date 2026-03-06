@@ -35,11 +35,11 @@ Scripts in `package.json`:
 
 ```json
 {
-  "scripts": {
-    "dev": "tsx watch src/index.ts",
-    "build": "tsc src/index.ts --outDir dist",
-    "start": "NODE_ENV=production node dist/index.js"
-  }
+    "scripts": {
+        "dev": "tsx watch src/index.ts",
+        "build": "tsc src/index.ts --outDir dist",
+        "start": "NODE_ENV=production node dist/index.js"
+    }
 }
 ```
 
@@ -57,9 +57,9 @@ Update strict mode:
 
 ```json
 {
-  "compilerOptions": {
-    "strict": true
-  }
+    "compilerOptions": {
+        "strict": true
+    }
 }
 ```
 

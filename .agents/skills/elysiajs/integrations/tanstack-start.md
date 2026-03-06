@@ -17,18 +17,18 @@ import { createFileRoute } from "@tanstack/react-router";
 import { createIsomorphicFn } from "@tanstack/react-start";
 
 const app = new Elysia({
-  prefix: "/api",
+    prefix: "/api"
 }).get("/", "Hello Elysia!");
 
 const handle = ({ request }: { request: Request }) => app.fetch(request);
 
 export const Route = createFileRoute("/api/$")({
-  server: {
-    handlers: {
-      GET: handle,
-      POST: handle,
-    },
-  },
+    server: {
+        handlers: {
+            GET: handle,
+            POST: handle
+        }
+    }
 });
 ```
 
@@ -41,8 +41,8 @@ Isomorphic pattern with `createIsomorphicFn`:
 ```typescript
 // src/routes/api.$.ts
 export const getTreaty = createIsomorphicFn()
-  .server(() => treaty(app).api)
-  .client(() => treaty<typeof app>("localhost:3000").api);
+    .server(() => treaty(app).api)
+    .client(() => treaty<typeof app>("localhost:3000").api);
 ```
 
 - Server: Direct call (no HTTP overhead)
@@ -58,16 +58,16 @@ import { createFileRoute } from "@tanstack/react-router";
 import { getTreaty } from "./api.$";
 
 export const Route = createFileRoute("/a")({
-  component: App,
-  loader: () =>
-    getTreaty()
-      .get()
-      .then((res) => res.data),
+    component: App,
+    loader: () =>
+        getTreaty()
+            .get()
+            .then(res => res.data)
 });
 
 function App() {
-  const data = Route.useLoaderData();
-  return data;
+    const data = Route.useLoaderData();
+    return data;
 }
 ```
 
@@ -80,12 +80,12 @@ import { useQuery } from "@tanstack/react-query";
 import { getTreaty } from "./api.$";
 
 function App() {
-  const { data: response } = useQuery({
-    queryKey: ["get"],
-    queryFn: () => getTreaty().get(),
-  });
+    const { data: response } = useQuery({
+        queryKey: ["get"],
+        queryFn: () => getTreaty().get()
+    });
 
-  return response?.data;
+    return response?.data;
 }
 ```
 

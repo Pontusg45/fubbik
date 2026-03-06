@@ -1,6 +1,7 @@
 # Macro
 
-Composable Elysia function for controlling lifecycle/schema/context with full type safety. Available in hook after definition control by key-value label.
+Composable Elysia function for controlling lifecycle/schema/context with full type safety. Available in hook after definition control by
+key-value label.
 
 ## Basic Pattern
 

@@ -115,12 +115,12 @@ import os from "node:os";
 import process from "node:process";
 
 if (cluster.isPrimary) {
-  for (let i = 0; i < os.availableParallelism(); i++) {
-    cluster.fork();
-  }
+    for (let i = 0; i < os.availableParallelism(); i++) {
+        cluster.fork();
+    }
 } else {
-  await import("./server");
-  console.log(`Worker ${process.pid} started`);
+    await import("./server");
+    console.log(`Worker ${process.pid} started`);
 }
 ```
 
@@ -149,11 +149,11 @@ CORS_ORIGIN=https://example.com
 import { Elysia } from "elysia";
 
 const app = new Elysia()
-  .get("/env", () => ({
-    env: process.env.NODE_ENV,
-    port: process.env.PORT,
-  }))
-  .listen(parseInt(process.env.PORT || "3000"));
+    .get("/env", () => ({
+        env: process.env.NODE_ENV,
+        port: process.env.PORT
+    }))
+    .listen(parseInt(process.env.PORT || "3000"));
 ```
 
 ## Platform-Specific Deployments
@@ -180,8 +180,8 @@ export const POST = app.fetch;
 ```json
 // vercel.json
 {
-  "$schema": "https://openapi.vercel.sh/vercel.json",
-  "bunVersion": "1.x"
+    "$schema": "https://openapi.vercel.sh/vercel.json",
+    "bunVersion": "1.x"
 }
 ```
 
@@ -192,10 +192,10 @@ import { Elysia } from "elysia";
 import { CloudflareAdapter } from "elysia/adapter/cloudflare-worker";
 
 export default new Elysia({
-  adapter: CloudflareAdapter,
+    adapter: CloudflareAdapter
 })
-  .get("/", () => "Hello Cloudflare!")
-  .compile();
+    .get("/", () => "Hello Cloudflare!")
+    .compile();
 ```
 
 ```toml
@@ -220,7 +220,7 @@ const app = new Elysia({ adapter: node() }).get("/", () => "Hello Node.js").list
 
 ```typescript
 new Elysia({
-  aot: true, // Ahead-of-time compilation
+    aot: true // Ahead-of-time compilation
 });
 ```
 
@@ -228,7 +228,7 @@ new Elysia({
 
 ```typescript
 new Elysia({
-  nativeStaticResponse: true,
+    nativeStaticResponse: true
 }).get("/version", 1); // Optimized for Bun.serve.static
 ```
 
@@ -236,7 +236,7 @@ new Elysia({
 
 ```typescript
 new Elysia({
-  precompile: true, // Compile all routes ahead of time
+    precompile: true // Compile all routes ahead of time
 });
 ```
 
@@ -244,20 +244,20 @@ new Elysia({
 
 ```typescript
 new Elysia()
-  .get("/health", () => ({
-    status: "ok",
-    timestamp: Date.now(),
-  }))
-  .get("/ready", ({ db }) => {
-    // Check database connection
-    const isDbReady = checkDbConnection();
+    .get("/health", () => ({
+        status: "ok",
+        timestamp: Date.now()
+    }))
+    .get("/ready", ({ db }) => {
+        // Check database connection
+        const isDbReady = checkDbConnection();
 
-    if (!isDbReady) {
-      return status(503, { status: "not ready" });
-    }
+        if (!isDbReady) {
+            return status(503, { status: "not ready" });
+        }
 
-    return { status: "ready" };
-  });
+        return { status: "ready" };
+    });
 ```
 
 ## Graceful Shutdown
@@ -268,15 +268,15 @@ import { Elysia } from "elysia";
 const app = new Elysia().get("/", () => "Hello").listen(3000);
 
 process.on("SIGTERM", () => {
-  console.log("SIGTERM received, shutting down gracefully");
-  app.stop();
-  process.exit(0);
+    console.log("SIGTERM received, shutting down gracefully");
+    app.stop();
+    process.exit(0);
 });
 
 process.on("SIGINT", () => {
-  console.log("SIGINT received, shutting down gracefully");
-  app.stop();
-  process.exit(0);
+    console.log("SIGINT received, shutting down gracefully");
+    app.stop();
+    process.exit(0);
 });
 ```
 
@@ -288,10 +288,10 @@ process.on("SIGINT", () => {
 import { opentelemetry } from "@elysiajs/opentelemetry";
 
 new Elysia().use(
-  opentelemetry({
-    serviceName: "my-service",
-    endpoint: "http://localhost:4318",
-  }),
+    opentelemetry({
+        serviceName: "my-service",
+        endpoint: "http://localhost:4318"
+    })
 );
 ```
 
@@ -312,44 +312,44 @@ new Elysia().use(
 import { Elysia, file } from "elysia";
 
 new Elysia({
-  serve: {
-    tls: {
-      cert: file("cert.pem"),
-      key: file("key.pem"),
-    },
-  },
+    serve: {
+        tls: {
+            cert: file("cert.pem"),
+            key: file("key.pem")
+        }
+    }
 })
-  .get("/", () => "Hello HTTPS")
-  .listen(3000);
+    .get("/", () => "Hello HTTPS")
+    .listen(3000);
 ```
 
 ## Best Practices
 
 1. **Always compile to binary for production**
-   - Reduces memory usage
-   - Smaller deployment size
-   - No runtime needed
+    - Reduces memory usage
+    - Smaller deployment size
+    - No runtime needed
 
 2. **Use environment variables**
-   - Never hardcode secrets
-   - Use different configs per environment
+    - Never hardcode secrets
+    - Use different configs per environment
 
 3. **Enable health checks**
-   - Essential for load balancers
-   - K8s/Docker orchestration
+    - Essential for load balancers
+    - K8s/Docker orchestration
 
 4. **Implement graceful shutdown**
-   - Handle SIGTERM/SIGINT
-   - Close connections properly
+    - Handle SIGTERM/SIGINT
+    - Close connections properly
 
 5. **Use cluster mode**
-   - Utilize all CPU cores
-   - Better performance under load
+    - Utilize all CPU cores
+    - Better performance under load
 
 6. **Monitor your app**
-   - Use OpenTelemetry
-   - Log requests/responses
-   - Track errors
+    - Use OpenTelemetry
+    - Log requests/responses
+    - Track errors
 
 ## Example Production Setup
 
@@ -360,27 +360,27 @@ import { cors } from "@elysiajs/cors";
 import { opentelemetry } from "@elysiajs/opentelemetry";
 
 export const app = new Elysia({
-  aot: true,
-  nativeStaticResponse: true,
+    aot: true,
+    nativeStaticResponse: true
 })
-  .use(
-    cors({
-      origin: process.env.CORS_ORIGIN || "http://localhost:3000",
-    }),
-  )
-  .use(
-    opentelemetry({
-      serviceName: "my-service",
-    }),
-  )
-  .get("/health", () => ({ status: "ok" }))
-  .get("/", () => "Hello Production")
-  .listen(parseInt(process.env.PORT || "3000"));
+    .use(
+        cors({
+            origin: process.env.CORS_ORIGIN || "http://localhost:3000"
+        })
+    )
+    .use(
+        opentelemetry({
+            serviceName: "my-service"
+        })
+    )
+    .get("/health", () => ({ status: "ok" }))
+    .get("/", () => "Hello Production")
+    .listen(parseInt(process.env.PORT || "3000"));
 
 // Graceful shutdown
 process.on("SIGTERM", () => {
-  app.stop();
-  process.exit(0);
+    app.stop();
+    process.exit(0);
 });
 ```
 
@@ -390,11 +390,11 @@ import cluster from "node:cluster";
 import os from "node:os";
 
 if (cluster.isPrimary) {
-  for (let i = 0; i < os.availableParallelism(); i++) {
-    cluster.fork();
-  }
+    for (let i = 0; i < os.availableParallelism(); i++) {
+        cluster.fork();
+    }
 } else {
-  await import("./server");
+    await import("./server");
 }
 ```
 

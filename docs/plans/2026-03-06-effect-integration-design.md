@@ -3,6 +3,7 @@
 **Goal:** Replace all try-catch error handling on the server with Effect, giving typed errors from DB to route boundary.
 
 **Decisions:**
+
 - Effect in both DB repositories and API (not server entry)
 - Global Elysia `.onError` handler maps `_tag` to HTTP status codes — routes have no error handling
 - Error types defined where they originate: `DatabaseError` in db, `NotFoundError`/`AuthError` in api
@@ -17,7 +18,7 @@
 import { Data } from "effect";
 
 export class DatabaseError extends Data.TaggedError("DatabaseError")<{
-  cause: unknown;
+    cause: unknown;
 }> {}
 ```
 
@@ -27,7 +28,7 @@ export class DatabaseError extends Data.TaggedError("DatabaseError")<{
 import { Data } from "effect";
 
 export class NotFoundError extends Data.TaggedError("NotFoundError")<{
-  resource: string;
+    resource: string;
 }> {}
 
 export class AuthError extends Data.TaggedError("AuthError")<{}> {}
@@ -41,10 +42,12 @@ All repository functions return `Effect<T, DatabaseError>` instead of `Promise<T
 
 ```typescript
 export function listChunks(params: ListChunksParams) {
-  return Effect.tryPromise({
-    try: async () => { /* existing DB logic */ },
-    catch: (cause) => new DatabaseError({ cause }),
-  });
+    return Effect.tryPromise({
+        try: async () => {
+            /* existing DB logic */
+        },
+        catch: cause => new DatabaseError({ cause })
+    });
 }
 ```
 
@@ -77,8 +80,8 @@ Auth check as Effect:
 
 ```typescript
 function requireSession(ctx: unknown) {
-  const session = (ctx as unknown as { session: Session }).session;
-  return session ? Effect.succeed(session) : Effect.fail(new AuthError());
+    const session = (ctx as unknown as { session: Session }).session;
+    return session ? Effect.succeed(session) : Effect.fail(new AuthError());
 }
 ```
 
@@ -117,13 +120,13 @@ Special case — catches `DatabaseError` to return 503 (degraded), not a thrown 
 
 ```typescript
 Effect.runPromise(
-  checkDbConnectivity().pipe(
-    Effect.match({
-      onSuccess: () => ({ status: "ok", db: "connected" }),
-      onFailure: () => ({ status: "degraded", db: "disconnected" }),
-    })
-  )
-)
+    checkDbConnectivity().pipe(
+        Effect.match({
+            onSuccess: () => ({ status: "ok", db: "connected" }),
+            onFailure: () => ({ status: "degraded", db: "disconnected" })
+        })
+    )
+);
 ```
 
 ---

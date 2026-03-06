@@ -17,7 +17,7 @@ bun add -d nuxt-elysia
 
 ```typescript
 export default defineNuxtConfig({
-  modules: ["nuxt-elysia"],
+    modules: ["nuxt-elysia"]
 });
 ```
 
@@ -32,19 +32,19 @@ export default () => new Elysia().get("/hello", () => ({ message: "Hello world!"
 
 ```vue
 <template>
-  <div>
-    <p>{{ data.message }}</p>
-  </div>
+    <div>
+        <p>{{ data.message }}</p>
+    </div>
 </template>
 <script setup lang="ts">
 const { $api } = useNuxtApp();
 
 const { data } = await useAsyncData(async () => {
-  const { data, error } = await $api.hello.get();
+    const { data, error } = await $api.hello.get();
 
-  if (error) throw new Error("Failed to call API");
+    if (error) throw new Error("Failed to call API");
 
-  return data;
+    return data;
 });
 </script>
 ```
@@ -57,9 +57,9 @@ Default: `/_api`. Customize:
 
 ```typescript
 export default defineNuxtConfig({
-  nuxtElysia: {
-    path: "/api",
-  },
+    nuxtElysia: {
+        path: "/api"
+    }
 });
 ```
 

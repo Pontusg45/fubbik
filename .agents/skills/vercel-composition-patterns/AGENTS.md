@@ -14,24 +14,25 @@ January 2026
 
 ## Abstract
 
-Composition patterns for building flexible, maintainable React components. Avoid boolean prop proliferation by using compound components, lifting state, and composing internals. These patterns make codebases easier for both humans and AI agents to work with as they scale.
+Composition patterns for building flexible, maintainable React components. Avoid boolean prop proliferation by using compound components,
+lifting state, and composing internals. These patterns make codebases easier for both humans and AI agents to work with as they scale.
 
 ---
 
 ## Table of Contents
 
 1. [Component Architecture](#1-component-architecture) — **HIGH**
-   - 1.1 [Avoid Boolean Prop Proliferation](#11-avoid-boolean-prop-proliferation)
-   - 1.2 [Use Compound Components](#12-use-compound-components)
+    - 1.1 [Avoid Boolean Prop Proliferation](#11-avoid-boolean-prop-proliferation)
+    - 1.2 [Use Compound Components](#12-use-compound-components)
 2. [State Management](#2-state-management) — **MEDIUM**
-   - 2.1 [Decouple State Management from UI](#21-decouple-state-management-from-ui)
-   - 2.2 [Define Generic Context Interfaces for Dependency Injection](#22-define-generic-context-interfaces-for-dependency-injection)
-   - 2.3 [Lift State into Provider Components](#23-lift-state-into-provider-components)
+    - 2.1 [Decouple State Management from UI](#21-decouple-state-management-from-ui)
+    - 2.2 [Define Generic Context Interfaces for Dependency Injection](#22-define-generic-context-interfaces-for-dependency-injection)
+    - 2.3 [Lift State into Provider Components](#23-lift-state-into-provider-components)
 3. [Implementation Patterns](#3-implementation-patterns) — **MEDIUM**
-   - 3.1 [Create Explicit Component Variants](#31-create-explicit-component-variants)
-   - 3.2 [Prefer Composing Children Over Render Props](#32-prefer-composing-children-over-render-props)
+    - 3.1 [Create Explicit Component Variants](#31-create-explicit-component-variants)
+    - 3.2 [Prefer Composing Children Over Render Props](#32-prefer-composing-children-over-render-props)
 4. [React 19 APIs](#4-react-19-apis) — **MEDIUM**
-   - 4.1 [React 19 API Changes](#41-react-19-api-changes)
+    - 4.1 [React 19 API Changes](#41-react-19-api-changes)
 
 ---
 
@@ -39,8 +40,7 @@ Composition patterns for building flexible, maintainable React components. Avoid
 
 **Impact: HIGH**
 
-Fundamental patterns for structuring components to avoid prop
-proliferation and enable flexible composition.
+Fundamental patterns for structuring components to avoid prop proliferation and enable flexible composition.
 
 ### 1.1 Avoid Boolean Prop Proliferation
 
@@ -55,28 +55,16 @@ unmaintainable conditional logic. Use composition instead.
 **Incorrect: boolean props create exponential complexity**
 
 ```tsx
-function Composer({
-  onSubmit,
-  isThread,
-  channelId,
-  isDMThread,
-  dmId,
-  isEditing,
-  isForwarding,
-}: Props) {
-  return (
-    <form>
-      <Header />
-      <Input />
-      {isDMThread ? (
-        <AlsoSendToDMField id={dmId} />
-      ) : isThread ? (
-        <AlsoSendToChannelField id={channelId} />
-      ) : null}
-      {isEditing ? <EditActions /> : isForwarding ? <ForwardActions /> : <DefaultActions />}
-      <Footer onSubmit={onSubmit} />
-    </form>
-  );
+function Composer({ onSubmit, isThread, channelId, isDMThread, dmId, isEditing, isForwarding }: Props) {
+    return (
+        <form>
+            <Header />
+            <Input />
+            {isDMThread ? <AlsoSendToDMField id={dmId} /> : isThread ? <AlsoSendToChannelField id={channelId} /> : null}
+            {isEditing ? <EditActions /> : isForwarding ? <ForwardActions /> : <DefaultActions />}
+            <Footer onSubmit={onSubmit} />
+        </form>
+    );
 }
 ```
 
@@ -85,49 +73,49 @@ function Composer({
 ```tsx
 // Channel composer
 function ChannelComposer() {
-  return (
-    <Composer.Frame>
-      <Composer.Header />
-      <Composer.Input />
-      <Composer.Footer>
-        <Composer.Attachments />
-        <Composer.Formatting />
-        <Composer.Emojis />
-        <Composer.Submit />
-      </Composer.Footer>
-    </Composer.Frame>
-  );
+    return (
+        <Composer.Frame>
+            <Composer.Header />
+            <Composer.Input />
+            <Composer.Footer>
+                <Composer.Attachments />
+                <Composer.Formatting />
+                <Composer.Emojis />
+                <Composer.Submit />
+            </Composer.Footer>
+        </Composer.Frame>
+    );
 }
 
 // Thread composer - adds "also send to channel" field
 function ThreadComposer({ channelId }: { channelId: string }) {
-  return (
-    <Composer.Frame>
-      <Composer.Header />
-      <Composer.Input />
-      <AlsoSendToChannelField id={channelId} />
-      <Composer.Footer>
-        <Composer.Formatting />
-        <Composer.Emojis />
-        <Composer.Submit />
-      </Composer.Footer>
-    </Composer.Frame>
-  );
+    return (
+        <Composer.Frame>
+            <Composer.Header />
+            <Composer.Input />
+            <AlsoSendToChannelField id={channelId} />
+            <Composer.Footer>
+                <Composer.Formatting />
+                <Composer.Emojis />
+                <Composer.Submit />
+            </Composer.Footer>
+        </Composer.Frame>
+    );
 }
 
 // Edit composer - different footer actions
 function EditComposer() {
-  return (
-    <Composer.Frame>
-      <Composer.Input />
-      <Composer.Footer>
-        <Composer.Formatting />
-        <Composer.Emojis />
-        <Composer.CancelEdit />
-        <Composer.SaveEdit />
-      </Composer.Footer>
-    </Composer.Frame>
-  );
+    return (
+        <Composer.Frame>
+            <Composer.Input />
+            <Composer.Footer>
+                <Composer.Formatting />
+                <Composer.Emojis />
+                <Composer.CancelEdit />
+                <Composer.SaveEdit />
+            </Composer.Footer>
+        </Composer.Frame>
+    );
 }
 ```
 
@@ -148,30 +136,23 @@ pieces they need.
 **Incorrect: monolithic component with render props**
 
 ```tsx
-function Composer({
-  renderHeader,
-  renderFooter,
-  renderActions,
-  showAttachments,
-  showFormatting,
-  showEmojis,
-}: Props) {
-  return (
-    <form>
-      {renderHeader?.()}
-      <Input />
-      {showAttachments && <Attachments />}
-      {renderFooter ? (
-        renderFooter()
-      ) : (
-        <Footer>
-          {showFormatting && <Formatting />}
-          {showEmojis && <Emojis />}
-          {renderActions?.()}
-        </Footer>
-      )}
-    </form>
-  );
+function Composer({ renderHeader, renderFooter, renderActions, showAttachments, showFormatting, showEmojis }: Props) {
+    return (
+        <form>
+            {renderHeader?.()}
+            <Input />
+            {showAttachments && <Attachments />}
+            {renderFooter ? (
+                renderFooter()
+            ) : (
+                <Footer>
+                    {showFormatting && <Formatting />}
+                    {showEmojis && <Emojis />}
+                    {renderActions?.()}
+                </Footer>
+            )}
+        </form>
+    );
 }
 ```
 
@@ -181,46 +162,40 @@ function Composer({
 const ComposerContext = createContext<ComposerContextValue | null>(null);
 
 function ComposerProvider({ children, state, actions, meta }: ProviderProps) {
-  return <ComposerContext value={{ state, actions, meta }}>{children}</ComposerContext>;
+    return <ComposerContext value={{ state, actions, meta }}>{children}</ComposerContext>;
 }
 
 function ComposerFrame({ children }: { children: React.ReactNode }) {
-  return <form>{children}</form>;
+    return <form>{children}</form>;
 }
 
 function ComposerInput() {
-  const {
-    state,
-    actions: { update },
-    meta: { inputRef },
-  } = use(ComposerContext);
-  return (
-    <TextInput
-      ref={inputRef}
-      value={state.input}
-      onChangeText={(text) => update((s) => ({ ...s, input: text }))}
-    />
-  );
+    const {
+        state,
+        actions: { update },
+        meta: { inputRef }
+    } = use(ComposerContext);
+    return <TextInput ref={inputRef} value={state.input} onChangeText={text => update(s => ({ ...s, input: text }))} />;
 }
 
 function ComposerSubmit() {
-  const {
-    actions: { submit },
-  } = use(ComposerContext);
-  return <Button onPress={submit}>Send</Button>;
+    const {
+        actions: { submit }
+    } = use(ComposerContext);
+    return <Button onPress={submit}>Send</Button>;
 }
 
 // Export as compound component
 const Composer = {
-  Provider: ComposerProvider,
-  Frame: ComposerFrame,
-  Input: ComposerInput,
-  Submit: ComposerSubmit,
-  Header: ComposerHeader,
-  Footer: ComposerFooter,
-  Attachments: ComposerAttachments,
-  Formatting: ComposerFormatting,
-  Emojis: ComposerEmojis,
+    Provider: ComposerProvider,
+    Frame: ComposerFrame,
+    Input: ComposerInput,
+    Submit: ComposerSubmit,
+    Header: ComposerHeader,
+    Footer: ComposerFooter,
+    Attachments: ComposerAttachments,
+    Formatting: ComposerFormatting,
+    Emojis: ComposerEmojis
 };
 ```
 
@@ -228,18 +203,19 @@ const Composer = {
 
 ```tsx
 <Composer.Provider state={state} actions={actions} meta={meta}>
-  <Composer.Frame>
-    <Composer.Header />
-    <Composer.Input />
-    <Composer.Footer>
-      <Composer.Formatting />
-      <Composer.Submit />
-    </Composer.Footer>
-  </Composer.Frame>
+    <Composer.Frame>
+        <Composer.Header />
+        <Composer.Input />
+        <Composer.Footer>
+            <Composer.Formatting />
+            <Composer.Submit />
+        </Composer.Footer>
+    </Composer.Frame>
 </Composer.Provider>
 ```
 
-Consumers explicitly compose exactly what they need. No hidden conditionals. And the state, actions and meta are dependency-injected by a parent provider, allowing multiple usages of the same component structure.
+Consumers explicitly compose exactly what they need. No hidden conditionals. And the state, actions and meta are dependency-injected by a
+parent provider, allowing multiple usages of the same component structure.
 
 ---
 
@@ -247,8 +223,7 @@ Consumers explicitly compose exactly what they need. No hidden conditionals. And
 
 **Impact: MEDIUM**
 
-Patterns for lifting state and managing shared context across
-composed components.
+Patterns for lifting state and managing shared context across composed components.
 
 ### 2.1 Decouple State Management from UI
 
@@ -264,16 +239,16 @@ useState, Zustand, or a server sync.
 
 ```tsx
 function ChannelComposer({ channelId }: { channelId: string }) {
-  // UI component knows about global state implementation
-  const state = useGlobalChannelState(channelId);
-  const { submit, updateInput } = useChannelSync(channelId);
+    // UI component knows about global state implementation
+    const state = useGlobalChannelState(channelId);
+    const { submit, updateInput } = useChannelSync(channelId);
 
-  return (
-    <Composer.Frame>
-      <Composer.Input value={state.input} onChange={(text) => sync.updateInput(text)} />
-      <Composer.Submit onPress={() => sync.submit()} />
-    </Composer.Frame>
-  );
+    return (
+        <Composer.Frame>
+            <Composer.Input value={state.input} onChange={text => sync.updateInput(text)} />
+            <Composer.Submit onPress={() => sync.submit()} />
+        </Composer.Frame>
+    );
 }
 ```
 
@@ -281,43 +256,37 @@ function ChannelComposer({ channelId }: { channelId: string }) {
 
 ```tsx
 // Provider handles all state management details
-function ChannelProvider({
-  channelId,
-  children,
-}: {
-  channelId: string;
-  children: React.ReactNode;
-}) {
-  const { state, update, submit } = useGlobalChannel(channelId);
-  const inputRef = useRef(null);
+function ChannelProvider({ channelId, children }: { channelId: string; children: React.ReactNode }) {
+    const { state, update, submit } = useGlobalChannel(channelId);
+    const inputRef = useRef(null);
 
-  return (
-    <Composer.Provider state={state} actions={{ update, submit }} meta={{ inputRef }}>
-      {children}
-    </Composer.Provider>
-  );
+    return (
+        <Composer.Provider state={state} actions={{ update, submit }} meta={{ inputRef }}>
+            {children}
+        </Composer.Provider>
+    );
 }
 
 // UI component only knows about the context interface
 function ChannelComposer() {
-  return (
-    <Composer.Frame>
-      <Composer.Header />
-      <Composer.Input />
-      <Composer.Footer>
-        <Composer.Submit />
-      </Composer.Footer>
-    </Composer.Frame>
-  );
+    return (
+        <Composer.Frame>
+            <Composer.Header />
+            <Composer.Input />
+            <Composer.Footer>
+                <Composer.Submit />
+            </Composer.Footer>
+        </Composer.Frame>
+    );
 }
 
 // Usage
 function Channel({ channelId }: { channelId: string }) {
-  return (
-    <ChannelProvider channelId={channelId}>
-      <ChannelComposer />
-    </ChannelProvider>
-  );
+    return (
+        <ChannelProvider channelId={channelId}>
+            <ChannelComposer />
+        </ChannelProvider>
+    );
 }
 ```
 
@@ -326,25 +295,25 @@ function Channel({ channelId }: { channelId: string }) {
 ```tsx
 // Local state for ephemeral forms
 function ForwardMessageProvider({ children }) {
-  const [state, setState] = useState(initialState);
-  const forwardMessage = useForwardMessage();
+    const [state, setState] = useState(initialState);
+    const forwardMessage = useForwardMessage();
 
-  return (
-    <Composer.Provider state={state} actions={{ update: setState, submit: forwardMessage }}>
-      {children}
-    </Composer.Provider>
-  );
+    return (
+        <Composer.Provider state={state} actions={{ update: setState, submit: forwardMessage }}>
+            {children}
+        </Composer.Provider>
+    );
 }
 
 // Global synced state for channels
 function ChannelProvider({ channelId, children }) {
-  const { state, update, submit } = useGlobalChannel(channelId);
+    const { state, update, submit } = useGlobalChannel(channelId);
 
-  return (
-    <Composer.Provider state={state} actions={{ update, submit }}>
-      {children}
-    </Composer.Provider>
-  );
+    return (
+        <Composer.Provider state={state} actions={{ update, submit }}>
+            {children}
+        </Composer.Provider>
+    );
 }
 ```
 
@@ -372,9 +341,9 @@ dependency-injectable.
 
 ```tsx
 function ComposerInput() {
-  // Tightly coupled to a specific hook
-  const { input, setInput } = useChannelComposerState();
-  return <TextInput value={input} onChangeText={setInput} />;
+    // Tightly coupled to a specific hook
+    const { input, setInput } = useChannelComposerState();
+    return <TextInput value={input} onChangeText={setInput} />;
 }
 ```
 
@@ -383,24 +352,24 @@ function ComposerInput() {
 ```tsx
 // Define a GENERIC interface that any provider can implement
 interface ComposerState {
-  input: string;
-  attachments: Attachment[];
-  isSubmitting: boolean;
+    input: string;
+    attachments: Attachment[];
+    isSubmitting: boolean;
 }
 
 interface ComposerActions {
-  update: (updater: (state: ComposerState) => ComposerState) => void;
-  submit: () => void;
+    update: (updater: (state: ComposerState) => ComposerState) => void;
+    submit: () => void;
 }
 
 interface ComposerMeta {
-  inputRef: React.RefObject<TextInput>;
+    inputRef: React.RefObject<TextInput>;
 }
 
 interface ComposerContextValue {
-  state: ComposerState;
-  actions: ComposerActions;
-  meta: ComposerMeta;
+    state: ComposerState;
+    actions: ComposerActions;
+    meta: ComposerMeta;
 }
 
 const ComposerContext = createContext<ComposerContextValue | null>(null);
@@ -410,20 +379,14 @@ const ComposerContext = createContext<ComposerContextValue | null>(null);
 
 ```tsx
 function ComposerInput() {
-  const {
-    state,
-    actions: { update },
-    meta,
-  } = use(ComposerContext);
+    const {
+        state,
+        actions: { update },
+        meta
+    } = use(ComposerContext);
 
-  // This component works with ANY provider that implements the interface
-  return (
-    <TextInput
-      ref={meta.inputRef}
-      value={state.input}
-      onChangeText={(text) => update((s) => ({ ...s, input: text }))}
-    />
-  );
+    // This component works with ANY provider that implements the interface
+    return <TextInput ref={meta.inputRef} value={state.input} onChangeText={text => update(s => ({ ...s, input: text }))} />;
 }
 ```
 
@@ -432,39 +395,39 @@ function ComposerInput() {
 ```tsx
 // Provider A: Local state for ephemeral forms
 function ForwardMessageProvider({ children }: { children: React.ReactNode }) {
-  const [state, setState] = useState(initialState);
-  const inputRef = useRef(null);
-  const submit = useForwardMessage();
+    const [state, setState] = useState(initialState);
+    const inputRef = useRef(null);
+    const submit = useForwardMessage();
 
-  return (
-    <ComposerContext
-      value={{
-        state,
-        actions: { update: setState, submit },
-        meta: { inputRef },
-      }}
-    >
-      {children}
-    </ComposerContext>
-  );
+    return (
+        <ComposerContext
+            value={{
+                state,
+                actions: { update: setState, submit },
+                meta: { inputRef }
+            }}
+        >
+            {children}
+        </ComposerContext>
+    );
 }
 
 // Provider B: Global synced state for channels
 function ChannelProvider({ channelId, children }: Props) {
-  const { state, update, submit } = useGlobalChannel(channelId);
-  const inputRef = useRef(null);
+    const { state, update, submit } = useGlobalChannel(channelId);
+    const inputRef = useRef(null);
 
-  return (
-    <ComposerContext
-      value={{
-        state,
-        actions: { update, submit },
-        meta: { inputRef },
-      }}
-    >
-      {children}
-    </ComposerContext>
-  );
+    return (
+        <ComposerContext
+            value={{
+                state,
+                actions: { update, submit },
+                meta: { inputRef }
+            }}
+        >
+            {children}
+        </ComposerContext>
+    );
 }
 ```
 
@@ -492,43 +455,43 @@ function ChannelProvider({ channelId, children }: Props) {
 
 ```tsx
 function ForwardMessageDialog() {
-  return (
-    <ForwardMessageProvider>
-      <Dialog>
-        {/* The composer UI */}
-        <Composer.Frame>
-          <Composer.Input placeholder="Add a message, if you'd like." />
-          <Composer.Footer>
-            <Composer.Formatting />
-            <Composer.Emojis />
-          </Composer.Footer>
-        </Composer.Frame>
+    return (
+        <ForwardMessageProvider>
+            <Dialog>
+                {/* The composer UI */}
+                <Composer.Frame>
+                    <Composer.Input placeholder="Add a message, if you'd like." />
+                    <Composer.Footer>
+                        <Composer.Formatting />
+                        <Composer.Emojis />
+                    </Composer.Footer>
+                </Composer.Frame>
 
-        {/* Custom UI OUTSIDE the composer, but INSIDE the provider */}
-        <MessagePreview />
+                {/* Custom UI OUTSIDE the composer, but INSIDE the provider */}
+                <MessagePreview />
 
-        {/* Actions at the bottom of the dialog */}
-        <DialogActions>
-          <CancelButton />
-          <ForwardButton />
-        </DialogActions>
-      </Dialog>
-    </ForwardMessageProvider>
-  );
+                {/* Actions at the bottom of the dialog */}
+                <DialogActions>
+                    <CancelButton />
+                    <ForwardButton />
+                </DialogActions>
+            </Dialog>
+        </ForwardMessageProvider>
+    );
 }
 
 // This button lives OUTSIDE Composer.Frame but can still submit based on its context!
 function ForwardButton() {
-  const {
-    actions: { submit },
-  } = use(ComposerContext);
-  return <Button onPress={submit}>Forward</Button>;
+    const {
+        actions: { submit }
+    } = use(ComposerContext);
+    return <Button onPress={submit}>Forward</Button>;
 }
 
 // This preview lives OUTSIDE Composer.Frame but can read composer's state!
 function MessagePreview() {
-  const { state } = use(ComposerContext);
-  return <Preview message={state.input} attachments={state.attachments} />;
+    const { state } = use(ComposerContext);
+    return <Preview message={state.input} attachments={state.attachments} />;
 }
 ```
 
@@ -562,29 +525,29 @@ or awkward refs.
 
 ```tsx
 function ForwardMessageComposer() {
-  const [state, setState] = useState(initialState);
-  const forwardMessage = useForwardMessage();
+    const [state, setState] = useState(initialState);
+    const forwardMessage = useForwardMessage();
 
-  return (
-    <Composer.Frame>
-      <Composer.Input />
-      <Composer.Footer />
-    </Composer.Frame>
-  );
+    return (
+        <Composer.Frame>
+            <Composer.Input />
+            <Composer.Footer />
+        </Composer.Frame>
+    );
 }
 
 // Problem: How does this button access composer state?
 function ForwardMessageDialog() {
-  return (
-    <Dialog>
-      <ForwardMessageComposer />
-      <MessagePreview /> {/* Needs composer state */}
-      <DialogActions>
-        <CancelButton />
-        <ForwardButton /> {/* Needs to call submit */}
-      </DialogActions>
-    </Dialog>
-  );
+    return (
+        <Dialog>
+            <ForwardMessageComposer />
+            <MessagePreview /> {/* Needs composer state */}
+            <DialogActions>
+                <CancelButton />
+                <ForwardButton /> {/* Needs to call submit */}
+            </DialogActions>
+        </Dialog>
+    );
 }
 ```
 
@@ -592,20 +555,20 @@ function ForwardMessageDialog() {
 
 ```tsx
 function ForwardMessageDialog() {
-  const [input, setInput] = useState("");
-  return (
-    <Dialog>
-      <ForwardMessageComposer onInputChange={setInput} />
-      <MessagePreview input={input} />
-    </Dialog>
-  );
+    const [input, setInput] = useState("");
+    return (
+        <Dialog>
+            <ForwardMessageComposer onInputChange={setInput} />
+            <MessagePreview input={input} />
+        </Dialog>
+    );
 }
 
 function ForwardMessageComposer({ onInputChange }) {
-  const [state, setState] = useState(initialState);
-  useEffect(() => {
-    onInputChange(state.input); // Sync on every change 😬
-  }, [state.input]);
+    const [state, setState] = useState(initialState);
+    useEffect(() => {
+        onInputChange(state.input); // Sync on every change 😬
+    }, [state.input]);
 }
 ```
 
@@ -613,13 +576,13 @@ function ForwardMessageComposer({ onInputChange }) {
 
 ```tsx
 function ForwardMessageDialog() {
-  const stateRef = useRef(null);
-  return (
-    <Dialog>
-      <ForwardMessageComposer stateRef={stateRef} />
-      <ForwardButton onPress={() => submit(stateRef.current)} />
-    </Dialog>
-  );
+    const stateRef = useRef(null);
+    return (
+        <Dialog>
+            <ForwardMessageComposer stateRef={stateRef} />
+            <ForwardButton onPress={() => submit(stateRef.current)} />
+        </Dialog>
+    );
 }
 ```
 
@@ -627,39 +590,35 @@ function ForwardMessageDialog() {
 
 ```tsx
 function ForwardMessageProvider({ children }: { children: React.ReactNode }) {
-  const [state, setState] = useState(initialState);
-  const forwardMessage = useForwardMessage();
-  const inputRef = useRef(null);
+    const [state, setState] = useState(initialState);
+    const forwardMessage = useForwardMessage();
+    const inputRef = useRef(null);
 
-  return (
-    <Composer.Provider
-      state={state}
-      actions={{ update: setState, submit: forwardMessage }}
-      meta={{ inputRef }}
-    >
-      {children}
-    </Composer.Provider>
-  );
+    return (
+        <Composer.Provider state={state} actions={{ update: setState, submit: forwardMessage }} meta={{ inputRef }}>
+            {children}
+        </Composer.Provider>
+    );
 }
 
 function ForwardMessageDialog() {
-  return (
-    <ForwardMessageProvider>
-      <Dialog>
-        <ForwardMessageComposer />
-        <MessagePreview /> {/* Custom components can access state and actions */}
-        <DialogActions>
-          <CancelButton />
-          <ForwardButton /> {/* Custom components can access state and actions */}
-        </DialogActions>
-      </Dialog>
-    </ForwardMessageProvider>
-  );
+    return (
+        <ForwardMessageProvider>
+            <Dialog>
+                <ForwardMessageComposer />
+                <MessagePreview /> {/* Custom components can access state and actions */}
+                <DialogActions>
+                    <CancelButton />
+                    <ForwardButton /> {/* Custom components can access state and actions */}
+                </DialogActions>
+            </Dialog>
+        </ForwardMessageProvider>
+    );
 }
 
 function ForwardButton() {
-  const { actions } = use(Composer.Context);
-  return <Button onPress={actions.submit}>Forward</Button>;
+    const { actions } = use(Composer.Context);
+    return <Button onPress={actions.submit}>Forward</Button>;
 }
 ```
 
@@ -681,8 +640,7 @@ nested inside each other—they just need to be within the same provider.
 
 **Impact: MEDIUM**
 
-Specific techniques for implementing compound components and
-context providers.
+Specific techniques for implementing compound components and context providers.
 
 ### 3.1 Create Explicit Component Variants
 
@@ -722,50 +680,50 @@ use shared parts.
 
 ```tsx
 function ThreadComposer({ channelId }: { channelId: string }) {
-  return (
-    <ThreadProvider channelId={channelId}>
-      <Composer.Frame>
-        <Composer.Input />
-        <AlsoSendToChannelField channelId={channelId} />
-        <Composer.Footer>
-          <Composer.Formatting />
-          <Composer.Emojis />
-          <Composer.Submit />
-        </Composer.Footer>
-      </Composer.Frame>
-    </ThreadProvider>
-  );
+    return (
+        <ThreadProvider channelId={channelId}>
+            <Composer.Frame>
+                <Composer.Input />
+                <AlsoSendToChannelField channelId={channelId} />
+                <Composer.Footer>
+                    <Composer.Formatting />
+                    <Composer.Emojis />
+                    <Composer.Submit />
+                </Composer.Footer>
+            </Composer.Frame>
+        </ThreadProvider>
+    );
 }
 
 function EditMessageComposer({ messageId }: { messageId: string }) {
-  return (
-    <EditMessageProvider messageId={messageId}>
-      <Composer.Frame>
-        <Composer.Input />
-        <Composer.Footer>
-          <Composer.Formatting />
-          <Composer.Emojis />
-          <Composer.CancelEdit />
-          <Composer.SaveEdit />
-        </Composer.Footer>
-      </Composer.Frame>
-    </EditMessageProvider>
-  );
+    return (
+        <EditMessageProvider messageId={messageId}>
+            <Composer.Frame>
+                <Composer.Input />
+                <Composer.Footer>
+                    <Composer.Formatting />
+                    <Composer.Emojis />
+                    <Composer.CancelEdit />
+                    <Composer.SaveEdit />
+                </Composer.Footer>
+            </Composer.Frame>
+        </EditMessageProvider>
+    );
 }
 
 function ForwardMessageComposer({ messageId }: { messageId: string }) {
-  return (
-    <ForwardMessageProvider messageId={messageId}>
-      <Composer.Frame>
-        <Composer.Input placeholder="Add a message, if you'd like." />
-        <Composer.Footer>
-          <Composer.Formatting />
-          <Composer.Emojis />
-          <Composer.Mentions />
-        </Composer.Footer>
-      </Composer.Frame>
-    </ForwardMessageProvider>
-  );
+    return (
+        <ForwardMessageProvider messageId={messageId}>
+            <Composer.Frame>
+                <Composer.Input placeholder="Add a message, if you'd like." />
+                <Composer.Footer>
+                    <Composer.Formatting />
+                    <Composer.Emojis />
+                    <Composer.Mentions />
+                </Composer.Footer>
+            </Composer.Frame>
+        </ForwardMessageProvider>
+    );
 }
 ```
 
@@ -793,36 +751,36 @@ signatures.
 
 ```tsx
 function Composer({
-  renderHeader,
-  renderFooter,
-  renderActions,
+    renderHeader,
+    renderFooter,
+    renderActions
 }: {
-  renderHeader?: () => React.ReactNode;
-  renderFooter?: () => React.ReactNode;
-  renderActions?: () => React.ReactNode;
+    renderHeader?: () => React.ReactNode;
+    renderFooter?: () => React.ReactNode;
+    renderActions?: () => React.ReactNode;
 }) {
-  return (
-    <form>
-      {renderHeader?.()}
-      <Input />
-      {renderFooter ? renderFooter() : <DefaultFooter />}
-      {renderActions?.()}
-    </form>
-  );
+    return (
+        <form>
+            {renderHeader?.()}
+            <Input />
+            {renderFooter ? renderFooter() : <DefaultFooter />}
+            {renderActions?.()}
+        </form>
+    );
 }
 
 // Usage is awkward and inflexible
 return (
-  <Composer
-    renderHeader={() => <CustomHeader />}
-    renderFooter={() => (
-      <>
-        <Formatting />
-        <Emojis />
-      </>
-    )}
-    renderActions={() => <SubmitButton />}
-  />
+    <Composer
+        renderHeader={() => <CustomHeader />}
+        renderFooter={() => (
+            <>
+                <Formatting />
+                <Emojis />
+            </>
+        )}
+        renderActions={() => <SubmitButton />}
+    />
 );
 ```
 
@@ -830,24 +788,24 @@ return (
 
 ```tsx
 function ComposerFrame({ children }: { children: React.ReactNode }) {
-  return <form>{children}</form>;
+    return <form>{children}</form>;
 }
 
 function ComposerFooter({ children }: { children: React.ReactNode }) {
-  return <footer className="flex">{children}</footer>;
+    return <footer className="flex">{children}</footer>;
 }
 
 // Usage is flexible
 return (
-  <Composer.Frame>
-    <CustomHeader />
-    <Composer.Input />
-    <Composer.Footer>
-      <Composer.Formatting />
-      <Composer.Emojis />
-      <SubmitButton />
-    </Composer.Footer>
-  </Composer.Frame>
+    <Composer.Frame>
+        <CustomHeader />
+        <Composer.Input />
+        <Composer.Footer>
+            <Composer.Formatting />
+            <Composer.Emojis />
+            <SubmitButton />
+        </Composer.Footer>
+    </Composer.Frame>
 );
 ```
 
@@ -882,7 +840,7 @@ In React 19, `ref` is now a regular prop (no `forwardRef` wrapper needed), and `
 
 ```tsx
 const ComposerInput = forwardRef<TextInput, Props>((props, ref) => {
-  return <TextInput ref={ref} {...props} />;
+    return <TextInput ref={ref} {...props} />;
 });
 ```
 
@@ -890,7 +848,7 @@ const ComposerInput = forwardRef<TextInput, Props>((props, ref) => {
 
 ```tsx
 function ComposerInput({ ref, ...props }: Props & { ref?: React.Ref<TextInput> }) {
-  return <TextInput ref={ref} {...props} />;
+    return <TextInput ref={ref} {...props} />;
 }
 ```
 

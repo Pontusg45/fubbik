@@ -15,9 +15,9 @@ import { Elysia } from "elysia";
 import { serverTiming } from "@elysiajs/server-timing";
 
 new Elysia()
-  .use(serverTiming())
-  .get("/", () => "hello")
-  .listen(3000);
+    .use(serverTiming())
+    .get("/", () => "hello")
+    .listen(3000);
 ```
 
 Server Timing then will append header 'Server-Timing' with log duration, function name, and detail for each life-cycle function.
@@ -71,10 +71,10 @@ import { Elysia } from "elysia";
 import { serverTiming } from "@elysiajs/server-timing";
 
 new Elysia().use(
-  serverTiming({
-    allow: ({ request }) => {
-      return new URL(request.url).pathname !== "/no-trace";
-    },
-  }),
+    serverTiming({
+        allow: ({ request }) => {
+            return new URL(request.url).pathname !== "/no-trace";
+        }
+    })
 );
 ```

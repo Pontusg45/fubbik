@@ -7,11 +7,14 @@ tags: bundle, imports, tree-shaking, barrel-files, performance
 
 ## Avoid Barrel File Imports
 
-Import directly from source files instead of barrel files to avoid loading thousands of unused modules. **Barrel files** are entry points that re-export multiple modules (e.g., `index.js` that does `export * from './module'`).
+Import directly from source files instead of barrel files to avoid loading thousands of unused modules. **Barrel files** are entry points
+that re-export multiple modules (e.g., `index.js` that does `export * from './module'`).
 
-Popular icon and component libraries can have **up to 10,000 re-exports** in their entry file. For many React packages, **it takes 200-800ms just to import them**, affecting both development speed and production cold starts.
+Popular icon and component libraries can have **up to 10,000 re-exports** in their entry file. For many React packages, **it takes 200-800ms
+just to import them**, affecting both development speed and production cold starts.
 
-**Why tree-shaking doesn't help:** When a library is marked as external (not bundled), the bundler can't optimize it. If you bundle it to enable tree-shaking, builds become substantially slower analyzing the entire module graph.
+**Why tree-shaking doesn't help:** When a library is marked as external (not bundled), the bundler can't optimize it. If you bundle it to
+enable tree-shaking, builds become substantially slower analyzing the entire module graph.
 
 **Incorrect (imports entire library):**
 
@@ -42,9 +45,9 @@ import TextField from "@mui/material/TextField";
 ```js
 // next.config.js - use optimizePackageImports
 module.exports = {
-  experimental: {
-    optimizePackageImports: ["lucide-react", "@mui/material"],
-  },
+    experimental: {
+        optimizePackageImports: ["lucide-react", "@mui/material"]
+    }
 };
 
 // Then you can keep the ergonomic barrel imports:
@@ -54,6 +57,7 @@ import { Check, X, Menu } from "lucide-react";
 
 Direct imports provide 15-70% faster dev boot, 28% faster builds, 40% faster cold starts, and significantly faster HMR.
 
-Libraries commonly affected: `lucide-react`, `@mui/material`, `@mui/icons-material`, `@tabler/icons-react`, `react-icons`, `@headlessui/react`, `@radix-ui/react-*`, `lodash`, `ramda`, `date-fns`, `rxjs`, `react-use`.
+Libraries commonly affected: `lucide-react`, `@mui/material`, `@mui/icons-material`, `@tabler/icons-react`, `react-icons`,
+`@headlessui/react`, `@radix-ui/react-*`, `lodash`, `ramda`, `date-fns`, `rxjs`, `react-use`.
 
 Reference: [How we optimized package imports in Next.js](https://vercel.com/blog/how-we-optimized-package-imports-in-next-js)

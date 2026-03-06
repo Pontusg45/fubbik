@@ -6,12 +6,12 @@
 import { Elysia } from "elysia";
 
 new Elysia()
-  .ws("/chat", {
-    message(ws, message) {
-      ws.send(message); // Echo back
-    },
-  })
-  .listen(3000);
+    .ws("/chat", {
+        message(ws, message) {
+            ws.send(message); // Echo back
+        }
+    })
+    .listen(3000);
 ```
 
 ## With Validation
@@ -61,18 +61,18 @@ import { Elysia, t } from 'elysia'
 
 ```typescript
 const connections = new Set<any>().ws("/chat", {
-  open(ws) {
-    connections.add(ws);
-  },
-  message(ws, message) {
-    // Broadcast to all connected clients
-    for (const client of connections) {
-      client.send(message);
+    open(ws) {
+        connections.add(ws);
+    },
+    message(ws, message) {
+        // Broadcast to all connected clients
+        for (const client of connections) {
+            client.send(message);
+        }
+    },
+    close(ws) {
+        connections.delete(ws);
     }
-  },
-  close(ws) {
-    connections.delete(ws);
-  },
 });
 ```
 
@@ -96,34 +96,34 @@ const connections = new Set<any>().ws("/chat", {
 
 ```typescript
 const rooms = new Map<string, Set<any>>().ws("/chat/:room", {
-  open(ws) {
-    const room = ws.data.params.room;
-    if (!rooms.has(room)) {
-      rooms.set(room, new Set());
-    }
-    rooms.get(room)!.add(ws);
-  },
-  message(ws, message) {
-    const room = ws.data.params.room;
-    const clients = rooms.get(room);
+    open(ws) {
+        const room = ws.data.params.room;
+        if (!rooms.has(room)) {
+            rooms.set(room, new Set());
+        }
+        rooms.get(room)!.add(ws);
+    },
+    message(ws, message) {
+        const room = ws.data.params.room;
+        const clients = rooms.get(room);
 
-    if (clients) {
-      for (const client of clients) {
-        client.send(message);
-      }
-    }
-  },
-  close(ws) {
-    const room = ws.data.params.room;
-    const clients = rooms.get(room);
+        if (clients) {
+            for (const client of clients) {
+                client.send(message);
+            }
+        }
+    },
+    close(ws) {
+        const room = ws.data.params.room;
+        const clients = rooms.get(room);
 
-    if (clients) {
-      clients.delete(ws);
-      if (clients.size === 0) {
-        rooms.delete(room);
-      }
+        if (clients) {
+            clients.delete(ws);
+            if (clients.size === 0) {
+                rooms.delete(room);
+            }
+        }
     }
-  },
 });
 ```
 
@@ -152,20 +152,20 @@ const rooms = new Map<string, Set<any>>().ws("/chat/:room", {
 const ws = new WebSocket("ws://localhost:3000/chat");
 
 ws.onopen = () => {
-  console.log("Connected");
-  ws.send("Hello Server!");
+    console.log("Connected");
+    ws.send("Hello Server!");
 };
 
-ws.onmessage = (event) => {
-  console.log("Received:", event.data);
+ws.onmessage = event => {
+    console.log("Received:", event.data);
 };
 
-ws.onerror = (error) => {
-  console.error("Error:", error);
+ws.onerror = error => {
+    console.error("Error:", error);
 };
 
 ws.onclose = () => {
-  console.log("Disconnected");
+    console.log("Disconnected");
 };
 ```
 
@@ -174,9 +174,9 @@ ws.onclose = () => {
 ```typescript
 // Server
 export const app = new Elysia().ws("/chat", {
-  message(ws, message) {
-    ws.send(message);
-  },
+    message(ws, message) {
+        ws.send(message);
+    }
 });
 
 export type App = typeof app;
@@ -188,8 +188,8 @@ import type { App } from "./server";
 const api = treaty<App>("localhost:3000");
 const chat = api.chat.subscribe();
 
-chat.subscribe((message) => {
-  console.log("Received:", message);
+chat.subscribe(message => {
+    console.log("Received:", message);
 });
 
 chat.send("Hello!");
@@ -233,12 +233,12 @@ const ws = new WebSocket('ws://localhost:3000/chat?username=john')
 
 ```typescript
 new Elysia({
-  websocket: {
-    perMessageDeflate: true,
-  },
+    websocket: {
+        perMessageDeflate: true
+    }
 }).ws("/chat", {
-  message(ws, message) {
-    ws.send(message);
-  },
+    message(ws, message) {
+        ws.send(message);
+    }
 });
 ```

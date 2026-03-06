@@ -20,15 +20,15 @@ Export TypeScript directly. The consuming app's bundler compiles it.
 ```json
 // packages/ui/package.json
 {
-  "name": "@repo/ui",
-  "exports": {
-    "./button": "./src/button.tsx",
-    "./card": "./src/card.tsx"
-  },
-  "scripts": {
-    "lint": "eslint .",
-    "check-types": "tsc --noEmit"
-  }
+    "name": "@repo/ui",
+    "exports": {
+        "./button": "./src/button.tsx",
+        "./card": "./src/card.tsx"
+    },
+    "scripts": {
+        "lint": "eslint .",
+        "check-types": "tsc --noEmit"
+    }
 }
 ```
 
@@ -51,30 +51,30 @@ Package handles its own compilation.
 ```json
 // packages/ui/package.json
 {
-  "name": "@repo/ui",
-  "exports": {
-    "./button": {
-      "types": "./src/button.tsx",
-      "default": "./dist/button.js"
+    "name": "@repo/ui",
+    "exports": {
+        "./button": {
+            "types": "./src/button.tsx",
+            "default": "./dist/button.js"
+        }
+    },
+    "scripts": {
+        "build": "tsc",
+        "dev": "tsc --watch"
     }
-  },
-  "scripts": {
-    "build": "tsc",
-    "dev": "tsc --watch"
-  }
 }
 ```
 
 ```json
 // packages/ui/tsconfig.json
 {
-  "extends": "@repo/typescript-config/library.json",
-  "compilerOptions": {
-    "outDir": "dist",
-    "rootDir": "src"
-  },
-  "include": ["src"],
-  "exclude": ["node_modules", "dist"]
+    "extends": "@repo/typescript-config/library.json",
+    "compilerOptions": {
+        "outDir": "dist",
+        "rootDir": "src"
+    },
+    "include": ["src"],
+    "exclude": ["node_modules", "dist"]
 }
 ```
 
@@ -92,12 +92,12 @@ Package handles its own compilation.
 
 ```json
 {
-  "exports": {
-    ".": "./src/index.ts", // @repo/ui
-    "./button": "./src/button.tsx", // @repo/ui/button
-    "./card": "./src/card.tsx", // @repo/ui/card
-    "./hooks": "./src/hooks/index.ts" // @repo/ui/hooks
-  }
+    "exports": {
+        ".": "./src/index.ts", // @repo/ui
+        "./button": "./src/button.tsx", // @repo/ui/button
+        "./card": "./src/card.tsx", // @repo/ui/card
+        "./hooks": "./src/hooks/index.ts" // @repo/ui/hooks
+    }
 }
 ```
 
@@ -105,14 +105,14 @@ Package handles its own compilation.
 
 ```json
 {
-  "exports": {
-    "./button": {
-      "types": "./src/button.tsx",
-      "import": "./dist/button.mjs",
-      "require": "./dist/button.cjs",
-      "default": "./dist/button.js"
+    "exports": {
+        "./button": {
+            "types": "./src/button.tsx",
+            "import": "./dist/button.mjs",
+            "require": "./dist/button.cjs",
+            "default": "./dist/button.js"
+        }
     }
-  }
 }
 ```
 
@@ -123,10 +123,10 @@ Package handles its own compilation.
 ```json
 // apps/web/package.json
 {
-  "dependencies": {
-    "@repo/ui": "workspace:*" // pnpm/bun
-    // "@repo/ui": "*"         // npm/yarn
-  }
+    "dependencies": {
+        "@repo/ui": "workspace:*" // pnpm/bun
+        // "@repo/ui": "*"         // npm/yarn
+    }
 }
 ```
 
@@ -190,12 +190,12 @@ packages/
 ```json
 // packages/typescript-config/package.json
 {
-  "name": "@repo/typescript-config",
-  "exports": {
-    "./base.json": "./base.json",
-    "./nextjs.json": "./nextjs.json",
-    "./library.json": "./library.json"
-  }
+    "name": "@repo/typescript-config",
+    "exports": {
+        "./base.json": "./base.json",
+        "./nextjs.json": "./nextjs.json",
+        "./library.json": "./library.json"
+    }
 }
 ```
 
@@ -204,15 +204,15 @@ packages/
 ```json
 // packages/eslint-config/package.json
 {
-  "name": "@repo/eslint-config",
-  "exports": {
-    "./base": "./base.js",
-    "./next": "./next.js"
-  },
-  "dependencies": {
-    "eslint": "^8.0.0",
-    "eslint-config-next": "latest"
-  }
+    "name": "@repo/eslint-config",
+    "exports": {
+        "./base": "./base.js",
+        "./next": "./next.js"
+    },
+    "dependencies": {
+        "eslint": "^8.0.0",
+        "eslint-config-next": "latest"
+    }
 }
 ```
 
@@ -279,9 +279,9 @@ TypeScript `compilerOptions.paths` breaks with JIT packages. Use Node.js subpath
 ```json
 // packages/ui/package.json
 {
-  "imports": {
-    "#*": "./src/*"
-  }
+    "imports": {
+        "#*": "./src/*"
+    }
 }
 ```
 
@@ -295,9 +295,9 @@ import { MY_STRING } from "#utils.ts"; // Uses .ts extension
 ```json
 // packages/ui/package.json
 {
-  "imports": {
-    "#*": "./dist/*"
-  }
+    "imports": {
+        "#*": "./dist/*"
+    }
 }
 ```
 
@@ -308,7 +308,8 @@ import { MY_STRING } from "#utils.js"; // Uses .js extension
 
 ### Use `tsc` for Internal Packages
 
-For internal packages, prefer `tsc` over bundlers. Bundlers can mangle code before it reaches your app's bundler, causing hard-to-debug issues.
+For internal packages, prefer `tsc` over bundlers. Bundlers can mangle code before it reaches your app's bundler, causing hard-to-debug
+issues.
 
 ### Enable Go-to-Definition
 
@@ -317,10 +318,10 @@ For Compiled Packages, enable declaration maps:
 ```json
 // tsconfig.json
 {
-  "compilerOptions": {
-    "declaration": true,
-    "declarationMap": true
-  }
+    "compilerOptions": {
+        "declaration": true,
+        "declarationMap": true
+    }
 }
 ```
 
@@ -328,7 +329,8 @@ This creates `.d.ts` and `.d.ts.map` files for IDE navigation.
 
 ### No Root tsconfig.json Needed
 
-Each package should have its own `tsconfig.json`. A root one causes all tasks to miss cache when changed. Only use root `tsconfig.json` for non-package scripts.
+Each package should have its own `tsconfig.json`. A root one causes all tasks to miss cache when changed. Only use root `tsconfig.json` for
+non-package scripts.
 
 ### Avoid TypeScript Project References
 
