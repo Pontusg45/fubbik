@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardPanel } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { getUser } from "@/functions/get-user";
+import { MarkdownEditor } from "@/features/editor/markdown-editor";
 import { api } from "@/utils/api";
 
 export const Route = createFileRoute("/chunks/$chunkId/edit")({
@@ -194,17 +195,13 @@ function EditChunk() {
                         />
                     </div>
 
-                    <div>
-                        <label className="mb-1.5 block text-sm font-medium">Content</label>
-                        <textarea
-                            value={content}
-                            onChange={e => setContent(e.target.value)}
-                            placeholder="Write your content..."
-                            rows={10}
-                            className="bg-background focus:ring-ring w-full resize-y rounded-md border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
-                        />
-                        {errors.content && <p className="text-destructive mt-1 text-xs">{errors.content}</p>}
-                    </div>
+                    <MarkdownEditor
+                        value={content}
+                        onChange={setContent}
+                        placeholder="Write your content..."
+                        rows={10}
+                        error={errors.content}
+                    />
 
                     <Separator />
 
