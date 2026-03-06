@@ -14,7 +14,7 @@ import { ErrorBoundary } from "@/components/error-boundary";
 import FubbikLogo from "@/components/fubbik-logo";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ThemeToggle } from "@/components/theme-toggle";
-import UserMenu from "@/components/user-menu";
+import UserMenu from "@/features/auth/user-menu";
 import { Toaster } from "@/components/ui/sonner";
 
 import appCss from "../index.css?url";
