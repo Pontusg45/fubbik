@@ -9,14 +9,21 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from "./routes/__root";
+import { Route as TagsRouteImport } from "./routes/tags";
 import { Route as LoginRouteImport } from "./routes/login";
 import { Route as GraphRouteImport } from "./routes/graph";
 import { Route as DashboardRouteImport } from "./routes/dashboard";
 import { Route as IndexRouteImport } from "./routes/index";
+import { Route as ChunksIndexRouteImport } from "./routes/chunks.index";
 import { Route as ChunksNewRouteImport } from "./routes/chunks.new";
 import { Route as ChunksChunkIdRouteImport } from "./routes/chunks.$chunkId";
 import { Route as ChunksChunkIdEditRouteImport } from "./routes/chunks.$chunkId.edit";
 
+const TagsRoute = TagsRouteImport.update({
+  id: "/tags",
+  path: "/tags",
+  getParentRoute: () => rootRouteImport,
+} as any);
 const LoginRoute = LoginRouteImport.update({
   id: "/login",
   path: "/login",
@@ -35,6 +42,11 @@ const DashboardRoute = DashboardRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: "/",
   path: "/",
+  getParentRoute: () => rootRouteImport,
+} as any);
+const ChunksIndexRoute = ChunksIndexRouteImport.update({
+  id: "/chunks/",
+  path: "/chunks/",
   getParentRoute: () => rootRouteImport,
 } as any);
 const ChunksNewRoute = ChunksNewRouteImport.update({
@@ -58,8 +70,10 @@ export interface FileRoutesByFullPath {
   "/dashboard": typeof DashboardRoute;
   "/graph": typeof GraphRoute;
   "/login": typeof LoginRoute;
+  "/tags": typeof TagsRoute;
   "/chunks/$chunkId": typeof ChunksChunkIdRouteWithChildren;
   "/chunks/new": typeof ChunksNewRoute;
+  "/chunks/": typeof ChunksIndexRoute;
   "/chunks/$chunkId/edit": typeof ChunksChunkIdEditRoute;
 }
 export interface FileRoutesByTo {
@@ -67,8 +81,10 @@ export interface FileRoutesByTo {
   "/dashboard": typeof DashboardRoute;
   "/graph": typeof GraphRoute;
   "/login": typeof LoginRoute;
+  "/tags": typeof TagsRoute;
   "/chunks/$chunkId": typeof ChunksChunkIdRouteWithChildren;
   "/chunks/new": typeof ChunksNewRoute;
+  "/chunks": typeof ChunksIndexRoute;
   "/chunks/$chunkId/edit": typeof ChunksChunkIdEditRoute;
 }
 export interface FileRoutesById {
@@ -77,8 +93,10 @@ export interface FileRoutesById {
   "/dashboard": typeof DashboardRoute;
   "/graph": typeof GraphRoute;
   "/login": typeof LoginRoute;
+  "/tags": typeof TagsRoute;
   "/chunks/$chunkId": typeof ChunksChunkIdRouteWithChildren;
   "/chunks/new": typeof ChunksNewRoute;
+  "/chunks/": typeof ChunksIndexRoute;
   "/chunks/$chunkId/edit": typeof ChunksChunkIdEditRoute;
 }
 export interface FileRouteTypes {
@@ -88,8 +106,10 @@ export interface FileRouteTypes {
     | "/dashboard"
     | "/graph"
     | "/login"
+    | "/tags"
     | "/chunks/$chunkId"
     | "/chunks/new"
+    | "/chunks/"
     | "/chunks/$chunkId/edit";
   fileRoutesByTo: FileRoutesByTo;
   to:
@@ -97,8 +117,10 @@ export interface FileRouteTypes {
     | "/dashboard"
     | "/graph"
     | "/login"
+    | "/tags"
     | "/chunks/$chunkId"
     | "/chunks/new"
+    | "/chunks"
     | "/chunks/$chunkId/edit";
   id:
     | "__root__"
@@ -106,8 +128,10 @@ export interface FileRouteTypes {
     | "/dashboard"
     | "/graph"
     | "/login"
+    | "/tags"
     | "/chunks/$chunkId"
     | "/chunks/new"
+    | "/chunks/"
     | "/chunks/$chunkId/edit";
   fileRoutesById: FileRoutesById;
 }
@@ -116,12 +140,21 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRoute;
   GraphRoute: typeof GraphRoute;
   LoginRoute: typeof LoginRoute;
+  TagsRoute: typeof TagsRoute;
   ChunksChunkIdRoute: typeof ChunksChunkIdRouteWithChildren;
   ChunksNewRoute: typeof ChunksNewRoute;
+  ChunksIndexRoute: typeof ChunksIndexRoute;
 }
 
 declare module "@tanstack/react-router" {
   interface FileRoutesByPath {
+    "/tags": {
+      id: "/tags";
+      path: "/tags";
+      fullPath: "/tags";
+      preLoaderRoute: typeof TagsRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     "/login": {
       id: "/login";
       path: "/login";
@@ -148,6 +181,13 @@ declare module "@tanstack/react-router" {
       path: "/";
       fullPath: "/";
       preLoaderRoute: typeof IndexRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/chunks/": {
+      id: "/chunks/";
+      path: "/chunks";
+      fullPath: "/chunks/";
+      preLoaderRoute: typeof ChunksIndexRouteImport;
       parentRoute: typeof rootRouteImport;
     };
     "/chunks/new": {
@@ -191,8 +231,10 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRoute,
   GraphRoute: GraphRoute,
   LoginRoute: LoginRoute,
+  TagsRoute: TagsRoute,
   ChunksChunkIdRoute: ChunksChunkIdRouteWithChildren,
   ChunksNewRoute: ChunksNewRoute,
+  ChunksIndexRoute: ChunksIndexRoute,
 };
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

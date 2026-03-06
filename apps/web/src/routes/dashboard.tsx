@@ -53,9 +53,9 @@ function RouteComponent() {
     });
 
     const stats = [
-        { label: "Chunks", value: statsQuery.data?.chunks ?? 0, icon: Blocks },
-        { label: "Connections", value: statsQuery.data?.connections ?? 0, icon: Network },
-        { label: "Tags", value: statsQuery.data?.tags ?? 0, icon: Tags }
+        { label: "Chunks", value: statsQuery.data?.chunks ?? 0, icon: Blocks, to: "/dashboard" as const },
+        { label: "Connections", value: statsQuery.data?.connections ?? 0, icon: Network, to: "/dashboard" as const },
+        { label: "Tags", value: statsQuery.data?.tags ?? 0, icon: Tags, to: "/tags" as const }
     ];
 
     const recentChunks = chunksQuery.data?.chunks ?? [];
@@ -81,17 +81,19 @@ function RouteComponent() {
 
             <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-3">
                 {stats.map(stat => (
-                    <Card key={stat.label}>
-                        <CardPanel className="flex items-center gap-3 p-4">
-                            <div className="bg-muted rounded-md p-2">
-                                <stat.icon className="text-muted-foreground size-4" />
-                            </div>
-                            <div>
-                                <p className="text-2xl font-bold">{statsQuery.isLoading ? "—" : stat.value}</p>
-                                <p className="text-muted-foreground text-xs">{stat.label}</p>
-                            </div>
-                        </CardPanel>
-                    </Card>
+                    <Link key={stat.label} to={stat.to}>
+                        <Card>
+                            <CardPanel className="hover:bg-muted/50 flex items-center gap-3 p-4 transition-colors">
+                                <div className="bg-muted rounded-md p-2">
+                                    <stat.icon className="text-muted-foreground size-4" />
+                                </div>
+                                <div>
+                                    <p className="text-2xl font-bold">{statsQuery.isLoading ? "—" : stat.value}</p>
+                                    <p className="text-muted-foreground text-xs">{stat.label}</p>
+                                </div>
+                            </CardPanel>
+                        </Card>
+                    </Link>
                 ))}
             </div>
 
@@ -99,6 +101,9 @@ function RouteComponent() {
                 <div className="lg:col-span-2">
                     <div className="mb-3 flex items-center justify-between">
                         <h2 className="font-semibold">Recent Chunks</h2>
+                        <Button variant="link" size="sm" render={<Link to="/chunks" search={{ page: 1, type: undefined, q: undefined }} />}>
+                            View All
+                        </Button>
                     </div>
                     <Card>
                         {chunksQuery.isLoading ? (
