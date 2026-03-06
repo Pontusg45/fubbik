@@ -6,8 +6,9 @@
     "build": "vite build",
     "serve": "vite preview",
     "dev": "vite dev",
-    "check-types": "tsc -b",
-    "test": "vitest"
+    "check-types": "tsgo -b",
+    "lint": "oxlint src",
+    "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
     "@ai-sdk/react": "^3.0.107",
