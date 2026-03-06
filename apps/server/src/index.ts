@@ -28,7 +28,7 @@ new Elysia()
   })
   .onError(({ error, request }) => {
     logger.error(`${request.method} ${new URL(request.url).pathname}`, {
-      error: error.message,
+      error: "message" in error ? error.message : String(error),
     });
   })
   .all("/api/auth/*", async (context) => {
