@@ -1,5 +1,9 @@
 /* eslint-disable */
 
+/* oxlint-disable */
+
+/* oxfmt-disable */
+
 // @ts-nocheck
 
 // noinspection JSUnusedGlobalSymbols
@@ -68,7 +72,13 @@ export interface FileRouteTypes {
   fullPaths: "/" | "/dashboard" | "/login" | "/chunks/$chunkId" | "/chunks/new";
   fileRoutesByTo: FileRoutesByTo;
   to: "/" | "/dashboard" | "/login" | "/chunks/$chunkId" | "/chunks/new";
-  id: "__root__" | "/" | "/dashboard" | "/login" | "/chunks/$chunkId" | "/chunks/new";
+  id:
+    | "__root__"
+    | "/"
+    | "/dashboard"
+    | "/login"
+    | "/chunks/$chunkId"
+    | "/chunks/new";
   fileRoutesById: FileRoutesById;
 }
 export interface RootRouteChildren {

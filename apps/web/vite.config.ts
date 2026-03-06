@@ -8,7 +8,22 @@ export default defineConfig({
   plugins: [
     tsconfigPaths(),
     tailwindcss(),
-    tanstackStart({ server: { entry: "./entry-server" } }),
+    tanstackStart({
+      server: { entry: "./entry-server" },
+      router: {
+        quoteStyle: "double",
+        semicolons: true,
+        routeTreeFileHeader: [
+          "/* eslint-disable */",
+          "/* oxlint-disable */",
+          "/* oxfmt-disable */",
+          "",
+          "// @ts-nocheck",
+          "",
+          "// noinspection JSUnusedGlobalSymbols",
+        ],
+      }
+    }),
     viteReact(),
   ],
   server: {
