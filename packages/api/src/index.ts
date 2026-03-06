@@ -44,7 +44,15 @@ function generateId() {
 }
 
 export const api = new Elysia({ prefix: "/api" })
-  .get("/health", () => "OK")
+  .get("/health", async ({ set }) => {
+    try {
+      await db.execute(sql`SELECT 1`);
+      return { status: "ok", db: "connected" };
+    } catch {
+      set.status = 503;
+      return { status: "degraded", db: "disconnected" };
+    }
+  })
   .resolve(async ({ headers }) => {
     const session = await getSession(new Headers(headers as Record<string, string>));
     return { session };
