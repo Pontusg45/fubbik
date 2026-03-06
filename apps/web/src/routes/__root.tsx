@@ -12,6 +12,8 @@ import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 
 import { ErrorBoundary } from "@/components/error-boundary";
 import FubbikLogo from "@/components/fubbik-logo";
+import { ThemeProvider } from "@/components/theme-provider";
+import { ThemeToggle } from "@/components/theme-toggle";
 import UserMenu from "@/components/user-menu";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -48,28 +50,33 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
 
 function RootDocument() {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <HeadContent />
       </head>
       <body>
-        <div className="grid min-h-svh grid-rows-[auto_1fr]">
-          <header className="border-b">
-            <div className="container mx-auto flex items-center justify-between px-4 py-3">
-              <Link to="/" className="flex items-center gap-2">
-                <FubbikLogo className="size-6" />
-                <span className="font-bold">fubbik</span>
-              </Link>
-              <UserMenu />
-            </div>
-          </header>
-          <main>
-            <ErrorBoundary>
-              <Outlet />
-            </ErrorBoundary>
-          </main>
-        </div>
-        <Toaster richColors />
+        <ThemeProvider>
+          <div className="grid min-h-svh grid-rows-[auto_1fr]">
+            <header className="border-b">
+              <div className="container mx-auto flex items-center justify-between px-4 py-3">
+                <Link to="/" className="flex items-center gap-2">
+                  <FubbikLogo className="size-6" />
+                  <span className="font-bold">fubbik</span>
+                </Link>
+                <div className="flex items-center gap-2">
+                  <ThemeToggle />
+                  <UserMenu />
+                </div>
+              </div>
+            </header>
+            <main>
+              <ErrorBoundary>
+                <Outlet />
+              </ErrorBoundary>
+            </main>
+          </div>
+          <Toaster richColors />
+        </ThemeProvider>
 
         <TanStackRouterDevtools position="bottom-left" />
         <ReactQueryDevtools position="bottom" buttonPosition="bottom-right" />
