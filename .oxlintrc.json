@@ -1,16 +1,22 @@
 {
     "$schema": "./node_modules/oxlint/configuration_schema.json",
-    "plugins": null,
-    "categories": {},
-    "rules": {},
+
+    "plugins": ["typescript", "react", "import"],
+    "categories": {
+        "correctness": "error",
+        "suspicious": "warn",
+        "perf": "warn"
+    },
+    "rules": {
+        "react-in-jsx-scope": "off",
+        "no-unassigned-import": "off",
+        "no-shadow": "off"
+    },
     "settings": {
         "jsx-a11y": {
             "polymorphicPropName": null,
             "components": {},
             "attributes": {}
-        },
-        "next": {
-            "rootDir": []
         },
         "react": {
             "formComponents": [],
@@ -36,5 +42,5 @@
         "builtin": true
     },
     "globals": {},
-    "ignorePatterns": []
+    "ignorePatterns": ["routeTree.gen.ts", ".kiro/", ".claude/", ".agents/"]
 }
