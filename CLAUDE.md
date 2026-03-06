@@ -56,12 +56,22 @@ fubbik/
 │   └── env/         # Environment validation (Arktype + t3-env)
 ```
 
+## API Documentation
+
+The server exposes a Swagger/OpenAPI endpoint at `/docs` (e.g., `http://localhost:3000/docs`).
+
+## Environment Variables
+
+- `PORT` — Server port (default: `3000`, validated via `packages/env`)
+
 ## Common Commands
 
 - `bun install` - Install dependencies
 - `bun dev` - Start development server
 - `bun build` - Build for production
 - `bun test` - Run tests
+- `bun ci` - Run full CI pipeline (type-check, lint, test, build, format check, sherif)
+- `bun run check-types` - Type-check all packages (uses `tsgo`)
 - `bun db:push` - Push database schema
 - `bun db:studio` - Open database UI
 

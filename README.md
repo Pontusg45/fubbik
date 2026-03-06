@@ -67,6 +67,9 @@ bun run dev
 
 Open [http://localhost:3001](http://localhost:3001) in your browser to see the web application.
 The API is running at [http://localhost:3000](http://localhost:3000).
+API documentation (Swagger) is available at [http://localhost:3000/docs](http://localhost:3000/docs).
+
+The server port can be configured via the `PORT` environment variable (default: `3000`).
 
 ## Project Structure
 
@@ -74,11 +77,14 @@ The API is running at [http://localhost:3000](http://localhost:3000).
 fubbik/
 ├── apps/
 │   ├── web/         # Frontend application (React + TanStack Start)
-│   └── server/      # Backend API (Elysia, TRPC)
+│   ├── server/      # Backend API (Elysia)
+│   └── cli/         # CLI application
 ├── packages/
-│   ├── api/         # API layer / business logic
-│   ├── auth/        # Authentication configuration & logic
-│   └── db/          # Database schema & queries
+│   ├── api/         # API layer (Elysia routes, Eden types)
+│   ├── auth/        # Authentication (Better Auth + Drizzle adapter)
+│   ├── config/      # Shared TypeScript config
+│   ├── db/          # Database schema (Drizzle ORM)
+│   └── env/         # Environment validation (Arktype + t3-env)
 ```
 
 ## Available Scripts
@@ -87,9 +93,10 @@ fubbik/
 - `bun run build`: Build all applications
 - `bun run dev:web`: Start only the web application
 - `bun run dev:server`: Start only the server
-- `bun run check-types`: Check TypeScript types across all apps
+- `bun run check-types`: Type-check all packages (uses `tsgo`)
 - `bun run db:push`: Push schema changes to database
 - `bun run db:studio`: Open database studio UI
+- `bun ci`: Run full CI pipeline (type-check, lint, test, build, format check, sherif)
 
 ---
 
