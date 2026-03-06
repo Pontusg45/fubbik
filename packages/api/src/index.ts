@@ -1,9 +1,20 @@
+import { Cause, Option } from "effect";
 import { Elysia } from "elysia";
 import { auth } from "@fubbik/auth";
 import type { Session } from "./context";
 import { healthRoutes } from "./health/routes";
 import { chunkRoutes } from "./chunks/routes";
 import { statsRoutes } from "./stats/routes";
+
+const FiberFailureCauseSymbol = Symbol.for("effect/Runtime/FiberFailure/Cause");
+
+function extractEffectError(error: unknown): { _tag: string } | null {
+  if (typeof error !== "object" || error === null) return null;
+  const cause = (error as Record<symbol, unknown>)[FiberFailureCauseSymbol];
+  if (!cause) return null;
+  const option = Cause.failureOption(cause as Cause.Cause<{ _tag: string }>);
+  return Option.isSome(option) ? option.value : null;
+}
 
 const isDev = process.env.NODE_ENV !== "production";
 
@@ -38,6 +49,23 @@ async function getSession(headers: Headers): Promise<Session> {
 
 export const api = new Elysia({ prefix: "/api" })
   .use(healthRoutes)
+  .onError(({ error, set }) => {
+    const effectError = extractEffectError(error);
+    if (effectError) {
+      switch (effectError._tag) {
+        case "AuthError":
+          set.status = 401;
+          return { message: "Authentication required" };
+        case "NotFoundError":
+          set.status = 404;
+          return { message: `${(effectError as { resource: string }).resource} not found` };
+        case "DatabaseError":
+          set.status = 500;
+          console.error("Database error", (effectError as { cause: unknown }).cause);
+          return { message: "Internal server error" };
+      }
+    }
+  })
   .resolve(async ({ headers }) => {
     const session = await getSession(new Headers(headers as Record<string, string>));
     return { session };

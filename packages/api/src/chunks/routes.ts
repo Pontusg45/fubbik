@@ -1,24 +1,23 @@
+import { Effect } from "effect";
 import { Elysia, t } from "elysia";
 import type { Session } from "../context";
-import { dbError } from "../error";
+import { AuthError } from "../errors";
 import * as chunkService from "./service";
+
+function requireSession(ctx: unknown) {
+  const session = (ctx as unknown as { session: Session }).session;
+  return session ? Effect.succeed(session) : Effect.fail(new AuthError());
+}
 
 export const chunkRoutes = new Elysia()
   .get(
     "/chunks",
-    async (ctx) => {
-      const { set, query } = ctx;
-      const session = (ctx as unknown as { session: Session }).session;
-      if (!session) {
-        set.status = 401;
-        return { message: "Authentication required" };
-      }
-      try {
-        return await chunkService.listChunks(session.user.id, query);
-      } catch (err) {
-        return dbError(set, "Failed to fetch chunks", err);
-      }
-    },
+    (ctx) =>
+      Effect.runPromise(
+        requireSession(ctx).pipe(
+          Effect.flatMap((session) => chunkService.listChunks(session.user.id, ctx.query)),
+        ),
+      ),
     {
       query: t.Object({
         type: t.Optional(t.String()),
@@ -28,41 +27,26 @@ export const chunkRoutes = new Elysia()
       }),
     },
   )
-  .get("/chunks/:id", async (ctx) => {
-    const { set, params } = ctx;
-    const session = (ctx as unknown as { session: Session }).session;
-    if (!session) {
-      set.status = 401;
-      return { message: "Authentication required" };
-    }
-    try {
-      const result = await chunkService.getChunkDetail(params.id, session.user.id);
-      if (!result) {
-        set.status = 404;
-        return { message: "Chunk not found" };
-      }
-      return result;
-    } catch (err) {
-      return dbError(set, "Failed to fetch chunk", err);
-    }
-  })
+  .get("/chunks/:id", (ctx) =>
+    Effect.runPromise(
+      requireSession(ctx).pipe(
+        Effect.flatMap((session) => chunkService.getChunkDetail(ctx.params.id, session.user.id)),
+      ),
+    ),
+  )
   .post(
     "/chunks",
-    async (ctx) => {
-      const { set, body } = ctx;
-      const session = (ctx as unknown as { session: Session }).session;
-      if (!session) {
-        set.status = 401;
-        return { message: "Authentication required" };
-      }
-      try {
-        const created = await chunkService.createChunk(session.user.id, body);
-        set.status = 201;
-        return created;
-      } catch (err) {
-        return dbError(set, "Failed to create chunk", err);
-      }
-    },
+    (ctx) =>
+      Effect.runPromise(
+        requireSession(ctx).pipe(
+          Effect.flatMap((session) => chunkService.createChunk(session.user.id, ctx.body)),
+          Effect.tap(() =>
+            Effect.sync(() => {
+              ctx.set.status = 201;
+            }),
+          ),
+        ),
+      ),
     {
       body: t.Object({
         title: t.String(),
@@ -74,24 +58,14 @@ export const chunkRoutes = new Elysia()
   )
   .patch(
     "/chunks/:id",
-    async (ctx) => {
-      const { set, params, body } = ctx;
-      const session = (ctx as unknown as { session: Session }).session;
-      if (!session) {
-        set.status = 401;
-        return { message: "Authentication required" };
-      }
-      try {
-        const updated = await chunkService.updateChunk(params.id, session.user.id, body);
-        if (!updated) {
-          set.status = 404;
-          return { message: "Chunk not found" };
-        }
-        return updated;
-      } catch (err) {
-        return dbError(set, "Failed to update chunk", err);
-      }
-    },
+    (ctx) =>
+      Effect.runPromise(
+        requireSession(ctx).pipe(
+          Effect.flatMap((session) =>
+            chunkService.updateChunk(ctx.params.id, session.user.id, ctx.body),
+          ),
+        ),
+      ),
     {
       body: t.Object({
         title: t.Optional(t.String()),
@@ -101,21 +75,11 @@ export const chunkRoutes = new Elysia()
       }),
     },
   )
-  .delete("/chunks/:id", async (ctx) => {
-    const { set, params } = ctx;
-    const session = (ctx as unknown as { session: Session }).session;
-    if (!session) {
-      set.status = 401;
-      return { message: "Authentication required" };
-    }
-    try {
-      const deleted = await chunkService.deleteChunk(params.id, session.user.id);
-      if (!deleted) {
-        set.status = 404;
-        return { message: "Chunk not found" };
-      }
-      return { message: "Deleted" };
-    } catch (err) {
-      return dbError(set, "Failed to delete chunk", err);
-    }
-  });
+  .delete("/chunks/:id", (ctx) =>
+    Effect.runPromise(
+      requireSession(ctx).pipe(
+        Effect.flatMap((session) => chunkService.deleteChunk(ctx.params.id, session.user.id)),
+        Effect.map(() => ({ message: "Deleted" })),
+      ),
+    ),
+  );
