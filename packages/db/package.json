@@ -5,7 +5,8 @@
     ".": "./src/index.ts",
     "./schema/auth": "./src/schema/auth.ts",
     "./schema/chunk": "./src/schema/chunk.ts",
-    "./repository": "./src/repository/index.ts"
+    "./repository": "./src/repository/index.ts",
+    "./errors": "./src/errors.ts"
   },
   "scripts": {
     "lint": "oxlint src",
