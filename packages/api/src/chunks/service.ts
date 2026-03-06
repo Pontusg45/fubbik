@@ -1,3 +1,4 @@
+import { Effect } from "effect";
 import {
   createChunk as createChunkRepo,
   deleteChunk as deleteChunkRepo,
@@ -6,25 +7,33 @@ import {
   listChunks as listChunksRepo,
   updateChunk as updateChunkRepo,
 } from "@fubbik/db/repository";
+import { NotFoundError } from "../errors";
 
-export async function listChunks(
+export function listChunks(
   userId: string,
   query: { type?: string; search?: string; limit?: string; offset?: string },
 ) {
   const limit = Math.min(Number(query.limit ?? 50), 100);
   const offset = Number(query.offset ?? 0);
-  const result = await listChunksRepo({ userId, type: query.type, search: query.search, limit, offset });
-  return { ...result, limit, offset };
+  return listChunksRepo({ userId, type: query.type, search: query.search, limit, offset }).pipe(
+    Effect.map((result) => ({ ...result, limit, offset })),
+  );
 }
 
-export async function getChunkDetail(chunkId: string, userId: string) {
-  const found = await getChunkById(chunkId, userId);
-  if (!found) return null;
-  const connections = await getChunkConnections(chunkId);
-  return { chunk: found, connections };
+export function getChunkDetail(chunkId: string, userId: string) {
+  return getChunkById(chunkId, userId).pipe(
+    Effect.flatMap((found) =>
+      found ? Effect.succeed(found) : Effect.fail(new NotFoundError({ resource: "Chunk" })),
+    ),
+    Effect.flatMap((found) =>
+      getChunkConnections(chunkId).pipe(
+        Effect.map((connections) => ({ chunk: found, connections })),
+      ),
+    ),
+  );
 }
 
-export async function createChunk(
+export function createChunk(
   userId: string,
   body: { title: string; content?: string; type?: string; tags?: string[] },
 ) {
@@ -38,16 +47,23 @@ export async function createChunk(
   });
 }
 
-export async function updateChunk(
+export function updateChunk(
   chunkId: string,
   userId: string,
   body: { title?: string; content?: string; type?: string; tags?: string[] },
 ) {
-  const existing = await getChunkById(chunkId, userId);
-  if (!existing) return null;
-  return updateChunkRepo(chunkId, body);
+  return getChunkById(chunkId, userId).pipe(
+    Effect.flatMap((existing) =>
+      existing ? Effect.succeed(existing) : Effect.fail(new NotFoundError({ resource: "Chunk" })),
+    ),
+    Effect.flatMap(() => updateChunkRepo(chunkId, body)),
+  );
 }
 
-export async function deleteChunk(chunkId: string, userId: string) {
-  return deleteChunkRepo(chunkId, userId);
+export function deleteChunk(chunkId: string, userId: string) {
+  return deleteChunkRepo(chunkId, userId).pipe(
+    Effect.flatMap((deleted) =>
+      deleted ? Effect.succeed(deleted) : Effect.fail(new NotFoundError({ resource: "Chunk" })),
+    ),
+  );
 }
