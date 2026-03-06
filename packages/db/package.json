@@ -10,15 +10,15 @@
     },
     "scripts": {
         "lint": "oxlint src",
-        "db:seed": "bun run src/seed.ts",
+        "seed": "bun run src/seed.ts",
         "db:push": "drizzle-kit push",
         "db:generate": "drizzle-kit generate",
         "db:studio": "drizzle-kit studio",
         "db:migrate": "drizzle-kit migrate",
-        "db:start": "docker compose up -d",
-        "db:watch": "docker compose up",
-        "db:stop": "docker compose stop",
-        "db:down": "docker compose down",
+        "db:start": "docker compose -f ../../docker-compose.yml up db -d",
+        "db:watch": "docker compose -f ../../docker-compose.yml up db",
+        "db:stop": "docker compose -f ../../docker-compose.yml stop db",
+        "db:down": "docker compose -f ../../docker-compose.yml down db",
         "test": "vitest run"
     },
     "dependencies": {
