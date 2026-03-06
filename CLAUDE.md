@@ -23,6 +23,7 @@ This file provides context about the project for AI assistants.
 - Framework: elysia
 - API Client: elysia eden treaty
 - Validation: arktype
+- Error Handling: effect (typed errors via Effect.tryPromise, tagged errors)
 
 ### Database
 
@@ -55,6 +56,21 @@ fubbik/
 │   ├── db/          # Database schema (Drizzle ORM)
 │   └── env/         # Environment validation (Arktype + t3-env)
 ```
+
+## Architecture Patterns
+
+### Backend: Repository -> Service -> Route
+
+- **Repositories** (`packages/db/src/repository/`): Return `Effect<T, DatabaseError>`. Pure data access, no business logic.
+- **Services** (`packages/api/src/*/service.ts`): Compose repository Effects, add business logic, introduce `NotFoundError`/`AuthError`.
+- **Routes** (`packages/api/src/*/routes.ts`): Call `Effect.runPromise(requireSession(ctx).pipe(...))`. Errors propagate to global `.onError` handler.
+- **Global error handler** (`packages/api/src/index.ts`): Extracts Effect errors from FiberFailure, maps `_tag` to HTTP status codes (AuthError->401, NotFoundError->404, DatabaseError->500).
+
+### Frontend: Feature-based Structure
+
+- Route files in `apps/web/src/routes/`
+- Feature components in `apps/web/src/features/` (e.g., `features/auth/`)
+- Shared UI in `apps/web/src/components/ui/`
 
 ## API Documentation
 
