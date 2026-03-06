@@ -22,6 +22,16 @@ function NewChunk() {
   const [type, setType] = useState("note");
   const [tagInput, setTagInput] = useState("");
   const [tags, setTags] = useState<string[]>([]);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  function validate() {
+    const e: Record<string, string> = {};
+    if (!title.trim()) e.title = "Title is required";
+    else if (title.length > 200) e.title = "Title must be 200 characters or less";
+    if (content.length > 50000) e.content = "Content must be 50,000 characters or less";
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  }
 
   const createMutation = useMutation({
     mutationFn: async () => {
@@ -77,6 +87,7 @@ function NewChunk() {
               placeholder="Enter a title..."
               className="bg-background border rounded-md px-3 py-2 text-sm w-full focus:outline-none focus:ring-2 focus:ring-ring"
             />
+            {errors.title && <p className="text-destructive text-xs mt-1">{errors.title}</p>}
           </div>
 
           <div>
@@ -133,6 +144,7 @@ function NewChunk() {
               rows={10}
               className="bg-background border rounded-md px-3 py-2 text-sm w-full focus:outline-none focus:ring-2 focus:ring-ring resize-y"
             />
+            {errors.content && <p className="text-destructive text-xs mt-1">{errors.content}</p>}
           </div>
 
           <Separator />
@@ -142,8 +154,10 @@ function NewChunk() {
               Cancel
             </Button>
             <Button
-              onClick={() => createMutation.mutate()}
-              disabled={!title.trim() || createMutation.isPending}
+              onClick={() => {
+                if (validate()) createMutation.mutate();
+              }}
+              disabled={createMutation.isPending}
             >
               {createMutation.isPending ? "Creating..." : "Create Chunk"}
             </Button>
