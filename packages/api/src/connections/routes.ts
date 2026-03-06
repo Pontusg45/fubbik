@@ -20,9 +20,9 @@ export const connectionRoutes = new Elysia()
             ),
         {
             body: t.Object({
-                sourceId: t.String(),
-                targetId: t.String(),
-                relation: t.String()
+                sourceId: t.String({ maxLength: 100 }),
+                targetId: t.String({ maxLength: 100 }),
+                relation: t.String({ maxLength: 50 })
             })
         }
     )

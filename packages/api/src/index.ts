@@ -60,6 +60,9 @@ export const api = new Elysia({ prefix: "/api" })
         const effectError = extractEffectError(error);
         if (effectError) {
             switch (effectError._tag) {
+                case "ValidationError":
+                    set.status = 400;
+                    return { message: effectError.message as string };
                 case "AuthError":
                     set.status = 401;
                     return { message: "Authentication required" };

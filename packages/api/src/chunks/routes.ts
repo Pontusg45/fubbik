@@ -37,11 +37,12 @@ export const chunkRoutes = new Elysia()
             body: t.Object({
                 chunks: t.Array(
                     t.Object({
-                        title: t.String(),
-                        content: t.Optional(t.String()),
-                        type: t.Optional(t.String()),
-                        tags: t.Optional(t.Array(t.String()))
-                    })
+                        title: t.String({ maxLength: 200 }),
+                        content: t.Optional(t.String({ maxLength: 50000 })),
+                        type: t.Optional(t.String({ maxLength: 20 })),
+                        tags: t.Optional(t.Array(t.String({ maxLength: 50 }), { maxItems: 20 }))
+                    }),
+                    { maxItems: 500 }
                 )
             })
         }
@@ -71,10 +72,10 @@ export const chunkRoutes = new Elysia()
             ),
         {
             body: t.Object({
-                title: t.String(),
-                content: t.Optional(t.String()),
-                type: t.Optional(t.String()),
-                tags: t.Optional(t.Array(t.String()))
+                title: t.String({ maxLength: 200 }),
+                content: t.Optional(t.String({ maxLength: 50000 })),
+                type: t.Optional(t.String({ maxLength: 20 })),
+                tags: t.Optional(t.Array(t.String({ maxLength: 50 }), { maxItems: 20 }))
             })
         }
     )
@@ -86,10 +87,10 @@ export const chunkRoutes = new Elysia()
             ),
         {
             body: t.Object({
-                title: t.Optional(t.String()),
-                content: t.Optional(t.String()),
-                type: t.Optional(t.String()),
-                tags: t.Optional(t.Array(t.String()))
+                title: t.Optional(t.String({ maxLength: 200 })),
+                content: t.Optional(t.String({ maxLength: 50000 })),
+                type: t.Optional(t.String({ maxLength: 20 })),
+                tags: t.Optional(t.Array(t.String({ maxLength: 50 }), { maxItems: 20 }))
             })
         }
     )

@@ -6,10 +6,16 @@ import {
 } from "@fubbik/db/repository";
 import { Effect } from "effect";
 
-import { NotFoundError } from "../errors";
+import { NotFoundError, ValidationError } from "../errors";
 
 export function createConnection(userId: string, body: { sourceId: string; targetId: string; relation: string }) {
-    return getChunkById(body.sourceId, userId).pipe(
+    return Effect.suspend(() => {
+        if (body.sourceId === body.targetId) {
+            return Effect.fail(new ValidationError({ message: "Cannot connect a chunk to itself" }));
+        }
+        return Effect.void;
+    }).pipe(
+        Effect.flatMap(() => getChunkById(body.sourceId, userId)),
         Effect.flatMap(source =>
             source ? Effect.succeed(source) : Effect.fail(new NotFoundError({ resource: "Source chunk" }))
         ),
