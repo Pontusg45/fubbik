@@ -67,10 +67,16 @@ function RouteComponent() {
                     <h1 className="text-2xl font-bold tracking-tight">Welcome back{session?.user.name ? `, ${session.user.name}` : ""}</h1>
                     <p className="text-muted-foreground text-sm">Here's an overview of your knowledge base.</p>
                 </div>
-                <Button render={<Link to="/chunks/new" />}>
-                    <Plus className="size-4" />
-                    New Chunk
-                </Button>
+                <div className="flex items-center gap-2">
+                    <Button variant="outline" render={<Link to="/graph" />}>
+                        <Network className="size-4" />
+                        Graph
+                    </Button>
+                    <Button render={<Link to="/chunks/new" />}>
+                        <Plus className="size-4" />
+                        New Chunk
+                    </Button>
+                </div>
             </div>
 
             <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-3">

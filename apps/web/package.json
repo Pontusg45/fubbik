@@ -28,6 +28,7 @@
         "@tanstack/react-store": "^0.9.1",
         "@tanstack/router-plugin": "^1.154.3",
         "@tanstack/store": "^0.9.1",
+        "@xyflow/react": "^12.10.1",
         "arktype": "catalog:",
         "better-auth": "catalog:",
         "class-variance-authority": "^0.7.1",

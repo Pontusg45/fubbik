@@ -7,6 +7,7 @@ import { requireSession } from "./require-session";
 import { chunkRoutes } from "./chunks/routes";
 import { connectionRoutes } from "./connections/routes";
 import type { Session } from "./context";
+import { graphRoutes } from "./graph/routes";
 import { healthRoutes } from "./health/routes";
 import { statsRoutes } from "./stats/routes";
 
@@ -83,6 +84,7 @@ export const api = new Elysia({ prefix: "/api" })
     )
     .use(chunkRoutes)
     .use(statsRoutes)
-    .use(connectionRoutes);
+    .use(connectionRoutes)
+    .use(graphRoutes);
 
 export type Api = typeof api;
