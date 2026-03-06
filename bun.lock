@@ -132,6 +132,7 @@
         "@fubbik/auth": "workspace:*",
         "@fubbik/db": "workspace:*",
         "@fubbik/env": "workspace:*",
+        "drizzle-orm": "^0.45.1",
         "elysia": "catalog:",
       },
       "devDependencies": {

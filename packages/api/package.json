@@ -5,11 +5,14 @@
     ".": "./src/index.ts",
     "./context": "./src/context.ts"
   },
-  "scripts": {},
+  "scripts": {
+    "lint": "oxlint src"
+  },
   "dependencies": {
     "@fubbik/auth": "workspace:*",
     "@fubbik/db": "workspace:*",
     "@fubbik/env": "workspace:*",
+    "drizzle-orm": "^0.45.1",
     "elysia": "catalog:"
   },
   "devDependencies": {
