@@ -3,6 +3,7 @@ import { join } from "node:path";
 
 export interface Chunk {
     id: string;
+    serverId?: string;
     title: string;
     content: string;
     type: string;
@@ -14,6 +15,8 @@ export interface Chunk {
 interface Store {
     name: string;
     chunks: Chunk[];
+    serverUrl?: string;
+    lastSync?: string;
 }
 
 const STORE_DIR = ".fubbik";
@@ -105,6 +108,23 @@ export function deleteChunk(id: string, dir?: string): boolean {
     store.chunks.splice(idx, 1);
     saveStore(store, dir);
     return true;
+}
+
+export function getServerUrl(dir?: string): string | undefined {
+    const store = readStore(dir);
+    return store.serverUrl;
+}
+
+export function setServerUrl(url: string, dir?: string): void {
+    const store = readStore(dir);
+    store.serverUrl = url;
+    saveStore(store, dir);
+}
+
+export function updateLastSync(dir?: string): void {
+    const store = readStore(dir);
+    store.lastSync = new Date().toISOString();
+    saveStore(store, dir);
 }
 
 export function updateChunk(

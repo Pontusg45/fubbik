@@ -7,6 +7,7 @@ import { initCommand } from "./commands/init";
 import { listCommand } from "./commands/list";
 import { removeCommand } from "./commands/remove";
 import { searchCommand } from "./commands/search";
+import { syncCommand } from "./commands/sync";
 import { updateCommand } from "./commands/update";
 
 const program = new Command();
@@ -21,5 +22,6 @@ program.addCommand(listCommand);
 program.addCommand(searchCommand);
 program.addCommand(updateCommand);
 program.addCommand(removeCommand);
+program.addCommand(syncCommand);
 
 program.parse();
