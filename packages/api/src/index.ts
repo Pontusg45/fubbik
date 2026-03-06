@@ -73,6 +73,8 @@ export const api = new Elysia({ prefix: "/api" })
         return { message: "Authentication required" };
       }
       try {
+        const limit = Math.min(Number(query.limit ?? 50), 100);
+        const offset = Number(query.offset ?? 0);
         const conditions = [eq(chunk.userId, session.user.id)];
         if (query.type) {
           conditions.push(eq(chunk.type, query.type));
@@ -87,14 +89,15 @@ export const api = new Elysia({ prefix: "/api" })
           .from(chunk)
           .where(and(...conditions))
           .orderBy(desc(chunk.updatedAt))
-          .limit(query.limit ? Number(query.limit) : 50);
+          .limit(limit)
+          .offset(offset);
 
         const total = await db
           .select({ count: sql<number>`count(*)` })
           .from(chunk)
-          .where(eq(chunk.userId, session.user.id));
+          .where(and(...conditions));
 
-        return { chunks, total: Number(total[0]?.count ?? 0) };
+        return { chunks, total: Number(total[0]?.count ?? 0), limit, offset };
       } catch (err) {
         return dbError(set, "Failed to fetch chunks", err);
       }
@@ -104,6 +107,7 @@ export const api = new Elysia({ prefix: "/api" })
         type: t.Optional(t.String()),
         search: t.Optional(t.String()),
         limit: t.Optional(t.String()),
+        offset: t.Optional(t.String()),
       }),
     },
   )
