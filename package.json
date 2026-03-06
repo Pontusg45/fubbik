@@ -35,6 +35,7 @@
         "db:watch": "turbo run db:watch --filter=@fubbik/db",
         "db:stop": "turbo run db:stop --filter=@fubbik/db",
         "db:down": "turbo run db:down --filter=@fubbik/db",
+        "seed": "turbo run seed --filter=@fubbik/db",
         "test": "turbo run test",
         "lint": "turbo run lint",
         "lint:fix": "oxlint --fix",
