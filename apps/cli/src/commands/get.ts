@@ -1,6 +1,6 @@
 import { Command } from "commander";
 
-import { getChunk } from "../store";
+import { getChunk } from "../lib/store";
 
 export const getCommand = new Command("get")
   .description("Get a chunk by ID")

@@ -1,6 +1,6 @@
 import { Command } from "commander";
 
-import { createStore, storeDir, storeExists } from "../store";
+import { createStore, storeDir, storeExists } from "../lib/store";
 
 export const initCommand = new Command("init")
   .description("Initialize a new knowledge base")

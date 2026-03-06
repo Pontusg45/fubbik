@@ -1,6 +1,6 @@
 import { Command } from "commander";
 
-import { listChunks } from "../store";
+import { listChunks } from "../lib/store";
 
 export const listCommand = new Command("list")
   .description("List all chunks")

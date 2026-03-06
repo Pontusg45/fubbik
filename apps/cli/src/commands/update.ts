@@ -1,6 +1,6 @@
 import { Command } from "commander";
 
-import { updateChunk } from "../store";
+import { updateChunk } from "../lib/store";
 
 export const updateCommand = new Command("update")
   .description("Update a chunk by ID")

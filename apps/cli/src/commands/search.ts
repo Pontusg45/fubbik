@@ -1,6 +1,6 @@
 import { Command } from "commander";
 
-import { searchChunks } from "../store";
+import { searchChunks } from "../lib/store";
 
 export const searchCommand = new Command("search")
   .description("Search chunks by title, content, or tags")

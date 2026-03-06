@@ -1,6 +1,6 @@
 import { Command } from "commander";
 
-import { addChunk } from "../store";
+import { addChunk } from "../lib/store";
 
 export const addCommand = new Command("add")
   .description("Add a new chunk to the knowledge base")
