@@ -4,7 +4,9 @@
   "exports": {
     ".": "./src/index.ts"
   },
-  "scripts": {},
+  "scripts": {
+    "lint": "oxlint src"
+  },
   "dependencies": {
     "@better-auth/drizzle-adapter": "^1.5.1",
     "@fubbik/db": "workspace:*",
