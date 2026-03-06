@@ -66,6 +66,10 @@ export const api = new Elysia({ prefix: "/api" })
                 case "NotFoundError":
                     set.status = 404;
                     return { message: `${effectError.resource} not found` };
+                case "AiError":
+                    set.status = 502;
+                    console.error("AI service error", effectError.cause);
+                    return { message: "AI service error" };
                 case "DatabaseError":
                     set.status = 500;
                     console.error("Database error", effectError.cause);

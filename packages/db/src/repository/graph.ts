@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, or, sql } from "drizzle-orm";
 import { Effect } from "effect";
 
 import { DatabaseError } from "../errors";
@@ -18,8 +18,14 @@ export function getAllChunksMeta(userId: string) {
 
 export function getAllConnectionsForUser(userId: string) {
     return Effect.tryPromise({
-        try: () =>
-            db
+        try: async () => {
+            // Get all chunk IDs owned by this user
+            const userChunkIds = db
+                .select({ id: chunk.id })
+                .from(chunk)
+                .where(eq(chunk.userId, userId));
+
+            return db
                 .select({
                     id: chunkConnection.id,
                     sourceId: chunkConnection.sourceId,
@@ -27,8 +33,13 @@ export function getAllConnectionsForUser(userId: string) {
                     relation: chunkConnection.relation
                 })
                 .from(chunkConnection)
-                .innerJoin(chunk, eq(chunkConnection.sourceId, chunk.id))
-                .where(eq(chunk.userId, userId)),
+                .where(
+                    or(
+                        sql`${chunkConnection.sourceId} IN (${userChunkIds})`,
+                        sql`${chunkConnection.targetId} IN (${userChunkIds})`
+                    )
+                );
+        },
         catch: cause => new DatabaseError({ cause })
     });
 }

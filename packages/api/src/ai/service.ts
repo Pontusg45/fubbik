@@ -2,7 +2,7 @@ import { generateText } from "ai";
 import { openai } from "@ai-sdk/openai";
 import { getAllChunksMeta, getChunkById } from "@fubbik/db/repository";
 import { Effect } from "effect";
-import { DatabaseError } from "@fubbik/db/errors";
+import { AiError } from "../errors";
 import { NotFoundError } from "../errors";
 
 export function summarizeChunkById(chunkId: string, userId: string) {
@@ -36,7 +36,7 @@ function summarizeChunk(title: string, content: string) {
             });
             return { summary: result.text };
         },
-        catch: cause => new DatabaseError({ cause })
+        catch: cause => new AiError({ cause })
     });
 }
 
@@ -59,7 +59,7 @@ export function suggestConnections(
                 return [];
             }
         },
-        catch: cause => new DatabaseError({ cause })
+        catch: cause => new AiError({ cause })
     });
 }
 
@@ -82,6 +82,6 @@ export function generateChunk(prompt: string) {
                 return { title: prompt, content: result.text, type: "note" as const, tags: [] as string[] };
             }
         },
-        catch: cause => new DatabaseError({ cause })
+        catch: cause => new AiError({ cause })
     });
 }

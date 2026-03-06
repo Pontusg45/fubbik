@@ -34,9 +34,12 @@ export function deleteConnection(connectionId: string, userId: string) {
             conn ? Effect.succeed(conn) : Effect.fail(new NotFoundError({ resource: "Connection" }))
         ),
         Effect.flatMap(conn =>
-            getChunkById(conn.sourceId, userId).pipe(
-                Effect.flatMap(source =>
-                    source ? Effect.succeed(conn) : Effect.fail(new NotFoundError({ resource: "Connection" }))
+            Effect.all({
+                source: getChunkById(conn.sourceId, userId),
+                target: getChunkById(conn.targetId, userId)
+            }).pipe(
+                Effect.flatMap(({ source, target }) =>
+                    source || target ? Effect.succeed(conn) : Effect.fail(new NotFoundError({ resource: "Connection" }))
                 )
             )
         ),
