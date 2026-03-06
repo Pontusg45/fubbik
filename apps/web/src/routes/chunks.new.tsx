@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Loader2, Sparkles } from "lucide-react";
+import { ArrowLeft, FileText, Loader2, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -10,6 +10,7 @@ import { Card, CardPanel } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { getUser } from "@/functions/get-user";
 import { MarkdownEditor } from "@/features/editor/markdown-editor";
+import { chunkTemplates } from "@/features/chunks/templates";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
@@ -139,6 +140,33 @@ function NewChunk() {
                             )}
                             {generateMutation.isPending ? "Generating..." : "Generate"}
                         </Button>
+                    </div>
+                </CardPanel>
+            </Card>
+
+            <Card className="mb-6">
+                <CardPanel className="p-6">
+                    <div className="flex items-center gap-2 mb-3">
+                        <FileText className="size-4" />
+                        <span className="text-sm font-medium">Start from Template</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                        {chunkTemplates.map(tmpl => (
+                            <button
+                                key={tmpl.name}
+                                type="button"
+                                onClick={() => {
+                                    setTitle("");
+                                    setContent(tmpl.content);
+                                    setType(tmpl.type);
+                                    setTags(tmpl.tags);
+                                }}
+                                className="hover:bg-muted rounded-md border p-3 text-left transition-colors"
+                            >
+                                <p className="text-sm font-medium">{tmpl.name}</p>
+                                <p className="text-muted-foreground mt-0.5 text-xs">{tmpl.description}</p>
+                            </button>
+                        ))}
                     </div>
                 </CardPanel>
             </Card>
