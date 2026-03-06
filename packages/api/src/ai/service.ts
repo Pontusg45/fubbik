@@ -1,9 +1,12 @@
 import { generateText } from "ai";
 import { openai } from "@ai-sdk/openai";
 import { getAllChunksMeta, getChunkById } from "@fubbik/db/repository";
+import { env } from "@fubbik/env/server";
 import { Effect } from "effect";
 import { AiError } from "../errors";
 import { NotFoundError } from "../errors";
+
+const AI_MODEL = env.OPENAI_MODEL ?? "gpt-4o-mini";
 
 export function summarizeChunkById(chunkId: string, userId: string) {
     return getChunkById(chunkId, userId).pipe(
@@ -30,7 +33,7 @@ function summarizeChunk(title: string, content: string) {
     return Effect.tryPromise({
         try: async () => {
             const result = await generateText({
-                model: openai("gpt-4o-mini"),
+                model: openai(AI_MODEL),
                 prompt: `Summarize this knowledge chunk in 2-3 sentences:\n\nTitle: ${title}\n\nContent: ${content}`,
                 maxOutputTokens: 200
             });
@@ -49,7 +52,7 @@ export function suggestConnections(
         try: async () => {
             const chunkList = otherChunks.map(c => `- ${c.id}: ${c.title}`).join("\n");
             const result = await generateText({
-                model: openai("gpt-4o-mini"),
+                model: openai(AI_MODEL),
                 prompt: `Given this chunk:\nTitle: ${chunkTitle}\nContent: ${chunkContent}\n\nSuggest which of these chunks it should be connected to and why. Return a JSON array of objects with "id" and "relation" fields only:\n${chunkList}`,
                 maxOutputTokens: 500
             });
@@ -67,7 +70,7 @@ export function generateChunk(prompt: string) {
     return Effect.tryPromise({
         try: async () => {
             const result = await generateText({
-                model: openai("gpt-4o-mini"),
+                model: openai(AI_MODEL),
                 prompt: `Generate a knowledge chunk based on this prompt. Return valid JSON only with these fields: title (string), content (string), type (one of: note, document, reference, schema, checklist), tags (array of strings):\n\n${prompt}`,
                 maxOutputTokens: 1000
             });

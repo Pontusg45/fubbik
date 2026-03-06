@@ -19,8 +19,8 @@ new Elysia()
     )
     .use(
         rateLimit({
-            max: 100,
-            duration: 60_000
+            max: Number(env.RATE_LIMIT_MAX ?? "100"),
+            duration: Number(env.RATE_LIMIT_DURATION_MS ?? "60000")
         })
     )
     .use(
