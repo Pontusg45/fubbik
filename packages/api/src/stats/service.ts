@@ -1,10 +1,13 @@
+import { Effect } from "effect";
 import { getChunkCount, getConnectionCount, getTagCount } from "@fubbik/db/repository";
 
-export async function getUserStats(userId: string) {
-  const [chunks, connections, tags] = await Promise.all([
-    getChunkCount(userId),
-    getConnectionCount(userId),
-    getTagCount(userId),
-  ]);
-  return { chunks, connections, tags };
+export function getUserStats(userId: string) {
+  return Effect.all(
+    {
+      chunks: getChunkCount(userId),
+      connections: getConnectionCount(userId),
+      tags: getTagCount(userId),
+    },
+    { concurrency: "unbounded" },
+  );
 }
