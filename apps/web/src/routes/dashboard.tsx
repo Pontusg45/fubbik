@@ -28,8 +28,9 @@ function RouteComponent() {
     const healthCheck = useQuery({
         queryKey: ["health"],
         queryFn: async () => {
-            const { data } = await api.api.health.get();
-            return data;
+            const { data, error } = await api.api.health.get();
+            if (error) return null;
+            return data as Exclude<typeof data, { message: string }>;
         }
     });
 
@@ -38,7 +39,7 @@ function RouteComponent() {
         queryFn: async () => {
             const { data, error } = await api.api.stats.get();
             if (error) return null;
-            return data;
+            return data as Exclude<typeof data, { message: string }>;
         }
     });
 
@@ -47,7 +48,7 @@ function RouteComponent() {
         queryFn: async () => {
             const { data, error } = await api.api.chunks.get({ query: { limit: "5" } });
             if (error) return null;
-            return data;
+            return data as Exclude<typeof data, { message: string }>;
         }
     });
 
