@@ -3,6 +3,7 @@ import { api } from "@fubbik/api";
 import { auth } from "@fubbik/auth";
 import { env } from "@fubbik/env/server";
 import { Elysia } from "elysia";
+import { logger } from "./logger";
 
 new Elysia()
   .use(
@@ -13,6 +14,14 @@ new Elysia()
       credentials: true,
     }),
   )
+  .onRequest(({ request }) => {
+    logger.info(`${request.method} ${new URL(request.url).pathname}`);
+  })
+  .onError(({ error, request }) => {
+    logger.error(`${request.method} ${new URL(request.url).pathname}`, {
+      error: error.message,
+    });
+  })
   .all("/api/auth/*", async (context) => {
     const { request, status } = context;
     if (["POST", "GET"].includes(request.method)) {
@@ -23,5 +32,5 @@ new Elysia()
   .use(api)
   .get("/", () => "OK")
   .listen(Number(env.PORT), () => {
-    console.log(`Server is running on http://localhost:${env.PORT}`);
+    logger.info(`Server is running on http://localhost:${env.PORT}`);
   });
