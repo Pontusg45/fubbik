@@ -24,6 +24,7 @@
     "@fubbik/env": "workspace:*",
     "dotenv": "catalog:",
     "drizzle-orm": "^0.45.1",
+    "effect": "^3.19.19",
     "pg": "^8.16.3"
   },
   "devDependencies": {
