@@ -16,7 +16,8 @@ export const chunkRoutes = new Elysia()
                 offset: t.Optional(t.String()),
                 exclude: t.Optional(t.String()),
                 scope: t.Optional(t.String()),
-                alias: t.Optional(t.String())
+                alias: t.Optional(t.String()),
+                sort: t.Optional(t.String())
             })
         }
     )

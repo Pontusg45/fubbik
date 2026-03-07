@@ -1,4 +1,4 @@
-import { and, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
 import { Effect } from "effect";
 
 import { DatabaseError } from "../errors";
@@ -12,6 +12,7 @@ export interface ListChunksParams {
     exclude?: string[];
     scope?: Record<string, string>;
     alias?: string;
+    sort?: "newest" | "oldest" | "alpha" | "updated";
     limit: number;
     offset: number;
 }
@@ -44,7 +45,16 @@ export function listChunks(params: ListChunksParams) {
             if (params.alias) {
                 conditions.push(sql`${chunk.aliases} @> ${JSON.stringify([params.alias])}::jsonb`);
             }
-            const orderClause = params.search ? sql`similarity(${chunk.title}, ${params.search}) DESC` : desc(chunk.updatedAt);
+            const orderClause = (() => {
+                if (params.search) return sql`similarity(${chunk.title}, ${params.search}) DESC`;
+                switch (params.sort) {
+                    case "oldest": return asc(chunk.createdAt);
+                    case "alpha": return asc(chunk.title);
+                    case "updated": return desc(chunk.updatedAt);
+                    case "newest":
+                    default: return desc(chunk.createdAt);
+                }
+            })();
             const chunks = await db
                 .select()
                 .from(chunk)

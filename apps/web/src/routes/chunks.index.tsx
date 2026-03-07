@@ -18,7 +18,8 @@ export const Route = createFileRoute("/chunks/")({
     validateSearch: (search: Record<string, unknown>) => ({
         type: (search.type as string) || undefined,
         q: (search.q as string) || undefined,
-        page: Number(search.page) || 1
+        page: Number(search.page) || 1,
+        sort: (search.sort as string) || undefined
     }),
     beforeLoad: async () => {
         let session = null;
@@ -34,7 +35,7 @@ export const Route = createFileRoute("/chunks/")({
 function ChunksList() {
     const navigate = useNavigate({ from: "/chunks/" });
     const navTo = useNavigate();
-    const { type, q, page } = Route.useSearch();
+    const { type, q, page, sort } = Route.useSearch();
     const queryClient = useQueryClient();
     const [searchInput, setSearchInput] = useState(q ?? "");
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -42,7 +43,7 @@ function ChunksList() {
     const offset = ((page ?? 1) - 1) * limit;
 
     const chunksQuery = useQuery({
-        queryKey: ["chunks-list", type, q, page],
+        queryKey: ["chunks-list", type, q, page, sort],
         queryFn: async () => {
             try {
                 return unwrapEden(
@@ -50,6 +51,7 @@ function ChunksList() {
                         query: {
                             type,
                             search: q,
+                            sort,
                             limit: String(limit),
                             offset: String(offset)
                         }
@@ -105,12 +107,13 @@ function ChunksList() {
 
     const types = ["note", "document", "reference", "schema", "checklist"];
 
-    function updateSearch(params: Partial<{ type: string; q: string; page: number }>) {
+    function updateSearch(params: Partial<{ type: string; q: string; page: number; sort: string }>) {
         navigate({
             search: {
                 type: params.type !== undefined ? params.type : type,
                 q: params.q !== undefined ? params.q : q,
-                page: params.page ?? 1
+                page: params.page ?? 1,
+                sort: params.sort !== undefined ? params.sort : sort
             }
         });
     }
@@ -206,6 +209,16 @@ function ChunksList() {
                         </Button>
                     ))}
                 </div>
+                <select
+                    value={sort ?? "newest"}
+                    onChange={e => updateSearch({ sort: e.target.value === "newest" ? undefined : e.target.value })}
+                    className="rounded-md border bg-background px-2 py-1.5 text-sm"
+                >
+                    <option value="newest">Newest</option>
+                    <option value="oldest">Oldest</option>
+                    <option value="alpha">A-Z</option>
+                    <option value="updated">Recently Updated</option>
+                </select>
             </div>
 
             {/* Results */}
