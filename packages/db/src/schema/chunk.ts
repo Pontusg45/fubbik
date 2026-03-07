@@ -1,7 +1,22 @@
 import { relations } from "drizzle-orm";
-import { pgTable, text, timestamp, jsonb, index, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, jsonb, index, uniqueIndex, customType } from "drizzle-orm/pg-core";
 
 import { user } from "./auth";
+
+const vector = customType<{ data: number[]; driverParam: string }>({
+    dataType() {
+        return "vector(768)";
+    },
+    toDriver(value: number[]) {
+        return `[${value.join(",")}]`;
+    },
+    fromDriver(value: unknown) {
+        return (value as string)
+            .slice(1, -1)
+            .split(",")
+            .map(Number);
+    }
+});
 
 export const chunk = pgTable(
     "chunk",
@@ -18,7 +33,12 @@ export const chunk = pgTable(
         updatedAt: timestamp("updated_at")
             .defaultNow()
             .$onUpdate(() => new Date())
-            .notNull()
+            .notNull(),
+        summary: text("summary"),
+        aliases: jsonb("aliases").$type<string[]>().notNull().default([]),
+        notAbout: jsonb("not_about").$type<string[]>().notNull().default([]),
+        scope: jsonb("scope").$type<Record<string, string>>().notNull().default({}),
+        embedding: vector("embedding")
     },
     table => [index("chunk_userId_idx").on(table.userId), index("chunk_type_idx").on(table.type)]
 );
