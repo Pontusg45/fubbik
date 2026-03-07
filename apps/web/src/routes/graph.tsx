@@ -6,6 +6,7 @@ import { Background, Controls, MiniMap, ReactFlow, useEdgesState, useNodesState,
 import { useEffect, useMemo, useState } from "react";
 
 import { relationColor } from "@/features/chunks/relation-colors";
+import { FloatingEdge } from "@/features/graph/floating-edge";
 import { GraphFilters } from "@/features/graph/graph-filters";
 import { GraphLegend } from "@/features/graph/graph-legend";
 import { getUser } from "@/functions/get-user";
@@ -26,6 +27,8 @@ export const Route = createFileRoute("/graph")({
 });
 
 const MAIN_NODE_ID = "__main__";
+
+const EDGE_TYPES = { floating: FloatingEdge };
 
 const TYPE_COLORS: Record<string, { bg: string; border: string }> = {
     note: { bg: "#1e293b", border: "#475569" },
@@ -182,6 +185,7 @@ function GraphView() {
                 id: conn.id,
                 source: conn.sourceId,
                 target: conn.targetId,
+                type: "floating",
                 data: { relation: conn.relation },
                 animated: true,
                 style: { stroke: color, strokeWidth: 2 }
@@ -200,6 +204,7 @@ function GraphView() {
                     id: `main-${c.id}`,
                     source: MAIN_NODE_ID,
                     target: c.id,
+                    type: "floating",
                     animated: false,
                     style: { stroke: "#334155", strokeWidth: 1, strokeDasharray: "4 4" }
                 });
@@ -297,10 +302,11 @@ function GraphView() {
     }
 
     return (
-        <div className="relative h-[calc(100vh-4rem)]">
+        <div className="relative h-[calc(100vh-4rem)] [&_.react-flow__handle]:invisible">
             <ReactFlow
                 nodes={nodes}
                 edges={edges}
+                edgeTypes={EDGE_TYPES}
                 onNodesChange={onNodesChange}
                 onEdgesChange={onEdgesChange}
                 onNodeClick={(_, node) => {
