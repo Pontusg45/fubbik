@@ -116,6 +116,10 @@ function GraphViewInner() {
     // Collapsible clusters
     const [collapsedParents, setCollapsedParents] = useState<Set<string>>(new Set());
 
+    // Explore mode
+    const [exploreMode, setExploreMode] = useState(false);
+    const [exploredNodeIds, setExploredNodeIds] = useState<Set<string>>(new Set());
+
     // Dragged node positions (persist across layout changes)
     const [draggedPositions, setDraggedPositions] = useState<Map<string, { x: number; y: number }>>(new Map());
 
@@ -215,8 +219,14 @@ function GraphViewInner() {
         // Filter connections to only visible chunks
         connections = connections.filter(c => visibleChunkIds.has(c.sourceId) && visibleChunkIds.has(c.targetId));
 
+        // Explore mode: only show explored nodes
+        if (exploreMode && exploredNodeIds.size > 0) {
+            chunks = chunks.filter(c => exploredNodeIds.has(c.id));
+            connections = connections.filter(c => exploredNodeIds.has(c.sourceId) && exploredNodeIds.has(c.targetId));
+        }
+
         return { chunks, connections, parentChildren, childIds, hiddenIds };
-    }, [data, filterTypes, filterRelations, collapsedParents]);
+    }, [data, filterTypes, filterRelations, collapsedParents, exploreMode, exploredNodeIds]);
 
     // Post to worker when simulation inputs change
     useEffect(() => {
@@ -749,6 +759,20 @@ function GraphViewInner() {
                         }
                         return;
                     }
+                    if (exploreMode) {
+                        setExploredNodeIds(prev => {
+                            const next = new Set(prev);
+                            next.add(node.id);
+                            for (const edge of layoutEdges) {
+                                if (edge.source === node.id && edge.target !== MAIN_NODE_ID) next.add(edge.target);
+                                if (edge.target === node.id && edge.source !== MAIN_NODE_ID) next.add(edge.source);
+                            }
+                            return next;
+                        });
+                        setSelectedChunkId(node.id);
+                        setFocusedNodeId(node.id);
+                        return;
+                    }
                     setPathStartId(null);
                     setPathEndId(null);
                     setSelectedChunkId(node.id);
@@ -853,6 +877,29 @@ function GraphViewInner() {
                     >
                         Reset layout
                     </button>
+                )}
+                <button
+                    onClick={() => {
+                        if (!exploreMode) {
+                            setExploreMode(true);
+                            setExploredNodeIds(selectedChunkId ? new Set([selectedChunkId]) : new Set());
+                        } else {
+                            setExploreMode(false);
+                            setExploredNodeIds(new Set());
+                        }
+                    }}
+                    className={`rounded-md border px-2.5 py-1.5 text-xs backdrop-blur-sm ${
+                        exploreMode ? "bg-primary text-primary-foreground" : "bg-background/80 text-muted-foreground hover:text-foreground"
+                    }`}
+                    title="Explore mode: click to expand neighbors"
+                >
+                    Explore
+                </button>
+                {exploreMode && (
+                    <span className="rounded-md border bg-background/80 px-2.5 py-1.5 text-xs text-muted-foreground backdrop-blur-sm">
+                        {exploredNodeIds.size} explored
+                        <button onClick={() => setExploredNodeIds(new Set())} className="ml-1.5 underline hover:text-foreground">reset</button>
+                    </span>
                 )}
                 <button
                     onClick={handleExportImage}
