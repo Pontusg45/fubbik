@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Bookmark, ChevronRight, Clock, FileText, FolderPlus, Pin, Plus, Search, Trash2, X } from "lucide-react";
+import { Bookmark, ChevronRight, Clock, Columns3, FileText, FolderPlus, List, Pin, Plus, Search, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +9,7 @@ import { Card, CardPanel } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { getChunkSize } from "@/features/chunks/chunk-size";
+import { KanbanView } from "@/features/chunks/kanban-view";
 import { useCollections } from "@/features/chunks/use-collections";
 import { usePinnedChunks } from "@/features/chunks/use-pinned-chunks";
 import { useSavedFilters } from "@/features/chunks/use-saved-filters";
@@ -29,7 +30,8 @@ export const Route = createFileRoute("/chunks/")({
         enrichment: (search.enrichment as string) || undefined,
         minConnections: (search.minConnections as string) || undefined,
         group: (search.group as string) || undefined,
-        collection: (search.collection as string) || undefined
+        collection: (search.collection as string) || undefined,
+        view: (search.view as string) || undefined
     }),
     beforeLoad: async () => {
         let session = null;
@@ -45,7 +47,7 @@ export const Route = createFileRoute("/chunks/")({
 function ChunksList() {
     const navigate = useNavigate({ from: "/chunks/" });
     const navTo = useNavigate();
-    const { type, q, page, sort, tags, size, after, enrichment, minConnections, group, collection } = Route.useSearch();
+    const { type, q, page, sort, tags, size, after, enrichment, minConnections, group, collection, view } = Route.useSearch();
     const queryClient = useQueryClient();
     const [searchInput, setSearchInput] = useState(q ?? "");
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -208,7 +210,7 @@ function ChunksList() {
 
     const types = ["note", "document", "reference", "schema", "checklist"];
 
-    function updateSearch(params: Partial<{ type: string; q: string; page: number; sort: string; tags: string; size: string; after: string; enrichment: string; minConnections: string; group: string; collection: string }>) {
+    function updateSearch(params: Partial<{ type: string; q: string; page: number; sort: string; tags: string; size: string; after: string; enrichment: string; minConnections: string; group: string; collection: string; view: string }>) {
         navigate({
             search: {
                 type: params.type !== undefined ? params.type : type,
@@ -221,7 +223,8 @@ function ChunksList() {
                 enrichment: params.enrichment !== undefined ? params.enrichment : enrichment,
                 minConnections: params.minConnections !== undefined ? params.minConnections : minConnections,
                 group: params.group !== undefined ? params.group : group,
-                collection: params.collection !== undefined ? params.collection : collection
+                collection: params.collection !== undefined ? params.collection : collection,
+                view: params.view !== undefined ? params.view : view
             }
         });
     }
@@ -356,6 +359,20 @@ function ChunksList() {
                 }}>
                     <FolderPlus className="size-3.5" />
                 </Button>
+                <div className="flex rounded-md border">
+                    <button
+                        onClick={() => updateSearch({ view: undefined })}
+                        className={`px-2 py-1.5 text-xs ${!view ? "bg-muted" : ""}`}
+                    >
+                        <List className="size-3.5" />
+                    </button>
+                    <button
+                        onClick={() => updateSearch({ view: "kanban" })}
+                        className={`px-2 py-1.5 text-xs ${view === "kanban" ? "bg-muted" : ""}`}
+                    >
+                        <Columns3 className="size-3.5" />
+                    </button>
+                </div>
                 <div className="flex gap-1">
                     {(["good", "moderate", "warning", "critical"] as const).map(level => {
                         const config: Record<string, { color: string; label: string }> = {
@@ -492,7 +509,9 @@ function ChunksList() {
             )}
 
             {/* Results */}
-            {chunksQuery.isLoading ? (
+            {view === "kanban" ? (
+                <KanbanView chunks={collectionFilteredChunks} />
+            ) : chunksQuery.isLoading ? (
                 <Card>
                     <CardPanel className="p-8 text-center">
                         <p className="text-muted-foreground text-sm">Loading...</p>
@@ -629,7 +648,7 @@ function ChunksList() {
             )}
 
             {/* Pagination */}
-            {totalPages > 1 && (
+            {view !== "kanban" && totalPages > 1 && (
                 <div className="mt-4 flex items-center justify-center gap-2">
                     <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => updateSearch({ page: page - 1 })}>
                         Previous
