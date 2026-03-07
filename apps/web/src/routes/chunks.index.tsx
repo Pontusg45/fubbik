@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { ChevronRight, Clock, FileText, Plus, Search, Trash2 } from "lucide-react";
+import { ChevronRight, Clock, FileText, Pin, Plus, Search, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +9,7 @@ import { Card, CardPanel } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { getChunkSize } from "@/features/chunks/chunk-size";
+import { usePinnedChunks } from "@/features/chunks/use-pinned-chunks";
 import { getUser } from "@/functions/get-user";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
@@ -100,6 +101,16 @@ function ChunksList() {
         return chunks.filter(c => getChunkSize(c.content).level === size);
     }, [chunks, size]);
 
+    const { pinnedIds, togglePin, isPinned } = usePinnedChunks();
+
+    const sortedChunks = useMemo(() => {
+        return [...filteredChunks].sort((a, b) => {
+            const aPinned = isPinned(a.id) ? 0 : 1;
+            const bPinned = isPinned(b.id) ? 0 : 1;
+            return aPinned - bPinned;
+        });
+    }, [filteredChunks, pinnedIds]);
+
     const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
     function toggleCollapsed(key: string) {
         setCollapsed(prev => {
@@ -112,8 +123,8 @@ function ChunksList() {
 
     const groupedChunks = useMemo(() => {
         if (group === "type") {
-            const groups = new Map<string, typeof filteredChunks>();
-            for (const c of filteredChunks) {
+            const groups = new Map<string, typeof sortedChunks>();
+            for (const c of sortedChunks) {
                 const existing = groups.get(c.type) ?? [];
                 existing.push(c);
                 groups.set(c.type, existing);
@@ -121,8 +132,8 @@ function ChunksList() {
             return groups;
         }
         if (group === "tag") {
-            const groups = new Map<string, typeof filteredChunks>();
-            for (const c of filteredChunks) {
+            const groups = new Map<string, typeof sortedChunks>();
+            for (const c of sortedChunks) {
                 const chunkTags = c.tags as string[];
                 if (chunkTags.length === 0) {
                     const existing = groups.get("untagged") ?? [];
@@ -138,7 +149,7 @@ function ChunksList() {
             return groups;
         }
         return null;
-    }, [filteredChunks, group]);
+    }, [sortedChunks, group]);
 
     const chunksRef = useRef(chunks);
     chunksRef.current = chunks;
@@ -429,7 +440,7 @@ function ChunksList() {
                         <p className="text-muted-foreground text-sm">Loading...</p>
                     </CardPanel>
                 </Card>
-            ) : filteredChunks.length === 0 ? (
+            ) : sortedChunks.length === 0 ? (
                 <Card>
                     <CardPanel className="p-8 text-center">
                         <p className="text-muted-foreground text-sm">No chunks found.</p>
@@ -460,6 +471,12 @@ function ChunksList() {
                                                     onCheckedChange={() => toggleSelection(chunk.id)}
                                                     onClick={(e: React.MouseEvent) => e.stopPropagation()}
                                                 />
+                                                <button
+                                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); togglePin(chunk.id); }}
+                                                    className="text-muted-foreground hover:text-foreground"
+                                                >
+                                                    <Pin className={`size-3 ${isPinned(chunk.id) ? "fill-current" : ""}`} />
+                                                </button>
                                                 <Link to="/chunks/$chunkId" params={{ chunkId: chunk.id }} className="flex flex-1 items-center justify-between gap-4">
                                                     <div className="min-w-0">
                                                         <p className="truncate text-sm font-medium">{chunk.title}</p>
@@ -500,7 +517,7 @@ function ChunksList() {
                 </div>
             ) : (
                 <Card>
-                    {filteredChunks.map((chunk, i) => (
+                    {sortedChunks.map((chunk, i) => (
                         <div key={chunk.id}>
                             {i > 0 && <Separator />}
                             <CardPanel
@@ -511,6 +528,12 @@ function ChunksList() {
                                     onCheckedChange={() => toggleSelection(chunk.id)}
                                     onClick={(e: React.MouseEvent) => e.stopPropagation()}
                                 />
+                                <button
+                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); togglePin(chunk.id); }}
+                                    className="text-muted-foreground hover:text-foreground"
+                                >
+                                    <Pin className={`size-3 ${isPinned(chunk.id) ? "fill-current" : ""}`} />
+                                </button>
                                 <Link to="/chunks/$chunkId" params={{ chunkId: chunk.id }} className="flex flex-1 items-center justify-between gap-4">
                                     <div className="min-w-0">
                                         <p className="truncate text-sm font-medium">{chunk.title}</p>
