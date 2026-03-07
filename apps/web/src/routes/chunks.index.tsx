@@ -21,7 +21,8 @@ export const Route = createFileRoute("/chunks/")({
         page: Number(search.page) || 1,
         sort: (search.sort as string) || undefined,
         tags: (search.tags as string) || undefined,
-        size: (search.size as string) || undefined
+        size: (search.size as string) || undefined,
+        after: (search.after as string) || undefined
     }),
     beforeLoad: async () => {
         let session = null;
@@ -37,7 +38,7 @@ export const Route = createFileRoute("/chunks/")({
 function ChunksList() {
     const navigate = useNavigate({ from: "/chunks/" });
     const navTo = useNavigate();
-    const { type, q, page, sort, tags, size } = Route.useSearch();
+    const { type, q, page, sort, tags, size, after } = Route.useSearch();
     const queryClient = useQueryClient();
     const [searchInput, setSearchInput] = useState(q ?? "");
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -45,7 +46,7 @@ function ChunksList() {
     const offset = ((page ?? 1) - 1) * limit;
 
     const chunksQuery = useQuery({
-        queryKey: ["chunks-list", type, q, page, sort, tags],
+        queryKey: ["chunks-list", type, q, page, sort, tags, after],
         queryFn: async () => {
             try {
                 return unwrapEden(
@@ -55,6 +56,7 @@ function ChunksList() {
                             search: q,
                             sort: sort as "newest" | "oldest" | "alpha" | "updated" | undefined,
                             tags,
+                            after,
                             limit: String(limit),
                             offset: String(offset)
                         }
@@ -135,7 +137,7 @@ function ChunksList() {
 
     const types = ["note", "document", "reference", "schema", "checklist"];
 
-    function updateSearch(params: Partial<{ type: string; q: string; page: number; sort: string; tags: string; size: string }>) {
+    function updateSearch(params: Partial<{ type: string; q: string; page: number; sort: string; tags: string; size: string; after: string }>) {
         navigate({
             search: {
                 type: params.type !== undefined ? params.type : type,
@@ -143,7 +145,8 @@ function ChunksList() {
                 page: params.page ?? 1,
                 sort: params.sort !== undefined ? params.sort : sort,
                 tags: params.tags !== undefined ? params.tags : tags,
-                size: params.size !== undefined ? params.size : size
+                size: params.size !== undefined ? params.size : size,
+                after: params.after !== undefined ? params.after : after
             }
         });
     }
@@ -269,6 +272,22 @@ function ChunksList() {
                             </button>
                         );
                     })}
+                </div>
+                <div className="flex gap-1">
+                    {[
+                        { label: "7d", value: "7" },
+                        { label: "30d", value: "30" },
+                        { label: "90d", value: "90" }
+                    ].map(opt => (
+                        <Button
+                            key={opt.value}
+                            variant={after === opt.value ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => updateSearch({ after: after === opt.value ? undefined : opt.value })}
+                        >
+                            {opt.label}
+                        </Button>
+                    ))}
                 </div>
             </div>
 
