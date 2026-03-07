@@ -2,23 +2,23 @@ import { buildQuadtree, computeRepulsion } from "./quadtree";
 
 const MAIN_NODE_ID = "__main__";
 
-const REPULSION = 80000;
-const SPRING_K = 0.003;
-const CENTER_PULL = 0.01;
+const REPULSION = 160000;
+const SPRING_K = 0.002;
+const CENTER_PULL = 0.003;
 const DAMPING = 0.85;
 const ITERATIONS = 200;
-const CLUSTER_K = 0.002;
+const CLUSTER_K = 0.001;
 
-const SPRING_LEN = 280;
+const SPRING_LEN = 450;
 const RELATION_SPRING_LEN: Record<string, number> = {
-    part_of: 180,
-    depends_on: 220,
-    extends: 220,
-    references: 280,
-    related_to: 320,
-    supports: 280,
-    contradicts: 350,
-    alternative_to: 350,
+    part_of: 300,
+    depends_on: 380,
+    extends: 380,
+    references: 450,
+    related_to: 520,
+    supports: 450,
+    contradicts: 560,
+    alternative_to: 560,
 };
 
 export interface LayoutWorkerInput {
@@ -36,7 +36,7 @@ self.onmessage = (e: MessageEvent<LayoutWorkerInput>) => {
     const { requestId, nodes, edges } = e.data;
 
     const nodeCount = nodes.length;
-    const spacing = Math.max(250, Math.sqrt(nodeCount) * 120);
+    const spacing = Math.max(400, Math.sqrt(nodeCount) * 180);
 
     // Initialize positions in a circle to seed the simulation
     const pos = new Map<string, { x: number; y: number; vx: number; vy: number }>();
