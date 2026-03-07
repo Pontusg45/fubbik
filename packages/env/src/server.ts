@@ -13,7 +13,8 @@ export const env = createEnv({
         OPENAI_MODEL: type("string | undefined"),
         PORT: type("string >= 1"),
         RATE_LIMIT_DURATION_MS: type("string | undefined"),
-        RATE_LIMIT_MAX: type("string | undefined")
+        RATE_LIMIT_MAX: type("string | undefined"),
+        OLLAMA_URL: type("string | undefined")
     },
     runtimeEnv: {
         ...process.env,
@@ -22,7 +23,8 @@ export const env = createEnv({
         OPENAI_MODEL: process.env.OPENAI_MODEL,
         PORT: process.env.PORT ?? "3000",
         RATE_LIMIT_DURATION_MS: process.env.RATE_LIMIT_DURATION_MS,
-        RATE_LIMIT_MAX: process.env.RATE_LIMIT_MAX
+        RATE_LIMIT_MAX: process.env.RATE_LIMIT_MAX,
+        OLLAMA_URL: process.env.OLLAMA_URL
     },
     emptyStringAsUndefined: true
 });
