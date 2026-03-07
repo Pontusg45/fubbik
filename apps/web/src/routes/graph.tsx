@@ -177,7 +177,7 @@ function GraphViewInner() {
                     return {
                         id: c.id,
                         type: "chunk",
-                        data: { label, type: c.type },
+                        data: { label, type: c.type, connectionCount: connectionCounts.get(c.id) ?? 0 },
                         position: { x: 0, y: 0 },
                         style: {
                             cursor: "pointer",
