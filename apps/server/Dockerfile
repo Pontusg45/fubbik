@@ -18,8 +18,7 @@ COPY packages/db/package.json ./packages/db/
 COPY packages/env/package.json ./packages/env/
 
 # Install dependencies (secret mount keeps .npmrc out of image layers)
-RUN --mount=type=cache,id=fubbik-bun-cache,target=/root/.bun/install/cache \
-    --mount=type=secret,id=npmrc,target=/root/.npmrc \
+RUN --mount=type=secret,id=npmrc,target=/root/.npmrc \
     bun install --frozen-lockfile
 
 # Copy source code
