@@ -41,12 +41,15 @@ export function FloatingEdge({ id, source, target, style, data, label, labelStyl
     let edgePath: string;
     let lx: number;
     let ly: number;
+    // Direction angle at the target end (for arrowhead)
+    let arrivalAngle: number;
 
     if (curveOffset === 0) {
         const [p, px, py] = getBezierPath({ sourceX: si.x, sourceY: si.y, targetX: ti.x, targetY: ti.y });
         edgePath = p;
         lx = px;
         ly = py;
+        arrivalAngle = Math.atan2(ti.y - si.y, ti.x - si.x);
     } else {
         const midX = (si.x + ti.x) / 2;
         const midY = (si.y + ti.y) / 2;
@@ -58,39 +61,45 @@ export function FloatingEdge({ id, source, target, style, data, label, labelStyl
         edgePath = `M ${si.x} ${si.y} Q ${cx} ${cy} ${ti.x} ${ti.y}`;
         lx = cx;
         ly = cy;
+        // For quadratic bezier, the tangent at the end points from control point to end
+        arrivalAngle = Math.atan2(ti.y - cy, ti.x - cx);
     }
 
     const strokeColor = (style as Record<string, string>)?.stroke ?? "#475569";
-    const filterId = `glow-${id}`;
-    const markerId = `arrow-${id}`;
     const isDirected = (data as { directed?: boolean })?.directed !== false;
+
+    // Compute arrowhead triangle points at the target
+    const arrowSize = 8;
+    const arrowPoints = isDirected
+        ? [
+              // Tip at the target intersection
+              { x: ti.x, y: ti.y },
+              // Two base points spread perpendicular
+              {
+                  x: ti.x - Math.cos(arrivalAngle - 0.4) * arrowSize,
+                  y: ti.y - Math.sin(arrivalAngle - 0.4) * arrowSize
+              },
+              {
+                  x: ti.x - Math.cos(arrivalAngle + 0.4) * arrowSize,
+                  y: ti.y - Math.sin(arrivalAngle + 0.4) * arrowSize
+              }
+          ]
+        : null;
 
     return (
         <>
-            <defs>
-                <filter id={filterId} x="-20%" y="-20%" width="140%" height="140%">
-                    <feGaussianBlur in="SourceGraphic" stdDeviation="2" result="blur" />
-                    <feMerge>
-                        <feMergeNode in="blur" />
-                        <feMergeNode in="SourceGraphic" />
-                    </feMerge>
-                </filter>
-                <marker
-                    id={markerId}
-                    viewBox="0 0 10 10"
-                    refX={8}
-                    refY={5}
-                    markerWidth={6}
-                    markerHeight={6}
-                    orient="auto-start-reverse"
-                >
-                    <path d="M 0 0 L 10 5 L 0 10 z" fill={strokeColor} fillOpacity={0.7} />
-                </marker>
-            </defs>
             {/* Glow layer */}
             <path d={edgePath} style={{ stroke: strokeColor, strokeWidth: 6, strokeOpacity: 0.12, fill: "none" }} />
             {/* Main edge */}
-            <path id={id} className="react-flow__edge-path" d={edgePath} style={style} markerEnd={isDirected ? `url(#${markerId})` : undefined} />
+            <path id={id} className="react-flow__edge-path" d={edgePath} style={style} />
+            {/* Arrowhead */}
+            {arrowPoints && (
+                <polygon
+                    points={arrowPoints.map(p => `${p.x},${p.y}`).join(" ")}
+                    fill={strokeColor}
+                    fillOpacity={0.8}
+                />
+            )}
             {label && (
                 <>
                     <rect
