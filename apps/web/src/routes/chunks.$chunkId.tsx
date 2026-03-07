@@ -148,7 +148,7 @@ function ChunkDetail() {
 
             <Separator className="my-6" />
 
-            <div className="prose prose-invert prose-sm max-w-none">
+            <div className="prose dark:prose-invert prose-sm max-w-none">
                 <Markdown>{chunk.content}</Markdown>
             </div>
 

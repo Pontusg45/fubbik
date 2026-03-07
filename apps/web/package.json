@@ -20,6 +20,7 @@
         "@fubbik/api": "workspace:*",
         "@fubbik/auth": "workspace:*",
         "@fubbik/env": "workspace:*",
+        "@tailwindcss/typography": "^0.5.19",
         "@tailwindcss/vite": "^4.1.8",
         "@tanstack/react-form": "^1.23.5",
         "@tanstack/react-query": "^5.80.6",

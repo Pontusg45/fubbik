@@ -33,7 +33,7 @@ export function MarkdownEditor({ value, onChange, placeholder, rows = 10, error 
                         {!value.trim() ? (
                             <p className="text-muted-foreground text-sm italic">Nothing to preview</p>
                         ) : (
-                            <div className="prose prose-invert prose-sm max-w-none">
+                            <div className="prose dark:prose-invert prose-sm max-w-none">
                                 <Markdown>{value}</Markdown>
                             </div>
                         )}
