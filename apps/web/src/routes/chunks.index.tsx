@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Clock, FileText, Plus, Search, Trash2 } from "lucide-react";
+import { ChevronRight, Clock, FileText, Plus, Search, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
@@ -24,7 +24,8 @@ export const Route = createFileRoute("/chunks/")({
         size: (search.size as string) || undefined,
         after: (search.after as string) || undefined,
         enrichment: (search.enrichment as string) || undefined,
-        minConnections: (search.minConnections as string) || undefined
+        minConnections: (search.minConnections as string) || undefined,
+        group: (search.group as string) || undefined
     }),
     beforeLoad: async () => {
         let session = null;
@@ -40,7 +41,7 @@ export const Route = createFileRoute("/chunks/")({
 function ChunksList() {
     const navigate = useNavigate({ from: "/chunks/" });
     const navTo = useNavigate();
-    const { type, q, page, sort, tags, size, after, enrichment, minConnections } = Route.useSearch();
+    const { type, q, page, sort, tags, size, after, enrichment, minConnections, group } = Route.useSearch();
     const queryClient = useQueryClient();
     const [searchInput, setSearchInput] = useState(q ?? "");
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -98,6 +99,47 @@ function ChunksList() {
         if (!size) return chunks;
         return chunks.filter(c => getChunkSize(c.content).level === size);
     }, [chunks, size]);
+
+    const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+    function toggleCollapsed(key: string) {
+        setCollapsed(prev => {
+            const next = new Set(prev);
+            if (next.has(key)) next.delete(key);
+            else next.add(key);
+            return next;
+        });
+    }
+
+    const groupedChunks = useMemo(() => {
+        if (group === "type") {
+            const groups = new Map<string, typeof filteredChunks>();
+            for (const c of filteredChunks) {
+                const existing = groups.get(c.type) ?? [];
+                existing.push(c);
+                groups.set(c.type, existing);
+            }
+            return groups;
+        }
+        if (group === "tag") {
+            const groups = new Map<string, typeof filteredChunks>();
+            for (const c of filteredChunks) {
+                const chunkTags = c.tags as string[];
+                if (chunkTags.length === 0) {
+                    const existing = groups.get("untagged") ?? [];
+                    existing.push(c);
+                    groups.set("untagged", existing);
+                }
+                for (const tag of chunkTags) {
+                    const existing = groups.get(tag) ?? [];
+                    existing.push(c);
+                    groups.set(tag, existing);
+                }
+            }
+            return groups;
+        }
+        return null;
+    }, [filteredChunks, group]);
+
     const chunksRef = useRef(chunks);
     chunksRef.current = chunks;
     const [selectedIndex, setSelectedIndex] = useState(-1);
@@ -141,7 +183,7 @@ function ChunksList() {
 
     const types = ["note", "document", "reference", "schema", "checklist"];
 
-    function updateSearch(params: Partial<{ type: string; q: string; page: number; sort: string; tags: string; size: string; after: string; enrichment: string; minConnections: string }>) {
+    function updateSearch(params: Partial<{ type: string; q: string; page: number; sort: string; tags: string; size: string; after: string; enrichment: string; minConnections: string; group: string }>) {
         navigate({
             search: {
                 type: params.type !== undefined ? params.type : type,
@@ -152,7 +194,8 @@ function ChunksList() {
                 size: params.size !== undefined ? params.size : size,
                 after: params.after !== undefined ? params.after : after,
                 enrichment: params.enrichment !== undefined ? params.enrichment : enrichment,
-                minConnections: params.minConnections !== undefined ? params.minConnections : minConnections
+                minConnections: params.minConnections !== undefined ? params.minConnections : minConnections,
+                group: params.group !== undefined ? params.group : group
             }
         });
     }
@@ -262,6 +305,15 @@ function ChunksList() {
                         <option value="updated">Recently Updated</option>
                     </select>
                 )}
+                <select
+                    value={group ?? ""}
+                    onChange={e => updateSearch({ group: e.target.value || undefined })}
+                    className="rounded-md border bg-background px-2 py-1.5 text-sm"
+                >
+                    <option value="">No grouping</option>
+                    <option value="type">By type</option>
+                    <option value="tag">By tag</option>
+                </select>
                 <div className="flex gap-1">
                     {(["good", "moderate", "warning", "critical"] as const).map(level => {
                         const config: Record<string, { color: string; label: string }> = {
@@ -371,17 +423,84 @@ function ChunksList() {
             </div>
 
             {/* Results */}
-            <Card>
-                {chunksQuery.isLoading ? (
+            {chunksQuery.isLoading ? (
+                <Card>
                     <CardPanel className="p-8 text-center">
                         <p className="text-muted-foreground text-sm">Loading...</p>
                     </CardPanel>
-                ) : filteredChunks.length === 0 ? (
+                </Card>
+            ) : filteredChunks.length === 0 ? (
+                <Card>
                     <CardPanel className="p-8 text-center">
                         <p className="text-muted-foreground text-sm">No chunks found.</p>
                     </CardPanel>
-                ) : (
-                    filteredChunks.map((chunk, i) => (
+                </Card>
+            ) : groupedChunks ? (
+                <div className="space-y-4">
+                    {[...groupedChunks.entries()].map(([groupName, items]) => (
+                        <div key={groupName}>
+                            <button
+                                onClick={() => toggleCollapsed(groupName)}
+                                className="mb-2 flex items-center gap-2"
+                            >
+                                <ChevronRight className={`size-3 transition-transform ${!collapsed.has(groupName) && "rotate-90"}`} />
+                                <Badge variant="secondary">{groupName}</Badge>
+                                <span className="text-muted-foreground text-xs">({items.length})</span>
+                            </button>
+                            {!collapsed.has(groupName) && (
+                                <Card>
+                                    {items.map((chunk, i) => (
+                                        <div key={chunk.id}>
+                                            {i > 0 && <Separator />}
+                                            <CardPanel
+                                                className="flex items-center gap-3 p-4 transition-colors hover:bg-muted/50"
+                                            >
+                                                <Checkbox
+                                                    checked={selectedIds.has(chunk.id)}
+                                                    onCheckedChange={() => toggleSelection(chunk.id)}
+                                                    onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                                                />
+                                                <Link to="/chunks/$chunkId" params={{ chunkId: chunk.id }} className="flex flex-1 items-center justify-between gap-4">
+                                                    <div className="min-w-0">
+                                                        <p className="truncate text-sm font-medium">{chunk.title}</p>
+                                                        <div className="mt-1 flex items-center gap-2">
+                                                            <Badge variant="secondary" size="sm" className="font-mono text-[10px]">
+                                                                {chunk.type}
+                                                            </Badge>
+                                                            {(chunk.tags as string[]).map(tag => (
+                                                                <Badge key={tag} variant="outline" size="sm" className="text-[10px]">
+                                                                    {tag}
+                                                                </Badge>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex shrink-0 items-center gap-3">
+                                                        {(() => {
+                                                            const chunkSize = getChunkSize(chunk.content);
+                                                            return chunkSize.level !== "good" ? (
+                                                                <span className="flex items-center gap-1 text-xs" style={{ color: chunkSize.color }}>
+                                                                    <FileText className="size-3" />
+                                                                    {chunkSize.lines}L
+                                                                </span>
+                                                            ) : null;
+                                                        })()}
+                                                        <span className="text-muted-foreground flex items-center gap-1 text-xs">
+                                                            <Clock className="size-3" />
+                                                            {new Date(chunk.updatedAt).toLocaleDateString()}
+                                                        </span>
+                                                    </div>
+                                                </Link>
+                                            </CardPanel>
+                                        </div>
+                                    ))}
+                                </Card>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            ) : (
+                <Card>
+                    {filteredChunks.map((chunk, i) => (
                         <div key={chunk.id}>
                             {i > 0 && <Separator />}
                             <CardPanel
@@ -424,9 +543,9 @@ function ChunksList() {
                                 </Link>
                             </CardPanel>
                         </div>
-                    ))
-                )}
-            </Card>
+                    ))}
+                </Card>
+            )}
 
             {/* Pagination */}
             {totalPages > 1 && (
