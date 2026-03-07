@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Calendar, Clock, Edit, Hash, Network, Trash2 } from "lucide-react";
+import { ArrowLeft, Calendar, Clock, Edit, FileText, Hash, Network, Trash2 } from "lucide-react";
 import Markdown from "react-markdown";
 import { toast } from "sonner";
 
@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardHeader, CardPanel, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { AiSection } from "@/features/chunks/ai-section";
+import { getChunkSize } from "@/features/chunks/chunk-size";
 import { DeleteConnectionButton } from "@/features/chunks/delete-connection-button";
 import { LinkChunkDialog } from "@/features/chunks/link-chunk-dialog";
 import { SplitChunkDialog } from "@/features/chunks/split-chunk-dialog";
@@ -136,7 +137,7 @@ function ChunkDetail() {
                     </span>
                 </div>
                 <h1 className="text-2xl font-bold tracking-tight">{chunk.title}</h1>
-                <div className="text-muted-foreground mt-2 flex items-center gap-4 text-xs">
+                <div className="text-muted-foreground mt-2 flex flex-wrap items-center gap-4 text-xs">
                     <span className="flex items-center gap-1">
                         <Calendar className="size-3" />
                         Created {new Date(chunk.createdAt).toLocaleDateString()}
@@ -145,6 +146,15 @@ function ChunkDetail() {
                         <Clock className="size-3" />
                         Updated {new Date(chunk.updatedAt).toLocaleDateString()}
                     </span>
+                    {(() => {
+                        const size = getChunkSize(chunk.content);
+                        return (
+                            <span className="flex items-center gap-1" style={{ color: size.color }}>
+                                <FileText className="size-3" />
+                                {size.lines} lines · {size.chars.toLocaleString()} chars · {size.label}
+                            </span>
+                        );
+                    })()}
                 </div>
             </div>
 

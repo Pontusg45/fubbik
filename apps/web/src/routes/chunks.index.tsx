@@ -1,12 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Clock, Plus, Search } from "lucide-react";
+import { Clock, FileText, Plus, Search } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardPanel } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { getChunkSize } from "@/features/chunks/chunk-size";
 import { getUser } from "@/functions/get-user";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
@@ -192,10 +193,21 @@ function ChunksList() {
                                             ))}
                                         </div>
                                     </div>
-                                    <span className="text-muted-foreground flex shrink-0 items-center gap-1 text-xs">
-                                        <Clock className="size-3" />
-                                        {new Date(chunk.updatedAt).toLocaleDateString()}
-                                    </span>
+                                    <div className="flex shrink-0 items-center gap-3">
+                                        {(() => {
+                                            const size = getChunkSize(chunk.content);
+                                            return size.level !== "good" ? (
+                                                <span className="flex items-center gap-1 text-xs" style={{ color: size.color }}>
+                                                    <FileText className="size-3" />
+                                                    {size.lines}L
+                                                </span>
+                                            ) : null;
+                                        })()}
+                                        <span className="text-muted-foreground flex items-center gap-1 text-xs">
+                                            <Clock className="size-3" />
+                                            {new Date(chunk.updatedAt).toLocaleDateString()}
+                                        </span>
+                                    </div>
                                 </CardPanel>
                             </Link>
                         </div>
