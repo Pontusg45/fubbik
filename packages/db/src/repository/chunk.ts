@@ -144,6 +144,34 @@ export function exportAllChunks(userId?: string) {
     });
 }
 
+export interface EnrichChunkParams {
+    summary?: string | null;
+    aliases?: string[];
+    notAbout?: string[];
+    scope?: Record<string, string>;
+    embedding?: number[];
+}
+
+export function updateChunkEnrichment(chunkId: string, params: EnrichChunkParams) {
+    return Effect.tryPromise({
+        try: async () => {
+            const [updated] = await db
+                .update(chunk)
+                .set({
+                    ...(params.summary !== undefined && { summary: params.summary }),
+                    ...(params.aliases !== undefined && { aliases: params.aliases }),
+                    ...(params.notAbout !== undefined && { notAbout: params.notAbout }),
+                    ...(params.scope !== undefined && { scope: params.scope }),
+                    ...(params.embedding !== undefined && { embedding: params.embedding })
+                })
+                .where(eq(chunk.id, chunkId))
+                .returning();
+            return updated;
+        },
+        catch: cause => new DatabaseError({ cause })
+    });
+}
+
 export function deleteChunk(chunkId: string, userId: string) {
     return Effect.tryPromise({
         try: async () => {
