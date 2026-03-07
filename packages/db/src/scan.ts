@@ -52,6 +52,8 @@ console.log(`Found ${scannedChunks.length} chunks from project scan\n`);
 
 let inserted = 0;
 const folderData = new Map<string, { indexId: string | null; childIds: string[]; titles: string[] }>();
+const titleToId = new Map<string, string>();
+const splitChildren: { childId: string; parentTitle: string }[] = [];
 
 for (const c of scannedChunks) {
     const id = `scan-${crypto.randomUUID().slice(0, 8)}`;
@@ -65,13 +67,19 @@ for (const c of scannedChunks) {
             userId: DEV_USER_ID
         });
         inserted++;
-        console.log(`  + [${c.type}] ${c.title}`);
+        console.log(`  + [${c.type}] ${c.title}${c.parentTitle ? ` (split from "${c.parentTitle}")` : ""}`);
+
+        titleToId.set(c.title, id);
+
+        if (c.parentTitle) {
+            splitChildren.push({ childId: id, parentTitle: c.parentTitle });
+        }
 
         if (!folderData.has(c.folder)) folderData.set(c.folder, { indexId: null, childIds: [], titles: [] });
         const folder = folderData.get(c.folder)!;
         if (c.isIndex) {
             folder.indexId = id;
-        } else {
+        } else if (!c.parentTitle) {
             folder.childIds.push(id);
             folder.titles.push(c.title);
         }
@@ -119,6 +127,23 @@ for (const [folder, data] of folderData) {
         }
     }
     console.log(`  ~ ${folder}: ${data.childIds.length} chunks → ${data.indexId ? "existing" : "generated"} index`);
+}
+
+// Create connections for auto-split chunks to their parent
+for (const { childId, parentTitle } of splitChildren) {
+    const parentId = titleToId.get(parentTitle);
+    if (!parentId) continue;
+    try {
+        await db.insert(chunkConnection).values({
+            id: `conn-${crypto.randomUUID().slice(0, 8)}`,
+            sourceId: childId,
+            targetId: parentId,
+            relation: "part_of"
+        });
+        connections++;
+    } catch {
+        // skip duplicates
+    }
 }
 
 console.log(`\nInserted ${inserted} chunks, ${connections} connections`);

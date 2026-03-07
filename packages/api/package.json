@@ -3,7 +3,8 @@
     "type": "module",
     "exports": {
         ".": "./src/index.ts",
-        "./context": "./src/context.ts"
+        "./context": "./src/context.ts",
+        "./chunk-size": "./src/chunks/chunk-size.ts"
     },
     "scripts": {
         "lint": "oxlint src",

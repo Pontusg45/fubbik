@@ -1,26 +1,7 @@
-export interface ChunkSizeThresholds {
-    /** Max lines for "good" status */
-    goodLines: number;
-    /** Max lines for "moderate" status */
-    moderateLines: number;
-    /** Max lines for "warning" status */
-    warningLines: number;
-    /** Max characters for "good" status */
-    goodChars: number;
-    /** Max characters for "moderate" status */
-    moderateChars: number;
-    /** Max characters for "warning" status */
-    warningChars: number;
-}
+import { DEFAULT_THRESHOLDS, type ChunkSizeThresholds } from "@fubbik/api/chunk-size";
 
-export const DEFAULT_THRESHOLDS: ChunkSizeThresholds = {
-    goodLines: 300,
-    moderateLines: 600,
-    warningLines: 1000,
-    goodChars: 18_000,
-    moderateChars: 36_000,
-    warningChars: 60_000
-};
+export type { ChunkSizeThresholds } from "@fubbik/api/chunk-size";
+export { DEFAULT_THRESHOLDS } from "@fubbik/api/chunk-size";
 
 export type ChunkSizeLevel = "good" | "moderate" | "warning" | "critical";
 

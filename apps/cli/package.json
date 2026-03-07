@@ -12,6 +12,7 @@
         "lint": "oxlint src"
     },
     "dependencies": {
+        "@fubbik/api": "workspace:*",
         "commander": "^13.1.0"
     },
     "devDependencies": {

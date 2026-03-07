@@ -25,6 +25,7 @@
         "fubbik": "dist/fubbik",
       },
       "dependencies": {
+        "@fubbik/api": "workspace:*",
         "commander": "^13.1.0",
       },
       "devDependencies": {

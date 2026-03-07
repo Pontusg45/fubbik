@@ -1,6 +1,8 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { basename, join, relative } from "node:path";
 
+import { DEFAULT_THRESHOLDS } from "@fubbik/api/chunk-size";
+
 export interface ScannedChunk {
     title: string;
     content: string;
@@ -10,6 +12,8 @@ export interface ScannedChunk {
     folder: string;
     /** Whether this chunk is the index/README for its folder */
     isIndex?: boolean;
+    /** If this chunk was split from a larger file, the title of the parent index chunk */
+    parentTitle?: string;
 }
 
 interface ScanOptions {
@@ -32,6 +36,7 @@ const IGNORE_DIRS = new Set([
 
 const DOC_FILES = ["README.md", "CLAUDE.md", "CONTRIBUTING.md", "Agents.md", "CHANGELOG.md"];
 
+
 export function scanProject(opts: ScanOptions): ScannedChunk[] {
     const chunks: ScannedChunk[] = [];
     const { dir } = opts;
@@ -42,7 +47,7 @@ export function scanProject(opts: ScanOptions): ScannedChunk[] {
         if (existsSync(path)) {
             const content = readFileSync(path, "utf-8");
             if (content.trim()) {
-                chunks.push({
+                addChunkWithAutoSplit(chunks, {
                     title: docFileName(docFile),
                     content,
                     type: "guide",
@@ -62,7 +67,7 @@ export function scanProject(opts: ScanOptions): ScannedChunk[] {
             const rel = relative(dir, mdPath);
             const folder = relative(dir, join(mdPath, ".."));
             const title = extractMarkdownTitle(content) ?? rel;
-            chunks.push({
+            addChunkWithAutoSplit(chunks, {
                 title,
                 content,
                 type: "guide",
@@ -84,7 +89,7 @@ export function scanProject(opts: ScanOptions): ScannedChunk[] {
         if (!content.trim()) continue;
         const title = extractMarkdownTitle(content) ?? rel;
         const folder = relative(dir, join(mdPath, ".."));
-        chunks.push({
+        addChunkWithAutoSplit(chunks, {
             title,
             content,
             type: "guide",
@@ -95,6 +100,69 @@ export function scanProject(opts: ScanOptions): ScannedChunk[] {
     }
 
     return chunks;
+}
+
+// --- Auto-split ---
+
+function exceedsWarning(content: string): boolean {
+    return content.split("\n").length > DEFAULT_THRESHOLDS.warningLines || content.length > DEFAULT_THRESHOLDS.warningChars;
+}
+
+function splitByHeadings(content: string): { title: string; content: string }[] | null {
+    const lines = content.split("\n");
+    const sections: { title: string; content: string }[] = [];
+    let currentTitle = "";
+    let currentLines: string[] = [];
+
+    for (const line of lines) {
+        const match = line.match(/^(#{1,3})\s+(.+)$/);
+        if (match) {
+            const prev = currentLines.join("\n").trim();
+            if (prev) sections.push({ title: currentTitle, content: prev });
+            currentTitle = match[2]!;
+            currentLines = [];
+        } else {
+            currentLines.push(line);
+        }
+    }
+    const last = currentLines.join("\n").trim();
+    if (last) sections.push({ title: currentTitle, content: last });
+
+    return sections.length >= 2 ? sections : null;
+}
+
+function addChunkWithAutoSplit(chunks: ScannedChunk[], chunk: ScannedChunk): void {
+    if (!exceedsWarning(chunk.content)) {
+        chunks.push(chunk);
+        return;
+    }
+
+    const sections = splitByHeadings(chunk.content);
+    if (!sections) {
+        chunks.push(chunk);
+        return;
+    }
+
+    // Create index chunk with listing of sections
+    const indexContent = sections.map(s => `- ${s.title || "(intro)"}`).join("\n");
+    chunks.push({
+        ...chunk,
+        content: `Sections:\n\n${indexContent}`,
+        isIndex: true
+    });
+
+    // Create sub-chunks
+    for (const section of sections) {
+        const sectionTitle = section.title || `${chunk.title} (intro)`;
+        chunks.push({
+            title: sectionTitle,
+            content: section.content,
+            type: chunk.type,
+            tags: chunk.tags,
+            folder: chunk.folder,
+            parentTitle: chunk.title
+        });
+    }
 }
 
 // --- Helpers ---
