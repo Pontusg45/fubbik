@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import "@xyflow/react/dist/style.css";
-import { Background, BackgroundVariant, Controls, MiniMap, ReactFlow, useEdgesState, useNodesState, type Edge, type Node } from "@xyflow/react";
+import { Background, BackgroundVariant, Controls, MiniMap, ReactFlow, ReactFlowProvider, useEdgesState, useNodesState, useReactFlow, type Edge, type Node } from "@xyflow/react";
 import { useEffect, useMemo, useState } from "react";
 
 import { relationColor } from "@/features/chunks/relation-colors";
@@ -42,8 +42,9 @@ const TYPE_COLORS: Record<string, { bg: string; border: string }> = {
     checklist: { bg: "#1a2e05", border: "#84cc16" }
 };
 
-function GraphView() {
+function GraphViewInner() {
     const [selectedChunkId, setSelectedChunkId] = useState<string | null>(null);
+    const { setCenter } = useReactFlow();
 
     const { data, isLoading } = useQuery({
         queryKey: ["graph"],
@@ -512,6 +513,16 @@ function GraphView() {
         }
     }, [layoutEdges, setEdges, searchQuery, focusedNodeId, selectedEdgeIds]);
 
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    useEffect(() => {
+        if (!selectedChunkId) return;
+        const node = nodes.find(n => n.id === selectedChunkId);
+        if (!node) return;
+        const x = node.position.x + ((node.measured?.width ?? 180) / 2);
+        const y = node.position.y + ((node.measured?.height ?? 40) / 2);
+        setCenter(x, y, { duration: 400 });
+    }, [selectedChunkId]);
+
     if (isLoading) {
         return (
             <div className="flex h-[calc(100vh-4rem)] items-center justify-center">
@@ -675,5 +686,13 @@ function GraphView() {
             })()}
             </div>
         </div>
+    );
+}
+
+function GraphView() {
+    return (
+        <ReactFlowProvider>
+            <GraphViewInner />
+        </ReactFlowProvider>
     );
 }
