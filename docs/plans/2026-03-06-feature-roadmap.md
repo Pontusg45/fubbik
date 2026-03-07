@@ -4,7 +4,8 @@
 
 **Goal:** Build out the 12 features that complete fubbik's core loop — editing, connections, search, graph visualization, AI, and more.
 
-**Architecture:** Features build on the existing repository -> service -> route -> UI pattern with Effect typed errors. Backend additions go through the same layers. Frontend uses TanStack Router file-based routes, TanStack Query for data, and shadcn-ui components.
+**Architecture:** Features build on the existing repository -> service -> route -> UI pattern with Effect typed errors. Backend additions go
+through the same layers. Frontend uses TanStack Router file-based routes, TanStack Query for data, and shadcn-ui components.
 
 **Tech Stack:** TypeScript, Effect, Elysia, Drizzle, TanStack Router/Query, React 19, shadcn-ui, Vercel AI SDK, @xyflow/react
 
@@ -15,12 +16,14 @@
 The PATCH endpoint exists but the web UI has no edit page. The "Edit" button on the detail page is non-functional.
 
 **Files:**
+
 - Create: `apps/web/src/routes/chunks.$chunkId.edit.tsx`
 - Modify: `apps/web/src/routes/chunks.$chunkId.tsx` (wire Edit button)
 
 **Step 1: Create the edit route**
 
-Create `apps/web/src/routes/chunks.$chunkId.edit.tsx`. This reuses the same form layout as `chunks.new.tsx` but pre-fills from an existing chunk and calls PATCH instead of POST.
+Create `apps/web/src/routes/chunks.$chunkId.edit.tsx`. This reuses the same form layout as `chunks.new.tsx` but pre-fills from an existing
+chunk and calls PATCH instead of POST.
 
 ```typescript
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -246,8 +249,7 @@ In `apps/web/src/routes/chunks.$chunkId.tsx`, change the Edit button (line 94-97
 
 **Step 3: Run type check**
 
-Run: `cd /Users/pontus/GitHub/fubbik && bun run check-types`
-Expected: No new errors
+Run: `cd /Users/pontus/GitHub/fubbik && bun run check-types` Expected: No new errors
 
 **Step 4: Manual test**
 
@@ -264,9 +266,11 @@ git commit -m "feat: add chunk edit page and wire Edit button"
 
 ### Task 2: Connection Management (CRUD)
 
-Connections exist in the DB schema but can only be created via seed data. Add full CRUD: API endpoints, service layer, repository functions, and UI on the chunk detail page.
+Connections exist in the DB schema but can only be created via seed data. Add full CRUD: API endpoints, service layer, repository functions,
+and UI on the chunk detail page.
 
 **Files:**
+
 - Create: `packages/db/src/repository/connection.ts`
 - Modify: `packages/db/src/repository/index.ts` (re-export)
 - Create: `packages/api/src/connections/service.ts`
@@ -299,10 +303,7 @@ export function createConnection(params: { id: string; sourceId: string; targetI
 export function deleteConnection(connectionId: string) {
     return Effect.tryPromise({
         try: async () => {
-            const [deleted] = await db
-                .delete(chunkConnection)
-                .where(eq(chunkConnection.id, connectionId))
-                .returning();
+            const [deleted] = await db.delete(chunkConnection).where(eq(chunkConnection.id, connectionId)).returning();
             return deleted ?? null;
         },
         catch: cause => new DatabaseError({ cause })
@@ -312,10 +313,7 @@ export function deleteConnection(connectionId: string) {
 export function getConnectionById(connectionId: string) {
     return Effect.tryPromise({
         try: async () => {
-            const [found] = await db
-                .select()
-                .from(chunkConnection)
-                .where(eq(chunkConnection.id, connectionId));
+            const [found] = await db.select().from(chunkConnection).where(eq(chunkConnection.id, connectionId));
             return found ?? null;
         },
         catch: cause => new DatabaseError({ cause })
@@ -336,32 +334,41 @@ export * from "./connection";
 Create `packages/api/src/connections/service.ts`:
 
 ```typescript
-import { createConnection as createConnectionRepo, deleteConnection as deleteConnectionRepo, getChunkById, getConnectionById } from "@fubbik/db/repository";
+import {
+    createConnection as createConnectionRepo,
+    deleteConnection as deleteConnectionRepo,
+    getChunkById,
+    getConnectionById
+} from "@fubbik/db/repository";
 import { Effect } from "effect";
 
 import { NotFoundError } from "../errors";
 
 export function createConnection(userId: string, body: { sourceId: string; targetId: string; relation: string }) {
     return getChunkById(body.sourceId, userId).pipe(
-        Effect.flatMap(source => source ? Effect.succeed(source) : Effect.fail(new NotFoundError({ resource: "Source chunk" }))),
+        Effect.flatMap(source => (source ? Effect.succeed(source) : Effect.fail(new NotFoundError({ resource: "Source chunk" })))),
         Effect.flatMap(() => getChunkById(body.targetId, userId)),
-        Effect.flatMap(target => target ? Effect.succeed(target) : Effect.fail(new NotFoundError({ resource: "Target chunk" }))),
-        Effect.flatMap(() => createConnectionRepo({
-            id: crypto.randomUUID(),
-            sourceId: body.sourceId,
-            targetId: body.targetId,
-            relation: body.relation
-        }))
+        Effect.flatMap(target => (target ? Effect.succeed(target) : Effect.fail(new NotFoundError({ resource: "Target chunk" })))),
+        Effect.flatMap(() =>
+            createConnectionRepo({
+                id: crypto.randomUUID(),
+                sourceId: body.sourceId,
+                targetId: body.targetId,
+                relation: body.relation
+            })
+        )
     );
 }
 
 export function deleteConnection(connectionId: string, userId: string) {
     return getConnectionById(connectionId).pipe(
-        Effect.flatMap(conn => conn ? Effect.succeed(conn) : Effect.fail(new NotFoundError({ resource: "Connection" }))),
+        Effect.flatMap(conn => (conn ? Effect.succeed(conn) : Effect.fail(new NotFoundError({ resource: "Connection" })))),
         // Verify user owns the source chunk
-        Effect.flatMap(conn => getChunkById(conn.sourceId, userId).pipe(
-            Effect.flatMap(source => source ? Effect.succeed(conn) : Effect.fail(new NotFoundError({ resource: "Connection" })))
-        )),
+        Effect.flatMap(conn =>
+            getChunkById(conn.sourceId, userId).pipe(
+                Effect.flatMap(source => (source ? Effect.succeed(conn) : Effect.fail(new NotFoundError({ resource: "Connection" }))))
+            )
+        ),
         Effect.flatMap(conn => deleteConnectionRepo(conn.id))
     );
 }
@@ -385,7 +392,11 @@ export const connectionRoutes = new Elysia()
             Effect.runPromise(
                 requireSession(ctx).pipe(
                     Effect.flatMap(session => connectionService.createConnection(session.user.id, ctx.body)),
-                    Effect.tap(() => Effect.sync(() => { ctx.set.status = 201; }))
+                    Effect.tap(() =>
+                        Effect.sync(() => {
+                            ctx.set.status = 201;
+                        })
+                    )
                 )
             ),
         {
@@ -419,13 +430,15 @@ And add `.use(connectionRoutes)` after `.use(chunkRoutes)`.
 **Step 6: Add connection UI to chunk detail page**
 
 In `apps/web/src/routes/chunks.$chunkId.tsx`, add a "Link Chunk" button in the connections section that opens a dialog. The dialog has:
+
 - A search input to find chunks (calls `GET /api/chunks?search=...`)
 - A relation type text input (default: "related")
 - A submit button that calls `POST /api/connections`
 
 Also add a delete button (X icon) on each existing connection that calls `DELETE /api/connections/:id`.
 
-This is the most complex UI piece — use a `Dialog` component from shadcn-ui for the "Link Chunk" modal, and the existing `api` Eden client for data fetching.
+This is the most complex UI piece — use a `Dialog` component from shadcn-ui for the "Link Chunk" modal, and the existing `api` Eden client
+for data fetching.
 
 **Step 7: Run tests and type check**
 
@@ -444,15 +457,18 @@ git commit -m "feat: add connection CRUD — API endpoints and UI"
 
 ### Task 3: Search UI on Dashboard
 
-The API supports `?search=` but the web app has no search interface. Add a command palette using the existing `command.tsx` shadcn component.
+The API supports `?search=` but the web app has no search interface. Add a command palette using the existing `command.tsx` shadcn
+component.
 
 **Files:**
+
 - Create: `apps/web/src/features/search/chunk-search.tsx`
 - Modify: `apps/web/src/routes/__root.tsx` (or layout — add global keyboard shortcut)
 
 **Step 1: Create the search component**
 
 Create `apps/web/src/features/search/chunk-search.tsx`. This is a command palette that:
+
 - Opens with `Cmd+K` / `Ctrl+K`
 - Has a search input that debounces and calls `GET /api/chunks?search=...`
 - Shows matching chunks in a list
@@ -521,11 +537,14 @@ export function ChunkSearch() {
 }
 ```
 
-Note: The exact component API depends on the shadcn-ui command variant installed. Read `apps/web/src/components/ui/command.tsx` to understand the available sub-components and adapt accordingly. The command component uses `@base-ui/react` Dialog + the Autocomplete component.
+Note: The exact component API depends on the shadcn-ui command variant installed. Read `apps/web/src/components/ui/command.tsx` to
+understand the available sub-components and adapt accordingly. The command component uses `@base-ui/react` Dialog + the Autocomplete
+component.
 
 **Step 2: Add to root layout**
 
-In the root layout (find the layout component that wraps all routes — likely `__root.tsx`), add `<ChunkSearch />` so it's globally available.
+In the root layout (find the layout component that wraps all routes — likely `__root.tsx`), add `<ChunkSearch />` so it's globally
+available.
 
 **Step 3: Add a search trigger button**
 
@@ -549,6 +568,7 @@ git commit -m "feat: add global chunk search command palette (Cmd+K)"
 Replace the plain textarea on create/edit pages with a markdown editor with preview.
 
 **Files:**
+
 - Create: `apps/web/src/features/editor/markdown-editor.tsx`
 - Modify: `apps/web/src/routes/chunks.new.tsx` (use editor)
 - Modify: `apps/web/src/routes/chunks.$chunkId.edit.tsx` (use editor)
@@ -557,7 +577,8 @@ Replace the plain textarea on create/edit pages with a markdown editor with prev
 
 Run: `cd apps/web && bun add @uiw/react-md-editor`
 
-Alternative: Use a simple split-pane approach with `react-markdown` for preview and a plain textarea for editing. This avoids a heavy dependency.
+Alternative: Use a simple split-pane approach with `react-markdown` for preview and a plain textarea for editing. This avoids a heavy
+dependency.
 
 Simpler approach — build a tab-based editor:
 
@@ -627,9 +648,11 @@ git commit -m "feat: add markdown editor with write/preview tabs"
 
 ### Task 5: Graph Visualization
 
-The landing page promises "Knowledge Graphs." Add a `/graph` route that renders chunks as nodes and connections as edges using `@xyflow/react`.
+The landing page promises "Knowledge Graphs." Add a `/graph` route that renders chunks as nodes and connections as edges using
+`@xyflow/react`.
 
 **Files:**
+
 - Create: `apps/web/src/routes/graph.tsx`
 - Modify: `apps/web/src/routes/dashboard.tsx` (add link to graph)
 
@@ -639,7 +662,8 @@ Run: `cd apps/web && bun add @xyflow/react`
 
 **Step 2: Add graph API endpoint**
 
-Add a new endpoint `GET /api/graph` that returns all chunks (id, title, type) and all connections for the user. This is needed because the existing endpoints are paginated.
+Add a new endpoint `GET /api/graph` that returns all chunks (id, title, type) and all connections for the user. This is needed because the
+existing endpoints are paginated.
 
 Create `packages/api/src/graph/routes.ts`:
 
@@ -650,17 +674,13 @@ import { Elysia } from "elysia";
 import { requireSession } from "../require-session";
 import * as graphService from "./service";
 
-export const graphRoutes = new Elysia()
-    .get("/graph", ctx =>
-        Effect.runPromise(
-            requireSession(ctx).pipe(
-                Effect.flatMap(session => graphService.getUserGraph(session.user.id))
-            )
-        )
-    );
+export const graphRoutes = new Elysia().get("/graph", ctx =>
+    Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(session => graphService.getUserGraph(session.user.id))))
+);
 ```
 
-Create `packages/api/src/graph/service.ts` that fetches all chunks (id, title, type, tags) and all connections for the user. Add a `getAllChunksMeta` repository function that returns lightweight chunk data (no content) and a `getAllConnectionsForUser` function.
+Create `packages/api/src/graph/service.ts` that fetches all chunks (id, title, type, tags) and all connections for the user. Add a
+`getAllChunksMeta` repository function that returns lightweight chunk data (no content) and a `getAllConnectionsForUser` function.
 
 **Step 3: Create the graph route**
 
@@ -751,9 +771,11 @@ git commit -m "feat: add knowledge graph visualization with @xyflow/react"
 
 ### Task 6: AI-Powered Features
 
-The Vercel AI SDK (`@ai-sdk/react`) is already installed in the web app. Add AI features: summarize a chunk, suggest connections, and generate a chunk from a prompt.
+The Vercel AI SDK (`@ai-sdk/react`) is already installed in the web app. Add AI features: summarize a chunk, suggest connections, and
+generate a chunk from a prompt.
 
 **Files:**
+
 - Create: `packages/api/src/ai/routes.ts`
 - Create: `packages/api/src/ai/service.ts`
 - Modify: `packages/api/src/index.ts` (use aiRoutes)
@@ -824,6 +846,7 @@ export function generateChunk(prompt: string) {
 **Step 3: Create AI routes**
 
 Create `packages/api/src/ai/routes.ts` with:
+
 - `POST /ai/summarize` — takes `chunkId`, returns summary
 - `POST /ai/suggest-connections` — takes `chunkId`, returns suggested connections
 - `POST /ai/generate` — takes `prompt`, returns generated chunk fields
@@ -852,6 +875,7 @@ git commit -m "feat: add AI features — summarize, suggest connections, generat
 Replace the simple ILIKE search with PostgreSQL trigram-based fuzzy search for better results on typos and partial matches.
 
 **Files:**
+
 - Create: `packages/db/src/migrations/add-trgm-index.sql` (or use drizzle push)
 - Modify: `packages/db/src/repository/chunk.ts` (update search query)
 
@@ -885,7 +909,7 @@ if (params.search) {
 // After — use similarity for ranking + trigram matching:
 if (params.search) {
     conditions.push(
-        sql`(${chunk.title} % ${params.search} OR ${chunk.content} % ${params.search} OR ${chunk.title} ILIKE ${'%' + params.search + '%'})`
+        sql`(${chunk.title} % ${params.search} OR ${chunk.content} % ${params.search} OR ${chunk.title} ILIKE ${"%" + params.search + "%"})`
     );
     // Also add ORDER BY similarity for better ranking
 }
@@ -911,12 +935,14 @@ git commit -m "feat: add pg_trgm fuzzy search with GIN indexes"
 The dashboard shows recent chunks but has no filter/sort controls.
 
 **Files:**
+
 - Create: `apps/web/src/routes/chunks.tsx` (dedicated chunks list page with filters)
 - Modify: `apps/web/src/routes/dashboard.tsx` (add "View All" link)
 
 **Step 1: Create a dedicated chunks list page**
 
 Create `apps/web/src/routes/chunks.tsx` with:
+
 - Search input at the top
 - Type filter dropdown (All, Note, Document, Reference, Schema, Checklist)
 - Tag filter (show popular tags as badges, click to filter)
@@ -967,6 +993,7 @@ git commit -m "feat: add chunks list page with type/search filters and sorting"
 Add JSON export of all chunks and import from JSON. Useful for backup and CLI<->server sync.
 
 **Files:**
+
 - Create: `packages/api/src/chunks/export.ts` (export service)
 - Modify: `packages/api/src/chunks/routes.ts` (add export/import endpoints)
 - Modify: `apps/web/src/routes/dashboard.tsx` or settings page (add export/import buttons)
@@ -1032,6 +1059,7 @@ git commit -m "feat: add bulk import/export for chunks as JSON"
 Track content changes per chunk with a `chunk_version` table.
 
 **Files:**
+
 - Create: `packages/db/src/schema/chunk-version.ts`
 - Modify: `packages/db/src/schema/index.ts` (export)
 - Create: `packages/db/src/repository/chunk-version.ts`
@@ -1050,7 +1078,9 @@ import { chunk } from "./chunk";
 
 export const chunkVersion = pgTable("chunk_version", {
     id: text("id").primaryKey(),
-    chunkId: text("chunk_id").notNull().references(() => chunk.id, { onDelete: "cascade" }),
+    chunkId: text("chunk_id")
+        .notNull()
+        .references(() => chunk.id, { onDelete: "cascade" }),
     version: integer("version").notNull(),
     title: text("title").notNull(),
     content: text("content").notNull(),
@@ -1113,6 +1143,7 @@ git commit -m "feat: add version history — snapshot on update, history view"
 The CLI uses a local JSON store, completely separate from the server DB. Add a `fubbik sync` command.
 
 **Files:**
+
 - Create: `apps/cli/src/commands/sync.ts`
 - Modify: `apps/cli/src/index.ts` (register command)
 - Modify: `apps/cli/src/lib/store.ts` (add sync metadata)
@@ -1158,6 +1189,7 @@ Create `apps/cli/src/commands/sync.ts`:
 ```
 
 The sync logic:
+
 1. Fetch all server chunks
 2. Compare by title (since IDs differ between local and server)
 3. Push local-only chunks to server
@@ -1184,6 +1216,7 @@ git commit -m "feat: add CLI sync command for local <-> server chunk sync"
 Add a `/tags` route that shows all tags with chunk counts and allows filtering.
 
 **Files:**
+
 - Create: `packages/db/src/repository/tags.ts`
 - Modify: `packages/db/src/repository/index.ts` (export)
 - Create: `packages/api/src/tags/routes.ts`
@@ -1228,19 +1261,15 @@ Create `packages/api/src/tags/service.ts` and `routes.ts` following the same pat
 
 ```typescript
 // routes.ts
-export const tagRoutes = new Elysia()
-    .get("/tags", ctx =>
-        Effect.runPromise(
-            requireSession(ctx).pipe(
-                Effect.flatMap(session => tagService.getUserTags(session.user.id))
-            )
-        )
-    );
+export const tagRoutes = new Elysia().get("/tags", ctx =>
+    Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(session => tagService.getUserTags(session.user.id))))
+);
 ```
 
 **Step 3: Create the tags page**
 
 Create `apps/web/src/routes/tags.tsx`:
+
 - Grid of tag badges with counts
 - Clicking a tag navigates to `/chunks?tag=<tag>` (from Task 8)
 - Shows total unique tags
