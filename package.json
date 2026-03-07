@@ -43,7 +43,8 @@
         "fmt:check": "oxfmt --check .",
         "sherif": "sherif",
         "sherif:fix": "sherif --fix",
-        "ci": "turbo run check-types lint test build && bun run fmt:check && bun run sherif"
+        "ci": "turbo run check-types lint test build && bun run fmt:check && bun run sherif",
+        "ci:fix": "turbo run check-types lint test build && bun run fmt && bun run sherif --fix && bun run lint:fix"
     },
     "devDependencies": {
         "@fubbik/config": "workspace:*",

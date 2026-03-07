@@ -1,7 +1,7 @@
 import { Command } from "commander";
 
-import { deleteChunk, getChunk } from "../lib/store";
 import { output, outputError, outputQuiet } from "../lib/output";
+import { deleteChunk, getChunk } from "../lib/store";
 
 export const removeCommand = new Command("remove")
     .description("Remove a chunk by ID")

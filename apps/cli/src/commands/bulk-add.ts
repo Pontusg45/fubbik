@@ -1,8 +1,9 @@
 import { readFileSync } from "node:fs";
+
 import { Command } from "commander";
 
-import { addChunk } from "../lib/store";
 import { output, outputQuiet } from "../lib/output";
+import { addChunk } from "../lib/store";
 
 export const bulkAddCommand = new Command("bulk-add")
     .description("Import chunks from a JSONL file (one JSON object per line)")
@@ -39,11 +40,15 @@ export const bulkAddCommand = new Command("bulk-add")
         }
 
         outputQuiet(cmd, added.map(a => a.id).join("\n"));
-        output(cmd, { added, errors }, [
-            `✓ Added ${added.length} chunk(s)`,
-            ...(errors.length > 0 ? [`✗ ${errors.length} error(s):`] : []),
-            ...errors.map(e => `  Line ${e.line}: ${e.error}`)
-        ].join("\n"));
+        output(
+            cmd,
+            { added, errors },
+            [
+                `✓ Added ${added.length} chunk(s)`,
+                ...(errors.length > 0 ? [`✗ ${errors.length} error(s):`] : []),
+                ...errors.map(e => `  Line ${e.line}: ${e.error}`)
+            ].join("\n")
+        );
 
         if (errors.length > 0) process.exit(1);
     });

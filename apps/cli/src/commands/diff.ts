@@ -1,7 +1,7 @@
 import { Command } from "commander";
 
-import { getServerUrl, readStore } from "../lib/store";
 import { output, outputError } from "../lib/output";
+import { getServerUrl, readStore } from "../lib/store";
 
 export const diffCommand = new Command("diff")
     .description("Show differences between local and server chunks")
@@ -45,11 +45,7 @@ export const diffCommand = new Command("diff")
                 lastSync: store.lastSync ?? null
             };
 
-            const lines = [
-                `Last sync: ${store.lastSync ?? "never"}`,
-                `Local: ${store.chunks.length}, Server: ${serverChunks.length}`,
-                ""
-            ];
+            const lines = [`Last sync: ${store.lastSync ?? "never"}`, `Local: ${store.chunks.length}, Server: ${serverChunks.length}`, ""];
 
             if (localOnly.length > 0) {
                 lines.push(`Local only (${localOnly.length}):`);

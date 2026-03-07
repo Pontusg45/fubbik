@@ -10,7 +10,7 @@ const navItems = [
     { label: "Dashboard", to: "/dashboard" as const, icon: LayoutDashboard },
     { label: "Chunks", to: "/chunks" as const, icon: Blocks },
     { label: "Graph", to: "/graph" as const, icon: Network },
-    { label: "Tags", to: "/tags" as const, icon: Tags },
+    { label: "Tags", to: "/tags" as const, icon: Tags }
 ];
 
 export function MobileNav() {

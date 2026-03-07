@@ -23,11 +23,7 @@ export function VersionHistory({ chunkId }: { chunkId: string }) {
     return (
         <Card>
             <CardHeader>
-                <button
-                    type="button"
-                    onClick={() => setOpen(!open)}
-                    className="flex w-full items-center justify-between"
-                >
+                <button type="button" onClick={() => setOpen(!open)} className="flex w-full items-center justify-between">
                     <CardTitle className="flex items-center gap-2 text-sm">
                         <History className="size-4" />
                         Version History
@@ -39,19 +35,17 @@ export function VersionHistory({ chunkId }: { chunkId: string }) {
             </CardHeader>
             {open && (
                 <CardPanel className="space-y-2 pt-0">
-                    {historyQuery.isLoading && (
-                        <p className="text-muted-foreground text-sm">Loading history...</p>
-                    )}
+                    {historyQuery.isLoading && <p className="text-muted-foreground text-sm">Loading history...</p>}
                     {versions.length === 0 && !historyQuery.isLoading && (
                         <p className="text-muted-foreground text-sm">No previous versions</p>
                     )}
                     {versions.map(v => (
                         <div key={v.id} className="rounded-md border px-3 py-2">
                             <div className="flex items-center justify-between">
-                                <span className="text-sm font-medium">v{v.version}: {v.title}</span>
-                                <span className="text-muted-foreground text-xs">
-                                    {new Date(v.createdAt).toLocaleString()}
+                                <span className="text-sm font-medium">
+                                    v{v.version}: {v.title}
                                 </span>
+                                <span className="text-muted-foreground text-xs">{new Date(v.createdAt).toLocaleString()}</span>
                             </div>
                             <p className="text-muted-foreground mt-1 line-clamp-2 text-xs">{v.content}</p>
                         </div>

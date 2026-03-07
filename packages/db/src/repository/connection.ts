@@ -18,10 +18,7 @@ export function createConnection(params: { id: string; sourceId: string; targetI
 export function deleteConnection(connectionId: string) {
     return Effect.tryPromise({
         try: async () => {
-            const [deleted] = await db
-                .delete(chunkConnection)
-                .where(eq(chunkConnection.id, connectionId))
-                .returning();
+            const [deleted] = await db.delete(chunkConnection).where(eq(chunkConnection.id, connectionId)).returning();
             return deleted ?? null;
         },
         catch: cause => new DatabaseError({ cause })
@@ -31,10 +28,7 @@ export function deleteConnection(connectionId: string) {
 export function getConnectionById(connectionId: string) {
     return Effect.tryPromise({
         try: async () => {
-            const [found] = await db
-                .select()
-                .from(chunkConnection)
-                .where(eq(chunkConnection.id, connectionId));
+            const [found] = await db.select().from(chunkConnection).where(eq(chunkConnection.id, connectionId));
             return found ?? null;
         },
         catch: cause => new DatabaseError({ cause })

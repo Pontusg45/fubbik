@@ -70,7 +70,7 @@ export function LinkChunkDialog({ chunkId }: { chunkId: string }) {
                     <div className="space-y-2">
                         <label className="text-muted-foreground text-xs font-medium">Search chunks</label>
                         <div className="relative">
-                            <Search className="text-muted-foreground pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2" />
+                            <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2" />
                             <Input
                                 value={search}
                                 onChange={e => setSearch((e.target as HTMLInputElement).value)}

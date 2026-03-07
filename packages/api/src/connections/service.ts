@@ -16,13 +16,9 @@ export function createConnection(userId: string, body: { sourceId: string; targe
         return Effect.void;
     }).pipe(
         Effect.flatMap(() => getChunkById(body.sourceId, userId)),
-        Effect.flatMap(source =>
-            source ? Effect.succeed(source) : Effect.fail(new NotFoundError({ resource: "Source chunk" }))
-        ),
+        Effect.flatMap(source => (source ? Effect.succeed(source) : Effect.fail(new NotFoundError({ resource: "Source chunk" })))),
         Effect.flatMap(() => getChunkById(body.targetId, userId)),
-        Effect.flatMap(target =>
-            target ? Effect.succeed(target) : Effect.fail(new NotFoundError({ resource: "Target chunk" }))
-        ),
+        Effect.flatMap(target => (target ? Effect.succeed(target) : Effect.fail(new NotFoundError({ resource: "Target chunk" })))),
         Effect.flatMap(() =>
             createConnectionRepo({
                 id: crypto.randomUUID(),
@@ -36,9 +32,7 @@ export function createConnection(userId: string, body: { sourceId: string; targe
 
 export function deleteConnection(connectionId: string, userId: string) {
     return getConnectionById(connectionId).pipe(
-        Effect.flatMap(conn =>
-            conn ? Effect.succeed(conn) : Effect.fail(new NotFoundError({ resource: "Connection" }))
-        ),
+        Effect.flatMap(conn => (conn ? Effect.succeed(conn) : Effect.fail(new NotFoundError({ resource: "Connection" })))),
         Effect.flatMap(conn =>
             Effect.all({
                 source: getChunkById(conn.sourceId, userId),

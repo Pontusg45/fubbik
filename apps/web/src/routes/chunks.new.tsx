@@ -8,9 +8,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardPanel } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { getUser } from "@/functions/get-user";
-import { MarkdownEditor } from "@/features/editor/markdown-editor";
 import { chunkTemplates } from "@/features/chunks/templates";
+import { MarkdownEditor } from "@/features/editor/markdown-editor";
+import { getUser } from "@/functions/get-user";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
@@ -48,12 +48,10 @@ function NewChunk() {
         queryFn: async () => {
             if (!debouncedTitle.trim() || debouncedTitle.length < 3) return [];
             try {
-                const result = unwrapEden(
-                    await api.api.chunks.get({ query: { search: debouncedTitle, limit: "3" } })
-                ) as { chunks?: { id: string; title: string }[] } | null;
-                return result?.chunks?.filter(
-                    c => c.title.toLowerCase() !== debouncedTitle.toLowerCase()
-                ).slice(0, 3) ?? [];
+                const result = unwrapEden(await api.api.chunks.get({ query: { search: debouncedTitle, limit: "3" } })) as {
+                    chunks?: { id: string; title: string }[];
+                } | null;
+                return result?.chunks?.filter(c => c.title.toLowerCase() !== debouncedTitle.toLowerCase()).slice(0, 3) ?? [];
             } catch {
                 return [];
             }
@@ -136,7 +134,7 @@ function NewChunk() {
 
             <Card className="mb-6">
                 <CardPanel className="p-6">
-                    <div className="flex items-center gap-2 mb-3">
+                    <div className="mb-3 flex items-center gap-2">
                         <Sparkles className="size-4" />
                         <span className="text-sm font-medium">AI Generate</span>
                     </div>
@@ -159,11 +157,7 @@ function NewChunk() {
                             onClick={() => generateMutation.mutate()}
                             disabled={generateMutation.isPending || !aiPrompt.trim()}
                         >
-                            {generateMutation.isPending ? (
-                                <Loader2 className="size-4 animate-spin" />
-                            ) : (
-                                <Sparkles className="size-4" />
-                            )}
+                            {generateMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
                             {generateMutation.isPending ? "Generating..." : "Generate"}
                         </Button>
                     </div>
@@ -172,7 +166,7 @@ function NewChunk() {
 
             <Card className="mb-6">
                 <CardPanel className="p-6">
-                    <div className="flex items-center gap-2 mb-3">
+                    <div className="mb-3 flex items-center gap-2">
                         <FileText className="size-4" />
                         <span className="text-sm font-medium">Start from Template</span>
                     </div>

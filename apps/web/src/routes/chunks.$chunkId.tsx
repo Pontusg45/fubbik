@@ -181,7 +181,9 @@ function ChunkDetail() {
                                     {conn.title ?? conn.targetId}
                                 </Link>
                                 <div className="flex items-center gap-2">
-                                    <Badge variant="outline" size="sm" className="text-[10px]">{conn.relation}</Badge>
+                                    <Badge variant="outline" size="sm" className="text-[10px]">
+                                        {conn.relation}
+                                    </Badge>
                                     <DeleteConnectionButton connectionId={conn.id} chunkId={chunkId} />
                                 </div>
                             </div>
@@ -200,7 +202,9 @@ function ChunkDetail() {
                                     {conn.title ?? conn.sourceId}
                                 </Link>
                                 <div className="flex items-center gap-2">
-                                    <Badge variant="outline" size="sm" className="text-[10px]">{conn.relation}</Badge>
+                                    <Badge variant="outline" size="sm" className="text-[10px]">
+                                        {conn.relation}
+                                    </Badge>
                                     <DeleteConnectionButton connectionId={conn.id} chunkId={chunkId} />
                                 </div>
                             </div>

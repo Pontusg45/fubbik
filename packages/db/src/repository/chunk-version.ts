@@ -27,12 +27,7 @@ export function createVersion(params: CreateVersionParams) {
 
 export function getVersionsByChunkId(chunkId: string) {
     return Effect.tryPromise({
-        try: () =>
-            db
-                .select()
-                .from(chunkVersion)
-                .where(eq(chunkVersion.chunkId, chunkId))
-                .orderBy(desc(chunkVersion.version)),
+        try: () => db.select().from(chunkVersion).where(eq(chunkVersion.chunkId, chunkId)).orderBy(desc(chunkVersion.version)),
         catch: cause => new DatabaseError({ cause })
     });
 }

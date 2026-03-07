@@ -1,7 +1,7 @@
 import { Command } from "commander";
 
-import { getChunk } from "../lib/store";
 import { outputError } from "../lib/output";
+import { getChunk } from "../lib/store";
 
 export const catCommand = new Command("cat")
     .description("Output raw content of a chunk (no metadata)")

@@ -1,7 +1,7 @@
 import { Command } from "commander";
 
-import { addChunk } from "../lib/store";
 import { output, outputQuiet } from "../lib/output";
+import { addChunk } from "../lib/store";
 
 export const addCommand = new Command("add")
     .description("Add a new chunk to the knowledge base")
@@ -25,10 +25,14 @@ export const addCommand = new Command("add")
         const chunk = addChunk({ title: opts.title, content, type: opts.type, tags });
 
         outputQuiet(cmd, chunk.id);
-        output(cmd, chunk, [
-            `✓ Created chunk ${chunk.id}`,
-            `  Title: ${chunk.title}`,
-            `  Type: ${chunk.type}`,
-            ...(tags.length > 0 ? [`  Tags: ${tags.join(", ")}`] : [])
-        ].join("\n"));
+        output(
+            cmd,
+            chunk,
+            [
+                `✓ Created chunk ${chunk.id}`,
+                `  Title: ${chunk.title}`,
+                `  Type: ${chunk.type}`,
+                ...(tags.length > 0 ? [`  Tags: ${tags.join(", ")}`] : [])
+            ].join("\n")
+        );
     });

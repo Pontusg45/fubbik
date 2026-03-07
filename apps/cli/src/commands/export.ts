@@ -1,9 +1,10 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+
 import { Command } from "commander";
 
-import { readStore } from "../lib/store";
 import { output, outputError } from "../lib/output";
+import { readStore } from "../lib/store";
 
 export const exportCommand = new Command("export")
     .description("Export the knowledge base")
@@ -35,8 +36,7 @@ export const exportCommand = new Command("export")
                 const filename = `${chunk.id}.md`;
                 writeFileSync(join(opts.out, filename), frontmatter);
             }
-            output(cmd, { count: store.chunks.length, dir: opts.out },
-                `✓ Exported ${store.chunks.length} chunk(s) to ${opts.out}/`);
+            output(cmd, { count: store.chunks.length, dir: opts.out }, `✓ Exported ${store.chunks.length} chunk(s) to ${opts.out}/`);
         } else {
             outputError(`✗ Unknown format "${opts.format}". Use json or md.`);
             process.exit(1);

@@ -335,10 +335,13 @@ Protected routes check session and use set.status = 401 pattern (not error() hel
 ];
 
 for (const c of chunks) {
-    await db.insert(chunk).values({
-        ...c,
-        userId: DEV_USER_ID
-    });
+    void db
+        .insert(chunk)
+        .values({
+            ...c,
+            userId: DEV_USER_ID
+        })
+        .catch(e => console.error(e));
     console.log(`  ✓ ${c.title}`);
 }
 
@@ -361,7 +364,10 @@ const connections = [
 
 await db.delete(chunkConnection);
 for (const conn of connections) {
-    await db.insert(chunkConnection).values(conn);
+    void db
+        .insert(chunkConnection)
+        .values(conn)
+        .catch(e => console.error(e));
 }
 console.log(`  ✓ ${connections.length} connections`);
 

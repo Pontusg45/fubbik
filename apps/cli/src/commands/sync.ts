@@ -1,6 +1,7 @@
 import { Command } from "commander";
-import { readStore, getServerUrl, setServerUrl, updateLastSync, addChunk } from "../lib/store";
+
 import { output, outputError } from "../lib/output";
+import { readStore, getServerUrl, setServerUrl, updateLastSync, addChunk } from "../lib/store";
 
 export const syncCommand = new Command("sync")
     .description("Sync local chunks with a fubbik server")
@@ -38,7 +39,17 @@ export const syncCommand = new Command("sync")
                 outputError(`Server returned ${response.status}: ${await response.text()}`);
                 process.exit(1);
             }
-            const serverData = (await response.json()) as { chunks: Array<{ id: string; title: string; content: string; type: string; tags: string[]; createdAt: string; updatedAt: string }> };
+            const serverData = (await response.json()) as {
+                chunks: Array<{
+                    id: string;
+                    title: string;
+                    content: string;
+                    type: string;
+                    tags: string[];
+                    createdAt: string;
+                    updatedAt: string;
+                }>;
+            };
             const serverChunks = serverData.chunks;
 
             console.log(`Local: ${store.chunks.length} chunks, Server: ${serverChunks.length} chunks`);

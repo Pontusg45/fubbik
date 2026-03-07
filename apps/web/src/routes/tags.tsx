@@ -53,7 +53,7 @@ function TagsPage() {
                     ) : (
                         <div className="flex flex-wrap gap-2">
                             {tags.map(t => (
-                                <Badge key={t.tag} variant="outline" className="text-sm hover:bg-muted cursor-pointer transition-colors">
+                                <Badge key={t.tag} variant="outline" className="hover:bg-muted cursor-pointer text-sm transition-colors">
                                     {t.tag}
                                     <span className="text-muted-foreground ml-1.5 font-mono text-xs">{t.count}</span>
                                 </Badge>

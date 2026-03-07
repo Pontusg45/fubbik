@@ -30,9 +30,7 @@ export function listChunks(params: ListChunksParams) {
                     )!
                 );
             }
-            const orderClause = params.search
-                ? sql`similarity(${chunk.title}, ${params.search}) DESC`
-                : desc(chunk.updatedAt);
+            const orderClause = params.search ? sql`similarity(${chunk.title}, ${params.search}) DESC` : desc(chunk.updatedAt);
             const chunks = await db
                 .select()
                 .from(chunk)

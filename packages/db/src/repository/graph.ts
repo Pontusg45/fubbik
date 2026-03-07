@@ -8,10 +8,7 @@ import { chunk, chunkConnection } from "../schema/chunk";
 export function getAllChunksMeta(userId: string) {
     return Effect.tryPromise({
         try: () =>
-            db
-                .select({ id: chunk.id, title: chunk.title, type: chunk.type, tags: chunk.tags })
-                .from(chunk)
-                .where(eq(chunk.userId, userId)),
+            db.select({ id: chunk.id, title: chunk.title, type: chunk.type, tags: chunk.tags }).from(chunk).where(eq(chunk.userId, userId)),
         catch: cause => new DatabaseError({ cause })
     });
 }
@@ -20,10 +17,7 @@ export function getAllConnectionsForUser(userId: string) {
     return Effect.tryPromise({
         try: async () => {
             // Get all chunk IDs owned by this user
-            const userChunkIds = db
-                .select({ id: chunk.id })
-                .from(chunk)
-                .where(eq(chunk.userId, userId));
+            const userChunkIds = db.select({ id: chunk.id }).from(chunk).where(eq(chunk.userId, userId));
 
             return db
                 .select({
@@ -33,12 +27,7 @@ export function getAllConnectionsForUser(userId: string) {
                     relation: chunkConnection.relation
                 })
                 .from(chunkConnection)
-                .where(
-                    or(
-                        sql`${chunkConnection.sourceId} IN (${userChunkIds})`,
-                        sql`${chunkConnection.targetId} IN (${userChunkIds})`
-                    )
-                );
+                .where(or(sql`${chunkConnection.sourceId} IN (${userChunkIds})`, sql`${chunkConnection.targetId} IN (${userChunkIds})`));
         },
         catch: cause => new DatabaseError({ cause })
     });

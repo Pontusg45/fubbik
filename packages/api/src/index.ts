@@ -2,14 +2,13 @@ import { auth } from "@fubbik/auth";
 import { Cause, Effect, Option } from "effect";
 import { Elysia } from "elysia";
 
-import { requireSession } from "./require-session";
-
 import { aiRoutes } from "./ai/routes";
 import { chunkRoutes } from "./chunks/routes";
 import { connectionRoutes } from "./connections/routes";
 import type { Session } from "./context";
 import { graphRoutes } from "./graph/routes";
 import { healthRoutes } from "./health/routes";
+import { requireSession } from "./require-session";
 import { statsRoutes } from "./stats/routes";
 import { tagRoutes } from "./tags/routes";
 
@@ -85,11 +84,7 @@ export const api = new Elysia({ prefix: "/api" })
         return { session };
     })
     .get("/me", ctx =>
-        Effect.runPromise(
-            requireSession(ctx).pipe(
-                Effect.map(session => ({ message: "This is private" as const, user: session.user }))
-            )
-        )
+        Effect.runPromise(requireSession(ctx).pipe(Effect.map(session => ({ message: "This is private" as const, user: session.user }))))
     )
     .use(chunkRoutes)
     .use(statsRoutes)

@@ -1,16 +1,8 @@
+import Dagre from "@dagrejs/dagre";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
-import {
-    Background,
-    Controls,
-    ReactFlow,
-    useEdgesState,
-    useNodesState,
-    type Edge,
-    type Node
-} from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import Dagre from "@dagrejs/dagre";
+import { Background, Controls, ReactFlow, useEdgesState, useNodesState, type Edge, type Node } from "@xyflow/react";
 import { useEffect, useMemo } from "react";
 
 import { getUser } from "@/functions/get-user";

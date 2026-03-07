@@ -43,9 +43,7 @@ export function createChunk(userId: string, body: { title: string; content?: str
 export function updateChunk(chunkId: string, userId: string, body: { title?: string; content?: string; type?: string; tags?: string[] }) {
     return getChunkById(chunkId, userId).pipe(
         Effect.flatMap(existing => (existing ? Effect.succeed(existing) : Effect.fail(new NotFoundError({ resource: "Chunk" })))),
-        Effect.flatMap(existing =>
-            Effect.all({ existing: Effect.succeed(existing), version: getNextVersionNumber(chunkId) })
-        ),
+        Effect.flatMap(existing => Effect.all({ existing: Effect.succeed(existing), version: getNextVersionNumber(chunkId) })),
         Effect.flatMap(({ existing, version }) =>
             createVersion({
                 id: crypto.randomUUID(),

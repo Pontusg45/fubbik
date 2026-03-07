@@ -1,9 +1,10 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
+
 import { Command } from "commander";
 
-import { addChunk } from "../lib/store";
 import { output, outputQuiet } from "../lib/output";
+import { addChunk } from "../lib/store";
 
 function parseFrontmatter(raw: string): { meta: Record<string, string>; content: string } {
     const match = raw.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);

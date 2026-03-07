@@ -18,11 +18,7 @@ export const chunkRoutes = new Elysia()
         }
     )
     .get("/chunks/export", ctx =>
-        Effect.runPromise(
-            requireSession(ctx).pipe(
-                Effect.flatMap(session => chunkService.exportChunks(session.user.id))
-            )
-        )
+        Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(session => chunkService.exportChunks(session.user.id))))
     )
     .post(
         "/chunks/import",
@@ -48,11 +44,7 @@ export const chunkRoutes = new Elysia()
         }
     )
     .get("/chunks/:id/history", ctx =>
-        Effect.runPromise(
-            requireSession(ctx).pipe(
-                Effect.flatMap(session => chunkService.getChunkHistory(ctx.params.id, session.user.id))
-            )
-        )
+        Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(session => chunkService.getChunkHistory(ctx.params.id, session.user.id))))
     )
     .get("/chunks/:id", ctx =>
         Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(session => chunkService.getChunkDetail(ctx.params.id, session.user.id))))

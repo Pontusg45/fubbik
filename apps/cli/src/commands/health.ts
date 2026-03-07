@@ -13,11 +13,11 @@ export const healthCommand = new Command("health")
             const body = await res.text();
 
             if (res.ok) {
-                output(cmd, { status: res.status, url: opts.url, response: body }, [
-                    `✓ Connected to ${opts.url}`,
-                    `  Status: ${res.status}`,
-                    `  Response: ${body}`
-                ].join("\n"));
+                output(
+                    cmd,
+                    { status: res.status, url: opts.url, response: body },
+                    [`✓ Connected to ${opts.url}`, `  Status: ${res.status}`, `  Response: ${body}`].join("\n")
+                );
             } else {
                 outputError(`✗ Server returned ${res.status}`);
                 process.exit(1);

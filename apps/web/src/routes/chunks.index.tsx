@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
 import { Clock, Plus, Search } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -57,6 +57,8 @@ function ChunksList() {
     });
 
     const chunks = chunksQuery.data?.chunks ?? [];
+    const chunksRef = useRef(chunks);
+    chunksRef.current = chunks;
     const [selectedIndex, setSelectedIndex] = useState(-1);
 
     useEffect(() => {
@@ -66,32 +68,32 @@ function ChunksList() {
     useEffect(() => {
         function handleKeyDown(e: KeyboardEvent) {
             if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-
+            const list = chunksRef.current;
             switch (e.key) {
                 case "j":
-                    setSelectedIndex(i => Math.min(i + 1, chunks.length - 1));
+                    setSelectedIndex(i => Math.min(i + 1, list.length - 1));
                     break;
                 case "k":
                     setSelectedIndex(i => Math.max(i - 1, 0));
                     break;
                 case "Enter":
-                    if (selectedIndex >= 0 && selectedIndex < chunks.length) {
-                        navTo({ to: "/chunks/$chunkId", params: { chunkId: chunks[selectedIndex]!.id } });
+                    if (selectedIndex >= 0 && selectedIndex < list.length) {
+                        navTo({ to: "/chunks/$chunkId", params: { chunkId: list[selectedIndex]!.id } });
                     }
                     break;
                 case "n":
                     navTo({ to: "/chunks/new" });
                     break;
                 case "e":
-                    if (selectedIndex >= 0 && selectedIndex < chunks.length) {
-                        navTo({ to: "/chunks/$chunkId", params: { chunkId: chunks[selectedIndex]!.id } });
+                    if (selectedIndex >= 0 && selectedIndex < list.length) {
+                        navTo({ to: "/chunks/$chunkId", params: { chunkId: list[selectedIndex]!.id } });
                     }
                     break;
             }
         }
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [selectedIndex, chunks, navTo]);
+    }, [selectedIndex, navTo]);
 
     const total = chunksQuery.data?.total ?? 0;
     const totalPages = Math.ceil(total / limit);
@@ -113,10 +115,11 @@ function ChunksList() {
             <div className="mb-6 flex items-center justify-between">
                 <div>
                     <h1 className="text-2xl font-bold tracking-tight">Chunks</h1>
-                    <p className="text-muted-foreground text-xs mt-1">
-                        <kbd className="bg-muted rounded px-1 py-0.5 text-[10px] font-mono">j</kbd>/<kbd className="bg-muted rounded px-1 py-0.5 text-[10px] font-mono">k</kbd> navigate
-                        <kbd className="bg-muted rounded px-1 py-0.5 text-[10px] font-mono ml-2">Enter</kbd> open
-                        <kbd className="bg-muted rounded px-1 py-0.5 text-[10px] font-mono ml-2">n</kbd> new
+                    <p className="text-muted-foreground mt-1 text-xs">
+                        <kbd className="bg-muted rounded px-1 py-0.5 font-mono text-[10px]">j</kbd>/
+                        <kbd className="bg-muted rounded px-1 py-0.5 font-mono text-[10px]">k</kbd> navigate
+                        <kbd className="bg-muted ml-2 rounded px-1 py-0.5 font-mono text-[10px]">Enter</kbd> open
+                        <kbd className="bg-muted ml-2 rounded px-1 py-0.5 font-mono text-[10px]">n</kbd> new
                     </p>
                 </div>
                 <Button render={<Link to="/chunks/new" />}>
@@ -128,7 +131,7 @@ function ChunksList() {
             {/* Search & filters */}
             <div className="mb-6 flex flex-wrap items-center gap-3">
                 <div className="relative flex-1">
-                    <Search className="text-muted-foreground absolute left-3 top-1/2 size-4 -translate-y-1/2" />
+                    <Search className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
                     <input
                         type="text"
                         value={searchInput}
@@ -137,15 +140,11 @@ function ChunksList() {
                             if (e.key === "Enter") updateSearch({ q: searchInput || undefined });
                         }}
                         placeholder="Search chunks..."
-                        className="bg-background focus:ring-ring w-full rounded-md border py-2 pl-9 pr-3 text-sm focus:ring-2 focus:outline-none"
+                        className="bg-background focus:ring-ring w-full rounded-md border py-2 pr-3 pl-9 text-sm focus:ring-2 focus:outline-none"
                     />
                 </div>
                 <div className="flex gap-1">
-                    <Button
-                        variant={!type ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => updateSearch({ type: undefined })}
-                    >
+                    <Button variant={!type ? "default" : "outline"} size="sm" onClick={() => updateSearch({ type: undefined })}>
                         All
                     </Button>
                     {types.map(t => (
@@ -176,7 +175,9 @@ function ChunksList() {
                         <div key={chunk.id}>
                             {i > 0 && <Separator />}
                             <Link to="/chunks/$chunkId" params={{ chunkId: chunk.id }} className="block">
-                                <CardPanel className={`flex items-center justify-between gap-4 p-4 transition-colors ${selectedIndex === i ? "bg-muted/50 ring-primary/50 ring-2 ring-inset" : "hover:bg-muted/50"}`}>
+                                <CardPanel
+                                    className={`flex items-center justify-between gap-4 p-4 transition-colors ${selectedIndex === i ? "bg-muted/50 ring-primary/50 ring-2 ring-inset" : "hover:bg-muted/50"}`}
+                                >
                                     <div className="min-w-0">
                                         <p className="truncate text-sm font-medium">{chunk.title}</p>
                                         <div className="mt-1 flex items-center gap-2">
@@ -204,23 +205,13 @@ function ChunksList() {
             {/* Pagination */}
             {totalPages > 1 && (
                 <div className="mt-4 flex items-center justify-center gap-2">
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={page <= 1}
-                        onClick={() => updateSearch({ page: page - 1 })}
-                    >
+                    <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => updateSearch({ page: page - 1 })}>
                         Previous
                     </Button>
                     <span className="text-muted-foreground text-sm">
                         Page {page} of {totalPages}
                     </span>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={page >= totalPages}
-                        onClick={() => updateSearch({ page: page + 1 })}
-                    >
+                    <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => updateSearch({ page: page + 1 })}>
                         Next
                     </Button>
                 </div>

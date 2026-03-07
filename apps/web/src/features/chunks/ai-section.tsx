@@ -52,30 +52,12 @@ export function AiSection({ chunkId }: { chunkId: string }) {
             </CardHeader>
             <CardPanel className="space-y-4 pt-0">
                 <div className="flex gap-2">
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => summarizeMutation.mutate()}
-                        disabled={summarizeMutation.isPending}
-                    >
-                        {summarizeMutation.isPending ? (
-                            <Loader2 className="size-3.5 animate-spin" />
-                        ) : (
-                            <Sparkles className="size-3.5" />
-                        )}
+                    <Button variant="outline" size="sm" onClick={() => summarizeMutation.mutate()} disabled={summarizeMutation.isPending}>
+                        {summarizeMutation.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />}
                         Summarize
                     </Button>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => suggestMutation.mutate()}
-                        disabled={suggestMutation.isPending}
-                    >
-                        {suggestMutation.isPending ? (
-                            <Loader2 className="size-3.5 animate-spin" />
-                        ) : (
-                            <Network className="size-3.5" />
-                        )}
+                    <Button variant="outline" size="sm" onClick={() => suggestMutation.mutate()} disabled={suggestMutation.isPending}>
+                        {suggestMutation.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Network className="size-3.5" />}
                         Suggest Connections
                     </Button>
                 </div>
@@ -93,11 +75,7 @@ export function AiSection({ chunkId }: { chunkId: string }) {
                         <div className="space-y-1">
                             {suggestions.map(s => (
                                 <div key={s.id} className="flex items-center justify-between text-sm">
-                                    <Link
-                                        to="/chunks/$chunkId"
-                                        params={{ chunkId: s.id }}
-                                        className="text-primary hover:underline"
-                                    >
+                                    <Link to="/chunks/$chunkId" params={{ chunkId: s.id }} className="text-primary hover:underline">
                                         {s.id.slice(0, 8)}...
                                     </Link>
                                     <Badge variant="outline" size="sm" className="text-[10px]">

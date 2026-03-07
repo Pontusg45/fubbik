@@ -9,9 +9,7 @@ export const aiRoutes = new Elysia()
         "/ai/summarize",
         ctx =>
             Effect.runPromise(
-                requireSession(ctx).pipe(
-                    Effect.flatMap(session => aiService.summarizeChunkById(ctx.body.chunkId, session.user.id))
-                )
+                requireSession(ctx).pipe(Effect.flatMap(session => aiService.summarizeChunkById(ctx.body.chunkId, session.user.id)))
             ),
         { body: t.Object({ chunkId: t.String() }) }
     )
@@ -19,17 +17,12 @@ export const aiRoutes = new Elysia()
         "/ai/suggest-connections",
         ctx =>
             Effect.runPromise(
-                requireSession(ctx).pipe(
-                    Effect.flatMap(session => aiService.suggestConnectionsForChunk(ctx.body.chunkId, session.user.id))
-                )
+                requireSession(ctx).pipe(Effect.flatMap(session => aiService.suggestConnectionsForChunk(ctx.body.chunkId, session.user.id)))
             ),
         { body: t.Object({ chunkId: t.String() }) }
     )
     .post(
         "/ai/generate",
-        ctx =>
-            Effect.runPromise(
-                requireSession(ctx).pipe(Effect.flatMap(() => aiService.generateChunk(ctx.body.prompt)))
-            ),
+        ctx => Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(() => aiService.generateChunk(ctx.body.prompt)))),
         { body: t.Object({ prompt: t.String() }) }
     );

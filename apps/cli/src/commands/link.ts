@@ -1,7 +1,7 @@
 import { Command } from "commander";
 
-import { getServerUrl } from "../lib/store";
 import { output, outputError, outputQuiet } from "../lib/output";
+import { getServerUrl } from "../lib/store";
 
 export const linkCommand = new Command("link")
     .description("Create a connection between two chunks on the server")

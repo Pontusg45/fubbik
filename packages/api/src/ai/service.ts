@@ -1,8 +1,9 @@
-import { generateText } from "ai";
 import { openai } from "@ai-sdk/openai";
 import { getAllChunksMeta, getChunkById } from "@fubbik/db/repository";
 import { env } from "@fubbik/env/server";
+import { generateText } from "ai";
 import { Effect } from "effect";
+
 import { AiError } from "../errors";
 import { NotFoundError } from "../errors";
 
@@ -10,7 +11,7 @@ const AI_MODEL = env.OPENAI_MODEL ?? "gpt-4o-mini";
 
 export function summarizeChunkById(chunkId: string, userId: string) {
     return getChunkById(chunkId, userId).pipe(
-        Effect.flatMap(chunk => chunk ? Effect.succeed(chunk) : Effect.fail(new NotFoundError({ resource: "Chunk" }))),
+        Effect.flatMap(chunk => (chunk ? Effect.succeed(chunk) : Effect.fail(new NotFoundError({ resource: "Chunk" })))),
         Effect.flatMap(chunk => summarizeChunk(chunk.title, chunk.content))
     );
 }
@@ -18,12 +19,14 @@ export function summarizeChunkById(chunkId: string, userId: string) {
 export function suggestConnectionsForChunk(chunkId: string, userId: string) {
     return Effect.all({
         chunk: getChunkById(chunkId, userId).pipe(
-            Effect.flatMap(c => c ? Effect.succeed(c) : Effect.fail(new NotFoundError({ resource: "Chunk" })))
+            Effect.flatMap(c => (c ? Effect.succeed(c) : Effect.fail(new NotFoundError({ resource: "Chunk" }))))
         ),
         allChunks: getAllChunksMeta(userId)
     }).pipe(
         Effect.flatMap(({ chunk, allChunks }) => {
-            const others = allChunks.filter((c: { id: string }) => c.id !== chunk.id).map((c: { id: string; title: string }) => ({ id: c.id, title: c.title }));
+            const others = allChunks
+                .filter((c: { id: string }) => c.id !== chunk.id)
+                .map((c: { id: string; title: string }) => ({ id: c.id, title: c.title }));
             return suggestConnections(chunk.title, chunk.content, others);
         })
     );
@@ -43,11 +46,7 @@ function summarizeChunk(title: string, content: string) {
     });
 }
 
-export function suggestConnections(
-    chunkTitle: string,
-    chunkContent: string,
-    otherChunks: { id: string; title: string }[]
-) {
+export function suggestConnections(chunkTitle: string, chunkContent: string, otherChunks: { id: string; title: string }[]) {
     return Effect.tryPromise({
         try: async () => {
             const chunkList = otherChunks.map(c => `- ${c.id}: ${c.title}`).join("\n");

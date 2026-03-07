@@ -2,8 +2,5 @@ import { getAllChunksMeta, getAllConnectionsForUser } from "@fubbik/db/repositor
 import { Effect } from "effect";
 
 export function getUserGraph(userId: string) {
-    return Effect.all(
-        { chunks: getAllChunksMeta(userId), connections: getAllConnectionsForUser(userId) },
-        { concurrency: "unbounded" }
-    );
+    return Effect.all({ chunks: getAllChunksMeta(userId), connections: getAllConnectionsForUser(userId) }, { concurrency: "unbounded" });
 }

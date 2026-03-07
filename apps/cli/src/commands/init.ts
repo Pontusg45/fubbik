@@ -1,7 +1,7 @@
 import { Command } from "commander";
 
-import { createStore, storeDir, storeExists } from "../lib/store";
 import { output, outputError, outputQuiet } from "../lib/output";
+import { createStore, storeDir, storeExists } from "../lib/store";
 
 export const initCommand = new Command("init")
     .description("Initialize a new knowledge base")
@@ -16,8 +16,9 @@ export const initCommand = new Command("init")
 
         const store = createStore(name);
         outputQuiet(cmd, store.name);
-        output(cmd, { name: store.name, location: storeDir() }, [
-            `✓ Initialized knowledge base: ${store.name}`,
-            `  Location: ${storeDir()}`
-        ].join("\n"));
+        output(
+            cmd,
+            { name: store.name, location: storeDir() },
+            [`✓ Initialized knowledge base: ${store.name}`, `  Location: ${storeDir()}`].join("\n")
+        );
     });
