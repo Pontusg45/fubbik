@@ -381,6 +381,27 @@ function GraphView() {
         return neighbors;
     }, [focusedNodeId, layoutEdges]);
 
+    const selectedEdgeIds = useMemo(() => {
+        if (!selectedChunkId) return null;
+        const ids = new Set<string>();
+        for (const edge of layoutEdges) {
+            if (edge.source === selectedChunkId || edge.target === selectedChunkId) {
+                ids.add(edge.id);
+            }
+        }
+        return ids;
+    }, [selectedChunkId, layoutEdges]);
+
+    const selectedNeighborNodes = useMemo(() => {
+        if (!selectedChunkId) return null;
+        const neighbors = new Set<string>([selectedChunkId]);
+        for (const edge of layoutEdges) {
+            if (edge.source === selectedChunkId) neighbors.add(edge.target);
+            if (edge.target === selectedChunkId) neighbors.add(edge.source);
+        }
+        return neighbors;
+    }, [selectedChunkId, layoutEdges]);
+
     const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
     const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
     const [hoveredNode, setHoveredNode] = useState<{ id: string; x: number; y: number } | null>(null);
@@ -459,15 +480,37 @@ function GraphView() {
     // Sync layout when search is empty and no focus
     useEffect(() => {
         if (!searchQuery.trim() && !focusedNodeId) {
-            setNodes(layoutNodes);
+            if (selectedNeighborNodes) {
+                setNodes(layoutNodes.map(node => ({
+                    ...node,
+                    style: {
+                        ...(node.style as Record<string, unknown>),
+                        opacity: selectedNeighborNodes.has(node.id) ? 1 : 0.2,
+                        transition: "opacity 0.2s"
+                    }
+                })));
+            } else {
+                setNodes(layoutNodes);
+            }
         }
-    }, [layoutNodes, setNodes, searchQuery, focusedNodeId]);
+    }, [layoutNodes, setNodes, searchQuery, focusedNodeId, selectedNeighborNodes]);
 
     useEffect(() => {
         if (!searchQuery.trim() && !focusedNodeId) {
-            setEdges(layoutEdges);
+            if (selectedEdgeIds) {
+                setEdges(layoutEdges.map(edge => ({
+                    ...edge,
+                    style: {
+                        ...(edge.style as Record<string, unknown>),
+                        opacity: selectedEdgeIds.has(edge.id) ? 1 : 0.1,
+                        transition: "opacity 0.2s"
+                    }
+                })));
+            } else {
+                setEdges(layoutEdges);
+            }
         }
-    }, [layoutEdges, setEdges, searchQuery, focusedNodeId]);
+    }, [layoutEdges, setEdges, searchQuery, focusedNodeId, selectedEdgeIds]);
 
     if (isLoading) {
         return (
