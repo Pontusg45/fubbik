@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { relationColor } from "@/features/chunks/relation-colors";
 import { FloatingEdge } from "@/features/graph/floating-edge";
+import { buildQuadtree, computeRepulsion } from "@/features/graph/quadtree";
 import { GraphFilters } from "@/features/graph/graph-filters";
 import { GraphLegend } from "@/features/graph/graph-legend";
 import { GraphNode } from "@/features/graph/graph-node";
@@ -285,23 +286,16 @@ function GraphView() {
         for (let iter = 0; iter < ITERATIONS; iter++) {
             const temp = 1 - iter / ITERATIONS; // cooling
 
-            // Repulsion between all pairs
+            // Repulsion via Barnes-Hut quadtree
             const ids = [...pos.keys()];
-            for (let i = 0; i < ids.length; i++) {
-                const a = pos.get(ids[i]!)!;
-                for (let j = i + 1; j < ids.length; j++) {
-                    const b = pos.get(ids[j]!)!;
-                    let dx = a.x - b.x;
-                    let dy = a.y - b.y;
-                    const distSq = dx * dx + dy * dy + 1;
-                    const force = (REPULSION * temp) / distSq;
-                    const dist = Math.sqrt(distSq);
-                    dx /= dist;
-                    dy /= dist;
-                    a.vx += dx * force;
-                    a.vy += dy * force;
-                    b.vx -= dx * force;
-                    b.vy -= dy * force;
+            const bodies = ids.map(id => ({ id, x: pos.get(id)!.x, y: pos.get(id)!.y }));
+            const tree = buildQuadtree(bodies);
+            if (tree) {
+                for (const id of ids) {
+                    const p = pos.get(id)!;
+                    const { fx, fy } = computeRepulsion(tree, p.x, p.y, REPULSION * temp);
+                    p.vx += fx;
+                    p.vy += fy;
                 }
             }
 
