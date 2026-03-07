@@ -3,12 +3,12 @@ import { useNavigate } from "@tanstack/react-router";
 import "@xyflow/react/dist/style.css";
 import { Background, BackgroundVariant, ConnectionMode, Controls, MiniMap, ReactFlow, ReactFlowProvider, useEdgesState, useNodesState, useReactFlow, type Connection, type Edge, type Node, type Viewport } from "@xyflow/react";
 import { toPng } from "html-to-image";
-import { Download } from "lucide-react";
+import { Download, Settings2 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useCallback, createContext, useEffect, useMemo, useRef, useState } from "react";
 
 import { Dialog, DialogPopup, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { Popover, PopoverTrigger, PopoverPopup } from "@/components/ui/popover";
 import { useSavedGraphViews } from "./use-saved-views";
 
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
@@ -23,6 +23,7 @@ import { GraphLegend } from "@/features/graph/graph-legend";
 import { GraphMetrics } from "@/features/graph/graph-metrics";
 import { GraphTimeline } from "./graph-timeline";
 import { GraphNode } from "@/features/graph/graph-node";
+import { runForceLayout } from "@/features/graph/force-layout";
 import { type LayoutAlgorithm, hierarchicalLayout, radialLayout } from "@/features/graph/layouts";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
@@ -198,6 +199,9 @@ function GraphViewInner() {
     // Edge bundling
     const [bundleEdges, setBundleEdges] = useState(false);
 
+    // Main-thread layout toggle (bypasses web worker)
+    const [useMainThread, setUseMainThread] = useState(false);
+
     // Timeline
     const [timelineCutoff, setTimelineCutoff] = useState<Date | null>(null);
     const handleTimelineCutoff = useCallback((d: Date | null) => setTimelineCutoff(d), []);
@@ -355,10 +359,18 @@ function GraphViewInner() {
         }
 
         if (layoutAlgorithm === "force") {
-            if (!workerRef.current) return;
-            setIsLayouting(true);
-            requestIdRef.current += 1;
-            workerRef.current.postMessage({ requestId: requestIdRef.current, nodes: workerNodes, edges: workerEdges } satisfies LayoutWorkerInput);
+            if (useMainThread) {
+                setIsLayouting(true);
+                // Run synchronously on main thread — avoids worker serialization overhead
+                const positions = runForceLayout(workerNodes, workerEdges);
+                setLayoutPositions(positions);
+                setIsLayouting(false);
+            } else {
+                if (!workerRef.current) return;
+                setIsLayouting(true);
+                requestIdRef.current += 1;
+                workerRef.current.postMessage({ requestId: requestIdRef.current, nodes: workerNodes, edges: workerEdges } satisfies LayoutWorkerInput);
+            }
         } else {
             let positions: Record<string, { x: number; y: number }>;
             if (layoutAlgorithm === "hierarchical") {
@@ -371,7 +383,7 @@ function GraphViewInner() {
             setLayoutPositions(positions);
             setIsLayouting(false);
         }
-    }, [filteredGraph, layoutAlgorithm]);
+    }, [filteredGraph, layoutAlgorithm, useMainThread]);
 
     // Build layoutNodes and layoutEdges from positions (cheap: styling + edge creation only)
     const { layoutNodes, layoutEdges } = useMemo(() => {
@@ -414,8 +426,8 @@ function GraphViewInner() {
                     const childCount = collapsedParents.has(c.id) ? parentChildren.get(c.id)?.size ?? 0 : 0;
                     const label = childCount > 0 ? `${c.title} (${childCount})` : c.title;
                     const baseFontSize = isParent ? 13 : 12;
-                    const baseVPad = isParent ? 10 : 8;
-                    const baseHPad = isParent ? 16 : 14;
+                    const baseVPad = isParent ? 7 : 5;
+                    const baseHPad = isParent ? 12 : 10;
                     return {
                         id: c.id,
                         type: "chunk",
@@ -431,7 +443,7 @@ function GraphViewInner() {
                             fontSize: Math.round(baseFontSize * Math.min(scale, 1.3)),
                             fontWeight: isParent ? 600 : 500,
                             padding: `${Math.round(baseVPad * scale)}px ${Math.round(baseHPad * scale)}px`,
-                            minWidth: `${Math.round((isParent ? 200 : 180) * scale)}px`,
+                            whiteSpace: "nowrap" as const,
                             letterSpacing: "0.01em",
                             boxShadow: count >= 5 ? `0 0 ${Math.round(count * 2)}px 1px ${typeColor!.border}40` : undefined
                         }
@@ -1092,89 +1104,119 @@ function GraphViewInner() {
                     placeholder="Search nodes..."
                     className="bg-background/80 focus:ring-ring w-36 rounded-md border px-2.5 py-1.5 text-xs backdrop-blur-sm focus:ring-2 focus:outline-none"
                 />
-                <select
-                    value={layoutAlgorithm}
-                    onChange={e => setLayoutAlgorithm(e.target.value as LayoutAlgorithm)}
-                    className="rounded-md border bg-background/80 px-2 py-1.5 text-xs backdrop-blur-sm"
-                >
-                    <option value="force">Force</option>
-                    <option value="hierarchical">Tree</option>
-                    <option value="radial">Radial</option>
-                </select>
-                {draggedPositions.size > 0 && (
-                    <button
-                        onClick={() => setDraggedPositions(new Map())}
-                        className="text-muted-foreground hover:text-foreground rounded-md border bg-background/80 px-2.5 py-1.5 text-xs backdrop-blur-sm"
-                    >
-                        Reset layout
-                    </button>
-                )}
-                <button
-                    onClick={() => {
-                        if (!exploreMode) {
-                            setExploreMode(true);
-                            setExploredNodeIds(selectedChunkId ? new Set([selectedChunkId]) : new Set());
-                        } else {
-                            setExploreMode(false);
-                            setExploredNodeIds(new Set());
-                        }
-                    }}
-                    className={`rounded-md border px-2.5 py-1.5 text-xs backdrop-blur-sm ${
-                        exploreMode ? "bg-primary text-primary-foreground" : "bg-background/80 text-muted-foreground hover:text-foreground"
-                    }`}
-                    title="Explore mode: click to expand neighbors"
-                >
-                    Explore
-                </button>
-                {exploreMode && (
-                    <span className="rounded-md border bg-background/80 px-2.5 py-1.5 text-xs text-muted-foreground backdrop-blur-sm">
-                        {exploredNodeIds.size} explored
-                        <button onClick={() => setExploredNodeIds(new Set())} className="ml-1.5 underline hover:text-foreground">reset</button>
-                    </span>
-                )}
-                <button
-                    onClick={() => setBundleEdges(!bundleEdges)}
-                    className={`rounded-md border px-2.5 py-1.5 text-xs backdrop-blur-sm ${
-                        bundleEdges ? "bg-primary text-primary-foreground" : "bg-background/80 text-muted-foreground hover:text-foreground"
-                    }`}
-                >
-                    Bundle
-                </button>
-                <DropdownMenu>
-                    <DropdownMenuTrigger className="rounded-md border bg-background/80 px-2.5 py-1.5 text-xs backdrop-blur-sm text-muted-foreground hover:text-foreground">
-                        Views{savedViews.length > 0 ? ` (${savedViews.length})` : ""}
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => setShowSaveDialog(true)}>
-                            Save current view...
-                        </DropdownMenuItem>
-                        {savedViews.length > 0 && <DropdownMenuSeparator />}
-                        {savedViews.map(view => (
-                            <DropdownMenuItem key={view.name} className="flex items-center justify-between gap-2" onClick={() => {
-                                setFilterTypes(new Set(view.filterTypes));
-                                setFilterRelations(new Set(view.filterRelations));
-                                setCollapsedParents(new Set(view.collapsedParents));
-                                setLayoutAlgorithm(view.layoutAlgorithm as LayoutAlgorithm);
-                                if (view.focusNodeId) { setSelectedChunkId(view.focusNodeId); setFocusedNodeId(view.focusNodeId); }
-                            }}>
-                                <span>{view.name}</span>
-                                <button
-                                    className="text-muted-foreground hover:text-destructive ml-2 text-[10px]"
-                                    onClick={(e) => { e.stopPropagation(); deleteSavedView(view.name); }}
+                <Popover>
+                    <PopoverTrigger className="rounded-md border bg-background/80 p-1.5 text-muted-foreground backdrop-blur-sm hover:text-foreground">
+                        <Settings2 className="size-4" />
+                    </PopoverTrigger>
+                    <PopoverPopup side="bottom" align="end" sideOffset={8} className="w-56">
+                        <div className="flex flex-col gap-3">
+                            <div>
+                                <label className="text-muted-foreground mb-1 block text-[10px] font-medium uppercase tracking-wider">Layout</label>
+                                <select
+                                    value={layoutAlgorithm}
+                                    onChange={e => setLayoutAlgorithm(e.target.value as LayoutAlgorithm)}
+                                    className="w-full rounded-md border bg-background px-2 py-1.5 text-xs"
                                 >
-                                    ✕
+                                    <option value="force">Force-directed</option>
+                                    <option value="hierarchical">Tree</option>
+                                    <option value="radial">Radial</option>
+                                </select>
+                            </div>
+                            {draggedPositions.size > 0 && (
+                                <button
+                                    onClick={() => setDraggedPositions(new Map())}
+                                    className="text-muted-foreground hover:text-foreground w-full rounded-md border px-2.5 py-1.5 text-xs text-left"
+                                >
+                                    Reset layout
                                 </button>
-                            </DropdownMenuItem>
-                        ))}
-                    </DropdownMenuContent>
-                </DropdownMenu>
-                <button
-                    onClick={handleExportImage}
-                    className="text-muted-foreground hover:text-foreground rounded-md border bg-background/80 px-2.5 py-1.5 text-xs backdrop-blur-sm"
-                    title="Export as PNG"
-                >
-                    <Download className="size-3.5" />
-                </button>
+                            )}
+                            <div className="flex flex-col gap-2">
+                                <label className="text-muted-foreground text-[10px] font-medium uppercase tracking-wider">Tools</label>
+                                <button
+                                    onClick={() => {
+                                        if (!exploreMode) {
+                                            setExploreMode(true);
+                                            setExploredNodeIds(selectedChunkId ? new Set([selectedChunkId]) : new Set());
+                                        } else {
+                                            setExploreMode(false);
+                                            setExploredNodeIds(new Set());
+                                        }
+                                    }}
+                                    className={`w-full rounded-md border px-2.5 py-1.5 text-xs text-left ${
+                                        exploreMode ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                                    }`}
+                                >
+                                    Explore mode
+                                    {exploreMode && <span className="ml-1 opacity-70">({exploredNodeIds.size})</span>}
+                                </button>
+                                {exploreMode && (
+                                    <button
+                                        onClick={() => setExploredNodeIds(new Set())}
+                                        className="w-full rounded-md border px-2.5 py-1.5 text-xs text-left text-muted-foreground hover:text-foreground"
+                                    >
+                                        Reset explored
+                                    </button>
+                                )}
+                                <button
+                                    onClick={() => setBundleEdges(!bundleEdges)}
+                                    className={`w-full rounded-md border px-2.5 py-1.5 text-xs text-left ${
+                                        bundleEdges ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                                    }`}
+                                >
+                                    Bundle edges
+                                </button>
+                                <button
+                                    onClick={() => setUseMainThread(!useMainThread)}
+                                    className={`w-full rounded-md border px-2.5 py-1.5 text-xs text-left ${
+                                        useMainThread ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                                    }`}
+                                >
+                                    Main-thread layout
+                                </button>
+                            </div>
+                            <div className="flex flex-col gap-2">
+                                <label className="text-muted-foreground text-[10px] font-medium uppercase tracking-wider">Views</label>
+                                <button
+                                    onClick={() => setShowSaveDialog(true)}
+                                    className="w-full rounded-md border px-2.5 py-1.5 text-xs text-left text-muted-foreground hover:text-foreground"
+                                >
+                                    Save current view...
+                                </button>
+                                {savedViews.map(view => (
+                                    <div key={view.name} className="flex items-center justify-between gap-1">
+                                        <button
+                                            className="flex-1 truncate rounded-md border px-2.5 py-1.5 text-xs text-left text-muted-foreground hover:text-foreground"
+                                            onClick={() => {
+                                                setFilterTypes(new Set(view.filterTypes));
+                                                setFilterRelations(new Set(view.filterRelations));
+                                                setCollapsedParents(new Set(view.collapsedParents));
+                                                setLayoutAlgorithm(view.layoutAlgorithm as LayoutAlgorithm);
+                                                if (view.focusNodeId) { setSelectedChunkId(view.focusNodeId); setFocusedNodeId(view.focusNodeId); }
+                                            }}
+                                        >
+                                            {view.name}
+                                        </button>
+                                        <button
+                                            className="shrink-0 rounded p-1 text-muted-foreground hover:text-destructive"
+                                            onClick={() => deleteSavedView(view.name)}
+                                        >
+                                            <span className="text-[10px]">✕</span>
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="border-t pt-3">
+                                <button
+                                    onClick={handleExportImage}
+                                    className="flex w-full items-center gap-2 rounded-md border px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground"
+                                >
+                                    <Download className="size-3.5" />
+                                    Export as PNG
+                                </button>
+                            </div>
+                        </div>
+                    </PopoverPopup>
+                </Popover>
                 <span className="text-muted-foreground rounded-lg border bg-background/80 px-3 py-1.5 text-xs backdrop-blur-sm">
                     {nodes.length - 1} · {edges.length}
                 </span>
