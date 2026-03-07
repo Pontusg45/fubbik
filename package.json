@@ -55,6 +55,7 @@
         "oxfmt": "^0.36.0",
         "oxlint": "^1.51.0",
         "sherif": "^1.10.0",
+        "@typescript/native-preview": "latest",
         "turbo": "^2.6.3",
         "typescript": "catalog:"
     },
