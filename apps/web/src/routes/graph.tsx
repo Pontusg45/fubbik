@@ -44,6 +44,7 @@ const TYPE_COLORS: Record<string, { bg: string; border: string }> = {
 
 function GraphViewInner() {
     const [selectedChunkId, setSelectedChunkId] = useState<string | null>(null);
+    const [panelWidth, setPanelWidth] = useState(380);
     const { setCenter } = useReactFlow();
     const navigate = useNavigate();
 
@@ -572,10 +573,11 @@ function GraphViewInner() {
     return (
         <div className="flex h-[calc(100vh-4rem)]">
             <div
-                className={`shrink-0 overflow-hidden transition-[width] duration-300 ease-in-out ${selectedChunkId ? "w-[380px]" : "w-0"}`}
+                className={`relative shrink-0 overflow-hidden transition-[width] duration-300 ease-in-out ${selectedChunkId ? "" : "w-0"}`}
+                style={selectedChunkId ? { width: panelWidth } : undefined}
             >
                 {selectedChunkId && (
-                    <div className="w-[380px]">
+                    <div style={{ width: panelWidth }}>
                         <GraphDetailPanel
                             chunkId={selectedChunkId}
                             onClose={() => setSelectedChunkId(null)}
@@ -585,6 +587,26 @@ function GraphViewInner() {
                             }}
                         />
                     </div>
+                )}
+                {selectedChunkId && (
+                    <div
+                        className="absolute top-0 right-0 h-full w-1 cursor-col-resize hover:bg-primary/30 active:bg-primary/50"
+                        onMouseDown={(e) => {
+                            e.preventDefault();
+                            const startX = e.clientX;
+                            const startWidth = panelWidth;
+                            function onMouseMove(ev: MouseEvent) {
+                                const newWidth = Math.max(280, Math.min(600, startWidth + ev.clientX - startX));
+                                setPanelWidth(newWidth);
+                            }
+                            function onMouseUp() {
+                                document.removeEventListener("mousemove", onMouseMove);
+                                document.removeEventListener("mouseup", onMouseUp);
+                            }
+                            document.addEventListener("mousemove", onMouseMove);
+                            document.addEventListener("mouseup", onMouseUp);
+                        }}
+                    />
                 )}
             </div>
             <div className="relative flex-1 [&_.react-flow__handle]:invisible [&_.react-flow__node]:transition-[transform] [&_.react-flow__node]:duration-500 [&_.react-flow__node]:ease-out">
