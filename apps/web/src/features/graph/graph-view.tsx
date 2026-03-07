@@ -262,15 +262,18 @@ function GraphViewInner() {
                 .map(c => {
                     const typeColor = TYPE_COLORS[c.type] ?? TYPE_COLORS.note;
                     const count = connectionCounts.get(c.id) ?? 0;
-                    const scale = Math.min(1 + count * 0.05, 1.5);
+                    const scale = Math.min(1 + count * 0.08, 1.8);
                     const isParent = parentChildren.has(c.id);
                     const isChild = childIds.has(c.id);
                     const childCount = collapsedParents.has(c.id) ? parentChildren.get(c.id)?.size ?? 0 : 0;
                     const label = childCount > 0 ? `${c.title} (${childCount})` : c.title;
+                    const baseFontSize = isParent ? 13 : 12;
+                    const baseVPad = isParent ? 10 : 8;
+                    const baseHPad = isParent ? 16 : 14;
                     return {
                         id: c.id,
                         type: "chunk",
-                        data: { label, type: c.type, connectionCount: connectionCounts.get(c.id) ?? 0 },
+                        data: { label, type: c.type, connectionCount: connectionCounts.get(c.id) ?? 0, scale },
                         position: { x: 0, y: 0 },
                         style: {
                             cursor: "pointer",
@@ -279,11 +282,12 @@ function GraphViewInner() {
                             borderWidth: isParent ? 2 : collapsedParents.has(c.id) ? 2.5 : 1.5,
                             borderRadius: isParent ? 12 : 10,
                             color: isDark ? (isChild ? "#cbd5e1" : "#e2e8f0") : (isChild ? "#475569" : "#1e293b"),
-                            fontSize: isParent ? 13 : 12,
+                            fontSize: Math.round(baseFontSize * Math.min(scale, 1.3)),
                             fontWeight: isParent ? 600 : 500,
-                            padding: isParent ? "10px 16px" : "8px 14px",
+                            padding: `${Math.round(baseVPad * scale)}px ${Math.round(baseHPad * scale)}px`,
                             minWidth: `${Math.round((isParent ? 200 : 180) * scale)}px`,
-                            letterSpacing: "0.01em"
+                            letterSpacing: "0.01em",
+                            boxShadow: count >= 5 ? `0 0 ${Math.round(count * 2)}px 1px ${typeColor!.border}40` : undefined
                         }
                     };
                 })

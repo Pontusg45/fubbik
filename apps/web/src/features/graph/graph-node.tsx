@@ -11,15 +11,16 @@ const TYPE_ICONS: Record<string, typeof BookOpen> = {
 };
 
 export function GraphNode({ data }: NodeProps) {
-    const nodeData = data as { label: string; type?: string; connectionCount?: number };
+    const nodeData = data as { label: string; type?: string; connectionCount?: number; scale?: number };
     const Icon = TYPE_ICONS[nodeData.type ?? ""] ?? StickyNote;
     const count = nodeData.connectionCount ?? 0;
+    const scale = nodeData.scale ?? 1;
 
     return (
         <>
             <Handle type="target" position={Position.Top} style={{ visibility: "hidden" }} />
             <div className="flex items-center gap-2">
-                <Icon className="size-3.5 shrink-0 opacity-60" />
+                <Icon className={`${scale > 1.3 ? "size-4" : "size-3.5"} shrink-0 opacity-60`} />
                 <span>{nodeData.label}</span>
                 {count > 0 && (
                     <span className="flex size-4 items-center justify-center rounded-full bg-current/10 text-[9px] font-medium leading-none opacity-60">
