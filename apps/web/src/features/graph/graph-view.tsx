@@ -99,6 +99,16 @@ function GraphViewInner() {
         }
     });
 
+    const deleteManyMutation = useMutation({
+        mutationFn: async (ids: string[]) => {
+            return unwrapEden(await api.api.chunks.bulk.delete({ ids }));
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["graph"] });
+            setMultiSelectedIds(new Set());
+        }
+    });
+
     const onConnect = useCallback((connection: Connection) => {
         if (!connection.source || !connection.target) return;
         if (connection.source === MAIN_NODE_ID || connection.target === MAIN_NODE_ID) return;
@@ -145,6 +155,9 @@ function GraphViewInner() {
     // Explore mode
     const [exploreMode, setExploreMode] = useState(false);
     const [exploredNodeIds, setExploredNodeIds] = useState<Set<string>>(new Set());
+
+    // Multi-select
+    const [multiSelectedIds, setMultiSelectedIds] = useState<Set<string>>(new Set());
 
     // Dragged node positions (persist across layout changes)
     const [draggedPositions, setDraggedPositions] = useState<Map<string, { x: number; y: number }>>(new Map());
@@ -595,6 +608,19 @@ function GraphViewInner() {
         }
     }, [layoutEdges, setEdges, debouncedSearchQuery, focusedNodeId, selectedEdgeIds]);
 
+    // Apply multi-select outline
+    useEffect(() => {
+        if (multiSelectedIds.size === 0) return;
+        mergeNodes(nodes.map(node => ({
+            ...node,
+            style: {
+                ...(node.style as Record<string, unknown>),
+                outline: multiSelectedIds.has(node.id) ? "2px solid #f472b6" : "none",
+                outlineOffset: multiSelectedIds.has(node.id) ? "2px" : "0"
+            }
+        })));
+    }, [multiSelectedIds]);
+
     // Apply path highlighting
     useEffect(() => {
         if (!pathResult) return;
@@ -637,6 +663,10 @@ function GraphViewInner() {
             if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
 
             if (e.key === "Escape") {
+                if (multiSelectedIds.size > 0) {
+                    setMultiSelectedIds(new Set());
+                    return;
+                }
                 if (pathStartId || pathEndId) {
                     setPathStartId(null);
                     setPathEndId(null);
@@ -670,7 +700,7 @@ function GraphViewInner() {
 
         document.addEventListener("keydown", handleKeyDown);
         return () => document.removeEventListener("keydown", handleKeyDown);
-    }, [selectedChunkId, focusedNodeId, layoutEdges, pathStartId, pathEndId]);
+    }, [selectedChunkId, focusedNodeId, layoutEdges, pathStartId, pathEndId, multiSelectedIds]);
 
     function handleExportImage() {
         const viewport = document.querySelector(".react-flow__viewport") as HTMLElement | null;
@@ -775,6 +805,19 @@ function GraphViewInner() {
                 connectionMode={ConnectionMode.Loose}
                 onNodeClick={(event, node) => {
                     if (node.id === MAIN_NODE_ID) return;
+                    if (event.shiftKey) {
+                        setMultiSelectedIds(prev => {
+                            const next = new Set(prev);
+                            if (next.has(node.id)) next.delete(node.id);
+                            else next.add(node.id);
+                            return next;
+                        });
+                        return;
+                    }
+                    // Clear multi-select on normal click
+                    if (multiSelectedIds.size > 0) {
+                        setMultiSelectedIds(new Set());
+                    }
                     if (event.altKey) {
                         if (!pathStartId) {
                             setPathStartId(node.id);
@@ -1005,6 +1048,30 @@ function GraphViewInner() {
                 edges={edges}
                 onNodeClick={(id) => { setSelectedChunkId(id); setFocusedNodeId(id); }}
             />
+
+            {/* Bulk action bar */}
+            {multiSelectedIds.size > 0 && (
+                <div className="absolute bottom-4 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-lg border bg-background/95 px-4 py-2 shadow-lg backdrop-blur-sm">
+                    <span className="text-xs font-medium">{multiSelectedIds.size} selected</span>
+                    <div className="h-4 w-px bg-border" />
+                    <button
+                        onClick={() => {
+                            if (confirm(`Delete ${multiSelectedIds.size} chunks?`)) {
+                                deleteManyMutation.mutate([...multiSelectedIds]);
+                            }
+                        }}
+                        className="rounded-md px-2 py-1 text-xs text-destructive hover:bg-destructive/10"
+                    >
+                        Delete
+                    </button>
+                    <button
+                        onClick={() => setMultiSelectedIds(new Set())}
+                        className="rounded-md px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
+                    >
+                        Clear
+                    </button>
+                </div>
+            )}
 
             {/* Path info bar */}
             {(pathStartId || pathEndId) && (
