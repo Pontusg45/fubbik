@@ -6,6 +6,7 @@ import { Background, Controls, MiniMap, ReactFlow, useEdgesState, useNodesState,
 import { useEffect, useMemo } from "react";
 
 import { relationColor } from "@/features/chunks/relation-colors";
+import { GraphLegend } from "@/features/graph/graph-legend";
 import { getUser } from "@/functions/get-user";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
@@ -42,6 +43,9 @@ function GraphView() {
         }
     });
 
+    const activeTypes = useMemo(() => new Set((data?.chunks ?? []).map(c => c.type)), [data]);
+    const activeRelations = useMemo(() => new Set((data?.connections ?? []).map(c => c.relation)), [data]);
+
     const { layoutNodes, layoutEdges } = useMemo(() => {
         const chunks = data?.chunks ?? [];
         const connections = data?.connections ?? [];
@@ -52,6 +56,13 @@ function GraphView() {
         g.setGraph({ rankdir: "TB", nodesep: 80, ranksep: 100 });
 
         const MAIN_NODE_ID = "__main__";
+
+        // Connection counts for node sizing
+        const connectionCounts = new Map<string, number>();
+        for (const conn of connections) {
+            connectionCounts.set(conn.sourceId, (connectionCounts.get(conn.sourceId) ?? 0) + 1);
+            connectionCounts.set(conn.targetId, (connectionCounts.get(conn.targetId) ?? 0) + 1);
+        }
 
         const rawNodes: Node[] = [
             {
@@ -72,6 +83,8 @@ function GraphView() {
             },
             ...chunks.map(c => {
                 const typeColor = TYPE_COLORS[c.type] ?? TYPE_COLORS.note;
+                const count = connectionCounts.get(c.id) ?? 0;
+                const scale = Math.min(1 + count * 0.05, 1.5);
                 return {
                     id: c.id,
                     data: { label: c.title },
@@ -84,7 +97,8 @@ function GraphView() {
                         borderRadius: 8,
                         color: "#e2e8f0",
                         fontSize: 12,
-                        padding: "8px 12px"
+                        padding: "8px 12px",
+                        minWidth: `${Math.round(180 * scale)}px`
                     }
                 };
             })
@@ -96,11 +110,9 @@ function GraphView() {
                 id: conn.id,
                 source: conn.sourceId,
                 target: conn.targetId,
-                label: conn.relation,
+                data: { relation: conn.relation },
                 animated: true,
-                style: { stroke: color, strokeWidth: 2 },
-                labelStyle: { fill: color, fontSize: 10, fontWeight: 500 },
-                labelBgStyle: { fill: "rgba(0,0,0,0.6)", fillOpacity: 0.8 }
+                style: { stroke: color, strokeWidth: 2 }
             };
         });
 
@@ -123,7 +135,9 @@ function GraphView() {
         }
 
         for (const node of rawNodes) {
-            g.setNode(node.id, { width: node.id === MAIN_NODE_ID ? 160 : 200, height: 50 });
+            const count = connectionCounts.get(node.id) ?? 0;
+            const scale = Math.min(1 + count * 0.05, 1.5);
+            g.setNode(node.id, { width: (node.id === MAIN_NODE_ID ? 160 : 200) * scale, height: 50 });
         }
         for (const edge of rawEdges) {
             g.setEdge(edge.source, edge.target);
@@ -159,7 +173,7 @@ function GraphView() {
     }
 
     return (
-        <div className="h-[calc(100vh-4rem)]">
+        <div className="relative h-[calc(100vh-4rem)]">
             <ReactFlow
                 nodes={nodes}
                 edges={edges}
@@ -168,6 +182,27 @@ function GraphView() {
                 onNodeClick={(_, node) => {
                     if (node.id === "__main__") return;
                     navigate({ to: "/chunks/$chunkId", params: { chunkId: node.id } });
+                }}
+                onEdgeMouseEnter={(_, edge) => {
+                    setEdges(es =>
+                        es.map(e =>
+                            e.id === edge.id
+                                ? {
+                                      ...e,
+                                      label: (e.data as { relation?: string })?.relation,
+                                      labelStyle: { fill: (e.style as Record<string, string>)?.stroke, fontSize: 10, fontWeight: 500 },
+                                      labelBgStyle: { fill: "rgba(0,0,0,0.6)", fillOpacity: 0.8 }
+                                  }
+                                : e
+                        )
+                    );
+                }}
+                onEdgeMouseLeave={(_, edge) => {
+                    setEdges(es =>
+                        es.map(e =>
+                            e.id === edge.id ? { ...e, label: undefined, labelStyle: undefined, labelBgStyle: undefined } : e
+                        )
+                    );
                 }}
                 fitView
                 colorMode="dark"
@@ -185,6 +220,10 @@ function GraphView() {
                     zoomable
                 />
             </ReactFlow>
+            <div className="absolute top-4 right-4 z-10 rounded-lg border bg-background/80 px-3 py-2 text-xs backdrop-blur-sm">
+                <span className="text-muted-foreground">{nodes.length - 1} chunks · {edges.length} connections</span>
+            </div>
+            <GraphLegend activeTypes={activeTypes} activeRelations={activeRelations} />
         </div>
     );
 }
