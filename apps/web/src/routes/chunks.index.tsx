@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Bookmark, ChevronRight, Clock, FileText, Pin, Plus, Search, Trash2, X } from "lucide-react";
+import { Bookmark, ChevronRight, Clock, FileText, FolderPlus, Pin, Plus, Search, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +9,7 @@ import { Card, CardPanel } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { getChunkSize } from "@/features/chunks/chunk-size";
+import { useCollections } from "@/features/chunks/use-collections";
 import { usePinnedChunks } from "@/features/chunks/use-pinned-chunks";
 import { useSavedFilters } from "@/features/chunks/use-saved-filters";
 import { getUser } from "@/functions/get-user";
@@ -27,7 +28,8 @@ export const Route = createFileRoute("/chunks/")({
         after: (search.after as string) || undefined,
         enrichment: (search.enrichment as string) || undefined,
         minConnections: (search.minConnections as string) || undefined,
-        group: (search.group as string) || undefined
+        group: (search.group as string) || undefined,
+        collection: (search.collection as string) || undefined
     }),
     beforeLoad: async () => {
         let session = null;
@@ -43,7 +45,7 @@ export const Route = createFileRoute("/chunks/")({
 function ChunksList() {
     const navigate = useNavigate({ from: "/chunks/" });
     const navTo = useNavigate();
-    const { type, q, page, sort, tags, size, after, enrichment, minConnections, group } = Route.useSearch();
+    const { type, q, page, sort, tags, size, after, enrichment, minConnections, group, collection } = Route.useSearch();
     const queryClient = useQueryClient();
     const [searchInput, setSearchInput] = useState(q ?? "");
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -105,6 +107,7 @@ function ChunksList() {
     }, [chunks, size]);
 
     const { pinnedIds, togglePin, isPinned } = usePinnedChunks();
+    const { collections, createCollection, addToCollection } = useCollections();
 
     const sortedChunks = useMemo(() => {
         return [...filteredChunks].sort((a, b) => {
@@ -113,6 +116,14 @@ function ChunksList() {
             return aPinned - bPinned;
         });
     }, [filteredChunks, pinnedIds]);
+
+    const collectionFilteredChunks = useMemo(() => {
+        if (!collection) return sortedChunks;
+        const col = collections.find(c => c.id === collection);
+        if (!col) return sortedChunks;
+        const idSet = new Set(col.chunkIds);
+        return sortedChunks.filter(c => idSet.has(c.id));
+    }, [sortedChunks, collection, collections]);
 
     const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
     function toggleCollapsed(key: string) {
@@ -126,8 +137,8 @@ function ChunksList() {
 
     const groupedChunks = useMemo(() => {
         if (group === "type") {
-            const groups = new Map<string, typeof sortedChunks>();
-            for (const c of sortedChunks) {
+            const groups = new Map<string, typeof collectionFilteredChunks>();
+            for (const c of collectionFilteredChunks) {
                 const existing = groups.get(c.type) ?? [];
                 existing.push(c);
                 groups.set(c.type, existing);
@@ -135,8 +146,8 @@ function ChunksList() {
             return groups;
         }
         if (group === "tag") {
-            const groups = new Map<string, typeof sortedChunks>();
-            for (const c of sortedChunks) {
+            const groups = new Map<string, typeof collectionFilteredChunks>();
+            for (const c of collectionFilteredChunks) {
                 const chunkTags = c.tags as string[];
                 if (chunkTags.length === 0) {
                     const existing = groups.get("untagged") ?? [];
@@ -152,7 +163,7 @@ function ChunksList() {
             return groups;
         }
         return null;
-    }, [sortedChunks, group]);
+    }, [collectionFilteredChunks, group]);
 
     const chunksRef = useRef(chunks);
     chunksRef.current = chunks;
@@ -197,7 +208,7 @@ function ChunksList() {
 
     const types = ["note", "document", "reference", "schema", "checklist"];
 
-    function updateSearch(params: Partial<{ type: string; q: string; page: number; sort: string; tags: string; size: string; after: string; enrichment: string; minConnections: string; group: string }>) {
+    function updateSearch(params: Partial<{ type: string; q: string; page: number; sort: string; tags: string; size: string; after: string; enrichment: string; minConnections: string; group: string; collection: string }>) {
         navigate({
             search: {
                 type: params.type !== undefined ? params.type : type,
@@ -209,7 +220,8 @@ function ChunksList() {
                 after: params.after !== undefined ? params.after : after,
                 enrichment: params.enrichment !== undefined ? params.enrichment : enrichment,
                 minConnections: params.minConnections !== undefined ? params.minConnections : minConnections,
-                group: params.group !== undefined ? params.group : group
+                group: params.group !== undefined ? params.group : group,
+                collection: params.collection !== undefined ? params.collection : collection
             }
         });
     }
@@ -328,6 +340,22 @@ function ChunksList() {
                     <option value="type">By type</option>
                     <option value="tag">By tag</option>
                 </select>
+                <select
+                    value={collection ?? ""}
+                    onChange={e => updateSearch({ collection: e.target.value || undefined })}
+                    className="rounded-md border bg-background px-2 py-1.5 text-sm"
+                >
+                    <option value="">All chunks</option>
+                    {collections.map(c => (
+                        <option key={c.id} value={c.id}>{c.name} ({c.chunkIds.length})</option>
+                    ))}
+                </select>
+                <Button variant="outline" size="sm" onClick={() => {
+                    const name = prompt("Collection name:");
+                    if (name) createCollection(name);
+                }}>
+                    <FolderPlus className="size-3.5" />
+                </Button>
                 <div className="flex gap-1">
                     {(["good", "moderate", "warning", "critical"] as const).map(level => {
                         const config: Record<string, { color: string; label: string }> = {
@@ -470,7 +498,7 @@ function ChunksList() {
                         <p className="text-muted-foreground text-sm">Loading...</p>
                     </CardPanel>
                 </Card>
-            ) : sortedChunks.length === 0 ? (
+            ) : collectionFilteredChunks.length === 0 ? (
                 <Card>
                     <CardPanel className="p-8 text-center">
                         <p className="text-muted-foreground text-sm">No chunks found.</p>
@@ -547,7 +575,7 @@ function ChunksList() {
                 </div>
             ) : (
                 <Card>
-                    {sortedChunks.map((chunk, i) => (
+                    {collectionFilteredChunks.map((chunk, i) => (
                         <div key={chunk.id}>
                             {i > 0 && <Separator />}
                             <CardPanel
@@ -627,6 +655,23 @@ function ChunksList() {
                         <Trash2 className="size-3.5" />
                         Delete
                     </Button>
+                    {collections.length > 0 && (
+                        <select
+                            onChange={e => {
+                                if (e.target.value) {
+                                    addToCollection(e.target.value, [...selectedIds]);
+                                    setSelectedIds(new Set());
+                                }
+                            }}
+                            className="rounded-md border bg-background px-2 py-1 text-xs"
+                            defaultValue=""
+                        >
+                            <option value="" disabled>Add to...</option>
+                            {collections.map(c => (
+                                <option key={c.id} value={c.id}>{c.name}</option>
+                            ))}
+                        </select>
+                    )}
                     <Button variant="ghost" size="sm" onClick={() => setSelectedIds(new Set())}>
                         Cancel
                     </Button>
