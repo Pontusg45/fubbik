@@ -232,11 +232,25 @@ function GraphView() {
         }
 
         // Build edge index for spring forces
-        const edgePairs: [string, string][] = rawEdges.map(e => [e.source, e.target]);
+        const SPRING_LEN = 280;
+        const RELATION_SPRING_LEN: Record<string, number> = {
+            part_of: 180,
+            depends_on: 220,
+            extends: 220,
+            references: 280,
+            related_to: 320,
+            supports: 280,
+            contradicts: 350,
+            alternative_to: 350
+        };
+        const edgePairs: [string, string, number][] = rawEdges.map(e => {
+            const relation = (e.data as { relation?: string })?.relation ?? "";
+            const len = RELATION_SPRING_LEN[relation] ?? SPRING_LEN;
+            return [e.source, e.target, len];
+        });
 
         const REPULSION = 80000;
         const SPRING_K = 0.003;
-        const SPRING_LEN = 280;
         const CENTER_PULL = 0.01;
         const DAMPING = 0.85;
         const ITERATIONS = 200;
@@ -265,14 +279,14 @@ function GraphView() {
             }
 
             // Spring attraction along edges
-            for (const [srcId, tgtId] of edgePairs) {
+            for (const [srcId, tgtId, targetLen] of edgePairs) {
                 const a = pos.get(srcId);
                 const b = pos.get(tgtId);
                 if (!a || !b) continue;
                 const dx = b.x - a.x;
                 const dy = b.y - a.y;
                 const dist = Math.sqrt(dx * dx + dy * dy) + 1;
-                const force = SPRING_K * (dist - SPRING_LEN) * temp;
+                const force = SPRING_K * (dist - targetLen) * temp;
                 const fx = (dx / dist) * force;
                 const fy = (dy / dist) * force;
                 a.vx += fx;
