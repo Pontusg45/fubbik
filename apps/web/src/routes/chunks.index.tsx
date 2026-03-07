@@ -67,7 +67,13 @@ function ChunksList() {
 
     const tagsQuery = useQuery({
         queryKey: ["tags"],
-        queryFn: async () => unwrapEden(await api.api.tags.get())
+        queryFn: async () => {
+            try {
+                return unwrapEden(await api.api.tags.get());
+            } catch {
+                return [];
+            }
+        }
     });
 
     const activeTags = tags ? tags.split(",") : [];

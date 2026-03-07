@@ -28,7 +28,8 @@ export function listChunks(
     const scope = query.scope
         ? Object.fromEntries(query.scope.split(",").map(s => s.trim().split(":")).filter(p => p.length === 2) as [string, string][])
         : undefined;
-    const tags = query.tags ? query.tags.split(",").map(s => s.trim()) : undefined;
+    const parsedTags = query.tags?.split(",").map(s => s.trim()).filter(Boolean);
+    const tags = parsedTags?.length ? parsedTags : undefined;
     return listChunksRepo({ userId, type: query.type, search: query.search, exclude, scope, alias: query.alias, sort: query.sort, tags, limit, offset }).pipe(
         Effect.map(result => ({ ...result, limit, offset }))
     );
