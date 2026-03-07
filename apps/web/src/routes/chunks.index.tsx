@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
 import { Clock, Plus, Search } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -30,6 +30,7 @@ export const Route = createFileRoute("/chunks/")({
 
 function ChunksList() {
     const navigate = useNavigate({ from: "/chunks/" });
+    const navTo = useNavigate();
     const { type, q, page } = Route.useSearch();
     const [searchInput, setSearchInput] = useState(q ?? "");
     const limit = 20;
@@ -56,6 +57,42 @@ function ChunksList() {
     });
 
     const chunks = chunksQuery.data?.chunks ?? [];
+    const [selectedIndex, setSelectedIndex] = useState(-1);
+
+    useEffect(() => {
+        setSelectedIndex(-1);
+    }, [chunks]);
+
+    useEffect(() => {
+        function handleKeyDown(e: KeyboardEvent) {
+            if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+
+            switch (e.key) {
+                case "j":
+                    setSelectedIndex(i => Math.min(i + 1, chunks.length - 1));
+                    break;
+                case "k":
+                    setSelectedIndex(i => Math.max(i - 1, 0));
+                    break;
+                case "Enter":
+                    if (selectedIndex >= 0 && selectedIndex < chunks.length) {
+                        navTo({ to: "/chunks/$chunkId", params: { chunkId: chunks[selectedIndex]!.id } });
+                    }
+                    break;
+                case "n":
+                    navTo({ to: "/chunks/new" });
+                    break;
+                case "e":
+                    if (selectedIndex >= 0 && selectedIndex < chunks.length) {
+                        navTo({ to: "/chunks/$chunkId", params: { chunkId: chunks[selectedIndex]!.id } });
+                    }
+                    break;
+            }
+        }
+        window.addEventListener("keydown", handleKeyDown);
+        return () => window.removeEventListener("keydown", handleKeyDown);
+    }, [selectedIndex, chunks, navTo]);
+
     const total = chunksQuery.data?.total ?? 0;
     const totalPages = Math.ceil(total / limit);
 
@@ -74,7 +111,14 @@ function ChunksList() {
     return (
         <div className="container mx-auto max-w-5xl px-4 py-8">
             <div className="mb-6 flex items-center justify-between">
-                <h1 className="text-2xl font-bold tracking-tight">Chunks</h1>
+                <div>
+                    <h1 className="text-2xl font-bold tracking-tight">Chunks</h1>
+                    <p className="text-muted-foreground text-xs mt-1">
+                        <kbd className="bg-muted rounded px-1 py-0.5 text-[10px] font-mono">j</kbd>/<kbd className="bg-muted rounded px-1 py-0.5 text-[10px] font-mono">k</kbd> navigate
+                        <kbd className="bg-muted rounded px-1 py-0.5 text-[10px] font-mono ml-2">Enter</kbd> open
+                        <kbd className="bg-muted rounded px-1 py-0.5 text-[10px] font-mono ml-2">n</kbd> new
+                    </p>
+                </div>
                 <Button render={<Link to="/chunks/new" />}>
                     <Plus className="size-4" />
                     New Chunk
@@ -132,7 +176,7 @@ function ChunksList() {
                         <div key={chunk.id}>
                             {i > 0 && <Separator />}
                             <Link to="/chunks/$chunkId" params={{ chunkId: chunk.id }} className="block">
-                                <CardPanel className="hover:bg-muted/50 flex items-center justify-between gap-4 p-4 transition-colors">
+                                <CardPanel className={`flex items-center justify-between gap-4 p-4 transition-colors ${selectedIndex === i ? "bg-muted/50 ring-primary/50 ring-2 ring-inset" : "hover:bg-muted/50"}`}>
                                     <div className="min-w-0">
                                         <p className="truncate text-sm font-medium">{chunk.title}</p>
                                         <div className="mt-1 flex items-center gap-2">
