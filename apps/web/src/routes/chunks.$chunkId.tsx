@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Calendar, Clock, Edit, FileText, Hash, Network, Trash2 } from "lucide-react";
+import { ArrowLeft, Calendar, Clock, Edit, FileText, Hash, Network, Star, Trash2 } from "lucide-react";
+import { useEffect } from "react";
 import Markdown from "react-markdown";
 import { toast } from "sonner";
 
@@ -13,6 +14,8 @@ import { getChunkSize } from "@/features/chunks/chunk-size";
 import { DeleteConnectionButton } from "@/features/chunks/delete-connection-button";
 import { LinkChunkDialog } from "@/features/chunks/link-chunk-dialog";
 import { SplitChunkDialog } from "@/features/chunks/split-chunk-dialog";
+import { useFavorites } from "@/features/chunks/use-favorites";
+import { useRecentChunks } from "@/features/chunks/use-recent-chunks";
 import { VersionHistory } from "@/features/chunks/version-history";
 import { relationColor } from "@/features/chunks/relation-colors";
 import { getUser } from "@/functions/get-user";
@@ -35,6 +38,12 @@ function ChunkDetail() {
     const { chunkId } = Route.useParams();
     const navigate = useNavigate();
     const queryClient = useQueryClient();
+    const { trackView } = useRecentChunks();
+    const { toggleFavorite, isFavorite } = useFavorites();
+
+    useEffect(() => {
+        trackView(chunkId);
+    }, [chunkId]);
 
     const { data, isLoading, error } = useQuery({
         queryKey: ["chunk", chunkId],
@@ -136,7 +145,16 @@ function ChunkDetail() {
                         {chunk.id.slice(0, 8)}
                     </span>
                 </div>
-                <h1 className="text-2xl font-bold tracking-tight">{chunk.title}</h1>
+                <div className="flex items-center gap-2">
+                    <h1 className="text-2xl font-bold tracking-tight">{chunk.title}</h1>
+                    <button
+                        onClick={() => toggleFavorite(chunkId)}
+                        className="text-muted-foreground hover:text-yellow-500 transition-colors"
+                        title={isFavorite(chunkId) ? "Remove from favorites" : "Add to favorites"}
+                    >
+                        <Star className={`size-4 ${isFavorite(chunkId) ? "fill-yellow-500 text-yellow-500" : ""}`} />
+                    </button>
+                </div>
                 <div className="text-muted-foreground mt-2 flex flex-wrap items-center gap-4 text-xs">
                     <span className="flex items-center gap-1">
                         <Calendar className="size-3" />

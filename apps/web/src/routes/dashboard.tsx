@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Blocks, Clock, Download, Network, Plus, Tags, Upload } from "lucide-react";
+import { Blocks, Clock, Download, Network, Plus, Star, Tags, Upload } from "lucide-react";
 import { useRef } from "react";
 import { toast } from "sonner";
 
@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardHeader, CardPanel, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { useFavorites } from "@/features/chunks/use-favorites";
 import { getUser } from "@/functions/get-user";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
@@ -29,6 +30,7 @@ function RouteComponent() {
     const { session } = Route.useRouteContext();
     const queryClient = useQueryClient();
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const { favoriteIds } = useFavorites();
 
     const exportMutation = useMutation({
         mutationFn: async () => {
@@ -113,6 +115,20 @@ function RouteComponent() {
         }
     });
 
+    const favoritesQuery = useQuery({
+        queryKey: ["chunks-favorites", favoriteIds],
+        queryFn: async () => {
+            if (favoriteIds.length === 0) return [];
+            try {
+                const result = unwrapEden(await api.api.chunks.get({ query: { limit: "100" } }));
+                return (result?.chunks ?? []).filter(c => favoriteIds.includes(c.id));
+            } catch {
+                return [];
+            }
+        },
+        enabled: favoriteIds.length > 0
+    });
+
     const stats = [
         { label: "Chunks", value: statsQuery.data?.chunks ?? 0, icon: Blocks, to: "/dashboard" as const },
         { label: "Connections", value: statsQuery.data?.connections ?? 0, icon: Network, to: "/dashboard" as const },
@@ -166,6 +182,35 @@ function RouteComponent() {
                     </Link>
                 ))}
             </div>
+
+            {favoriteIds.length > 0 && (
+                <div className="mb-6">
+                    <div className="mb-3 flex items-center gap-2">
+                        <Star className="size-4 fill-yellow-500 text-yellow-500" />
+                        <h2 className="font-semibold">Favorites</h2>
+                    </div>
+                    <Card>
+                        {favoritesQuery.isLoading ? (
+                            <CardPanel className="p-4 text-center">
+                                <p className="text-muted-foreground text-sm">Loading...</p>
+                            </CardPanel>
+                        ) : (
+                            <div className="grid gap-px sm:grid-cols-2">
+                                {(favoritesQuery.data ?? []).map(chunk => (
+                                    <Link key={chunk.id} to="/chunks/$chunkId" params={{ chunkId: chunk.id }}>
+                                        <CardPanel className="hover:bg-muted/50 p-3 transition-colors">
+                                            <p className="truncate text-sm font-medium">{chunk.title}</p>
+                                            <Badge variant="secondary" size="sm" className="mt-1 font-mono text-[10px]">
+                                                {chunk.type}
+                                            </Badge>
+                                        </CardPanel>
+                                    </Link>
+                                ))}
+                            </div>
+                        )}
+                    </Card>
+                </div>
+            )}
 
             <div className="grid gap-6 lg:grid-cols-3">
                 <div className="lg:col-span-2">
