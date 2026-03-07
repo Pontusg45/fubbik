@@ -216,7 +216,7 @@ function RouteComponent() {
                 <div className="lg:col-span-2">
                     <div className="mb-3 flex items-center justify-between">
                         <h2 className="font-semibold">Recent Chunks</h2>
-                        <Button variant="link" size="sm" render={<Link to="/chunks" search={{ page: 1, type: undefined, q: undefined, sort: undefined, tags: undefined }} />}>
+                        <Button variant="link" size="sm" render={<Link to="/chunks" search={{ page: 1, type: undefined, q: undefined, sort: undefined, tags: undefined, size: undefined }} />}>
                             View All
                         </Button>
                     </div>

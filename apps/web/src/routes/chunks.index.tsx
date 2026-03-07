@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Clock, FileText, Plus, Search, Trash2 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -20,7 +20,8 @@ export const Route = createFileRoute("/chunks/")({
         q: (search.q as string) || undefined,
         page: Number(search.page) || 1,
         sort: (search.sort as string) || undefined,
-        tags: (search.tags as string) || undefined
+        tags: (search.tags as string) || undefined,
+        size: (search.size as string) || undefined
     }),
     beforeLoad: async () => {
         let session = null;
@@ -36,7 +37,7 @@ export const Route = createFileRoute("/chunks/")({
 function ChunksList() {
     const navigate = useNavigate({ from: "/chunks/" });
     const navTo = useNavigate();
-    const { type, q, page, sort, tags } = Route.useSearch();
+    const { type, q, page, sort, tags, size } = Route.useSearch();
     const queryClient = useQueryClient();
     const [searchInput, setSearchInput] = useState(q ?? "");
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -87,6 +88,10 @@ function ChunksList() {
     }
 
     const chunks = chunksQuery.data?.chunks ?? [];
+    const filteredChunks = useMemo(() => {
+        if (!size) return chunks;
+        return chunks.filter(c => getChunkSize(c.content).level === size);
+    }, [chunks, size]);
     const chunksRef = useRef(chunks);
     chunksRef.current = chunks;
     const [selectedIndex, setSelectedIndex] = useState(-1);
@@ -130,14 +135,15 @@ function ChunksList() {
 
     const types = ["note", "document", "reference", "schema", "checklist"];
 
-    function updateSearch(params: Partial<{ type: string; q: string; page: number; sort: string; tags: string }>) {
+    function updateSearch(params: Partial<{ type: string; q: string; page: number; sort: string; tags: string; size: string }>) {
         navigate({
             search: {
                 type: params.type !== undefined ? params.type : type,
                 q: params.q !== undefined ? params.q : q,
                 page: params.page ?? 1,
                 sort: params.sort !== undefined ? params.sort : sort,
-                tags: params.tags !== undefined ? params.tags : tags
+                tags: params.tags !== undefined ? params.tags : tags,
+                size: params.size !== undefined ? params.size : size
             }
         });
     }
@@ -243,6 +249,27 @@ function ChunksList() {
                     <option value="alpha">A-Z</option>
                     <option value="updated">Recently Updated</option>
                 </select>
+                <div className="flex gap-1">
+                    {(["good", "moderate", "warning", "critical"] as const).map(level => {
+                        const config: Record<string, { color: string; label: string }> = {
+                            good: { color: "#22c55e", label: "Good" },
+                            moderate: { color: "#f59e0b", label: "Moderate" },
+                            warning: { color: "#f97316", label: "Warning" },
+                            critical: { color: "#ef4444", label: "Critical" }
+                        };
+                        const c = config[level]!;
+                        return (
+                            <button
+                                key={level}
+                                onClick={() => updateSearch({ size: size === level ? undefined : level })}
+                                className={`rounded-full px-2 py-0.5 text-[10px] font-medium text-white ${size === level ? "ring-2 ring-offset-1" : "opacity-60 hover:opacity-80"}`}
+                                style={{ backgroundColor: c.color }}
+                            >
+                                {c.label}
+                            </button>
+                        );
+                    })}
+                </div>
             </div>
 
             {(tagsQuery.data ?? []).length > 0 && (
@@ -267,12 +294,12 @@ function ChunksList() {
                     <CardPanel className="p-8 text-center">
                         <p className="text-muted-foreground text-sm">Loading...</p>
                     </CardPanel>
-                ) : chunks.length === 0 ? (
+                ) : filteredChunks.length === 0 ? (
                     <CardPanel className="p-8 text-center">
                         <p className="text-muted-foreground text-sm">No chunks found.</p>
                     </CardPanel>
                 ) : (
-                    chunks.map((chunk, i) => (
+                    filteredChunks.map((chunk, i) => (
                         <div key={chunk.id}>
                             {i > 0 && <Separator />}
                             <CardPanel
