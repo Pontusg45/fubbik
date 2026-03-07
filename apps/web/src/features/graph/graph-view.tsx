@@ -20,6 +20,7 @@ import { GraphFilters } from "@/features/graph/graph-filters";
 import { GraphLegend } from "@/features/graph/graph-legend";
 import { GraphMetrics } from "@/features/graph/graph-metrics";
 import { GraphNode } from "@/features/graph/graph-node";
+import { type LayoutAlgorithm, hierarchicalLayout, radialLayout } from "@/features/graph/layouts";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
@@ -69,6 +70,20 @@ function findShortestPath(startId: string, endId: string, edges: Edge[]): string
         }
     }
     return null;
+}
+
+function getMostConnected(nodes: { id: string }[], edges: { source: string; target: string }[]): string | null {
+    const counts = new Map<string, number>();
+    for (const e of edges) {
+        counts.set(e.source, (counts.get(e.source) ?? 0) + 1);
+        counts.set(e.target, (counts.get(e.target) ?? 0) + 1);
+    }
+    let maxId: string | null = null;
+    let maxCount = 0;
+    for (const [id, count] of counts) {
+        if (count > maxCount && nodes.some(n => n.id === id)) { maxCount = count; maxId = id; }
+    }
+    return maxId;
 }
 
 function GraphViewInner() {
@@ -158,6 +173,9 @@ function GraphViewInner() {
 
     // Multi-select
     const [multiSelectedIds, setMultiSelectedIds] = useState<Set<string>>(new Set());
+
+    // Layout algorithm
+    const [layoutAlgorithm, setLayoutAlgorithm] = useState<LayoutAlgorithm>("force");
 
     // Dragged node positions (persist across layout changes)
     const [draggedPositions, setDraggedPositions] = useState<Map<string, { x: number; y: number }>>(new Map());
@@ -269,7 +287,7 @@ function GraphViewInner() {
 
     // Post to worker when simulation inputs change
     useEffect(() => {
-        if (!filteredGraph || !workerRef.current) return;
+        if (!filteredGraph) return;
 
         const { chunks, connections, hiddenIds } = filteredGraph;
 
@@ -301,10 +319,24 @@ function GraphViewInner() {
             }
         }
 
-        setIsLayouting(true);
-        requestIdRef.current += 1;
-        workerRef.current.postMessage({ requestId: requestIdRef.current, nodes: workerNodes, edges: workerEdges } satisfies LayoutWorkerInput);
-    }, [filteredGraph]);
+        if (layoutAlgorithm === "force") {
+            if (!workerRef.current) return;
+            setIsLayouting(true);
+            requestIdRef.current += 1;
+            workerRef.current.postMessage({ requestId: requestIdRef.current, nodes: workerNodes, edges: workerEdges } satisfies LayoutWorkerInput);
+        } else {
+            let positions: Record<string, { x: number; y: number }>;
+            if (layoutAlgorithm === "hierarchical") {
+                positions = hierarchicalLayout(workerNodes, workerEdges);
+            } else {
+                // Radial: use selected node or most-connected as center
+                const center = selectedChunkId ?? getMostConnected(workerNodes, workerEdges);
+                positions = center ? radialLayout(workerNodes, workerEdges, center) : hierarchicalLayout(workerNodes, workerEdges);
+            }
+            setLayoutPositions(positions);
+            setIsLayouting(false);
+        }
+    }, [filteredGraph, layoutAlgorithm]);
 
     // Build layoutNodes and layoutEdges from positions (cheap: styling + edge creation only)
     const { layoutNodes, layoutEdges } = useMemo(() => {
@@ -941,6 +973,15 @@ function GraphViewInner() {
                     placeholder="Search nodes..."
                     className="bg-background/80 focus:ring-ring w-36 rounded-md border px-2.5 py-1.5 text-xs backdrop-blur-sm focus:ring-2 focus:outline-none"
                 />
+                <select
+                    value={layoutAlgorithm}
+                    onChange={e => setLayoutAlgorithm(e.target.value as LayoutAlgorithm)}
+                    className="rounded-md border bg-background/80 px-2 py-1.5 text-xs backdrop-blur-sm"
+                >
+                    <option value="force">Force</option>
+                    <option value="hierarchical">Tree</option>
+                    <option value="radial">Radial</option>
+                </select>
                 {draggedPositions.size > 0 && (
                     <button
                         onClick={() => setDraggedPositions(new Map())}
