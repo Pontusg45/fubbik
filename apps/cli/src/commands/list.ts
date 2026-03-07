@@ -1,7 +1,7 @@
 import { Command } from "commander";
 
-import { output, outputQuiet } from "../lib/output";
-import { listChunks } from "../lib/store";
+import { output, outputError, outputQuiet } from "../lib/output";
+import { listChunks, readStore } from "../lib/store";
 
 export const listCommand = new Command("list")
     .description("List all chunks")
@@ -12,8 +12,10 @@ export const listCommand = new Command("list")
     .option("--sort <field>", "sort by field (title, createdAt, updatedAt)", "updatedAt")
     .option("--sort-dir <dir>", "sort direction (asc, desc)", "desc")
     .option("--fields <fields>", "comma-separated fields to include (e.g. id,title)")
+    .option("--scope <pairs>", "filter by scope (key:value,key:value) — requires server")
+    .option("--exclude <terms>", "exclude chunks about these terms (comma-separated) — requires server")
     .action(
-        (
+        async (
             opts: {
                 type?: string;
                 tag?: string;
@@ -22,9 +24,44 @@ export const listCommand = new Command("list")
                 sort?: string;
                 sortDir?: string;
                 fields?: string;
+                scope?: string;
+                exclude?: string;
             },
             cmd: Command
         ) => {
+            if (opts.scope || opts.exclude) {
+                const store = readStore();
+                if (!store.serverUrl) {
+                    outputError("No server URL configured. Run 'fubbik init' first.");
+                    process.exit(1);
+                }
+                const params = new URLSearchParams();
+                if (opts.type) params.set("type", opts.type);
+                if (opts.scope) params.set("scope", opts.scope);
+                if (opts.exclude) params.set("exclude", opts.exclude);
+                if (opts.limit) params.set("limit", opts.limit);
+                if (opts.offset) params.set("offset", opts.offset);
+                const res = await fetch(`${store.serverUrl}/api/chunks?${params}`);
+                if (!res.ok) {
+                    outputError(`Server list failed: ${res.status}`);
+                    process.exit(1);
+                }
+                const data = await res.json() as { chunks: { id: string; title: string; type: string; tags: string[] }[] };
+                const chunks = data.chunks;
+                outputQuiet(cmd, chunks.map(c => c.id).join("\n"));
+                if (chunks.length === 0) {
+                    output(cmd, chunks, "No chunks found.");
+                } else {
+                    const lines = [`${chunks.length} chunk(s):\n`];
+                    for (const chunk of chunks) {
+                        const tags = chunk.tags.length > 0 ? ` [${chunk.tags.join(", ")}]` : "";
+                        lines.push(`  ${chunk.id}  ${chunk.title}  (${chunk.type})${tags}`);
+                    }
+                    output(cmd, chunks, lines.join("\n"));
+                }
+                return;
+            }
+
             let chunks = listChunks({ type: opts.type, tag: opts.tag });
 
             // Sort
