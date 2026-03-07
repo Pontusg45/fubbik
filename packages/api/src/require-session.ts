@@ -8,3 +8,8 @@ export function requireSession(ctx: unknown): Effect.Effect<NonNullable<Session>
     if (!session) return Effect.fail(new AuthError());
     return Effect.succeed(session);
 }
+
+export function optionalSession(ctx: unknown): Effect.Effect<Session | null, never> {
+    const session = (ctx as unknown as { session: Session }).session;
+    return Effect.succeed(session ?? null);
+}

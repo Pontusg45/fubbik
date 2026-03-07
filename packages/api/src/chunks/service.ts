@@ -14,7 +14,7 @@ import { Effect } from "effect";
 
 import { NotFoundError } from "../errors";
 
-export function listChunks(userId: string, query: { type?: string; search?: string; limit?: string; offset?: string }) {
+export function listChunks(userId: string | undefined, query: { type?: string; search?: string; limit?: string; offset?: string }) {
     const limit = Math.min(Number(query.limit ?? 50), 100);
     const offset = Number(query.offset ?? 0);
     return listChunksRepo({ userId, type: query.type, search: query.search, limit, offset }).pipe(
@@ -22,7 +22,7 @@ export function listChunks(userId: string, query: { type?: string; search?: stri
     );
 }
 
-export function getChunkDetail(chunkId: string, userId: string) {
+export function getChunkDetail(chunkId: string, userId?: string) {
     return getChunkById(chunkId, userId).pipe(
         Effect.flatMap(found => (found ? Effect.succeed(found) : Effect.fail(new NotFoundError({ resource: "Chunk" })))),
         Effect.flatMap(found => getChunkConnections(chunkId).pipe(Effect.map(connections => ({ chunk: found, connections }))))
@@ -59,14 +59,14 @@ export function updateChunk(chunkId: string, userId: string, body: { title?: str
     );
 }
 
-export function getChunkHistory(chunkId: string, userId: string) {
+export function getChunkHistory(chunkId: string, userId?: string) {
     return getChunkById(chunkId, userId).pipe(
         Effect.flatMap(existing => (existing ? Effect.succeed(existing) : Effect.fail(new NotFoundError({ resource: "Chunk" })))),
         Effect.flatMap(() => getVersionsByChunkId(chunkId))
     );
 }
 
-export function exportChunks(userId: string) {
+export function exportChunks(userId?: string) {
     return exportAllChunksRepo(userId);
 }
 

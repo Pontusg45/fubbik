@@ -1,6 +1,6 @@
 import Dagre from "@dagrejs/dagre";
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import "@xyflow/react/dist/style.css";
 import { Background, Controls, ReactFlow, useEdgesState, useNodesState, type Edge, type Node } from "@xyflow/react";
 import { useEffect, useMemo } from "react";
@@ -12,12 +12,13 @@ import { unwrapEden } from "@/utils/eden";
 export const Route = createFileRoute("/graph")({
     component: GraphView,
     beforeLoad: async () => {
+        let session = null;
         try {
-            const session = await getUser();
-            return { session };
+            session = await getUser();
         } catch {
-            throw redirect({ to: "/login" });
+            // allow guest access
         }
+        return { session };
     }
 });
 

@@ -6,7 +6,7 @@ import { db } from "../index";
 import { chunk, chunkConnection } from "../schema/chunk";
 
 export interface ListChunksParams {
-    userId: string;
+    userId?: string;
     type?: string;
     search?: string;
     limit: number;
@@ -16,7 +16,7 @@ export interface ListChunksParams {
 export function listChunks(params: ListChunksParams) {
     return Effect.tryPromise({
         try: async () => {
-            const conditions = [eq(chunk.userId, params.userId)];
+            const conditions = params.userId ? [eq(chunk.userId, params.userId)] : [];
             if (params.type) {
                 conditions.push(eq(chunk.type, params.type));
             }
@@ -50,13 +50,15 @@ export function listChunks(params: ListChunksParams) {
     });
 }
 
-export function getChunkById(chunkId: string, userId: string) {
+export function getChunkById(chunkId: string, userId?: string) {
     return Effect.tryPromise({
         try: async () => {
+            const conditions = [eq(chunk.id, chunkId)];
+            if (userId) conditions.push(eq(chunk.userId, userId));
             const [found] = await db
                 .select()
                 .from(chunk)
-                .where(and(eq(chunk.id, chunkId), eq(chunk.userId, userId)));
+                .where(and(...conditions));
             return found ?? null;
         },
         catch: cause => new DatabaseError({ cause })
@@ -132,9 +134,12 @@ export function updateChunk(chunkId: string, params: UpdateChunkParams) {
     });
 }
 
-export function exportAllChunks(userId: string) {
+export function exportAllChunks(userId?: string) {
     return Effect.tryPromise({
-        try: () => db.select().from(chunk).where(eq(chunk.userId, userId)).orderBy(desc(chunk.createdAt)),
+        try: () => {
+            const query = db.select().from(chunk).orderBy(desc(chunk.createdAt));
+            return userId ? query.where(eq(chunk.userId, userId)) : query;
+        },
         catch: cause => new DatabaseError({ cause })
     });
 }

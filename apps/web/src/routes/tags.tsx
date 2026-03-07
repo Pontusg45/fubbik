@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { Tags } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -11,12 +11,13 @@ import { unwrapEden } from "@/utils/eden";
 export const Route = createFileRoute("/tags")({
     component: TagsPage,
     beforeLoad: async () => {
+        let session = null;
         try {
-            const session = await getUser();
-            return { session };
+            session = await getUser();
         } catch {
-            throw redirect({ to: "/login" });
+            // allow guest access
         }
+        return { session };
     }
 });
 

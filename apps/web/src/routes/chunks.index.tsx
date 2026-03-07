@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Clock, Plus, Search } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
@@ -19,12 +19,13 @@ export const Route = createFileRoute("/chunks/")({
         page: Number(search.page) || 1
     }),
     beforeLoad: async () => {
+        let session = null;
         try {
-            const session = await getUser();
-            return { session };
+            session = await getUser();
         } catch {
-            throw redirect({ to: "/login" });
+            // allow guest access
         }
+        return { session };
     }
 });
 

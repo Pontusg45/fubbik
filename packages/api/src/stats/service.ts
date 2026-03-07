@@ -1,7 +1,7 @@
 import { getChunkCount, getConnectionCount, getTagCount } from "@fubbik/db/repository";
 import { Effect } from "effect";
 
-export function getUserStats(userId: string) {
+export function getUserStats(userId?: string) {
     return Effect.all(
         {
             chunks: getChunkCount(userId),

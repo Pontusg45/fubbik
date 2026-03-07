@@ -5,13 +5,14 @@ import { DatabaseError } from "../errors";
 import { db } from "../index";
 import { chunk } from "../schema/chunk";
 
-export function getTagsWithCounts(userId: string) {
+export function getTagsWithCounts(userId?: string) {
     return Effect.tryPromise({
         try: async () => {
+            const whereClause = userId ? sql`WHERE ${chunk.userId} = ${userId}` : sql``;
             const result = await db.execute(sql`
                 SELECT tag, COUNT(*)::int as count
                 FROM ${chunk}, jsonb_array_elements_text(${chunk.tags}) AS tag
-                WHERE ${chunk.userId} = ${userId}
+                ${whereClause}
                 GROUP BY tag
                 ORDER BY count DESC
             `);

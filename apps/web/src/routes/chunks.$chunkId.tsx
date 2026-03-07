@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, Calendar, Clock, Edit, Hash, Network, Trash2 } from "lucide-react";
 import Markdown from "react-markdown";
 import { toast } from "sonner";
@@ -18,12 +18,13 @@ import { api } from "@/utils/api";
 export const Route = createFileRoute("/chunks/$chunkId")({
     component: ChunkDetail,
     beforeLoad: async () => {
+        let session = null;
         try {
-            const session = await getUser();
-            return { session };
+            session = await getUser();
         } catch {
-            throw redirect({ to: "/login" });
+            // allow guest access
         }
+        return { session };
     }
 });
 
