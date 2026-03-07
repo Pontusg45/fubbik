@@ -1,12 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Bookmark, ChevronRight, Clock, Columns3, FileText, FolderPlus, List, Pin, Plus, Search, Trash2, X } from "lucide-react";
+import { Bookmark, ChevronRight, Clock, Columns3, FileText, Filter, FolderPlus, List, Pin, Plus, Search, SlidersHorizontal, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardPanel } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
 import { getChunkSize } from "@/features/chunks/chunk-size";
 import { KanbanView } from "@/features/chunks/kanban-view";
@@ -52,9 +53,11 @@ function ChunksList() {
     const [searchInput, setSearchInput] = useState(q ?? "");
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const { filters: savedFilters, saveFilter, deleteFilter } = useSavedFilters();
-    const hasActiveFilters = !!(type || q || sort || tags || size || after || enrichment || minConnections);
     const limit = 20;
     const offset = ((page ?? 1) - 1) * limit;
+
+    const activeFilterCount = [tags, size, after, enrichment, minConnections].filter(Boolean).length;
+    const hasActiveFilters = !!(type || q || sort || tags || size || after || enrichment || minConnections);
 
     const chunksQuery = useQuery({
         queryKey: ["chunks-list", type, q, page, sort, tags, after, enrichment, minConnections],
@@ -103,29 +106,28 @@ function ChunksList() {
     }
 
     const chunks = chunksQuery.data?.chunks ?? [];
-    const filteredChunks = useMemo(() => {
-        if (!size) return chunks;
-        return chunks.filter(c => getChunkSize(c.content).level === size);
-    }, [chunks, size]);
-
     const { pinnedIds, togglePin, isPinned } = usePinnedChunks();
     const { collections, createCollection, addToCollection } = useCollections();
 
-    const sortedChunks = useMemo(() => {
-        return [...filteredChunks].sort((a, b) => {
-            const aPinned = isPinned(a.id) ? 0 : 1;
-            const bPinned = isPinned(b.id) ? 0 : 1;
+    const processedChunks = useMemo(() => {
+        const source = chunksQuery.data?.chunks ?? [];
+        const filtered = size ? source.filter(c => getChunkSize(c.content).level === size) : source;
+        const pinnedSet = new Set(pinnedIds);
+        return [...filtered].sort((a, b) => {
+            const aPinned = pinnedSet.has(a.id) ? 0 : 1;
+            const bPinned = pinnedSet.has(b.id) ? 0 : 1;
             return aPinned - bPinned;
         });
-    }, [filteredChunks, pinnedIds]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- chunksQuery.data is stable per fetch
+    }, [chunksQuery.data, size, pinnedIds]);
 
     const collectionFilteredChunks = useMemo(() => {
-        if (!collection) return sortedChunks;
+        if (!collection) return processedChunks;
         const col = collections.find(c => c.id === collection);
-        if (!col) return sortedChunks;
+        if (!col) return processedChunks;
         const idSet = new Set(col.chunkIds);
-        return sortedChunks.filter(c => idSet.has(c.id));
-    }, [sortedChunks, collection, collections]);
+        return processedChunks.filter(c => idSet.has(c.id));
+    }, [processedChunks, collection, collections]);
 
     const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
     function toggleCollapsed(key: string) {
@@ -229,6 +231,26 @@ function ChunksList() {
         });
     }
 
+    function clearAllFilters() {
+        navigate({
+            search: {
+                type: undefined,
+                q: undefined,
+                page: 1,
+                sort: undefined,
+                tags: undefined,
+                size: undefined,
+                after: undefined,
+                enrichment: undefined,
+                minConnections: undefined,
+                group,
+                collection,
+                view
+            }
+        });
+        setSearchInput("");
+    }
+
     function toggleSelection(id: string) {
         setSelectedIds(prev => {
             const next = new Set(prev);
@@ -290,8 +312,8 @@ function ChunksList() {
                 </Button>
             </div>
 
-            {/* Search & filters */}
-            <div className="mb-6 flex flex-wrap items-center gap-3">
+            {/* Search bar + controls */}
+            <div className="mb-4 flex flex-wrap items-center gap-2">
                 <div className="relative flex-1">
                     <Search className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
                     <input
@@ -305,48 +327,219 @@ function ChunksList() {
                         className="bg-background focus:ring-ring w-full rounded-md border py-2 pr-3 pl-9 text-sm focus:ring-2 focus:outline-none"
                     />
                 </div>
-                <div className="flex gap-1">
-                    <Button variant={!type ? "default" : "outline"} size="sm" onClick={() => updateSearch({ type: undefined })}>
-                        All
-                    </Button>
-                    {types.map(t => (
-                        <Button
-                            key={t}
-                            variant={type === t ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => updateSearch({ type: type === t ? undefined : t })}
-                        >
-                            {t}
-                        </Button>
-                    ))}
-                </div>
-                {q ? (
-                    <span className="text-muted-foreground text-xs italic">Sorted by relevance</span>
-                ) : (
-                    <select
-                        value={sort ?? "newest"}
-                        onChange={e => updateSearch({ sort: e.target.value === "newest" ? undefined : e.target.value })}
-                        className="rounded-md border bg-background px-2 py-1.5 text-sm"
+
+                {/* Filters popover */}
+                <Popover>
+                    <PopoverTrigger
+                        className="inline-flex items-center gap-1.5 rounded-md border px-3 py-2 text-sm font-medium transition-colors hover:bg-muted"
                     >
-                        <option value="newest">Newest</option>
-                        <option value="oldest">Oldest</option>
-                        <option value="alpha">A-Z</option>
-                        <option value="updated">Recently Updated</option>
-                    </select>
-                )}
+                        <SlidersHorizontal className="size-3.5" />
+                        Filters
+                        {activeFilterCount > 0 && (
+                            <span className="flex size-5 items-center justify-center rounded-full bg-primary text-[10px] font-semibold text-primary-foreground">
+                                {activeFilterCount}
+                            </span>
+                        )}
+                    </PopoverTrigger>
+                    <PopoverContent side="bottom" align="end" className="w-80">
+                        <div className="space-y-4">
+                            {/* Type */}
+                            <div>
+                                <p className="text-muted-foreground mb-2 text-xs font-medium uppercase tracking-wider">Type</p>
+                                <div className="flex flex-wrap gap-1">
+                                    <Button variant={!type ? "default" : "outline"} size="sm" onClick={() => updateSearch({ type: undefined })}>
+                                        All
+                                    </Button>
+                                    {types.map(t => (
+                                        <Button
+                                            key={t}
+                                            variant={type === t ? "default" : "outline"}
+                                            size="sm"
+                                            onClick={() => updateSearch({ type: type === t ? undefined : t })}
+                                        >
+                                            {t}
+                                        </Button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <Separator />
+
+                            {/* Sort */}
+                            <div>
+                                <p className="text-muted-foreground mb-2 text-xs font-medium uppercase tracking-wider">Sort</p>
+                                {q ? (
+                                    <span className="text-muted-foreground text-xs italic">Sorted by relevance (search active)</span>
+                                ) : (
+                                    <select
+                                        value={sort ?? "newest"}
+                                        onChange={e => updateSearch({ sort: e.target.value === "newest" ? undefined : e.target.value })}
+                                        className="w-full rounded-md border bg-background px-2 py-1.5 text-sm"
+                                    >
+                                        <option value="newest">Newest first</option>
+                                        <option value="oldest">Oldest first</option>
+                                        <option value="alpha">Alphabetical (A-Z)</option>
+                                        <option value="updated">Recently updated</option>
+                                    </select>
+                                )}
+                            </div>
+
+                            <Separator />
+
+                            {/* Tags */}
+                            {(tagsQuery.data ?? []).length > 0 && (
+                                <>
+                                    <div>
+                                        <p className="text-muted-foreground mb-2 text-xs font-medium uppercase tracking-wider">Tags</p>
+                                        <div className="flex flex-wrap gap-1">
+                                            {(tagsQuery.data ?? []).map(({ tag, count }) => (
+                                                <Badge
+                                                    key={tag}
+                                                    variant={activeTags.includes(tag) ? "default" : "outline"}
+                                                    size="sm"
+                                                    className="cursor-pointer text-[10px]"
+                                                    onClick={() => toggleTag(tag)}
+                                                >
+                                                    {tag} ({count})
+                                                </Badge>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <Separator />
+                                </>
+                            )}
+
+                            {/* Date range */}
+                            <div>
+                                <p className="text-muted-foreground mb-2 text-xs font-medium uppercase tracking-wider">Date range</p>
+                                <div className="flex gap-1">
+                                    {[
+                                        { label: "7 days", value: "7" },
+                                        { label: "30 days", value: "30" },
+                                        { label: "90 days", value: "90" }
+                                    ].map(opt => (
+                                        <Button
+                                            key={opt.value}
+                                            variant={after === opt.value ? "default" : "outline"}
+                                            size="sm"
+                                            onClick={() => updateSearch({ after: after === opt.value ? undefined : opt.value })}
+                                        >
+                                            {opt.label}
+                                        </Button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <Separator />
+
+                            {/* Content size */}
+                            <div>
+                                <p className="text-muted-foreground mb-2 text-xs font-medium uppercase tracking-wider">Content size</p>
+                                <div className="flex gap-1">
+                                    {(["good", "moderate", "warning", "critical"] as const).map(level => {
+                                        const config: Record<string, { color: string; label: string }> = {
+                                            good: { color: "#22c55e", label: "Good" },
+                                            moderate: { color: "#f59e0b", label: "Moderate" },
+                                            warning: { color: "#f97316", label: "Warning" },
+                                            critical: { color: "#ef4444", label: "Critical" }
+                                        };
+                                        const c = config[level]!;
+                                        return (
+                                            <button
+                                                key={level}
+                                                onClick={() => updateSearch({ size: size === level ? undefined : level })}
+                                                className={`rounded-full px-2.5 py-1 text-[10px] font-medium text-white transition-opacity ${size === level ? "ring-2 ring-offset-1" : "opacity-50 hover:opacity-80"}`}
+                                                style={{ backgroundColor: c.color }}
+                                            >
+                                                {c.label}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
+                            <Separator />
+
+                            {/* Enrichment */}
+                            <div>
+                                <p className="text-muted-foreground mb-2 text-xs font-medium uppercase tracking-wider">Enrichment</p>
+                                <div className="flex gap-1">
+                                    <Badge
+                                        variant={enrichment === "missing" ? "default" : "outline"}
+                                        size="sm"
+                                        className="cursor-pointer"
+                                        onClick={() => updateSearch({ enrichment: enrichment === "missing" ? undefined : "missing" })}
+                                    >
+                                        Needs enrichment
+                                    </Badge>
+                                    <Badge
+                                        variant={enrichment === "complete" ? "default" : "outline"}
+                                        size="sm"
+                                        className="cursor-pointer"
+                                        onClick={() => updateSearch({ enrichment: enrichment === "complete" ? undefined : "complete" })}
+                                    >
+                                        Enriched
+                                    </Badge>
+                                </div>
+                            </div>
+
+                            <Separator />
+
+                            {/* Connections */}
+                            <div>
+                                <p className="text-muted-foreground mb-2 text-xs font-medium uppercase tracking-wider">Min connections</p>
+                                <div className="flex gap-1">
+                                    {["1", "3", "5"].map(n => (
+                                        <Button
+                                            key={n}
+                                            variant={minConnections === n ? "default" : "outline"}
+                                            size="sm"
+                                            onClick={() => updateSearch({ minConnections: minConnections === n ? undefined : n })}
+                                        >
+                                            {n}+
+                                        </Button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Save / Clear */}
+                            {hasActiveFilters && (
+                                <>
+                                    <Separator />
+                                    <div className="flex gap-2">
+                                        <Button variant="outline" size="sm" className="flex-1" onClick={() => {
+                                            const name = prompt("Filter name:");
+                                            if (name) saveFilter(name, { type, q, sort, tags, size, after, enrichment, minConnections });
+                                        }}>
+                                            <Bookmark className="size-3.5" />
+                                            Save preset
+                                        </Button>
+                                        <Button variant="ghost" size="sm" className="flex-1" onClick={clearAllFilters}>
+                                            <X className="size-3.5" />
+                                            Clear all
+                                        </Button>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    </PopoverContent>
+                </Popover>
+
+                {/* View & grouping controls */}
                 <select
                     value={group ?? ""}
                     onChange={e => updateSearch({ group: e.target.value || undefined })}
-                    className="rounded-md border bg-background px-2 py-1.5 text-sm"
+                    className="rounded-md border bg-background px-2 py-2 text-sm"
                 >
                     <option value="">No grouping</option>
-                    <option value="type">By type</option>
-                    <option value="tag">By tag</option>
+                    <option value="type">Group by type</option>
+                    <option value="tag">Group by tag</option>
                 </select>
+
                 <select
                     value={collection ?? ""}
                     onChange={e => updateSearch({ collection: e.target.value || undefined })}
-                    className="rounded-md border bg-background px-2 py-1.5 text-sm"
+                    className="rounded-md border bg-background px-2 py-2 text-sm"
                 >
                     <option value="">All chunks</option>
                     {collections.map(c => (
@@ -359,6 +552,7 @@ function ChunksList() {
                 }}>
                     <FolderPlus className="size-3.5" />
                 </Button>
+
                 <div className="flex rounded-md border">
                     <button
                         onClick={() => updateSearch({ view: undefined })}
@@ -373,125 +567,72 @@ function ChunksList() {
                         <Columns3 className="size-3.5" />
                     </button>
                 </div>
-                <div className="flex gap-1">
-                    {(["good", "moderate", "warning", "critical"] as const).map(level => {
-                        const config: Record<string, { color: string; label: string }> = {
-                            good: { color: "#22c55e", label: "Good" },
-                            moderate: { color: "#f59e0b", label: "Moderate" },
-                            warning: { color: "#f97316", label: "Warning" },
-                            critical: { color: "#ef4444", label: "Critical" }
-                        };
-                        const c = config[level]!;
-                        return (
-                            <button
-                                key={level}
-                                onClick={() => updateSearch({ size: size === level ? undefined : level })}
-                                className={`rounded-full px-2 py-0.5 text-[10px] font-medium text-white ${size === level ? "ring-2 ring-offset-1" : "opacity-60 hover:opacity-80"}`}
-                                style={{ backgroundColor: c.color }}
-                            >
-                                {c.label}
-                            </button>
-                        );
-                    })}
-                </div>
-                <div className="flex gap-1">
-                    {[
-                        { label: "7d", value: "7" },
-                        { label: "30d", value: "30" },
-                        { label: "90d", value: "90" }
-                    ].map(opt => (
-                        <Button
-                            key={opt.value}
-                            variant={after === opt.value ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => updateSearch({ after: after === opt.value ? undefined : opt.value })}
-                        >
-                            {opt.label}
-                        </Button>
-                    ))}
-                </div>
-                <div className="flex gap-1">
-                    <Badge
-                        variant={enrichment === "missing" ? "default" : "outline"}
-                        size="sm"
-                        className="cursor-pointer text-[10px]"
-                        onClick={() => updateSearch({ enrichment: enrichment === "missing" ? undefined : "missing" })}
-                    >
-                        Needs enrichment
-                    </Badge>
-                    <Badge
-                        variant={enrichment === "complete" ? "default" : "outline"}
-                        size="sm"
-                        className="cursor-pointer text-[10px]"
-                        onClick={() => updateSearch({ enrichment: enrichment === "complete" ? undefined : "complete" })}
-                    >
-                        Enriched
-                    </Badge>
-                </div>
-                <div className="flex gap-1">
-                    {["1", "3", "5"].map(n => (
-                        <Button
-                            key={n}
-                            variant={minConnections === n ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => updateSearch({ minConnections: minConnections === n ? undefined : n })}
-                        >
-                            {n}+ conn
-                        </Button>
-                    ))}
-                </div>
-                {hasActiveFilters && (
-                    <Button variant="outline" size="sm" onClick={() => {
-                        const name = prompt("Filter name:");
-                        if (name) saveFilter(name, { type, q, sort, tags, size, after, enrichment, minConnections });
-                    }}>
-                        <Bookmark className="size-3.5" />
-                        Save
-                    </Button>
-                )}
             </div>
 
-            {(tagsQuery.data ?? []).length > 0 && (
-                <div className="mb-4 flex flex-wrap gap-1">
-                    {(tagsQuery.data ?? []).map(({ tag, count }) => (
-                        <Badge
-                            key={tag}
-                            variant={activeTags.includes(tag) ? "default" : "outline"}
-                            size="sm"
-                            className="cursor-pointer text-[10px]"
-                            onClick={() => toggleTag(tag)}
-                        >
-                            {tag} ({count})
+            {/* Active filter pills + clear all (shown below search when filters active) */}
+            {hasActiveFilters && (
+                <div className="mb-4 flex flex-wrap items-center gap-1.5">
+                    {type && (
+                        <Badge variant="secondary" size="sm" className="gap-1">
+                            Type: {type}
+                            <button onClick={() => updateSearch({ type: undefined })}><X className="size-2.5" /></button>
+                        </Badge>
+                    )}
+                    {q && (
+                        <Badge variant="secondary" size="sm" className="gap-1">
+                            Search: {q}
+                            <button onClick={() => { setSearchInput(""); updateSearch({ q: undefined }); }}><X className="size-2.5" /></button>
+                        </Badge>
+                    )}
+                    {sort && (
+                        <Badge variant="secondary" size="sm" className="gap-1">
+                            Sort: {sort}
+                            <button onClick={() => updateSearch({ sort: undefined })}><X className="size-2.5" /></button>
+                        </Badge>
+                    )}
+                    {activeTags.map(tag => (
+                        <Badge key={tag} variant="secondary" size="sm" className="gap-1">
+                            {tag}
+                            <button onClick={() => toggleTag(tag)}><X className="size-2.5" /></button>
                         </Badge>
                     ))}
+                    {size && (
+                        <Badge variant="secondary" size="sm" className="gap-1">
+                            Size: {size}
+                            <button onClick={() => updateSearch({ size: undefined })}><X className="size-2.5" /></button>
+                        </Badge>
+                    )}
+                    {after && (
+                        <Badge variant="secondary" size="sm" className="gap-1">
+                            Last {after}d
+                            <button onClick={() => updateSearch({ after: undefined })}><X className="size-2.5" /></button>
+                        </Badge>
+                    )}
+                    {enrichment && (
+                        <Badge variant="secondary" size="sm" className="gap-1">
+                            {enrichment === "missing" ? "Needs enrichment" : "Enriched"}
+                            <button onClick={() => updateSearch({ enrichment: undefined })}><X className="size-2.5" /></button>
+                        </Badge>
+                    )}
+                    {minConnections && (
+                        <Badge variant="secondary" size="sm" className="gap-1">
+                            {minConnections}+ connections
+                            <button onClick={() => updateSearch({ minConnections: undefined })}><X className="size-2.5" /></button>
+                        </Badge>
+                    )}
+                    <button
+                        onClick={clearAllFilters}
+                        className="text-muted-foreground hover:text-foreground ml-1 text-xs underline"
+                    >
+                        Clear all
+                    </button>
                 </div>
             )}
 
-            <div className="mb-4 flex flex-wrap gap-1.5">
-                {[
-                    { key: "connected", label: "Has connections", param: "minConnections", value: "1" },
-                    { key: "nosummary", label: "No summary", param: "enrichment", value: "missing" },
-                    { key: "large", label: "Large chunks", param: "size", value: "warning" },
-                    { key: "recent7", label: "Last 7 days", param: "after", value: "7" }
-                ].map(f => {
-                    const currentValue = { minConnections, enrichment, size, after }[f.param];
-                    const isActive = currentValue === f.value;
-                    return (
-                        <Badge
-                            key={f.key}
-                            variant={isActive ? "default" : "outline"}
-                            size="sm"
-                            className="cursor-pointer"
-                            onClick={() => updateSearch({ [f.param]: isActive ? undefined : f.value })}
-                        >
-                            {f.label}
-                        </Badge>
-                    );
-                })}
-            </div>
-
+            {/* Saved filter presets */}
             {savedFilters.length > 0 && (
-                <div className="mb-3 flex flex-wrap gap-1.5">
+                <div className="mb-3 flex flex-wrap items-center gap-1.5">
+                    <Filter className="text-muted-foreground size-3" />
                     {savedFilters.map(f => (
                         <Badge
                             key={f.name}
