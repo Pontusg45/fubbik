@@ -11,6 +11,7 @@ import { Separator } from "@/components/ui/separator";
 import { AiSection } from "@/features/chunks/ai-section";
 import { DeleteConnectionButton } from "@/features/chunks/delete-connection-button";
 import { LinkChunkDialog } from "@/features/chunks/link-chunk-dialog";
+import { SplitChunkDialog } from "@/features/chunks/split-chunk-dialog";
 import { VersionHistory } from "@/features/chunks/version-history";
 import { getUser } from "@/functions/get-user";
 import { api } from "@/utils/api";
@@ -99,6 +100,13 @@ function ChunkDetail() {
                     Back
                 </Button>
                 <div className="flex gap-2">
+                    <SplitChunkDialog
+                        chunkId={chunkId}
+                        title={chunk.title}
+                        content={chunk.content}
+                        type={chunk.type}
+                        tags={chunk.tags as string[]}
+                    />
                     <Button variant="outline" size="sm" render={<Link to="/chunks/$chunkId/edit" params={{ chunkId }} />}>
                         <Edit className="size-3.5" />
                         Edit
