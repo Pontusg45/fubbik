@@ -6,6 +6,10 @@ export interface ScannedChunk {
     content: string;
     type: string;
     tags: string[];
+    /** Directory relative to project root, used to group related chunks */
+    folder: string;
+    /** Whether this chunk is the index/README for its folder */
+    isIndex?: boolean;
 }
 
 interface ScanOptions {
@@ -42,7 +46,9 @@ export function scanProject(opts: ScanOptions): ScannedChunk[] {
                     title: docFileName(docFile),
                     content,
                     type: "guide",
-                    tags: ["documentation", "project"]
+                    tags: ["documentation", "project"],
+                    folder: ".",
+                    isIndex: docFile === "README.md"
                 });
             }
         }
@@ -54,12 +60,15 @@ export function scanProject(opts: ScanOptions): ScannedChunk[] {
         for (const mdPath of findFiles(docsDir, ".md")) {
             const content = readFileSync(mdPath, "utf-8");
             const rel = relative(dir, mdPath);
+            const folder = relative(dir, join(mdPath, ".."));
             const title = extractMarkdownTitle(content) ?? rel;
             chunks.push({
                 title,
                 content,
                 type: "guide",
-                tags: ["documentation", ...pathTags(rel)]
+                tags: ["documentation", ...pathTags(rel)],
+                folder,
+                isIndex: isIndexFile(basename(mdPath))
             });
         }
     }
@@ -74,11 +83,14 @@ export function scanProject(opts: ScanOptions): ScannedChunk[] {
         const content = readFileSync(mdPath, "utf-8");
         if (!content.trim()) continue;
         const title = extractMarkdownTitle(content) ?? rel;
+        const folder = relative(dir, join(mdPath, ".."));
         chunks.push({
             title,
             content,
             type: "guide",
-            tags: ["documentation", ...pathTags(rel)]
+            tags: ["documentation", ...pathTags(rel)],
+            folder,
+            isIndex: isIndexFile(basename(mdPath))
         });
     }
 
@@ -96,6 +108,11 @@ function docFileName(file: string): string {
         "CHANGELOG.md": "Changelog"
     };
     return map[file] ?? file;
+}
+
+function isIndexFile(fileName: string): boolean {
+    const lower = fileName.toLowerCase();
+    return lower === "readme.md" || lower === "index.md";
 }
 
 function extractMarkdownTitle(content: string): string | null {
