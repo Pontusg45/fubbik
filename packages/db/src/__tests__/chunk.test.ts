@@ -1,7 +1,7 @@
 import { getTableColumns } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 
-import { chunk, chunkConnection } from "./chunk";
+import { chunk, chunkConnection } from "../schema/chunk";
 
 describe("chunk table", () => {
     it("has expected columns", () => {
