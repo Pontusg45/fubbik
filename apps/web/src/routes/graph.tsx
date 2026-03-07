@@ -63,6 +63,9 @@ function GraphView() {
     // Collapsible clusters
     const [collapsedParents, setCollapsedParents] = useState<Set<string>>(new Set());
 
+    // Dragged node positions (persist across layout changes)
+    const [draggedPositions, setDraggedPositions] = useState<Map<string, { x: number; y: number }>>(new Map());
+
     // Active types/relations for legend
     const activeTypes = useMemo(() => new Set((data?.chunks ?? []).map(c => c.type)), [data]);
     const activeRelations = useMemo(() => new Set((data?.connections ?? []).map(c => c.relation)), [data]);
@@ -355,12 +358,14 @@ function GraphView() {
         }
 
         const layoutNodes = rawNodes.map(node => {
+            const dragged = draggedPositions.get(node.id);
+            if (dragged) return { ...node, position: dragged };
             const p = pos.get(node.id) ?? { x: 0, y: 0 };
             return { ...node, position: { x: p.x - 100, y: p.y - 25 } };
         });
 
         return { layoutNodes, layoutEdges: rawEdges };
-    }, [data, filterTypes, filterRelations, collapsedParents]);
+    }, [data, filterTypes, filterRelations, collapsedParents, draggedPositions]);
 
     const focusNeighbors = useMemo(() => {
         if (!focusedNodeId) return null;
@@ -498,6 +503,13 @@ function GraphView() {
                     if (node.id === MAIN_NODE_ID) return;
                     setHoveredNode({ id: node.id, x: event.clientX, y: event.clientY });
                 }}
+                onNodeDragStop={(_, node) => {
+                    setDraggedPositions(prev => {
+                        const next = new Map(prev);
+                        next.set(node.id, node.position);
+                        return next;
+                    });
+                }}
                 onNodeMouseLeave={() => setHoveredNode(null)}
                 onEdgeMouseEnter={(_, edge) => {
                     setEdges(es =>
@@ -556,6 +568,14 @@ function GraphView() {
                     placeholder="Search nodes..."
                     className="bg-background/80 focus:ring-ring w-36 rounded-md border px-2.5 py-1.5 text-xs backdrop-blur-sm focus:ring-2 focus:outline-none"
                 />
+                {draggedPositions.size > 0 && (
+                    <button
+                        onClick={() => setDraggedPositions(new Map())}
+                        className="text-muted-foreground hover:text-foreground rounded-md border bg-background/80 px-2.5 py-1.5 text-xs backdrop-blur-sm"
+                    >
+                        Reset layout
+                    </button>
+                )}
                 <span className="text-muted-foreground rounded-lg border bg-background/80 px-3 py-1.5 text-xs backdrop-blur-sm">
                     {nodes.length - 1} · {edges.length}
                 </span>
