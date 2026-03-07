@@ -3,6 +3,7 @@ import { Cause, Effect, Option } from "effect";
 import { Elysia } from "elysia";
 
 import { aiRoutes } from "./ai/routes";
+import { enrichRoutes } from "./enrich/routes";
 import { chunkRoutes } from "./chunks/routes";
 import { connectionRoutes } from "./connections/routes";
 import type { Session } from "./context";
@@ -91,6 +92,7 @@ export const api = new Elysia({ prefix: "/api" })
     .use(connectionRoutes)
     .use(graphRoutes)
     .use(aiRoutes)
+    .use(enrichRoutes)
     .use(tagRoutes);
 
 export type Api = typeof api;
