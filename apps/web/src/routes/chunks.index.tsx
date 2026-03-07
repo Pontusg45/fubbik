@@ -61,7 +61,7 @@ function ChunksList() {
 
     useEffect(() => {
         setSelectedIndex(-1);
-    }, [chunks]);
+    }, [chunksQuery.dataUpdatedAt]);
 
     useEffect(() => {
         function handleKeyDown(e: KeyboardEvent) {

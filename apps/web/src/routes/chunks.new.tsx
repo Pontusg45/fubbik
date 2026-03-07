@@ -1,7 +1,7 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, FileText, Loader2, Sparkles } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
@@ -36,6 +36,32 @@ function NewChunk() {
     const [tags, setTags] = useState<string[]>([]);
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [aiPrompt, setAiPrompt] = useState("");
+    const [debouncedTitle, setDebouncedTitle] = useState("");
+
+    useEffect(() => {
+        const timer = setTimeout(() => setDebouncedTitle(title), 500);
+        return () => clearTimeout(timer);
+    }, [title]);
+
+    const duplicateQuery = useQuery({
+        queryKey: ["duplicate-check", debouncedTitle],
+        queryFn: async () => {
+            if (!debouncedTitle.trim() || debouncedTitle.length < 3) return [];
+            try {
+                const result = unwrapEden(
+                    await api.api.chunks.get({ query: { search: debouncedTitle, limit: "3" } })
+                );
+                return result?.chunks?.filter(
+                    (c: { title: string }) => c.title.toLowerCase() !== debouncedTitle.toLowerCase()
+                ).slice(0, 3) ?? [];
+            } catch {
+                return [];
+            }
+        },
+        enabled: debouncedTitle.length >= 3
+    });
+
+    const duplicates = duplicateQuery.data ?? [];
 
     const generateMutation = useMutation({
         mutationFn: async () => {
@@ -183,6 +209,24 @@ function NewChunk() {
                             className="bg-background focus:ring-ring w-full rounded-md border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
                         />
                         {errors.title && <p className="text-destructive mt-1 text-xs">{errors.title}</p>}
+                        {duplicates.length > 0 && (
+                            <div className="mt-2 rounded-md border border-yellow-500/30 bg-yellow-500/10 px-3 py-2">
+                                <p className="text-xs font-medium text-yellow-600 dark:text-yellow-400">Similar chunks exist:</p>
+                                <ul className="mt-1 space-y-0.5">
+                                    {duplicates.map((d: { id: string; title: string }) => (
+                                        <li key={d.id} className="text-xs">
+                                            <Link
+                                                to="/chunks/$chunkId"
+                                                params={{ chunkId: d.id }}
+                                                className="text-yellow-600 underline dark:text-yellow-400"
+                                            >
+                                                {d.title}
+                                            </Link>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
                     </div>
 
                     <div>
