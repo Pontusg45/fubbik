@@ -55,8 +55,11 @@ function saveStore(store: Store, dir?: string): void {
     writeFileSync(storePath(dir), JSON.stringify(store, null, 2));
 }
 
+let _idSeq = 0;
 function generateId(): string {
-    return `c-${Date.now().toString(36)}`;
+    const seq = (_idSeq++).toString(36);
+    const rand = crypto.randomUUID().slice(0, 8);
+    return `c-${Date.now().toString(36)}${seq}${rand}`;
 }
 
 export function addChunk(data: { title: string; content: string; type: string; tags: string[] }, dir?: string): Chunk {
