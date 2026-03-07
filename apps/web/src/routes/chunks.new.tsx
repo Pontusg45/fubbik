@@ -50,9 +50,9 @@ function NewChunk() {
             try {
                 const result = unwrapEden(
                     await api.api.chunks.get({ query: { search: debouncedTitle, limit: "3" } })
-                );
+                ) as { chunks?: { id: string; title: string }[] } | null;
                 return result?.chunks?.filter(
-                    (c: { title: string }) => c.title.toLowerCase() !== debouncedTitle.toLowerCase()
+                    c => c.title.toLowerCase() !== debouncedTitle.toLowerCase()
                 ).slice(0, 3) ?? [];
             } catch {
                 return [];
