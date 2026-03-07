@@ -1017,6 +1017,7 @@ function GraphViewInner() {
                 onInit={useCallback(() => {
                     initialFitDoneRef.current = true;
                 }, [])}
+                minZoom={0.05}
                 colorMode={isDark ? "dark" : "light"}
             >
                 <Background variant={BackgroundVariant.Dots} gap={20} size={1} color={isDark ? "rgba(148,163,184,0.15)" : "rgba(100,116,139,0.2)"} />
