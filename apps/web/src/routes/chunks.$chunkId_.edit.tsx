@@ -13,7 +13,7 @@ import { MarkdownEditor } from "@/features/editor/markdown-editor";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
-export const Route = createFileRoute("/chunks/$chunkId/edit")({
+export const Route = createFileRoute("/chunks/$chunkId_/edit")({
     component: EditChunk,
     beforeLoad: async () => {
         try {
