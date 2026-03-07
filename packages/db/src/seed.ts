@@ -1,7 +1,7 @@
 import { resolve } from "path";
 
 import { config } from "dotenv";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 
 import { user } from "./schema/auth";
@@ -925,4 +925,62 @@ for (const conn of connections) {
 console.log(`  ✓ ${connections.length} connections`);
 
 console.log(`\n✅ Database seeded: ${chunks.length} chunks, ${connections.length} connections`);
+
+// Attempt to enrich all seeded chunks via Ollama
+const OLLAMA_URL = process.env.OLLAMA_URL ?? "http://localhost:11434";
+try {
+    const res = await fetch(`${OLLAMA_URL}/api/tags`, { signal: AbortSignal.timeout(2000) });
+    if (res.ok) {
+        console.log("\nEnriching chunks via Ollama...");
+        for (const c of chunks) {
+            try {
+                const genRes = await fetch(`${OLLAMA_URL}/api/generate`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        model: "llama3.2",
+                        prompt: `Analyze this knowledge chunk and return JSON with these fields:
+- "summary": a 1-2 sentence TL;DR
+- "aliases": array of 3-8 alternative names or search terms
+- "notAbout": array of 2-5 terms this could be confused with but is NOT about
+
+Title: ${c.title}
+Type: ${c.type}
+Tags: ${c.tags.join(", ")}
+Content: ${c.content}`,
+                        format: "json",
+                        stream: false
+                    })
+                });
+                if (!genRes.ok) continue;
+                const genData = (await genRes.json()) as { response: string };
+                const metadata = JSON.parse(genData.response) as { summary: string; aliases: string[]; notAbout: string[] };
+
+                const embRes = await fetch(`${OLLAMA_URL}/api/embeddings`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        model: "nomic-embed-text",
+                        prompt: `search_document: ${c.title}\n${metadata.summary}\n${c.content}`
+                    })
+                });
+                if (!embRes.ok) continue;
+                const embData = (await embRes.json()) as { embedding: number[] };
+
+                const embStr = `[${embData.embedding.join(",")}]`;
+                await db.execute(
+                    sql`UPDATE chunk SET summary = ${metadata.summary}, aliases = ${JSON.stringify(metadata.aliases)}::jsonb, not_about = ${JSON.stringify(metadata.notAbout)}::jsonb, embedding = ${embStr}::vector WHERE id = ${c.id}`
+                );
+                console.log(`  ✓ Enriched: ${c.title}`);
+            } catch {
+                console.log(`  ✗ Failed: ${c.title}`);
+            }
+        }
+    } else {
+        console.log("\nOllama not available — skipping enrichment");
+    }
+} catch {
+    console.log("\nOllama not available — skipping enrichment");
+}
+
 process.exit(0);
