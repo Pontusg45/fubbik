@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import "@xyflow/react/dist/style.css";
 import { Background, BackgroundVariant, Controls, MiniMap, ReactFlow, useEdgesState, useNodesState, type Edge, type Node } from "@xyflow/react";
 import { useEffect, useMemo, useState } from "react";
@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from "react";
 import { relationColor } from "@/features/chunks/relation-colors";
 import { FloatingEdge } from "@/features/graph/floating-edge";
 import { buildQuadtree, computeRepulsion } from "@/features/graph/quadtree";
+import { GraphDetailPanel } from "@/features/graph/graph-detail-panel";
 import { GraphFilters } from "@/features/graph/graph-filters";
 import { GraphLegend } from "@/features/graph/graph-legend";
 import { GraphNode } from "@/features/graph/graph-node";
@@ -42,7 +43,7 @@ const TYPE_COLORS: Record<string, { bg: string; border: string }> = {
 };
 
 function GraphView() {
-    const navigate = useNavigate();
+    const [selectedChunkId, setSelectedChunkId] = useState<string | null>(null);
 
     const { data, isLoading } = useQuery({
         queryKey: ["graph"],
@@ -477,7 +478,20 @@ function GraphView() {
     }
 
     return (
-        <div className="relative h-[calc(100vh-4rem)] [&_.react-flow__handle]:invisible [&_.react-flow__node]:transition-[transform] [&_.react-flow__node]:duration-500 [&_.react-flow__node]:ease-out">
+        <div className="flex h-[calc(100vh-4rem)]">
+            {selectedChunkId && (
+                <div className="w-[380px] shrink-0 overflow-hidden">
+                    <GraphDetailPanel
+                        chunkId={selectedChunkId}
+                        onClose={() => setSelectedChunkId(null)}
+                        onNavigateToChunk={(id) => {
+                            setSelectedChunkId(id);
+                            setFocusedNodeId(id);
+                        }}
+                    />
+                </div>
+            )}
+            <div className="relative flex-1 [&_.react-flow__handle]:invisible [&_.react-flow__node]:transition-[transform] [&_.react-flow__node]:duration-500 [&_.react-flow__node]:ease-out">
             <ReactFlow
                 nodes={nodes}
                 edges={edges}
@@ -488,12 +502,15 @@ function GraphView() {
                 onNodeClick={(_, node) => {
                     if (node.id === MAIN_NODE_ID) return;
                     if (focusedNodeId === node.id) {
-                        navigate({ to: "/chunks/$chunkId", params: { chunkId: node.id } });
+                        setSelectedChunkId(node.id);
                     } else {
                         setFocusedNodeId(node.id);
                     }
                 }}
-                onPaneClick={() => setFocusedNodeId(null)}
+                onPaneClick={() => {
+                    setFocusedNodeId(null);
+                    setSelectedChunkId(null);
+                }}
                 onNodeDoubleClick={(_, node) => {
                     if (node.id === MAIN_NODE_ID) return;
                     setCollapsedParents(prev => {
@@ -609,6 +626,7 @@ function GraphView() {
                     </div>
                 );
             })()}
+            </div>
         </div>
     );
 }
