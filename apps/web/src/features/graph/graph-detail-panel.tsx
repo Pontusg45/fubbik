@@ -24,7 +24,7 @@ export function GraphDetailPanel({ chunkId, onClose, onNavigateToChunk }: {
     });
 
     return (
-        <div className="flex h-full flex-col border-r bg-background">
+        <div className="flex h-full flex-col md:border-r bg-background">
             {/* Header */}
             <div className="flex items-center justify-between border-b px-4 py-3">
                 <span className="text-xs font-medium text-muted-foreground">Chunk Details</span>

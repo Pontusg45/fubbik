@@ -11,6 +11,7 @@ import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { relationColor } from "@/features/chunks/relation-colors";
 import { FloatingEdge } from "@/features/graph/floating-edge";
 import { buildQuadtree, computeRepulsion } from "@/features/graph/quadtree";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { GraphDetailPanel } from "@/features/graph/graph-detail-panel";
 import { GraphFilters } from "@/features/graph/graph-filters";
 import { GraphLegend } from "@/features/graph/graph-legend";
@@ -50,6 +51,16 @@ function GraphViewInner() {
     const [panelWidth, setPanelWidth] = useState(380);
     const { setCenter, getZoom } = useReactFlow();
     const navigate = useNavigate();
+
+    const [isMobile, setIsMobile] = useState(false);
+
+    useEffect(() => {
+        const mql = window.matchMedia("(max-width: 768px)");
+        setIsMobile(mql.matches);
+        function handler(e: MediaQueryListEvent) { setIsMobile(e.matches); }
+        mql.addEventListener("change", handler);
+        return () => mql.removeEventListener("change", handler);
+    }, []);
 
     const { data, isLoading } = useQuery({
         queryKey: ["graph"],
@@ -591,43 +602,61 @@ function GraphViewInner() {
 
     return (
         <div className="flex h-[calc(100vh-4rem)]">
-            <div
-                className={`relative shrink-0 overflow-hidden transition-[width] duration-300 ease-in-out ${selectedChunkId ? "" : "w-0"}`}
-                style={selectedChunkId ? { width: panelWidth } : undefined}
-            >
-                {selectedChunkId && (
-                    <div className="h-full" style={{ width: panelWidth }}>
-                        <GraphDetailPanel
-                            chunkId={selectedChunkId}
-                            onClose={() => setSelectedChunkId(null)}
-                            onNavigateToChunk={(id) => {
-                                setSelectedChunkId(id);
-                                setFocusedNodeId(id);
+            {!isMobile && (
+                <div
+                    className={`relative shrink-0 overflow-hidden transition-[width] duration-300 ease-in-out ${selectedChunkId ? "" : "w-0"}`}
+                    style={selectedChunkId ? { width: panelWidth } : undefined}
+                >
+                    {selectedChunkId && (
+                        <div className="h-full" style={{ width: panelWidth }}>
+                            <GraphDetailPanel
+                                chunkId={selectedChunkId}
+                                onClose={() => setSelectedChunkId(null)}
+                                onNavigateToChunk={(id) => {
+                                    setSelectedChunkId(id);
+                                    setFocusedNodeId(id);
+                                }}
+                            />
+                        </div>
+                    )}
+                    {selectedChunkId && (
+                        <div
+                            className="absolute top-0 right-0 h-full w-1 cursor-col-resize hover:bg-primary/30 active:bg-primary/50"
+                            onMouseDown={(e) => {
+                                e.preventDefault();
+                                const startX = e.clientX;
+                                const startWidth = panelWidth;
+                                function onMouseMove(ev: MouseEvent) {
+                                    const newWidth = Math.max(280, Math.min(600, startWidth + ev.clientX - startX));
+                                    setPanelWidth(newWidth);
+                                }
+                                function onMouseUp() {
+                                    document.removeEventListener("mousemove", onMouseMove);
+                                    document.removeEventListener("mouseup", onMouseUp);
+                                }
+                                document.addEventListener("mousemove", onMouseMove);
+                                document.addEventListener("mouseup", onMouseUp);
                             }}
                         />
-                    </div>
-                )}
-                {selectedChunkId && (
-                    <div
-                        className="absolute top-0 right-0 h-full w-1 cursor-col-resize hover:bg-primary/30 active:bg-primary/50"
-                        onMouseDown={(e) => {
-                            e.preventDefault();
-                            const startX = e.clientX;
-                            const startWidth = panelWidth;
-                            function onMouseMove(ev: MouseEvent) {
-                                const newWidth = Math.max(280, Math.min(600, startWidth + ev.clientX - startX));
-                                setPanelWidth(newWidth);
-                            }
-                            function onMouseUp() {
-                                document.removeEventListener("mousemove", onMouseMove);
-                                document.removeEventListener("mouseup", onMouseUp);
-                            }
-                            document.addEventListener("mousemove", onMouseMove);
-                            document.addEventListener("mouseup", onMouseUp);
-                        }}
-                    />
-                )}
-            </div>
+                    )}
+                </div>
+            )}
+            {isMobile && (
+                <Sheet open={!!selectedChunkId} onOpenChange={(open) => { if (!open) setSelectedChunkId(null); }}>
+                    <SheetContent side="bottom" showCloseButton={false} className="h-[70vh] overflow-y-auto p-0">
+                        {selectedChunkId && (
+                            <GraphDetailPanel
+                                chunkId={selectedChunkId}
+                                onClose={() => setSelectedChunkId(null)}
+                                onNavigateToChunk={(id) => {
+                                    setSelectedChunkId(id);
+                                    setFocusedNodeId(id);
+                                }}
+                            />
+                        )}
+                    </SheetContent>
+                </Sheet>
+            )}
             <div className="relative flex-1 [&_.react-flow__handle]:invisible [&_.react-flow__node]:transition-[transform] [&_.react-flow__node]:duration-500 [&_.react-flow__node]:ease-out">
             <ReactFlow
                 nodes={nodes}
@@ -710,14 +739,16 @@ function GraphViewInner() {
             </ReactFlow>
 
             {/* Top-left: Filters */}
-            <GraphFilters
-                types={allTypes}
-                relations={allRelations}
-                activeTypes={filterTypes}
-                activeRelations={filterRelations}
-                onToggleType={toggleType}
-                onToggleRelation={toggleRelation}
-            />
+            <div className="max-md:hidden">
+                <GraphFilters
+                    types={allTypes}
+                    relations={allRelations}
+                    activeTypes={filterTypes}
+                    activeRelations={filterRelations}
+                    onToggleType={toggleType}
+                    onToggleRelation={toggleRelation}
+                />
+            </div>
 
             {/* Top-right: Search + Stats */}
             <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
