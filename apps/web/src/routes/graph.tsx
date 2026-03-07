@@ -45,7 +45,7 @@ const TYPE_COLORS: Record<string, { bg: string; border: string }> = {
 function GraphViewInner() {
     const [selectedChunkId, setSelectedChunkId] = useState<string | null>(null);
     const [panelWidth, setPanelWidth] = useState(380);
-    const { setCenter } = useReactFlow();
+    const { setCenter, getZoom } = useReactFlow();
     const navigate = useNavigate();
 
     const { data, isLoading } = useQuery({
@@ -524,7 +524,7 @@ function GraphViewInner() {
         if (!node) return;
         const x = node.position.x + ((node.measured?.width ?? 180) / 2);
         const y = node.position.y + ((node.measured?.height ?? 40) / 2);
-        setCenter(x, y, { duration: 400 });
+        setCenter(x, y, { duration: 400, zoom: getZoom() });
     }, [selectedChunkId]);
 
     useEffect(() => {
@@ -619,11 +619,8 @@ function GraphViewInner() {
                 onEdgesChange={onEdgesChange}
                 onNodeClick={(_, node) => {
                     if (node.id === MAIN_NODE_ID) return;
-                    if (focusedNodeId === node.id) {
-                        setSelectedChunkId(node.id);
-                    } else {
-                        setFocusedNodeId(node.id);
-                    }
+                    setSelectedChunkId(node.id);
+                    setFocusedNodeId(node.id);
                 }}
                 onPaneClick={() => {
                     setFocusedNodeId(null);
