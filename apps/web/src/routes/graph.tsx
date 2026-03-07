@@ -433,12 +433,14 @@ function GraphViewInner() {
         setNodes(
             layoutNodes.map(node => {
                 if (node.id === MAIN_NODE_ID) return node;
+                const isMatch = matchIds.has(node.id);
                 return {
                     ...node,
                     style: {
                         ...(node.style as Record<string, unknown>),
-                        opacity: matchIds.has(node.id) ? 1 : 0.15,
-                        transition: "opacity 0.2s"
+                        opacity: isMatch ? 1 : 0.15,
+                        boxShadow: isMatch ? `0 0 12px 2px ${(node.style as Record<string, string>)?.borderColor ?? "#475569"}` : "none",
+                        transition: "opacity 0.2s, box-shadow 0.2s"
                     }
                 };
             })
