@@ -225,6 +225,12 @@ function GraphView() {
             }
         }
 
+        // Build type lookup for clustering
+        const nodeType = new Map<string, string>();
+        for (const c of chunks) {
+            if (!hiddenIds.has(c.id)) nodeType.set(c.id, c.type);
+        }
+
         // Build edge index for spring forces
         const edgePairs: [string, string][] = rawEdges.map(e => [e.source, e.target]);
 
@@ -273,6 +279,28 @@ function GraphView() {
                 a.vy += fy;
                 b.vx -= fx;
                 b.vy -= fy;
+            }
+
+            // Type clustering — pull toward type centroid
+            const typeCentroids = new Map<string, { x: number; y: number; count: number }>();
+            for (const [id, p] of pos) {
+                const t = nodeType.get(id);
+                if (!t) continue;
+                const c = typeCentroids.get(t) ?? { x: 0, y: 0, count: 0 };
+                c.x += p.x;
+                c.y += p.y;
+                c.count++;
+                typeCentroids.set(t, c);
+            }
+            const CLUSTER_K = 0.002;
+            for (const [id, p] of pos) {
+                const t = nodeType.get(id);
+                if (!t) continue;
+                const c = typeCentroids.get(t)!;
+                const cx = c.x / c.count;
+                const cy = c.y / c.count;
+                p.vx += (cx - p.x) * CLUSTER_K * temp;
+                p.vy += (cy - p.y) * CLUSTER_K * temp;
             }
 
             // Center gravity
