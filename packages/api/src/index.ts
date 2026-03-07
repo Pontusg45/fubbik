@@ -49,9 +49,14 @@ const DEV_SESSION: Session = {
 };
 
 async function getSession(headers: Headers): Promise<Session> {
-    const session = await auth.api.getSession({ headers });
-    if (!session && isDev) return DEV_SESSION;
-    return session;
+    try {
+        const session = await auth.api.getSession({ headers });
+        if (!session && isDev) return DEV_SESSION;
+        return session;
+    } catch {
+        if (isDev) return DEV_SESSION;
+        return null as unknown as Session;
+    }
 }
 
 export const api = new Elysia({ prefix: "/api" })

@@ -1,14 +1,13 @@
 import { Effect } from "effect";
 import { Elysia, t } from "elysia";
 
-import { optionalSession, requireSession } from "../require-session";
+import { requireSession } from "../require-session";
 import * as chunkService from "./service";
 
 export const chunkRoutes = new Elysia()
     .get(
         "/chunks",
-        ctx =>
-            Effect.runPromise(optionalSession(ctx).pipe(Effect.flatMap(session => chunkService.listChunks(session?.user.id, ctx.query)))),
+        ctx => Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(session => chunkService.listChunks(session.user.id, ctx.query)))),
         {
             query: t.Object({
                 type: t.Optional(t.String()),
@@ -27,7 +26,7 @@ export const chunkRoutes = new Elysia()
         }
     )
     .get("/chunks/export", ctx =>
-        Effect.runPromise(optionalSession(ctx).pipe(Effect.flatMap(session => chunkService.exportChunks(session?.user.id))))
+        Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(session => chunkService.exportChunks(session.user.id))))
     )
     .post(
         "/chunks/import",
@@ -55,9 +54,7 @@ export const chunkRoutes = new Elysia()
     .get(
         "/chunks/search/semantic",
         ctx =>
-            Effect.runPromise(
-                optionalSession(ctx).pipe(Effect.flatMap(session => chunkService.semanticSearch(session?.user.id, ctx.query)))
-            ),
+            Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(session => chunkService.semanticSearch(session.user.id, ctx.query)))),
         {
             query: t.Object({
                 q: t.String(),
@@ -68,14 +65,10 @@ export const chunkRoutes = new Elysia()
         }
     )
     .get("/chunks/:id/history", ctx =>
-        Effect.runPromise(
-            optionalSession(ctx).pipe(Effect.flatMap(session => chunkService.getChunkHistory(ctx.params.id, session?.user.id)))
-        )
+        Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(session => chunkService.getChunkHistory(ctx.params.id, session.user.id))))
     )
     .get("/chunks/:id", ctx =>
-        Effect.runPromise(
-            optionalSession(ctx).pipe(Effect.flatMap(session => chunkService.getChunkDetail(ctx.params.id, session?.user.id)))
-        )
+        Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(session => chunkService.getChunkDetail(ctx.params.id, session.user.id))))
     )
     .post(
         "/chunks",
