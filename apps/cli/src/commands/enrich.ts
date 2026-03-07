@@ -27,7 +27,7 @@ export const enrichCommand = new Command("enrich")
                 outputError(`Failed to enrich chunks: ${res.status}`);
                 process.exit(1);
             }
-            const data = await res.json();
+            const data = (await res.json()) as { enriched: number };
             output(cmd, data, `Enriched ${data.enriched} chunks`);
         } else {
             outputError("Provide a chunk ID or use --all");
