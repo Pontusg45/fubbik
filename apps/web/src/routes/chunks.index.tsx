@@ -1,6 +1,21 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Bookmark, ChevronRight, Clock, Columns3, FileText, Filter, FolderPlus, List, Pin, Plus, Search, SlidersHorizontal, Trash2, X } from "lucide-react";
+import {
+    Bookmark,
+    ChevronRight,
+    Clock,
+    Columns3,
+    FileText,
+    Filter,
+    FolderPlus,
+    List,
+    Pin,
+    Plus,
+    Search,
+    SlidersHorizontal,
+    Trash2,
+    X
+} from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
@@ -99,9 +114,7 @@ function ChunksList() {
 
     function toggleTag(tag: string) {
         const current = activeTags;
-        const next = current.includes(tag)
-            ? current.filter(t => t !== tag)
-            : [...current, tag];
+        const next = current.includes(tag) ? current.filter(t => t !== tag) : [...current, tag];
         updateSearch({ tags: next.length > 0 ? next.join(",") : undefined });
     }
 
@@ -118,7 +131,7 @@ function ChunksList() {
             const bPinned = pinnedSet.has(b.id) ? 0 : 1;
             return aPinned - bPinned;
         });
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- chunksQuery.data is stable per fetch
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- chunksQuery.data is stable per fetch
     }, [chunksQuery.data, size, pinnedIds]);
 
     const collectionFilteredChunks = useMemo(() => {
@@ -212,7 +225,22 @@ function ChunksList() {
 
     const types = ["note", "document", "reference", "schema", "checklist"];
 
-    function updateSearch(params: Partial<{ type: string; q: string; page: number; sort: string; tags: string; size: string; after: string; enrichment: string; minConnections: string; group: string; collection: string; view: string }>) {
+    function updateSearch(
+        params: Partial<{
+            type: string;
+            q: string;
+            page: number;
+            sort: string;
+            tags: string;
+            size: string;
+            after: string;
+            enrichment: string;
+            minConnections: string;
+            group: string;
+            collection: string;
+            view: string;
+        }>
+    ) {
         navigate({
             search: {
                 type: params.type !== undefined ? params.type : type,
@@ -330,13 +358,11 @@ function ChunksList() {
 
                 {/* Filters popover */}
                 <Popover>
-                    <PopoverTrigger
-                        className="inline-flex items-center gap-1.5 rounded-md border px-3 py-2 text-sm font-medium transition-colors hover:bg-muted"
-                    >
+                    <PopoverTrigger className="hover:bg-muted inline-flex items-center gap-1.5 rounded-md border px-3 py-2 text-sm font-medium transition-colors">
                         <SlidersHorizontal className="size-3.5" />
                         Filters
                         {activeFilterCount > 0 && (
-                            <span className="flex size-5 items-center justify-center rounded-full bg-primary text-[10px] font-semibold text-primary-foreground">
+                            <span className="bg-primary text-primary-foreground flex size-5 items-center justify-center rounded-full text-[10px] font-semibold">
                                 {activeFilterCount}
                             </span>
                         )}
@@ -345,9 +371,13 @@ function ChunksList() {
                         <div className="space-y-4">
                             {/* Type */}
                             <div>
-                                <p className="text-muted-foreground mb-2 text-xs font-medium uppercase tracking-wider">Type</p>
+                                <p className="text-muted-foreground mb-2 text-xs font-medium tracking-wider uppercase">Type</p>
                                 <div className="flex flex-wrap gap-1">
-                                    <Button variant={!type ? "default" : "outline"} size="sm" onClick={() => updateSearch({ type: undefined })}>
+                                    <Button
+                                        variant={!type ? "default" : "outline"}
+                                        size="sm"
+                                        onClick={() => updateSearch({ type: undefined })}
+                                    >
                                         All
                                     </Button>
                                     {types.map(t => (
@@ -367,14 +397,14 @@ function ChunksList() {
 
                             {/* Sort */}
                             <div>
-                                <p className="text-muted-foreground mb-2 text-xs font-medium uppercase tracking-wider">Sort</p>
+                                <p className="text-muted-foreground mb-2 text-xs font-medium tracking-wider uppercase">Sort</p>
                                 {q ? (
                                     <span className="text-muted-foreground text-xs italic">Sorted by relevance (search active)</span>
                                 ) : (
                                     <select
                                         value={sort ?? "newest"}
                                         onChange={e => updateSearch({ sort: e.target.value === "newest" ? undefined : e.target.value })}
-                                        className="w-full rounded-md border bg-background px-2 py-1.5 text-sm"
+                                        className="bg-background w-full rounded-md border px-2 py-1.5 text-sm"
                                     >
                                         <option value="newest">Newest first</option>
                                         <option value="oldest">Oldest first</option>
@@ -390,7 +420,7 @@ function ChunksList() {
                             {(tagsQuery.data ?? []).length > 0 && (
                                 <>
                                     <div>
-                                        <p className="text-muted-foreground mb-2 text-xs font-medium uppercase tracking-wider">Tags</p>
+                                        <p className="text-muted-foreground mb-2 text-xs font-medium tracking-wider uppercase">Tags</p>
                                         <div className="flex flex-wrap gap-1">
                                             {(tagsQuery.data ?? []).map(({ tag, count }) => (
                                                 <Badge
@@ -411,7 +441,7 @@ function ChunksList() {
 
                             {/* Date range */}
                             <div>
-                                <p className="text-muted-foreground mb-2 text-xs font-medium uppercase tracking-wider">Date range</p>
+                                <p className="text-muted-foreground mb-2 text-xs font-medium tracking-wider uppercase">Date range</p>
                                 <div className="flex gap-1">
                                     {[
                                         { label: "7 days", value: "7" },
@@ -434,7 +464,7 @@ function ChunksList() {
 
                             {/* Content size */}
                             <div>
-                                <p className="text-muted-foreground mb-2 text-xs font-medium uppercase tracking-wider">Content size</p>
+                                <p className="text-muted-foreground mb-2 text-xs font-medium tracking-wider uppercase">Content size</p>
                                 <div className="flex gap-1">
                                     {(["good", "moderate", "warning", "critical"] as const).map(level => {
                                         const config: Record<string, { color: string; label: string }> = {
@@ -462,7 +492,7 @@ function ChunksList() {
 
                             {/* Enrichment */}
                             <div>
-                                <p className="text-muted-foreground mb-2 text-xs font-medium uppercase tracking-wider">Enrichment</p>
+                                <p className="text-muted-foreground mb-2 text-xs font-medium tracking-wider uppercase">Enrichment</p>
                                 <div className="flex gap-1">
                                     <Badge
                                         variant={enrichment === "missing" ? "default" : "outline"}
@@ -487,7 +517,7 @@ function ChunksList() {
 
                             {/* Connections */}
                             <div>
-                                <p className="text-muted-foreground mb-2 text-xs font-medium uppercase tracking-wider">Min connections</p>
+                                <p className="text-muted-foreground mb-2 text-xs font-medium tracking-wider uppercase">Min connections</p>
                                 <div className="flex gap-1">
                                     {["1", "3", "5"].map(n => (
                                         <Button
@@ -507,10 +537,16 @@ function ChunksList() {
                                 <>
                                     <Separator />
                                     <div className="flex gap-2">
-                                        <Button variant="outline" size="sm" className="flex-1" onClick={() => {
-                                            const name = prompt("Filter name:");
-                                            if (name) saveFilter(name, { type, q, sort, tags, size, after, enrichment, minConnections });
-                                        }}>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="flex-1"
+                                            onClick={() => {
+                                                const name = prompt("Filter name:");
+                                                if (name)
+                                                    saveFilter(name, { type, q, sort, tags, size, after, enrichment, minConnections });
+                                            }}
+                                        >
                                             <Bookmark className="size-3.5" />
                                             Save preset
                                         </Button>
@@ -529,7 +565,7 @@ function ChunksList() {
                 <select
                     value={group ?? ""}
                     onChange={e => updateSearch({ group: e.target.value || undefined })}
-                    className="rounded-md border bg-background px-2 py-2 text-sm"
+                    className="bg-background rounded-md border px-2 py-2 text-sm"
                 >
                     <option value="">No grouping</option>
                     <option value="type">Group by type</option>
@@ -539,25 +575,28 @@ function ChunksList() {
                 <select
                     value={collection ?? ""}
                     onChange={e => updateSearch({ collection: e.target.value || undefined })}
-                    className="rounded-md border bg-background px-2 py-2 text-sm"
+                    className="bg-background rounded-md border px-2 py-2 text-sm"
                 >
                     <option value="">All chunks</option>
                     {collections.map(c => (
-                        <option key={c.id} value={c.id}>{c.name} ({c.chunkIds.length})</option>
+                        <option key={c.id} value={c.id}>
+                            {c.name} ({c.chunkIds.length})
+                        </option>
                     ))}
                 </select>
-                <Button variant="outline" size="sm" onClick={() => {
-                    const name = prompt("Collection name:");
-                    if (name) createCollection(name);
-                }}>
+                <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                        const name = prompt("Collection name:");
+                        if (name) createCollection(name);
+                    }}
+                >
                     <FolderPlus className="size-3.5" />
                 </Button>
 
                 <div className="flex rounded-md border">
-                    <button
-                        onClick={() => updateSearch({ view: undefined })}
-                        className={`px-2 py-1.5 text-xs ${!view ? "bg-muted" : ""}`}
-                    >
+                    <button onClick={() => updateSearch({ view: undefined })} className={`px-2 py-1.5 text-xs ${!view ? "bg-muted" : ""}`}>
                         <List className="size-3.5" />
                     </button>
                     <button
@@ -575,55 +614,73 @@ function ChunksList() {
                     {type && (
                         <Badge variant="secondary" size="sm" className="gap-1">
                             Type: {type}
-                            <button onClick={() => updateSearch({ type: undefined })}><X className="size-2.5" /></button>
+                            <button onClick={() => updateSearch({ type: undefined })}>
+                                <X className="size-2.5" />
+                            </button>
                         </Badge>
                     )}
                     {q && (
                         <Badge variant="secondary" size="sm" className="gap-1">
                             Search: {q}
-                            <button onClick={() => { setSearchInput(""); updateSearch({ q: undefined }); }}><X className="size-2.5" /></button>
+                            <button
+                                onClick={() => {
+                                    setSearchInput("");
+                                    updateSearch({ q: undefined });
+                                }}
+                            >
+                                <X className="size-2.5" />
+                            </button>
                         </Badge>
                     )}
                     {sort && (
                         <Badge variant="secondary" size="sm" className="gap-1">
                             Sort: {sort}
-                            <button onClick={() => updateSearch({ sort: undefined })}><X className="size-2.5" /></button>
+                            <button onClick={() => updateSearch({ sort: undefined })}>
+                                <X className="size-2.5" />
+                            </button>
                         </Badge>
                     )}
                     {activeTags.map(tag => (
                         <Badge key={tag} variant="secondary" size="sm" className="gap-1">
                             {tag}
-                            <button onClick={() => toggleTag(tag)}><X className="size-2.5" /></button>
+                            <button onClick={() => toggleTag(tag)}>
+                                <X className="size-2.5" />
+                            </button>
                         </Badge>
                     ))}
                     {size && (
                         <Badge variant="secondary" size="sm" className="gap-1">
                             Size: {size}
-                            <button onClick={() => updateSearch({ size: undefined })}><X className="size-2.5" /></button>
+                            <button onClick={() => updateSearch({ size: undefined })}>
+                                <X className="size-2.5" />
+                            </button>
                         </Badge>
                     )}
                     {after && (
                         <Badge variant="secondary" size="sm" className="gap-1">
                             Last {after}d
-                            <button onClick={() => updateSearch({ after: undefined })}><X className="size-2.5" /></button>
+                            <button onClick={() => updateSearch({ after: undefined })}>
+                                <X className="size-2.5" />
+                            </button>
                         </Badge>
                     )}
                     {enrichment && (
                         <Badge variant="secondary" size="sm" className="gap-1">
                             {enrichment === "missing" ? "Needs enrichment" : "Enriched"}
-                            <button onClick={() => updateSearch({ enrichment: undefined })}><X className="size-2.5" /></button>
+                            <button onClick={() => updateSearch({ enrichment: undefined })}>
+                                <X className="size-2.5" />
+                            </button>
                         </Badge>
                     )}
                     {minConnections && (
                         <Badge variant="secondary" size="sm" className="gap-1">
                             {minConnections}+ connections
-                            <button onClick={() => updateSearch({ minConnections: undefined })}><X className="size-2.5" /></button>
+                            <button onClick={() => updateSearch({ minConnections: undefined })}>
+                                <X className="size-2.5" />
+                            </button>
                         </Badge>
                     )}
-                    <button
-                        onClick={clearAllFilters}
-                        className="text-muted-foreground hover:text-foreground ml-1 text-xs underline"
-                    >
+                    <button onClick={clearAllFilters} className="text-muted-foreground hover:text-foreground ml-1 text-xs underline">
                         Clear all
                     </button>
                 </div>
@@ -641,7 +698,12 @@ function ChunksList() {
                             onClick={() => navigate({ search: { ...f.params, page: 1 } as any })}
                         >
                             {f.name}
-                            <button onClick={(e) => { e.stopPropagation(); deleteFilter(f.name); }}>
+                            <button
+                                onClick={e => {
+                                    e.stopPropagation();
+                                    deleteFilter(f.name);
+                                }}
+                            >
                                 <X className="size-2.5" />
                             </button>
                         </Badge>
@@ -668,10 +730,7 @@ function ChunksList() {
                 <div className="space-y-4">
                     {[...groupedChunks.entries()].map(([groupName, items]) => (
                         <div key={groupName}>
-                            <button
-                                onClick={() => toggleCollapsed(groupName)}
-                                className="mb-2 flex items-center gap-2"
-                            >
+                            <button onClick={() => toggleCollapsed(groupName)} className="mb-2 flex items-center gap-2">
                                 <ChevronRight className={`size-3 transition-transform ${!collapsed.has(groupName) && "rotate-90"}`} />
                                 <Badge variant="secondary">{groupName}</Badge>
                                 <span className="text-muted-foreground text-xs">({items.length})</span>
@@ -681,21 +740,27 @@ function ChunksList() {
                                     {items.map((chunk, i) => (
                                         <div key={chunk.id}>
                                             {i > 0 && <Separator />}
-                                            <CardPanel
-                                                className="flex items-center gap-3 p-4 transition-colors hover:bg-muted/50"
-                                            >
+                                            <CardPanel className="hover:bg-muted/50 flex items-center gap-3 p-4 transition-colors">
                                                 <Checkbox
                                                     checked={selectedIds.has(chunk.id)}
                                                     onCheckedChange={() => toggleSelection(chunk.id)}
                                                     onClick={(e: React.MouseEvent) => e.stopPropagation()}
                                                 />
                                                 <button
-                                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); togglePin(chunk.id); }}
+                                                    onClick={e => {
+                                                        e.preventDefault();
+                                                        e.stopPropagation();
+                                                        togglePin(chunk.id);
+                                                    }}
                                                     className="text-muted-foreground hover:text-foreground"
                                                 >
                                                     <Pin className={`size-3 ${isPinned(chunk.id) ? "fill-current" : ""}`} />
                                                 </button>
-                                                <Link to="/chunks/$chunkId" params={{ chunkId: chunk.id }} className="flex flex-1 items-center justify-between gap-4">
+                                                <Link
+                                                    to="/chunks/$chunkId"
+                                                    params={{ chunkId: chunk.id }}
+                                                    className="flex flex-1 items-center justify-between gap-4"
+                                                >
                                                     <div className="min-w-0">
                                                         <p className="truncate text-sm font-medium">{chunk.title}</p>
                                                         <div className="mt-1 flex items-center gap-2">
@@ -713,7 +778,10 @@ function ChunksList() {
                                                         {(() => {
                                                             const chunkSize = getChunkSize(chunk.content);
                                                             return chunkSize.level !== "good" ? (
-                                                                <span className="flex items-center gap-1 text-xs" style={{ color: chunkSize.color }}>
+                                                                <span
+                                                                    className="flex items-center gap-1 text-xs"
+                                                                    style={{ color: chunkSize.color }}
+                                                                >
                                                                     <FileText className="size-3" />
                                                                     {chunkSize.lines}L
                                                                 </span>
@@ -747,12 +815,20 @@ function ChunksList() {
                                     onClick={(e: React.MouseEvent) => e.stopPropagation()}
                                 />
                                 <button
-                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); togglePin(chunk.id); }}
+                                    onClick={e => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        togglePin(chunk.id);
+                                    }}
                                     className="text-muted-foreground hover:text-foreground"
                                 >
                                     <Pin className={`size-3 ${isPinned(chunk.id) ? "fill-current" : ""}`} />
                                 </button>
-                                <Link to="/chunks/$chunkId" params={{ chunkId: chunk.id }} className="flex flex-1 items-center justify-between gap-4">
+                                <Link
+                                    to="/chunks/$chunkId"
+                                    params={{ chunkId: chunk.id }}
+                                    className="flex flex-1 items-center justify-between gap-4"
+                                >
                                     <div className="min-w-0">
                                         <p className="truncate text-sm font-medium">{chunk.title}</p>
                                         <div className="mt-1 flex items-center gap-2">
@@ -804,14 +880,9 @@ function ChunksList() {
             )}
 
             {selectedIds.size > 0 && (
-                <div className="fixed bottom-6 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-lg border bg-background px-4 py-2.5 shadow-lg">
+                <div className="bg-background fixed bottom-6 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-lg border px-4 py-2.5 shadow-lg">
                     <span className="text-sm font-medium">{selectedIds.size} selected</span>
-                    <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={handleBulkDelete}
-                        disabled={bulkDeleteMutation.isPending}
-                    >
+                    <Button variant="destructive" size="sm" onClick={handleBulkDelete} disabled={bulkDeleteMutation.isPending}>
                         <Trash2 className="size-3.5" />
                         Delete
                     </Button>
@@ -823,12 +894,16 @@ function ChunksList() {
                                     setSelectedIds(new Set());
                                 }
                             }}
-                            className="rounded-md border bg-background px-2 py-1 text-xs"
+                            className="bg-background rounded-md border px-2 py-1 text-xs"
                             defaultValue=""
                         >
-                            <option value="" disabled>Add to...</option>
+                            <option value="" disabled>
+                                Add to...
+                            </option>
                             {collections.map(c => (
-                                <option key={c.id} value={c.id}>{c.name}</option>
+                                <option key={c.id} value={c.id}>
+                                    {c.name}
+                                </option>
                             ))}
                         </select>
                     )}

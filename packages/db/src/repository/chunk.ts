@@ -67,25 +67,22 @@ export function listChunks(params: ListChunksParams) {
                 );
             }
             if (params.enrichment === "missing") {
-                conditions.push(or(
-                    isNull(chunk.summary),
-                    isNull(chunk.embedding),
-                    sql`jsonb_array_length(${chunk.aliases}) = 0`
-                )!);
+                conditions.push(or(isNull(chunk.summary), isNull(chunk.embedding), sql`jsonb_array_length(${chunk.aliases}) = 0`)!);
             } else if (params.enrichment === "complete") {
-                conditions.push(
-                    isNotNull(chunk.summary),
-                    isNotNull(chunk.embedding)
-                );
+                conditions.push(isNotNull(chunk.summary), isNotNull(chunk.embedding));
             }
             const orderClause = (() => {
                 if (params.search) return sql`similarity(${chunk.title}, ${params.search}) DESC`;
                 switch (params.sort) {
-                    case "oldest": return asc(chunk.createdAt);
-                    case "alpha": return asc(chunk.title);
-                    case "updated": return desc(chunk.updatedAt);
+                    case "oldest":
+                        return asc(chunk.createdAt);
+                    case "alpha":
+                        return asc(chunk.title);
+                    case "updated":
+                        return desc(chunk.updatedAt);
                     case "newest":
-                    default: return desc(chunk.createdAt);
+                    default:
+                        return desc(chunk.createdAt);
                 }
             })();
             const chunks = await db

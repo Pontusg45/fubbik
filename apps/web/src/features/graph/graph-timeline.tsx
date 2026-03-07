@@ -23,38 +23,49 @@ export function GraphTimeline({ chunks, onCutoffChange }: GraphTimelineProps) {
         return new Date(range.min + ((range.max - range.min) * value) / 100);
     }, [range, value]);
 
-    useEffect(() => { onCutoffChange(cutoff); }, [cutoff, onCutoffChange]);
+    useEffect(() => {
+        onCutoffChange(cutoff);
+    }, [cutoff, onCutoffChange]);
 
     useEffect(() => {
-        if (!playing) { if (intervalRef.current) clearInterval(intervalRef.current); return; }
+        if (!playing) {
+            if (intervalRef.current) clearInterval(intervalRef.current);
+            return;
+        }
         intervalRef.current = setInterval(() => {
             setValue(prev => {
-                if (prev >= 100) { setPlaying(false); return 100; }
+                if (prev >= 100) {
+                    setPlaying(false);
+                    return 100;
+                }
                 return prev + 1;
             });
         }, 100);
-        return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+        return () => {
+            if (intervalRef.current) clearInterval(intervalRef.current);
+        };
     }, [playing]);
 
     if (!range) return null;
 
-    const visibleCount = cutoff
-        ? chunks.filter(c => new Date(c.createdAt) <= cutoff).length
-        : chunks.length;
+    const visibleCount = cutoff ? chunks.filter(c => new Date(c.createdAt) <= cutoff).length : chunks.length;
 
     return (
-        <div className="absolute bottom-12 left-1/2 z-10 -translate-x-1/2 rounded-lg border bg-background/90 backdrop-blur-sm">
+        <div className="bg-background/90 absolute bottom-12 left-1/2 z-10 -translate-x-1/2 rounded-lg border backdrop-blur-sm">
             <button
                 onClick={() => setExpanded(!expanded)}
-                className="flex items-center gap-2 px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground"
+                className="text-muted-foreground hover:text-foreground flex items-center gap-2 px-3 py-1.5 text-xs"
             >
                 <Calendar className="size-3" />
                 Timeline
             </button>
             {expanded && (
-                <div className="border-t px-3 py-2 flex items-center gap-3">
+                <div className="flex items-center gap-3 border-t px-3 py-2">
                     <button
-                        onClick={() => { if (value >= 100) setValue(0); setPlaying(!playing); }}
+                        onClick={() => {
+                            if (value >= 100) setValue(0);
+                            setPlaying(!playing);
+                        }}
                         className="text-muted-foreground hover:text-foreground"
                     >
                         {playing ? <Pause className="size-3.5" /> : <Play className="size-3.5" />}
@@ -64,10 +75,13 @@ export function GraphTimeline({ chunks, onCutoffChange }: GraphTimelineProps) {
                         min={0}
                         max={100}
                         value={value}
-                        onChange={e => { setValue(Number(e.target.value)); setPlaying(false); }}
+                        onChange={e => {
+                            setValue(Number(e.target.value));
+                            setPlaying(false);
+                        }}
                         className="w-48"
                     />
-                    <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                    <span className="text-muted-foreground text-[10px] whitespace-nowrap">
                         {cutoff ? cutoff.toLocaleDateString() : "All"} ({visibleCount})
                     </span>
                 </div>

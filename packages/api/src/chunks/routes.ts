@@ -7,7 +7,8 @@ import * as chunkService from "./service";
 export const chunkRoutes = new Elysia()
     .get(
         "/chunks",
-        ctx => Effect.runPromise(optionalSession(ctx).pipe(Effect.flatMap(session => chunkService.listChunks(session?.user.id, ctx.query)))),
+        ctx =>
+            Effect.runPromise(optionalSession(ctx).pipe(Effect.flatMap(session => chunkService.listChunks(session?.user.id, ctx.query)))),
         {
             query: t.Object({
                 type: t.Optional(t.String()),
@@ -67,10 +68,14 @@ export const chunkRoutes = new Elysia()
         }
     )
     .get("/chunks/:id/history", ctx =>
-        Effect.runPromise(optionalSession(ctx).pipe(Effect.flatMap(session => chunkService.getChunkHistory(ctx.params.id, session?.user.id))))
+        Effect.runPromise(
+            optionalSession(ctx).pipe(Effect.flatMap(session => chunkService.getChunkHistory(ctx.params.id, session?.user.id)))
+        )
     )
     .get("/chunks/:id", ctx =>
-        Effect.runPromise(optionalSession(ctx).pipe(Effect.flatMap(session => chunkService.getChunkDetail(ctx.params.id, session?.user.id))))
+        Effect.runPromise(
+            optionalSession(ctx).pipe(Effect.flatMap(session => chunkService.getChunkDetail(ctx.params.id, session?.user.id)))
+        )
     )
     .post(
         "/chunks",

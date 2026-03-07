@@ -18,7 +18,7 @@ const RELATION_SPRING_LEN: Record<string, number> = {
     related_to: 520,
     supports: 450,
     contradicts: 560,
-    alternative_to: 560,
+    alternative_to: 560
 };
 
 export function runForceLayout(
@@ -45,7 +45,7 @@ export function runForceLayout(
         nodeType.set(n.id, n.type);
     }
 
-    const edgePairs: [string, string, number][] = edges.map((e) => {
+    const edgePairs: [string, string, number][] = edges.map(e => {
         const len = RELATION_SPRING_LEN[e.relation] ?? SPRING_LEN;
         return [e.source, e.target, len];
     });
@@ -54,7 +54,7 @@ export function runForceLayout(
         const temp = 1 - iter / ITERATIONS;
 
         const ids = [...pos.keys()];
-        const bodies = ids.map((id) => ({ id, x: pos.get(id)!.x, y: pos.get(id)!.y }));
+        const bodies = ids.map(id => ({ id, x: pos.get(id)!.x, y: pos.get(id)!.y }));
         const tree = buildQuadtree(bodies);
         if (tree) {
             for (const id of ids) {

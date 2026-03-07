@@ -1,7 +1,22 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import "@xyflow/react/dist/style.css";
-import { Background, BackgroundVariant, ConnectionMode, Controls, MiniMap, ReactFlow, ReactFlowProvider, useEdgesState, useNodesState, useReactFlow, type Connection, type Edge, type Node, type Viewport } from "@xyflow/react";
+import {
+    Background,
+    BackgroundVariant,
+    ConnectionMode,
+    Controls,
+    MiniMap,
+    ReactFlow,
+    ReactFlowProvider,
+    useEdgesState,
+    useNodesState,
+    useReactFlow,
+    type Connection,
+    type Edge,
+    type Node,
+    type Viewport
+} from "@xyflow/react";
 import { toPng } from "html-to-image";
 import { Download, Settings2 } from "lucide-react";
 import { useTheme } from "next-themes";
@@ -9,24 +24,24 @@ import { useCallback, createContext, useEffect, useMemo, useRef, useState } from
 
 import { Dialog, DialogPopup, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Popover, PopoverTrigger, PopoverPopup } from "@/components/ui/popover";
-import { useSavedGraphViews } from "./use-saved-views";
-
-import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { Spinner } from "@/components/ui/spinner";
 import { relationColor } from "@/features/chunks/relation-colors";
 import { FloatingEdge } from "@/features/graph/floating-edge";
-import { Spinner } from "@/components/ui/spinner";
-import type { LayoutWorkerInput, LayoutWorkerOutput } from "@/features/graph/layout.worker";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { runForceLayout } from "@/features/graph/force-layout";
 import { GraphDetailPanel } from "@/features/graph/graph-detail-panel";
 import { GraphFilters } from "@/features/graph/graph-filters";
 import { GraphLegend } from "@/features/graph/graph-legend";
 import { GraphMetrics } from "@/features/graph/graph-metrics";
-import { GraphTimeline } from "./graph-timeline";
 import { GraphNode } from "@/features/graph/graph-node";
-import { runForceLayout } from "@/features/graph/force-layout";
+import type { LayoutWorkerInput, LayoutWorkerOutput } from "@/features/graph/layout.worker";
 import { type LayoutAlgorithm, hierarchicalLayout, radialLayout } from "@/features/graph/layouts";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
+
+import { GraphTimeline } from "./graph-timeline";
+import { useSavedGraphViews } from "./use-saved-views";
 
 export type ZoomTier = "compact" | "normal" | "detailed";
 export const ZoomContext = createContext<ZoomTier>("normal");
@@ -95,7 +110,10 @@ function getMostConnected(nodes: { id: string }[], edges: { source: string; targ
     let maxId: string | null = null;
     let maxCount = 0;
     for (const [id, count] of counts) {
-        if (count > maxCount && nodes.some(n => n.id === id)) { maxCount = count; maxId = id; }
+        if (count > maxCount && nodes.some(n => n.id === id)) {
+            maxCount = count;
+            maxId = id;
+        }
     }
     return maxId;
 }
@@ -117,7 +135,16 @@ function GraphViewInner() {
     // Edge creation state
     const [pendingConnection, setPendingConnection] = useState<{ source: string; target: string } | null>(null);
 
-    const RELATION_TYPES = ["related_to", "part_of", "depends_on", "extends", "references", "supports", "contradicts", "alternative_to"] as const;
+    const RELATION_TYPES = [
+        "related_to",
+        "part_of",
+        "depends_on",
+        "extends",
+        "references",
+        "supports",
+        "contradicts",
+        "alternative_to"
+    ] as const;
 
     const createConnectionMutation = useMutation({
         mutationFn: async ({ sourceId, targetId, relation }: { sourceId: string; targetId: string; relation: string }) => {
@@ -151,7 +178,9 @@ function GraphViewInner() {
     useEffect(() => {
         const mql = window.matchMedia("(max-width: 768px)");
         setIsMobile(mql.matches);
-        function handler(e: MediaQueryListEvent) { setIsMobile(e.matches); }
+        function handler(e: MediaQueryListEvent) {
+            setIsMobile(e.matches);
+        }
         mql.addEventListener("change", handler);
         return () => mql.removeEventListener("change", handler);
     }, []);
@@ -244,16 +273,13 @@ function GraphViewInner() {
 
     // Create / teardown the worker
     useEffect(() => {
-        const worker = new Worker(
-            new URL("./layout.worker.ts", import.meta.url),
-            { type: "module" }
-        );
+        const worker = new Worker(new URL("./layout.worker.ts", import.meta.url), { type: "module" });
         worker.onmessage = (e: MessageEvent<LayoutWorkerOutput>) => {
             if (e.data.requestId !== requestIdRef.current) return;
             setLayoutPositions(e.data.positions);
             setIsLayouting(false);
         };
-        worker.onerror = (err) => {
+        worker.onerror = err => {
             console.error("Layout worker error:", err);
             setIsLayouting(false);
         };
@@ -333,9 +359,7 @@ function GraphViewInner() {
         // Build worker input: nodes need id and type for clustering
         const workerNodes: LayoutWorkerInput["nodes"] = [
             { id: MAIN_NODE_ID, type: "__main__" },
-            ...chunks
-                .filter(c => !hiddenIds.has(c.id))
-                .map(c => ({ id: c.id, type: c.type }))
+            ...chunks.filter(c => !hiddenIds.has(c.id)).map(c => ({ id: c.id, type: c.type }))
         ];
 
         // Include orphan-to-main edges so the worker can account for spring forces on orphans
@@ -369,7 +393,11 @@ function GraphViewInner() {
                 if (!workerRef.current) return;
                 setIsLayouting(true);
                 requestIdRef.current += 1;
-                workerRef.current.postMessage({ requestId: requestIdRef.current, nodes: workerNodes, edges: workerEdges } satisfies LayoutWorkerInput);
+                workerRef.current.postMessage({
+                    requestId: requestIdRef.current,
+                    nodes: workerNodes,
+                    edges: workerEdges
+                } satisfies LayoutWorkerInput);
             }
         } else {
             let positions: Record<string, { x: number; y: number }>;
@@ -383,7 +411,7 @@ function GraphViewInner() {
             setLayoutPositions(positions);
             setIsLayouting(false);
         }
-    }, [filteredGraph, layoutAlgorithm, useMainThread]);
+    }, [filteredGraph, layoutAlgorithm, useMainThread, selectedChunkId]);
 
     // Build layoutNodes and layoutEdges from positions (cheap: styling + edge creation only)
     const { layoutNodes, layoutEdges } = useMemo(() => {
@@ -423,7 +451,7 @@ function GraphViewInner() {
                     const scale = Math.min(1 + count * 0.08, 1.8);
                     const isParent = parentChildren.has(c.id);
                     const isChild = childIds.has(c.id);
-                    const childCount = collapsedParents.has(c.id) ? parentChildren.get(c.id)?.size ?? 0 : 0;
+                    const childCount = collapsedParents.has(c.id) ? (parentChildren.get(c.id)?.size ?? 0) : 0;
                     const label = childCount > 0 ? `${c.title} (${childCount})` : c.title;
                     const baseFontSize = isParent ? 13 : 12;
                     const baseVPad = isParent ? 7 : 5;
@@ -439,7 +467,7 @@ function GraphViewInner() {
                             borderColor: typeColor!.border,
                             borderWidth: isParent ? 2 : collapsedParents.has(c.id) ? 2.5 : 1.5,
                             borderRadius: isParent ? 12 : 10,
-                            color: isDark ? (isChild ? "#cbd5e1" : "#e2e8f0") : (isChild ? "#475569" : "#1e293b"),
+                            color: isDark ? (isChild ? "#cbd5e1" : "#e2e8f0") : isChild ? "#475569" : "#1e293b",
                             fontSize: Math.round(baseFontSize * Math.min(scale, 1.3)),
                             fontWeight: isParent ? 600 : 500,
                             padding: `${Math.round(baseVPad * scale)}px ${Math.round(baseHPad * scale)}px`,
@@ -479,7 +507,12 @@ function GraphViewInner() {
                     type: "floating",
                     data: { directed: false },
                     animated: false,
-                    style: { stroke: isDark ? "#334155" : "#cbd5e1", strokeWidth: 1, strokeDasharray: "4 4", transition: "opacity 0.3s ease" }
+                    style: {
+                        stroke: isDark ? "#334155" : "#cbd5e1",
+                        strokeWidth: 1,
+                        strokeDasharray: "4 4",
+                        transition: "opacity 0.3s ease"
+                    }
                 });
             }
         }
@@ -590,8 +623,7 @@ function GraphViewInner() {
         const pathEdgeIds = new Set<string>();
         for (let i = 0; i < path.length - 1; i++) {
             for (const edge of layoutEdges) {
-                if ((edge.source === path[i] && edge.target === path[i + 1]) ||
-                    (edge.target === path[i] && edge.source === path[i + 1])) {
+                if ((edge.source === path[i] && edge.target === path[i + 1]) || (edge.target === path[i] && edge.source === path[i + 1])) {
                     pathEdgeIds.add(edge.id);
                 }
             }
@@ -709,7 +741,7 @@ function GraphViewInner() {
                 style: {
                     ...(edge.style as Record<string, unknown>),
                     opacity: pathResult.pathEdgeIds.has(edge.id) ? 1 : 0.05,
-                    strokeWidth: pathResult.pathEdgeIds.has(edge.id) ? 3 : (edge.style as Record<string, number>)?.strokeWidth ?? 2,
+                    strokeWidth: pathResult.pathEdgeIds.has(edge.id) ? 3 : ((edge.style as Record<string, number>)?.strokeWidth ?? 2),
                     transition: "opacity 0.2s"
                 }
             }));
@@ -751,8 +783,17 @@ function GraphViewInner() {
         }
 
         setEdges(styledEdges);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [layoutNodes, layoutEdges, debouncedSearchQuery, focusNeighbors, selectedNeighborNodes, selectedEdgeIds, multiSelectedIds, pathResult]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [
+        layoutNodes,
+        layoutEdges,
+        debouncedSearchQuery,
+        focusNeighbors,
+        selectedNeighborNodes,
+        selectedEdgeIds,
+        multiSelectedIds,
+        pathResult
+    ]);
 
     // Fit view once after first layout positions arrive
     const fitViewRef = useRef(fitView);
@@ -770,10 +811,10 @@ function GraphViewInner() {
         if (!selectedChunkId) return;
         const node = nodes.find(n => n.id === selectedChunkId);
         if (!node) return;
-        const x = node.position.x + ((node.measured?.width ?? 180) / 2);
-        const y = node.position.y + ((node.measured?.height ?? 40) / 2);
+        const x = node.position.x + (node.measured?.width ?? 180) / 2;
+        const y = node.position.y + (node.measured?.height ?? 40) / 2;
         setCenter(x, y, { duration: 400, zoom: getZoom() });
-    }, [selectedChunkId]);
+    }, [selectedChunkId, nodes, getZoom, setCenter]);
 
     useEffect(() => {
         function handleKeyDown(e: KeyboardEvent) {
@@ -861,7 +902,7 @@ function GraphViewInner() {
                             <GraphDetailPanel
                                 chunkId={selectedChunkId}
                                 onClose={() => setSelectedChunkId(null)}
-                                onNavigateToChunk={(id) => {
+                                onNavigateToChunk={id => {
                                     setSelectedChunkId(id);
                                     setFocusedNodeId(id);
                                 }}
@@ -870,8 +911,8 @@ function GraphViewInner() {
                     )}
                     {selectedChunkId && (
                         <div
-                            className="absolute top-0 right-0 h-full w-1 cursor-col-resize hover:bg-primary/30 active:bg-primary/50"
-                            onMouseDown={(e) => {
+                            className="hover:bg-primary/30 active:bg-primary/50 absolute top-0 right-0 h-full w-1 cursor-col-resize"
+                            onMouseDown={e => {
                                 e.preventDefault();
                                 const startX = e.clientX;
                                 const startWidth = panelWidth;
@@ -891,13 +932,18 @@ function GraphViewInner() {
                 </div>
             )}
             {isMobile && (
-                <Sheet open={!!selectedChunkId} onOpenChange={(open) => { if (!open) setSelectedChunkId(null); }}>
+                <Sheet
+                    open={!!selectedChunkId}
+                    onOpenChange={open => {
+                        if (!open) setSelectedChunkId(null);
+                    }}
+                >
                     <SheetContent side="bottom" showCloseButton={false} className="h-[70vh] overflow-y-auto p-0">
                         {selectedChunkId && (
                             <GraphDetailPanel
                                 chunkId={selectedChunkId}
                                 onClose={() => setSelectedChunkId(null)}
-                                onNavigateToChunk={(id) => {
+                                onNavigateToChunk={id => {
                                     setSelectedChunkId(id);
                                     setFocusedNodeId(id);
                                 }}
@@ -906,488 +952,533 @@ function GraphViewInner() {
                     </SheetContent>
                 </Sheet>
             )}
-            <div className="relative flex-1 [&_.react-flow__handle]:invisible [&_.react-flow__node:hover_.react-flow__handle]:!visible [&_.react-flow__node]:transition-[transform] [&_.react-flow__node]:duration-500 [&_.react-flow__node]:ease-out">
-            {showLayoutSpinner && (
-                <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/60 backdrop-blur-sm">
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                        <Spinner className="size-5" />
-                        <span className="text-sm">Computing layout...</span>
-                    </div>
-                </div>
-            )}
-            <ZoomContext.Provider value={zoomTier}>
-            <ReactFlow
-                nodes={nodes}
-                edges={edges}
-                nodeTypes={NODE_TYPES}
-                edgeTypes={EDGE_TYPES}
-                onNodesChange={onNodesChange}
-                onEdgesChange={onEdgesChange}
-                onConnect={onConnect}
-                connectionMode={ConnectionMode.Loose}
-                onNodeClick={(event, node) => {
-                    if (node.id === MAIN_NODE_ID) return;
-                    if (event.shiftKey) {
-                        setMultiSelectedIds(prev => {
-                            const next = new Set(prev);
-                            if (next.has(node.id)) next.delete(node.id);
-                            else next.add(node.id);
-                            return next;
-                        });
-                        return;
-                    }
-                    // Clear multi-select on normal click
-                    if (multiSelectedIds.size > 0) {
-                        setMultiSelectedIds(new Set());
-                    }
-                    if (event.altKey) {
-                        if (!pathStartId) {
-                            setPathStartId(node.id);
-                            setPathEndId(null);
-                        } else if (!pathEndId) {
-                            setPathEndId(node.id);
-                        } else {
-                            setPathStartId(node.id);
-                            setPathEndId(null);
-                        }
-                        return;
-                    }
-                    if (exploreMode) {
-                        setExploredNodeIds(prev => {
-                            const next = new Set(prev);
-                            next.add(node.id);
-                            for (const edge of layoutEdges) {
-                                if (edge.source === node.id && edge.target !== MAIN_NODE_ID) next.add(edge.target);
-                                if (edge.target === node.id && edge.source !== MAIN_NODE_ID) next.add(edge.source);
-                            }
-                            return next;
-                        });
-                        setSelectedChunkId(node.id);
-                        setFocusedNodeId(node.id);
-                        return;
-                    }
-                    setPathStartId(null);
-                    setPathEndId(null);
-                    setSelectedChunkId(node.id);
-                    setFocusedNodeId(node.id);
-                }}
-                onPaneClick={() => {
-                    setFocusedNodeId(null);
-                    setSelectedChunkId(null);
-                }}
-                onNodeDoubleClick={(_, node) => {
-                    if (node.id === MAIN_NODE_ID) return;
-                    if (selectedChunkId === node.id) {
-                        navigate({ to: "/chunks/$chunkId", params: { chunkId: node.id } });
-                    } else {
-                        setCollapsedParents(prev => {
-                            const next = new Set(prev);
-                            if (next.has(node.id)) next.delete(node.id);
-                            else next.add(node.id);
-                            return next;
-                        });
-                    }
-                }}
-                onNodeMouseEnter={(event, node) => {
-                    if (node.id === MAIN_NODE_ID) return;
-                    setHoveredNode({ id: node.id, x: event.clientX, y: event.clientY });
-                }}
-                onNodeDragStop={(_, node) => {
-                    setDraggedPositions(prev => {
-                        const next = new Map(prev);
-                        next.set(node.id, node.position);
-                        return next;
-                    });
-                }}
-                onNodeMouseLeave={() => setHoveredNode(null)}
-                onMoveEnd={useCallback((_: unknown, viewport: Viewport) => {
-                    zoomRef.current = viewport.zoom;
-                    setZoomTier(prev => getZoomTier(viewport.zoom, prev));
-                }, [])}
-                onEdgeMouseEnter={(_, edge) => {
-                    if (zoomTier === "compact") return;
-                    setEdges(es =>
-                        es.map(e =>
-                            e.id === edge.id
-                                ? {
-                                      ...e,
-                                      label: (e.data as { relation?: string })?.relation,
-                                      labelStyle: { fill: (e.style as Record<string, string>)?.stroke, fontSize: 10, fontWeight: 500 },
-                                      labelBgStyle: { fill: isDark ? "rgba(0,0,0,0.6)" : "rgba(255,255,255,0.8)", fillOpacity: 0.8 }
-                                  }
-                                : e
-                        )
-                    );
-                }}
-                onEdgeMouseLeave={(_, edge) => {
-                    setEdges(es =>
-                        es.map(e =>
-                            e.id === edge.id ? { ...e, label: undefined, labelStyle: undefined, labelBgStyle: undefined } : e
-                        )
-                    );
-                }}
-                onInit={useCallback(() => {
-                    initialFitDoneRef.current = true;
-                }, [])}
-                minZoom={0.05}
-                colorMode={isDark ? "dark" : "light"}
-            >
-                <Background variant={BackgroundVariant.Dots} gap={20} size={1} color={isDark ? "rgba(148,163,184,0.15)" : "rgba(100,116,139,0.2)"} />
-                <Controls />
-                <MiniMap
-                    nodeColor={node => {
-                        if (node.id === MAIN_NODE_ID) return isDark ? "#e2e8f0" : "#1e293b";
-                        if (node.id === selectedChunkId) return "#f472b6";
-                        const style = node.style as Record<string, string> | undefined;
-                        return style?.borderColor ?? "#475569";
-                    }}
-                    maskColor={isDark ? "rgba(0, 0, 0, 0.7)" : "rgba(255, 255, 255, 0.7)"}
-                    pannable
-                    zoomable
-                />
-            </ReactFlow>
-            </ZoomContext.Provider>
-
-            {/* Keyboard shortcut help overlay */}
-            {showHelp && (
-                <div
-                    className="absolute inset-0 z-30 flex items-center justify-center bg-background/80 backdrop-blur-sm"
-                    onClick={() => setShowHelp(false)}
-                >
-                    <div className="max-w-sm rounded-lg border bg-background p-6 shadow-lg" onClick={e => e.stopPropagation()}>
-                        <h3 className="mb-4 text-sm font-semibold">Keyboard Shortcuts</h3>
-                        <div className="space-y-2 text-xs">
-                            {[
-                                ["Click", "Select node & show details"],
-                                ["Double-click", "Open chunk / toggle collapse"],
-                                ["Shift+Click", "Multi-select nodes"],
-                                ["Alt+Click", "Path finding mode"],
-                                ["Tab / Shift+Tab", "Cycle connections"],
-                                ["Escape", "Deselect / close"],
-                                ["Drag node", "Reposition"],
-                                ["?", "Toggle this help"]
-                            ].map(([key, desc]) => (
-                                <div key={key} className="flex items-center justify-between gap-4">
-                                    <kbd className="rounded border bg-muted px-1.5 py-0.5 font-mono text-[10px]">{key}</kbd>
-                                    <span className="text-muted-foreground text-right">{desc}</span>
-                                </div>
-                            ))}
+            <div className="relative flex-1 [&_.react-flow__handle]:invisible [&_.react-flow__node]:transition-[transform] [&_.react-flow__node]:duration-500 [&_.react-flow__node]:ease-out [&_.react-flow__node:hover_.react-flow__handle]:!visible">
+                {showLayoutSpinner && (
+                    <div className="bg-background/60 absolute inset-0 z-50 flex items-center justify-center backdrop-blur-sm">
+                        <div className="text-muted-foreground flex items-center gap-2">
+                            <Spinner className="size-5" />
+                            <span className="text-sm">Computing layout...</span>
                         </div>
-                        <button
-                            onClick={() => setShowHelp(false)}
-                            className="mt-4 w-full rounded-md bg-primary px-3 py-1.5 text-xs text-primary-foreground"
-                        >
-                            Close
-                        </button>
                     </div>
-                </div>
-            )}
+                )}
+                <ZoomContext.Provider value={zoomTier}>
+                    <ReactFlow
+                        nodes={nodes}
+                        edges={edges}
+                        nodeTypes={NODE_TYPES}
+                        edgeTypes={EDGE_TYPES}
+                        onNodesChange={onNodesChange}
+                        onEdgesChange={onEdgesChange}
+                        onConnect={onConnect}
+                        connectionMode={ConnectionMode.Loose}
+                        onNodeClick={(event, node) => {
+                            if (node.id === MAIN_NODE_ID) return;
+                            if (event.shiftKey) {
+                                setMultiSelectedIds(prev => {
+                                    const next = new Set(prev);
+                                    if (next.has(node.id)) next.delete(node.id);
+                                    else next.add(node.id);
+                                    return next;
+                                });
+                                return;
+                            }
+                            // Clear multi-select on normal click
+                            if (multiSelectedIds.size > 0) {
+                                setMultiSelectedIds(new Set());
+                            }
+                            if (event.altKey) {
+                                if (!pathStartId) {
+                                    setPathStartId(node.id);
+                                    setPathEndId(null);
+                                } else if (!pathEndId) {
+                                    setPathEndId(node.id);
+                                } else {
+                                    setPathStartId(node.id);
+                                    setPathEndId(null);
+                                }
+                                return;
+                            }
+                            if (exploreMode) {
+                                setExploredNodeIds(prev => {
+                                    const next = new Set(prev);
+                                    next.add(node.id);
+                                    for (const edge of layoutEdges) {
+                                        if (edge.source === node.id && edge.target !== MAIN_NODE_ID) next.add(edge.target);
+                                        if (edge.target === node.id && edge.source !== MAIN_NODE_ID) next.add(edge.source);
+                                    }
+                                    return next;
+                                });
+                                setSelectedChunkId(node.id);
+                                setFocusedNodeId(node.id);
+                                return;
+                            }
+                            setPathStartId(null);
+                            setPathEndId(null);
+                            setSelectedChunkId(node.id);
+                            setFocusedNodeId(node.id);
+                        }}
+                        onPaneClick={() => {
+                            setFocusedNodeId(null);
+                            setSelectedChunkId(null);
+                        }}
+                        onNodeDoubleClick={(_, node) => {
+                            if (node.id === MAIN_NODE_ID) return;
+                            if (selectedChunkId === node.id) {
+                                navigate({ to: "/chunks/$chunkId", params: { chunkId: node.id } });
+                            } else {
+                                setCollapsedParents(prev => {
+                                    const next = new Set(prev);
+                                    if (next.has(node.id)) next.delete(node.id);
+                                    else next.add(node.id);
+                                    return next;
+                                });
+                            }
+                        }}
+                        onNodeMouseEnter={(event, node) => {
+                            if (node.id === MAIN_NODE_ID) return;
+                            setHoveredNode({ id: node.id, x: event.clientX, y: event.clientY });
+                        }}
+                        onNodeDragStop={(_, node) => {
+                            setDraggedPositions(prev => {
+                                const next = new Map(prev);
+                                next.set(node.id, node.position);
+                                return next;
+                            });
+                        }}
+                        onNodeMouseLeave={() => setHoveredNode(null)}
+                        onMoveEnd={useCallback((_: unknown, viewport: Viewport) => {
+                            zoomRef.current = viewport.zoom;
+                            setZoomTier(prev => getZoomTier(viewport.zoom, prev));
+                        }, [])}
+                        onEdgeMouseEnter={(_, edge) => {
+                            if (zoomTier === "compact") return;
+                            setEdges(es =>
+                                es.map(e =>
+                                    e.id === edge.id
+                                        ? {
+                                              ...e,
+                                              label: (e.data as { relation?: string })?.relation,
+                                              labelStyle: {
+                                                  fill: (e.style as Record<string, string>)?.stroke,
+                                                  fontSize: 10,
+                                                  fontWeight: 500
+                                              },
+                                              labelBgStyle: { fill: isDark ? "rgba(0,0,0,0.6)" : "rgba(255,255,255,0.8)", fillOpacity: 0.8 }
+                                          }
+                                        : e
+                                )
+                            );
+                        }}
+                        onEdgeMouseLeave={(_, edge) => {
+                            setEdges(es =>
+                                es.map(e =>
+                                    e.id === edge.id ? { ...e, label: undefined, labelStyle: undefined, labelBgStyle: undefined } : e
+                                )
+                            );
+                        }}
+                        onInit={useCallback(() => {
+                            initialFitDoneRef.current = true;
+                        }, [])}
+                        minZoom={0.05}
+                        colorMode={isDark ? "dark" : "light"}
+                    >
+                        <Background
+                            variant={BackgroundVariant.Dots}
+                            gap={20}
+                            size={1}
+                            color={isDark ? "rgba(148,163,184,0.15)" : "rgba(100,116,139,0.2)"}
+                        />
+                        <Controls />
+                        <MiniMap
+                            nodeColor={node => {
+                                if (node.id === MAIN_NODE_ID) return isDark ? "#e2e8f0" : "#1e293b";
+                                if (node.id === selectedChunkId) return "#f472b6";
+                                const style = node.style as Record<string, string> | undefined;
+                                return style?.borderColor ?? "#475569";
+                            }}
+                            maskColor={isDark ? "rgba(0, 0, 0, 0.7)" : "rgba(255, 255, 255, 0.7)"}
+                            pannable
+                            zoomable
+                        />
+                    </ReactFlow>
+                </ZoomContext.Provider>
 
-            {/* Top-left: Filters */}
-            <div className="max-md:hidden">
-                <GraphFilters
-                    types={allTypes}
-                    relations={allRelations}
-                    activeTypes={filterTypes}
-                    activeRelations={filterRelations}
-                    onToggleType={toggleType}
-                    onToggleRelation={toggleRelation}
-                />
-            </div>
-
-            {/* Top-right: Search + Stats */}
-            <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
-                <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={e => setSearchQuery(e.target.value)}
-                    placeholder="Search nodes..."
-                    className="bg-background/80 focus:ring-ring w-36 rounded-md border px-2.5 py-1.5 text-xs backdrop-blur-sm focus:ring-2 focus:outline-none"
-                />
-                <Popover>
-                    <PopoverTrigger className="rounded-md border bg-background/80 p-1.5 text-muted-foreground backdrop-blur-sm hover:text-foreground">
-                        <Settings2 className="size-4" />
-                    </PopoverTrigger>
-                    <PopoverPopup side="bottom" align="end" sideOffset={8} className="w-56">
-                        <div className="flex flex-col gap-3">
-                            <div>
-                                <label className="text-muted-foreground mb-1 block text-[10px] font-medium uppercase tracking-wider">Layout</label>
-                                <select
-                                    value={layoutAlgorithm}
-                                    onChange={e => setLayoutAlgorithm(e.target.value as LayoutAlgorithm)}
-                                    className="w-full rounded-md border bg-background px-2 py-1.5 text-xs"
-                                >
-                                    <option value="force">Force-directed</option>
-                                    <option value="hierarchical">Tree</option>
-                                    <option value="radial">Radial</option>
-                                </select>
-                            </div>
-                            {draggedPositions.size > 0 && (
-                                <button
-                                    onClick={() => setDraggedPositions(new Map())}
-                                    className="text-muted-foreground hover:text-foreground w-full rounded-md border px-2.5 py-1.5 text-xs text-left"
-                                >
-                                    Reset layout
-                                </button>
-                            )}
-                            <div className="flex flex-col gap-2">
-                                <label className="text-muted-foreground text-[10px] font-medium uppercase tracking-wider">Tools</label>
-                                <button
-                                    onClick={() => {
-                                        if (!exploreMode) {
-                                            setExploreMode(true);
-                                            setExploredNodeIds(selectedChunkId ? new Set([selectedChunkId]) : new Set());
-                                        } else {
-                                            setExploreMode(false);
-                                            setExploredNodeIds(new Set());
-                                        }
-                                    }}
-                                    className={`w-full rounded-md border px-2.5 py-1.5 text-xs text-left ${
-                                        exploreMode ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
-                                    }`}
-                                >
-                                    Explore mode
-                                    {exploreMode && <span className="ml-1 opacity-70">({exploredNodeIds.size})</span>}
-                                </button>
-                                {exploreMode && (
-                                    <button
-                                        onClick={() => setExploredNodeIds(new Set())}
-                                        className="w-full rounded-md border px-2.5 py-1.5 text-xs text-left text-muted-foreground hover:text-foreground"
-                                    >
-                                        Reset explored
-                                    </button>
-                                )}
-                                <button
-                                    onClick={() => setBundleEdges(!bundleEdges)}
-                                    className={`w-full rounded-md border px-2.5 py-1.5 text-xs text-left ${
-                                        bundleEdges ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
-                                    }`}
-                                >
-                                    Bundle edges
-                                </button>
-                                <button
-                                    onClick={() => setUseMainThread(!useMainThread)}
-                                    className={`w-full rounded-md border px-2.5 py-1.5 text-xs text-left ${
-                                        useMainThread ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
-                                    }`}
-                                >
-                                    Main-thread layout
-                                </button>
-                            </div>
-                            <div className="flex flex-col gap-2">
-                                <label className="text-muted-foreground text-[10px] font-medium uppercase tracking-wider">Views</label>
-                                <button
-                                    onClick={() => setShowSaveDialog(true)}
-                                    className="w-full rounded-md border px-2.5 py-1.5 text-xs text-left text-muted-foreground hover:text-foreground"
-                                >
-                                    Save current view...
-                                </button>
-                                {savedViews.map(view => (
-                                    <div key={view.name} className="flex items-center justify-between gap-1">
-                                        <button
-                                            className="flex-1 truncate rounded-md border px-2.5 py-1.5 text-xs text-left text-muted-foreground hover:text-foreground"
-                                            onClick={() => {
-                                                setFilterTypes(new Set(view.filterTypes));
-                                                setFilterRelations(new Set(view.filterRelations));
-                                                setCollapsedParents(new Set(view.collapsedParents));
-                                                setLayoutAlgorithm(view.layoutAlgorithm as LayoutAlgorithm);
-                                                if (view.focusNodeId) { setSelectedChunkId(view.focusNodeId); setFocusedNodeId(view.focusNodeId); }
-                                            }}
-                                        >
-                                            {view.name}
-                                        </button>
-                                        <button
-                                            className="shrink-0 rounded p-1 text-muted-foreground hover:text-destructive"
-                                            onClick={() => deleteSavedView(view.name)}
-                                        >
-                                            <span className="text-[10px]">✕</span>
-                                        </button>
+                {/* Keyboard shortcut help overlay */}
+                {showHelp && (
+                    <div
+                        className="bg-background/80 absolute inset-0 z-30 flex items-center justify-center backdrop-blur-sm"
+                        onClick={() => setShowHelp(false)}
+                    >
+                        <div className="bg-background max-w-sm rounded-lg border p-6 shadow-lg" onClick={e => e.stopPropagation()}>
+                            <h3 className="mb-4 text-sm font-semibold">Keyboard Shortcuts</h3>
+                            <div className="space-y-2 text-xs">
+                                {[
+                                    ["Click", "Select node & show details"],
+                                    ["Double-click", "Open chunk / toggle collapse"],
+                                    ["Shift+Click", "Multi-select nodes"],
+                                    ["Alt+Click", "Path finding mode"],
+                                    ["Tab / Shift+Tab", "Cycle connections"],
+                                    ["Escape", "Deselect / close"],
+                                    ["Drag node", "Reposition"],
+                                    ["?", "Toggle this help"]
+                                ].map(([key, desc]) => (
+                                    <div key={key} className="flex items-center justify-between gap-4">
+                                        <kbd className="bg-muted rounded border px-1.5 py-0.5 font-mono text-[10px]">{key}</kbd>
+                                        <span className="text-muted-foreground text-right">{desc}</span>
                                     </div>
                                 ))}
                             </div>
-                            <div className="border-t pt-3">
-                                <button
-                                    onClick={handleExportImage}
-                                    className="flex w-full items-center gap-2 rounded-md border px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground"
-                                >
-                                    <Download className="size-3.5" />
-                                    Export as PNG
-                                </button>
-                            </div>
-                        </div>
-                    </PopoverPopup>
-                </Popover>
-                <span className="text-muted-foreground rounded-lg border bg-background/80 px-3 py-1.5 text-xs backdrop-blur-sm">
-                    {nodes.length - 1} · {edges.length}
-                </span>
-            </div>
-
-            {/* Top-center: Legend */}
-            <GraphLegend activeTypes={activeTypes} activeRelations={activeRelations} />
-
-            {/* Tooltip */}
-            {hoveredNode && chunkMap.get(hoveredNode.id) && (() => {
-                const info = chunkMap.get(hoveredNode.id)!;
-                return (
-                    <div
-                        className="pointer-events-none fixed z-50 max-w-xs rounded-lg border bg-popover p-3 text-popover-foreground shadow-lg"
-                        style={{ left: hoveredNode.x + 12, top: hoveredNode.y + 12 }}
-                    >
-                        <p className="text-sm font-semibold">{info.title}</p>
-                        <p className="text-muted-foreground mt-0.5 text-xs">{info.type}</p>
-                        {info.summary && <p className="mt-1.5 text-xs">{info.summary}</p>}
-                        {info.tags.length > 0 && (
-                            <div className="mt-1.5 flex flex-wrap gap-1">
-                                {info.tags.slice(0, 5).map(tag => (
-                                    <span key={tag} className="rounded bg-muted px-1.5 py-0.5 text-[10px]">{tag}</span>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                );
-            })()}
-            {/* Edge creation dialog */}
-            <Dialog open={!!pendingConnection} onOpenChange={(open) => { if (!open) setPendingConnection(null); }}>
-                <DialogPopup className="max-w-sm">
-                    <DialogHeader>
-                        <DialogTitle>Create Connection</DialogTitle>
-                        <p className="text-sm text-muted-foreground">
-                            <span className="font-medium text-foreground">{pendingConnection ? chunkMap.get(pendingConnection.source)?.title ?? pendingConnection.source : ""}</span>
-                            {" \u2192 "}
-                            <span className="font-medium text-foreground">{pendingConnection ? chunkMap.get(pendingConnection.target)?.title ?? pendingConnection.target : ""}</span>
-                        </p>
-                    </DialogHeader>
-                    <div className="grid grid-cols-2 gap-2 px-6 pb-6">
-                        {RELATION_TYPES.map(rel => (
                             <button
-                                key={rel}
-                                disabled={createConnectionMutation.isPending}
-                                onClick={() => {
-                                    if (!pendingConnection) return;
-                                    createConnectionMutation.mutate({
-                                        sourceId: pendingConnection.source,
-                                        targetId: pendingConnection.target,
-                                        relation: rel
-                                    });
-                                }}
-                                className="rounded-md border-2 px-3 py-2 text-sm font-medium transition-colors hover:bg-muted disabled:opacity-50"
-                                style={{ borderColor: relationColor(rel) }}
+                                onClick={() => setShowHelp(false)}
+                                className="bg-primary text-primary-foreground mt-4 w-full rounded-md px-3 py-1.5 text-xs"
                             >
-                                {rel.replace(/_/g, " ")}
+                                Close
                             </button>
-                        ))}
+                        </div>
                     </div>
-                </DialogPopup>
-            </Dialog>
+                )}
 
-            {/* Bottom-center: Timeline */}
-            <GraphTimeline chunks={data?.chunks ?? []} onCutoffChange={handleTimelineCutoff} />
-
-            {/* Bottom-left: Metrics */}
-            <GraphMetrics
-                nodes={nodes}
-                edges={edges}
-                onNodeClick={(id) => { setSelectedChunkId(id); setFocusedNodeId(id); }}
-            />
-
-            {/* Bulk action bar */}
-            {multiSelectedIds.size > 0 && (
-                <div className="absolute bottom-4 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-lg border bg-background/95 px-4 py-2 shadow-lg backdrop-blur-sm">
-                    <span className="text-xs font-medium">{multiSelectedIds.size} selected</span>
-                    <div className="h-4 w-px bg-border" />
-                    <button
-                        onClick={() => {
-                            if (confirm(`Delete ${multiSelectedIds.size} chunks?`)) {
-                                deleteManyMutation.mutate([...multiSelectedIds]);
-                            }
-                        }}
-                        className="rounded-md px-2 py-1 text-xs text-destructive hover:bg-destructive/10"
-                    >
-                        Delete
-                    </button>
-                    <button
-                        onClick={() => setMultiSelectedIds(new Set())}
-                        className="rounded-md px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
-                    >
-                        Clear
-                    </button>
+                {/* Top-left: Filters */}
+                <div className="max-md:hidden">
+                    <GraphFilters
+                        types={allTypes}
+                        relations={allRelations}
+                        activeTypes={filterTypes}
+                        activeRelations={filterRelations}
+                        onToggleType={toggleType}
+                        onToggleRelation={toggleRelation}
+                    />
                 </div>
-            )}
 
-            {/* Path info bar */}
-            {(pathStartId || pathEndId) && (
-                <div className="absolute bottom-6 left-1/2 z-10 -translate-x-1/2">
-                    <div className="flex items-center gap-3 rounded-lg border bg-background/90 px-4 py-2 text-sm shadow-lg backdrop-blur-sm">
-                        {pathStartId && !pathEndId && (
-                            <span className="text-muted-foreground">
-                                Alt+click another node to find path from <span className="font-medium text-foreground">{chunkMap.get(pathStartId)?.title ?? pathStartId}</span>
-                            </span>
-                        )}
-                        {pathStartId && pathEndId && pathResult && (
-                            <span className="text-foreground font-medium">
-                                Path: {pathResult.length} {pathResult.length === 1 ? "hop" : "hops"}
-                            </span>
-                        )}
-                        {pathStartId && pathEndId && !pathResult && (
-                            <span className="font-medium text-red-500">No path found</span>
-                        )}
+                {/* Top-right: Search + Stats */}
+                <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
+                    <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={e => setSearchQuery(e.target.value)}
+                        placeholder="Search nodes..."
+                        className="bg-background/80 focus:ring-ring w-36 rounded-md border px-2.5 py-1.5 text-xs backdrop-blur-sm focus:ring-2 focus:outline-none"
+                    />
+                    <Popover>
+                        <PopoverTrigger className="bg-background/80 text-muted-foreground hover:text-foreground rounded-md border p-1.5 backdrop-blur-sm">
+                            <Settings2 className="size-4" />
+                        </PopoverTrigger>
+                        <PopoverPopup side="bottom" align="end" sideOffset={8} className="w-56">
+                            <div className="flex flex-col gap-3">
+                                <div>
+                                    <label className="text-muted-foreground mb-1 block text-[10px] font-medium tracking-wider uppercase">
+                                        Layout
+                                    </label>
+                                    <select
+                                        value={layoutAlgorithm}
+                                        onChange={e => setLayoutAlgorithm(e.target.value as LayoutAlgorithm)}
+                                        className="bg-background w-full rounded-md border px-2 py-1.5 text-xs"
+                                    >
+                                        <option value="force">Force-directed</option>
+                                        <option value="hierarchical">Tree</option>
+                                        <option value="radial">Radial</option>
+                                    </select>
+                                </div>
+                                {draggedPositions.size > 0 && (
+                                    <button
+                                        onClick={() => setDraggedPositions(new Map())}
+                                        className="text-muted-foreground hover:text-foreground w-full rounded-md border px-2.5 py-1.5 text-left text-xs"
+                                    >
+                                        Reset layout
+                                    </button>
+                                )}
+                                <div className="flex flex-col gap-2">
+                                    <label className="text-muted-foreground text-[10px] font-medium tracking-wider uppercase">Tools</label>
+                                    <button
+                                        onClick={() => {
+                                            if (!exploreMode) {
+                                                setExploreMode(true);
+                                                setExploredNodeIds(selectedChunkId ? new Set([selectedChunkId]) : new Set());
+                                            } else {
+                                                setExploreMode(false);
+                                                setExploredNodeIds(new Set());
+                                            }
+                                        }}
+                                        className={`w-full rounded-md border px-2.5 py-1.5 text-left text-xs ${
+                                            exploreMode
+                                                ? "bg-primary text-primary-foreground"
+                                                : "text-muted-foreground hover:text-foreground"
+                                        }`}
+                                    >
+                                        Explore mode
+                                        {exploreMode && <span className="ml-1 opacity-70">({exploredNodeIds.size})</span>}
+                                    </button>
+                                    {exploreMode && (
+                                        <button
+                                            onClick={() => setExploredNodeIds(new Set())}
+                                            className="text-muted-foreground hover:text-foreground w-full rounded-md border px-2.5 py-1.5 text-left text-xs"
+                                        >
+                                            Reset explored
+                                        </button>
+                                    )}
+                                    <button
+                                        onClick={() => setBundleEdges(!bundleEdges)}
+                                        className={`w-full rounded-md border px-2.5 py-1.5 text-left text-xs ${
+                                            bundleEdges
+                                                ? "bg-primary text-primary-foreground"
+                                                : "text-muted-foreground hover:text-foreground"
+                                        }`}
+                                    >
+                                        Bundle edges
+                                    </button>
+                                    <button
+                                        onClick={() => setUseMainThread(!useMainThread)}
+                                        className={`w-full rounded-md border px-2.5 py-1.5 text-left text-xs ${
+                                            useMainThread
+                                                ? "bg-primary text-primary-foreground"
+                                                : "text-muted-foreground hover:text-foreground"
+                                        }`}
+                                    >
+                                        Main-thread layout
+                                    </button>
+                                </div>
+                                <div className="flex flex-col gap-2">
+                                    <label className="text-muted-foreground text-[10px] font-medium tracking-wider uppercase">Views</label>
+                                    <button
+                                        onClick={() => setShowSaveDialog(true)}
+                                        className="text-muted-foreground hover:text-foreground w-full rounded-md border px-2.5 py-1.5 text-left text-xs"
+                                    >
+                                        Save current view...
+                                    </button>
+                                    {savedViews.map(view => (
+                                        <div key={view.name} className="flex items-center justify-between gap-1">
+                                            <button
+                                                className="text-muted-foreground hover:text-foreground flex-1 truncate rounded-md border px-2.5 py-1.5 text-left text-xs"
+                                                onClick={() => {
+                                                    setFilterTypes(new Set(view.filterTypes));
+                                                    setFilterRelations(new Set(view.filterRelations));
+                                                    setCollapsedParents(new Set(view.collapsedParents));
+                                                    setLayoutAlgorithm(view.layoutAlgorithm as LayoutAlgorithm);
+                                                    if (view.focusNodeId) {
+                                                        setSelectedChunkId(view.focusNodeId);
+                                                        setFocusedNodeId(view.focusNodeId);
+                                                    }
+                                                }}
+                                            >
+                                                {view.name}
+                                            </button>
+                                            <button
+                                                className="text-muted-foreground hover:text-destructive shrink-0 rounded p-1"
+                                                onClick={() => deleteSavedView(view.name)}
+                                            >
+                                                <span className="text-[10px]">✕</span>
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                                <div className="border-t pt-3">
+                                    <button
+                                        onClick={handleExportImage}
+                                        className="text-muted-foreground hover:text-foreground flex w-full items-center gap-2 rounded-md border px-2.5 py-1.5 text-xs"
+                                    >
+                                        <Download className="size-3.5" />
+                                        Export as PNG
+                                    </button>
+                                </div>
+                            </div>
+                        </PopoverPopup>
+                    </Popover>
+                    <span className="text-muted-foreground bg-background/80 rounded-lg border px-3 py-1.5 text-xs backdrop-blur-sm">
+                        {nodes.length - 1} · {edges.length}
+                    </span>
+                </div>
+
+                {/* Top-center: Legend */}
+                <GraphLegend activeTypes={activeTypes} activeRelations={activeRelations} />
+
+                {/* Tooltip */}
+                {hoveredNode &&
+                    chunkMap.get(hoveredNode.id) &&
+                    (() => {
+                        const info = chunkMap.get(hoveredNode.id)!;
+                        return (
+                            <div
+                                className="bg-popover text-popover-foreground pointer-events-none fixed z-50 max-w-xs rounded-lg border p-3 shadow-lg"
+                                style={{ left: hoveredNode.x + 12, top: hoveredNode.y + 12 }}
+                            >
+                                <p className="text-sm font-semibold">{info.title}</p>
+                                <p className="text-muted-foreground mt-0.5 text-xs">{info.type}</p>
+                                {info.summary && <p className="mt-1.5 text-xs">{info.summary}</p>}
+                                {info.tags.length > 0 && (
+                                    <div className="mt-1.5 flex flex-wrap gap-1">
+                                        {info.tags.slice(0, 5).map(tag => (
+                                            <span key={tag} className="bg-muted rounded px-1.5 py-0.5 text-[10px]">
+                                                {tag}
+                                            </span>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })()}
+                {/* Edge creation dialog */}
+                <Dialog
+                    open={!!pendingConnection}
+                    onOpenChange={open => {
+                        if (!open) setPendingConnection(null);
+                    }}
+                >
+                    <DialogPopup className="max-w-sm">
+                        <DialogHeader>
+                            <DialogTitle>Create Connection</DialogTitle>
+                            <p className="text-muted-foreground text-sm">
+                                <span className="text-foreground font-medium">
+                                    {pendingConnection ? (chunkMap.get(pendingConnection.source)?.title ?? pendingConnection.source) : ""}
+                                </span>
+                                {" \u2192 "}
+                                <span className="text-foreground font-medium">
+                                    {pendingConnection ? (chunkMap.get(pendingConnection.target)?.title ?? pendingConnection.target) : ""}
+                                </span>
+                            </p>
+                        </DialogHeader>
+                        <div className="grid grid-cols-2 gap-2 px-6 pb-6">
+                            {RELATION_TYPES.map(rel => (
+                                <button
+                                    key={rel}
+                                    disabled={createConnectionMutation.isPending}
+                                    onClick={() => {
+                                        if (!pendingConnection) return;
+                                        createConnectionMutation.mutate({
+                                            sourceId: pendingConnection.source,
+                                            targetId: pendingConnection.target,
+                                            relation: rel
+                                        });
+                                    }}
+                                    className="hover:bg-muted rounded-md border-2 px-3 py-2 text-sm font-medium transition-colors disabled:opacity-50"
+                                    style={{ borderColor: relationColor(rel) }}
+                                >
+                                    {rel.replace(/_/g, " ")}
+                                </button>
+                            ))}
+                        </div>
+                    </DialogPopup>
+                </Dialog>
+
+                {/* Bottom-center: Timeline */}
+                <GraphTimeline chunks={data?.chunks ?? []} onCutoffChange={handleTimelineCutoff} />
+
+                {/* Bottom-left: Metrics */}
+                <GraphMetrics
+                    nodes={nodes}
+                    edges={edges}
+                    onNodeClick={id => {
+                        setSelectedChunkId(id);
+                        setFocusedNodeId(id);
+                    }}
+                />
+
+                {/* Bulk action bar */}
+                {multiSelectedIds.size > 0 && (
+                    <div className="bg-background/95 absolute bottom-4 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-lg border px-4 py-2 shadow-lg backdrop-blur-sm">
+                        <span className="text-xs font-medium">{multiSelectedIds.size} selected</span>
+                        <div className="bg-border h-4 w-px" />
                         <button
-                            onClick={() => { setPathStartId(null); setPathEndId(null); }}
-                            className="text-muted-foreground hover:text-foreground rounded border px-2 py-0.5 text-xs"
+                            onClick={() => {
+                                if (confirm(`Delete ${multiSelectedIds.size} chunks?`)) {
+                                    deleteManyMutation.mutate([...multiSelectedIds]);
+                                }
+                            }}
+                            className="text-destructive hover:bg-destructive/10 rounded-md px-2 py-1 text-xs"
+                        >
+                            Delete
+                        </button>
+                        <button
+                            onClick={() => setMultiSelectedIds(new Set())}
+                            className="text-muted-foreground hover:text-foreground rounded-md px-2 py-1 text-xs"
                         >
                             Clear
                         </button>
                     </div>
-                </div>
-            )}
-            {/* Save view dialog */}
-            {showSaveDialog && (
-                <div className="absolute inset-0 z-30 flex items-center justify-center bg-background/50 backdrop-blur-sm" onClick={() => setShowSaveDialog(false)}>
-                    <div className="rounded-lg border bg-background p-4 shadow-lg" onClick={e => e.stopPropagation()}>
-                        <h3 className="text-sm font-semibold mb-2">Save View</h3>
-                        <input
-                            value={viewName}
-                            onChange={e => setViewName(e.target.value)}
-                            placeholder="View name"
-                            className="w-full rounded-md border px-3 py-2 text-sm"
-                            autoFocus
-                            onKeyDown={e => {
-                                if (e.key === "Enter" && viewName.trim()) {
-                                    saveView({
-                                        name: viewName.trim(),
-                                        filterTypes: [...filterTypes],
-                                        filterRelations: [...filterRelations],
-                                        collapsedParents: [...collapsedParents],
-                                        layoutAlgorithm,
-                                        focusNodeId: focusedNodeId ?? undefined
-                                    });
-                                    setShowSaveDialog(false);
-                                    setViewName("");
-                                }
-                            }}
-                        />
-                        <div className="flex gap-2 mt-3">
+                )}
+
+                {/* Path info bar */}
+                {(pathStartId || pathEndId) && (
+                    <div className="absolute bottom-6 left-1/2 z-10 -translate-x-1/2">
+                        <div className="bg-background/90 flex items-center gap-3 rounded-lg border px-4 py-2 text-sm shadow-lg backdrop-blur-sm">
+                            {pathStartId && !pathEndId && (
+                                <span className="text-muted-foreground">
+                                    Alt+click another node to find path from{" "}
+                                    <span className="text-foreground font-medium">{chunkMap.get(pathStartId)?.title ?? pathStartId}</span>
+                                </span>
+                            )}
+                            {pathStartId && pathEndId && pathResult && (
+                                <span className="text-foreground font-medium">
+                                    Path: {pathResult.length} {pathResult.length === 1 ? "hop" : "hops"}
+                                </span>
+                            )}
+                            {pathStartId && pathEndId && !pathResult && <span className="font-medium text-red-500">No path found</span>}
                             <button
                                 onClick={() => {
-                                    if (!viewName.trim()) return;
-                                    saveView({
-                                        name: viewName.trim(),
-                                        filterTypes: [...filterTypes],
-                                        filterRelations: [...filterRelations],
-                                        collapsedParents: [...collapsedParents],
-                                        layoutAlgorithm,
-                                        focusNodeId: focusedNodeId ?? undefined
-                                    });
-                                    setShowSaveDialog(false);
-                                    setViewName("");
+                                    setPathStartId(null);
+                                    setPathEndId(null);
                                 }}
-                                className="flex-1 rounded-md bg-primary px-3 py-1.5 text-xs text-primary-foreground"
-                            >Save</button>
-                            <button onClick={() => setShowSaveDialog(false)} className="rounded-md border px-3 py-1.5 text-xs">Cancel</button>
+                                className="text-muted-foreground hover:text-foreground rounded border px-2 py-0.5 text-xs"
+                            >
+                                Clear
+                            </button>
                         </div>
                     </div>
-                </div>
-            )}
+                )}
+                {/* Save view dialog */}
+                {showSaveDialog && (
+                    <div
+                        className="bg-background/50 absolute inset-0 z-30 flex items-center justify-center backdrop-blur-sm"
+                        onClick={() => setShowSaveDialog(false)}
+                    >
+                        <div className="bg-background rounded-lg border p-4 shadow-lg" onClick={e => e.stopPropagation()}>
+                            <h3 className="mb-2 text-sm font-semibold">Save View</h3>
+                            <input
+                                value={viewName}
+                                onChange={e => setViewName(e.target.value)}
+                                placeholder="View name"
+                                className="w-full rounded-md border px-3 py-2 text-sm"
+                                autoFocus
+                                onKeyDown={e => {
+                                    if (e.key === "Enter" && viewName.trim()) {
+                                        saveView({
+                                            name: viewName.trim(),
+                                            filterTypes: [...filterTypes],
+                                            filterRelations: [...filterRelations],
+                                            collapsedParents: [...collapsedParents],
+                                            layoutAlgorithm,
+                                            focusNodeId: focusedNodeId ?? undefined
+                                        });
+                                        setShowSaveDialog(false);
+                                        setViewName("");
+                                    }
+                                }}
+                            />
+                            <div className="mt-3 flex gap-2">
+                                <button
+                                    onClick={() => {
+                                        if (!viewName.trim()) return;
+                                        saveView({
+                                            name: viewName.trim(),
+                                            filterTypes: [...filterTypes],
+                                            filterRelations: [...filterRelations],
+                                            collapsedParents: [...collapsedParents],
+                                            layoutAlgorithm,
+                                            focusNodeId: focusedNodeId ?? undefined
+                                        });
+                                        setShowSaveDialog(false);
+                                        setViewName("");
+                                    }}
+                                    className="bg-primary text-primary-foreground flex-1 rounded-md px-3 py-1.5 text-xs"
+                                >
+                                    Save
+                                </button>
+                                <button onClick={() => setShowSaveDialog(false)} className="rounded-md border px-3 py-1.5 text-xs">
+                                    Cancel
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );

@@ -45,12 +45,10 @@ export function FloatingEdge({ id, source, target, style, data, label, labelStyl
     let arrivalAngle: number;
 
     // Determine which side of each node the edge exits/enters
-    const sourcePosition = Math.abs(dx) > Math.abs(dy)
-        ? (dx > 0 ? Position.Right : Position.Left)
-        : (dy > 0 ? Position.Bottom : Position.Top);
-    const targetPosition = Math.abs(dx) > Math.abs(dy)
-        ? (dx > 0 ? Position.Left : Position.Right)
-        : (dy > 0 ? Position.Top : Position.Bottom);
+    const sourcePosition =
+        Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? Position.Right : Position.Left) : dy > 0 ? Position.Bottom : Position.Top;
+    const targetPosition =
+        Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? Position.Left : Position.Right) : dy > 0 ? Position.Top : Position.Bottom;
 
     if (curveOffset === 0) {
         const [p, px, py] = getBezierPath({
@@ -108,13 +106,7 @@ export function FloatingEdge({ id, source, target, style, data, label, labelStyl
             {/* Main edge */}
             <path id={id} className="react-flow__edge-path" d={edgePath} style={style} />
             {/* Arrowhead */}
-            {arrowPoints && (
-                <polygon
-                    points={arrowPoints.map(p => `${p.x},${p.y}`).join(" ")}
-                    fill={strokeColor}
-                    fillOpacity={0.8}
-                />
-            )}
+            {arrowPoints && <polygon points={arrowPoints.map(p => `${p.x},${p.y}`).join(" ")} fill={strokeColor} fillOpacity={0.8} />}
             {(() => {
                 const bundleCount = (data as { bundleCount?: number })?.bundleCount;
                 if (!bundleCount || bundleCount <= 1) return null;
@@ -130,33 +122,28 @@ export function FloatingEdge({ id, source, target, style, data, label, labelStyl
                     </text>
                 );
             })()}
-            {label && (() => {
-                const text = label as string;
-                const charWidth = 6;
-                const padding = 16;
-                const textWidth = text.length * charWidth + padding;
-                return (
-                    <>
-                        <rect
-                            x={lx - textWidth / 2}
-                            y={ly - 10}
-                            width={textWidth}
-                            height={20}
-                            rx={6}
-                            style={labelBgStyle as React.CSSProperties}
-                        />
-                        <text
-                            x={lx}
-                            y={ly}
-                            textAnchor="middle"
-                            dominantBaseline="central"
-                            style={labelStyle as React.CSSProperties}
-                        >
-                            {text}
-                        </text>
-                    </>
-                );
-            })()}
+            {label &&
+                (() => {
+                    const text = label as string;
+                    const charWidth = 6;
+                    const padding = 16;
+                    const textWidth = text.length * charWidth + padding;
+                    return (
+                        <>
+                            <rect
+                                x={lx - textWidth / 2}
+                                y={ly - 10}
+                                width={textWidth}
+                                height={20}
+                                rx={6}
+                                style={labelBgStyle as React.CSSProperties}
+                            />
+                            <text x={lx} y={ly} textAnchor="middle" dominantBaseline="central" style={labelStyle as React.CSSProperties}>
+                                {text}
+                            </text>
+                        </>
+                    );
+                })()}
         </>
     );
 }

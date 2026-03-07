@@ -3,10 +3,10 @@ import { Cause, Effect, Option } from "effect";
 import { Elysia } from "elysia";
 
 import { aiRoutes } from "./ai/routes";
-import { enrichRoutes } from "./enrich/routes";
 import { chunkRoutes } from "./chunks/routes";
 import { connectionRoutes } from "./connections/routes";
 import type { Session } from "./context";
+import { enrichRoutes } from "./enrich/routes";
 import { graphRoutes } from "./graph/routes";
 import { healthRoutes } from "./health/routes";
 import { requireSession } from "./require-session";

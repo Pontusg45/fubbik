@@ -4,7 +4,9 @@ Instructions for AI agents that index and populate a Fubbik knowledge base.
 
 ## Overview
 
-Fubbik is a knowledge base built around **chunks** (atomic knowledge units) and **connections** (typed relationships between chunks). Your job is to break down source material into well-structured chunks, assign appropriate types and tags, create meaningful connections, and then enrich them with AI-generated metadata.
+Fubbik is a knowledge base built around **chunks** (atomic knowledge units) and **connections** (typed relationships between chunks). Your
+job is to break down source material into well-structured chunks, assign appropriate types and tags, create meaningful connections, and then
+enrich them with AI-generated metadata.
 
 ## Data Model
 
@@ -12,48 +14,48 @@ Fubbik is a knowledge base built around **chunks** (atomic knowledge units) and 
 
 A chunk is an atomic unit of knowledge. Keep each chunk focused on **one concept, one topic, or one procedure**.
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `title` | string (max 200) | Short, descriptive, unique title |
-| `content` | string (max 50000) | The knowledge itself — markdown supported |
-| `type` | string (max 20) | Category (see types below) |
-| `tags` | string[] (max 20, each max 50) | Searchable labels for filtering |
+| Field     | Type                           | Description                               |
+| --------- | ------------------------------ | ----------------------------------------- |
+| `title`   | string (max 200)               | Short, descriptive, unique title          |
+| `content` | string (max 50000)             | The knowledge itself — markdown supported |
+| `type`    | string (max 20)                | Category (see types below)                |
+| `tags`    | string[] (max 20, each max 50) | Searchable labels for filtering           |
 
 ### Chunk Types
 
 Use these types consistently:
 
-| Type | When to use |
-|------|-------------|
-| `note` | General knowledge, observations, ideas, memos |
-| `document` | Structured long-form content, specs, reports |
-| `guide` | How-to instructions, tutorials, walkthroughs |
+| Type        | When to use                                         |
+| ----------- | --------------------------------------------------- |
+| `note`      | General knowledge, observations, ideas, memos       |
+| `document`  | Structured long-form content, specs, reports        |
+| `guide`     | How-to instructions, tutorials, walkthroughs        |
 | `reference` | API docs, glossaries, lookup tables, specifications |
-| `schema` | Data models, type definitions, database schemas |
-| `checklist` | Step-by-step procedures, review lists, runbooks |
+| `schema`    | Data models, type definitions, database schemas     |
+| `checklist` | Step-by-step procedures, review lists, runbooks     |
 
 ### Connection
 
 A connection is a directed, typed edge between two chunks.
 
-| Field | Type | Description |
-|-------|------|-------------|
+| Field      | Type   | Description                                 |
+| ---------- | ------ | ------------------------------------------- |
 | `sourceId` | string | The chunk this relationship originates from |
-| `targetId` | string | The chunk this relationship points to |
-| `relation` | string | Relationship type (see below) |
+| `targetId` | string | The chunk this relationship points to       |
+| `relation` | string | Relationship type (see below)               |
 
 ### Relation Types
 
-| Relation | Meaning | Example |
-|----------|---------|---------|
-| `related_to` | General association | "Auth module" ↔ "Session management" |
-| `part_of` | Hierarchical containment | "Login form" → "Auth module" |
-| `depends_on` | Functional dependency | "API client" → "Auth tokens" |
-| `extends` | Builds upon / specializes | "Admin dashboard" → "Base dashboard" |
-| `references` | Mentions / cites | "Architecture doc" → "Database schema" |
-| `supports` | Provides evidence / backing | "Benchmark results" → "Performance claims" |
-| `contradicts` | Conflicts with | "Old API spec" ↔ "New API spec" |
-| `alternative_to` | Different approach to same problem | "REST API" ↔ "GraphQL API" |
+| Relation         | Meaning                            | Example                                    |
+| ---------------- | ---------------------------------- | ------------------------------------------ |
+| `related_to`     | General association                | "Auth module" ↔ "Session management"       |
+| `part_of`        | Hierarchical containment           | "Login form" → "Auth module"               |
+| `depends_on`     | Functional dependency              | "API client" → "Auth tokens"               |
+| `extends`        | Builds upon / specializes          | "Admin dashboard" → "Base dashboard"       |
+| `references`     | Mentions / cites                   | "Architecture doc" → "Database schema"     |
+| `supports`       | Provides evidence / backing        | "Benchmark results" → "Performance claims" |
+| `contradicts`    | Conflicts with                     | "Old API spec" ↔ "New API spec"            |
+| `alternative_to` | Different approach to same problem | "REST API" ↔ "GraphQL API"                 |
 
 ## Best Practices
 
@@ -62,9 +64,11 @@ A connection is a directed, typed edge between two chunks.
 **Right-sized chunks are critical.** Too large and they become unfocused; too small and context is lost.
 
 - **Target**: 50–300 lines, or roughly one screen of content
-- **Split large documents** by heading (H1/H2/H3). Create an index chunk that lists sections, then a sub-chunk per section with `part_of` connections back to the index
+- **Split large documents** by heading (H1/H2/H3). Create an index chunk that lists sections, then a sub-chunk per section with `part_of`
+  connections back to the index
 - **Don't split** if the content is under ~100 lines and covers one coherent topic
-- **Each chunk should be independently understandable** — a reader should grasp the chunk without reading others (though connections provide context)
+- **Each chunk should be independently understandable** — a reader should grasp the chunk without reading others (though connections provide
+  context)
 
 ### 2. Titles
 
@@ -83,6 +87,7 @@ Tags enable filtering and discovery. Apply them systematically:
 - **Lifecycle tags** (when relevant): `deprecated`, `draft`, `stable`, `experimental`
 
 Rules:
+
 - Use lowercase, hyphenated tags: `error-handling` not `ErrorHandling`
 - 3–6 tags per chunk is ideal; max 20
 - Be consistent — use the same tag across chunks for the same concept
@@ -175,6 +180,7 @@ fubbik enrich --all
 ```
 
 Enrichment generates:
+
 - **Summary**: A concise description used in search results and the graph
 - **Aliases**: Alternative names the chunk might be known by (improves search)
 - **Not-about**: Terms that sound related but aren't (reduces false positives in semantic search)
@@ -203,6 +209,7 @@ fubbik export > knowledge-base.json
 ```
 
 In the web UI:
+
 - Open the **graph view** to visually inspect connections and clustering
 - Check for **isolated nodes** (chunks with no connections) — they likely need linking
 - Look for **dense clusters** that should be broken into sub-topics
@@ -210,46 +217,46 @@ In the web UI:
 
 ## CLI Quick Reference
 
-| Command | Purpose |
-|---------|---------|
-| `fubbik init --scan` | Scan project and create initial chunks |
-| `fubbik add -t "Title" -c "Content" --type guide --tags "a,b"` | Add a single chunk |
-| `fubbik bulk-add --file chunks.jsonl` | Bulk import from JSONL |
-| `fubbik import --file docs/` | Import from markdown directory |
-| `fubbik link <source-id> <target-id> -r part_of` | Create a connection |
-| `fubbik unlink <source-id> <target-id>` | Remove a connection |
-| `fubbik update <id> --tags "new,tags"` | Update chunk metadata |
-| `fubbik enrich --all` | Run AI enrichment on all chunks |
-| `fubbik sync --url http://localhost:3000` | Sync local store with server |
-| `fubbik search "query"` | Text search |
-| `fubbik search --semantic "query"` | AI-powered semantic search |
-| `fubbik list` | List all chunks |
-| `fubbik stats` | Knowledge base statistics |
-| `fubbik export` | Export as JSON |
+| Command                                                        | Purpose                                |
+| -------------------------------------------------------------- | -------------------------------------- |
+| `fubbik init --scan`                                           | Scan project and create initial chunks |
+| `fubbik add -t "Title" -c "Content" --type guide --tags "a,b"` | Add a single chunk                     |
+| `fubbik bulk-add --file chunks.jsonl`                          | Bulk import from JSONL                 |
+| `fubbik import --file docs/`                                   | Import from markdown directory         |
+| `fubbik link <source-id> <target-id> -r part_of`               | Create a connection                    |
+| `fubbik unlink <source-id> <target-id>`                        | Remove a connection                    |
+| `fubbik update <id> --tags "new,tags"`                         | Update chunk metadata                  |
+| `fubbik enrich --all`                                          | Run AI enrichment on all chunks        |
+| `fubbik sync --url http://localhost:3000`                      | Sync local store with server           |
+| `fubbik search "query"`                                        | Text search                            |
+| `fubbik search --semantic "query"`                             | AI-powered semantic search             |
+| `fubbik list`                                                  | List all chunks                        |
+| `fubbik stats`                                                 | Knowledge base statistics              |
+| `fubbik export`                                                | Export as JSON                         |
 
 ## API Quick Reference
 
-| Endpoint | Method | Purpose |
-|----------|--------|---------|
-| `/api/chunks` | GET | List chunks (supports `type`, `tags`, `search`, `sort`, `limit`, `offset`) |
-| `/api/chunks` | POST | Create a chunk |
-| `/api/chunks/:id` | PATCH | Update a chunk |
-| `/api/chunks/:id` | DELETE | Delete a chunk |
-| `/api/chunks/import` | POST | Bulk import (max 500) |
-| `/api/chunks/export` | GET | Export all chunks |
-| `/api/chunks/search/semantic` | GET | Semantic search (`q`, `limit`) |
-| `/api/chunks/bulk` | DELETE | Bulk delete (`ids[]`, max 100) |
-| `/api/connections` | POST | Create connection (`sourceId`, `targetId`, `relation`) |
+| Endpoint                      | Method | Purpose                                                                    |
+| ----------------------------- | ------ | -------------------------------------------------------------------------- |
+| `/api/chunks`                 | GET    | List chunks (supports `type`, `tags`, `search`, `sort`, `limit`, `offset`) |
+| `/api/chunks`                 | POST   | Create a chunk                                                             |
+| `/api/chunks/:id`             | PATCH  | Update a chunk                                                             |
+| `/api/chunks/:id`             | DELETE | Delete a chunk                                                             |
+| `/api/chunks/import`          | POST   | Bulk import (max 500)                                                      |
+| `/api/chunks/export`          | GET    | Export all chunks                                                          |
+| `/api/chunks/search/semantic` | GET    | Semantic search (`q`, `limit`)                                             |
+| `/api/chunks/bulk`            | DELETE | Bulk delete (`ids[]`, max 100)                                             |
+| `/api/connections`            | POST   | Create connection (`sourceId`, `targetId`, `relation`)                     |
 
 ## Anti-Patterns
 
-| Don't | Do instead |
-|-------|-----------|
-| Create one giant chunk per document | Split by heading into focused chunks |
-| Use vague types like "note" for everything | Pick the most specific type |
-| Skip connections | Always connect related chunks |
-| Duplicate content across chunks | Create one chunk and connect it |
-| Use inconsistent tags | Check `fubbik tags` first |
-| Import without enriching | Always run `fubbik enrich --all` after |
-| Create chunks without content | Every chunk needs meaningful content |
-| Use file paths as titles | Use descriptive, human-readable titles |
+| Don't                                      | Do instead                             |
+| ------------------------------------------ | -------------------------------------- |
+| Create one giant chunk per document        | Split by heading into focused chunks   |
+| Use vague types like "note" for everything | Pick the most specific type            |
+| Skip connections                           | Always connect related chunks          |
+| Duplicate content across chunks            | Create one chunk and connect it        |
+| Use inconsistent tags                      | Check `fubbik tags` first              |
+| Import without enriching                   | Always run `fubbik enrich --all` after |
+| Create chunks without content              | Every chunk needs meaningful content   |
+| Use file paths as titles                   | Use descriptive, human-readable titles |

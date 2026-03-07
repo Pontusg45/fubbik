@@ -8,7 +8,16 @@ import { chunk, chunkConnection } from "../schema/chunk";
 export function getAllChunksMeta(userId?: string) {
     return Effect.tryPromise({
         try: () => {
-            const query = db.select({ id: chunk.id, title: chunk.title, type: chunk.type, tags: chunk.tags, summary: chunk.summary, createdAt: chunk.createdAt }).from(chunk);
+            const query = db
+                .select({
+                    id: chunk.id,
+                    title: chunk.title,
+                    type: chunk.type,
+                    tags: chunk.tags,
+                    summary: chunk.summary,
+                    createdAt: chunk.createdAt
+                })
+                .from(chunk);
             return userId ? query.where(eq(chunk.userId, userId)) : query;
         },
         catch: cause => new DatabaseError({ cause })

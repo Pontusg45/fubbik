@@ -5,9 +5,7 @@ export function usePinnedChunks() {
     const pinnedSet = new Set(pinnedIds);
 
     function togglePin(id: string) {
-        setPinnedIds(prev =>
-            prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
-        );
+        setPinnedIds(prev => (prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]));
     }
 
     function isPinned(id: string) {

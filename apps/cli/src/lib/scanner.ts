@@ -21,21 +21,9 @@ interface ScanOptions {
     verbose?: boolean;
 }
 
-const IGNORE_DIRS = new Set([
-    "node_modules",
-    ".git",
-    ".turbo",
-    "dist",
-    "build",
-    ".next",
-    ".output",
-    ".cache",
-    "coverage",
-    ".fubbik"
-]);
+const IGNORE_DIRS = new Set(["node_modules", ".git", ".turbo", "dist", "build", ".next", ".output", ".cache", "coverage", ".fubbik"]);
 
 const DOC_FILES = ["README.md", "CLAUDE.md", "CONTRIBUTING.md", "Agents.md", "CHANGELOG.md"];
-
 
 export function scanProject(opts: ScanOptions): ScannedChunk[] {
     const chunks: ScannedChunk[] = [];
@@ -191,9 +179,7 @@ function extractMarkdownTitle(content: string): string | null {
 function pathTags(relPath: string): string[] {
     const parts = relPath.split("/").filter(Boolean);
     // Take meaningful path segments as tags
-    return parts
-        .filter(p => !["src", "lib", "index.ts", "package.json"].includes(p))
-        .slice(0, 3);
+    return parts.filter(p => !["src", "lib", "index.ts", "package.json"].includes(p)).slice(0, 3);
 }
 
 function findFiles(dir: string, ext: string, maxDepth = 5, depth = 0): string[] {
@@ -215,4 +201,3 @@ function findFiles(dir: string, ext: string, maxDepth = 5, depth = 0): string[] 
     }
     return results;
 }
-

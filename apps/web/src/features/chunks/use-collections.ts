@@ -20,19 +20,11 @@ export function useCollections() {
     }
 
     function addToCollection(collectionId: string, chunkIds: string[]) {
-        setCollections(prev => prev.map(c =>
-            c.id === collectionId
-                ? { ...c, chunkIds: [...new Set([...c.chunkIds, ...chunkIds])] }
-                : c
-        ));
+        setCollections(prev => prev.map(c => (c.id === collectionId ? { ...c, chunkIds: [...new Set([...c.chunkIds, ...chunkIds])] } : c)));
     }
 
     function removeFromCollection(collectionId: string, chunkId: string) {
-        setCollections(prev => prev.map(c =>
-            c.id === collectionId
-                ? { ...c, chunkIds: c.chunkIds.filter(id => id !== chunkId) }
-                : c
-        ));
+        setCollections(prev => prev.map(c => (c.id === collectionId ? { ...c, chunkIds: c.chunkIds.filter(id => id !== chunkId) } : c)));
     }
 
     return { collections, createCollection, deleteCollection, addToCollection, removeFromCollection };

@@ -6,10 +6,7 @@ import rehypeMermaid from "rehype-mermaid";
 import remarkGfm from "remark-gfm";
 
 const remarkPlugins = [remarkGfm];
-const rehypePlugins = [
-    [rehypeMermaid, { strategy: "pre-mermaid" }],
-    rehypeHighlight
-] as Parameters<typeof Markdown>[0]["rehypePlugins"];
+const rehypePlugins = [[rehypeMermaid, { strategy: "pre-mermaid" }], rehypeHighlight] as Parameters<typeof Markdown>[0]["rehypePlugins"];
 
 mermaid.initialize({ startOnLoad: false, theme: "dark" });
 

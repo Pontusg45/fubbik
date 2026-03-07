@@ -1,6 +1,7 @@
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { BookOpen, CheckSquare, Compass, Database, FileText, StickyNote } from "lucide-react";
 import { useContext } from "react";
+
 import { ZoomContext } from "./graph-view";
 
 const TYPE_ICONS: Record<string, typeof BookOpen> = {
@@ -25,8 +26,18 @@ export function GraphNode({ data }: NodeProps) {
         return (
             <>
                 <Handle type="target" position={Position.Top} className="!bg-muted-foreground/50 !border-muted-foreground/50 !size-2" />
-                <Handle type="target" position={Position.Left} className="!bg-muted-foreground/50 !border-muted-foreground/50 !size-2" id="left-target" />
-                <Handle type="source" position={Position.Right} className="!bg-muted-foreground/50 !border-muted-foreground/50 !size-2" id="right-source" />
+                <Handle
+                    type="target"
+                    position={Position.Left}
+                    className="!bg-muted-foreground/50 !border-muted-foreground/50 !size-2"
+                    id="left-target"
+                />
+                <Handle
+                    type="source"
+                    position={Position.Right}
+                    className="!bg-muted-foreground/50 !border-muted-foreground/50 !size-2"
+                    id="right-source"
+                />
                 <div className="flex items-center gap-0.5">
                     <Icon className="size-2.5 shrink-0 opacity-60" />
                     <span className="text-[9px] leading-tight">{nodeData.label}</span>
@@ -40,14 +51,24 @@ export function GraphNode({ data }: NodeProps) {
     return (
         <>
             <Handle type="target" position={Position.Top} className="!bg-muted-foreground/50 !border-muted-foreground/50 !size-2" />
-            <Handle type="target" position={Position.Left} className="!bg-muted-foreground/50 !border-muted-foreground/50 !size-2" id="left-target" />
-            <Handle type="source" position={Position.Right} className="!bg-muted-foreground/50 !border-muted-foreground/50 !size-2" id="right-source" />
+            <Handle
+                type="target"
+                position={Position.Left}
+                className="!bg-muted-foreground/50 !border-muted-foreground/50 !size-2"
+                id="left-target"
+            />
+            <Handle
+                type="source"
+                position={Position.Right}
+                className="!bg-muted-foreground/50 !border-muted-foreground/50 !size-2"
+                id="right-source"
+            />
             <div className="flex flex-col gap-0.5">
                 <div className="flex items-center gap-1.5">
                     <Icon className={`${scale > 1.3 ? "size-3.5" : "size-3"} shrink-0 opacity-60`} />
                     <span className="leading-tight">{nodeData.label}</span>
                     {count > 0 && (
-                        <span className="flex size-3.5 items-center justify-center rounded-full bg-current/10 text-[8px] font-medium leading-none opacity-60">
+                        <span className="flex size-3.5 items-center justify-center rounded-full bg-current/10 text-[8px] leading-none font-medium opacity-60">
                             {count}
                         </span>
                     )}

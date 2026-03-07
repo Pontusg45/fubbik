@@ -13,11 +13,11 @@ import { AiSection } from "@/features/chunks/ai-section";
 import { getChunkSize } from "@/features/chunks/chunk-size";
 import { DeleteConnectionButton } from "@/features/chunks/delete-connection-button";
 import { LinkChunkDialog } from "@/features/chunks/link-chunk-dialog";
+import { relationColor } from "@/features/chunks/relation-colors";
 import { SplitChunkDialog } from "@/features/chunks/split-chunk-dialog";
 import { useFavorites } from "@/features/chunks/use-favorites";
 import { useRecentChunks } from "@/features/chunks/use-recent-chunks";
 import { VersionHistory } from "@/features/chunks/version-history";
-import { relationColor } from "@/features/chunks/relation-colors";
 import { getUser } from "@/functions/get-user";
 import { api } from "@/utils/api";
 
@@ -43,7 +43,7 @@ function ChunkDetail() {
 
     useEffect(() => {
         trackView(chunkId);
-    }, [chunkId]);
+    }, [chunkId, trackView]);
 
     const { data, isLoading, error } = useQuery({
         queryKey: ["chunk", chunkId],
@@ -149,7 +149,7 @@ function ChunkDetail() {
                     <h1 className="text-2xl font-bold tracking-tight">{chunk.title}</h1>
                     <button
                         onClick={() => toggleFavorite(chunkId)}
-                        className="text-muted-foreground hover:text-yellow-500 transition-colors"
+                        className="text-muted-foreground transition-colors hover:text-yellow-500"
                         title={isFavorite(chunkId) ? "Remove from favorites" : "Add to favorites"}
                     >
                         <Star className={`size-4 ${isFavorite(chunkId) ? "fill-yellow-500 text-yellow-500" : ""}`} />
@@ -219,7 +219,12 @@ function ChunkDetail() {
                                     {conn.title ?? conn.targetId}
                                 </Link>
                                 <div className="flex items-center gap-2">
-                                    <Badge variant="outline" size="sm" className="text-[10px]" style={{ borderColor: relationColor(conn.relation), color: relationColor(conn.relation) }}>
+                                    <Badge
+                                        variant="outline"
+                                        size="sm"
+                                        className="text-[10px]"
+                                        style={{ borderColor: relationColor(conn.relation), color: relationColor(conn.relation) }}
+                                    >
                                         {conn.relation}
                                     </Badge>
                                     <DeleteConnectionButton connectionId={conn.id} chunkId={chunkId} />
@@ -240,7 +245,12 @@ function ChunkDetail() {
                                     {conn.title ?? conn.sourceId}
                                 </Link>
                                 <div className="flex items-center gap-2">
-                                    <Badge variant="outline" size="sm" className="text-[10px]" style={{ borderColor: relationColor(conn.relation), color: relationColor(conn.relation) }}>
+                                    <Badge
+                                        variant="outline"
+                                        size="sm"
+                                        className="text-[10px]"
+                                        style={{ borderColor: relationColor(conn.relation), color: relationColor(conn.relation) }}
+                                    >
                                         {conn.relation}
                                     </Badge>
                                     <DeleteConnectionButton connectionId={conn.id} chunkId={chunkId} />

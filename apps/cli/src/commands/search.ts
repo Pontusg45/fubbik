@@ -24,7 +24,7 @@ export const searchCommand = new Command("search")
                 outputError(`Semantic search failed: ${res.status}`);
                 process.exit(1);
             }
-            const results = await res.json() as { id: string; title: string; type: string; similarity: number }[];
+            const results = (await res.json()) as { id: string; title: string; type: string; similarity: number }[];
             outputQuiet(cmd, results.map(c => c.id).join("\n"));
             if (results.length === 0) {
                 output(cmd, results, `No semantic matches for "${query}".`);

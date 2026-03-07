@@ -47,6 +47,9 @@
         "ci": "turbo run check-types lint test build && bun run fmt:check && bun run sherif",
         "ci:fix": "turbo run check-types lint test build && bun run fmt && bun run sherif --fix && bun run lint:fix"
     },
+    "dependencies": {
+        "html-to-image": "^1.11.13"
+    },
     "devDependencies": {
         "@fubbik/config": "workspace:*",
         "@fubbik/env": "workspace:*",
@@ -60,8 +63,5 @@
         "turbo": "^2.6.3",
         "typescript": "catalog:"
     },
-    "packageManager": "bun@1.3.9",
-    "dependencies": {
-        "html-to-image": "^1.11.13"
-    }
+    "packageManager": "bun@1.3.9"
 }

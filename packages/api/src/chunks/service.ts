@@ -20,21 +20,54 @@ import { generateQueryEmbedding } from "../ollama/client";
 
 export function listChunks(
     userId: string | undefined,
-    query: { type?: string; search?: string; limit?: string; offset?: string; exclude?: string; scope?: string; alias?: string; sort?: "newest" | "oldest" | "alpha" | "updated"; tags?: string; after?: string; enrichment?: "missing" | "complete"; minConnections?: string }
+    query: {
+        type?: string;
+        search?: string;
+        limit?: string;
+        offset?: string;
+        exclude?: string;
+        scope?: string;
+        alias?: string;
+        sort?: "newest" | "oldest" | "alpha" | "updated";
+        tags?: string;
+        after?: string;
+        enrichment?: "missing" | "complete";
+        minConnections?: string;
+    }
 ) {
     const limit = Math.min(Number(query.limit ?? 50), 100);
     const offset = Number(query.offset ?? 0);
     const exclude = query.exclude ? query.exclude.split(",").map(s => s.trim()) : undefined;
     const scope = query.scope
-        ? Object.fromEntries(query.scope.split(",").map(s => s.trim().split(":")).filter(p => p.length === 2) as [string, string][])
+        ? Object.fromEntries(
+              query.scope
+                  .split(",")
+                  .map(s => s.trim().split(":"))
+                  .filter(p => p.length === 2) as [string, string][]
+          )
         : undefined;
-    const parsedTags = query.tags?.split(",").map(s => s.trim()).filter(Boolean);
+    const parsedTags = query.tags
+        ?.split(",")
+        .map(s => s.trim())
+        .filter(Boolean);
     const tags = parsedTags?.length ? parsedTags : undefined;
     const after = query.after ? new Date(Date.now() - Number(query.after) * 86400000) : undefined;
     const minConnections = query.minConnections ? Number(query.minConnections) : undefined;
-    return listChunksRepo({ userId, type: query.type, search: query.search, exclude, scope, alias: query.alias, sort: query.sort, tags, after, enrichment: query.enrichment, minConnections, limit, offset }).pipe(
-        Effect.map(result => ({ ...result, limit, offset }))
-    );
+    return listChunksRepo({
+        userId,
+        type: query.type,
+        search: query.search,
+        exclude,
+        scope,
+        alias: query.alias,
+        sort: query.sort,
+        tags,
+        after,
+        enrichment: query.enrichment,
+        minConnections,
+        limit,
+        offset
+    }).pipe(Effect.map(result => ({ ...result, limit, offset })));
 }
 
 export function getChunkDetail(chunkId: string, userId?: string) {
@@ -127,14 +160,16 @@ export function deleteMany(ids: string[], userId: string) {
     return deleteManyRepo(ids, userId);
 }
 
-export function semanticSearch(
-    userId: string | undefined,
-    query: { q: string; limit?: string; exclude?: string; scope?: string }
-) {
+export function semanticSearch(userId: string | undefined, query: { q: string; limit?: string; exclude?: string; scope?: string }) {
     const limit = Math.min(Number(query.limit ?? 5), 20);
     const exclude = query.exclude ? query.exclude.split(",").map(s => s.trim()) : undefined;
     const scope = query.scope
-        ? Object.fromEntries(query.scope.split(",").map(s => s.trim().split(":")).filter(p => p.length === 2) as [string, string][])
+        ? Object.fromEntries(
+              query.scope
+                  .split(",")
+                  .map(s => s.trim().split(":"))
+                  .filter(p => p.length === 2) as [string, string][]
+          )
         : undefined;
 
     return generateQueryEmbedding(query.q).pipe(

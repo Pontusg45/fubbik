@@ -9,7 +9,10 @@ export function getChunkCount(userId?: string) {
     return Effect.tryPromise({
         try: async () => {
             const query = userId
-                ? db.select({ count: sql<number>`count(*)` }).from(chunk).where(eq(chunk.userId, userId))
+                ? db
+                      .select({ count: sql<number>`count(*)` })
+                      .from(chunk)
+                      .where(eq(chunk.userId, userId))
                 : db.select({ count: sql<number>`count(*)` }).from(chunk);
             const [result] = await query;
             return Number(result?.count ?? 0);

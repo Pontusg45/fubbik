@@ -1,5 +1,4 @@
 import { MarkdownRenderer } from "@/components/markdown-renderer";
-
 import { Tabs, TabsContent, TabsList, TabsTab } from "@/components/ui/tabs";
 
 interface MarkdownEditorProps {

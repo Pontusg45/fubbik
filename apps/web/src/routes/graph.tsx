@@ -7,11 +7,13 @@ const GraphView = lazy(() => import("@/features/graph/graph-view"));
 
 export const Route = createFileRoute("/graph")({
     component: () => (
-        <Suspense fallback={
-            <div className="flex h-[calc(100vh-4rem)] items-center justify-center">
-                <p className="text-muted-foreground">Loading graph...</p>
-            </div>
-        }>
+        <Suspense
+            fallback={
+                <div className="flex h-[calc(100vh-4rem)] items-center justify-center">
+                    <p className="text-muted-foreground">Loading graph...</p>
+                </div>
+            }
+        >
             <GraphView />
         </Suspense>
     ),

@@ -11,10 +11,7 @@ const vector = customType<{ data: number[]; driverParam: string }>({
         return `[${value.join(",")}]`;
     },
     fromDriver(value: unknown) {
-        return (value as string)
-            .slice(1, -1)
-            .split(",")
-            .map(Number);
+        return (value as string).slice(1, -1).split(",").map(Number);
     }
 });
 

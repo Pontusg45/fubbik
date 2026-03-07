@@ -43,12 +43,14 @@ export function KanbanView({ chunks }: { chunks: Chunk[] }) {
             {columns.map(col => (
                 <div
                     key={col.type}
-                    className="rounded-lg border bg-muted/30 p-2"
+                    className="bg-muted/30 rounded-lg border p-2"
                     onDragOver={e => e.preventDefault()}
                     onDrop={e => handleDrop(e, col.type)}
                 >
                     <div className="mb-2 flex items-center justify-between">
-                        <Badge variant="secondary" size="sm">{col.type}</Badge>
+                        <Badge variant="secondary" size="sm">
+                            {col.type}
+                        </Badge>
                         <span className="text-muted-foreground text-[10px]">{col.items.length}</span>
                     </div>
                     <div className="space-y-1.5">
@@ -61,7 +63,7 @@ export function KanbanView({ chunks }: { chunks: Chunk[] }) {
                                 onDragStart={e => e.dataTransfer.setData("text/plain", chunk.id)}
                             >
                                 <Card>
-                                    <CardPanel className="cursor-grab p-2 text-xs transition-colors hover:bg-muted/50 active:cursor-grabbing">
+                                    <CardPanel className="hover:bg-muted/50 cursor-grab p-2 text-xs transition-colors active:cursor-grabbing">
                                         <p className="truncate font-medium">{chunk.title}</p>
                                         <div className="mt-1 flex flex-wrap gap-0.5">
                                             {(chunk.tags as string[]).slice(0, 3).map(tag => (

@@ -16,7 +16,7 @@ export function GraphFilters({
     onToggleRelation: (relation: string) => void;
 }) {
     return (
-        <div className="absolute top-4 left-4 z-10 max-w-[200px] space-y-3 rounded-lg border bg-background/80 p-3 backdrop-blur-sm">
+        <div className="bg-background/80 absolute top-4 left-4 z-10 max-w-[200px] space-y-3 rounded-lg border p-3 backdrop-blur-sm">
             <div>
                 <p className="text-muted-foreground mb-1.5 text-[10px] font-medium uppercase">Types</p>
                 <div className="flex flex-wrap gap-1">

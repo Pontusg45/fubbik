@@ -46,7 +46,7 @@ export const listCommand = new Command("list")
                     outputError(`Server list failed: ${res.status}`);
                     process.exit(1);
                 }
-                const data = await res.json() as { chunks: { id: string; title: string; type: string; tags: string[] }[] };
+                const data = (await res.json()) as { chunks: { id: string; title: string; type: string; tags: string[] }[] };
                 const chunks = data.chunks;
                 outputQuiet(cmd, chunks.map(c => c.id).join("\n"));
                 if (chunks.length === 0) {

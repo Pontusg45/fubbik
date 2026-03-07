@@ -29,34 +29,26 @@ const RELATION_COLORS: Record<string, { color: string; label: string }> = {
     alternative_to: { color: "#ec4899", label: "Alternative to" }
 };
 
-export function GraphLegend({ activeTypes, activeRelations }: {
-    activeTypes: Set<string>;
-    activeRelations: Set<string>;
-}) {
+export function GraphLegend({ activeTypes, activeRelations }: { activeTypes: Set<string>; activeRelations: Set<string> }) {
     const { resolvedTheme } = useTheme();
     const TYPE_COLORS = resolvedTheme === "light" ? TYPE_COLORS_LIGHT : TYPE_COLORS_DARK;
     const usedTypes = Object.entries(TYPE_COLORS).filter(([key]) => activeTypes.has(key));
     const usedRelations = Object.entries(RELATION_COLORS).filter(([key]) => activeRelations.has(key));
 
     return (
-        <div className="absolute top-4 left-1/2 z-10 -translate-x-1/2 rounded-lg border bg-background/80 px-4 py-2 backdrop-blur-sm">
+        <div className="bg-background/80 absolute top-4 left-1/2 z-10 -translate-x-1/2 rounded-lg border px-4 py-2 backdrop-blur-sm">
             <div className="flex items-center gap-4">
                 {usedTypes.map(([, value]) => (
                     <div key={value.label} className="flex items-center gap-1.5">
-                        <div
-                            className="size-2.5 rounded-sm border"
-                            style={{ background: value.bg, borderColor: value.border }}
-                        />
-                        <span className="text-[10px] text-muted-foreground">{value.label}</span>
+                        <div className="size-2.5 rounded-sm border" style={{ background: value.bg, borderColor: value.border }} />
+                        <span className="text-muted-foreground text-[10px]">{value.label}</span>
                     </div>
                 ))}
-                {usedRelations.length > 0 && usedTypes.length > 0 && (
-                    <div className="h-3 w-px bg-border" />
-                )}
+                {usedRelations.length > 0 && usedTypes.length > 0 && <div className="bg-border h-3 w-px" />}
                 {usedRelations.map(([, value]) => (
                     <div key={value.label} className="flex items-center gap-1.5">
                         <div className="h-0.5 w-2.5 rounded" style={{ background: value.color }} />
-                        <span className="text-[10px] text-muted-foreground">{value.label}</span>
+                        <span className="text-muted-foreground text-[10px]">{value.label}</span>
                     </div>
                 ))}
             </div>

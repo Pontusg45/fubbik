@@ -10,11 +10,10 @@ import { config } from "dotenv";
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 
-import { user } from "./schema/auth";
-import { chunk, chunkConnection } from "./schema/chunk";
-
 // Reuse the CLI scanner
 import { scanProject } from "../../../apps/cli/src/lib/scanner";
+import { user } from "./schema/auth";
+import { chunk, chunkConnection } from "./schema/chunk";
 
 config({ path: resolve(import.meta.dirname, "../../../apps/server/.env") });
 

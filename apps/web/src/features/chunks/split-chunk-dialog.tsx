@@ -1,12 +1,22 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Scissors } from "lucide-react";
 import { useState } from "react";
-import { MarkdownRenderer } from "@/components/markdown-renderer";
 import { toast } from "sonner";
 
+import { MarkdownRenderer } from "@/components/markdown-renderer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogClose, DialogDescription, DialogFooter, DialogHeader, DialogPanel, DialogPopup, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+    Dialog,
+    DialogClose,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogPanel,
+    DialogPopup,
+    DialogTitle,
+    DialogTrigger
+} from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
@@ -92,10 +102,7 @@ export function SplitChunkDialog({
             // Update original chunk: keep only excluded sections content, add index of split-out parts
             const keepContent = excluded.map(s => `## ${s.title}\n\n${s.content}`).join("\n\n");
             const indexContent = created.map(c => `- ${c.title}`).join("\n");
-            const newContent = [
-                keepContent,
-                `## Sections\n\n${indexContent}`
-            ].filter(Boolean).join("\n\n");
+            const newContent = [keepContent, `## Sections\n\n${indexContent}`].filter(Boolean).join("\n\n");
 
             await api.api.chunks({ id: chunkId }).patch({ content: newContent });
 
@@ -160,7 +167,9 @@ export function SplitChunkDialog({
                                 </div>
                                 <Separator className="my-2" />
                                 <div className="prose dark:prose-invert prose-sm max-h-32 max-w-none overflow-hidden text-xs">
-                                    <MarkdownRenderer>{section.content.slice(0, 300) + (section.content.length > 300 ? "..." : "")}</MarkdownRenderer>
+                                    <MarkdownRenderer>
+                                        {section.content.slice(0, 300) + (section.content.length > 300 ? "..." : "")}
+                                    </MarkdownRenderer>
                                 </div>
                             </button>
                         ))}

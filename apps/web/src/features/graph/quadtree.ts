@@ -81,13 +81,7 @@ function insertIntoChild(node: QTNode, x: number, y: number, id: string): void {
     insert(node.children[idx]!, x, y, id);
 }
 
-export function computeRepulsion(
-    root: QTNode,
-    bx: number,
-    by: number,
-    repulsion: number,
-    theta: number = 0.9
-): { fx: number; fy: number } {
+export function computeRepulsion(root: QTNode, bx: number, by: number, repulsion: number, theta: number = 0.9): { fx: number; fy: number } {
     let fx = 0;
     let fy = 0;
 
