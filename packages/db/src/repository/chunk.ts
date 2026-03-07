@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gte, ilike, inArray, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, ilike, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
 import { Effect } from "effect";
 
 import { DatabaseError } from "../errors";
@@ -15,6 +15,7 @@ export interface ListChunksParams {
     tags?: string[];
     sort?: "newest" | "oldest" | "alpha" | "updated";
     after?: Date;
+    enrichment?: "missing" | "complete";
     limit: number;
     offset: number;
 }
@@ -54,6 +55,18 @@ export function listChunks(params: ListChunksParams) {
             }
             if (params.after) {
                 conditions.push(gte(chunk.updatedAt, params.after));
+            }
+            if (params.enrichment === "missing") {
+                conditions.push(or(
+                    isNull(chunk.summary),
+                    isNull(chunk.embedding),
+                    sql`jsonb_array_length(${chunk.aliases}) = 0`
+                )!);
+            } else if (params.enrichment === "complete") {
+                conditions.push(
+                    isNotNull(chunk.summary),
+                    isNotNull(chunk.embedding)
+                );
             }
             const orderClause = (() => {
                 if (params.search) return sql`similarity(${chunk.title}, ${params.search}) DESC`;

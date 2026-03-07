@@ -22,7 +22,8 @@ export const Route = createFileRoute("/chunks/")({
         sort: (search.sort as string) || undefined,
         tags: (search.tags as string) || undefined,
         size: (search.size as string) || undefined,
-        after: (search.after as string) || undefined
+        after: (search.after as string) || undefined,
+        enrichment: (search.enrichment as string) || undefined
     }),
     beforeLoad: async () => {
         let session = null;
@@ -38,7 +39,7 @@ export const Route = createFileRoute("/chunks/")({
 function ChunksList() {
     const navigate = useNavigate({ from: "/chunks/" });
     const navTo = useNavigate();
-    const { type, q, page, sort, tags, size, after } = Route.useSearch();
+    const { type, q, page, sort, tags, size, after, enrichment } = Route.useSearch();
     const queryClient = useQueryClient();
     const [searchInput, setSearchInput] = useState(q ?? "");
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -46,7 +47,7 @@ function ChunksList() {
     const offset = ((page ?? 1) - 1) * limit;
 
     const chunksQuery = useQuery({
-        queryKey: ["chunks-list", type, q, page, sort, tags, after],
+        queryKey: ["chunks-list", type, q, page, sort, tags, after, enrichment],
         queryFn: async () => {
             try {
                 return unwrapEden(
@@ -57,6 +58,7 @@ function ChunksList() {
                             sort: sort as "newest" | "oldest" | "alpha" | "updated" | undefined,
                             tags,
                             after,
+                            enrichment: enrichment as "missing" | "complete" | undefined,
                             limit: String(limit),
                             offset: String(offset)
                         }
@@ -137,7 +139,7 @@ function ChunksList() {
 
     const types = ["note", "document", "reference", "schema", "checklist"];
 
-    function updateSearch(params: Partial<{ type: string; q: string; page: number; sort: string; tags: string; size: string; after: string }>) {
+    function updateSearch(params: Partial<{ type: string; q: string; page: number; sort: string; tags: string; size: string; after: string; enrichment: string }>) {
         navigate({
             search: {
                 type: params.type !== undefined ? params.type : type,
@@ -146,7 +148,8 @@ function ChunksList() {
                 sort: params.sort !== undefined ? params.sort : sort,
                 tags: params.tags !== undefined ? params.tags : tags,
                 size: params.size !== undefined ? params.size : size,
-                after: params.after !== undefined ? params.after : after
+                after: params.after !== undefined ? params.after : after,
+                enrichment: params.enrichment !== undefined ? params.enrichment : enrichment
             }
         });
     }
@@ -288,6 +291,24 @@ function ChunksList() {
                             {opt.label}
                         </Button>
                     ))}
+                </div>
+                <div className="flex gap-1">
+                    <Badge
+                        variant={enrichment === "missing" ? "default" : "outline"}
+                        size="sm"
+                        className="cursor-pointer text-[10px]"
+                        onClick={() => updateSearch({ enrichment: enrichment === "missing" ? undefined : "missing" })}
+                    >
+                        Needs enrichment
+                    </Badge>
+                    <Badge
+                        variant={enrichment === "complete" ? "default" : "outline"}
+                        size="sm"
+                        className="cursor-pointer text-[10px]"
+                        onClick={() => updateSearch({ enrichment: enrichment === "complete" ? undefined : "complete" })}
+                    >
+                        Enriched
+                    </Badge>
                 </div>
             </div>
 

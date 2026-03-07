@@ -20,7 +20,7 @@ import { generateQueryEmbedding } from "../ollama/client";
 
 export function listChunks(
     userId: string | undefined,
-    query: { type?: string; search?: string; limit?: string; offset?: string; exclude?: string; scope?: string; alias?: string; sort?: "newest" | "oldest" | "alpha" | "updated"; tags?: string; after?: string }
+    query: { type?: string; search?: string; limit?: string; offset?: string; exclude?: string; scope?: string; alias?: string; sort?: "newest" | "oldest" | "alpha" | "updated"; tags?: string; after?: string; enrichment?: "missing" | "complete" }
 ) {
     const limit = Math.min(Number(query.limit ?? 50), 100);
     const offset = Number(query.offset ?? 0);
@@ -31,7 +31,7 @@ export function listChunks(
     const parsedTags = query.tags?.split(",").map(s => s.trim()).filter(Boolean);
     const tags = parsedTags?.length ? parsedTags : undefined;
     const after = query.after ? new Date(Date.now() - Number(query.after) * 86400000) : undefined;
-    return listChunksRepo({ userId, type: query.type, search: query.search, exclude, scope, alias: query.alias, sort: query.sort, tags, after, limit, offset }).pipe(
+    return listChunksRepo({ userId, type: query.type, search: query.search, exclude, scope, alias: query.alias, sort: query.sort, tags, after, enrichment: query.enrichment, limit, offset }).pipe(
         Effect.map(result => ({ ...result, limit, offset }))
     );
 }
