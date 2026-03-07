@@ -2,9 +2,12 @@
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
-**Goal:** Add retrieval-enhancing metadata fields (summary, aliases, not_about, scope, embedding) to chunks, with Ollama-powered enrichment and semantic search.
+**Goal:** Add retrieval-enhancing metadata fields (summary, aliases, not_about, scope, embedding) to chunks, with Ollama-powered enrichment
+and semantic search.
 
-**Architecture:** New columns on the chunk table, a SQL migration for pgvector + indexes, an Ollama client for embeddings/generation, an async enrichment pipeline triggered after create/update, and a new semantic search API endpoint. CLI gets enrich, semantic search, and filtering flags.
+**Architecture:** New columns on the chunk table, a SQL migration for pgvector + indexes, an Ollama client for embeddings/generation, an
+async enrichment pipeline triggered after create/update, and a new semantic search API endpoint. CLI gets enrich, semantic search, and
+filtering flags.
 
 **Tech Stack:** Drizzle ORM, pgvector, Ollama (nomic-embed-text), Effect, Elysia, Commander.js
 
@@ -13,6 +16,7 @@
 ### Task 1: SQL Migration — pgvector Extension + New Columns + Indexes
 
 **Files:**
+
 - Create: `packages/db/src/migrations/0003_add_retrieval_fields.sql`
 - Modify: `packages/db/src/schema/chunk.ts:6-24`
 
@@ -42,7 +46,8 @@ CREATE INDEX IF NOT EXISTS chunk_embedding_hnsw_idx ON chunk USING hnsw (embeddi
 
 **Step 2: Update the Drizzle schema**
 
-Modify `packages/db/src/schema/chunk.ts`. Add imports for `customType` from `drizzle-orm/pg-core`. Define a custom `vector` column type since Drizzle doesn't have native pgvector support. Add the 5 new columns to the chunk table definition.
+Modify `packages/db/src/schema/chunk.ts`. Add imports for `customType` from `drizzle-orm/pg-core`. Define a custom `vector` column type
+since Drizzle doesn't have native pgvector support. Add the 5 new columns to the chunk table definition.
 
 The new chunk table columns (add after `updatedAt`, before the closing `}` of the column definitions):
 
@@ -58,10 +63,7 @@ const vector = customType<{ data: number[]; driverParam: string }>({
         return `[${value.join(",")}]`;
     },
     fromDriver(value: string) {
-        return value
-            .slice(1, -1)
-            .split(",")
-            .map(Number);
+        return value.slice(1, -1).split(",").map(Number);
     }
 });
 ```
@@ -106,6 +108,7 @@ git commit -m "feat: add retrieval fields to chunk schema (summary, aliases, not
 ### Task 2: OLLAMA_URL Environment Variable
 
 **Files:**
+
 - Modify: `packages/env/src/server.ts:6-28`
 
 **Step 1: Add OLLAMA_URL to server env**
@@ -143,6 +146,7 @@ git commit -m "feat: add OLLAMA_URL env var"
 ### Task 3: Ollama Client Library
 
 **Files:**
+
 - Create: `packages/api/src/ollama/client.ts`
 
 **Step 1: Create the Ollama client**
@@ -246,6 +250,7 @@ git commit -m "feat: add Ollama client for embeddings and JSON generation"
 ### Task 4: Enrichment Service
 
 **Files:**
+
 - Create: `packages/api/src/enrich/service.ts`
 - Modify: `packages/db/src/repository/chunk.ts` (add `updateChunkEnrichment` function)
 - Modify: `packages/db/src/repository/index.ts` (export new function)
@@ -371,6 +376,7 @@ git commit -m "feat: add chunk enrichment service with Ollama integration"
 ### Task 5: Fire-and-Forget Enrichment on Create/Update
 
 **Files:**
+
 - Modify: `packages/api/src/chunks/service.ts`
 
 **Step 1: Add enrichment triggers**
@@ -406,14 +412,14 @@ export function createChunk(userId: string, body: { title: string; content?: str
 Modify the `updateChunk` function — add enrichment after the update (last line of the pipe chain, before the closing parenthesis):
 
 ```typescript
-Effect.flatMap(() => updateChunkRepo(chunkId, body)),
-Effect.tap(updated => {
-    // Re-enrich if title or content changed
-    if (body.title !== undefined || body.content !== undefined) {
-        Effect.runPromise(enrichChunk(chunkId)).catch(() => {});
-    }
-    return Effect.succeed(updated);
-})
+(Effect.flatMap(() => updateChunkRepo(chunkId, body)),
+    Effect.tap(updated => {
+        // Re-enrich if title or content changed
+        if (body.title !== undefined || body.content !== undefined) {
+            Effect.runPromise(enrichChunk(chunkId)).catch(() => {});
+        }
+        return Effect.succeed(updated);
+    }));
 ```
 
 **Step 2: Verify type check**
@@ -436,6 +442,7 @@ git commit -m "feat: trigger async enrichment on chunk create/update"
 ### Task 6: Enrich API Endpoint
 
 **Files:**
+
 - Create: `packages/api/src/enrich/routes.ts`
 - Modify: `packages/api/src/index.ts` (register routes)
 
@@ -452,21 +459,17 @@ import { requireSession } from "../require-session";
 import { enrichChunk } from "./service";
 
 export const enrichRoutes = new Elysia()
-    .post(
-        "/chunks/:id/enrich",
-        ctx => Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(() => enrichChunk(ctx.params.id)))),
-        { params: t.Object({ id: t.String() }) }
-    )
+    .post("/chunks/:id/enrich", ctx => Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(() => enrichChunk(ctx.params.id)))), {
+        params: t.Object({ id: t.String() })
+    })
     .post("/chunks/enrich-all", ctx =>
         Effect.runPromise(
             requireSession(ctx).pipe(
                 Effect.flatMap(session => listChunks({ userId: session.user.id, limit: 1000, offset: 0 })),
                 Effect.flatMap(result =>
-                    Effect.forEach(
-                        result.chunks,
-                        c => enrichChunk(c.id).pipe(Effect.catchAll(() => Effect.succeed(null))),
-                        { concurrency: 1 }
-                    )
+                    Effect.forEach(result.chunks, c => enrichChunk(c.id).pipe(Effect.catchAll(() => Effect.succeed(null))), {
+                        concurrency: 1
+                    })
                 ),
                 Effect.map(results => ({ enriched: results.filter(Boolean).length }))
             )
@@ -504,6 +507,7 @@ git commit -m "feat: add /chunks/:id/enrich and /chunks/enrich-all endpoints"
 ### Task 7: Enhanced List Query — exclude, scope, alias Filters
 
 **Files:**
+
 - Modify: `packages/db/src/repository/chunk.ts:8-51` (ListChunksParams and listChunks)
 - Modify: `packages/api/src/chunks/service.ts:17-23` (pass new params)
 - Modify: `packages/api/src/chunks/routes.ts:8-18` (add query params)
@@ -554,7 +558,12 @@ export function listChunks(
     const offset = Number(query.offset ?? 0);
     const exclude = query.exclude ? query.exclude.split(",").map(s => s.trim()) : undefined;
     const scope = query.scope
-        ? Object.fromEntries(query.scope.split(",").map(s => s.trim().split(":")).filter(p => p.length === 2) as [string, string][])
+        ? Object.fromEntries(
+              query.scope
+                  .split(",")
+                  .map(s => s.trim().split(":"))
+                  .filter(p => p.length === 2) as [string, string][]
+          )
         : undefined;
     return listChunksRepo({ userId, type: query.type, search: query.search, exclude, scope, alias: query.alias, limit, offset }).pipe(
         Effect.map(result => ({ ...result, limit, offset }))
@@ -576,7 +585,7 @@ In `packages/api/src/chunks/routes.ts`, update the query object for GET /chunks:
         exclude: t.Optional(t.String()),
         scope: t.Optional(t.String()),
         alias: t.Optional(t.String())
-    })
+    });
 }
 ```
 
@@ -600,6 +609,7 @@ git commit -m "feat: add exclude, scope, alias query filters to chunk list endpo
 ### Task 8: Semantic Search Endpoint
 
 **Files:**
+
 - Create: `packages/db/src/repository/semantic.ts`
 - Modify: `packages/db/src/repository/index.ts` (export)
 - Modify: `packages/api/src/chunks/routes.ts` (add endpoint)
@@ -682,14 +692,16 @@ import { semanticSearch as semanticSearchRepo } from "@fubbik/db/repository";
 And the function:
 
 ```typescript
-export function semanticSearch(
-    userId: string | undefined,
-    query: { q: string; limit?: string; exclude?: string; scope?: string }
-) {
+export function semanticSearch(userId: string | undefined, query: { q: string; limit?: string; exclude?: string; scope?: string }) {
     const limit = Math.min(Number(query.limit ?? 5), 20);
     const exclude = query.exclude ? query.exclude.split(",").map(s => s.trim()) : undefined;
     const scope = query.scope
-        ? Object.fromEntries(query.scope.split(",").map(s => s.trim().split(":")).filter(p => p.length === 2) as [string, string][])
+        ? Object.fromEntries(
+              query.scope
+                  .split(",")
+                  .map(s => s.trim().split(":"))
+                  .filter(p => p.length === 2) as [string, string][]
+          )
         : undefined;
 
     return generateQueryEmbedding(query.q).pipe(
@@ -746,6 +758,7 @@ git commit -m "feat: add semantic search endpoint using pgvector + Ollama embedd
 ### Task 9: Update Chunk PATCH to Accept New Fields
 
 **Files:**
+
 - Modify: `packages/db/src/repository/chunk.ts` (UpdateChunkParams)
 - Modify: `packages/api/src/chunks/routes.ts` (PATCH body schema)
 - Modify: `packages/api/src/chunks/service.ts` (pass new fields)
@@ -790,7 +803,7 @@ body: t.Object({
     aliases: t.Optional(t.Array(t.String({ maxLength: 100 }), { maxItems: 20 })),
     notAbout: t.Optional(t.Array(t.String({ maxLength: 100 }), { maxItems: 20 })),
     scope: t.Optional(t.Record(t.String(), t.String()))
-})
+});
 ```
 
 **Step 3: Verify type check**
@@ -813,6 +826,7 @@ git commit -m "feat: accept summary, aliases, notAbout, scope in chunk PATCH"
 ### Task 10: CLI — enrich Command
 
 **Files:**
+
 - Create: `apps/cli/src/commands/enrich.ts`
 - Modify: `apps/cli/src/index.ts` (register command)
 
@@ -893,6 +907,7 @@ git commit -m "feat: add CLI enrich command for chunk AI enrichment"
 ### Task 11: CLI — Semantic Search Flag + List Filters
 
 **Files:**
+
 - Modify: `apps/cli/src/commands/search.ts`
 - Modify: `apps/cli/src/commands/list.ts`
 
@@ -900,11 +915,13 @@ git commit -m "feat: add CLI enrich command for chunk AI enrichment"
 
 In `apps/cli/src/commands/search.ts`, add the `.option("--semantic", "use semantic (AI embedding) search")` option.
 
-When `--semantic` is set, call `${store.serverUrl}/api/chunks/search/semantic?q=${encodeURIComponent(query)}&limit=${opts.limit}` instead of the regular search endpoint.
+When `--semantic` is set, call `${store.serverUrl}/api/chunks/search/semantic?q=${encodeURIComponent(query)}&limit=${opts.limit}` instead of
+the regular search endpoint.
 
 **Step 2: Add --scope and --exclude flags to list command**
 
 In `apps/cli/src/commands/list.ts`, add:
+
 - `.option("--scope <pairs>", "filter by scope (key:value,key:value)")`
 - `.option("--exclude <terms>", "exclude chunks about these terms (comma-separated)")`
 
@@ -930,6 +947,7 @@ git commit -m "feat: add --semantic search flag and --scope/--exclude list filte
 ### Task 12: Update Seed Script with Enrichment
 
 **Files:**
+
 - Modify: `packages/db/src/seed.ts`
 
 **Step 1: Add enrichment call to seed**
@@ -965,7 +983,7 @@ Content: ${c.content}`,
                     })
                 });
                 if (!genRes.ok) continue;
-                const genData = await genRes.json() as { response: string };
+                const genData = (await genRes.json()) as { response: string };
                 const metadata = JSON.parse(genData.response) as { summary: string; aliases: string[]; notAbout: string[] };
 
                 // Generate embedding
@@ -978,14 +996,17 @@ Content: ${c.content}`,
                     })
                 });
                 if (!embRes.ok) continue;
-                const embData = await embRes.json() as { embedding: number[] };
+                const embData = (await embRes.json()) as { embedding: number[] };
 
                 // Update chunk
                 const embStr = `[${embData.embedding.join(",")}]`;
-                await db.execute(
-                    `UPDATE chunk SET summary = $1, aliases = $2, not_about = $3, embedding = $4 WHERE id = $5`,
-                    [metadata.summary, JSON.stringify(metadata.aliases), JSON.stringify(metadata.notAbout), embStr, c.id]
-                );
+                await db.execute(`UPDATE chunk SET summary = $1, aliases = $2, not_about = $3, embedding = $4 WHERE id = $5`, [
+                    metadata.summary,
+                    JSON.stringify(metadata.aliases),
+                    JSON.stringify(metadata.notAbout),
+                    embStr,
+                    c.id
+                ]);
                 console.log(`  ✓ Enriched: ${c.title}`);
             } catch (e) {
                 console.log(`  ✗ Failed: ${c.title}`);
@@ -1052,6 +1073,7 @@ railway service web && railway up --detach
 ### Task 14: Update CLAUDE.md
 
 **Files:**
+
 - Modify: `CLAUDE.md`
 
 **Step 1: Update CLAUDE.md**

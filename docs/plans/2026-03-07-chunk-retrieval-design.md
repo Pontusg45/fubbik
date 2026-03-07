@@ -2,11 +2,13 @@
 
 ## Goal
 
-Improve the chunk data model for AI agent consumption by adding retrieval-enhancing metadata fields, local embeddings via Ollama, and semantic search.
+Improve the chunk data model for AI agent consumption by adding retrieval-enhancing metadata fields, local embeddings via Ollama, and
+semantic search.
 
 ## Context
 
-The current chunk schema has: id, title, content, type, tags, userId, timestamps. Search is trigram-based (keyword matching only). AI agents need better ways to find, filter, and disambiguate chunks.
+The current chunk schema has: id, title, content, type, tags, userId, timestamps. Search is trigram-based (keyword matching only). AI agents
+need better ways to find, filter, and disambiguate chunks.
 
 ## Design Decisions
 
@@ -22,13 +24,13 @@ The current chunk schema has: id, title, content, type, tags, userId, timestamps
 
 New columns on `chunk` table:
 
-| Column | Type | Default | Description |
-|--------|------|---------|-------------|
-| summary | text | null | 1-2 sentence AI-generated TL;DR |
-| aliases | jsonb (string[]) | [] | Alternative names, abbreviations, search terms |
-| not_about | jsonb (string[]) | [] | Exclusion terms for disambiguation |
-| scope | jsonb (Record<string, string>) | {} | Key-value pairs, e.g. {"package": "api", "layer": "backend"} |
-| embedding | vector(768) | null | nomic-embed-text embedding vector |
+| Column    | Type                           | Default | Description                                                  |
+| --------- | ------------------------------ | ------- | ------------------------------------------------------------ |
+| summary   | text                           | null    | 1-2 sentence AI-generated TL;DR                              |
+| aliases   | jsonb (string[])               | []      | Alternative names, abbreviations, search terms               |
+| not_about | jsonb (string[])               | []      | Exclusion terms for disambiguation                           |
+| scope     | jsonb (Record<string, string>) | {}      | Key-value pairs, e.g. {"package": "api", "layer": "backend"} |
+| embedding | vector(768)                    | null    | nomic-embed-text embedding vector                            |
 
 ### Indexes
 
@@ -80,21 +82,23 @@ New columns on `chunk` table:
 
 ### New query params on GET /api/chunks
 
-| Param | Type | Description |
-|-------|------|-------------|
-| exclude | string (comma-separated) | Filter out chunks with matching not_about terms |
-| scope | string (key:value, comma-sep) | Filter by scope pairs |
-| alias | string | Match against aliases array |
+| Param   | Type                          | Description                                     |
+| ------- | ----------------------------- | ----------------------------------------------- |
+| exclude | string (comma-separated)      | Filter out chunks with matching not_about terms |
+| scope   | string (key:value, comma-sep) | Filter by scope pairs                           |
+| alias   | string                        | Match against aliases array                     |
 
 ### New endpoint: GET /api/chunks/search/semantic
 
 Semantic search via embedding similarity:
+
 - `q` (required) — natural language query
 - `limit` — max results (default 5)
 - `exclude`, `scope` — same filters as list endpoint
 - Returns chunks ordered by cosine similarity with score
 
 Flow:
+
 1. Embed query via Ollama nomic-embed-text (with "search_query:" prefix)
 2. pgvector `<=>` cosine distance query
 3. Apply scope/exclude filters
