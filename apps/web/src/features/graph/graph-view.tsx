@@ -767,6 +767,11 @@ function GraphViewInner() {
         function handleKeyDown(e: KeyboardEvent) {
             if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
 
+            if (e.key === "?") {
+                setShowHelp(prev => !prev);
+                return;
+            }
+
             if (e.key === "Escape") {
                 if (multiSelectedIds.size > 0) {
                     setMultiSelectedIds(new Set());
@@ -1029,6 +1034,41 @@ function GraphViewInner() {
                 />
             </ReactFlow>
             </ZoomContext.Provider>
+
+            {/* Keyboard shortcut help overlay */}
+            {showHelp && (
+                <div
+                    className="absolute inset-0 z-30 flex items-center justify-center bg-background/80 backdrop-blur-sm"
+                    onClick={() => setShowHelp(false)}
+                >
+                    <div className="max-w-sm rounded-lg border bg-background p-6 shadow-lg" onClick={e => e.stopPropagation()}>
+                        <h3 className="mb-4 text-sm font-semibold">Keyboard Shortcuts</h3>
+                        <div className="space-y-2 text-xs">
+                            {[
+                                ["Click", "Select node & show details"],
+                                ["Double-click", "Open chunk / toggle collapse"],
+                                ["Shift+Click", "Multi-select nodes"],
+                                ["Alt+Click", "Path finding mode"],
+                                ["Tab / Shift+Tab", "Cycle connections"],
+                                ["Escape", "Deselect / close"],
+                                ["Drag node", "Reposition"],
+                                ["?", "Toggle this help"]
+                            ].map(([key, desc]) => (
+                                <div key={key} className="flex items-center justify-between gap-4">
+                                    <kbd className="rounded border bg-muted px-1.5 py-0.5 font-mono text-[10px]">{key}</kbd>
+                                    <span className="text-muted-foreground text-right">{desc}</span>
+                                </div>
+                            ))}
+                        </div>
+                        <button
+                            onClick={() => setShowHelp(false)}
+                            className="mt-4 w-full rounded-md bg-primary px-3 py-1.5 text-xs text-primary-foreground"
+                        >
+                            Close
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {/* Top-left: Filters */}
             <div className="max-md:hidden">
