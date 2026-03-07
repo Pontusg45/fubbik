@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import "@xyflow/react/dist/style.css";
 import { Background, BackgroundVariant, Controls, MiniMap, ReactFlow, ReactFlowProvider, useEdgesState, useNodesState, useReactFlow, type Edge, type Node } from "@xyflow/react";
 import { useEffect, useMemo, useState } from "react";
@@ -45,6 +45,7 @@ const TYPE_COLORS: Record<string, { bg: string; border: string }> = {
 function GraphViewInner() {
     const [selectedChunkId, setSelectedChunkId] = useState<string | null>(null);
     const { setCenter } = useReactFlow();
+    const navigate = useNavigate();
 
     const { data, isLoading } = useQuery({
         queryKey: ["graph"],
@@ -606,12 +607,16 @@ function GraphViewInner() {
                 }}
                 onNodeDoubleClick={(_, node) => {
                     if (node.id === MAIN_NODE_ID) return;
-                    setCollapsedParents(prev => {
-                        const next = new Set(prev);
-                        if (next.has(node.id)) next.delete(node.id);
-                        else next.add(node.id);
-                        return next;
-                    });
+                    if (selectedChunkId === node.id) {
+                        navigate({ to: "/chunks/$chunkId", params: { chunkId: node.id } });
+                    } else {
+                        setCollapsedParents(prev => {
+                            const next = new Set(prev);
+                            if (next.has(node.id)) next.delete(node.id);
+                            else next.add(node.id);
+                            return next;
+                        });
+                    }
                 }}
                 onNodeMouseEnter={(event, node) => {
                     if (node.id === MAIN_NODE_ID) return;
