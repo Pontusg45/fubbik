@@ -8,6 +8,8 @@ services:
         build:
             context: .
             dockerfile: apps/web/Dockerfile
+            secrets:
+                - npmrc
         container_name: fubbik-web
         ports:
             - "3001:3000"
@@ -26,6 +28,8 @@ services:
         build:
             context: .
             dockerfile: apps/server/Dockerfile
+            secrets:
+                - npmrc
         container_name: fubbik-server
         ports:
             - "3000:3000"
@@ -70,6 +74,10 @@ services:
 networks:
     fubbik-network:
         driver: bridge
+
+secrets:
+    npmrc:
+        file: ~/.npmrc
 
 volumes:
     fubbik_postgres_data:

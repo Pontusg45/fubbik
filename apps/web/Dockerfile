@@ -16,8 +16,10 @@ COPY packages/config/package.json ./packages/config/
 COPY packages/db/package.json ./packages/db/
 COPY packages/env/package.json ./packages/env/
 
-# Install dependencies
-RUN bun install --frozen-lockfile
+# Install dependencies (secret mount keeps .npmrc out of image layers)
+RUN --mount=type=cache,target=/root/.bun/install/cache \
+    --mount=type=secret,id=npmrc,target=/root/.npmrc \
+    bun install --frozen-lockfile
 
 # Copy source code
 COPY . .
