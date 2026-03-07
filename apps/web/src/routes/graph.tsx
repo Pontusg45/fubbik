@@ -209,6 +209,23 @@ function GraphView() {
             }
         }
 
+        // Detect parallel edges between same node pairs
+        const edgeKey = (a: string, b: string) => [a, b].sort().join("::");
+        const parallelCounts = new Map<string, number>();
+        for (const edge of rawEdges) {
+            const key = edgeKey(edge.source, edge.target);
+            parallelCounts.set(key, (parallelCounts.get(key) ?? 0) + 1);
+        }
+        const parallelIndex = new Map<string, number>();
+        for (const edge of rawEdges) {
+            const key = edgeKey(edge.source, edge.target);
+            const total = parallelCounts.get(key) ?? 1;
+            if (total <= 1) continue;
+            const idx = parallelIndex.get(key) ?? 0;
+            parallelIndex.set(key, idx + 1);
+            (edge.data as Record<string, unknown>).curveOffset = (idx - (total - 1) / 2) * 40;
+        }
+
         // --- Force-directed layout ---
         const nodeCount = rawNodes.length;
         const spacing = Math.max(250, Math.sqrt(nodeCount) * 120);
