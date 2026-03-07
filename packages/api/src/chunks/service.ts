@@ -12,6 +12,7 @@ import {
 } from "@fubbik/db/repository";
 import { Effect } from "effect";
 
+import { enrichChunk, enrichChunkIfEmpty } from "../enrich/service";
 import { NotFoundError } from "../errors";
 
 export function listChunks(userId: string | undefined, query: { type?: string; search?: string; limit?: string; offset?: string }) {
@@ -30,14 +31,20 @@ export function getChunkDetail(chunkId: string, userId?: string) {
 }
 
 export function createChunk(userId: string, body: { title: string; content?: string; type?: string; tags?: string[] }) {
+    const id = crypto.randomUUID();
     return createChunkRepo({
-        id: crypto.randomUUID(),
+        id,
         title: body.title,
         content: body.content ?? "",
         type: body.type ?? "note",
         tags: body.tags ?? [],
         userId
-    });
+    }).pipe(
+        Effect.tap(() => {
+            Effect.runPromise(enrichChunkIfEmpty(id)).catch(() => {});
+            return Effect.void;
+        })
+    );
 }
 
 export function updateChunk(chunkId: string, userId: string, body: { title?: string; content?: string; type?: string; tags?: string[] }) {
@@ -55,7 +62,13 @@ export function updateChunk(chunkId: string, userId: string, body: { title?: str
                 tags: existing.tags as string[]
             })
         ),
-        Effect.flatMap(() => updateChunkRepo(chunkId, body))
+        Effect.flatMap(() => updateChunkRepo(chunkId, body)),
+        Effect.tap(() => {
+            if (body.title !== undefined || body.content !== undefined) {
+                Effect.runPromise(enrichChunk(chunkId)).catch(() => {});
+            }
+            return Effect.void;
+        })
     );
 }
 
