@@ -474,7 +474,7 @@ function GraphView() {
     }
 
     return (
-        <div className="relative h-[calc(100vh-4rem)] [&_.react-flow__handle]:invisible">
+        <div className="relative h-[calc(100vh-4rem)] [&_.react-flow__handle]:invisible [&_.react-flow__node]:transition-[transform] [&_.react-flow__node]:duration-500 [&_.react-flow__node]:ease-out">
             <ReactFlow
                 nodes={nodes}
                 edges={edges}
