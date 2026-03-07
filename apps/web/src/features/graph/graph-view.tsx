@@ -5,7 +5,7 @@ import { Background, BackgroundVariant, Controls, MiniMap, ReactFlow, ReactFlowP
 import { toPng } from "html-to-image";
 import { Download } from "lucide-react";
 import { useTheme } from "next-themes";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { createContext, useEffect, useMemo, useRef, useState } from "react";
 
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { relationColor } from "@/features/chunks/relation-colors";
@@ -19,6 +19,8 @@ import { GraphLegend } from "@/features/graph/graph-legend";
 import { GraphNode } from "@/features/graph/graph-node";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
+
+export const ZoomContext = createContext(1);
 
 const MAIN_NODE_ID = "__main__";
 
@@ -48,6 +50,7 @@ function GraphViewInner() {
     const isDark = resolvedTheme !== "light";
     const TYPE_COLORS = isDark ? TYPE_COLORS_DARK : TYPE_COLORS_LIGHT;
 
+    const [zoomLevel, setZoomLevel] = useState(1);
     const [selectedChunkId, setSelectedChunkId] = useState<string | null>(null);
     const [panelWidth, setPanelWidth] = useState(380);
     const { setCenter, getZoom } = useReactFlow();
@@ -273,7 +276,7 @@ function GraphViewInner() {
                     return {
                         id: c.id,
                         type: "chunk",
-                        data: { label, type: c.type, connectionCount: connectionCounts.get(c.id) ?? 0, scale },
+                        data: { label, type: c.type, connectionCount: connectionCounts.get(c.id) ?? 0, scale, tags: c.tags as string[] },
                         position: { x: 0, y: 0 },
                         style: {
                             cursor: "pointer",
@@ -648,6 +651,7 @@ function GraphViewInner() {
                     </div>
                 </div>
             )}
+            <ZoomContext.Provider value={zoomLevel}>
             <ReactFlow
                 nodes={nodes}
                 edges={edges}
@@ -689,7 +693,9 @@ function GraphViewInner() {
                     });
                 }}
                 onNodeMouseLeave={() => setHoveredNode(null)}
+                onMoveEnd={(_, viewport) => setZoomLevel(viewport.zoom)}
                 onEdgeMouseEnter={(_, edge) => {
+                    if (zoomLevel < 0.4) return;
                     setEdges(es =>
                         es.map(e =>
                             e.id === edge.id
@@ -727,6 +733,7 @@ function GraphViewInner() {
                     zoomable
                 />
             </ReactFlow>
+            </ZoomContext.Provider>
 
             {/* Top-left: Filters */}
             <div className="max-md:hidden">
