@@ -5,6 +5,7 @@ import { Background, BackgroundVariant, Controls, MiniMap, ReactFlow, ReactFlowP
 import { useTheme } from "next-themes";
 import { useEffect, useMemo, useState } from "react";
 
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { relationColor } from "@/features/chunks/relation-colors";
 import { FloatingEdge } from "@/features/graph/floating-edge";
 import { buildQuadtree, computeRepulsion } from "@/features/graph/quadtree";
@@ -77,6 +78,7 @@ function GraphViewInner() {
 
     // Search state
     const [searchQuery, setSearchQuery] = useState("");
+    const debouncedSearchQuery = useDebouncedValue(searchQuery, 150);
 
     // Focus mode state
     const [focusedNodeId, setFocusedNodeId] = useState<string | null>(null);
@@ -433,12 +435,12 @@ function GraphViewInner() {
 
     // Apply search highlighting
     useEffect(() => {
-        if (!searchQuery.trim()) {
+        if (!debouncedSearchQuery.trim()) {
             setNodes(layoutNodes);
             setEdges(layoutEdges);
             return;
         }
-        const q = searchQuery.toLowerCase();
+        const q = debouncedSearchQuery.toLowerCase();
         const matchIds = new Set<string>();
         for (const node of layoutNodes) {
             if (node.id === MAIN_NODE_ID) continue;
@@ -469,11 +471,11 @@ function GraphViewInner() {
                 }
             }))
         );
-    }, [searchQuery, layoutNodes, layoutEdges, setNodes, setEdges]);
+    }, [debouncedSearchQuery, layoutNodes, layoutEdges, setNodes, setEdges]);
 
     // Apply focus dimming
     useEffect(() => {
-        if (!focusNeighbors || searchQuery.trim()) return;
+        if (!focusNeighbors || debouncedSearchQuery.trim()) return;
         setNodes(
             layoutNodes.map(node => ({
                 ...node,
@@ -494,11 +496,11 @@ function GraphViewInner() {
                 }
             }))
         );
-    }, [focusNeighbors, layoutNodes, layoutEdges, setNodes, setEdges, searchQuery]);
+    }, [focusNeighbors, layoutNodes, layoutEdges, setNodes, setEdges, debouncedSearchQuery]);
 
     // Sync layout when search is empty and no focus
     useEffect(() => {
-        if (!searchQuery.trim() && !focusedNodeId) {
+        if (!debouncedSearchQuery.trim() && !focusedNodeId) {
             if (selectedNeighborNodes) {
                 setNodes(layoutNodes.map(node => ({
                     ...node,
@@ -512,10 +514,10 @@ function GraphViewInner() {
                 setNodes(layoutNodes);
             }
         }
-    }, [layoutNodes, setNodes, searchQuery, focusedNodeId, selectedNeighborNodes]);
+    }, [layoutNodes, setNodes, debouncedSearchQuery, focusedNodeId, selectedNeighborNodes]);
 
     useEffect(() => {
-        if (!searchQuery.trim() && !focusedNodeId) {
+        if (!debouncedSearchQuery.trim() && !focusedNodeId) {
             if (selectedEdgeIds) {
                 setEdges(layoutEdges.map(edge => ({
                     ...edge,
@@ -529,7 +531,7 @@ function GraphViewInner() {
                 setEdges(layoutEdges);
             }
         }
-    }, [layoutEdges, setEdges, searchQuery, focusedNodeId, selectedEdgeIds]);
+    }, [layoutEdges, setEdges, debouncedSearchQuery, focusedNodeId, selectedEdgeIds]);
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
     useEffect(() => {

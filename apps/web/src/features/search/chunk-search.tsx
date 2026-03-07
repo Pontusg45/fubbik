@@ -7,12 +7,14 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogPopup, DialogTrigger } from "@/components/ui/dialog";
 import { Kbd } from "@/components/ui/kbd";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 export function ChunkSearch() {
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState("");
+    const debouncedSearch = useDebouncedValue(search, 200);
 
     // Global Cmd+K / Ctrl+K shortcut
     useEffect(() => {
@@ -33,20 +35,20 @@ export function ChunkSearch() {
     };
 
     const searchQuery = useQuery({
-        queryKey: ["chunk-search", search],
+        queryKey: ["chunk-search", debouncedSearch],
         queryFn: async () => {
-            if (!search.trim()) return null;
+            if (!debouncedSearch.trim()) return null;
             try {
                 return unwrapEden(
                     await api.api.chunks.get({
-                        query: { search, limit: "10" }
+                        query: { search: debouncedSearch, limit: "10" }
                     })
                 );
             } catch {
                 return null;
             }
         },
-        enabled: search.length > 1
+        enabled: debouncedSearch.length > 1
     });
 
     const chunks = searchQuery.data?.chunks ?? [];

@@ -1,13 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, FileText, Loader2, Sparkles } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardPanel } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { chunkTemplates } from "@/features/chunks/templates";
 import { MarkdownEditor } from "@/features/editor/markdown-editor";
 import { getUser } from "@/functions/get-user";
@@ -36,12 +37,7 @@ function NewChunk() {
     const [tags, setTags] = useState<string[]>([]);
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [aiPrompt, setAiPrompt] = useState("");
-    const [debouncedTitle, setDebouncedTitle] = useState("");
-
-    useEffect(() => {
-        const timer = setTimeout(() => setDebouncedTitle(title), 500);
-        return () => clearTimeout(timer);
-    }, [title]);
+    const debouncedTitle = useDebouncedValue(title, 500);
 
     const duplicateQuery = useQuery({
         queryKey: ["duplicate-check", debouncedTitle],
