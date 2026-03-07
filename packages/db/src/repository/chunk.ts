@@ -12,6 +12,7 @@ export interface ListChunksParams {
     exclude?: string[];
     scope?: Record<string, string>;
     alias?: string;
+    tags?: string[];
     sort?: "newest" | "oldest" | "alpha" | "updated";
     limit: number;
     offset: number;
@@ -44,6 +45,11 @@ export function listChunks(params: ListChunksParams) {
             }
             if (params.alias) {
                 conditions.push(sql`${chunk.aliases} @> ${JSON.stringify([params.alias])}::jsonb`);
+            }
+            if (params.tags && params.tags.length > 0) {
+                for (const tag of params.tags) {
+                    conditions.push(sql`${chunk.tags} @> ${JSON.stringify([tag])}::jsonb`);
+                }
             }
             const orderClause = (() => {
                 if (params.search) return sql`similarity(${chunk.title}, ${params.search}) DESC`;

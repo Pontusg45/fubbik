@@ -19,7 +19,8 @@ export const Route = createFileRoute("/chunks/")({
         type: (search.type as string) || undefined,
         q: (search.q as string) || undefined,
         page: Number(search.page) || 1,
-        sort: (search.sort as string) || undefined
+        sort: (search.sort as string) || undefined,
+        tags: (search.tags as string) || undefined
     }),
     beforeLoad: async () => {
         let session = null;
@@ -35,7 +36,7 @@ export const Route = createFileRoute("/chunks/")({
 function ChunksList() {
     const navigate = useNavigate({ from: "/chunks/" });
     const navTo = useNavigate();
-    const { type, q, page, sort } = Route.useSearch();
+    const { type, q, page, sort, tags } = Route.useSearch();
     const queryClient = useQueryClient();
     const [searchInput, setSearchInput] = useState(q ?? "");
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -43,7 +44,7 @@ function ChunksList() {
     const offset = ((page ?? 1) - 1) * limit;
 
     const chunksQuery = useQuery({
-        queryKey: ["chunks-list", type, q, page, sort],
+        queryKey: ["chunks-list", type, q, page, sort, tags],
         queryFn: async () => {
             try {
                 return unwrapEden(
@@ -52,6 +53,7 @@ function ChunksList() {
                             type,
                             search: q,
                             sort: sort as "newest" | "oldest" | "alpha" | "updated" | undefined,
+                            tags,
                             limit: String(limit),
                             offset: String(offset)
                         }
@@ -62,6 +64,21 @@ function ChunksList() {
             }
         }
     });
+
+    const tagsQuery = useQuery({
+        queryKey: ["tags"],
+        queryFn: async () => unwrapEden(await api.api.tags.get())
+    });
+
+    const activeTags = tags ? tags.split(",") : [];
+
+    function toggleTag(tag: string) {
+        const current = activeTags;
+        const next = current.includes(tag)
+            ? current.filter(t => t !== tag)
+            : [...current, tag];
+        updateSearch({ tags: next.length > 0 ? next.join(",") : undefined });
+    }
 
     const chunks = chunksQuery.data?.chunks ?? [];
     const chunksRef = useRef(chunks);
@@ -107,13 +124,14 @@ function ChunksList() {
 
     const types = ["note", "document", "reference", "schema", "checklist"];
 
-    function updateSearch(params: Partial<{ type: string; q: string; page: number; sort: string }>) {
+    function updateSearch(params: Partial<{ type: string; q: string; page: number; sort: string; tags: string }>) {
         navigate({
             search: {
                 type: params.type !== undefined ? params.type : type,
                 q: params.q !== undefined ? params.q : q,
                 page: params.page ?? 1,
-                sort: params.sort !== undefined ? params.sort : sort
+                sort: params.sort !== undefined ? params.sort : sort,
+                tags: params.tags !== undefined ? params.tags : tags
             }
         });
     }
@@ -220,6 +238,22 @@ function ChunksList() {
                     <option value="updated">Recently Updated</option>
                 </select>
             </div>
+
+            {(tagsQuery.data ?? []).length > 0 && (
+                <div className="mb-4 flex flex-wrap gap-1">
+                    {(tagsQuery.data ?? []).map(({ tag, count }) => (
+                        <Badge
+                            key={tag}
+                            variant={activeTags.includes(tag) ? "default" : "outline"}
+                            size="sm"
+                            className="cursor-pointer text-[10px]"
+                            onClick={() => toggleTag(tag)}
+                        >
+                            {tag} ({count})
+                        </Badge>
+                    ))}
+                </div>
+            )}
 
             {/* Results */}
             <Card>
