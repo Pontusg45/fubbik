@@ -302,7 +302,7 @@ function GraphViewInner() {
                 type: "floating",
                 data: { relation: conn.relation, directed: true },
                 animated: true,
-                style: { stroke: color, strokeWidth: 2 }
+                style: { stroke: color, strokeWidth: 2, transition: "opacity 0.3s ease" }
             };
         });
 
@@ -321,7 +321,7 @@ function GraphViewInner() {
                     type: "floating",
                     data: { directed: false },
                     animated: false,
-                    style: { stroke: isDark ? "#334155" : "#cbd5e1", strokeWidth: 1, strokeDasharray: "4 4" }
+                    style: { stroke: isDark ? "#334155" : "#cbd5e1", strokeWidth: 1, strokeDasharray: "4 4", transition: "opacity 0.3s ease" }
                 });
             }
         }
@@ -387,6 +387,21 @@ function GraphViewInner() {
 
     const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
     const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
+
+    /** Preserve React DOM identity so CSS transform transitions work. */
+    function mergeNodes(newNodes: Node[]) {
+        setNodes(prev => {
+            if (prev.length === 0) return newNodes;
+            const prevMap = new Map(prev.map(n => [n.id, n]));
+            return newNodes.map(node => {
+                const existing = prevMap.get(node.id);
+                if (existing) {
+                    return { ...existing, position: node.position, style: node.style, data: node.data };
+                }
+                return node;
+            });
+        });
+    }
     const [hoveredNode, setHoveredNode] = useState<{ id: string; x: number; y: number } | null>(null);
 
     const chunkMap = useMemo(() => {
@@ -400,7 +415,7 @@ function GraphViewInner() {
     // Apply search highlighting
     useEffect(() => {
         if (!debouncedSearchQuery.trim()) {
-            setNodes(layoutNodes);
+            mergeNodes(layoutNodes);
             setEdges(layoutEdges);
             return;
         }
@@ -411,7 +426,7 @@ function GraphViewInner() {
             const label = typeof node.data.label === "string" ? node.data.label : "";
             if (label.toLowerCase().includes(q)) matchIds.add(node.id);
         }
-        setNodes(
+        mergeNodes(
             layoutNodes.map(node => {
                 if (node.id === MAIN_NODE_ID) return node;
                 const isMatch = matchIds.has(node.id);
@@ -440,7 +455,7 @@ function GraphViewInner() {
     // Apply focus dimming
     useEffect(() => {
         if (!focusNeighbors || debouncedSearchQuery.trim()) return;
-        setNodes(
+        mergeNodes(
             layoutNodes.map(node => ({
                 ...node,
                 style: {
@@ -466,7 +481,7 @@ function GraphViewInner() {
     useEffect(() => {
         if (!debouncedSearchQuery.trim() && !focusedNodeId) {
             if (selectedNeighborNodes) {
-                setNodes(layoutNodes.map(node => ({
+                mergeNodes(layoutNodes.map(node => ({
                     ...node,
                     style: {
                         ...(node.style as Record<string, unknown>),
@@ -475,7 +490,7 @@ function GraphViewInner() {
                     }
                 })));
             } else {
-                setNodes(layoutNodes);
+                mergeNodes(layoutNodes);
             }
         }
     }, [layoutNodes, setNodes, debouncedSearchQuery, focusedNodeId, selectedNeighborNodes]);
