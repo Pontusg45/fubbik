@@ -13,6 +13,7 @@ import { DeleteConnectionButton } from "@/features/chunks/delete-connection-butt
 import { LinkChunkDialog } from "@/features/chunks/link-chunk-dialog";
 import { SplitChunkDialog } from "@/features/chunks/split-chunk-dialog";
 import { VersionHistory } from "@/features/chunks/version-history";
+import { relationColor } from "@/features/chunks/relation-colors";
 import { getUser } from "@/functions/get-user";
 import { api } from "@/utils/api";
 
@@ -190,7 +191,7 @@ function ChunkDetail() {
                                     {conn.title ?? conn.targetId}
                                 </Link>
                                 <div className="flex items-center gap-2">
-                                    <Badge variant="outline" size="sm" className="text-[10px]">
+                                    <Badge variant="outline" size="sm" className="text-[10px]" style={{ borderColor: relationColor(conn.relation), color: relationColor(conn.relation) }}>
                                         {conn.relation}
                                     </Badge>
                                     <DeleteConnectionButton connectionId={conn.id} chunkId={chunkId} />
@@ -211,7 +212,7 @@ function ChunkDetail() {
                                     {conn.title ?? conn.sourceId}
                                 </Link>
                                 <div className="flex items-center gap-2">
-                                    <Badge variant="outline" size="sm" className="text-[10px]">
+                                    <Badge variant="outline" size="sm" className="text-[10px]" style={{ borderColor: relationColor(conn.relation), color: relationColor(conn.relation) }}>
                                         {conn.relation}
                                     </Badge>
                                     <DeleteConnectionButton connectionId={conn.id} chunkId={chunkId} />

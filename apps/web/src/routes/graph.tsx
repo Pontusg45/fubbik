@@ -5,6 +5,7 @@ import "@xyflow/react/dist/style.css";
 import { Background, Controls, ReactFlow, useEdgesState, useNodesState, type Edge, type Node } from "@xyflow/react";
 import { useEffect, useMemo } from "react";
 
+import { relationColor } from "@/features/chunks/relation-colors";
 import { getUser } from "@/functions/get-user";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
@@ -21,6 +22,15 @@ export const Route = createFileRoute("/graph")({
         return { session };
     }
 });
+
+const TYPE_COLORS: Record<string, { bg: string; border: string }> = {
+    note: { bg: "#1e293b", border: "#475569" },
+    guide: { bg: "#1e1b4b", border: "#6366f1" },
+    reference: { bg: "#042f2e", border: "#14b8a6" },
+    document: { bg: "#172554", border: "#3b82f6" },
+    schema: { bg: "#1c1917", border: "#f59e0b" },
+    checklist: { bg: "#1a2e05", border: "#84cc16" }
+};
 
 function GraphView() {
     const navigate = useNavigate();
@@ -41,23 +51,79 @@ function GraphView() {
         const g = new Dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
         g.setGraph({ rankdir: "TB", nodesep: 80, ranksep: 100 });
 
-        const rawNodes: Node[] = chunks.map(c => ({
-            id: c.id,
-            data: { label: c.title },
-            position: { x: 0, y: 0 },
-            style: { cursor: "pointer" }
-        }));
+        const MAIN_NODE_ID = "__main__";
 
-        const rawEdges: Edge[] = connections.map(conn => ({
-            id: conn.id,
-            source: conn.sourceId,
-            target: conn.targetId,
-            label: conn.relation,
-            animated: true
-        }));
+        const rawNodes: Node[] = [
+            {
+                id: MAIN_NODE_ID,
+                data: { label: "Knowledge Base" },
+                position: { x: 0, y: 0 },
+                style: {
+                    cursor: "default",
+                    background: "#0f172a",
+                    borderColor: "#e2e8f0",
+                    borderWidth: 2,
+                    borderRadius: 12,
+                    color: "#f8fafc",
+                    fontSize: 14,
+                    fontWeight: 600,
+                    padding: "10px 16px"
+                }
+            },
+            ...chunks.map(c => {
+                const typeColor = TYPE_COLORS[c.type] ?? TYPE_COLORS.note;
+                return {
+                    id: c.id,
+                    data: { label: c.title },
+                    position: { x: 0, y: 0 },
+                    style: {
+                        cursor: "pointer",
+                        background: typeColor!.bg,
+                        borderColor: typeColor!.border,
+                        borderWidth: 1.5,
+                        borderRadius: 8,
+                        color: "#e2e8f0",
+                        fontSize: 12,
+                        padding: "8px 12px"
+                    }
+                };
+            })
+        ];
+
+        const rawEdges: Edge[] = connections.map(conn => {
+            const color = relationColor(conn.relation);
+            return {
+                id: conn.id,
+                source: conn.sourceId,
+                target: conn.targetId,
+                label: conn.relation,
+                animated: true,
+                style: { stroke: color, strokeWidth: 2 },
+                labelStyle: { fill: color, fontSize: 10, fontWeight: 500 },
+                labelBgStyle: { fill: "rgba(0,0,0,0.6)", fillOpacity: 0.8 }
+            };
+        });
+
+        // Find chunks with no connections and link them to the main node
+        const connectedIds = new Set<string>();
+        for (const conn of connections) {
+            connectedIds.add(conn.sourceId);
+            connectedIds.add(conn.targetId);
+        }
+        for (const c of chunks) {
+            if (!connectedIds.has(c.id)) {
+                rawEdges.push({
+                    id: `main-${c.id}`,
+                    source: MAIN_NODE_ID,
+                    target: c.id,
+                    animated: false,
+                    style: { stroke: "#334155", strokeWidth: 1, strokeDasharray: "4 4" }
+                });
+            }
+        }
 
         for (const node of rawNodes) {
-            g.setNode(node.id, { width: 200, height: 50 });
+            g.setNode(node.id, { width: node.id === MAIN_NODE_ID ? 160 : 200, height: 50 });
         }
         for (const edge of rawEdges) {
             g.setEdge(edge.source, edge.target);
@@ -100,6 +166,7 @@ function GraphView() {
                 onNodesChange={onNodesChange}
                 onEdgesChange={onEdgesChange}
                 onNodeClick={(_, node) => {
+                    if (node.id === "__main__") return;
                     navigate({ to: "/chunks/$chunkId", params: { chunkId: node.id } });
                 }}
                 fitView
