@@ -21,6 +21,7 @@ import { GraphDetailPanel } from "@/features/graph/graph-detail-panel";
 import { GraphFilters } from "@/features/graph/graph-filters";
 import { GraphLegend } from "@/features/graph/graph-legend";
 import { GraphMetrics } from "@/features/graph/graph-metrics";
+import { GraphTimeline } from "./graph-timeline";
 import { GraphNode } from "@/features/graph/graph-node";
 import { type LayoutAlgorithm, hierarchicalLayout, radialLayout } from "@/features/graph/layouts";
 import { api } from "@/utils/api";
@@ -188,11 +189,18 @@ function GraphViewInner() {
     // Multi-select
     const [multiSelectedIds, setMultiSelectedIds] = useState<Set<string>>(new Set());
 
+    // Help overlay
+    const [showHelp, setShowHelp] = useState(false);
+
     // Layout algorithm
     const [layoutAlgorithm, setLayoutAlgorithm] = useState<LayoutAlgorithm>("force");
 
     // Edge bundling
     const [bundleEdges, setBundleEdges] = useState(false);
+
+    // Timeline
+    const [timelineCutoff, setTimelineCutoff] = useState<Date | null>(null);
+    const handleTimelineCutoff = useCallback((d: Date | null) => setTimelineCutoff(d), []);
 
     // Saved views
     const { views: savedViews, saveView, deleteView: deleteSavedView } = useSavedGraphViews();
@@ -304,8 +312,13 @@ function GraphViewInner() {
             connections = connections.filter(c => exploredNodeIds.has(c.sourceId) && exploredNodeIds.has(c.targetId));
         }
 
+        // Timeline filter
+        if (timelineCutoff) {
+            chunks = chunks.filter(c => new Date(c.createdAt) <= timelineCutoff);
+        }
+
         return { chunks, connections, parentChildren, childIds, hiddenIds };
-    }, [data, filterTypes, filterRelations, collapsedParents, exploreMode, exploredNodeIds]);
+    }, [data, filterTypes, filterRelations, collapsedParents, exploreMode, exploredNodeIds, timelineCutoff]);
 
     // Post to worker when simulation inputs change
     useEffect(() => {
@@ -1183,6 +1196,9 @@ function GraphViewInner() {
                     </div>
                 </DialogPopup>
             </Dialog>
+
+            {/* Bottom-center: Timeline */}
+            <GraphTimeline chunks={data?.chunks ?? []} onCutoffChange={handleTimelineCutoff} />
 
             {/* Bottom-left: Metrics */}
             <GraphMetrics
