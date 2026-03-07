@@ -5,12 +5,13 @@ import { Background, BackgroundVariant, Controls, MiniMap, ReactFlow, ReactFlowP
 import { toPng } from "html-to-image";
 import { Download } from "lucide-react";
 import { useTheme } from "next-themes";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { relationColor } from "@/features/chunks/relation-colors";
 import { FloatingEdge } from "@/features/graph/floating-edge";
-import { buildQuadtree, computeRepulsion } from "@/features/graph/quadtree";
+import { Spinner } from "@/components/ui/spinner";
+import type { LayoutWorkerInput, LayoutWorkerOutput } from "@/features/graph/layout.worker";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { GraphDetailPanel } from "@/features/graph/graph-detail-panel";
 import { GraphFilters } from "@/features/graph/graph-filters";
@@ -110,11 +111,34 @@ function GraphViewInner() {
         });
     }
 
-    const { layoutNodes, layoutEdges } = useMemo(() => {
+    // --- Web Worker for force-directed layout ---
+    const workerRef = useRef<Worker | null>(null);
+    const [layoutPositions, setLayoutPositions] = useState<Record<string, { x: number; y: number }> | null>(null);
+    const [isLayouting, setIsLayouting] = useState(false);
+
+    // Create / teardown the worker
+    useEffect(() => {
+        const worker = new Worker(
+            new URL("./layout.worker.ts", import.meta.url),
+            { type: "module" }
+        );
+        worker.onmessage = (e: MessageEvent<LayoutWorkerOutput>) => {
+            setLayoutPositions(e.data.positions);
+            setIsLayouting(false);
+        };
+        workerRef.current = worker;
+        return () => {
+            worker.terminate();
+            workerRef.current = null;
+        };
+    }, []);
+
+    // Pre-compute filtered data that both the worker and the styling memo need
+    const filteredGraph = useMemo(() => {
         let chunks = data?.chunks ?? [];
         let connections = data?.connections ?? [];
 
-        if (chunks.length === 0) return { layoutNodes: [] as Node[], layoutEdges: [] as Edge[] };
+        if (chunks.length === 0) return null;
 
         // Build parent-children map from part_of edges
         const parentChildren = new Map<string, Set<string>>();
@@ -154,6 +178,53 @@ function GraphViewInner() {
 
         // Filter connections to only visible chunks
         connections = connections.filter(c => visibleChunkIds.has(c.sourceId) && visibleChunkIds.has(c.targetId));
+
+        return { chunks, connections, parentChildren, childIds, hiddenIds };
+    }, [data, filterTypes, filterRelations, collapsedParents]);
+
+    // Post to worker when simulation inputs change
+    useEffect(() => {
+        if (!filteredGraph || !workerRef.current) return;
+
+        const { chunks, connections, hiddenIds } = filteredGraph;
+
+        // Build worker input: nodes need id, type, isHidden for clustering
+        const workerNodes: LayoutWorkerInput["nodes"] = [
+            { id: MAIN_NODE_ID, type: "__main__", isHidden: false },
+            ...chunks
+                .filter(c => !hiddenIds.has(c.id))
+                .map(c => ({ id: c.id, type: c.type, isHidden: hiddenIds.has(c.id) }))
+        ];
+
+        // Include orphan-to-main edges so the worker can account for spring forces on orphans
+        const connectedIds = new Set<string>();
+        for (const conn of connections) {
+            connectedIds.add(conn.sourceId);
+            connectedIds.add(conn.targetId);
+        }
+
+        const workerEdges: LayoutWorkerInput["edges"] = connections.map(conn => ({
+            source: conn.sourceId,
+            target: conn.targetId,
+            relation: conn.relation
+        }));
+
+        // Add orphan edges
+        for (const c of chunks) {
+            if (!hiddenIds.has(c.id) && !connectedIds.has(c.id)) {
+                workerEdges.push({ source: MAIN_NODE_ID, target: c.id, relation: "" });
+            }
+        }
+
+        setIsLayouting(true);
+        workerRef.current.postMessage({ nodes: workerNodes, edges: workerEdges } satisfies LayoutWorkerInput);
+    }, [filteredGraph]);
+
+    // Build layoutNodes and layoutEdges from positions (cheap: styling + edge creation only)
+    const { layoutNodes, layoutEdges } = useMemo(() => {
+        if (!filteredGraph) return { layoutNodes: [] as Node[], layoutEdges: [] as Edge[] };
+
+        const { chunks, connections, parentChildren, childIds, hiddenIds } = filteredGraph;
 
         // Connection counts for node sizing
         const connectionCounts = new Map<string, number>();
@@ -261,133 +332,16 @@ function GraphViewInner() {
             (edge.data as Record<string, unknown>).curveOffset = (idx - (total - 1) / 2) * 40;
         }
 
-        // --- Force-directed layout ---
-        const nodeCount = rawNodes.length;
-        const spacing = Math.max(250, Math.sqrt(nodeCount) * 120);
-
-        // Initialize positions in a circle to seed the simulation
-        const pos = new Map<string, { x: number; y: number; vx: number; vy: number }>();
-        for (let i = 0; i < rawNodes.length; i++) {
-            const id = rawNodes[i]!.id;
-            if (id === MAIN_NODE_ID) {
-                pos.set(id, { x: 0, y: 0, vx: 0, vy: 0 });
-            } else {
-                const angle = (2 * Math.PI * i) / rawNodes.length;
-                const r = spacing * 0.8;
-                pos.set(id, { x: Math.cos(angle) * r, y: Math.sin(angle) * r, vx: 0, vy: 0 });
-            }
-        }
-
-        // Build type lookup for clustering
-        const nodeType = new Map<string, string>();
-        for (const c of chunks) {
-            if (!hiddenIds.has(c.id)) nodeType.set(c.id, c.type);
-        }
-
-        // Build edge index for spring forces
-        const SPRING_LEN = 280;
-        const RELATION_SPRING_LEN: Record<string, number> = {
-            part_of: 180,
-            depends_on: 220,
-            extends: 220,
-            references: 280,
-            related_to: 320,
-            supports: 280,
-            contradicts: 350,
-            alternative_to: 350
-        };
-        const edgePairs: [string, string, number][] = rawEdges.map(e => {
-            const relation = (e.data as { relation?: string })?.relation ?? "";
-            const len = RELATION_SPRING_LEN[relation] ?? SPRING_LEN;
-            return [e.source, e.target, len];
-        });
-
-        const REPULSION = 80000;
-        const SPRING_K = 0.003;
-        const CENTER_PULL = 0.01;
-        const DAMPING = 0.85;
-        const ITERATIONS = 200;
-
-        for (let iter = 0; iter < ITERATIONS; iter++) {
-            const temp = 1 - iter / ITERATIONS; // cooling
-
-            // Repulsion via Barnes-Hut quadtree
-            const ids = [...pos.keys()];
-            const bodies = ids.map(id => ({ id, x: pos.get(id)!.x, y: pos.get(id)!.y }));
-            const tree = buildQuadtree(bodies);
-            if (tree) {
-                for (const id of ids) {
-                    const p = pos.get(id)!;
-                    const { fx, fy } = computeRepulsion(tree, p.x, p.y, REPULSION * temp);
-                    p.vx += fx;
-                    p.vy += fy;
-                }
-            }
-
-            // Spring attraction along edges
-            for (const [srcId, tgtId, targetLen] of edgePairs) {
-                const a = pos.get(srcId);
-                const b = pos.get(tgtId);
-                if (!a || !b) continue;
-                const dx = b.x - a.x;
-                const dy = b.y - a.y;
-                const dist = Math.sqrt(dx * dx + dy * dy) + 1;
-                const force = SPRING_K * (dist - targetLen) * temp;
-                const fx = (dx / dist) * force;
-                const fy = (dy / dist) * force;
-                a.vx += fx;
-                a.vy += fy;
-                b.vx -= fx;
-                b.vy -= fy;
-            }
-
-            // Type clustering — pull toward type centroid
-            const typeCentroids = new Map<string, { x: number; y: number; count: number }>();
-            for (const [id, p] of pos) {
-                const t = nodeType.get(id);
-                if (!t) continue;
-                const c = typeCentroids.get(t) ?? { x: 0, y: 0, count: 0 };
-                c.x += p.x;
-                c.y += p.y;
-                c.count++;
-                typeCentroids.set(t, c);
-            }
-            const CLUSTER_K = 0.002;
-            for (const [id, p] of pos) {
-                const t = nodeType.get(id);
-                if (!t) continue;
-                const c = typeCentroids.get(t)!;
-                const cx = c.x / c.count;
-                const cy = c.y / c.count;
-                p.vx += (cx - p.x) * CLUSTER_K * temp;
-                p.vy += (cy - p.y) * CLUSTER_K * temp;
-            }
-
-            // Center gravity
-            for (const p of pos.values()) {
-                p.vx -= p.x * CENTER_PULL * temp;
-                p.vy -= p.y * CENTER_PULL * temp;
-            }
-
-            // Apply velocities
-            for (const [id, p] of pos) {
-                if (id === MAIN_NODE_ID) { p.vx = 0; p.vy = 0; continue; } // pin center
-                p.x += p.vx;
-                p.y += p.vy;
-                p.vx *= DAMPING;
-                p.vy *= DAMPING;
-            }
-        }
-
+        // Apply positions from worker (or fallback to origin)
         const layoutNodes = rawNodes.map(node => {
             const dragged = draggedPositions.get(node.id);
             if (dragged) return { ...node, position: dragged };
-            const p = pos.get(node.id) ?? { x: 0, y: 0 };
+            const p = layoutPositions?.[node.id] ?? { x: 0, y: 0 };
             return { ...node, position: { x: p.x - 100, y: p.y - 25 } };
         });
 
         return { layoutNodes, layoutEdges: rawEdges };
-    }, [data, filterTypes, filterRelations, collapsedParents, draggedPositions, isDark, TYPE_COLORS]);
+    }, [filteredGraph, layoutPositions, draggedPositions, isDark, TYPE_COLORS, collapsedParents]);
 
     const focusNeighbors = useMemo(() => {
         if (!focusedNodeId) return null;
@@ -600,6 +554,8 @@ function GraphViewInner() {
         );
     }
 
+    const showLayoutSpinner = isLayouting && !layoutPositions;
+
     return (
         <div className="flex h-[calc(100vh-4rem)]">
             {!isMobile && (
@@ -658,6 +614,14 @@ function GraphViewInner() {
                 </Sheet>
             )}
             <div className="relative flex-1 [&_.react-flow__handle]:invisible [&_.react-flow__node]:transition-[transform] [&_.react-flow__node]:duration-500 [&_.react-flow__node]:ease-out">
+            {showLayoutSpinner && (
+                <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/60 backdrop-blur-sm">
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                        <Spinner className="size-5" />
+                        <span className="text-sm">Computing layout...</span>
+                    </div>
+                </div>
+            )}
             <ReactFlow
                 nodes={nodes}
                 edges={edges}
