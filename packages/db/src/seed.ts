@@ -30,819 +30,1156 @@ if (!existing) {
 // Clear existing chunks for dev user
 await db.delete(chunk).where(eq(chunk.userId, DEV_USER_ID));
 
+// Deterministic IDs for seed data
+const ids = {
+    arch: "seed-arch",
+    schemaChunks: "seed-schema-chunks",
+    schemaConn: "seed-schema-conn",
+    schemaVer: "seed-schema-ver",
+    schemaAuth: "seed-schema-auth",
+    effect: "seed-effect",
+    apiChunks: "seed-api-chunks",
+    apiConnGraph: "seed-api-conn-graph",
+    apiAI: "seed-api-ai",
+    enrich: "seed-enrich",
+    semantic: "seed-semantic",
+    repo: "seed-repo",
+    service: "seed-service",
+    eden: "seed-eden",
+    routes: "seed-routes",
+    graph: "seed-graph",
+    graphLayout: "seed-graph-layout",
+    auth: "seed-auth",
+    cli: "seed-cli",
+    cliStore: "seed-cli-store",
+    cliScanner: "seed-cli-scanner",
+    env: "seed-env",
+    docker: "seed-docker",
+    turbo: "seed-turbo"
+};
+
 const chunks = [
     {
-        id: "c-architecture",
-        title: "Project Architecture",
+        id: ids.arch,
+        title: "Fubbik Architecture Overview",
         type: "document",
         tags: ["architecture", "overview", "monorepo"],
-        content: `Fubbik is a local-first knowledge framework built as a TypeScript monorepo.
+        content: `Fubbik is a local-first knowledge framework for humans and machines. It stores knowledge as **chunks** (atomic units) connected by **typed relationships** in a graph.
 
-## Structure
+## Core Data Flow
 
-- apps/web — TanStack Start frontend (SSR, Tailwind, shadcn-ui)
-- apps/server — Elysia backend (REST API, Better Auth, OpenTelemetry)
-- apps/cli — Commander.js CLI tool with local-first storage
-- packages/api — Shared Elysia API plugin with Eden treaty types
-- packages/auth — Better Auth with Drizzle adapter
-- packages/config — Shared TypeScript config
-- packages/db — Drizzle ORM schema, repositories, and Postgres connection
-- packages/env — Environment validation with Arktype + t3-env
+\`\`\`
+CLI / Web Frontend
+  \u2193 Eden Treaty (type-safe RPC)
+Elysia API (routes)
+  \u2193 Effect (typed errors)
+Service Layer (business logic)
+  \u2193
+Repository Layer (Drizzle ORM)
+  \u2193
+PostgreSQL + pgvector
+\`\`\`
 
-## Key Decisions
+## Monorepo Layout
 
-- Bun as runtime and package manager
-- Turborepo for build orchestration
-- Arktype for validation (not Zod) — implements Standard Schema v1
-- Eden treaty for end-to-end type-safe API client
-- Session-based auth with httpOnly cookies
-- Effect library for typed error handling in the API layer
-- Local-first CLI with bidirectional sync to server
+\`\`\`
+fubbik/
+\u251c\u2500\u2500 apps/
+\u2502   \u251c\u2500\u2500 web/      # TanStack Start frontend
+\u2502   \u251c\u2500\u2500 server/   # Elysia backend
+\u2502   \u2514\u2500\u2500 cli/      # Commander.js CLI
+\u251c\u2500\u2500 packages/
+\u2502   \u251c\u2500\u2500 api/      # Shared routes, services, error handling
+\u2502   \u251c\u2500\u2500 auth/     # Better Auth + Drizzle adapter
+\u2502   \u251c\u2500\u2500 config/   # Shared TypeScript config
+\u2502   \u251c\u2500\u2500 db/       # Schema, repositories, migrations
+\u2502   \u2514\u2500\u2500 env/      # Arktype environment validation
+\`\`\`
 
-## Data Flow
+## Key Technologies
 
-Web/CLI → Eden treaty client → Elysia routes → Effect services → Drizzle repositories → PostgreSQL
-
-Errors bubble up as Effect failures, get extracted in Elysia onError middleware, and return as typed HTTP responses.`
+- **Runtime:** Bun
+- **Frontend:** TanStack Start, Tailwind, shadcn-ui, React Query
+- **Backend:** Elysia, Effect (error handling), Drizzle ORM
+- **Database:** PostgreSQL with pgvector extension
+- **Auth:** Better Auth (email/password)
+- **AI:** OpenAI (gpt-4o-mini), Ollama (llama3.2 + nomic-embed-text)
+- **Build:** Turborepo
+- **Testing:** Vitest`
     },
     {
-        id: "c-api-design",
-        title: "API Design Patterns",
+        id: ids.schemaChunks,
+        title: "Database Schema: Chunks",
+        type: "schema",
+        tags: ["database", "schema", "chunks", "postgresql"],
+        content: `The \`chunk\` table is the core data model. Each chunk is an atomic unit of knowledge owned by a user.
+
+\`\`\`sql
+CREATE TABLE chunk (
+  id          TEXT PRIMARY KEY,
+  title       TEXT NOT NULL,
+  content     TEXT NOT NULL DEFAULT '',
+  type        TEXT NOT NULL DEFAULT 'note',
+  tags        JSONB NOT NULL DEFAULT '[]',     -- string[]
+  user_id     TEXT NOT NULL REFERENCES user(id) ON DELETE CASCADE,
+  created_at  TIMESTAMP DEFAULT NOW(),
+  updated_at  TIMESTAMP DEFAULT NOW(),
+
+  -- Enrichment fields (populated by Ollama)
+  summary     TEXT,                             -- 1-2 sentence TL;DR
+  aliases     JSONB NOT NULL DEFAULT '[]',      -- alternative names
+  not_about   JSONB NOT NULL DEFAULT '[]',      -- exclusion terms
+  scope       JSONB NOT NULL DEFAULT '{}',      -- key:value metadata
+  embedding   VECTOR(768)                       -- nomic-embed-text
+);
+
+CREATE INDEX chunk_userId_idx ON chunk(user_id);
+CREATE INDEX chunk_type_idx ON chunk(type);
+\`\`\`
+
+## Chunk Types
+
+| Type | Purpose |
+|------|--------|
+| \`note\` | General knowledge, ideas |
+| \`document\` | Structured long-form content |
+| \`guide\` | How-to instructions |
+| \`reference\` | API docs, lookup tables |
+| \`schema\` | Data models, type definitions |
+| \`checklist\` | Step-by-step procedures |
+
+## JSONB Operators Used
+
+\`\`\`sql
+tags @> '["tag"]'::jsonb           -- array contains
+scope @> '{"key":"val"}'::jsonb    -- object contains
+jsonb_array_elements_text(tags)     -- unnest for aggregation
+\`\`\``
+    },
+    {
+        id: ids.schemaConn,
+        title: "Database Schema: Connections",
+        type: "schema",
+        tags: ["database", "schema", "connections", "postgresql"],
+        content: `Connections are directed, typed edges between two chunks forming a knowledge graph.
+
+\`\`\`sql
+CREATE TABLE chunk_connection (
+  id         TEXT PRIMARY KEY,
+  source_id  TEXT NOT NULL REFERENCES chunk(id) ON DELETE CASCADE,
+  target_id  TEXT NOT NULL REFERENCES chunk(id) ON DELETE CASCADE,
+  relation   TEXT NOT NULL DEFAULT 'related',
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX connection_sourceId_idx ON chunk_connection(source_id);
+CREATE INDEX connection_targetId_idx ON chunk_connection(target_id);
+CREATE UNIQUE INDEX connection_unique_idx ON chunk_connection(source_id, target_id, relation);
+\`\`\`
+
+## Relation Types
+
+| Relation | Meaning |
+|----------|--------|
+| \`related_to\` | General association |
+| \`part_of\` | Hierarchical containment |
+| \`depends_on\` | Functional dependency |
+| \`extends\` | Builds upon / specializes |
+| \`references\` | Mentions / cites |
+| \`supports\` | Provides evidence |
+| \`contradicts\` | Conflicts with |
+| \`alternative_to\` | Different approach |
+
+The unique index prevents duplicate connections with the same relation between the same pair.`
+    },
+    {
+        id: ids.schemaVer,
+        title: "Database Schema: Versions",
+        type: "schema",
+        tags: ["database", "schema", "versions", "history"],
+        content: `Chunk versions track edit history. A version is created every time a chunk is updated.
+
+\`\`\`sql
+CREATE TABLE chunk_version (
+  id        TEXT PRIMARY KEY,
+  chunk_id  TEXT NOT NULL REFERENCES chunk(id) ON DELETE CASCADE,
+  version   INTEGER NOT NULL,
+  title     TEXT NOT NULL,
+  content   TEXT NOT NULL,
+  type      TEXT NOT NULL,
+  tags      JSONB NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX chunk_version_chunkId_idx ON chunk_version(chunk_id);
+\`\`\`
+
+Versions are created in the chunk service before applying updates, preserving the previous state. The web UI shows version history via \`GET /api/chunks/:id/history\`.`
+    },
+    {
+        id: ids.schemaAuth,
+        title: "Database Schema: Auth Tables",
+        type: "schema",
+        tags: ["database", "schema", "authentication", "better-auth"],
+        content: `Authentication uses Better Auth with four tables managed by the Drizzle adapter.
+
+\`\`\`sql
+-- Users
+CREATE TABLE "user" (
+  id              TEXT PRIMARY KEY,
+  name            TEXT NOT NULL,
+  email           TEXT NOT NULL UNIQUE,
+  email_verified  BOOLEAN DEFAULT FALSE,
+  image           TEXT,
+  created_at      TIMESTAMP DEFAULT NOW(),
+  updated_at      TIMESTAMP DEFAULT NOW()
+);
+
+-- Sessions (httpOnly cookies)
+CREATE TABLE session (
+  id          TEXT PRIMARY KEY,
+  token       TEXT NOT NULL UNIQUE,
+  expires_at  TIMESTAMP NOT NULL,
+  ip_address  TEXT,
+  user_agent  TEXT,
+  user_id     TEXT REFERENCES "user"(id) ON DELETE CASCADE
+);
+
+-- OAuth accounts
+CREATE TABLE account (
+  id           TEXT PRIMARY KEY,
+  account_id   TEXT NOT NULL,
+  provider_id  TEXT NOT NULL,
+  user_id      TEXT REFERENCES "user"(id) ON DELETE CASCADE,
+  access_token, refresh_token, id_token  TEXT,
+  password     TEXT  -- for email/password auth
+);
+
+-- Email verification tokens
+CREATE TABLE verification (
+  id          TEXT PRIMARY KEY,
+  identifier  TEXT NOT NULL,
+  value       TEXT NOT NULL,
+  expires_at  TIMESTAMP NOT NULL
+);
+\`\`\`
+
+In dev mode, a \`DEV_SESSION\` with \`userId="dev-user"\` is injected when no auth cookie is present.`
+    },
+    {
+        id: ids.effect,
+        title: "Effect Error Handling Pattern",
+        type: "guide",
+        tags: ["architecture", "error-handling", "effect", "backend"],
+        content: `All backend code uses the Effect library for typed error handling. Errors flow from repositories through services to a global handler.
+
+## Error Types
+
+Each error is a tagged class:
+
+\`\`\`typescript
+class DatabaseError { readonly _tag = "DatabaseError"; }
+class NotFoundError { readonly _tag = "NotFoundError"; resource: string; }
+class AuthError     { readonly _tag = "AuthError"; }
+class ValidationError { readonly _tag = "ValidationError"; }
+class AiError       { readonly _tag = "AiError"; }
+\`\`\`
+
+## Layer Responsibilities
+
+- **Repository** returns \`Effect<T, DatabaseError>\` \u2014 wraps Drizzle calls in \`Effect.tryPromise\`
+- **Service** composes Effects, introduces \`NotFoundError\`, \`AuthError\`, etc.
+- **Route** calls \`Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(...)))\`
+
+## Global Error Handler
+
+In \`packages/api/src/index.ts\`, the Elysia \`.onError\` handler extracts the Effect error from \`FiberFailure\` and maps \`_tag\` to HTTP status:
+
+\`\`\`typescript
+AuthError       \u2192 401
+NotFoundError   \u2192 404
+ValidationError \u2192 400
+AiError         \u2192 502
+DatabaseError   \u2192 500
+\`\`\`
+
+## Example Flow
+
+\`\`\`typescript
+// Repository
+function getChunkById(id, userId) {
+  return Effect.tryPromise({
+    try: () => db.select()...where(...),
+    catch: (e) => new DatabaseError({ cause: e })
+  });
+}
+
+// Service
+function getChunkDetail(id, userId) {
+  return getChunkById(id, userId).pipe(
+    Effect.flatMap(chunk =>
+      chunk ? Effect.succeed(chunk) : Effect.fail(new NotFoundError({ resource: "Chunk" }))
+    )
+  );
+}
+
+// Route
+.get("/chunks/:id", ctx =>
+  Effect.runPromise(
+    requireSession(ctx).pipe(
+      Effect.flatMap(session => getChunkDetail(ctx.params.id, session.user.id))
+    )
+  )
+)
+\`\`\``
+    },
+    {
+        id: ids.apiChunks,
+        title: "API Endpoints: Chunks",
         type: "reference",
-        tags: ["api", "elysia", "eden", "patterns"],
-        content: `The API layer uses Elysia with a shared plugin pattern exported from packages/api.
+        tags: ["api", "chunks", "endpoints", "rest"],
+        content: `All chunk endpoints are defined in \`packages/api/src/chunks/routes.ts\`.
 
-## Eden Treaty
+## List Chunks
+\`GET /api/chunks\`
 
-Type-safe client generated from the Elysia server definition. No code generation step — types flow directly from server to client via the Api type export. The client is created with \`treaty<Api>(serverUrl, { fetch: { credentials: "include" } })\`.
+Query params:
+- \`search\` \u2014 fulltext + trigram similarity search
+- \`type\` \u2014 filter by chunk type
+- \`tags\` \u2014 comma-separated, JSONB containment
+- \`sort\` \u2014 \`newest\` | \`oldest\` | \`alpha\` | \`updated\`
+- \`limit\`, \`offset\` \u2014 pagination
+- \`scope\` \u2014 comma-separated key:value pairs
+- \`exclude\` \u2014 terms NOT in notAbout array
+- \`alias\` \u2014 search in aliases array
+- \`after\` \u2014 updated within N days
+- \`enrichment\` \u2014 \`missing\` | \`complete\`
+- \`minConnections\` \u2014 minimum connection count
 
-## UnwrapEden Pattern
+## CRUD
+- \`POST /api/chunks\` \u2014 Create chunk (triggers async enrichment)
+- \`GET /api/chunks/:id\` \u2014 Get chunk with connections
+- \`PATCH /api/chunks/:id\` \u2014 Update (creates version, re-enriches)
+- \`DELETE /api/chunks/:id\` \u2014 Delete chunk
 
-Eden returns \`{ data, error }\` for every call. The \`unwrapEden()\` utility throws on error and returns typed data, removing boilerplate from every API call site.
+## Bulk Operations
+- \`POST /api/chunks/import\` \u2014 Import up to 500 chunks
+- \`DELETE /api/chunks/bulk\` \u2014 Delete up to 100 chunks by IDs
+- \`GET /api/chunks/export\` \u2014 Export all chunks as JSON
 
-## Session Resolution
+## Search
+- \`GET /api/chunks/search/semantic\` \u2014 Vector similarity search (\`q\`, \`limit\`, \`exclude\`, \`scope\`)
 
-A shared \`resolve()\` middleware extracts the session from request headers via Better Auth. All routes after the middleware receive \`ctx.session\`. Read routes use \`optionalSession()\` (returns null for guests), write routes use \`requireSession()\` (fails with AuthError).
+## History
+- \`GET /api/chunks/:id/history\` \u2014 Version history
+
+## Validation
+
+All inputs validated with Elysia's \`t.Object()\` (TypeBox):
+- \`title\`: max 200 chars
+- \`content\`: max 50,000 chars
+- \`type\`: max 20 chars
+- \`tags\`: max 20 items, each max 50 chars`
+    },
+    {
+        id: ids.apiConnGraph,
+        title: "API Endpoints: Connections, Graph & Stats",
+        type: "reference",
+        tags: ["api", "connections", "graph", "stats", "endpoints"],
+        content: `## Connections
+
+Defined in \`packages/api/src/connections/routes.ts\`.
+
+- \`POST /api/connections\` \u2014 Create connection
+  - Body: \`{ sourceId, targetId, relation }\`
+  - Validates both chunks exist and belong to the user
+  - Prevents self-connections (sourceId \u2260 targetId)
+- \`DELETE /api/connections/:id\` \u2014 Delete connection
+
+## Graph
+
+Defined in \`packages/api/src/graph/routes.ts\`.
+
+- \`GET /api/graph\` \u2014 Get full knowledge graph
+  - Returns \`{ chunks: [...], connections: [...] }\`
+  - Chunks include: id, title, type, tags, summary, createdAt
+  - Used by the graph visualization frontend
+
+## Stats
+
+- \`GET /api/stats\` \u2014 Returns \`{ chunks, connections, tags }\` counts
+- \`GET /api/tags\` \u2014 Tag list with frequency counts (uses \`jsonb_array_elements_text\`)
+
+## Health
+
+- \`GET /api/health\` \u2014 Returns \`{ status: "ok", db: true|false }\`
+  - Returns 503 if database connection fails
+
+## Auth
+
+- \`ALL /api/auth/*\` \u2014 Proxied to Better Auth handler
+  - Sign up, sign in, sign out, session management`
+    },
+    {
+        id: ids.apiAI,
+        title: "API Endpoints: AI & Enrichment",
+        type: "reference",
+        tags: ["api", "ai", "enrichment", "ollama", "openai"],
+        content: `## OpenAI Endpoints
+
+Defined in \`packages/api/src/ai/routes.ts\`. Require \`OPENAI_API_KEY\`.
+
+- \`POST /api/ai/summarize\` \u2014 Summarize a chunk (200 token max)
+  - Body: \`{ chunkId }\`
+- \`POST /api/ai/suggest-connections\` \u2014 Suggest connections via LLM (500 token max)
+  - Body: \`{ chunkId }\`
+  - Returns \`[{ id, relation }]\` \u2014 suggested target chunks
+- \`POST /api/ai/generate\` \u2014 Generate a new chunk from a prompt (1000 token max)
+  - Body: \`{ prompt }\`
+  - Returns \`{ title, content, type, tags }\`
+
+Uses \`@ai-sdk/openai\` with \`gpt-4o-mini\` (configurable via \`OPENAI_MODEL\` env var).
+
+## Ollama Enrichment
+
+Defined in \`packages/api/src/enrich/routes.ts\`. Requires Ollama running locally.
+
+- \`POST /api/chunks/:id/enrich\` \u2014 Enrich a single chunk
+- \`POST /api/chunks/enrich-all\` \u2014 Enrich all user's chunks sequentially
+
+Enrichment generates:
+1. **Metadata** (via \`llama3.2\`): summary, aliases[], notAbout[]
+2. **Embedding** (via \`nomic-embed-text\`): 768-dim vector for semantic search
+
+Enrichment also fires automatically (async, fire-and-forget) when a chunk is created or updated with title/content changes.`
+    },
+    {
+        id: ids.enrich,
+        title: "Enrichment Pipeline",
+        type: "guide",
+        tags: ["enrichment", "ollama", "ai", "embeddings", "pipeline"],
+        content: `The enrichment pipeline generates AI metadata for chunks using Ollama (local LLM).
+
+## Flow
+
+\`\`\`
+Chunk created/updated
+  \u2193 (async, fire-and-forget)
+enrichChunkIfEmpty(chunkId)
+  \u2193 (only if no summary exists)
+enrichChunk(chunkId)
+  \u2193
+1. Check Ollama availability (GET /api/tags, 2s timeout)
+2. Generate metadata via llama3.2:
+   - summary: 1-2 sentence TL;DR
+   - aliases: 3-8 alternative names
+   - notAbout: 2-5 exclusion terms
+3. Generate embedding via nomic-embed-text:
+   - Input: "search_document: {title}. {summary}. {content}"
+   - Output: 768-dimensional vector
+4. updateChunkEnrichment() \u2192 store all fields
+\`\`\`
+
+## Ollama Client
+
+Defined in \`packages/api/src/ollama/client.ts\`.
+
+\`\`\`typescript
+isOllamaAvailable()       // Ping with 2s timeout
+generateJson<T>(prompt)   // POST /api/generate, format: "json"
+generateEmbedding(text)   // POST /api/embeddings
+\`\`\`
+
+## Embedding Prefixes
+
+Nomic-embed-text uses task-specific prefixes:
+- **Documents:** \`"search_document: "\` + title + summary + content
+- **Queries:** \`"search_query: "\` + query text
+
+## Required Models
+
+\`\`\`bash
+ollama pull nomic-embed-text   # embeddings
+ollama pull llama3.2           # metadata generation
+\`\`\`
+
+Without Ollama, all other features work normally. Enrichment fails gracefully.`
+    },
+    {
+        id: ids.semantic,
+        title: "Semantic Search",
+        type: "guide",
+        tags: ["search", "semantic", "embeddings", "pgvector"],
+        content: `Semantic search uses vector embeddings to find chunks by meaning rather than keywords.
+
+## How It Works
+
+\`\`\`
+User query: "how do I deploy?"
+  \u2193
+generateQueryEmbedding("how do I deploy?")
+  \u2193 Ollama nomic-embed-text
+  \u2193 prefix: "search_query: "
+768-dim vector
+  \u2193
+PostgreSQL: SELECT ... ORDER BY embedding <=> query_vector
+  \u2193
+Top K results with similarity score (1 - cosine distance)
+\`\`\`
+
+## PostgreSQL Query
+
+\`\`\`sql
+SELECT
+  id, title, type,
+  1 - (embedding <=> $query_vector) AS similarity
+FROM chunk
+WHERE user_id = $userId
+  AND embedding IS NOT NULL
+ORDER BY embedding <=> $query_vector
+LIMIT $limit;
+\`\`\`
+
+The \`<=>\` operator computes cosine distance using the pgvector extension.
+
+## Filters
+
+Semantic search also supports:
+- \`scope\` \u2014 JSONB containment filter
+- \`exclude\` \u2014 NOT in notAbout array
+
+## API
+
+\`\`\`
+GET /api/chunks/search/semantic?q=deployment&limit=10
+\`\`\`
+
+## CLI
+
+\`\`\`bash
+fubbik search --semantic "how to deploy"
+\`\`\`
+
+Chunks must be enriched (have embeddings) to appear in semantic search results.`
+    },
+    {
+        id: ids.repo,
+        title: "Repository Layer",
+        type: "reference",
+        tags: ["backend", "repository", "database", "drizzle"],
+        content: `Repositories provide pure data access with no business logic. All functions return \`Effect<T, DatabaseError>\`.
+
+Defined in \`packages/db/src/repository/\`.
+
+## chunk.ts
+
+\`\`\`typescript
+listChunks(params)              // WHERE builder + pagination \u2192 { chunks, total }
+getChunkById(chunkId, userId?)  // Single chunk lookup
+getChunkConnections(chunkId)    // LEFT JOIN for connected chunks
+createChunk(params)             // INSERT RETURNING
+updateChunk(chunkId, params)    // Partial UPDATE
+updateChunkEnrichment(...)      // Only enrichment fields
+deleteChunk(chunkId, userId)    // DELETE with ownership check
+deleteMany(ids[], userId)       // Bulk DELETE
+exportAllChunks(userId?)        // All chunks ordered by createdAt
+\`\`\`
+
+## semantic.ts
+
+\`\`\`typescript
+semanticSearch({ embedding, userId?, exclude?, scope?, limit })
+  // Uses embedding <=> operator for cosine distance
+\`\`\`
+
+## connection.ts
+
+\`\`\`typescript
+createConnection({ id, sourceId, targetId, relation })
+deleteConnection(connectionId)
+getConnectionById(connectionId)
+\`\`\`
+
+## graph.ts
+
+\`\`\`typescript
+getAllChunksMeta(userId?)          // id, title, type, tags, summary, createdAt
+getAllConnectionsForUser(userId?)  // All connections for user's chunks
+\`\`\`
+
+## stats.ts & tags.ts
+
+\`\`\`typescript
+getChunkCount(userId?)
+getConnectionCount(userId?)
+getTagCount(userId?)               // Uses raw SQL with jsonb_array_elements_text
+getTagsWithCounts(userId?)         // SELECT tag, COUNT(*) GROUP BY tag
+\`\`\``
+    },
+    {
+        id: ids.service,
+        title: "Service Layer",
+        type: "reference",
+        tags: ["backend", "service", "business-logic", "effect"],
+        content: `Services compose repository Effects and add business logic. Defined in \`packages/api/src/*/service.ts\`.
+
+## Chunk Service
+
+\`\`\`typescript
+listChunks(userId?, query)     // Delegates to repo with parsed filters
+getChunkDetail(chunkId, userId)// Chunk + connections, NotFoundError if missing
+createChunk(userId, body)      // Create + fire-and-forget enrichment
+updateChunk(chunkId, userId, body) // Create version \u2192 update \u2192 re-enrich
+deleteChunk(chunkId, userId)   // Ownership check + delete
+deleteMany(ids, userId)        // Bulk delete with ownership
+semanticSearch(userId?, query) // Generate embedding \u2192 vector search
+exportChunks(userId?)          // All chunks as JSON
+importChunks(userId, chunks[]) // Batch create (concurrency: 10)
+\`\`\`
+
+Key behavior: \`createChunk\` and \`updateChunk\` trigger \`enrichChunkIfEmpty\` or \`enrichChunk\` asynchronously. The enrichment is fire-and-forget \u2014 it doesn't block the API response.
+
+## Connection Service
+
+\`\`\`typescript
+createConnection(userId, { sourceId, targetId, relation })
+  // Validates: sourceId \u2260 targetId
+  // Checks both chunks exist and belong to user
+  // Creates with UUID
+
+deleteConnection(connectionId, userId)
+  // Checks connection exists
+  // Validates both endpoint chunks belong to user
+\`\`\`
+
+## Graph Service
+
+\`\`\`typescript
+getUserGraph(userId?)
+  // Returns { chunks: getAllChunksMeta(), connections: getAllConnectionsForUser() }
+\`\`\``
+    },
+    {
+        id: ids.eden,
+        title: "Eden Treaty API Client",
+        type: "guide",
+        tags: ["frontend", "api-client", "eden", "elysia", "typescript"],
+        content: `The frontend communicates with the backend using Eden Treaty \u2014 a type-safe RPC-like client generated from Elysia's route definitions.
+
+## Setup
+
+\`\`\`typescript
+// apps/web/src/utils/api.ts
+import { treaty } from '@elysiajs/eden';
+import type { Api } from '@fubbik/api';
+
+export const api = treaty<Api>(serverUrl, {
+  fetch: { credentials: 'include' }  // send auth cookies
+});
+\`\`\`
+
+## Usage
+
+\`\`\`typescript
+// Full type safety \u2014 params, body, and response are all typed
+const { data, error } = await api.api.chunks.get({ query: { type: 'guide' } });
+const { data } = await api.api.chunks({ id: chunkId }).get();
+const { data } = await api.api.chunks.post({ title: '...', content: '...' });
+const { data } = await api.api.chunks({ id }).patch({ title: 'New Title' });
+\`\`\`
 
 ## Error Handling
 
-The \`onError()\` middleware extracts Effect errors from FiberFailure and maps tagged errors to HTTP status codes:
-- ValidationError → 400
-- AuthError → 401
-- NotFoundError → 404
-- AiError → 502
-- DatabaseError → 500
+\`\`\`typescript
+// unwrapEden throws if error is present
+import { unwrapEden } from '@/utils/eden';
+const data = unwrapEden(await api.api.chunks.get());
+\`\`\`
 
-## Endpoints
-
-- GET /api/health — public health check (no auth)
-- GET /api/me — current user info (auth required)
-- GET /api/chunks — list chunks with filtering (public read)
-- GET /api/chunks/:id — chunk detail with connections (public read)
-- POST /api/chunks — create chunk (auth required)
-- PATCH /api/chunks/:id — update chunk (auth required)
-- DELETE /api/chunks/:id — delete chunk (auth required)
-- GET /api/stats — chunk/connection/tag counts (public read)
-- GET /api/graph — all chunks and connections for graph view (public read)
-- GET /api/tags — all tags with counts (public read)
-- POST /api/chunks/import — bulk import (auth required)
-- GET /api/chunks/export — export all chunks (public read)
-- POST /api/ai/summarize — AI-powered chunk summary (auth required)
-- POST /api/ai/suggest-connections — AI connection suggestions (auth required)
-- POST /api/ai/generate — generate chunk from prompt (auth required)`
+The \`Api\` type is exported from \`packages/api/src/index.ts\` and includes all routes. Eden generates client methods that mirror the server's URL structure with full TypeScript inference.`
     },
     {
-        id: "c-effect-patterns",
-        title: "Effect Library Patterns",
+        id: ids.routes,
+        title: "Frontend Route Structure",
         type: "reference",
-        tags: ["effect", "error-handling", "patterns"],
-        content: `The API layer uses the Effect library for typed, composable error handling.
+        tags: ["frontend", "routes", "tanstack", "react"],
+        content: `The web app uses TanStack Start with file-based routing.
 
-## Error Definitions
+## Routes
 
-Custom errors extend \`Data.TaggedError\` from Effect, each with a unique \`_tag\` discriminator:
-- NotFoundError — carries \`resource: string\` (e.g., "Chunk")
-- AuthError — no payload, just signals auth failure
-- ValidationError — carries \`message: string\`
-- DatabaseError — carries \`cause: unknown\` (wraps Drizzle errors)
-- AiError — carries \`cause: unknown\` (wraps AI SDK errors)
+| Route | File | Purpose |
+|-------|------|---------|
+| \`/\` | \`index.tsx\` | Landing page |
+| \`/login\` | \`login.tsx\` | Sign in / sign up forms |
+| \`/dashboard\` | \`dashboard.tsx\` | Stats, export/import, favorites |
+| \`/chunks\` | \`chunks.index.tsx\` | List view with filters, sorting, kanban |
+| \`/chunks/new\` | \`chunks.new.tsx\` | Create chunk form |
+| \`/chunks/:id\` | \`chunks.$chunkId.tsx\` | View chunk detail + connections |
+| \`/chunks/:id/edit\` | \`chunks.$chunkId_.edit.tsx\` | Edit chunk |
+| \`/graph\` | \`graph.tsx\` | Knowledge graph visualization |
+| \`/tags\` | \`tags.tsx\` | Tag management |
 
-## Repository Pattern
+## Feature Modules
 
-Every database function wraps Drizzle queries in \`Effect.tryPromise()\`:
-- \`try\` block contains the async Drizzle query
-- \`catch\` block always converts to \`DatabaseError({ cause })\`
-- Return type is \`Effect<TData, DatabaseError>\`
-
-## Service Layer Composition
-
-Services compose repository calls using Effect pipelines:
-- \`Effect.flatMap()\` for sequential operations (get chunk → get connections)
-- \`Effect.all()\` with \`{ concurrency: "unbounded" }\` for parallel queries
-- \`Effect.tap()\` for side effects (e.g., setting HTTP status)
-- \`Effect.map()\` for data transformation
-
-## Route Execution
-
-Routes call \`Effect.runPromise()\` to execute the Effect pipeline. Errors are caught by Elysia's \`onError\` middleware which extracts the tagged error from Effect's FiberFailure wrapper using a special Symbol lookup.
-
-## Why Effect Over Try/Catch
-
-- Errors are part of the type signature — you know exactly what can fail
-- Pipelines compose cleanly — no nested try/catch blocks
-- Parallel execution built in via Effect.all
-- Tagged errors enable exhaustive switch/case in error handlers`
-    },
-    {
-        id: "c-database",
-        title: "Database Schema",
-        type: "schema",
-        tags: ["database", "drizzle", "postgres"],
-        content: `PostgreSQL database managed with Drizzle ORM.
-
-## Auth Tables (Better Auth)
-
-- user — id, name, email, emailVerified, image, timestamps
-- session — token-based sessions with userId FK, ip/userAgent tracking
-- account — OAuth/credential accounts linked to users
-- verification — email verification tokens
-
-## Knowledge Tables
-
-- chunk — id (text PK), title, content, type, tags (jsonb string[]), userId FK, createdAt, updatedAt
-- chunk_connection — id (text PK), sourceId FK, targetId FK, relation, createdAt
-- chunk_version — id (text PK), chunkId FK, version (int), title, content, type, tags, createdAt
-
-## Indexes
-
-- chunk_userId_idx on chunk.userId
-- chunk_type_idx on chunk.type
-- connection_sourceId_idx on chunk_connection.sourceId
-- connection_targetId_idx on chunk_connection.targetId
-- connection_unique_idx on (sourceId, targetId, relation) — prevents duplicate connections
-
-## Search
-
-Uses PostgreSQL trigram similarity (\`pg_trgm\` extension) for fuzzy search. Queries use \`similarity(title, searchTerm)\` for ranking and \`ilike\` for substring matching as fallback.
-
-## Versioning
-
-Chunk updates create a version snapshot before modifying. The version stores the previous state (title, content, type, tags) with an incrementing version number. Enables full edit history per chunk.
-
-## Configuration
-
-- drizzle-orm/node-postgres driver
-- Schema in packages/db/src/schema/
-- Repository functions in packages/db/src/repository/
-- drizzle-kit for migrations and push
-- Test files must NOT be in schema/ directory (breaks drizzle-kit's CJS loader)`
-    },
-    {
-        id: "c-repository-layer",
-        title: "Repository Layer Pattern",
-        type: "reference",
-        tags: ["database", "repository", "drizzle", "effect"],
-        content: `The repository layer in packages/db/src/repository/ wraps all Drizzle queries with Effect for typed error handling.
-
-## Structure
-
-Each domain has its own repository file:
-- chunk.ts — CRUD for chunks (list, get, create, update, delete, export)
-- connection.ts — create/delete chunk connections
-- stats.ts — aggregate counts (chunks, connections, tags)
-- graph.ts — fetch all chunks and connections for visualization
-- tags.ts — unique tags with counts using jsonb_array_elements_text
-- chunk-version.ts — version snapshot management
-- health.ts — database connectivity check
-
-## Conventions
-
-- Every function returns \`Effect<TData, DatabaseError>\`
-- All errors are wrapped in DatabaseError with original cause preserved
-- Read functions accept optional userId — omitting it returns data for all users
-- Write functions always require userId for ownership
-- List functions return \`{ items, total }\` for pagination support
-- Drizzle conditions are built dynamically based on provided filters
-
-## Package Exports
-
-The repository is exported from packages/db via the \`./repository\` export path, keeping schema and repository concerns separate. Services in packages/api import from \`@fubbik/db/repository\`.`
-    },
-    {
-        id: "c-auth",
-        title: "Authentication Setup",
-        type: "reference",
-        tags: ["auth", "better-auth", "security"],
-        content: `Authentication uses Better Auth with a Drizzle adapter.
-
-## Server Side (packages/auth)
-
-- betterAuth() configured with drizzleAdapter, pg provider
-- Email/password enabled
-- Cookies: sameSite=none, secure=true, httpOnly=true
-- trustedOrigins set from CORS_ORIGIN env var
-- Session stored in database, resolved via cookie on every request
-
-## Client Side (apps/web)
-
-- createAuthClient() pointed at VITE_SERVER_URL
-- useSession() hook for reactive session state
-- signIn.email() and signUp.email() for auth flows
-- signOut() with redirect
-
-## Web Middleware
-
-- TanStack Start middleware calls authClient.getSession()
-- Server function getUser() wraps middleware for route loaders
-- Protected routes use beforeLoad with try/catch — redirect to /login on failure
-- Dashboard catches auth errors to allow guest access
-
-## API Auth Pattern
-
-- resolve() middleware extracts session from headers for all routes
-- requireSession() — returns session or fails with AuthError (for writes)
-- optionalSession() — returns session or null (for reads)
-- Dev mode: injects a fake dev user when NODE_ENV !== production
-
-## Security Notes
-
-- httpOnly cookies prevent XSS token theft
-- CORS_ORIGIN must match the web domain exactly
-- credentials: "include" required on Eden treaty client for cookie forwarding`
-    },
-    {
-        id: "c-frontend",
-        title: "Frontend Stack",
-        type: "document",
-        tags: ["frontend", "tanstack", "tailwind", "react"],
-        content: `The web app uses TanStack Start with React, Tailwind CSS v4, and shadcn-ui.
-
-## Routing
-
-- TanStack Router with file-based routes in src/routes/
-- Route tree auto-generated by @tanstack/router-plugin
-- SSR via custom entry-server.ts (serves static assets + SSR handler)
-- File naming: \`chunks.$chunkId.tsx\` for params, \`chunks.$chunkId_.edit.tsx\` (underscore) to escape layout nesting
-
-## Key Routes
-
-- / — landing page with feature showcase and API status
-- /login, /sign-up — auth forms
-- /dashboard — stats, recent chunks, system health, import/export
-- /chunks — paginated list with search, type filters, keyboard nav (j/k/Enter/n)
-- /chunks/new — create form with AI generation, templates, duplicate detection
-- /chunks/$chunkId — detail view with markdown, connections, AI section, version history
-- /chunks/$chunkId/edit — edit form with markdown editor
-- /graph — interactive knowledge graph (dagre layout + React Flow)
-- /tags — tag cloud with counts
+\`\`\`
+features/
+\u251c\u2500\u2500 auth/        # Sign-in/up forms, user menu
+\u251c\u2500\u2500 chunks/      # Split dialog, link dialog, AI section,
+\u2502                # version history, kanban view, templates
+\u251c\u2500\u2500 graph/       # Graph view, nodes, edges, layouts,
+\u2502                # metrics, timeline, filters, legend
+\u251c\u2500\u2500 search/      # Semantic + full-text search
+\u251c\u2500\u2500 editor/      # Markdown editor
+\u251c\u2500\u2500 nav/         # Mobile navigation
+\u2514\u2500\u2500 dashboard/   # Dashboard components
+\`\`\`
 
 ## State Management
 
-- TanStack Query for all server state (health, chunks, stats, graph)
-- TanStack Form for sign-in/sign-up with field-level validation
-- Local component state with useState for UI interactions
-- queryClient.invalidateQueries() for optimistic cache updates after mutations
-
-## UI Patterns
-
-- shadcn-ui components in src/components/ui/ (Base UI primitives + CVA variants)
-- Feature components in src/features/ organized by domain (auth, chunks, nav, editor, search)
-- Mobile nav via Sheet component (hamburger menu, md:hidden)
-- Toast notifications via Sonner
-- Markdown rendering with react-markdown + @tailwindcss/typography prose classes`
+- **Server state:** TanStack Query (React Query) for API data
+- **Local state:** TanStack Store for UI preferences
+- **Hooks:** \`usePinnedChunks\`, \`useRecentChunks\`, \`useFavorites\`, \`useCollections\`, \`useSavedFilters\``
     },
     {
-        id: "c-eden-client",
-        title: "Eden Treaty Client Setup",
-        type: "reference",
-        tags: ["eden", "api", "elysia", "type-safety"],
-        content: `Eden treaty provides end-to-end type safety from Elysia server to React client with zero code generation.
-
-## How It Works
-
-1. The server exports its Elysia app type: \`export type Api = typeof api\`
-2. The client imports this type and creates a treaty client: \`treaty<Api>(serverUrl)\`
-3. Every API call is fully typed — params, body, query, and response
-
-## Client Configuration
-
-The treaty client is created in apps/web/src/utils/api.ts with:
-- Server URL from VITE_SERVER_URL environment variable
-- \`credentials: "include"\` for cookie-based auth forwarding
-- Type imported from \`@fubbik/api\` workspace package
-
-## Response Pattern
-
-Every Eden call returns \`{ data, error }\`. The \`unwrapEden()\` utility in utils/eden.ts:
-- Throws if error is present
-- Returns typed data with null/error types excluded
-- Used in every useQuery/useMutation callback for clean error handling
-
-## Usage in Components
-
-Queries: \`api.api.chunks.get({ query: { limit: "5" } })\`
-Mutations: \`api.api.chunks.post({ title, content, type, tags })\`
-Params: \`api.api.chunks({ id: chunkId }).get()\`
-
-## Benefits
-
-- No OpenAPI spec generation, no codegen step
-- Types update instantly when server changes
-- IDE autocomplete for all endpoints, params, and responses
-- Compile-time errors if API contract breaks`
-    },
-    {
-        id: "c-env",
-        title: "Environment Configuration",
-        type: "reference",
-        tags: ["env", "config", "arktype", "validation"],
-        content: `Environment validation uses @t3-oss/env-core with Arktype schemas. Validated at startup — fails fast with clear errors if env vars are missing or invalid.
-
-## Server Env (packages/env/src/server.ts)
-
-Required:
-- DATABASE_URL — non-empty string (Postgres connection)
-- BETTER_AUTH_SECRET — string >= 32 characters
-- BETTER_AUTH_URL — valid URL
-- CORS_ORIGIN — valid URL
-
-Optional with defaults:
-- NODE_ENV — 'development' | 'production' | 'test' (default: 'development')
-- PORT — string (default: '3000')
-
-Optional feature flags:
-- OPENAI_API_KEY — enables AI features
-- OPENAI_MODEL — model selection
-- RATE_LIMIT_MAX, RATE_LIMIT_DURATION_MS — rate limiting config
-
-## Web Env (packages/env/src/web.ts)
-
-- VITE_SERVER_URL — valid URL pointing to the API server
-- Falls back to process.env for SSR runtime (import.meta.env not populated in SSR)
-
-## Key Pattern
-
-Uses \`emptyStringAsUndefined: true\` so empty strings in env files are treated as missing. Arktype schemas validate types at runtime with clear error messages. Shared across all packages via \`@fubbik/env/server\` and \`@fubbik/env/web\` export paths.`
-    },
-    {
-        id: "c-deployment",
-        title: "Deployment & Docker",
+        id: ids.graph,
+        title: "Graph Visualization",
         type: "document",
-        tags: ["deployment", "docker", "railway"],
-        content: `Multi-stage Docker builds for both web and server apps. Deployed on Railway with three services.
-
-## Docker Builds
-
-Both Dockerfiles follow the same pattern:
-1. Builder stage (oven/bun:1.3.9): Copy all workspace package.json files → bun install --frozen-lockfile → copy source → build
-2. Runner stage (oven/bun:1.3.9-slim): Copy package.json + node_modules + dist → run
-
-Key details:
-- VITE_SERVER_URL passed as Docker ARG for build-time inlining in the web build
-- Web CMD: bun run dist/server/entry-server.js
-- Server CMD: bun run dist/index.mjs
-
-## Entry Server
-
-The web app has a custom entry-server.ts that:
-- Collects all static files from dist/client/ at startup
-- Serves assets with correct MIME types
-- Applies 1-year cache headers for hashed /assets/ files
-- Falls through to TanStack Start SSR handler for routes
-
-## Railway Setup
-
-Three services in one project:
-- **server** — Elysia API, Dockerfile at apps/server/Dockerfile
-- **web** — TanStack Start SSR, Dockerfile at apps/web/Dockerfile
-- **Postgres** — managed database, internal hostname postgres.railway.internal
-
-Environment:
-- DATABASE_URL uses Railway internal hostname (not reachable externally)
-- DATABASE_PUBLIC_URL available via TCP proxy for external access (drizzle-kit push, seeding)
-- CORS_ORIGIN on server must match the web domain
-- Deploy with \`railway service <name> && railway up --detach\``
-    },
-    {
-        id: "c-cli",
-        title: "CLI Tool",
-        type: "reference",
-        tags: ["cli", "commander", "local-first"],
-        content: `Command-line interface built with Commander.js in apps/cli. Designed for both human use and AI agent integration.
-
-## Commands
-
-Core CRUD:
-- fubbik init — initialize .fubbik/ directory with store.json
-- fubbik add — create chunk (interactive or --title/--content-file flags)
-- fubbik get <id> — fetch chunk by ID
-- fubbik cat <id> — raw content output (no formatting, for piping)
-- fubbik list — list chunks (--type, --tag, --limit, --offset, --sort, --fields)
-- fubbik search <query> — fuzzy search (--limit, --offset, --fields)
-- fubbik update <id> — modify chunk fields (--content-file supports stdin via -)
-- fubbik remove <id> — delete chunk
-
-Relationships:
-- fubbik link <source> <target> — create connection with --relation
-- fubbik unlink <id> — remove connection
-
-Bulk operations:
-- fubbik bulk-add <file> — import from JSONL file (one chunk per line)
-- fubbik export — JSON or markdown with YAML frontmatter (--format, --dir)
-- fubbik import — from JSON array or markdown directory
-
-Analysis:
-- fubbik stats — knowledge base overview (type counts, tag counts, sync status)
-- fubbik tags — list unique tags with counts
-- fubbik diff — compare local store vs server (local-only, server-only, modified)
-
-Infrastructure:
-- fubbik health — check API connectivity
-- fubbik sync — bidirectional sync with server (--push, --pull)
-
-## Global Flags
-
-- --json — machine-readable JSON output
-- -q, --quiet — minimal output (just IDs for creates)
-- --content-file <path> — read content from file (- for stdin)
-- --fields <list> — project specific fields in output
-
-## Local Store
-
-File-based JSON at .fubbik/store.json with chunks array. Local IDs use time-based format: c-{timestamp-base36}. The store tracks serverUrl and lastSync for sync operations.`
-    },
-    {
-        id: "c-ai-features",
-        title: "AI Integration",
-        type: "reference",
-        tags: ["ai", "openai", "vercel-ai"],
-        content: `AI features use the Vercel AI SDK with OpenAI provider.
-
-## Server Endpoints
-
-- POST /api/ai/summarize — generates a concise summary of a chunk's content
-- POST /api/ai/suggest-connections — analyzes a chunk and suggests related chunks to link
-- POST /api/ai/generate — creates a full chunk (title, content, type, tags) from a natural language prompt
-
-## Implementation
-
-Uses \`generateText()\` and \`generateObject()\` from the Vercel AI SDK:
-- Model configured via OPENAI_API_KEY and OPENAI_MODEL env vars
-- Structured output via Zod schemas for type-safe AI responses
-- Each endpoint wraps the AI call in Effect.tryPromise with AiError handling
-
-## Frontend Integration
-
-- AI Generate card on /chunks/new — enter a prompt, get a pre-filled chunk form
-- AI Section on chunk detail — summarize button and suggest connections button
-- Loading states with spinner icons during generation
-- Results displayed inline (summary text, connection suggestions as linkable cards)
-
-## Feature Gating
-
-AI features are optional — they only work when OPENAI_API_KEY is set. The frontend always shows the UI but displays errors if the API key isn't configured.`
-    },
-    {
-        id: "c-tooling",
-        title: "Development Tooling",
-        type: "reference",
-        tags: ["tooling", "turbo", "testing", "ci"],
-        content: `Development tools and workflows.
-
-## Turborepo
-
-- turbo.json defines build, dev, lint, check-types, test tasks
-- dev task is persistent, cache disabled
-- \`bun dev\` starts web (vite on :3001) + server (bun --hot on :3000) in parallel
-- Filter syntax: \`bun dev:web\`, \`bun dev:server\`
-
-## Type Checking
-
-- \`bun check-types\` runs tsgo (native TypeScript) across all packages
-- @typescript/native-preview installed as root devDependency
-- Each package has its own tsconfig extending @fubbik/config
-- Strict mode enabled everywhere
-
-## Testing
-
-- Vitest for unit and integration tests
-- API tests use treaty client against a standalone Elysia app
-- Schema tests validate table column existence
-- \`bun test\` runs vitest across all packages
-
-## Code Quality
-
-- oxlint for fast linting (Rust-based)
-- oxfmt for formatting (Rust-based, no Prettier)
-- sherif for workspace dependency validation (catches version mismatches)
-- knip for unused dependency/export detection
-
-## CI Pipeline
-
-\`bun ci\` runs: check-types → lint → test → build → format check → sherif
-
-## Database Commands
-
-- \`bun db:push\` — push schema to database (drizzle-kit push)
-- \`bun db:studio\` — open Drizzle Studio UI
-- \`bun db:generate\` — generate migration files
-- \`bun seed\` — seed database with sample data`
-    },
-    {
-        id: "c-monorepo-patterns",
-        title: "Monorepo & Workspace Patterns",
-        type: "reference",
-        tags: ["monorepo", "bun", "turbo", "workspace"],
-        content: `The monorepo uses Bun workspaces with Turborepo for build orchestration.
-
-## Workspace Layout
-
-Root package.json defines workspaces at \`apps/*\` and \`packages/*\`. All internal packages use the \`@fubbik/\` scope with \`workspace:*\` version specifiers.
-
-## Catalog Versioning
-
-Shared dependency versions are defined in root package.json's \`catalog\` section. Packages reference them with \`catalog:\` — ensures all packages use the same version of typescript, elysia, better-auth, arktype, vitest, etc.
-
-## Package Exports
-
-Each package declares explicit export paths:
-- \`@fubbik/api\`: \`.\` (main plugin), \`./context\` (Session type)
-- \`@fubbik/db\`: \`.\` (schema + connection), \`./repository\` (data access), \`./errors\` (DatabaseError)
-- \`@fubbik/env\`: \`./server\`, \`./web\` (separate validation per environment)
-- \`@fubbik/auth\`: \`.\` (auth instance), \`./client\` (browser client)
-
-## Build Order
-
-Turborepo handles dependency resolution. packages/config has no deps, packages/env depends on nothing internal, packages/db depends on packages/env, packages/auth depends on packages/db, packages/api depends on all packages.
-
-## Shared Config
-
-@fubbik/config provides base TypeScript configuration. Each package extends it with its own tsconfig.json.`
-    },
-    {
-        id: "c-ui-components",
-        title: "UI Component Architecture",
-        type: "reference",
-        tags: ["frontend", "shadcn", "components", "tailwind"],
-        content: `The UI uses shadcn-ui components built on Base UI primitives with Tailwind CSS v4.
-
-## Component Library (src/components/ui/)
-
-Built with CVA (class-variance-authority) for variant-based styling. Key components:
-- Button — variants: default, destructive, outline, ghost, secondary, link; sizes: xs through xl plus icon sizes
-- Card — composed of Card, CardHeader, CardPanel, CardTitle, CardDescription
-- Badge — variants: default, secondary, outline, destructive; sizes: default, sm
-- Dialog, Sheet — overlay components for modals and slide-out panels
-- Form — field-level error display integrated with TanStack Form
-- Command — command palette component (cmdk-based)
-- Separator, Tabs, Sidebar — layout primitives
-
-## Tailwind v4 Patterns
-
-- Uses \`@plugin "@tailwindcss/typography"\` directive in CSS (not tailwind.config)
-- Dark mode via next-themes with \`dark:\` variant prefix
-- Prose classes require wrapping div: \`<div className="prose dark:prose-invert">\`
-
-## Feature Components (src/features/)
-
-Organized by domain:
-- auth/ — SignInForm, SignUpForm, UserMenu
-- chunks/ — AiSection, LinkChunkDialog, DeleteConnectionButton, VersionHistory, templates
-- editor/ — MarkdownEditor with live preview toggle
-- nav/ — MobileNav (Sheet-based hamburger menu)
-- search/ — CommandSearch (command palette for quick navigation)
-
-## Composition Pattern
-
-Base UI components use \`render\` prop for element composition — e.g., a Button that renders as a Link: \`<Button render={<Link to="/path" />}>\``
-    },
-    {
-        id: "c-tanstack-router",
-        title: "TanStack Router Patterns",
-        type: "reference",
-        tags: ["frontend", "routing", "tanstack"],
-        content: `File-based routing with TanStack Router in apps/web/src/routes/.
-
-## File Naming Conventions
-
-- \`index.tsx\` — root route (/)
-- \`dashboard.tsx\` — /dashboard
-- \`chunks.index.tsx\` — /chunks (index of chunks section)
-- \`chunks.$chunkId.tsx\` — /chunks/:chunkId (dynamic param)
-- \`chunks.$chunkId_.edit.tsx\` — /chunks/:chunkId/edit (underscore escapes layout nesting)
-- \`chunks.new.tsx\` — /chunks/new (static segment)
-- \`__root.tsx\` — root layout (wraps all routes)
-
-## Layout Nesting
-
-Without underscore: \`chunks.$chunkId.edit.tsx\` becomes a child of \`chunks.$chunkId.tsx\` and requires <Outlet/> in the parent. With underscore: \`chunks.$chunkId_.edit.tsx\` is a sibling route with its own layout.
-
-## Route Guards (beforeLoad)
-
-Protected routes use beforeLoad to check auth:
-- Call getUser() server function
-- On failure: throw redirect({ to: "/login" })
-- Return session in context for use in component
-
-Guest-accessible routes catch the error silently and continue with null session.
-
-## Search Params
-
-Validated via validateSearch option. Used for pagination, filtering:
-- \`/chunks?type=note&q=search&page=2\`
-- Updates via navigate() with search object
-
-## Route Tree
-
-Auto-generated by @tanstack/router-plugin into routeTree.gen.ts. Never edit manually — regenerated on file changes during dev.`
-    },
-    {
-        id: "c-gotchas",
-        title: "Known Gotchas & Workarounds",
-        type: "note",
-        tags: ["gotchas", "debugging", "troubleshooting"],
-        content: `Issues encountered and their solutions.
-
-## TanStack Form
-
-- form.Subscribe requires explicit selector prop in v1.23+
-- No @tanstack/arktype-form-adapter exists — use manual validator functions
-
-## TanStack Router
-
-- File naming with underscore suffix (e.g., \`$chunkId_.edit.tsx\`) escapes layout nesting — without it, the route becomes a child requiring <Outlet/> in parent
-- Route tree must be regenerated when adding/removing route files
-
-## Arktype
-
-- type().default() returns a tuple, not a Standard Schema — don't use it with t3-env
-- Provide defaults via runtimeEnv spread instead
-
-## Elysia
-
-- error() helper not available in resolve() chain — use set.status pattern
-- CORS must include all HTTP methods used (GET, POST, PATCH, DELETE, OPTIONS)
-
-## Vite / TanStack Start
-
-- VITE_* vars are build-time only — not available in SSR runtime
-- Custom entry-server.ts needed for production static file serving
-- import.meta.env not populated in SSR for VITE_ vars — fallback to process.env
-
-## react-markdown v10
-
-- No longer accepts className prop directly — must wrap in a <div> with prose classes
-- Requires @tailwindcss/typography plugin for prose styling
-
-## Tailwind v4
-
-- Plugin registration uses \`@plugin "@tailwindcss/typography"\` in CSS, not config file
-- No tailwind.config.js — configuration is in CSS
-
-## Docker
-
-- All workspace package.json files must be copied before bun install
-- --no-cache needed when Dockerfile changes aren't picked up
-- VITE_SERVER_URL must be passed as Docker ARG for build-time inlining
-
-## Drizzle
-
-- Schema directory must NOT contain test files — drizzle-kit's CJS loader chokes on vitest imports
-- node-postgres driver works with Bun but needs correct DATABASE_URL
-- Railway internal hostname not reachable externally — use DATABASE_PUBLIC_URL for drizzle-kit push
-
-## Effect
-
-- FiberFailure wraps errors with a Symbol key — extraction requires Symbol.for("effect/Runtime/FiberFailure/Cause")
-- Effect.runPromise throws on failure — must be caught by Elysia onError middleware`
-    },
-    {
-        id: "c-search-patterns",
-        title: "Search & Filtering",
-        type: "reference",
-        tags: ["search", "postgres", "trigram"],
-        content: `Full-text search using PostgreSQL trigram similarity.
-
-## How Search Works
-
-The chunks list endpoint accepts a \`search\` query parameter. When provided:
-1. Filters using trigram similarity (\`%\` operator) on title and content
-2. Falls back to ilike substring matching for partial matches
-3. Orders results by similarity score descending (most relevant first)
-
-Without search, results are ordered by updatedAt descending (most recent first).
-
-## Frontend Search
-
-- Chunks index page has a search input with Enter-to-search
-- Search term is stored in URL search params (\`?q=term\`)
-- Debounced duplicate detection on the new chunk form (500ms delay)
-- Command palette (Cmd+K) for quick navigation across chunks
-
-## Filtering
-
-- Type filter: note, document, reference, schema, checklist
-- Tag filter in CLI: --tag flag
-- Pagination: limit/offset with total count for page calculation
-- CLI supports --fields for projecting specific columns in output
-
-## Performance
-
-- Indexes on userId and type for fast filtering
-- Trigram index on title for similarity search
-- Count query runs separately from data query for accurate pagination`
-    },
-    {
-        id: "c-chunk-templates",
-        title: "Chunk Templates",
-        type: "reference",
-        tags: ["frontend", "templates", "ux"],
-        content: `Pre-built templates for common chunk types, available on the new chunk form.
-
-## Available Templates
-
-- **Meeting Notes** — structured agenda/discussion/action items format (type: note, tags: meeting, notes)
-- **Decision Record** — context/options/decision/consequences format (type: document, tags: decision, adr)
-- **API Reference** — endpoint/auth/request/response documentation (type: reference, tags: api, documentation)
-- **Checklist** — task list with checkbox markdown (type: checklist, tags: tasks, todo)
-- **Schema** — entity/field/relationship documentation (type: schema, tags: schema, data-model)
-
-## How They Work
-
-Templates are defined in src/features/chunks/templates.ts as static objects with name, description, content (markdown), type, and tags. Selecting a template pre-fills the form fields but leaves the title empty for the user to fill in.
-
-## Template + AI Workflow
-
-Users can either start from a template and fill in details, or use AI Generate to create a complete chunk from a prompt. Both approaches pre-fill the same form, allowing further editing before saving.`
-    },
-    {
-        id: "c-graph-visualization",
-        title: "Knowledge Graph Visualization",
-        type: "reference",
-        tags: ["graph", "visualization", "dagre", "react-flow"],
-        content: `Interactive knowledge graph using React Flow with dagre auto-layout.
+        tags: ["frontend", "graph", "visualization", "reactflow"],
+        content: `The graph view renders the knowledge base as an interactive node-edge diagram using \`@xyflow/react\` (React Flow).
 
 ## Architecture
 
-- Data: GET /api/graph returns all chunks (id, title) and connections (source, target, relation)
-- Layout: Dagre (directed graph layout algorithm) computes node positions
-- Rendering: React Flow displays interactive nodes and edges
-- Navigation: clicking a node navigates to the chunk detail page
+\`\`\`
+Graph View (graph-view.tsx)
+\u251c\u2500\u2500 Layout Worker (layout.worker.ts)    \u2014 force simulation in Web Worker
+\u251c\u2500\u2500 Quadtree (quadtree.ts)              \u2014 Barnes-Hut N-body repulsion
+\u251c\u2500\u2500 Layouts (layouts.ts)                 \u2014 hierarchical & radial alternatives
+\u251c\u2500\u2500 Graph Node (graph-node.tsx)          \u2014 custom node renderer
+\u251c\u2500\u2500 Floating Edge (floating-edge.tsx)    \u2014 curved edge renderer
+\u251c\u2500\u2500 Graph Filters (graph-filters.tsx)    \u2014 type/relation filter panel
+\u251c\u2500\u2500 Graph Metrics (graph-metrics.tsx)    \u2014 density, hubs, stats overlay
+\u251c\u2500\u2500 Graph Timeline (graph-timeline.tsx)  \u2014 date-based animation
+\u251c\u2500\u2500 Graph Legend (graph-legend.tsx)       \u2014 color legend
+\u2514\u2500\u2500 Graph Detail Panel                   \u2014 side panel for selected chunk
+\`\`\`
 
-## Layout Algorithm
+## Features
 
-Dagre is configured with:
-- Direction: top-to-bottom (rankdir: TB)
-- Node spacing: 80px horizontal, 100px vertical
-- Fixed node dimensions: 200x50px
-- Positions computed in a useMemo based on data
-
-## Interaction
-
-- Nodes are clickable (navigate to chunk)
-- Edges are animated (flowing animation)
-- Edge labels show the relation type
-- Pan, zoom, and drag supported via React Flow controls
-- Background grid and zoom controls displayed
+- **Semantic zoom:** Compact/normal/detailed views with hysteresis
+- **Node sizing:** Nodes scale by connection count
+- **Layout algorithms:** Force-directed, hierarchical, radial
+- **Path highlighting:** BFS shortest path between two nodes
+- **Progressive explore:** Expand graph incrementally from a starting node
+- **Edge creation:** Connect nodes directly in the graph
+- **Multi-select:** Shift+click for bulk operations
+- **Edge bundling:** Collapse parallel edges by type cluster
+- **Timeline:** Date slider with auto-play animation
+- **Saved views:** Persist filter/layout configurations
+- **Keyboard shortcuts:** \`?\` for help overlay
+- **Export:** Download graph as PNG
 
 ## Data Flow
 
-The graph fetches data with TanStack Query, computes layout with dagre in useMemo, then syncs to React Flow's useNodesState/useEdgesState via useEffect. Dark color mode is enabled.`
+\`\`\`
+GET /api/graph \u2192 { chunks, connections }
+  \u2193
+filteredGraph useMemo (type/relation/timeline/explore filters)
+  \u2193
+Web Worker (force simulation with Barnes-Hut quadtree)
+  \u2193
+layoutPositions state
+  \u2193
+layoutNodes/layoutEdges useMemo (styling, parallel detection, bundling)
+  \u2193
+Consolidated styling useEffect (search/focus/selection/path/multi-select)
+  \u2193
+ReactFlow renders nodes + edges
+\`\`\``
     },
     {
-        id: "c-version-history",
-        title: "Chunk Version History",
+        id: ids.graphLayout,
+        title: "Graph Layout Algorithms",
         type: "reference",
-        tags: ["versioning", "history", "chunks"],
-        content: `Every chunk edit creates a version snapshot, enabling full edit history.
+        tags: ["graph", "layout", "algorithms", "force-directed", "web-worker"],
+        content: `Three layout algorithms are available, selectable via dropdown in the graph toolbar.
 
-## How It Works
+## Force-Directed (default)
 
-1. User submits an edit via PATCH /api/chunks/:id
-2. Service fetches the current chunk state
-3. Gets the next version number for this chunk
-4. Creates a chunk_version record with the PREVIOUS state (title, content, type, tags)
-5. Applies the update to the chunk
+Runs in a Web Worker (\`layout.worker.ts\`) using Barnes-Hut quadtree for O(n log n) repulsion.
 
-This means versions represent what the chunk looked like BEFORE each edit. The current state is always in the chunk table itself.
+**Parameters:**
+- Repulsion: 160,000 (strong push between nodes)
+- Spring K: 0.002 (attraction along edges)
+- Center gravity: 0.003 (gentle pull toward origin)
+- Cluster K: 0.001 (type-based clustering)
+- Damping: 0.85, Iterations: 200
 
-## Schema
+**Spring lengths vary by relation:**
+- \`part_of\`: 300px (tight)
+- \`depends_on\` / \`extends\`: 380px
+- \`references\` / \`supports\`: 450px
+- \`related_to\`: 520px
+- \`contradicts\` / \`alternative_to\`: 560px (loose)
 
-chunk_version table:
-- id (text PK)
-- chunkId (FK to chunk)
-- version (integer, auto-incrementing per chunk)
-- title, content, type, tags — snapshot of previous state
-- createdAt — when the edit happened
+## Hierarchical
 
-## Frontend
+Tree layout from \`part_of\` and \`depends_on\` edges. BFS from root nodes, orphans placed at bottom. Defined in \`layouts.ts\`.
 
-The chunk detail page shows a "Version History" section at the bottom. Each version displays:
-- Version number and timestamp
-- Previous title, type, and tags
-- Content preview (truncated)
+## Radial
 
-Versions are fetched via GET /api/chunks/:id/history and displayed in reverse chronological order.`
+Concentric rings from a center node (selected or most-connected). BFS determines ring placement. Defined in \`layouts.ts\`.
+
+## Dragged Positions
+
+Manually dragged nodes persist their positions across layout recalculations via \`draggedPositions\` state.`
+    },
+    {
+        id: ids.auth,
+        title: "Authentication System",
+        type: "document",
+        tags: ["authentication", "better-auth", "sessions", "security"],
+        content: `Fubbik uses Better Auth for email/password authentication with a Drizzle adapter for PostgreSQL.
+
+## Configuration
+
+Defined in \`packages/auth/src/index.ts\`:
+
+\`\`\`typescript
+export const auth = betterAuth({
+  database: drizzleAdapter(db, { provider: 'pg', schema }),
+  emailAndPassword: { enabled: true },
+  trustedOrigins: [env.CORS_ORIGIN],
+  advanced: {
+    cookiePrefix: 'fubbik',
+    defaultCookieAttributes: {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'none'
+    }
+  }
+});
+\`\`\`
+
+## Session Flow
+
+1. User signs up/in via \`/api/auth/*\` endpoints
+2. Better Auth sets httpOnly cookie with session token
+3. Each API request: \`requireSession(ctx)\` extracts session from cookie
+4. Returns \`Effect<Session, AuthError>\` \u2014 401 if no valid session
+
+## Dev Mode
+
+In development, if no session cookie is present, a \`DEV_SESSION\` is injected:
+- \`userId: "dev-user"\`
+- Allows local testing without sign-up
+
+## Session Type
+
+\`\`\`typescript
+type Session = {
+  session: { id, token, userId, expiresAt, ... };
+  user: { id, name, email, emailVerified, image, ... };
+};
+\`\`\``
+    },
+    {
+        id: ids.cli,
+        title: "CLI Commands",
+        type: "reference",
+        tags: ["cli", "commands", "local-first"],
+        content: `The Fubbik CLI (\`apps/cli\`) provides local-first knowledge management with optional server sync.
+
+## Setup
+\`\`\`bash
+fubbik init [name]           # Initialize .fubbik/store.json
+fubbik init --scan           # Auto-generate chunks from project
+fubbik init --scan --push    # Scan + push to server
+fubbik health                # Check server connectivity
+\`\`\`
+
+## Chunk CRUD
+\`\`\`bash
+fubbik add -t "Title" -c "Content" --type guide --tags "a,b"
+fubbik add -t "Title" --content-file README.md
+fubbik get <id>              # Get chunk details
+fubbik cat <id>              # Output raw content (pipe-friendly)
+fubbik update <id> --title "New" --tags "x,y"
+fubbik remove <id>           # Delete chunk
+\`\`\`
+
+## Search & Browse
+\`\`\`bash
+fubbik list                  # List all chunks
+fubbik list --type guide     # Filter by type
+fubbik search "query"        # Full-text search
+fubbik search --semantic "meaning-based query"  # Vector search (requires server)
+fubbik tags                  # List tags with counts
+fubbik stats                 # Chunk/connection/tag counts
+\`\`\`
+
+## Connections
+\`\`\`bash
+fubbik link <source> <target> -r part_of
+fubbik unlink <connection-id>
+\`\`\`
+
+## Import / Export
+\`\`\`bash
+fubbik export > backup.json
+fubbik import --file chunks.json
+fubbik import --file docs/        # Import markdown directory
+fubbik bulk-add --file chunks.jsonl
+\`\`\`
+
+## Sync
+\`\`\`bash
+fubbik sync --url http://localhost:3000
+fubbik sync --push           # Local \u2192 server only
+fubbik sync --pull           # Server \u2192 local only
+\`\`\`
+
+## Output Modes
+\`\`\`bash
+fubbik list --json           # Machine-readable JSON
+fubbik get <id> -q           # Quiet mode (just ID)
+\`\`\``
+    },
+    {
+        id: ids.cliStore,
+        title: "CLI Local Store",
+        type: "reference",
+        tags: ["cli", "storage", "local-first", "sync"],
+        content: `The CLI uses a JSON file at \`.fubbik/store.json\` for local-first storage.
+
+## Structure
+
+\`\`\`typescript
+interface Store {
+  name: string;             // Knowledge base name
+  chunks: Chunk[];          // All local chunks
+  serverUrl?: string;       // Saved server URL
+  lastSync?: string;        // ISO timestamp of last sync
+}
+
+interface Chunk {
+  id: string;               // Format: c-{nanoid}
+  serverId?: string;        // Server-side ID after sync
+  title: string;
+  content: string;
+  type: string;
+  tags: string[];
+  createdAt: string;        // ISO timestamp
+  updatedAt: string;
+}
+\`\`\`
+
+## Operations
+
+All local operations are synchronous JSON read/write:
+- \`readStore()\` \u2014 Parse \`.fubbik/store.json\`
+- \`writeStore(store)\` \u2014 Write back
+- \`addChunk(data)\` \u2014 Generate ID, append, write
+- \`searchChunks(query)\` \u2014 Filter by title/content/tags match
+
+## Sync Strategy
+
+Sync compares local and server chunks **by title**:
+- Local-only chunks \u2192 pushed to server via \`POST /api/chunks/import\`
+- Server-only chunks \u2192 pulled to local store
+- Conflicts (same title, different content) \u2192 preserved on both sides
+
+The server URL is saved after first sync for future use.`
+    },
+    {
+        id: ids.cliScanner,
+        title: "CLI Project Scanner",
+        type: "guide",
+        tags: ["cli", "scanner", "project", "indexing"],
+        content: `The project scanner (\`apps/cli/src/lib/scanner.ts\`) auto-generates chunks from a codebase.
+
+## What Gets Scanned
+
+1. **Root documentation:** README.md, CLAUDE.md, CONTRIBUTING.md, Agents.md, CHANGELOG.md
+   - Type: \`guide\`, Tags: \`["documentation", "project"]\`
+
+2. **docs/ directory:** All \`.md\` files recursively
+   - Type: \`guide\`, Tags: \`["documentation", ...pathSegments]\`
+
+3. **Other markdown files:** \`.md\` files throughout the project
+   - Skips root docs and docs/ (already handled)
+
+## Auto-Split
+
+Large files (>5000 chars or >~150 lines) are automatically split:
+1. An **index chunk** is created listing all sections
+2. **Sub-chunks** are created per H1/H2/H3 heading
+3. Sub-chunks get a \`parentTitle\` linking back to the index
+
+## Ignored Directories
+
+\`node_modules\`, \`.git\`, \`.turbo\`, \`dist\`, \`build\`, \`.next\`, \`.output\`, \`.cache\`, \`coverage\`, \`.fubbik\`
+
+## Usage
+
+\`\`\`bash
+fubbik init --scan --dry-run   # Preview what would be generated
+fubbik init --scan             # Generate and store locally
+fubbik init --scan --push      # Generate + push to server
+\`\`\`
+
+The scanner extracts markdown titles from \`# Heading\` lines and generates path-based tags from directory segments.`
+    },
+    {
+        id: ids.env,
+        title: "Environment Variables",
+        type: "reference",
+        tags: ["configuration", "environment", "deployment"],
+        content: `Environment validation uses \`@t3-oss/env-core\` with Arktype schemas. Defined in \`packages/env/src/\`.
+
+## Server Variables
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| \`DATABASE_URL\` | Yes | \u2014 | PostgreSQL connection string |
+| \`BETTER_AUTH_SECRET\` | Yes | \u2014 | Auth secret (32+ chars) |
+| \`BETTER_AUTH_URL\` | Yes | \u2014 | Auth base URL |
+| \`CORS_ORIGIN\` | Yes | \u2014 | Allowed frontend origin |
+| \`PORT\` | Yes | \`3000\` | Server port |
+| \`NODE_ENV\` | No | \`development\` | Environment |
+| \`OPENAI_API_KEY\` | No | \u2014 | For AI features |
+| \`OPENAI_MODEL\` | No | \`gpt-4o-mini\` | OpenAI model |
+| \`OLLAMA_URL\` | No | \`http://localhost:11434\` | Ollama server |
+| \`RATE_LIMIT_MAX\` | No | \u2014 | Max requests per window |
+| \`RATE_LIMIT_DURATION_MS\` | No | \u2014 | Rate limit window |
+
+## Web Variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| \`VITE_SERVER_URL\` | Yes | Backend API URL |
+
+## Docker Compose Defaults
+
+\`\`\`env
+POSTGRES_DB=fubbik
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=password
+DATABASE_URL=postgresql://postgres:password@db:5432/fubbik
+\`\`\``
+    },
+    {
+        id: ids.docker,
+        title: "Docker Deployment",
+        type: "guide",
+        tags: ["deployment", "docker", "development", "ci"],
+        content: `Fubbik can be deployed via Docker Compose with three services.
+
+## Services
+
+| Service | Image | Port | Purpose |
+|---------|-------|------|---------|
+| \`web\` | Node 20+ | 3001 | TanStack Start frontend |
+| \`server\` | Node 20+ | 3000 | Elysia API server |
+| \`db\` | postgres:16-alpine | 5432 | PostgreSQL database |
+
+## docker-compose.yml
+
+\`\`\`yaml
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: fubbik
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: pg_isready -U postgres
+
+  server:
+    depends_on: [db]
+    environment:
+      DATABASE_URL: postgresql://postgres:password@db:5432/fubbik
+      BETTER_AUTH_SECRET: <32+ chars>
+    healthcheck:
+      test: curl -f http://localhost:3000/api/health
+
+  web:
+    depends_on: [server]
+    environment:
+      VITE_SERVER_URL: http://server:3000
+\`\`\`
+
+## Development
+
+\`\`\`bash
+bun install
+bun dev          # Start all services via Turborepo
+bun db:push      # Push schema to PostgreSQL
+bun db:studio    # Open Drizzle Studio (port 5555)
+\`\`\`
+
+## CI Pipeline
+
+\`\`\`bash
+bun ci           # type-check \u2192 lint \u2192 test \u2192 build \u2192 format-check \u2192 sherif
+\`\`\``
+    },
+    {
+        id: ids.turbo,
+        title: "Turborepo Build System",
+        type: "reference",
+        tags: ["build", "turborepo", "monorepo", "development"],
+        content: `Fubbik uses Turborepo for monorepo task orchestration.
+
+## Task Pipeline
+
+\`\`\`json
+{
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**"]
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    },
+    "test": {
+      "dependsOn": ["^build"],
+      "cache": false
+    },
+    "db:push": { "cache": false },
+    "db:start": { "persistent": true },
+    "db:watch": { "persistent": true }
+  }
+}
+\`\`\`
+
+## Key Scripts
+
+| Script | Purpose |
+|--------|---------|
+| \`bun dev\` | Start all apps in dev mode |
+| \`bun dev:web\` | Frontend only |
+| \`bun dev:server\` | Backend only |
+| \`bun build\` | Production build (respects \`^build\` deps) |
+| \`bun test\` | Run Vitest across all packages |
+| \`bun ci\` | Full CI: type-check, lint, test, build, format, sherif |
+| \`bun db:push\` | Push Drizzle schema |
+| \`bun db:studio\` | Drizzle Studio UI |
+
+## Package Dependencies
+
+\`\`\`
+apps/web      \u2192 @fubbik/api (types), @fubbik/env
+apps/server   \u2192 @fubbik/api, @fubbik/auth, @fubbik/db, @fubbik/env
+apps/cli      \u2192 @fubbik/api (chunk-size)
+packages/api  \u2192 @fubbik/db, @fubbik/auth, @fubbik/env
+packages/auth \u2192 @fubbik/db, @fubbik/env
+packages/db   \u2192 @fubbik/env
+\`\`\``
     }
 ];
 
@@ -853,66 +1190,67 @@ for (const c of chunks) {
             ...c,
             userId: DEV_USER_ID
         })
-        .catch(e => console.error(`  ✗ ${c.title}:`, e));
-    console.log(`  ✓ ${c.title}`);
+        .catch(e => console.error(`  \u2717 ${c.title}:`, e));
+    console.log(`  \u2713 ${c.title}`);
 }
 
-// Add connections
+// Add connections (36 typed relationships)
 const connections = [
-    // Architecture connects to everything
-    { id: "conn-1", sourceId: "c-architecture", targetId: "c-database", relation: "depends on" },
-    { id: "conn-2", sourceId: "c-architecture", targetId: "c-api-design", relation: "references" },
-    { id: "conn-3", sourceId: "c-architecture", targetId: "c-frontend", relation: "references" },
-    { id: "conn-4", sourceId: "c-architecture", targetId: "c-cli", relation: "references" },
-    { id: "conn-5", sourceId: "c-architecture", targetId: "c-monorepo-patterns", relation: "defines" },
+    // Architecture overview connects to major subsystems
+    { id: "conn-01", sourceId: ids.arch, targetId: ids.schemaChunks, relation: "part_of" },
+    { id: "conn-02", sourceId: ids.arch, targetId: ids.schemaConn, relation: "part_of" },
+    { id: "conn-03", sourceId: ids.arch, targetId: ids.schemaAuth, relation: "part_of" },
+    { id: "conn-04", sourceId: ids.arch, targetId: ids.effect, relation: "part_of" },
+    { id: "conn-05", sourceId: ids.arch, targetId: ids.auth, relation: "part_of" },
+    { id: "conn-06", sourceId: ids.arch, targetId: ids.graph, relation: "part_of" },
+    { id: "conn-07", sourceId: ids.arch, targetId: ids.cli, relation: "part_of" },
 
-    // API design
-    { id: "conn-6", sourceId: "c-api-design", targetId: "c-auth", relation: "depends on" },
-    { id: "conn-7", sourceId: "c-api-design", targetId: "c-database", relation: "uses" },
-    { id: "conn-8", sourceId: "c-api-design", targetId: "c-effect-patterns", relation: "implements" },
-    { id: "conn-9", sourceId: "c-api-design", targetId: "c-eden-client", relation: "types consumed by" },
+    // Schema dependencies
+    { id: "conn-08", sourceId: ids.schemaConn, targetId: ids.schemaChunks, relation: "depends_on" },
+    { id: "conn-09", sourceId: ids.schemaVer, targetId: ids.schemaChunks, relation: "depends_on" },
+    { id: "conn-10", sourceId: ids.schemaAuth, targetId: ids.auth, relation: "references" },
 
-    // Effect patterns
-    { id: "conn-10", sourceId: "c-effect-patterns", targetId: "c-repository-layer", relation: "used in" },
-    { id: "conn-11", sourceId: "c-effect-patterns", targetId: "c-ai-features", relation: "used in" },
+    // API layer depends on service
+    { id: "conn-11", sourceId: ids.apiChunks, targetId: ids.service, relation: "depends_on" },
+    { id: "conn-12", sourceId: ids.apiConnGraph, targetId: ids.service, relation: "depends_on" },
+    { id: "conn-13", sourceId: ids.apiAI, targetId: ids.service, relation: "depends_on" },
 
-    // Database
-    { id: "conn-12", sourceId: "c-database", targetId: "c-repository-layer", relation: "accessed via" },
-    { id: "conn-13", sourceId: "c-database", targetId: "c-search-patterns", relation: "enables" },
-    { id: "conn-14", sourceId: "c-database", targetId: "c-version-history", relation: "stores" },
+    // Service depends on repository
+    { id: "conn-14", sourceId: ids.service, targetId: ids.repo, relation: "depends_on" },
+    { id: "conn-15", sourceId: ids.repo, targetId: ids.schemaChunks, relation: "depends_on" },
+    { id: "conn-16", sourceId: ids.repo, targetId: ids.schemaConn, relation: "depends_on" },
 
-    // Frontend
-    { id: "conn-15", sourceId: "c-frontend", targetId: "c-eden-client", relation: "uses" },
-    { id: "conn-16", sourceId: "c-frontend", targetId: "c-auth", relation: "uses" },
-    { id: "conn-17", sourceId: "c-frontend", targetId: "c-tanstack-router", relation: "built with" },
-    { id: "conn-18", sourceId: "c-frontend", targetId: "c-ui-components", relation: "built with" },
+    // Effect pattern usage
+    { id: "conn-17", sourceId: ids.service, targetId: ids.effect, relation: "references" },
+    { id: "conn-18", sourceId: ids.repo, targetId: ids.effect, relation: "references" },
 
-    // Feature pages
-    { id: "conn-19", sourceId: "c-chunk-templates", targetId: "c-frontend", relation: "part of" },
-    { id: "conn-20", sourceId: "c-graph-visualization", targetId: "c-frontend", relation: "part of" },
-    { id: "conn-21", sourceId: "c-search-patterns", targetId: "c-frontend", relation: "used in" },
-    { id: "conn-22", sourceId: "c-version-history", targetId: "c-frontend", relation: "displayed in" },
+    // Enrichment & semantic search
+    { id: "conn-19", sourceId: ids.enrich, targetId: ids.semantic, relation: "supports" },
+    { id: "conn-20", sourceId: ids.enrich, targetId: ids.schemaChunks, relation: "references" },
+    { id: "conn-21", sourceId: ids.semantic, targetId: ids.schemaChunks, relation: "depends_on" },
+    { id: "conn-22", sourceId: ids.apiAI, targetId: ids.enrich, relation: "references" },
 
-    // CLI
-    { id: "conn-23", sourceId: "c-cli", targetId: "c-api-design", relation: "consumes" },
-    { id: "conn-24", sourceId: "c-cli", targetId: "c-ai-features", relation: "triggers" },
+    // Frontend dependencies
+    { id: "conn-23", sourceId: ids.eden, targetId: ids.apiChunks, relation: "depends_on" },
+    { id: "conn-24", sourceId: ids.eden, targetId: ids.apiConnGraph, relation: "depends_on" },
+    { id: "conn-25", sourceId: ids.routes, targetId: ids.eden, relation: "depends_on" },
+
+    // Graph visualization
+    { id: "conn-26", sourceId: ids.graph, targetId: ids.graphLayout, relation: "part_of" },
+    { id: "conn-27", sourceId: ids.graph, targetId: ids.apiConnGraph, relation: "depends_on" },
+    { id: "conn-28", sourceId: ids.routes, targetId: ids.graph, relation: "references" },
+    { id: "conn-29", sourceId: ids.routes, targetId: ids.auth, relation: "references" },
+
+    // CLI structure
+    { id: "conn-30", sourceId: ids.cli, targetId: ids.cliStore, relation: "part_of" },
+    { id: "conn-31", sourceId: ids.cli, targetId: ids.cliScanner, relation: "part_of" },
+    { id: "conn-32", sourceId: ids.cliStore, targetId: ids.apiChunks, relation: "references" },
+    { id: "conn-33", sourceId: ids.cliScanner, targetId: ids.schemaChunks, relation: "references" },
 
     // Infrastructure
-    { id: "conn-25", sourceId: "c-env", targetId: "c-deployment", relation: "referenced by" },
-    { id: "conn-26", sourceId: "c-deployment", targetId: "c-architecture", relation: "deploys" },
-    { id: "conn-27", sourceId: "c-tooling", targetId: "c-architecture", relation: "supports" },
-    { id: "conn-28", sourceId: "c-tooling", targetId: "c-monorepo-patterns", relation: "orchestrates" },
-
-    // Gotchas cross-references
-    { id: "conn-29", sourceId: "c-gotchas", targetId: "c-frontend", relation: "relates to" },
-    { id: "conn-30", sourceId: "c-gotchas", targetId: "c-api-design", relation: "relates to" },
-    { id: "conn-31", sourceId: "c-gotchas", targetId: "c-database", relation: "relates to" },
-    { id: "conn-32", sourceId: "c-gotchas", targetId: "c-deployment", relation: "relates to" },
-    { id: "conn-33", sourceId: "c-gotchas", targetId: "c-effect-patterns", relation: "relates to" },
-
-    // AI features
-    { id: "conn-34", sourceId: "c-ai-features", targetId: "c-api-design", relation: "extends" },
-    { id: "conn-35", sourceId: "c-ai-features", targetId: "c-chunk-templates", relation: "complements" }
+    { id: "conn-34", sourceId: ids.docker, targetId: ids.env, relation: "references" },
+    { id: "conn-35", sourceId: ids.turbo, targetId: ids.docker, relation: "related_to" },
+    { id: "conn-36", sourceId: ids.env, targetId: ids.auth, relation: "references" }
 ];
 
 await db.delete(chunkConnection);
@@ -920,11 +1258,11 @@ for (const conn of connections) {
     await db
         .insert(chunkConnection)
         .values(conn)
-        .catch(e => console.error(`  ✗ ${conn.id}:`, e));
+        .catch(e => console.error(`  \u2717 ${conn.id}:`, e));
 }
-console.log(`  ✓ ${connections.length} connections`);
+console.log(`  \u2713 ${connections.length} connections`);
 
-console.log(`\n✅ Database seeded: ${chunks.length} chunks, ${connections.length} connections`);
+console.log(`\n\u2705 Database seeded: ${chunks.length} chunks, ${connections.length} connections`);
 
 // Attempt to enrich all seeded chunks via Ollama
 const OLLAMA_URL = process.env.OLLAMA_URL ?? "http://localhost:11434";
@@ -971,16 +1309,16 @@ Content: ${c.content}`,
                 await db.execute(
                     sql`UPDATE chunk SET summary = ${metadata.summary}, aliases = ${JSON.stringify(metadata.aliases)}::jsonb, not_about = ${JSON.stringify(metadata.notAbout)}::jsonb, embedding = ${embStr}::vector WHERE id = ${c.id}`
                 );
-                console.log(`  ✓ Enriched: ${c.title}`);
+                console.log(`  \u2713 Enriched: ${c.title}`);
             } catch {
-                console.log(`  ✗ Failed: ${c.title}`);
+                console.log(`  \u2717 Failed: ${c.title}`);
             }
         }
     } else {
-        console.log("\nOllama not available — skipping enrichment");
+        console.log("\nOllama not available \u2014 skipping enrichment");
     }
 } catch {
-    console.log("\nOllama not available — skipping enrichment");
+    console.log("\nOllama not available \u2014 skipping enrichment");
 }
 
 process.exit(0);
