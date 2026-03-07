@@ -8,6 +8,8 @@ import { useTheme } from "next-themes";
 import { useCallback, createContext, useEffect, useMemo, useRef, useState } from "react";
 
 import { Dialog, DialogPopup, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { useSavedGraphViews } from "./use-saved-views";
 
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { relationColor } from "@/features/chunks/relation-colors";
@@ -176,6 +178,11 @@ function GraphViewInner() {
 
     // Layout algorithm
     const [layoutAlgorithm, setLayoutAlgorithm] = useState<LayoutAlgorithm>("force");
+
+    // Saved views
+    const { views: savedViews, saveView, deleteView: deleteSavedView } = useSavedGraphViews();
+    const [showSaveDialog, setShowSaveDialog] = useState(false);
+    const [viewName, setViewName] = useState("");
 
     // Dragged node positions (persist across layout changes)
     const [draggedPositions, setDraggedPositions] = useState<Map<string, { x: number; y: number }>>(new Map());
@@ -1013,6 +1020,34 @@ function GraphViewInner() {
                         <button onClick={() => setExploredNodeIds(new Set())} className="ml-1.5 underline hover:text-foreground">reset</button>
                     </span>
                 )}
+                <DropdownMenu>
+                    <DropdownMenuTrigger className="rounded-md border bg-background/80 px-2.5 py-1.5 text-xs backdrop-blur-sm text-muted-foreground hover:text-foreground">
+                        Views{savedViews.length > 0 ? ` (${savedViews.length})` : ""}
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => setShowSaveDialog(true)}>
+                            Save current view...
+                        </DropdownMenuItem>
+                        {savedViews.length > 0 && <DropdownMenuSeparator />}
+                        {savedViews.map(view => (
+                            <DropdownMenuItem key={view.name} className="flex items-center justify-between gap-2" onClick={() => {
+                                setFilterTypes(new Set(view.filterTypes));
+                                setFilterRelations(new Set(view.filterRelations));
+                                setCollapsedParents(new Set(view.collapsedParents));
+                                setLayoutAlgorithm(view.layoutAlgorithm as LayoutAlgorithm);
+                                if (view.focusNodeId) { setSelectedChunkId(view.focusNodeId); setFocusedNodeId(view.focusNodeId); }
+                            }}>
+                                <span>{view.name}</span>
+                                <button
+                                    className="text-muted-foreground hover:text-destructive ml-2 text-[10px]"
+                                    onClick={(e) => { e.stopPropagation(); deleteSavedView(view.name); }}
+                                >
+                                    ✕
+                                </button>
+                            </DropdownMenuItem>
+                        ))}
+                    </DropdownMenuContent>
+                </DropdownMenu>
                 <button
                     onClick={handleExportImage}
                     className="text-muted-foreground hover:text-foreground rounded-md border bg-background/80 px-2.5 py-1.5 text-xs backdrop-blur-sm"
@@ -1137,6 +1172,54 @@ function GraphViewInner() {
                         >
                             Clear
                         </button>
+                    </div>
+                </div>
+            )}
+            {/* Save view dialog */}
+            {showSaveDialog && (
+                <div className="absolute inset-0 z-30 flex items-center justify-center bg-background/50 backdrop-blur-sm" onClick={() => setShowSaveDialog(false)}>
+                    <div className="rounded-lg border bg-background p-4 shadow-lg" onClick={e => e.stopPropagation()}>
+                        <h3 className="text-sm font-semibold mb-2">Save View</h3>
+                        <input
+                            value={viewName}
+                            onChange={e => setViewName(e.target.value)}
+                            placeholder="View name"
+                            className="w-full rounded-md border px-3 py-2 text-sm"
+                            autoFocus
+                            onKeyDown={e => {
+                                if (e.key === "Enter" && viewName.trim()) {
+                                    saveView({
+                                        name: viewName.trim(),
+                                        filterTypes: [...filterTypes],
+                                        filterRelations: [...filterRelations],
+                                        collapsedParents: [...collapsedParents],
+                                        layoutAlgorithm,
+                                        focusNodeId: focusedNodeId ?? undefined
+                                    });
+                                    setShowSaveDialog(false);
+                                    setViewName("");
+                                }
+                            }}
+                        />
+                        <div className="flex gap-2 mt-3">
+                            <button
+                                onClick={() => {
+                                    if (!viewName.trim()) return;
+                                    saveView({
+                                        name: viewName.trim(),
+                                        filterTypes: [...filterTypes],
+                                        filterRelations: [...filterRelations],
+                                        collapsedParents: [...collapsedParents],
+                                        layoutAlgorithm,
+                                        focusNodeId: focusedNodeId ?? undefined
+                                    });
+                                    setShowSaveDialog(false);
+                                    setViewName("");
+                                }}
+                                className="flex-1 rounded-md bg-primary px-3 py-1.5 text-xs text-primary-foreground"
+                            >Save</button>
+                            <button onClick={() => setShowSaveDialog(false)} className="rounded-md border px-3 py-1.5 text-xs">Cancel</button>
+                        </div>
                     </div>
                 </div>
             )}
