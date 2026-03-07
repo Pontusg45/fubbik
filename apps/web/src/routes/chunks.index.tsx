@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { ChevronRight, Clock, FileText, Pin, Plus, Search, Trash2 } from "lucide-react";
+import { Bookmark, ChevronRight, Clock, FileText, Pin, Plus, Search, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { getChunkSize } from "@/features/chunks/chunk-size";
 import { usePinnedChunks } from "@/features/chunks/use-pinned-chunks";
+import { useSavedFilters } from "@/features/chunks/use-saved-filters";
 import { getUser } from "@/functions/get-user";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
@@ -46,6 +47,8 @@ function ChunksList() {
     const queryClient = useQueryClient();
     const [searchInput, setSearchInput] = useState(q ?? "");
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    const { filters: savedFilters, saveFilter, deleteFilter } = useSavedFilters();
+    const hasActiveFilters = !!(type || q || sort || tags || size || after || enrichment || minConnections);
     const limit = 20;
     const offset = ((page ?? 1) - 1) * limit;
 
@@ -392,6 +395,15 @@ function ChunksList() {
                         </Button>
                     ))}
                 </div>
+                {hasActiveFilters && (
+                    <Button variant="outline" size="sm" onClick={() => {
+                        const name = prompt("Filter name:");
+                        if (name) saveFilter(name, { type, q, sort, tags, size, after, enrichment, minConnections });
+                    }}>
+                        <Bookmark className="size-3.5" />
+                        Save
+                    </Button>
+                )}
             </div>
 
             {(tagsQuery.data ?? []).length > 0 && (
@@ -432,6 +444,24 @@ function ChunksList() {
                     );
                 })}
             </div>
+
+            {savedFilters.length > 0 && (
+                <div className="mb-3 flex flex-wrap gap-1.5">
+                    {savedFilters.map(f => (
+                        <Badge
+                            key={f.name}
+                            variant="outline"
+                            className="cursor-pointer gap-1"
+                            onClick={() => navigate({ search: { ...f.params, page: 1 } as any })}
+                        >
+                            {f.name}
+                            <button onClick={(e) => { e.stopPropagation(); deleteFilter(f.name); }}>
+                                <X className="size-2.5" />
+                            </button>
+                        </Badge>
+                    ))}
+                </div>
+            )}
 
             {/* Results */}
             {chunksQuery.isLoading ? (
