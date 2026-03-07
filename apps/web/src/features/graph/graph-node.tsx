@@ -17,11 +17,11 @@ export function GraphNode({ data }: NodeProps) {
     const Icon = TYPE_ICONS[nodeData.type ?? ""] ?? StickyNote;
     const count = nodeData.connectionCount ?? 0;
     const scale = nodeData.scale ?? 1;
-    const zoom = useContext(ZoomContext);
+    const zoomTier = useContext(ZoomContext);
     const tags = nodeData.tags ?? [];
 
     // Compact mode at low zoom
-    if (zoom < 0.5) {
+    if (zoomTier === "compact") {
         return (
             <>
                 <Handle type="target" position={Position.Top} className="!bg-muted-foreground/50 !border-muted-foreground/50 !size-2" />
@@ -48,7 +48,7 @@ export function GraphNode({ data }: NodeProps) {
                         </span>
                     )}
                 </div>
-                {zoom > 1.5 && tags.length > 0 && (
+                {zoomTier === "detailed" && tags.length > 0 && (
                     <div className="flex flex-wrap gap-1">
                         {tags.slice(0, 3).map(tag => (
                             <span key={tag} className="rounded-full bg-current/10 px-1.5 py-0.5 text-[9px] opacity-60">

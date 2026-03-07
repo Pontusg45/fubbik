@@ -26,7 +26,17 @@ import { type LayoutAlgorithm, hierarchicalLayout, radialLayout } from "@/featur
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
-export const ZoomContext = createContext(1);
+export type ZoomTier = "compact" | "normal" | "detailed";
+export const ZoomContext = createContext<ZoomTier>("normal");
+
+function getZoomTier(zoom: number, current: ZoomTier): ZoomTier {
+    // Hysteresis to prevent oscillation at thresholds
+    if (current === "compact") return zoom > 0.65 ? "normal" : "compact";
+    if (current === "detailed") return zoom < 1.3 ? "normal" : "detailed";
+    if (zoom < 0.5) return "compact";
+    if (zoom > 1.5) return "detailed";
+    return "normal";
+}
 
 const MAIN_NODE_ID = "__main__";
 
@@ -93,7 +103,8 @@ function GraphViewInner() {
     const isDark = resolvedTheme !== "light";
     const TYPE_COLORS = isDark ? TYPE_COLORS_DARK : TYPE_COLORS_LIGHT;
 
-    const [zoomLevel, setZoomLevel] = useState(1);
+    const [zoomTier, setZoomTier] = useState<ZoomTier>("normal");
+    const zoomRef = useRef(1);
     const [selectedChunkId, setSelectedChunkId] = useState<string | null>(null);
     const [panelWidth, setPanelWidth] = useState(380);
     const { setCenter, getZoom } = useReactFlow();
@@ -589,22 +600,32 @@ function GraphViewInner() {
         return map;
     }, [data]);
 
-    // Apply search highlighting
+    // Consolidated node/edge styling effect — single source of truth to prevent cascading setState loops
     useEffect(() => {
-        if (!debouncedSearchQuery.trim()) {
-            mergeNodes(layoutNodes);
-            setEdges(layoutEdges);
-            return;
-        }
-        const q = debouncedSearchQuery.toLowerCase();
-        const matchIds = new Set<string>();
-        for (const node of layoutNodes) {
-            if (node.id === MAIN_NODE_ID) continue;
-            const label = typeof node.data.label === "string" ? node.data.label : "";
-            if (label.toLowerCase().includes(q)) matchIds.add(node.id);
-        }
-        mergeNodes(
-            layoutNodes.map(node => {
+        const hasSearch = debouncedSearchQuery.trim().length > 0;
+
+        // --- Compute node styles ---
+        let styledNodes: Node[];
+
+        if (pathResult) {
+            styledNodes = layoutNodes.map(node => ({
+                ...node,
+                style: {
+                    ...(node.style as Record<string, unknown>),
+                    opacity: pathResult.pathNodeIds.has(node.id) ? 1 : 0.1,
+                    boxShadow: pathResult.pathNodeIds.has(node.id) ? "0 0 16px 4px #f472b6" : "none",
+                    transition: "opacity 0.2s, box-shadow 0.2s"
+                }
+            }));
+        } else if (hasSearch) {
+            const q = debouncedSearchQuery.toLowerCase();
+            const matchIds = new Set<string>();
+            for (const node of layoutNodes) {
+                if (node.id === MAIN_NODE_ID) continue;
+                const label = typeof node.data.label === "string" ? node.data.label : "";
+                if (label.toLowerCase().includes(q)) matchIds.add(node.id);
+            }
+            styledNodes = layoutNodes.map(node => {
                 if (node.id === MAIN_NODE_ID) return node;
                 const isMatch = matchIds.has(node.id);
                 return {
@@ -616,108 +637,48 @@ function GraphViewInner() {
                         transition: "opacity 0.2s, box-shadow 0.2s"
                     }
                 };
-            })
-        );
-        setEdges(
-            layoutEdges.map(edge => ({
-                ...edge,
-                style: {
-                    ...(edge.style as Record<string, unknown>),
-                    opacity: matchIds.has(edge.source) || matchIds.has(edge.target) ? 1 : 0.1
-                }
-            }))
-        );
-    }, [debouncedSearchQuery, layoutNodes, layoutEdges, setNodes, setEdges]);
-
-    // Apply focus dimming
-    useEffect(() => {
-        if (!focusNeighbors || debouncedSearchQuery.trim()) return;
-        mergeNodes(
-            layoutNodes.map(node => ({
+            });
+        } else if (focusNeighbors) {
+            styledNodes = layoutNodes.map(node => ({
                 ...node,
                 style: {
                     ...(node.style as Record<string, unknown>),
                     opacity: focusNeighbors.has(node.id) ? 1 : 0.12,
                     transition: "opacity 0.2s"
                 }
-            }))
-        );
-        setEdges(
-            layoutEdges.map(edge => ({
-                ...edge,
-                style: {
-                    ...(edge.style as Record<string, unknown>),
-                    opacity: focusNeighbors.has(edge.source) && focusNeighbors.has(edge.target) ? 1 : 0.06,
-                    transition: "opacity 0.2s"
-                }
-            }))
-        );
-    }, [focusNeighbors, layoutNodes, layoutEdges, setNodes, setEdges, debouncedSearchQuery]);
-
-    // Sync layout when search is empty and no focus
-    useEffect(() => {
-        if (!debouncedSearchQuery.trim() && !focusedNodeId) {
-            if (selectedNeighborNodes) {
-                mergeNodes(layoutNodes.map(node => ({
-                    ...node,
-                    style: {
-                        ...(node.style as Record<string, unknown>),
-                        opacity: selectedNeighborNodes.has(node.id) ? 1 : 0.2,
-                        transition: "opacity 0.2s"
-                    }
-                })));
-            } else {
-                mergeNodes(layoutNodes);
-            }
-        }
-    }, [layoutNodes, setNodes, debouncedSearchQuery, focusedNodeId, selectedNeighborNodes]);
-
-    useEffect(() => {
-        if (!debouncedSearchQuery.trim() && !focusedNodeId) {
-            if (selectedEdgeIds) {
-                setEdges(layoutEdges.map(edge => ({
-                    ...edge,
-                    style: {
-                        ...(edge.style as Record<string, unknown>),
-                        opacity: selectedEdgeIds.has(edge.id) ? 1 : 0.1,
-                        transition: "opacity 0.2s"
-                    }
-                })));
-            } else {
-                setEdges(layoutEdges);
-            }
-        }
-    }, [layoutEdges, setEdges, debouncedSearchQuery, focusedNodeId, selectedEdgeIds]);
-
-    // Apply multi-select outline
-    useEffect(() => {
-        if (multiSelectedIds.size === 0) return;
-        mergeNodes(nodes.map(node => ({
-            ...node,
-            style: {
-                ...(node.style as Record<string, unknown>),
-                outline: multiSelectedIds.has(node.id) ? "2px solid #f472b6" : "none",
-                outlineOffset: multiSelectedIds.has(node.id) ? "2px" : "0"
-            }
-        })));
-    }, [multiSelectedIds]);
-
-    // Apply path highlighting
-    useEffect(() => {
-        if (!pathResult) return;
-        mergeNodes(
-            layoutNodes.map(node => ({
+            }));
+        } else if (selectedNeighborNodes) {
+            styledNodes = layoutNodes.map(node => ({
                 ...node,
                 style: {
                     ...(node.style as Record<string, unknown>),
-                    opacity: pathResult.pathNodeIds.has(node.id) ? 1 : 0.1,
-                    boxShadow: pathResult.pathNodeIds.has(node.id) ? "0 0 16px 4px #f472b6" : "none",
-                    transition: "opacity 0.2s, box-shadow 0.2s"
+                    opacity: selectedNeighborNodes.has(node.id) ? 1 : 0.2,
+                    transition: "opacity 0.2s"
                 }
-            }))
-        );
-        setEdges(
-            layoutEdges.map(edge => ({
+            }));
+        } else {
+            styledNodes = layoutNodes;
+        }
+
+        // Apply multi-select outline on top
+        if (multiSelectedIds.size > 0) {
+            styledNodes = styledNodes.map(node => ({
+                ...node,
+                style: {
+                    ...(node.style as Record<string, unknown>),
+                    outline: multiSelectedIds.has(node.id) ? "2px solid #f472b6" : "none",
+                    outlineOffset: multiSelectedIds.has(node.id) ? "2px" : "0"
+                }
+            }));
+        }
+
+        mergeNodes(styledNodes);
+
+        // --- Compute edge styles ---
+        let styledEdges: Edge[];
+
+        if (pathResult) {
+            styledEdges = layoutEdges.map(edge => ({
                 ...edge,
                 style: {
                     ...(edge.style as Record<string, unknown>),
@@ -725,9 +686,46 @@ function GraphViewInner() {
                     strokeWidth: pathResult.pathEdgeIds.has(edge.id) ? 3 : (edge.style as Record<string, number>)?.strokeWidth ?? 2,
                     transition: "opacity 0.2s"
                 }
-            }))
-        );
-    }, [pathResult, layoutNodes, layoutEdges, setEdges]);
+            }));
+        } else if (hasSearch) {
+            const q = debouncedSearchQuery.toLowerCase();
+            const matchIds = new Set<string>();
+            for (const node of layoutNodes) {
+                if (node.id === MAIN_NODE_ID) continue;
+                const label = typeof node.data.label === "string" ? node.data.label : "";
+                if (label.toLowerCase().includes(q)) matchIds.add(node.id);
+            }
+            styledEdges = layoutEdges.map(edge => ({
+                ...edge,
+                style: {
+                    ...(edge.style as Record<string, unknown>),
+                    opacity: matchIds.has(edge.source) || matchIds.has(edge.target) ? 1 : 0.1
+                }
+            }));
+        } else if (focusNeighbors) {
+            styledEdges = layoutEdges.map(edge => ({
+                ...edge,
+                style: {
+                    ...(edge.style as Record<string, unknown>),
+                    opacity: focusNeighbors.has(edge.source) && focusNeighbors.has(edge.target) ? 1 : 0.06,
+                    transition: "opacity 0.2s"
+                }
+            }));
+        } else if (selectedEdgeIds) {
+            styledEdges = layoutEdges.map(edge => ({
+                ...edge,
+                style: {
+                    ...(edge.style as Record<string, unknown>),
+                    opacity: selectedEdgeIds.has(edge.id) ? 1 : 0.1,
+                    transition: "opacity 0.2s"
+                }
+            }));
+        } else {
+            styledEdges = layoutEdges;
+        }
+
+        setEdges(styledEdges);
+    }, [layoutNodes, layoutEdges, debouncedSearchQuery, focusNeighbors, selectedNeighborNodes, selectedEdgeIds, multiSelectedIds, pathResult, setEdges]);
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
     useEffect(() => {
@@ -874,7 +872,7 @@ function GraphViewInner() {
                     </div>
                 </div>
             )}
-            <ZoomContext.Provider value={zoomLevel}>
+            <ZoomContext.Provider value={zoomTier}>
             <ReactFlow
                 nodes={nodes}
                 edges={edges}
@@ -959,9 +957,12 @@ function GraphViewInner() {
                     });
                 }}
                 onNodeMouseLeave={() => setHoveredNode(null)}
-                onMoveEnd={(_, viewport) => setZoomLevel(viewport.zoom)}
+                onMoveEnd={(_, viewport) => {
+                    zoomRef.current = viewport.zoom;
+                    setZoomTier(prev => getZoomTier(viewport.zoom, prev));
+                }}
                 onEdgeMouseEnter={(_, edge) => {
-                    if (zoomLevel < 0.4) return;
+                    if (zoomTier === "compact") return;
                     setEdges(es =>
                         es.map(e =>
                             e.id === edge.id
