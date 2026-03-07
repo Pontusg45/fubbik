@@ -86,6 +86,8 @@ function ChunkDetail() {
 
     const chunk = data.chunk;
     const connections = data.connections ?? [];
+    const outgoing = connections.filter(c => c.sourceId === chunkId);
+    const incoming = connections.filter(c => c.sourceId !== chunkId);
 
     return (
         <div className="container mx-auto max-w-3xl px-4 py-8">
@@ -188,31 +190,47 @@ function ChunkDetail() {
                         <LinkChunkDialog chunkId={chunkId} />
                     </div>
                 </CardHeader>
-                {connections.length > 0 && (
+                {outgoing.length > 0 && (
                     <CardPanel className="space-y-2 pt-0">
-                        {connections.map(conn => {
-                            const linkedId = conn.sourceId === chunkId ? conn.targetId : conn.sourceId;
-                            return (
-                                <div
-                                    key={conn.id}
-                                    className="hover:bg-muted flex items-center justify-between rounded-md border px-3 py-2 text-sm transition-colors"
-                                >
-                                    <Link
-                                        to="/chunks/$chunkId"
-                                        params={{ chunkId: linkedId }}
-                                        className="flex-1 font-medium"
-                                    >
-                                        {conn.title ?? linkedId}
-                                    </Link>
-                                    <div className="flex items-center gap-2">
-                                        <Badge variant="outline" size="sm" className="text-[10px]">
-                                            {conn.relation}
-                                        </Badge>
-                                        <DeleteConnectionButton connectionId={conn.id} chunkId={chunkId} />
-                                    </div>
+                        <p className="text-muted-foreground text-xs font-medium">Links to</p>
+                        {outgoing.map(conn => (
+                            <div
+                                key={conn.id}
+                                className="hover:bg-muted flex items-center justify-between rounded-md border px-3 py-2 text-sm transition-colors"
+                            >
+                                <Link to="/chunks/$chunkId" params={{ chunkId: conn.targetId }} className="flex-1 font-medium">
+                                    {conn.title ?? conn.targetId}
+                                </Link>
+                                <div className="flex items-center gap-2">
+                                    <Badge variant="outline" size="sm" className="text-[10px]">{conn.relation}</Badge>
+                                    <DeleteConnectionButton connectionId={conn.id} chunkId={chunkId} />
                                 </div>
-                            );
-                        })}
+                            </div>
+                        ))}
+                    </CardPanel>
+                )}
+                {incoming.length > 0 && (
+                    <CardPanel className="space-y-2 pt-0">
+                        <p className="text-muted-foreground text-xs font-medium">Linked from</p>
+                        {incoming.map(conn => (
+                            <div
+                                key={conn.id}
+                                className="hover:bg-muted flex items-center justify-between rounded-md border px-3 py-2 text-sm transition-colors"
+                            >
+                                <Link to="/chunks/$chunkId" params={{ chunkId: conn.sourceId }} className="flex-1 font-medium">
+                                    {conn.title ?? conn.sourceId}
+                                </Link>
+                                <div className="flex items-center gap-2">
+                                    <Badge variant="outline" size="sm" className="text-[10px]">{conn.relation}</Badge>
+                                    <DeleteConnectionButton connectionId={conn.id} chunkId={chunkId} />
+                                </div>
+                            </div>
+                        ))}
+                    </CardPanel>
+                )}
+                {connections.length === 0 && (
+                    <CardPanel className="pt-0">
+                        <p className="text-muted-foreground text-sm">No connections yet</p>
                     </CardPanel>
                 )}
             </Card>
