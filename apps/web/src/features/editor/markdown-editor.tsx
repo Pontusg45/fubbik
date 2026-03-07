@@ -1,4 +1,4 @@
-import Markdown from "react-markdown";
+import { MarkdownRenderer } from "@/components/markdown-renderer";
 
 import { Tabs, TabsContent, TabsList, TabsTab } from "@/components/ui/tabs";
 
@@ -34,7 +34,7 @@ export function MarkdownEditor({ value, onChange, placeholder, rows = 10, error 
                             <p className="text-muted-foreground text-sm italic">Nothing to preview</p>
                         ) : (
                             <div className="prose dark:prose-invert prose-sm max-w-none">
-                                <Markdown>{value}</Markdown>
+                                <MarkdownRenderer>{value}</MarkdownRenderer>
                             </div>
                         )}
                     </div>

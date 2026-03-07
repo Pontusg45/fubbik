@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Scissors } from "lucide-react";
 import { useState } from "react";
-import Markdown from "react-markdown";
+import { MarkdownRenderer } from "@/components/markdown-renderer";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
@@ -160,7 +160,7 @@ export function SplitChunkDialog({
                                 </div>
                                 <Separator className="my-2" />
                                 <div className="prose dark:prose-invert prose-sm max-h-32 max-w-none overflow-hidden text-xs">
-                                    <Markdown>{section.content.slice(0, 300) + (section.content.length > 300 ? "..." : "")}</Markdown>
+                                    <MarkdownRenderer>{section.content.slice(0, 300) + (section.content.length > 300 ? "..." : "")}</MarkdownRenderer>
                                 </div>
                             </button>
                         ))}

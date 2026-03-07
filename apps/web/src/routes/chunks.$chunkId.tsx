@@ -2,9 +2,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, Calendar, Clock, Edit, FileText, Hash, Network, Star, Trash2 } from "lucide-react";
 import { useEffect } from "react";
-import Markdown from "react-markdown";
 import { toast } from "sonner";
 
+import { MarkdownRenderer } from "@/components/markdown-renderer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardHeader, CardPanel, CardTitle } from "@/components/ui/card";
@@ -187,7 +187,7 @@ function ChunkDetail() {
             <Separator className="my-6" />
 
             <div className="prose dark:prose-invert prose-sm max-w-none">
-                <Markdown>{chunk.content}</Markdown>
+                <MarkdownRenderer>{chunk.content}</MarkdownRenderer>
             </div>
 
             <Separator className="my-6" />

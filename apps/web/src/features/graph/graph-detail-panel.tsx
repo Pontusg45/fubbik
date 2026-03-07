@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { Calendar, Clock, ExternalLink, FileText, Hash, Network, X } from "lucide-react";
-import Markdown from "react-markdown";
+import { MarkdownRenderer } from "@/components/markdown-renderer";
 
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -104,7 +104,7 @@ export function GraphDetailPanel({ chunkId, onClose, onNavigateToChunk }: {
 
                             {/* Content */}
                             <div className="prose dark:prose-invert prose-sm max-w-none">
-                                <Markdown>{chunk.content}</Markdown>
+                                <MarkdownRenderer>{chunk.content}</MarkdownRenderer>
                             </div>
 
                             {/* Connections */}
