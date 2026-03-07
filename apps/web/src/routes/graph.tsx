@@ -10,6 +10,7 @@ import {
     type Node
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
+import Dagre from "@dagrejs/dagre";
 import { useEffect, useMemo } from "react";
 
 import { getUser } from "@/functions/get-user";
@@ -38,37 +39,57 @@ function GraphView() {
         }
     });
 
-    const initialNodes: Node[] = useMemo(() => {
+    const { layoutNodes, layoutEdges } = useMemo(() => {
         const chunks = data?.chunks ?? [];
-        return chunks.map((c, i) => ({
+        const connections = data?.connections ?? [];
+
+        if (chunks.length === 0) return { layoutNodes: [] as Node[], layoutEdges: [] as Edge[] };
+
+        const g = new Dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
+        g.setGraph({ rankdir: "TB", nodesep: 80, ranksep: 100 });
+
+        const rawNodes: Node[] = chunks.map(c => ({
             id: c.id,
             data: { label: c.title },
-            position: { x: (i % 5) * 280, y: Math.floor(i / 5) * 160 },
+            position: { x: 0, y: 0 },
             style: { cursor: "pointer" }
         }));
-    }, [data]);
 
-    const initialEdges: Edge[] = useMemo(() => {
-        const connections = data?.connections ?? [];
-        return connections.map(conn => ({
+        const rawEdges: Edge[] = connections.map(conn => ({
             id: conn.id,
             source: conn.sourceId,
             target: conn.targetId,
             label: conn.relation,
             animated: true
         }));
+
+        for (const node of rawNodes) {
+            g.setNode(node.id, { width: 200, height: 50 });
+        }
+        for (const edge of rawEdges) {
+            g.setEdge(edge.source, edge.target);
+        }
+
+        Dagre.layout(g);
+
+        const layoutNodes = rawNodes.map(node => {
+            const pos = g.node(node.id);
+            return { ...node, position: { x: pos.x - 100, y: pos.y - 25 } };
+        });
+
+        return { layoutNodes, layoutEdges: rawEdges };
     }, [data]);
 
     const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
     const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
 
     useEffect(() => {
-        setNodes(initialNodes);
-    }, [initialNodes, setNodes]);
+        setNodes(layoutNodes);
+    }, [layoutNodes, setNodes]);
 
     useEffect(() => {
-        setEdges(initialEdges);
-    }, [initialEdges, setEdges]);
+        setEdges(layoutEdges);
+    }, [layoutEdges, setEdges]);
 
     if (isLoading) {
         return (
