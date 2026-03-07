@@ -108,6 +108,21 @@ export const chunkRoutes = new Elysia()
             })
         }
     )
+    .delete(
+        "/chunks/bulk",
+        ctx =>
+            Effect.runPromise(
+                requireSession(ctx).pipe(
+                    Effect.flatMap(session => chunkService.deleteMany(ctx.body.ids, session.user.id)),
+                    Effect.map(deleted => ({ deleted: deleted.length }))
+                )
+            ),
+        {
+            body: t.Object({
+                ids: t.Array(t.String(), { maxItems: 100 })
+            })
+        }
+    )
     .delete("/chunks/:id", ctx =>
         Effect.runPromise(
             requireSession(ctx).pipe(

@@ -2,6 +2,7 @@ import {
     createChunk as createChunkRepo,
     createVersion,
     deleteChunk as deleteChunkRepo,
+    deleteMany as deleteManyRepo,
     exportAllChunks as exportAllChunksRepo,
     getChunkById,
     getChunkConnections,
@@ -116,6 +117,10 @@ export function deleteChunk(chunkId: string, userId: string) {
     return deleteChunkRepo(chunkId, userId).pipe(
         Effect.flatMap(deleted => (deleted ? Effect.succeed(deleted) : Effect.fail(new NotFoundError({ resource: "Chunk" }))))
     );
+}
+
+export function deleteMany(ids: string[], userId: string) {
+    return deleteManyRepo(ids, userId);
 }
 
 export function semanticSearch(

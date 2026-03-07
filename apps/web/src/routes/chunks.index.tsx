@@ -1,11 +1,12 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Clock, FileText, Plus, Search } from "lucide-react";
+import { Clock, FileText, Plus, Search, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardPanel } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { getChunkSize } from "@/features/chunks/chunk-size";
 import { getUser } from "@/functions/get-user";
@@ -34,7 +35,9 @@ function ChunksList() {
     const navigate = useNavigate({ from: "/chunks/" });
     const navTo = useNavigate();
     const { type, q, page } = Route.useSearch();
+    const queryClient = useQueryClient();
     const [searchInput, setSearchInput] = useState(q ?? "");
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const limit = 20;
     const offset = ((page ?? 1) - 1) * limit;
 
@@ -112,17 +115,60 @@ function ChunksList() {
         });
     }
 
+    function toggleSelection(id: string) {
+        setSelectedIds(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    }
+
+    function toggleAll() {
+        if (selectedIds.size === chunks.length) {
+            setSelectedIds(new Set());
+        } else {
+            setSelectedIds(new Set(chunks.map(c => c.id)));
+        }
+    }
+
+    const bulkDeleteMutation = useMutation({
+        mutationFn: async (ids: string[]) => {
+            const { error } = await api.api.chunks.bulk.delete({ ids });
+            if (error) throw new Error("Failed to delete chunks");
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["chunks-list"] });
+            queryClient.invalidateQueries({ queryKey: ["stats"] });
+            setSelectedIds(new Set());
+        }
+    });
+
+    function handleBulkDelete() {
+        if (!confirm(`Delete ${selectedIds.size} chunks?`)) return;
+        bulkDeleteMutation.mutate([...selectedIds]);
+    }
+
     return (
         <div className="container mx-auto max-w-5xl px-4 py-8">
             <div className="mb-6 flex items-center justify-between">
-                <div>
-                    <h1 className="text-2xl font-bold tracking-tight">Chunks</h1>
-                    <p className="text-muted-foreground mt-1 text-xs">
-                        <kbd className="bg-muted rounded px-1 py-0.5 font-mono text-[10px]">j</kbd>/
-                        <kbd className="bg-muted rounded px-1 py-0.5 font-mono text-[10px]">k</kbd> navigate
-                        <kbd className="bg-muted ml-2 rounded px-1 py-0.5 font-mono text-[10px]">Enter</kbd> open
-                        <kbd className="bg-muted ml-2 rounded px-1 py-0.5 font-mono text-[10px]">n</kbd> new
-                    </p>
+                <div className="flex items-center gap-3">
+                    {chunks.length > 0 && (
+                        <Checkbox
+                            checked={selectedIds.size === chunks.length && chunks.length > 0}
+                            indeterminate={selectedIds.size > 0 && selectedIds.size < chunks.length}
+                            onCheckedChange={toggleAll}
+                        />
+                    )}
+                    <div>
+                        <h1 className="text-2xl font-bold tracking-tight">Chunks</h1>
+                        <p className="text-muted-foreground mt-1 text-xs">
+                            <kbd className="bg-muted rounded px-1 py-0.5 font-mono text-[10px]">j</kbd>/
+                            <kbd className="bg-muted rounded px-1 py-0.5 font-mono text-[10px]">k</kbd> navigate
+                            <kbd className="bg-muted ml-2 rounded px-1 py-0.5 font-mono text-[10px]">Enter</kbd> open
+                            <kbd className="bg-muted ml-2 rounded px-1 py-0.5 font-mono text-[10px]">n</kbd> new
+                        </p>
+                    </div>
                 </div>
                 <Button render={<Link to="/chunks/new" />}>
                     <Plus className="size-4" />
@@ -176,10 +222,15 @@ function ChunksList() {
                     chunks.map((chunk, i) => (
                         <div key={chunk.id}>
                             {i > 0 && <Separator />}
-                            <Link to="/chunks/$chunkId" params={{ chunkId: chunk.id }} className="block">
-                                <CardPanel
-                                    className={`flex items-center justify-between gap-4 p-4 transition-colors ${selectedIndex === i ? "bg-muted/50 ring-primary/50 ring-2 ring-inset" : "hover:bg-muted/50"}`}
-                                >
+                            <CardPanel
+                                className={`flex items-center gap-3 p-4 transition-colors ${selectedIndex === i ? "bg-muted/50 ring-primary/50 ring-2 ring-inset" : "hover:bg-muted/50"}`}
+                            >
+                                <Checkbox
+                                    checked={selectedIds.has(chunk.id)}
+                                    onCheckedChange={() => toggleSelection(chunk.id)}
+                                    onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                                />
+                                <Link to="/chunks/$chunkId" params={{ chunkId: chunk.id }} className="flex flex-1 items-center justify-between gap-4">
                                     <div className="min-w-0">
                                         <p className="truncate text-sm font-medium">{chunk.title}</p>
                                         <div className="mt-1 flex items-center gap-2">
@@ -208,8 +259,8 @@ function ChunksList() {
                                             {new Date(chunk.updatedAt).toLocaleDateString()}
                                         </span>
                                     </div>
-                                </CardPanel>
-                            </Link>
+                                </Link>
+                            </CardPanel>
                         </div>
                     ))
                 )}
@@ -226,6 +277,24 @@ function ChunksList() {
                     </span>
                     <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => updateSearch({ page: page + 1 })}>
                         Next
+                    </Button>
+                </div>
+            )}
+
+            {selectedIds.size > 0 && (
+                <div className="fixed bottom-6 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-lg border bg-background px-4 py-2.5 shadow-lg">
+                    <span className="text-sm font-medium">{selectedIds.size} selected</span>
+                    <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={handleBulkDelete}
+                        disabled={bulkDeleteMutation.isPending}
+                    >
+                        <Trash2 className="size-3.5" />
+                        Delete
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => setSelectedIds(new Set())}>
+                        Cancel
                     </Button>
                 </div>
             )}

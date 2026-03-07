@@ -1,4 +1,4 @@
-import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
+import { and, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
 import { Effect } from "effect";
 
 import { DatabaseError } from "../errors";
@@ -203,6 +203,17 @@ export function deleteChunk(chunkId: string, userId: string) {
                 .returning();
             return deleted ?? null;
         },
+        catch: cause => new DatabaseError({ cause })
+    });
+}
+
+export function deleteMany(ids: string[], userId: string) {
+    return Effect.tryPromise({
+        try: () =>
+            db
+                .delete(chunk)
+                .where(and(inArray(chunk.id, ids), eq(chunk.userId, userId)))
+                .returning({ id: chunk.id }),
         catch: cause => new DatabaseError({ cause })
     });
 }
