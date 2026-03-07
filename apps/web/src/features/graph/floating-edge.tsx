@@ -115,27 +115,33 @@ export function FloatingEdge({ id, source, target, style, data, label, labelStyl
                     fillOpacity={0.8}
                 />
             )}
-            {label && (
-                <>
-                    <rect
-                        x={lx - 30}
-                        y={ly - 10}
-                        width={60}
-                        height={20}
-                        rx={6}
-                        style={labelBgStyle as React.CSSProperties}
-                    />
-                    <text
-                        x={lx}
-                        y={ly}
-                        textAnchor="middle"
-                        dominantBaseline="central"
-                        style={labelStyle as React.CSSProperties}
-                    >
-                        {label as string}
-                    </text>
-                </>
-            )}
+            {label && (() => {
+                const text = label as string;
+                const charWidth = 6;
+                const padding = 16;
+                const textWidth = text.length * charWidth + padding;
+                return (
+                    <>
+                        <rect
+                            x={lx - textWidth / 2}
+                            y={ly - 10}
+                            width={textWidth}
+                            height={20}
+                            rx={6}
+                            style={labelBgStyle as React.CSSProperties}
+                        />
+                        <text
+                            x={lx}
+                            y={ly}
+                            textAnchor="middle"
+                            dominantBaseline="central"
+                            style={labelStyle as React.CSSProperties}
+                        >
+                            {text}
+                        </text>
+                    </>
+                );
+            })()}
         </>
     );
 }
