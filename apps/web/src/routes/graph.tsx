@@ -522,18 +522,22 @@ function GraphView() {
 
     return (
         <div className="flex h-[calc(100vh-4rem)]">
-            {selectedChunkId && (
-                <div className="w-[380px] shrink-0 overflow-hidden">
-                    <GraphDetailPanel
-                        chunkId={selectedChunkId}
-                        onClose={() => setSelectedChunkId(null)}
-                        onNavigateToChunk={(id) => {
-                            setSelectedChunkId(id);
-                            setFocusedNodeId(id);
-                        }}
-                    />
-                </div>
-            )}
+            <div
+                className={`shrink-0 overflow-hidden transition-[width] duration-300 ease-in-out ${selectedChunkId ? "w-[380px]" : "w-0"}`}
+            >
+                {selectedChunkId && (
+                    <div className="w-[380px]">
+                        <GraphDetailPanel
+                            chunkId={selectedChunkId}
+                            onClose={() => setSelectedChunkId(null)}
+                            onNavigateToChunk={(id) => {
+                                setSelectedChunkId(id);
+                                setFocusedNodeId(id);
+                            }}
+                        />
+                    </div>
+                )}
+            </div>
             <div className="relative flex-1 [&_.react-flow__handle]:invisible [&_.react-flow__node]:transition-[transform] [&_.react-flow__node]:duration-500 [&_.react-flow__node]:ease-out">
             <ReactFlow
                 nodes={nodes}
