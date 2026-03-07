@@ -38,6 +38,7 @@ This file provides context about the project for AI assistants.
 
 - Testing: vitest
 - AI: vercel-ai
+- Embeddings: Ollama (nomic-embed-text) for local vector embeddings
 - Logging: winston
 - Observability: opentelemetry
 
@@ -78,9 +79,19 @@ fubbik/
 
 The server exposes a Swagger/OpenAPI endpoint at `/docs` (e.g., `http://localhost:3000/docs`).
 
+## Ollama (Optional)
+
+Required for chunk enrichment (summary, aliases, not_about generation) and semantic search.
+
+- `ollama pull nomic-embed-text` — embedding model
+- `ollama pull llama3.2` — generation model for metadata
+- `OLLAMA_URL` env var (default: `http://localhost:11434`)
+- Without Ollama, all other features work normally
+
 ## Environment Variables
 
 - `PORT` — Server port (default: `3000`, validated via `packages/env`)
+- `OLLAMA_URL` — Ollama server URL (default: `http://localhost:11434`)
 
 ## Common Commands
 
