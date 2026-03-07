@@ -13,7 +13,10 @@ export const chunkRoutes = new Elysia()
                 type: t.Optional(t.String()),
                 search: t.Optional(t.String()),
                 limit: t.Optional(t.String()),
-                offset: t.Optional(t.String())
+                offset: t.Optional(t.String()),
+                exclude: t.Optional(t.String()),
+                scope: t.Optional(t.String()),
+                alias: t.Optional(t.String())
             })
         }
     )
@@ -40,6 +43,21 @@ export const chunkRoutes = new Elysia()
                     }),
                     { maxItems: 500 }
                 )
+            })
+        }
+    )
+    .get(
+        "/chunks/search/semantic",
+        ctx =>
+            Effect.runPromise(
+                optionalSession(ctx).pipe(Effect.flatMap(session => chunkService.semanticSearch(session?.user.id, ctx.query)))
+            ),
+        {
+            query: t.Object({
+                q: t.String(),
+                limit: t.Optional(t.String()),
+                exclude: t.Optional(t.String()),
+                scope: t.Optional(t.String())
             })
         }
     )
@@ -82,7 +100,11 @@ export const chunkRoutes = new Elysia()
                 title: t.Optional(t.String({ maxLength: 200 })),
                 content: t.Optional(t.String({ maxLength: 50000 })),
                 type: t.Optional(t.String({ maxLength: 20 })),
-                tags: t.Optional(t.Array(t.String({ maxLength: 50 }), { maxItems: 20 }))
+                tags: t.Optional(t.Array(t.String({ maxLength: 50 }), { maxItems: 20 })),
+                summary: t.Optional(t.Union([t.String({ maxLength: 500 }), t.Null()])),
+                aliases: t.Optional(t.Array(t.String({ maxLength: 100 }), { maxItems: 20 })),
+                notAbout: t.Optional(t.Array(t.String({ maxLength: 100 }), { maxItems: 20 })),
+                scope: t.Optional(t.Record(t.String(), t.String()))
             })
         }
     )

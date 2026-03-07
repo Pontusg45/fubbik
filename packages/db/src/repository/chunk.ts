@@ -9,6 +9,9 @@ export interface ListChunksParams {
     userId?: string;
     type?: string;
     search?: string;
+    exclude?: string[];
+    scope?: Record<string, string>;
+    alias?: string;
     limit: number;
     offset: number;
 }
@@ -29,6 +32,17 @@ export function listChunks(params: ListChunksParams) {
                         ilike(chunk.content, `%${params.search}%`)
                     )!
                 );
+            }
+            if (params.exclude?.length) {
+                for (const term of params.exclude) {
+                    conditions.push(sql`NOT (${chunk.notAbout} @> ${JSON.stringify([term])}::jsonb)`);
+                }
+            }
+            if (params.scope && Object.keys(params.scope).length > 0) {
+                conditions.push(sql`${chunk.scope} @> ${JSON.stringify(params.scope)}::jsonb`);
+            }
+            if (params.alias) {
+                conditions.push(sql`${chunk.aliases} @> ${JSON.stringify([params.alias])}::jsonb`);
             }
             const orderClause = params.search ? sql`similarity(${chunk.title}, ${params.search}) DESC` : desc(chunk.updatedAt);
             const chunks = await db
@@ -113,6 +127,10 @@ export interface UpdateChunkParams {
     content?: string;
     type?: string;
     tags?: string[];
+    summary?: string | null;
+    aliases?: string[];
+    notAbout?: string[];
+    scope?: Record<string, string>;
 }
 
 export function updateChunk(chunkId: string, params: UpdateChunkParams) {
@@ -124,7 +142,11 @@ export function updateChunk(chunkId: string, params: UpdateChunkParams) {
                     ...(params.title !== undefined && { title: params.title }),
                     ...(params.content !== undefined && { content: params.content }),
                     ...(params.type !== undefined && { type: params.type }),
-                    ...(params.tags !== undefined && { tags: params.tags })
+                    ...(params.tags !== undefined && { tags: params.tags }),
+                    ...(params.summary !== undefined && { summary: params.summary }),
+                    ...(params.aliases !== undefined && { aliases: params.aliases }),
+                    ...(params.notAbout !== undefined && { notAbout: params.notAbout }),
+                    ...(params.scope !== undefined && { scope: params.scope })
                 })
                 .where(eq(chunk.id, chunkId))
                 .returning();

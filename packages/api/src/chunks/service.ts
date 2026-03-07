@@ -8,17 +8,26 @@ import {
     getNextVersionNumber,
     getVersionsByChunkId,
     listChunks as listChunksRepo,
+    semanticSearch as semanticSearchRepo,
     updateChunk as updateChunkRepo
 } from "@fubbik/db/repository";
 import { Effect } from "effect";
 
 import { enrichChunk, enrichChunkIfEmpty } from "../enrich/service";
 import { NotFoundError } from "../errors";
+import { generateQueryEmbedding } from "../ollama/client";
 
-export function listChunks(userId: string | undefined, query: { type?: string; search?: string; limit?: string; offset?: string }) {
+export function listChunks(
+    userId: string | undefined,
+    query: { type?: string; search?: string; limit?: string; offset?: string; exclude?: string; scope?: string; alias?: string }
+) {
     const limit = Math.min(Number(query.limit ?? 50), 100);
     const offset = Number(query.offset ?? 0);
-    return listChunksRepo({ userId, type: query.type, search: query.search, limit, offset }).pipe(
+    const exclude = query.exclude ? query.exclude.split(",").map(s => s.trim()) : undefined;
+    const scope = query.scope
+        ? Object.fromEntries(query.scope.split(",").map(s => s.trim().split(":")).filter(p => p.length === 2) as [string, string][])
+        : undefined;
+    return listChunksRepo({ userId, type: query.type, search: query.search, exclude, scope, alias: query.alias, limit, offset }).pipe(
         Effect.map(result => ({ ...result, limit, offset }))
     );
 }
@@ -47,7 +56,20 @@ export function createChunk(userId: string, body: { title: string; content?: str
     );
 }
 
-export function updateChunk(chunkId: string, userId: string, body: { title?: string; content?: string; type?: string; tags?: string[] }) {
+export function updateChunk(
+    chunkId: string,
+    userId: string,
+    body: {
+        title?: string;
+        content?: string;
+        type?: string;
+        tags?: string[];
+        summary?: string | null;
+        aliases?: string[];
+        notAbout?: string[];
+        scope?: Record<string, string>;
+    }
+) {
     return getChunkById(chunkId, userId).pipe(
         Effect.flatMap(existing => (existing ? Effect.succeed(existing) : Effect.fail(new NotFoundError({ resource: "Chunk" })))),
         Effect.flatMap(existing => Effect.all({ existing: Effect.succeed(existing), version: getNextVersionNumber(chunkId) })),
@@ -93,5 +115,20 @@ export function importChunks(userId: string, chunks: { title: string; content?: 
 export function deleteChunk(chunkId: string, userId: string) {
     return deleteChunkRepo(chunkId, userId).pipe(
         Effect.flatMap(deleted => (deleted ? Effect.succeed(deleted) : Effect.fail(new NotFoundError({ resource: "Chunk" }))))
+    );
+}
+
+export function semanticSearch(
+    userId: string | undefined,
+    query: { q: string; limit?: string; exclude?: string; scope?: string }
+) {
+    const limit = Math.min(Number(query.limit ?? 5), 20);
+    const exclude = query.exclude ? query.exclude.split(",").map(s => s.trim()) : undefined;
+    const scope = query.scope
+        ? Object.fromEntries(query.scope.split(",").map(s => s.trim().split(":")).filter(p => p.length === 2) as [string, string][])
+        : undefined;
+
+    return generateQueryEmbedding(query.q).pipe(
+        Effect.flatMap(embedding => semanticSearchRepo({ embedding, userId, exclude, scope, limit }))
     );
 }
