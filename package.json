@@ -36,6 +36,7 @@
         "db:stop": "turbo run db:stop --filter=@fubbik/db",
         "db:down": "turbo run db:down --filter=@fubbik/db",
         "seed": "turbo run seed --filter=@fubbik/db",
+        "scan": "turbo run scan --filter=@fubbik/db",
         "test": "turbo run test",
         "lint": "turbo run lint",
         "lint:fix": "oxlint --fix",
@@ -59,5 +60,8 @@
         "turbo": "^2.6.3",
         "typescript": "catalog:"
     },
-    "packageManager": "bun@1.3.9"
+    "packageManager": "bun@1.3.9",
+    "dependencies": {
+        "html-to-image": "^1.11.13"
+    }
 }

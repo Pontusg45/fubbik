@@ -2,6 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import "@xyflow/react/dist/style.css";
 import { Background, BackgroundVariant, Controls, MiniMap, ReactFlow, ReactFlowProvider, useEdgesState, useNodesState, useReactFlow, type Edge, type Node } from "@xyflow/react";
+import { toPng } from "html-to-image";
+import { Download } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useEffect, useMemo, useState } from "react";
 
@@ -564,6 +566,21 @@ function GraphViewInner() {
         return () => document.removeEventListener("keydown", handleKeyDown);
     }, [selectedChunkId, focusedNodeId, layoutEdges]);
 
+    function handleExportImage() {
+        const viewport = document.querySelector(".react-flow__viewport") as HTMLElement | null;
+        if (!viewport) return;
+        toPng(viewport, {
+            backgroundColor: isDark ? "#0f172a" : "#ffffff",
+            quality: 1,
+            pixelRatio: 2
+        }).then(dataUrl => {
+            const link = document.createElement("a");
+            link.download = "graph.png";
+            link.href = dataUrl;
+            link.click();
+        });
+    }
+
     if (isLoading) {
         return (
             <div className="flex h-[calc(100vh-4rem)] items-center justify-center">
@@ -719,6 +736,13 @@ function GraphViewInner() {
                         Reset layout
                     </button>
                 )}
+                <button
+                    onClick={handleExportImage}
+                    className="text-muted-foreground hover:text-foreground rounded-md border bg-background/80 px-2.5 py-1.5 text-xs backdrop-blur-sm"
+                    title="Export as PNG"
+                >
+                    <Download className="size-3.5" />
+                </button>
                 <span className="text-muted-foreground rounded-lg border bg-background/80 px-3 py-1.5 text-xs backdrop-blur-sm">
                     {nodes.length - 1} · {edges.length}
                 </span>
