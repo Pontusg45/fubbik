@@ -1,10 +1,21 @@
-const TYPE_COLORS: Record<string, { bg: string; border: string; label: string }> = {
+import { useTheme } from "next-themes";
+
+const TYPE_COLORS_DARK: Record<string, { bg: string; border: string; label: string }> = {
     note: { bg: "#1e293b", border: "#475569", label: "Note" },
     guide: { bg: "#1e1b4b", border: "#6366f1", label: "Guide" },
     reference: { bg: "#042f2e", border: "#14b8a6", label: "Reference" },
     document: { bg: "#172554", border: "#3b82f6", label: "Document" },
     schema: { bg: "#1c1917", border: "#f59e0b", label: "Schema" },
     checklist: { bg: "#1a2e05", border: "#84cc16", label: "Checklist" }
+};
+
+const TYPE_COLORS_LIGHT: Record<string, { bg: string; border: string; label: string }> = {
+    note: { bg: "#f1f5f9", border: "#94a3b8", label: "Note" },
+    guide: { bg: "#eef2ff", border: "#6366f1", label: "Guide" },
+    reference: { bg: "#f0fdfa", border: "#14b8a6", label: "Reference" },
+    document: { bg: "#eff6ff", border: "#3b82f6", label: "Document" },
+    schema: { bg: "#fefce8", border: "#f59e0b", label: "Schema" },
+    checklist: { bg: "#f7fee7", border: "#84cc16", label: "Checklist" }
 };
 
 const RELATION_COLORS: Record<string, { color: string; label: string }> = {
@@ -22,6 +33,8 @@ export function GraphLegend({ activeTypes, activeRelations }: {
     activeTypes: Set<string>;
     activeRelations: Set<string>;
 }) {
+    const { resolvedTheme } = useTheme();
+    const TYPE_COLORS = resolvedTheme === "light" ? TYPE_COLORS_LIGHT : TYPE_COLORS_DARK;
     const usedTypes = Object.entries(TYPE_COLORS).filter(([key]) => activeTypes.has(key));
     const usedRelations = Object.entries(RELATION_COLORS).filter(([key]) => activeRelations.has(key));
 

@@ -22,7 +22,7 @@ export function GraphNode({ data }: NodeProps) {
                 <Icon className="size-3.5 shrink-0 opacity-60" />
                 <span>{nodeData.label}</span>
                 {count > 0 && (
-                    <span className="flex size-4 items-center justify-center rounded-full bg-white/10 text-[9px] font-medium leading-none opacity-60">
+                    <span className="flex size-4 items-center justify-center rounded-full bg-current/10 text-[9px] font-medium leading-none opacity-60">
                         {count}
                     </span>
                 )}

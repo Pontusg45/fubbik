@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import "@xyflow/react/dist/style.css";
 import { Background, BackgroundVariant, Controls, MiniMap, ReactFlow, ReactFlowProvider, useEdgesState, useNodesState, useReactFlow, type Edge, type Node } from "@xyflow/react";
+import { useTheme } from "next-themes";
 import { useEffect, useMemo, useState } from "react";
 
 import { relationColor } from "@/features/chunks/relation-colors";
@@ -33,7 +34,7 @@ const MAIN_NODE_ID = "__main__";
 const EDGE_TYPES = { floating: FloatingEdge };
 const NODE_TYPES = { chunk: GraphNode };
 
-const TYPE_COLORS: Record<string, { bg: string; border: string }> = {
+const TYPE_COLORS_DARK: Record<string, { bg: string; border: string }> = {
     note: { bg: "#1e293b", border: "#475569" },
     guide: { bg: "#1e1b4b", border: "#6366f1" },
     reference: { bg: "#042f2e", border: "#14b8a6" },
@@ -42,7 +43,20 @@ const TYPE_COLORS: Record<string, { bg: string; border: string }> = {
     checklist: { bg: "#1a2e05", border: "#84cc16" }
 };
 
+const TYPE_COLORS_LIGHT: Record<string, { bg: string; border: string }> = {
+    note: { bg: "#f1f5f9", border: "#94a3b8" },
+    guide: { bg: "#eef2ff", border: "#6366f1" },
+    reference: { bg: "#f0fdfa", border: "#14b8a6" },
+    document: { bg: "#eff6ff", border: "#3b82f6" },
+    schema: { bg: "#fefce8", border: "#f59e0b" },
+    checklist: { bg: "#f7fee7", border: "#84cc16" }
+};
+
 function GraphViewInner() {
+    const { resolvedTheme } = useTheme();
+    const isDark = resolvedTheme !== "light";
+    const TYPE_COLORS = isDark ? TYPE_COLORS_DARK : TYPE_COLORS_LIGHT;
+
     const [selectedChunkId, setSelectedChunkId] = useState<string | null>(null);
     const [panelWidth, setPanelWidth] = useState(380);
     const { setCenter, getZoom } = useReactFlow();
@@ -154,11 +168,11 @@ function GraphViewInner() {
                 position: { x: 0, y: 0 },
                 style: {
                     cursor: "default",
-                    background: "#0f172a",
-                    borderColor: "#e2e8f0",
+                    background: isDark ? "#0f172a" : "#ffffff",
+                    borderColor: isDark ? "#e2e8f0" : "#1e293b",
                     borderWidth: 2,
                     borderRadius: 12,
-                    color: "#f8fafc",
+                    color: isDark ? "#f8fafc" : "#0f172a",
                     fontSize: 14,
                     fontWeight: 600,
                     padding: "10px 18px"
@@ -185,7 +199,7 @@ function GraphViewInner() {
                             borderColor: typeColor!.border,
                             borderWidth: isParent ? 2 : collapsedParents.has(c.id) ? 2.5 : 1.5,
                             borderRadius: isParent ? 12 : 10,
-                            color: isChild ? "#cbd5e1" : "#e2e8f0",
+                            color: isDark ? (isChild ? "#cbd5e1" : "#e2e8f0") : (isChild ? "#475569" : "#1e293b"),
                             fontSize: isParent ? 13 : 12,
                             fontWeight: isParent ? 600 : 500,
                             padding: isParent ? "10px 16px" : "8px 14px",
@@ -224,7 +238,7 @@ function GraphViewInner() {
                     type: "floating",
                     data: { directed: false },
                     animated: false,
-                    style: { stroke: "#334155", strokeWidth: 1, strokeDasharray: "4 4" }
+                    style: { stroke: isDark ? "#334155" : "#cbd5e1", strokeWidth: 1, strokeDasharray: "4 4" }
                 });
             }
         }
@@ -372,7 +386,7 @@ function GraphViewInner() {
         });
 
         return { layoutNodes, layoutEdges: rawEdges };
-    }, [data, filterTypes, filterRelations, collapsedParents, draggedPositions]);
+    }, [data, filterTypes, filterRelations, collapsedParents, draggedPositions, isDark, TYPE_COLORS]);
 
     const focusNeighbors = useMemo(() => {
         if (!focusedNodeId) return null;
@@ -659,7 +673,7 @@ function GraphViewInner() {
                                       ...e,
                                       label: (e.data as { relation?: string })?.relation,
                                       labelStyle: { fill: (e.style as Record<string, string>)?.stroke, fontSize: 10, fontWeight: 500 },
-                                      labelBgStyle: { fill: "rgba(0,0,0,0.6)", fillOpacity: 0.8 }
+                                      labelBgStyle: { fill: isDark ? "rgba(0,0,0,0.6)" : "rgba(255,255,255,0.8)", fillOpacity: 0.8 }
                                   }
                                 : e
                         )
@@ -673,18 +687,18 @@ function GraphViewInner() {
                     );
                 }}
                 fitView
-                colorMode="dark"
+                colorMode={isDark ? "dark" : "light"}
             >
-                <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="rgba(148,163,184,0.15)" />
+                <Background variant={BackgroundVariant.Dots} gap={20} size={1} color={isDark ? "rgba(148,163,184,0.15)" : "rgba(100,116,139,0.2)"} />
                 <Controls />
                 <MiniMap
                     nodeColor={node => {
-                        if (node.id === MAIN_NODE_ID) return "#e2e8f0";
+                        if (node.id === MAIN_NODE_ID) return isDark ? "#e2e8f0" : "#1e293b";
                         if (node.id === selectedChunkId) return "#f472b6";
                         const style = node.style as Record<string, string> | undefined;
                         return style?.borderColor ?? "#475569";
                     }}
-                    maskColor="rgba(0, 0, 0, 0.7)"
+                    maskColor={isDark ? "rgba(0, 0, 0, 0.7)" : "rgba(255, 255, 255, 0.7)"}
                     pannable
                     zoomable
                 />
@@ -722,7 +736,7 @@ function GraphViewInner() {
                 </span>
             </div>
 
-            {/* Bottom-left: Legend */}
+            {/* Top-center: Legend */}
             <GraphLegend activeTypes={activeTypes} activeRelations={activeRelations} />
 
             {/* Tooltip */}
