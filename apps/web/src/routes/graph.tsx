@@ -523,6 +523,41 @@ function GraphViewInner() {
         setCenter(x, y, { duration: 400 });
     }, [selectedChunkId]);
 
+    useEffect(() => {
+        function handleKeyDown(e: KeyboardEvent) {
+            if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+
+            if (e.key === "Escape") {
+                if (selectedChunkId) {
+                    setSelectedChunkId(null);
+                } else if (focusedNodeId) {
+                    setFocusedNodeId(null);
+                }
+                return;
+            }
+
+            if (e.key === "Tab" && selectedChunkId) {
+                e.preventDefault();
+                const connectedIds: string[] = [];
+                for (const edge of layoutEdges) {
+                    if (edge.source === selectedChunkId && edge.target !== MAIN_NODE_ID) connectedIds.push(edge.target);
+                    if (edge.target === selectedChunkId && edge.source !== MAIN_NODE_ID) connectedIds.push(edge.source);
+                }
+                if (connectedIds.length === 0) return;
+                const currentIdx = connectedIds.indexOf(selectedChunkId);
+                const nextIdx = e.shiftKey
+                    ? (currentIdx - 1 + connectedIds.length) % connectedIds.length
+                    : (currentIdx + 1) % connectedIds.length;
+                const nextId = connectedIds[nextIdx]!;
+                setSelectedChunkId(nextId);
+                setFocusedNodeId(nextId);
+            }
+        }
+
+        document.addEventListener("keydown", handleKeyDown);
+        return () => document.removeEventListener("keydown", handleKeyDown);
+    }, [selectedChunkId, focusedNodeId, layoutEdges]);
+
     if (isLoading) {
         return (
             <div className="flex h-[calc(100vh-4rem)] items-center justify-center">
