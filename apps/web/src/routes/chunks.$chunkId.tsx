@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, Calendar, Clock, Edit, Hash, Network, Trash2 } from "lucide-react";
+import Markdown from "react-markdown";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
@@ -148,29 +149,7 @@ function ChunkDetail() {
             <Separator className="my-6" />
 
             <div className="prose prose-invert prose-sm max-w-none">
-                {chunk.content.split("\n\n").map((block, i) => {
-                    if (block.startsWith("## ")) {
-                        return (
-                            <h2 key={i} className="mt-6 mb-2 text-base font-semibold">
-                                {block.replace("## ", "")}
-                            </h2>
-                        );
-                    }
-                    if (block.startsWith("- ")) {
-                        return (
-                            <ul key={i} className="text-muted-foreground list-disc space-y-1 pl-5 text-sm">
-                                {block.split("\n").map((line, j) => (
-                                    <li key={j}>{line.replace(/^- /, "")}</li>
-                                ))}
-                            </ul>
-                        );
-                    }
-                    return (
-                        <p key={i} className="text-muted-foreground text-sm leading-relaxed">
-                            {block}
-                        </p>
-                    );
-                })}
+                <Markdown>{chunk.content}</Markdown>
             </div>
 
             <Separator className="my-6" />
