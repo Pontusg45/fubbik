@@ -1,8 +1,7 @@
-import Dagre from "@dagrejs/dagre";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import "@xyflow/react/dist/style.css";
-import { Background, Controls, MiniMap, ReactFlow, useEdgesState, useNodesState, type Edge, type Node } from "@xyflow/react";
+import { Background, BackgroundVariant, Controls, MiniMap, ReactFlow, useEdgesState, useNodesState, type Edge, type Node } from "@xyflow/react";
 import { useEffect, useMemo, useState } from "react";
 
 import { relationColor } from "@/features/chunks/relation-colors";
@@ -30,13 +29,13 @@ const MAIN_NODE_ID = "__main__";
 
 const EDGE_TYPES = { floating: FloatingEdge };
 
-const TYPE_COLORS: Record<string, { bg: string; border: string }> = {
-    note: { bg: "#1e293b", border: "#475569" },
-    guide: { bg: "#1e1b4b", border: "#6366f1" },
-    reference: { bg: "#042f2e", border: "#14b8a6" },
-    document: { bg: "#172554", border: "#3b82f6" },
-    schema: { bg: "#1c1917", border: "#f59e0b" },
-    checklist: { bg: "#1a2e05", border: "#84cc16" }
+const TYPE_COLORS: Record<string, { bg: string; bgGrad: string; border: string; glow: string }> = {
+    note: { bg: "#1e293b", bgGrad: "#253347", border: "#475569", glow: "rgba(71,85,105,0.3)" },
+    guide: { bg: "#1e1b4b", bgGrad: "#272358", border: "#6366f1", glow: "rgba(99,102,241,0.35)" },
+    reference: { bg: "#042f2e", bgGrad: "#0a3d3b", border: "#14b8a6", glow: "rgba(20,184,166,0.3)" },
+    document: { bg: "#172554", bgGrad: "#1e3268", border: "#3b82f6", glow: "rgba(59,130,246,0.35)" },
+    schema: { bg: "#1c1917", bgGrad: "#2a2520", border: "#f59e0b", glow: "rgba(245,158,11,0.3)" },
+    checklist: { bg: "#1a2e05", bgGrad: "#243c0a", border: "#84cc16", glow: "rgba(132,204,22,0.3)" }
 };
 
 function GraphView() {
@@ -60,9 +59,6 @@ function GraphView() {
 
     // Collapsible clusters
     const [collapsedParents, setCollapsedParents] = useState<Set<string>>(new Set());
-
-    // Layout direction
-    const [layoutDirection, setLayoutDirection] = useState<"TB" | "LR">("TB");
 
     // Active types/relations for legend
     const activeTypes = useMemo(() => new Set((data?.chunks ?? []).map(c => c.type)), [data]);
@@ -125,9 +121,6 @@ function GraphView() {
         // Filter connections to only visible chunks
         connections = connections.filter(c => visibleChunkIds.has(c.sourceId) && visibleChunkIds.has(c.targetId));
 
-        const g = new Dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
-        g.setGraph({ rankdir: layoutDirection, nodesep: 80, ranksep: 100 });
-
         // Connection counts for node sizing
         const connectionCounts = new Map<string, number>();
         for (const conn of connections) {
@@ -142,14 +135,15 @@ function GraphView() {
                 position: { x: 0, y: 0 },
                 style: {
                     cursor: "default",
-                    background: "#0f172a",
+                    background: "linear-gradient(145deg, #1a2744, #0c1425)",
                     borderColor: "#e2e8f0",
                     borderWidth: 2,
                     borderRadius: 12,
                     color: "#f8fafc",
                     fontSize: 14,
                     fontWeight: 600,
-                    padding: "10px 16px"
+                    padding: "10px 18px",
+                    boxShadow: "0 4px 20px rgba(226,232,240,0.15), 0 0 40px rgba(226,232,240,0.05)"
                 }
             },
             ...chunks
@@ -166,14 +160,17 @@ function GraphView() {
                         position: { x: 0, y: 0 },
                         style: {
                             cursor: "pointer",
-                            background: typeColor!.bg,
+                            background: `linear-gradient(145deg, ${typeColor!.bgGrad}, ${typeColor!.bg})`,
                             borderColor: typeColor!.border,
                             borderWidth: collapsedParents.has(c.id) ? 2.5 : 1.5,
-                            borderRadius: 8,
+                            borderRadius: 10,
                             color: "#e2e8f0",
                             fontSize: 12,
-                            padding: "8px 12px",
-                            minWidth: `${Math.round(180 * scale)}px`
+                            fontWeight: 500,
+                            padding: "8px 14px",
+                            minWidth: `${Math.round(180 * scale)}px`,
+                            boxShadow: `0 2px 12px ${typeColor!.glow}, inset 0 1px 0 rgba(255,255,255,0.06)`,
+                            letterSpacing: "0.01em"
                         }
                     };
                 })
@@ -192,7 +189,7 @@ function GraphView() {
             };
         });
 
-        // Find chunks with no connections and link them to the main node
+        // Link orphan nodes to the main node
         const connectedIds = new Set<string>();
         for (const conn of connections) {
             connectedIds.add(conn.sourceId);
@@ -211,24 +208,96 @@ function GraphView() {
             }
         }
 
-        for (const node of rawNodes) {
-            const count = connectionCounts.get(node.id) ?? 0;
-            const scale = Math.min(1 + count * 0.05, 1.5);
-            g.setNode(node.id, { width: (node.id === MAIN_NODE_ID ? 160 : 200) * scale, height: 50 });
-        }
-        for (const edge of rawEdges) {
-            g.setEdge(edge.source, edge.target);
+        // --- Force-directed layout ---
+        const nodeCount = rawNodes.length;
+        const spacing = Math.max(250, Math.sqrt(nodeCount) * 120);
+
+        // Initialize positions in a circle to seed the simulation
+        const pos = new Map<string, { x: number; y: number; vx: number; vy: number }>();
+        for (let i = 0; i < rawNodes.length; i++) {
+            const id = rawNodes[i]!.id;
+            if (id === MAIN_NODE_ID) {
+                pos.set(id, { x: 0, y: 0, vx: 0, vy: 0 });
+            } else {
+                const angle = (2 * Math.PI * i) / rawNodes.length;
+                const r = spacing * 0.8;
+                pos.set(id, { x: Math.cos(angle) * r, y: Math.sin(angle) * r, vx: 0, vy: 0 });
+            }
         }
 
-        Dagre.layout(g);
+        // Build edge index for spring forces
+        const edgePairs: [string, string][] = rawEdges.map(e => [e.source, e.target]);
+
+        const REPULSION = 80000;
+        const SPRING_K = 0.003;
+        const SPRING_LEN = 280;
+        const CENTER_PULL = 0.01;
+        const DAMPING = 0.85;
+        const ITERATIONS = 200;
+
+        for (let iter = 0; iter < ITERATIONS; iter++) {
+            const temp = 1 - iter / ITERATIONS; // cooling
+
+            // Repulsion between all pairs
+            const ids = [...pos.keys()];
+            for (let i = 0; i < ids.length; i++) {
+                const a = pos.get(ids[i]!)!;
+                for (let j = i + 1; j < ids.length; j++) {
+                    const b = pos.get(ids[j]!)!;
+                    let dx = a.x - b.x;
+                    let dy = a.y - b.y;
+                    const distSq = dx * dx + dy * dy + 1;
+                    const force = (REPULSION * temp) / distSq;
+                    const dist = Math.sqrt(distSq);
+                    dx /= dist;
+                    dy /= dist;
+                    a.vx += dx * force;
+                    a.vy += dy * force;
+                    b.vx -= dx * force;
+                    b.vy -= dy * force;
+                }
+            }
+
+            // Spring attraction along edges
+            for (const [srcId, tgtId] of edgePairs) {
+                const a = pos.get(srcId);
+                const b = pos.get(tgtId);
+                if (!a || !b) continue;
+                const dx = b.x - a.x;
+                const dy = b.y - a.y;
+                const dist = Math.sqrt(dx * dx + dy * dy) + 1;
+                const force = SPRING_K * (dist - SPRING_LEN) * temp;
+                const fx = (dx / dist) * force;
+                const fy = (dy / dist) * force;
+                a.vx += fx;
+                a.vy += fy;
+                b.vx -= fx;
+                b.vy -= fy;
+            }
+
+            // Center gravity
+            for (const p of pos.values()) {
+                p.vx -= p.x * CENTER_PULL * temp;
+                p.vy -= p.y * CENTER_PULL * temp;
+            }
+
+            // Apply velocities
+            for (const [id, p] of pos) {
+                if (id === MAIN_NODE_ID) { p.vx = 0; p.vy = 0; continue; } // pin center
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vx *= DAMPING;
+                p.vy *= DAMPING;
+            }
+        }
 
         const layoutNodes = rawNodes.map(node => {
-            const pos = g.node(node.id);
-            return { ...node, position: { x: pos.x - 100, y: pos.y - 25 } };
+            const p = pos.get(node.id) ?? { x: 0, y: 0 };
+            return { ...node, position: { x: p.x - 100, y: p.y - 25 } };
         });
 
         return { layoutNodes, layoutEdges: rawEdges };
-    }, [data, filterTypes, filterRelations, collapsedParents, layoutDirection]);
+    }, [data, filterTypes, filterRelations, collapsedParents]);
 
     const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
     const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
@@ -351,7 +420,7 @@ function GraphView() {
                 fitView
                 colorMode="dark"
             >
-                <Background />
+                <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="rgba(148,163,184,0.15)" />
                 <Controls />
                 <MiniMap
                     nodeColor={node => {
@@ -375,7 +444,7 @@ function GraphView() {
                 onToggleRelation={toggleRelation}
             />
 
-            {/* Top-right: Search + Stats + Layout */}
+            {/* Top-right: Search + Stats */}
             <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
                 <input
                     type="text"
@@ -384,20 +453,6 @@ function GraphView() {
                     placeholder="Search nodes..."
                     className="bg-background/80 focus:ring-ring w-36 rounded-md border px-2.5 py-1.5 text-xs backdrop-blur-sm focus:ring-2 focus:outline-none"
                 />
-                <div className="flex gap-1 rounded-md border bg-background/80 backdrop-blur-sm">
-                    <button
-                        onClick={() => setLayoutDirection("TB")}
-                        className={`rounded-l-md px-2 py-1.5 text-xs transition-colors ${layoutDirection === "TB" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
-                    >
-                        ↓
-                    </button>
-                    <button
-                        onClick={() => setLayoutDirection("LR")}
-                        className={`rounded-r-md px-2 py-1.5 text-xs transition-colors ${layoutDirection === "LR" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
-                    >
-                        →
-                    </button>
-                </div>
                 <span className="text-muted-foreground rounded-lg border bg-background/80 px-3 py-1.5 text-xs backdrop-blur-sm">
                     {nodes.length - 1} · {edges.length}
                 </span>

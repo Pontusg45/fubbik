@@ -43,8 +43,23 @@ export function FloatingEdge({ id, source, target, style, markerEnd, label, labe
         targetY: ti.y
     });
 
+    const strokeColor = (style as Record<string, string>)?.stroke ?? "#475569";
+    const filterId = `glow-${id}`;
+
     return (
         <>
+            <defs>
+                <filter id={filterId} x="-20%" y="-20%" width="140%" height="140%">
+                    <feGaussianBlur in="SourceGraphic" stdDeviation="2" result="blur" />
+                    <feMerge>
+                        <feMergeNode in="blur" />
+                        <feMergeNode in="SourceGraphic" />
+                    </feMerge>
+                </filter>
+            </defs>
+            {/* Glow layer */}
+            <path d={path} style={{ stroke: strokeColor, strokeWidth: 6, strokeOpacity: 0.12, fill: "none" }} />
+            {/* Main edge */}
             <path id={id} className="react-flow__edge-path" d={path} style={style} markerEnd={markerEnd as string} />
             {label && (
                 <>
@@ -53,7 +68,7 @@ export function FloatingEdge({ id, source, target, style, markerEnd, label, labe
                         y={labelY - 10}
                         width={60}
                         height={20}
-                        rx={4}
+                        rx={6}
                         style={labelBgStyle as React.CSSProperties}
                     />
                     <text
