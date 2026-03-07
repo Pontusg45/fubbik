@@ -51,7 +51,7 @@ function ChunksList() {
                         query: {
                             type,
                             search: q,
-                            sort,
+                            sort: sort as "newest" | "oldest" | "alpha" | "updated" | undefined,
                             limit: String(limit),
                             offset: String(offset)
                         }
