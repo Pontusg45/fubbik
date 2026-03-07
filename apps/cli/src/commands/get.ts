@@ -1,33 +1,27 @@
 import { Command } from "commander";
 
 import { getChunk } from "../lib/store";
+import { output, outputError, outputQuiet } from "../lib/output";
 
 export const getCommand = new Command("get")
     .description("Get a chunk by ID")
     .argument("<id>", "chunk ID")
-    .option("--json", "output as JSON")
-    .action((id: string, opts: { json?: boolean }) => {
+    .action((id: string, _opts: unknown, cmd: Command) => {
         const chunk = getChunk(id);
         if (!chunk) {
-            console.error(`✗ Chunk "${id}" not found.`);
+            outputError(`✗ Chunk "${id}" not found.`);
             process.exit(1);
         }
 
-        if (opts.json) {
-            console.log(JSON.stringify(chunk, null, 2));
-            return;
-        }
-
-        console.log(`${chunk.title}`);
-        console.log(`  ID: ${chunk.id}`);
-        console.log(`  Type: ${chunk.type}`);
-        if (chunk.tags.length > 0) {
-            console.log(`  Tags: ${chunk.tags.join(", ")}`);
-        }
-        console.log(`  Created: ${chunk.createdAt}`);
-        console.log(`  Updated: ${chunk.updatedAt}`);
-        if (chunk.content) {
-            console.log();
-            console.log(chunk.content);
-        }
+        outputQuiet(cmd, chunk.id);
+        const lines = [
+            chunk.title,
+            `  ID: ${chunk.id}`,
+            `  Type: ${chunk.type}`,
+            ...(chunk.tags.length > 0 ? [`  Tags: ${chunk.tags.join(", ")}`] : []),
+            `  Created: ${chunk.createdAt}`,
+            `  Updated: ${chunk.updatedAt}`,
+            ...(chunk.content ? ["", chunk.content] : [])
+        ];
+        output(cmd, chunk, lines.join("\n"));
     });

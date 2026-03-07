@@ -12,7 +12,12 @@ import { updateCommand } from "./commands/update";
 
 const program = new Command();
 
-program.name("fubbik").description("A local-first knowledge framework for humans and machines").version("0.0.1");
+program
+    .name("fubbik")
+    .description("A local-first knowledge framework for humans and machines")
+    .version("0.0.1")
+    .option("--json", "output as JSON (machine-readable)")
+    .option("-q, --quiet", "minimal output (just IDs/values)");
 
 program.addCommand(initCommand);
 program.addCommand(healthCommand);

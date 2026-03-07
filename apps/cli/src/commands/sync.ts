@@ -1,5 +1,6 @@
 import { Command } from "commander";
 import { readStore, getServerUrl, setServerUrl, updateLastSync, addChunk } from "../lib/store";
+import { output, outputError } from "../lib/output";
 
 export const syncCommand = new Command("sync")
     .description("Sync local chunks with a fubbik server")
@@ -7,14 +8,14 @@ export const syncCommand = new Command("sync")
     .option("--push", "Only push local chunks to server")
     .option("--pull", "Only pull server chunks to local")
     .option("--token <token>", "Auth token for the server")
-    .action(async (options: { url?: string; push?: boolean; pull?: boolean; token?: string }) => {
+    .action(async (options: { url?: string; push?: boolean; pull?: boolean; token?: string }, cmd: Command) => {
         try {
             const store = readStore();
 
             // Resolve server URL
             const serverUrl = options.url ?? getServerUrl();
             if (!serverUrl) {
-                console.error("No server URL configured. Use --url or run sync once with --url to save it.");
+                outputError("No server URL configured. Use --url or run sync once with --url to save it.");
                 process.exit(1);
             }
 
@@ -34,7 +35,7 @@ export const syncCommand = new Command("sync")
             console.log(`Connecting to ${serverUrl}...`);
             const response = await fetch(`${serverUrl}/api/chunks?limit=1000`, { headers });
             if (!response.ok) {
-                console.error(`Server returned ${response.status}: ${await response.text()}`);
+                outputError(`Server returned ${response.status}: ${await response.text()}`);
                 process.exit(1);
             }
             const serverData = (await response.json()) as { chunks: Array<{ id: string; title: string; content: string; type: string; tags: string[]; createdAt: string; updatedAt: string }> };
@@ -67,7 +68,7 @@ export const syncCommand = new Command("sync")
                         })
                     });
                     if (!importResponse.ok) {
-                        console.error(`Failed to push chunks: ${importResponse.status}`);
+                        outputError(`Failed to push chunks: ${importResponse.status}`);
                     } else {
                         pushed = localOnly.length;
                         console.log(`Pushed ${pushed} chunks`);
@@ -94,9 +95,10 @@ export const syncCommand = new Command("sync")
             }
 
             updateLastSync();
-            console.log(`Sync complete. Pushed: ${pushed}, Pulled: ${pulled}`);
+            const summary = { pushed, pulled, localCount: store.chunks.length, serverCount: serverChunks.length };
+            output(cmd, summary, `Sync complete. Pushed: ${pushed}, Pulled: ${pulled}`);
         } catch (err) {
-            console.error("Sync failed:", (err as Error).message);
+            outputError("Sync failed: " + (err as Error).message);
             process.exit(1);
         }
     });
