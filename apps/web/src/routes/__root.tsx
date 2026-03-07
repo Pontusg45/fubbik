@@ -58,6 +58,12 @@ function RootDocument() {
                                     <FubbikLogo className="size-6" />
                                     <span className="font-bold">fubbik</span>
                                 </Link>
+                                <nav className="hidden items-center gap-1 md:flex">
+                                    <Link to="/dashboard" className="rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground [&.active]:text-foreground">Dashboard</Link>
+                                    <Link to="/chunks" search={{ page: 1, type: undefined, q: undefined }} className="rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground [&.active]:text-foreground">Chunks</Link>
+                                    <Link to="/graph" className="rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground [&.active]:text-foreground">Graph</Link>
+                                    <Link to="/tags" className="rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground [&.active]:text-foreground">Tags</Link>
+                                </nav>
                                 <div className="flex items-center gap-2">
                                     <MobileNav />
                                     <ChunkSearch />
