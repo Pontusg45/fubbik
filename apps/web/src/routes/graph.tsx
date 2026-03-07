@@ -57,6 +57,9 @@ function GraphView() {
     // Search state
     const [searchQuery, setSearchQuery] = useState("");
 
+    // Focus mode state
+    const [focusedNodeId, setFocusedNodeId] = useState<string | null>(null);
+
     // Collapsible clusters
     const [collapsedParents, setCollapsedParents] = useState<Set<string>>(new Set());
 
@@ -359,6 +362,16 @@ function GraphView() {
         return { layoutNodes, layoutEdges: rawEdges };
     }, [data, filterTypes, filterRelations, collapsedParents]);
 
+    const focusNeighbors = useMemo(() => {
+        if (!focusedNodeId) return null;
+        const neighbors = new Set<string>([focusedNodeId]);
+        for (const edge of layoutEdges) {
+            if (edge.source === focusedNodeId) neighbors.add(edge.target);
+            if (edge.target === focusedNodeId) neighbors.add(edge.source);
+        }
+        return neighbors;
+    }, [focusedNodeId, layoutEdges]);
+
     const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
     const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
     const [hoveredNode, setHoveredNode] = useState<{ id: string; x: number; y: number } | null>(null);
@@ -409,18 +422,43 @@ function GraphView() {
         );
     }, [searchQuery, layoutNodes, layoutEdges, setNodes, setEdges]);
 
-    // Sync layout when search is empty
+    // Apply focus dimming
     useEffect(() => {
-        if (!searchQuery.trim()) {
+        if (!focusNeighbors || searchQuery.trim()) return;
+        setNodes(
+            layoutNodes.map(node => ({
+                ...node,
+                style: {
+                    ...(node.style as Record<string, unknown>),
+                    opacity: focusNeighbors.has(node.id) ? 1 : 0.12,
+                    transition: "opacity 0.2s"
+                }
+            }))
+        );
+        setEdges(
+            layoutEdges.map(edge => ({
+                ...edge,
+                style: {
+                    ...(edge.style as Record<string, unknown>),
+                    opacity: focusNeighbors.has(edge.source) && focusNeighbors.has(edge.target) ? 1 : 0.06,
+                    transition: "opacity 0.2s"
+                }
+            }))
+        );
+    }, [focusNeighbors, layoutNodes, layoutEdges, setNodes, setEdges, searchQuery]);
+
+    // Sync layout when search is empty and no focus
+    useEffect(() => {
+        if (!searchQuery.trim() && !focusedNodeId) {
             setNodes(layoutNodes);
         }
-    }, [layoutNodes, setNodes, searchQuery]);
+    }, [layoutNodes, setNodes, searchQuery, focusedNodeId]);
 
     useEffect(() => {
-        if (!searchQuery.trim()) {
+        if (!searchQuery.trim() && !focusedNodeId) {
             setEdges(layoutEdges);
         }
-    }, [layoutEdges, setEdges, searchQuery]);
+    }, [layoutEdges, setEdges, searchQuery, focusedNodeId]);
 
     if (isLoading) {
         return (
@@ -440,8 +478,13 @@ function GraphView() {
                 onEdgesChange={onEdgesChange}
                 onNodeClick={(_, node) => {
                     if (node.id === MAIN_NODE_ID) return;
-                    navigate({ to: "/chunks/$chunkId", params: { chunkId: node.id } });
+                    if (focusedNodeId === node.id) {
+                        navigate({ to: "/chunks/$chunkId", params: { chunkId: node.id } });
+                    } else {
+                        setFocusedNodeId(node.id);
+                    }
                 }}
+                onPaneClick={() => setFocusedNodeId(null)}
                 onNodeDoubleClick={(_, node) => {
                     if (node.id === MAIN_NODE_ID) return;
                     setCollapsedParents(prev => {
