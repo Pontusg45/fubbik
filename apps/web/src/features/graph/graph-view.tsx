@@ -1,11 +1,13 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import "@xyflow/react/dist/style.css";
-import { Background, BackgroundVariant, Controls, MiniMap, ReactFlow, ReactFlowProvider, useEdgesState, useNodesState, useReactFlow, type Edge, type Node } from "@xyflow/react";
+import { Background, BackgroundVariant, ConnectionMode, Controls, MiniMap, ReactFlow, ReactFlowProvider, useEdgesState, useNodesState, useReactFlow, type Connection, type Edge, type Node } from "@xyflow/react";
 import { toPng } from "html-to-image";
 import { Download } from "lucide-react";
 import { useTheme } from "next-themes";
-import { createContext, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, createContext, useEffect, useMemo, useRef, useState } from "react";
+
+import { Dialog, DialogPopup, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { relationColor } from "@/features/chunks/relation-colors";
@@ -78,6 +80,29 @@ function GraphViewInner() {
     const [panelWidth, setPanelWidth] = useState(380);
     const { setCenter, getZoom } = useReactFlow();
     const navigate = useNavigate();
+    const queryClient = useQueryClient();
+
+    // Edge creation state
+    const [pendingConnection, setPendingConnection] = useState<{ source: string; target: string } | null>(null);
+
+    const RELATION_TYPES = ["related_to", "part_of", "depends_on", "extends", "references", "supports", "contradicts", "alternative_to"] as const;
+
+    const createConnectionMutation = useMutation({
+        mutationFn: async ({ sourceId, targetId, relation }: { sourceId: string; targetId: string; relation: string }) => {
+            const { error } = await api.api.connections.post({ sourceId, targetId, relation });
+            if (error) throw new Error("Failed to create connection");
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["graph"] });
+            setPendingConnection(null);
+        }
+    });
+
+    const onConnect = useCallback((connection: Connection) => {
+        if (!connection.source || !connection.target) return;
+        if (connection.source === MAIN_NODE_ID || connection.target === MAIN_NODE_ID) return;
+        setPendingConnection({ source: connection.source, target: connection.target });
+    }, []);
 
     const [isMobile, setIsMobile] = useState(false);
 
@@ -728,7 +753,7 @@ function GraphViewInner() {
                     </SheetContent>
                 </Sheet>
             )}
-            <div className="relative flex-1 [&_.react-flow__handle]:invisible [&_.react-flow__node]:transition-[transform] [&_.react-flow__node]:duration-500 [&_.react-flow__node]:ease-out">
+            <div className="relative flex-1 [&_.react-flow__handle]:invisible [&_.react-flow__node:hover_.react-flow__handle]:!visible [&_.react-flow__node]:transition-[transform] [&_.react-flow__node]:duration-500 [&_.react-flow__node]:ease-out">
             {showLayoutSpinner && (
                 <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/60 backdrop-blur-sm">
                     <div className="flex items-center gap-2 text-muted-foreground">
@@ -745,6 +770,8 @@ function GraphViewInner() {
                 edgeTypes={EDGE_TYPES}
                 onNodesChange={onNodesChange}
                 onEdgesChange={onEdgesChange}
+                onConnect={onConnect}
+                connectionMode={ConnectionMode.Loose}
                 onNodeClick={(event, node) => {
                     if (node.id === MAIN_NODE_ID) return;
                     if (event.altKey) {
@@ -937,6 +964,40 @@ function GraphViewInner() {
                     </div>
                 );
             })()}
+            {/* Edge creation dialog */}
+            <Dialog open={!!pendingConnection} onOpenChange={(open) => { if (!open) setPendingConnection(null); }}>
+                <DialogPopup className="max-w-sm">
+                    <DialogHeader>
+                        <DialogTitle>Create Connection</DialogTitle>
+                        <p className="text-sm text-muted-foreground">
+                            <span className="font-medium text-foreground">{pendingConnection ? chunkMap.get(pendingConnection.source)?.title ?? pendingConnection.source : ""}</span>
+                            {" \u2192 "}
+                            <span className="font-medium text-foreground">{pendingConnection ? chunkMap.get(pendingConnection.target)?.title ?? pendingConnection.target : ""}</span>
+                        </p>
+                    </DialogHeader>
+                    <div className="grid grid-cols-2 gap-2 px-6 pb-6">
+                        {RELATION_TYPES.map(rel => (
+                            <button
+                                key={rel}
+                                disabled={createConnectionMutation.isPending}
+                                onClick={() => {
+                                    if (!pendingConnection) return;
+                                    createConnectionMutation.mutate({
+                                        sourceId: pendingConnection.source,
+                                        targetId: pendingConnection.target,
+                                        relation: rel
+                                    });
+                                }}
+                                className="rounded-md border-2 px-3 py-2 text-sm font-medium transition-colors hover:bg-muted disabled:opacity-50"
+                                style={{ borderColor: relationColor(rel) }}
+                            >
+                                {rel.replace(/_/g, " ")}
+                            </button>
+                        ))}
+                    </div>
+                </DialogPopup>
+            </Dialog>
+
             {/* Path info bar */}
             {(pathStartId || pathEndId) && (
                 <div className="absolute bottom-6 left-1/2 z-10 -translate-x-1/2">

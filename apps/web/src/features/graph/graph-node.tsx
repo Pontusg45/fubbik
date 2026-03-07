@@ -24,12 +24,12 @@ export function GraphNode({ data }: NodeProps) {
     if (zoom < 0.5) {
         return (
             <>
-                <Handle type="target" position={Position.Top} style={{ visibility: "hidden" }} />
+                <Handle type="target" position={Position.Top} className="!bg-muted-foreground/50 !border-muted-foreground/50 !size-2" />
                 <div className="flex items-center gap-1">
                     <Icon className="size-3 shrink-0 opacity-60" />
                     <span className="max-w-[80px] truncate text-[10px]">{nodeData.label}</span>
                 </div>
-                <Handle type="source" position={Position.Bottom} style={{ visibility: "hidden" }} />
+                <Handle type="source" position={Position.Bottom} className="!bg-muted-foreground/50 !border-muted-foreground/50 !size-2" />
             </>
         );
     }
@@ -37,7 +37,7 @@ export function GraphNode({ data }: NodeProps) {
     // Normal + high zoom mode
     return (
         <>
-            <Handle type="target" position={Position.Top} style={{ visibility: "hidden" }} />
+            <Handle type="target" position={Position.Top} className="!bg-muted-foreground/50 !border-muted-foreground/50 !size-2" />
             <div className="flex flex-col gap-1">
                 <div className="flex items-center gap-2">
                     <Icon className={`${scale > 1.3 ? "size-4" : "size-3.5"} shrink-0 opacity-60`} />
@@ -58,7 +58,7 @@ export function GraphNode({ data }: NodeProps) {
                     </div>
                 )}
             </div>
-            <Handle type="source" position={Position.Bottom} style={{ visibility: "hidden" }} />
+            <Handle type="source" position={Position.Bottom} className="!bg-muted-foreground/50 !border-muted-foreground/50 !size-2" />
         </>
     );
 }
