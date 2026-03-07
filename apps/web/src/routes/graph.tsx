@@ -8,6 +8,7 @@ import { relationColor } from "@/features/chunks/relation-colors";
 import { FloatingEdge } from "@/features/graph/floating-edge";
 import { GraphFilters } from "@/features/graph/graph-filters";
 import { GraphLegend } from "@/features/graph/graph-legend";
+import { GraphNode } from "@/features/graph/graph-node";
 import { getUser } from "@/functions/get-user";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
@@ -28,6 +29,7 @@ export const Route = createFileRoute("/graph")({
 const MAIN_NODE_ID = "__main__";
 
 const EDGE_TYPES = { floating: FloatingEdge };
+const NODE_TYPES = { chunk: GraphNode };
 
 const TYPE_COLORS: Record<string, { bg: string; bgGrad: string; border: string; glow: string }> = {
     note: { bg: "#1e293b", bgGrad: "#253347", border: "#475569", glow: "rgba(71,85,105,0.3)" },
@@ -162,7 +164,8 @@ function GraphView() {
                     const label = childCount > 0 ? `${c.title} (${childCount})` : c.title;
                     return {
                         id: c.id,
-                        data: { label },
+                        type: "chunk",
+                        data: { label, type: c.type },
                         position: { x: 0, y: 0 },
                         style: {
                             cursor: "pointer",
@@ -478,6 +481,7 @@ function GraphView() {
             <ReactFlow
                 nodes={nodes}
                 edges={edges}
+                nodeTypes={NODE_TYPES}
                 edgeTypes={EDGE_TYPES}
                 onNodesChange={onNodesChange}
                 onEdgesChange={onEdgesChange}
