@@ -577,7 +577,7 @@ function GraphViewInner() {
                 style={selectedChunkId ? { width: panelWidth } : undefined}
             >
                 {selectedChunkId && (
-                    <div style={{ width: panelWidth }}>
+                    <div className="h-full" style={{ width: panelWidth }}>
                         <GraphDetailPanel
                             chunkId={selectedChunkId}
                             onClose={() => setSelectedChunkId(null)}
