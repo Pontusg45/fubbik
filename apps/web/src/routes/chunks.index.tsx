@@ -248,16 +248,20 @@ function ChunksList() {
                         </Button>
                     ))}
                 </div>
-                <select
-                    value={sort ?? "newest"}
-                    onChange={e => updateSearch({ sort: e.target.value === "newest" ? undefined : e.target.value })}
-                    className="rounded-md border bg-background px-2 py-1.5 text-sm"
-                >
-                    <option value="newest">Newest</option>
-                    <option value="oldest">Oldest</option>
-                    <option value="alpha">A-Z</option>
-                    <option value="updated">Recently Updated</option>
-                </select>
+                {q ? (
+                    <span className="text-muted-foreground text-xs italic">Sorted by relevance</span>
+                ) : (
+                    <select
+                        value={sort ?? "newest"}
+                        onChange={e => updateSearch({ sort: e.target.value === "newest" ? undefined : e.target.value })}
+                        className="rounded-md border bg-background px-2 py-1.5 text-sm"
+                    >
+                        <option value="newest">Newest</option>
+                        <option value="oldest">Oldest</option>
+                        <option value="alpha">A-Z</option>
+                        <option value="updated">Recently Updated</option>
+                    </select>
+                )}
                 <div className="flex gap-1">
                     {(["good", "moderate", "warning", "critical"] as const).map(level => {
                         const config: Record<string, { color: string; label: string }> = {
