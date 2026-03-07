@@ -45,6 +45,29 @@ const TYPE_COLORS_LIGHT: Record<string, { bg: string; border: string }> = {
     checklist: { bg: "#f7fee7", border: "#84cc16" }
 };
 
+function findShortestPath(startId: string, endId: string, edges: Edge[]): string[] | null {
+    const adjacency = new Map<string, string[]>();
+    for (const edge of edges) {
+        if (!adjacency.has(edge.source)) adjacency.set(edge.source, []);
+        if (!adjacency.has(edge.target)) adjacency.set(edge.target, []);
+        adjacency.get(edge.source)!.push(edge.target);
+        adjacency.get(edge.target)!.push(edge.source);
+    }
+    const visited = new Set<string>([startId]);
+    const queue: { nodeId: string; path: string[] }[] = [{ nodeId: startId, path: [startId] }];
+    while (queue.length > 0) {
+        const { nodeId, path } = queue.shift()!;
+        if (nodeId === endId) return path;
+        for (const neighbor of adjacency.get(nodeId) ?? []) {
+            if (!visited.has(neighbor)) {
+                visited.add(neighbor);
+                queue.push({ nodeId: neighbor, path: [...path, neighbor] });
+            }
+        }
+    }
+    return null;
+}
+
 function GraphViewInner() {
     const { resolvedTheme } = useTheme();
     const isDark = resolvedTheme !== "light";
@@ -85,6 +108,10 @@ function GraphViewInner() {
 
     // Focus mode state
     const [focusedNodeId, setFocusedNodeId] = useState<string | null>(null);
+
+    // Path highlighting state
+    const [pathStartId, setPathStartId] = useState<string | null>(null);
+    const [pathEndId, setPathEndId] = useState<string | null>(null);
 
     // Collapsible clusters
     const [collapsedParents, setCollapsedParents] = useState<Set<string>>(new Set());
@@ -388,6 +415,23 @@ function GraphViewInner() {
         return neighbors;
     }, [selectedChunkId, layoutEdges]);
 
+    const pathResult = useMemo(() => {
+        if (!pathStartId || !pathEndId) return null;
+        const path = findShortestPath(pathStartId, pathEndId, layoutEdges);
+        if (!path) return null;
+        const pathNodeIds = new Set(path);
+        const pathEdgeIds = new Set<string>();
+        for (let i = 0; i < path.length - 1; i++) {
+            for (const edge of layoutEdges) {
+                if ((edge.source === path[i] && edge.target === path[i + 1]) ||
+                    (edge.target === path[i] && edge.source === path[i + 1])) {
+                    pathEdgeIds.add(edge.id);
+                }
+            }
+        }
+        return { pathNodeIds, pathEdgeIds, length: path.length - 1 };
+    }, [pathStartId, pathEndId, layoutEdges]);
+
     const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
     const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
 
@@ -515,6 +559,33 @@ function GraphViewInner() {
         }
     }, [layoutEdges, setEdges, debouncedSearchQuery, focusedNodeId, selectedEdgeIds]);
 
+    // Apply path highlighting
+    useEffect(() => {
+        if (!pathResult) return;
+        mergeNodes(
+            layoutNodes.map(node => ({
+                ...node,
+                style: {
+                    ...(node.style as Record<string, unknown>),
+                    opacity: pathResult.pathNodeIds.has(node.id) ? 1 : 0.1,
+                    boxShadow: pathResult.pathNodeIds.has(node.id) ? "0 0 16px 4px #f472b6" : "none",
+                    transition: "opacity 0.2s, box-shadow 0.2s"
+                }
+            }))
+        );
+        setEdges(
+            layoutEdges.map(edge => ({
+                ...edge,
+                style: {
+                    ...(edge.style as Record<string, unknown>),
+                    opacity: pathResult.pathEdgeIds.has(edge.id) ? 1 : 0.05,
+                    strokeWidth: pathResult.pathEdgeIds.has(edge.id) ? 3 : (edge.style as Record<string, number>)?.strokeWidth ?? 2,
+                    transition: "opacity 0.2s"
+                }
+            }))
+        );
+    }, [pathResult, layoutNodes, layoutEdges, setEdges]);
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
     useEffect(() => {
         if (!selectedChunkId) return;
@@ -530,6 +601,11 @@ function GraphViewInner() {
             if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
 
             if (e.key === "Escape") {
+                if (pathStartId || pathEndId) {
+                    setPathStartId(null);
+                    setPathEndId(null);
+                    return;
+                }
                 if (selectedChunkId) {
                     setSelectedChunkId(null);
                 } else if (focusedNodeId) {
@@ -558,7 +634,7 @@ function GraphViewInner() {
 
         document.addEventListener("keydown", handleKeyDown);
         return () => document.removeEventListener("keydown", handleKeyDown);
-    }, [selectedChunkId, focusedNodeId, layoutEdges]);
+    }, [selectedChunkId, focusedNodeId, layoutEdges, pathStartId, pathEndId]);
 
     function handleExportImage() {
         const viewport = document.querySelector(".react-flow__viewport") as HTMLElement | null;
@@ -659,8 +735,22 @@ function GraphViewInner() {
                 edgeTypes={EDGE_TYPES}
                 onNodesChange={onNodesChange}
                 onEdgesChange={onEdgesChange}
-                onNodeClick={(_, node) => {
+                onNodeClick={(event, node) => {
                     if (node.id === MAIN_NODE_ID) return;
+                    if (event.altKey) {
+                        if (!pathStartId) {
+                            setPathStartId(node.id);
+                            setPathEndId(null);
+                        } else if (!pathEndId) {
+                            setPathEndId(node.id);
+                        } else {
+                            setPathStartId(node.id);
+                            setPathEndId(null);
+                        }
+                        return;
+                    }
+                    setPathStartId(null);
+                    setPathEndId(null);
                     setSelectedChunkId(node.id);
                     setFocusedNodeId(node.id);
                 }}
@@ -800,6 +890,32 @@ function GraphViewInner() {
                     </div>
                 );
             })()}
+            {/* Path info bar */}
+            {(pathStartId || pathEndId) && (
+                <div className="absolute bottom-6 left-1/2 z-10 -translate-x-1/2">
+                    <div className="flex items-center gap-3 rounded-lg border bg-background/90 px-4 py-2 text-sm shadow-lg backdrop-blur-sm">
+                        {pathStartId && !pathEndId && (
+                            <span className="text-muted-foreground">
+                                Alt+click another node to find path from <span className="font-medium text-foreground">{chunkMap.get(pathStartId)?.title ?? pathStartId}</span>
+                            </span>
+                        )}
+                        {pathStartId && pathEndId && pathResult && (
+                            <span className="text-foreground font-medium">
+                                Path: {pathResult.length} {pathResult.length === 1 ? "hop" : "hops"}
+                            </span>
+                        )}
+                        {pathStartId && pathEndId && !pathResult && (
+                            <span className="font-medium text-red-500">No path found</span>
+                        )}
+                        <button
+                            onClick={() => { setPathStartId(null); setPathEndId(null); }}
+                            className="text-muted-foreground hover:text-foreground rounded border px-2 py-0.5 text-xs"
+                        >
+                            Clear
+                        </button>
+                    </div>
+                </div>
+            )}
             </div>
         </div>
     );
