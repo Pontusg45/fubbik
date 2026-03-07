@@ -23,7 +23,8 @@ export const Route = createFileRoute("/chunks/")({
         tags: (search.tags as string) || undefined,
         size: (search.size as string) || undefined,
         after: (search.after as string) || undefined,
-        enrichment: (search.enrichment as string) || undefined
+        enrichment: (search.enrichment as string) || undefined,
+        minConnections: (search.minConnections as string) || undefined
     }),
     beforeLoad: async () => {
         let session = null;
@@ -39,7 +40,7 @@ export const Route = createFileRoute("/chunks/")({
 function ChunksList() {
     const navigate = useNavigate({ from: "/chunks/" });
     const navTo = useNavigate();
-    const { type, q, page, sort, tags, size, after, enrichment } = Route.useSearch();
+    const { type, q, page, sort, tags, size, after, enrichment, minConnections } = Route.useSearch();
     const queryClient = useQueryClient();
     const [searchInput, setSearchInput] = useState(q ?? "");
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -47,7 +48,7 @@ function ChunksList() {
     const offset = ((page ?? 1) - 1) * limit;
 
     const chunksQuery = useQuery({
-        queryKey: ["chunks-list", type, q, page, sort, tags, after, enrichment],
+        queryKey: ["chunks-list", type, q, page, sort, tags, after, enrichment, minConnections],
         queryFn: async () => {
             try {
                 return unwrapEden(
@@ -59,6 +60,7 @@ function ChunksList() {
                             tags,
                             after,
                             enrichment: enrichment as "missing" | "complete" | undefined,
+                            minConnections,
                             limit: String(limit),
                             offset: String(offset)
                         }
@@ -139,7 +141,7 @@ function ChunksList() {
 
     const types = ["note", "document", "reference", "schema", "checklist"];
 
-    function updateSearch(params: Partial<{ type: string; q: string; page: number; sort: string; tags: string; size: string; after: string; enrichment: string }>) {
+    function updateSearch(params: Partial<{ type: string; q: string; page: number; sort: string; tags: string; size: string; after: string; enrichment: string; minConnections: string }>) {
         navigate({
             search: {
                 type: params.type !== undefined ? params.type : type,
@@ -149,7 +151,8 @@ function ChunksList() {
                 tags: params.tags !== undefined ? params.tags : tags,
                 size: params.size !== undefined ? params.size : size,
                 after: params.after !== undefined ? params.after : after,
-                enrichment: params.enrichment !== undefined ? params.enrichment : enrichment
+                enrichment: params.enrichment !== undefined ? params.enrichment : enrichment,
+                minConnections: params.minConnections !== undefined ? params.minConnections : minConnections
             }
         });
     }
@@ -309,6 +312,18 @@ function ChunksList() {
                     >
                         Enriched
                     </Badge>
+                </div>
+                <div className="flex gap-1">
+                    {["1", "3", "5"].map(n => (
+                        <Button
+                            key={n}
+                            variant={minConnections === n ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => updateSearch({ minConnections: minConnections === n ? undefined : n })}
+                        >
+                            {n}+ conn
+                        </Button>
+                    ))}
                 </div>
             </div>
 

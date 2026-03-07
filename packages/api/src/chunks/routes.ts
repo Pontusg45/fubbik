@@ -20,7 +20,8 @@ export const chunkRoutes = new Elysia()
                 sort: t.Optional(t.Union([t.Literal("newest"), t.Literal("oldest"), t.Literal("alpha"), t.Literal("updated")])),
                 tags: t.Optional(t.String()),
                 after: t.Optional(t.String()),
-                enrichment: t.Optional(t.Union([t.Literal("missing"), t.Literal("complete")]))
+                enrichment: t.Optional(t.Union([t.Literal("missing"), t.Literal("complete")])),
+                minConnections: t.Optional(t.String())
             })
         }
     )

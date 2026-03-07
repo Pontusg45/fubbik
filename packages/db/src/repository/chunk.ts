@@ -16,6 +16,7 @@ export interface ListChunksParams {
     sort?: "newest" | "oldest" | "alpha" | "updated";
     after?: Date;
     enrichment?: "missing" | "complete";
+    minConnections?: number;
     limit: number;
     offset: number;
 }
@@ -55,6 +56,15 @@ export function listChunks(params: ListChunksParams) {
             }
             if (params.after) {
                 conditions.push(gte(chunk.updatedAt, params.after));
+            }
+            if (params.minConnections && params.minConnections > 0) {
+                conditions.push(
+                    sql`(
+                        SELECT COUNT(*) FROM ${chunkConnection}
+                        WHERE ${chunkConnection.sourceId} = ${chunk.id}
+                           OR ${chunkConnection.targetId} = ${chunk.id}
+                    ) >= ${params.minConnections}`
+                );
             }
             if (params.enrichment === "missing") {
                 conditions.push(or(
