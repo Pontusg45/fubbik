@@ -9,6 +9,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Toaster } from "@/components/ui/sonner";
 import UserMenu from "@/features/auth/user-menu";
+import { MobileNav } from "@/features/nav/mobile-nav";
 import { ChunkSearch } from "@/features/search/chunk-search";
 
 import appCss from "../index.css?url";
@@ -58,6 +59,7 @@ function RootDocument() {
                                     <span className="font-bold">fubbik</span>
                                 </Link>
                                 <div className="flex items-center gap-2">
+                                    <MobileNav />
                                     <ChunkSearch />
                                     <ThemeToggle />
                                     <UserMenu />
