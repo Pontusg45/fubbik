@@ -107,7 +107,7 @@ function GraphViewInner() {
     const zoomRef = useRef(1);
     const [selectedChunkId, setSelectedChunkId] = useState<string | null>(null);
     const [panelWidth, setPanelWidth] = useState(380);
-    const { setCenter, getZoom } = useReactFlow();
+    const { setCenter, getZoom, fitView } = useReactFlow();
     const navigate = useNavigate();
     const queryClient = useQueryClient();
 
@@ -228,6 +228,7 @@ function GraphViewInner() {
     const requestIdRef = useRef<number>(0);
     const [layoutPositions, setLayoutPositions] = useState<Record<string, { x: number; y: number }> | null>(null);
     const [isLayouting, setIsLayouting] = useState(false);
+    const hasFittedRef = useRef(false);
 
     // Create / teardown the worker
     useEffect(() => {
@@ -725,7 +726,13 @@ function GraphViewInner() {
         }
 
         setEdges(styledEdges);
-    }, [layoutNodes, layoutEdges, debouncedSearchQuery, focusNeighbors, selectedNeighborNodes, selectedEdgeIds, multiSelectedIds, pathResult, setEdges]);
+
+        // Fit view once after initial layout arrives
+        if (!hasFittedRef.current && layoutNodes.length > 0) {
+            hasFittedRef.current = true;
+            requestAnimationFrame(() => fitView());
+        }
+    }, [layoutNodes, layoutEdges, debouncedSearchQuery, focusNeighbors, selectedNeighborNodes, selectedEdgeIds, multiSelectedIds, pathResult, setEdges, fitView]);
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
     useEffect(() => {
@@ -983,7 +990,7 @@ function GraphViewInner() {
                         )
                     );
                 }}
-                fitView
+                onInit={() => fitView()}
                 colorMode={isDark ? "dark" : "light"}
             >
                 <Background variant={BackgroundVariant.Dots} gap={20} size={1} color={isDark ? "rgba(148,163,184,0.15)" : "rgba(100,116,139,0.2)"} />
