@@ -654,6 +654,7 @@ function GraphViewInner() {
                 <MiniMap
                     nodeColor={node => {
                         if (node.id === MAIN_NODE_ID) return "#e2e8f0";
+                        if (node.id === selectedChunkId) return "#f472b6";
                         const style = node.style as Record<string, string> | undefined;
                         return style?.borderColor ?? "#475569";
                     }}
