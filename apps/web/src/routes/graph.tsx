@@ -2,7 +2,7 @@ import Dagre from "@dagrejs/dagre";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import "@xyflow/react/dist/style.css";
-import { Background, Controls, ReactFlow, useEdgesState, useNodesState, type Edge, type Node } from "@xyflow/react";
+import { Background, Controls, MiniMap, ReactFlow, useEdgesState, useNodesState, type Edge, type Node } from "@xyflow/react";
 import { useEffect, useMemo } from "react";
 
 import { relationColor } from "@/features/chunks/relation-colors";
@@ -174,6 +174,16 @@ function GraphView() {
             >
                 <Background />
                 <Controls />
+                <MiniMap
+                    nodeColor={node => {
+                        if (node.id === "__main__") return "#e2e8f0";
+                        const style = node.style as Record<string, string> | undefined;
+                        return style?.borderColor ?? "#475569";
+                    }}
+                    maskColor="rgba(0, 0, 0, 0.7)"
+                    pannable
+                    zoomable
+                />
             </ReactFlow>
         </div>
     );
