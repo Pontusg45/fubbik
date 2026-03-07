@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import "@xyflow/react/dist/style.css";
-import { Background, BackgroundVariant, ConnectionMode, Controls, MiniMap, ReactFlow, ReactFlowProvider, useEdgesState, useNodesState, useReactFlow, type Connection, type Edge, type Node } from "@xyflow/react";
+import { Background, BackgroundVariant, ConnectionMode, Controls, MiniMap, ReactFlow, ReactFlowProvider, useEdgesState, useNodesState, useReactFlow, type Connection, type Edge, type Node, type Viewport } from "@xyflow/react";
 import { toPng } from "html-to-image";
 import { Download } from "lucide-react";
 import { useTheme } from "next-themes";
@@ -108,6 +108,7 @@ function GraphViewInner() {
     const [selectedChunkId, setSelectedChunkId] = useState<string | null>(null);
     const [panelWidth, setPanelWidth] = useState(380);
     const { setCenter, getZoom, fitView } = useReactFlow();
+    const initialFitDoneRef = useRef(false);
     const navigate = useNavigate();
     const queryClient = useQueryClient();
 
@@ -228,7 +229,6 @@ function GraphViewInner() {
     const requestIdRef = useRef<number>(0);
     const [layoutPositions, setLayoutPositions] = useState<Record<string, { x: number; y: number }> | null>(null);
     const [isLayouting, setIsLayouting] = useState(false);
-    const hasFittedRef = useRef(false);
 
     // Create / teardown the worker
     useEffect(() => {
@@ -726,13 +726,19 @@ function GraphViewInner() {
         }
 
         setEdges(styledEdges);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [layoutNodes, layoutEdges, debouncedSearchQuery, focusNeighbors, selectedNeighborNodes, selectedEdgeIds, multiSelectedIds, pathResult]);
 
-        // Fit view once after initial layout arrives
-        if (!hasFittedRef.current && layoutNodes.length > 0) {
-            hasFittedRef.current = true;
-            requestAnimationFrame(() => fitView());
+    // Fit view once after first layout positions arrive
+    const fitViewRef = useRef(fitView);
+    fitViewRef.current = fitView;
+    useEffect(() => {
+        if (layoutPositions && !initialFitDoneRef.current) {
+            initialFitDoneRef.current = true;
+            const timer = setTimeout(() => fitViewRef.current(), 100);
+            return () => clearTimeout(timer);
         }
-    }, [layoutNodes, layoutEdges, debouncedSearchQuery, focusNeighbors, selectedNeighborNodes, selectedEdgeIds, multiSelectedIds, pathResult, setEdges, fitView]);
+    }, [layoutPositions]);
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
     useEffect(() => {
@@ -964,10 +970,10 @@ function GraphViewInner() {
                     });
                 }}
                 onNodeMouseLeave={() => setHoveredNode(null)}
-                onMoveEnd={(_, viewport) => {
+                onMoveEnd={useCallback((_: unknown, viewport: Viewport) => {
                     zoomRef.current = viewport.zoom;
                     setZoomTier(prev => getZoomTier(viewport.zoom, prev));
-                }}
+                }, [])}
                 onEdgeMouseEnter={(_, edge) => {
                     if (zoomTier === "compact") return;
                     setEdges(es =>
@@ -990,7 +996,9 @@ function GraphViewInner() {
                         )
                     );
                 }}
-                onInit={() => fitView()}
+                onInit={useCallback(() => {
+                    initialFitDoneRef.current = true;
+                }, [])}
                 colorMode={isDark ? "dark" : "light"}
             >
                 <Background variant={BackgroundVariant.Dots} gap={20} size={1} color={isDark ? "rgba(148,163,184,0.15)" : "rgba(100,116,139,0.2)"} />
