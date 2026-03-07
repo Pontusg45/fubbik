@@ -22,16 +22,18 @@ const RELATION_SPRING_LEN: Record<string, number> = {
 };
 
 export interface LayoutWorkerInput {
-    nodes: { id: string; type: string; isHidden: boolean }[];
+    requestId: number;
+    nodes: { id: string; type: string }[];
     edges: { source: string; target: string; relation: string }[];
 }
 
 export interface LayoutWorkerOutput {
+    requestId: number;
     positions: Record<string, { x: number; y: number }>;
 }
 
 self.onmessage = (e: MessageEvent<LayoutWorkerInput>) => {
-    const { nodes, edges } = e.data;
+    const { requestId, nodes, edges } = e.data;
 
     const nodeCount = nodes.length;
     const spacing = Math.max(250, Math.sqrt(nodeCount) * 120);
@@ -52,7 +54,7 @@ self.onmessage = (e: MessageEvent<LayoutWorkerInput>) => {
     // Build type lookup for clustering
     const nodeType = new Map<string, string>();
     for (const n of nodes) {
-        if (!n.isHidden) nodeType.set(n.id, n.type);
+        nodeType.set(n.id, n.type);
     }
 
     // Build edge index for spring forces
@@ -140,5 +142,5 @@ self.onmessage = (e: MessageEvent<LayoutWorkerInput>) => {
         positions[id] = { x: p.x, y: p.y };
     }
 
-    self.postMessage({ positions } satisfies LayoutWorkerOutput);
+    self.postMessage({ requestId, positions } satisfies LayoutWorkerOutput);
 };

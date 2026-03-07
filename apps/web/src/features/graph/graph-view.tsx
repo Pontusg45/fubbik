@@ -113,6 +113,7 @@ function GraphViewInner() {
 
     // --- Web Worker for force-directed layout ---
     const workerRef = useRef<Worker | null>(null);
+    const requestIdRef = useRef<number>(0);
     const [layoutPositions, setLayoutPositions] = useState<Record<string, { x: number; y: number }> | null>(null);
     const [isLayouting, setIsLayouting] = useState(false);
 
@@ -123,7 +124,12 @@ function GraphViewInner() {
             { type: "module" }
         );
         worker.onmessage = (e: MessageEvent<LayoutWorkerOutput>) => {
+            if (e.data.requestId !== requestIdRef.current) return;
             setLayoutPositions(e.data.positions);
+            setIsLayouting(false);
+        };
+        worker.onerror = (err) => {
+            console.error("Layout worker error:", err);
             setIsLayouting(false);
         };
         workerRef.current = worker;
@@ -188,12 +194,12 @@ function GraphViewInner() {
 
         const { chunks, connections, hiddenIds } = filteredGraph;
 
-        // Build worker input: nodes need id, type, isHidden for clustering
+        // Build worker input: nodes need id and type for clustering
         const workerNodes: LayoutWorkerInput["nodes"] = [
-            { id: MAIN_NODE_ID, type: "__main__", isHidden: false },
+            { id: MAIN_NODE_ID, type: "__main__" },
             ...chunks
                 .filter(c => !hiddenIds.has(c.id))
-                .map(c => ({ id: c.id, type: c.type, isHidden: hiddenIds.has(c.id) }))
+                .map(c => ({ id: c.id, type: c.type }))
         ];
 
         // Include orphan-to-main edges so the worker can account for spring forces on orphans
@@ -217,7 +223,8 @@ function GraphViewInner() {
         }
 
         setIsLayouting(true);
-        workerRef.current.postMessage({ nodes: workerNodes, edges: workerEdges } satisfies LayoutWorkerInput);
+        requestIdRef.current += 1;
+        workerRef.current.postMessage({ requestId: requestIdRef.current, nodes: workerNodes, edges: workerEdges } satisfies LayoutWorkerInput);
     }, [filteredGraph]);
 
     // Build layoutNodes and layoutEdges from positions (cheap: styling + edge creation only)
