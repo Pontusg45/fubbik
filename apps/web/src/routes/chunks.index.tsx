@@ -347,6 +347,29 @@ function ChunksList() {
                 </div>
             )}
 
+            <div className="mb-4 flex flex-wrap gap-1.5">
+                {[
+                    { key: "connected", label: "Has connections", param: "minConnections", value: "1" },
+                    { key: "nosummary", label: "No summary", param: "enrichment", value: "missing" },
+                    { key: "large", label: "Large chunks", param: "size", value: "warning" },
+                    { key: "recent7", label: "Last 7 days", param: "after", value: "7" }
+                ].map(f => {
+                    const currentValue = { minConnections, enrichment, size, after }[f.param];
+                    const isActive = currentValue === f.value;
+                    return (
+                        <Badge
+                            key={f.key}
+                            variant={isActive ? "default" : "outline"}
+                            size="sm"
+                            className="cursor-pointer"
+                            onClick={() => updateSearch({ [f.param]: isActive ? undefined : f.value })}
+                        >
+                            {f.label}
+                        </Badge>
+                    );
+                })}
+            </div>
+
             {/* Results */}
             <Card>
                 {chunksQuery.isLoading ? (
