@@ -1,4 +1,4 @@
-import { type EdgeProps, getBezierPath, useInternalNode } from "@xyflow/react";
+import { Position, type EdgeProps, getBezierPath, useInternalNode } from "@xyflow/react";
 
 function getNodeCenter(node: { internals: { positionAbsolute: { x: number; y: number } }; measured: { width?: number; height?: number } }) {
     return {
@@ -44,8 +44,23 @@ export function FloatingEdge({ id, source, target, style, data, label, labelStyl
     // Direction angle at the target end (for arrowhead)
     let arrivalAngle: number;
 
+    // Determine which side of each node the edge exits/enters
+    const sourcePosition = Math.abs(dx) > Math.abs(dy)
+        ? (dx > 0 ? Position.Right : Position.Left)
+        : (dy > 0 ? Position.Bottom : Position.Top);
+    const targetPosition = Math.abs(dx) > Math.abs(dy)
+        ? (dx > 0 ? Position.Left : Position.Right)
+        : (dy > 0 ? Position.Top : Position.Bottom);
+
     if (curveOffset === 0) {
-        const [p, px, py] = getBezierPath({ sourceX: si.x, sourceY: si.y, targetX: ti.x, targetY: ti.y });
+        const [p, px, py] = getBezierPath({
+            sourceX: si.x,
+            sourceY: si.y,
+            targetX: ti.x,
+            targetY: ti.y,
+            sourcePosition,
+            targetPosition
+        });
         edgePath = p;
         lx = px;
         ly = py;

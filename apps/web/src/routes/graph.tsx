@@ -32,13 +32,13 @@ const MAIN_NODE_ID = "__main__";
 const EDGE_TYPES = { floating: FloatingEdge };
 const NODE_TYPES = { chunk: GraphNode };
 
-const TYPE_COLORS: Record<string, { bg: string; bgGrad: string; border: string; glow: string }> = {
-    note: { bg: "#1e293b", bgGrad: "#253347", border: "#475569", glow: "rgba(71,85,105,0.3)" },
-    guide: { bg: "#1e1b4b", bgGrad: "#272358", border: "#6366f1", glow: "rgba(99,102,241,0.35)" },
-    reference: { bg: "#042f2e", bgGrad: "#0a3d3b", border: "#14b8a6", glow: "rgba(20,184,166,0.3)" },
-    document: { bg: "#172554", bgGrad: "#1e3268", border: "#3b82f6", glow: "rgba(59,130,246,0.35)" },
-    schema: { bg: "#1c1917", bgGrad: "#2a2520", border: "#f59e0b", glow: "rgba(245,158,11,0.3)" },
-    checklist: { bg: "#1a2e05", bgGrad: "#243c0a", border: "#84cc16", glow: "rgba(132,204,22,0.3)" }
+const TYPE_COLORS: Record<string, { bg: string; border: string }> = {
+    note: { bg: "#1e293b", border: "#475569" },
+    guide: { bg: "#1e1b4b", border: "#6366f1" },
+    reference: { bg: "#042f2e", border: "#14b8a6" },
+    document: { bg: "#172554", border: "#3b82f6" },
+    schema: { bg: "#1c1917", border: "#f59e0b" },
+    checklist: { bg: "#1a2e05", border: "#84cc16" }
 };
 
 function GraphView() {
@@ -106,6 +106,12 @@ function GraphView() {
             }
         }
 
+        // Collect all child IDs (nodes that are part_of a parent)
+        const childIds = new Set<string>();
+        for (const children of parentChildren.values()) {
+            for (const childId of children) childIds.add(childId);
+        }
+
         // Hide children of collapsed parents
         const hiddenIds = new Set<string>();
         for (const [parentId, children] of parentChildren) {
@@ -144,15 +150,14 @@ function GraphView() {
                 position: { x: 0, y: 0 },
                 style: {
                     cursor: "default",
-                    background: "linear-gradient(145deg, #1a2744, #0c1425)",
+                    background: "#0f172a",
                     borderColor: "#e2e8f0",
                     borderWidth: 2,
                     borderRadius: 12,
                     color: "#f8fafc",
                     fontSize: 14,
                     fontWeight: 600,
-                    padding: "10px 18px",
-                    boxShadow: "0 4px 20px rgba(226,232,240,0.15), 0 0 40px rgba(226,232,240,0.05)"
+                    padding: "10px 18px"
                 }
             },
             ...chunks
@@ -161,6 +166,8 @@ function GraphView() {
                     const typeColor = TYPE_COLORS[c.type] ?? TYPE_COLORS.note;
                     const count = connectionCounts.get(c.id) ?? 0;
                     const scale = Math.min(1 + count * 0.05, 1.5);
+                    const isParent = parentChildren.has(c.id);
+                    const isChild = childIds.has(c.id);
                     const childCount = collapsedParents.has(c.id) ? parentChildren.get(c.id)?.size ?? 0 : 0;
                     const label = childCount > 0 ? `${c.title} (${childCount})` : c.title;
                     return {
@@ -170,16 +177,15 @@ function GraphView() {
                         position: { x: 0, y: 0 },
                         style: {
                             cursor: "pointer",
-                            background: `linear-gradient(145deg, ${typeColor!.bgGrad}, ${typeColor!.bg})`,
+                            background: typeColor!.bg,
                             borderColor: typeColor!.border,
-                            borderWidth: collapsedParents.has(c.id) ? 2.5 : 1.5,
-                            borderRadius: 10,
-                            color: "#e2e8f0",
-                            fontSize: 12,
-                            fontWeight: 500,
-                            padding: "8px 14px",
-                            minWidth: `${Math.round(180 * scale)}px`,
-                            boxShadow: `0 2px 12px ${typeColor!.glow}, inset 0 1px 0 rgba(255,255,255,0.06)`,
+                            borderWidth: isParent ? 2 : collapsedParents.has(c.id) ? 2.5 : 1.5,
+                            borderRadius: isParent ? 12 : 10,
+                            color: isChild ? "#cbd5e1" : "#e2e8f0",
+                            fontSize: isParent ? 13 : 12,
+                            fontWeight: isParent ? 600 : 500,
+                            padding: isParent ? "10px 16px" : "8px 14px",
+                            minWidth: `${Math.round((isParent ? 200 : 180) * scale)}px`,
                             letterSpacing: "0.01em"
                         }
                     };
