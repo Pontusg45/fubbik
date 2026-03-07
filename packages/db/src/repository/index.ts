@@ -5,3 +5,4 @@ export * from "./connection";
 export * from "./stats";
 export * from "./graph";
 export * from "./tags";
+export * from "./semantic";
