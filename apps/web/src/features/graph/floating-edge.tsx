@@ -115,6 +115,21 @@ export function FloatingEdge({ id, source, target, style, data, label, labelStyl
                     fillOpacity={0.8}
                 />
             )}
+            {(() => {
+                const bundleCount = (data as { bundleCount?: number })?.bundleCount;
+                if (!bundleCount || bundleCount <= 1) return null;
+                return (
+                    <text
+                        x={lx}
+                        y={ly}
+                        textAnchor="middle"
+                        dominantBaseline="central"
+                        style={{ fill: strokeColor, fontSize: 9, fontWeight: 600 }}
+                    >
+                        ×{bundleCount}
+                    </text>
+                );
+            })()}
             {label && (() => {
                 const text = label as string;
                 const charWidth = 6;

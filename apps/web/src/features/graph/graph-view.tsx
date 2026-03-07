@@ -179,6 +179,9 @@ function GraphViewInner() {
     // Layout algorithm
     const [layoutAlgorithm, setLayoutAlgorithm] = useState<LayoutAlgorithm>("force");
 
+    // Edge bundling
+    const [bundleEdges, setBundleEdges] = useState(false);
+
     // Saved views
     const { views: savedViews, saveView, deleteView: deleteSavedView } = useSavedGraphViews();
     const [showSaveDialog, setShowSaveDialog] = useState(false);
@@ -469,8 +472,47 @@ function GraphViewInner() {
             return { ...node, position: { x: p.x - 100, y: p.y - 25 } };
         });
 
+        if (bundleEdges) {
+            // Build a node-type lookup from the filtered chunks
+            const nodeTypeMap = new Map<string, string>();
+            for (const c of filteredGraph.chunks) {
+                nodeTypeMap.set(c.id, c.type);
+            }
+
+            // Group edges by sorted source-type::target-type pair
+            const bundles = new Map<string, typeof rawEdges>();
+            const orphanEdges: typeof rawEdges = [];
+            for (const edge of rawEdges) {
+                if (edge.id.startsWith("main-")) {
+                    orphanEdges.push(edge);
+                    continue;
+                }
+                const st = nodeTypeMap.get(edge.source) ?? "?";
+                const tt = nodeTypeMap.get(edge.target) ?? "?";
+                const key = [st, tt].sort().join("::");
+                if (!bundles.has(key)) bundles.set(key, []);
+                bundles.get(key)!.push(edge);
+            }
+
+            // Replace bundles of 3+ with single thicker edge
+            const bundled: typeof rawEdges = [];
+            for (const [, group] of bundles) {
+                if (group.length < 3) {
+                    bundled.push(...group);
+                } else {
+                    const rep = { ...group[0]! };
+                    rep.style = { ...(rep.style as Record<string, unknown>), strokeWidth: Math.min(2 + group.length, 8) };
+                    (rep.data as Record<string, unknown>).bundleCount = group.length;
+                    bundled.push(rep);
+                }
+            }
+            bundled.push(...orphanEdges);
+
+            return { layoutNodes, layoutEdges: bundled };
+        }
+
         return { layoutNodes, layoutEdges: rawEdges };
-    }, [filteredGraph, layoutPositions, draggedPositions, isDark, TYPE_COLORS, collapsedParents]);
+    }, [filteredGraph, layoutPositions, draggedPositions, isDark, TYPE_COLORS, collapsedParents, bundleEdges]);
 
     const focusNeighbors = useMemo(() => {
         if (!focusedNodeId) return null;
@@ -1020,6 +1062,14 @@ function GraphViewInner() {
                         <button onClick={() => setExploredNodeIds(new Set())} className="ml-1.5 underline hover:text-foreground">reset</button>
                     </span>
                 )}
+                <button
+                    onClick={() => setBundleEdges(!bundleEdges)}
+                    className={`rounded-md border px-2.5 py-1.5 text-xs backdrop-blur-sm ${
+                        bundleEdges ? "bg-primary text-primary-foreground" : "bg-background/80 text-muted-foreground hover:text-foreground"
+                    }`}
+                >
+                    Bundle
+                </button>
                 <DropdownMenu>
                     <DropdownMenuTrigger className="rounded-md border bg-background/80 px-2.5 py-1.5 text-xs backdrop-blur-sm text-muted-foreground hover:text-foreground">
                         Views{savedViews.length > 0 ? ` (${savedViews.length})` : ""}
