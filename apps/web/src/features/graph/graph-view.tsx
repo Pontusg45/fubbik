@@ -18,6 +18,7 @@ import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { GraphDetailPanel } from "@/features/graph/graph-detail-panel";
 import { GraphFilters } from "@/features/graph/graph-filters";
 import { GraphLegend } from "@/features/graph/graph-legend";
+import { GraphMetrics } from "@/features/graph/graph-metrics";
 import { GraphNode } from "@/features/graph/graph-node";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
@@ -997,6 +998,13 @@ function GraphViewInner() {
                     </div>
                 </DialogPopup>
             </Dialog>
+
+            {/* Bottom-left: Metrics */}
+            <GraphMetrics
+                nodes={nodes}
+                edges={edges}
+                onNodeClick={(id) => { setSelectedChunkId(id); setFocusedNodeId(id); }}
+            />
 
             {/* Path info bar */}
             {(pathStartId || pathEndId) && (
