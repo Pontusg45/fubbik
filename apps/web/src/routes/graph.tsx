@@ -183,7 +183,7 @@ function GraphView() {
                 source: conn.sourceId,
                 target: conn.targetId,
                 type: "floating",
-                data: { relation: conn.relation },
+                data: { relation: conn.relation, directed: true },
                 animated: true,
                 style: { stroke: color, strokeWidth: 2 }
             };
@@ -202,6 +202,7 @@ function GraphView() {
                     source: MAIN_NODE_ID,
                     target: c.id,
                     type: "floating",
+                    data: { directed: false },
                     animated: false,
                     style: { stroke: "#334155", strokeWidth: 1, strokeDasharray: "4 4" }
                 });

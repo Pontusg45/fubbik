@@ -16,7 +16,7 @@ function getRectIntersection(center: { x: number; y: number }, angle: number, ha
     return { x: center.x + cos * scale, y: center.y + sin * scale };
 }
 
-export function FloatingEdge({ id, source, target, style, markerEnd, label, labelStyle, labelBgStyle }: EdgeProps) {
+export function FloatingEdge({ id, source, target, style, data, label, labelStyle, labelBgStyle }: EdgeProps) {
     const sourceNode = useInternalNode(source);
     const targetNode = useInternalNode(target);
 
@@ -45,6 +45,8 @@ export function FloatingEdge({ id, source, target, style, markerEnd, label, labe
 
     const strokeColor = (style as Record<string, string>)?.stroke ?? "#475569";
     const filterId = `glow-${id}`;
+    const markerId = `arrow-${id}`;
+    const isDirected = (data as { directed?: boolean })?.directed !== false;
 
     return (
         <>
@@ -56,11 +58,22 @@ export function FloatingEdge({ id, source, target, style, markerEnd, label, labe
                         <feMergeNode in="SourceGraphic" />
                     </feMerge>
                 </filter>
+                <marker
+                    id={markerId}
+                    viewBox="0 0 10 10"
+                    refX={8}
+                    refY={5}
+                    markerWidth={6}
+                    markerHeight={6}
+                    orient="auto-start-reverse"
+                >
+                    <path d="M 0 0 L 10 5 L 0 10 z" fill={strokeColor} fillOpacity={0.7} />
+                </marker>
             </defs>
             {/* Glow layer */}
             <path d={path} style={{ stroke: strokeColor, strokeWidth: 6, strokeOpacity: 0.12, fill: "none" }} />
             {/* Main edge */}
-            <path id={id} className="react-flow__edge-path" d={path} style={style} markerEnd={markerEnd as string} />
+            <path id={id} className="react-flow__edge-path" d={path} style={style} markerEnd={isDirected ? `url(#${markerId})` : undefined} />
             {label && (
                 <>
                     <rect
