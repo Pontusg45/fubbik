@@ -44,11 +44,8 @@
         "fmt:check": "oxfmt --check .",
         "sherif": "sherif",
         "sherif:fix": "sherif --fix",
-        "ci": "turbo run check-types lint test build && bun run fmt:check && bun run sherif",
-        "ci:fix": "turbo run check-types lint test build && bun run fmt && bun run sherif --fix && bun run lint:fix"
-    },
-    "dependencies": {
-        "html-to-image": "^1.11.13"
+        "ci": "turbo run check-types lint test build && pnpm run fmt:check && pnpm run sherif",
+        "ci:fix": "turbo run check-types lint test build && pnpm run fmt && pnpm run sherif --fix && pnpm run lint:fix"
     },
     "devDependencies": {
         "@fubbik/config": "workspace:*",
@@ -63,5 +60,9 @@
         "turbo": "^2.6.3",
         "typescript": "catalog:"
     },
-    "packageManager": "bun@1.3.9"
+    "overrides": {
+        "@prisma/client": "npm:empty-npm-package@1.0.0",
+        "prisma": "npm:empty-npm-package@1.0.0"
+    },
+    "packageManager": "pnpm@10.10.0"
 }

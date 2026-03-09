@@ -9,7 +9,7 @@ This file provides context about the project for AI assistants.
 ## Tech Stack
 
 - **Runtime**: bun
-- **Package Manager**: bun
+- **Package Manager**: pnpm
 
 ### Frontend
 
@@ -95,14 +95,14 @@ Required for chunk enrichment (summary, aliases, not_about generation) and seman
 
 ## Common Commands
 
-- `bun install` - Install dependencies
-- `bun dev` - Start development server
-- `bun build` - Build for production
-- `bun test` - Run tests
-- `bun ci` - Run full CI pipeline (type-check, lint, test, build, format check, sherif)
-- `bun run check-types` - Type-check all packages (uses `tsgo`)
-- `bun db:push` - Push database schema
-- `bun db:studio` - Open database UI
+- `pnpm install` - Install dependencies
+- `pnpm dev` - Start development server
+- `pnpm build` - Build for production
+- `pnpm test` - Run tests
+- `pnpm ci` - Run full CI pipeline (type-check, lint, test, build, format check, sherif)
+- `pnpm run check-types` - Type-check all packages (uses `tsgo`)
+- `pnpm db:push` - Push database schema
+- `pnpm db:studio` - Open database UI
 
 ## Maintenance
 

@@ -37,6 +37,7 @@
         "clsx": "^2.1.1",
         "dotenv": "catalog:",
         "elysia": "^1.4.27",
+        "html-to-image": "^1.11.13",
         "lucide-react": "^0.577.0",
         "mermaid": "^11.12.3",
         "motion": "^12.17.0",
