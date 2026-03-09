@@ -650,6 +650,15 @@ function GraphViewInner() {
     }
     const [hoveredNode, setHoveredNode] = useState<{ id: string; x: number; y: number } | null>(null);
 
+    const onMoveEnd = useCallback((_: unknown, viewport: Viewport) => {
+        zoomRef.current = viewport.zoom;
+        setZoomTier(prev => getZoomTier(viewport.zoom, prev));
+    }, []);
+
+    const onInit = useCallback(() => {
+        initialFitDoneRef.current = true;
+    }, []);
+
     const chunkMap = useMemo(() => {
         const map = new Map<string, { title: string; type: string; tags: string[]; summary: string | null }>();
         for (const c of data?.chunks ?? []) {
@@ -1046,10 +1055,7 @@ function GraphViewInner() {
                             });
                         }}
                         onNodeMouseLeave={() => setHoveredNode(null)}
-                        onMoveEnd={useCallback((_: unknown, viewport: Viewport) => {
-                            zoomRef.current = viewport.zoom;
-                            setZoomTier(prev => getZoomTier(viewport.zoom, prev));
-                        }, [])}
+                        onMoveEnd={onMoveEnd}
                         onEdgeMouseEnter={(_, edge) => {
                             if (zoomTier === "compact") return;
                             setEdges(es =>
@@ -1076,9 +1082,7 @@ function GraphViewInner() {
                                 )
                             );
                         }}
-                        onInit={useCallback(() => {
-                            initialFitDoneRef.current = true;
-                        }, [])}
+                        onInit={onInit}
                         minZoom={0.05}
                         colorMode={isDark ? "dark" : "light"}
                     >
