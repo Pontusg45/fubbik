@@ -20,7 +20,7 @@ export const Route = createFileRoute("/chunks/$chunkId_/edit")({
             const session = await getUser();
             return { session };
         } catch {
-            throw redirect({ to: "/login" });
+            return { session: null };
         }
     }
 });
