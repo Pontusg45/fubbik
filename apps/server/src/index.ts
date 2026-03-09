@@ -32,19 +32,20 @@ new Elysia()
         })
     )
     .onRequest(({ request }) => {
-        logger.info(`${request.method} ${new URL(request.url).pathname}`);
-    })
-    .onError(({ error, request }) => {
-        logger.error(`${request.method} ${new URL(request.url).pathname}`, {
-            error: "message" in error ? error.message : String(error)
-        });
-    })
-    .all("/api/auth/*", async context => {
-        const { request, status } = context;
-        if (["POST", "GET"].includes(request.method)) {
+        const url = new URL(request.url);
+        logger.info(`${request.method} ${url.pathname}`);
+
+        // Handle auth routes before Elysia parses the request body,
+        // which would consume the body stream and break better-auth
+        if (url.pathname.startsWith("/api/auth")) {
             return auth.handler(request);
         }
-        return status(405);
+    })
+    .onError(({ error, request }) => {
+        const pathname = new URL(request.url).pathname;
+        logger.error(`${request.method} ${pathname}`, {
+            error: "message" in error ? error.message : String(error)
+        });
     })
     .use(api)
     .get("/", () => "OK")
