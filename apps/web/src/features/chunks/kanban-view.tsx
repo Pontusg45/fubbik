@@ -11,7 +11,6 @@ interface Chunk {
     id: string;
     title: string;
     type: string;
-    tags: unknown;
     updatedAt: string | Date;
 }
 
@@ -66,7 +65,7 @@ export function KanbanView({ chunks }: { chunks: Chunk[] }) {
                                     <CardPanel className="hover:bg-muted/50 cursor-grab p-2 text-xs transition-colors active:cursor-grabbing">
                                         <p className="truncate font-medium">{chunk.title}</p>
                                         <div className="mt-1 flex flex-wrap gap-0.5">
-                                            {(chunk.tags as string[]).slice(0, 3).map(tag => (
+                                            {([] as string[]).slice(0, 3).map(tag => (
                                                 <Badge key={tag} variant="outline" size="sm" className="text-[8px]">
                                                     {tag}
                                                 </Badge>

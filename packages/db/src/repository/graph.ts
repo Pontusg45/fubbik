@@ -14,7 +14,6 @@ export function getAllChunksMeta(userId?: string) {
                     id: chunk.id,
                     title: chunk.title,
                     type: chunk.type,
-                    tags: chunk.tags,
                     summary: chunk.summary,
                     createdAt: chunk.createdAt
                 })

@@ -459,7 +459,7 @@ function GraphViewInner() {
                     return {
                         id: c.id,
                         type: "chunk",
-                        data: { label, type: c.type, connectionCount: connectionCounts.get(c.id) ?? 0, scale, tags: c.tags as string[] },
+                        data: { label, type: c.type, connectionCount: connectionCounts.get(c.id) ?? 0, scale, tags: [] as string[] },
                         position: { x: 0, y: 0 },
                         style: {
                             cursor: "pointer",
@@ -662,7 +662,7 @@ function GraphViewInner() {
     const chunkMap = useMemo(() => {
         const map = new Map<string, { title: string; type: string; tags: string[]; summary: string | null }>();
         for (const c of data?.chunks ?? []) {
-            map.set(c.id, { title: c.title, type: c.type, tags: c.tags as string[], summary: c.summary });
+            map.set(c.id, { title: c.title, type: c.type, tags: [], summary: c.summary });
         }
         return map;
     }, [data]);

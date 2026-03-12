@@ -27,7 +27,7 @@ export function enrichChunk(chunkId: string) {
 
 Title: ${c.title}
 Type: ${c.type}
-Tags: ${(c.tags as string[]).join(", ")}
+Tags:
 
 Content:
 ${c.content}`

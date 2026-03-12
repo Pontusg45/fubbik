@@ -95,15 +95,7 @@ export function GraphDetailPanel({
                                 </div>
 
                                 {/* Tags */}
-                                {(chunk.tags as string[]).length > 0 && (
-                                    <div className="flex flex-wrap gap-1">
-                                        {(chunk.tags as string[]).map(tag => (
-                                            <Badge key={tag} variant="outline" size="sm">
-                                                {tag}
-                                            </Badge>
-                                        ))}
-                                    </div>
-                                )}
+                                {/* tags now in normalized tables */}
 
                                 <Separator />
 

@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -51,7 +51,7 @@ function EditChunk() {
             setTitle(chunk.title);
             setContent(chunk.content);
             setType(chunk.type);
-            setTags((chunk.tags as string[]) ?? []);
+            setTags([]);
             setInitialized(true);
         }
     }, [data, initialized]);

@@ -165,7 +165,7 @@ function ChunksList() {
         if (group === "tag") {
             const groups = new Map<string, typeof collectionFilteredChunks>();
             for (const c of collectionFilteredChunks) {
-                const chunkTags = c.tags as string[];
+                const chunkTags: string[] = [];
                 if (chunkTags.length === 0) {
                     const existing = groups.get("untagged") ?? [];
                     existing.push(c);
@@ -422,15 +422,15 @@ function ChunksList() {
                                     <div>
                                         <p className="text-muted-foreground mb-2 text-xs font-medium tracking-wider uppercase">Tags</p>
                                         <div className="flex flex-wrap gap-1">
-                                            {(tagsQuery.data ?? []).map(({ tag, count }) => (
+                                            {(tagsQuery.data ?? []).map(t => (
                                                 <Badge
-                                                    key={tag}
-                                                    variant={activeTags.includes(tag) ? "default" : "outline"}
+                                                    key={t.id}
+                                                    variant={activeTags.includes(t.name) ? "default" : "outline"}
                                                     size="sm"
                                                     className="cursor-pointer text-[10px]"
-                                                    onClick={() => toggleTag(tag)}
+                                                    onClick={() => toggleTag(t.name)}
                                                 >
-                                                    {tag} ({count})
+                                                    {t.name}
                                                 </Badge>
                                             ))}
                                         </div>
@@ -767,7 +767,7 @@ function ChunksList() {
                                                             <Badge variant="secondary" size="sm" className="font-mono text-[10px]">
                                                                 {chunk.type}
                                                             </Badge>
-                                                            {(chunk.tags as string[]).map(tag => (
+                                                            {([] as string[]).map(tag => (
                                                                 <Badge key={tag} variant="outline" size="sm" className="text-[10px]">
                                                                     {tag}
                                                                 </Badge>
@@ -835,7 +835,7 @@ function ChunksList() {
                                             <Badge variant="secondary" size="sm" className="font-mono text-[10px]">
                                                 {chunk.type}
                                             </Badge>
-                                            {(chunk.tags as string[]).map(tag => (
+                                            {([] as string[]).map(tag => (
                                                 <Badge key={tag} variant="outline" size="sm" className="text-[10px]">
                                                     {tag}
                                                 </Badge>

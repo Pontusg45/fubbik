@@ -49,11 +49,7 @@ export function listChunks(params: ListChunksParams) {
             if (params.alias) {
                 conditions.push(sql`${chunk.aliases} @> ${JSON.stringify([params.alias])}::jsonb`);
             }
-            if (params.tags && params.tags.length > 0) {
-                for (const tag of params.tags) {
-                    conditions.push(sql`${chunk.tags} @> ${JSON.stringify([tag])}::jsonb`);
-                }
-            }
+            // tags filtering now handled via normalized chunk_tag table (join-based) if needed
             if (params.after) {
                 conditions.push(gte(chunk.updatedAt, params.after));
             }
@@ -148,7 +144,6 @@ export interface CreateChunkParams {
     title: string;
     content: string;
     type: string;
-    tags: string[];
     userId: string;
 }
 
@@ -166,7 +161,6 @@ export interface UpdateChunkParams {
     title?: string;
     content?: string;
     type?: string;
-    tags?: string[];
     summary?: string | null;
     aliases?: string[];
     notAbout?: string[];
@@ -182,7 +176,6 @@ export function updateChunk(chunkId: string, params: UpdateChunkParams) {
                     ...(params.title !== undefined && { title: params.title }),
                     ...(params.content !== undefined && { content: params.content }),
                     ...(params.type !== undefined && { type: params.type }),
-                    ...(params.tags !== undefined && { tags: params.tags }),
                     ...(params.summary !== undefined && { summary: params.summary }),
                     ...(params.aliases !== undefined && { aliases: params.aliases }),
                     ...(params.notAbout !== undefined && { notAbout: params.notAbout }),

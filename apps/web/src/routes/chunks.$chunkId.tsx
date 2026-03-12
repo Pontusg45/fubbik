@@ -116,7 +116,7 @@ function ChunkDetail() {
                         title={chunk.title}
                         content={chunk.content}
                         type={chunk.type}
-                        tags={chunk.tags as string[]}
+                        tags={[]}
                     />
                     <Button variant="outline" size="sm" render={<Link to="/chunks/$chunkId/edit" params={{ chunkId }} />}>
                         <Edit className="size-3.5" />
@@ -177,11 +177,7 @@ function ChunkDetail() {
             </div>
 
             <div className="mb-2 flex flex-wrap gap-1.5">
-                {(chunk.tags as string[]).map(tag => (
-                    <Badge key={tag} variant="outline" size="sm">
-                        {tag}
-                    </Badge>
-                ))}
+                {/* tags are now in normalized tables, rendered via tag components */}
             </div>
 
             <Separator className="my-6" />

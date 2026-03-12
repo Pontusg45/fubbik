@@ -34,7 +34,6 @@ export function semanticSearch(params: SemanticSearchParams) {
                     title: chunk.title,
                     summary: chunk.summary,
                     type: chunk.type,
-                    tags: chunk.tags,
                     aliases: chunk.aliases,
                     scope: chunk.scope,
                     similarity: sql<number>`1 - (${chunk.embedding} <=> ${embeddingStr}::vector)`

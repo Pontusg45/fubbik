@@ -86,7 +86,6 @@ export function createChunk(userId: string, body: { title: string; content?: str
         title: body.title,
         content: body.content ?? "",
         type: body.type ?? "note",
-        tags: body.tags ?? [],
         userId
     }).pipe(
         Effect.tap(() => {
@@ -129,10 +128,13 @@ export function updateChunk(
                 title: existing.title,
                 content: existing.content,
                 type: existing.type,
-                tags: existing.tags as string[]
+                tags: []
             })
         ),
-        Effect.flatMap(() => updateChunkRepo(chunkId, body)),
+        Effect.flatMap(() => {
+            const { tags: _tags, ...repoBody } = body;
+            return updateChunkRepo(chunkId, repoBody);
+        }),
         Effect.tap(() => {
             if (body.tags) {
                 return Effect.all(body.tags.map(name => findOrCreateTag(name, userId)), { concurrency: 5 }).pipe(

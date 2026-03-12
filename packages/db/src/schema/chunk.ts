@@ -22,7 +22,6 @@ export const chunk = pgTable(
         title: text("title").notNull(),
         content: text("content").notNull().default(""),
         type: text("type").notNull().default("note"),
-        tags: jsonb("tags").$type<string[]>().notNull().default([]),
         userId: text("user_id")
             .notNull()
             .references(() => user.id, { onDelete: "cascade" }),

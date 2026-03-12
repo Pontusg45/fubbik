@@ -263,7 +263,7 @@ function RouteComponent() {
                                                     <Badge variant="secondary" size="sm" className="font-mono text-[10px]">
                                                         {chunk.type}
                                                     </Badge>
-                                                    {(chunk.tags as string[]).map(tag => (
+                                                    {([] as string[]).map(tag => (
                                                         <Badge key={tag} variant="outline" size="sm" className="text-[10px]">
                                                             {tag}
                                                         </Badge>
