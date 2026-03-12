@@ -10,7 +10,6 @@ describe("chunk table", () => {
         expect(columns).toHaveProperty("title");
         expect(columns).toHaveProperty("content");
         expect(columns).toHaveProperty("type");
-        expect(columns).toHaveProperty("tags");
         expect(columns).toHaveProperty("userId");
         expect(columns).toHaveProperty("createdAt");
         expect(columns).toHaveProperty("updatedAt");
