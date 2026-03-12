@@ -779,6 +779,19 @@ function GraphViewInner() {
                     transition: "opacity 0.2s"
                 }
             }));
+        } else if (chunkTagGroupMap && chunkTagGroupMap.size > 0) {
+            styledNodes = layoutNodes.map(node => {
+                if (node.id === MAIN_NODE_ID) return node;
+                const inGroup = chunkTagGroupMap.has(node.id);
+                return {
+                    ...node,
+                    style: {
+                        ...(node.style as Record<string, unknown>),
+                        opacity: inGroup ? 1 : 0.4,
+                        transition: "opacity 0.2s"
+                    }
+                };
+            });
         } else {
             styledNodes = layoutNodes;
         }
@@ -843,8 +856,43 @@ function GraphViewInner() {
                     transition: "opacity 0.2s"
                 }
             }));
+        } else if (chunkTagGroupMap && chunkTagGroupMap.size > 0) {
+            styledEdges = layoutEdges.map(edge => {
+                const sourceGroups = chunkTagGroupMap.get(edge.source);
+                const targetGroups = chunkTagGroupMap.get(edge.target);
+                let sameGroup = false;
+                if (sourceGroups && targetGroups) {
+                    for (const g of sourceGroups) {
+                        if (targetGroups.has(g)) { sameGroup = true; break; }
+                    }
+                }
+                return {
+                    ...edge,
+                    style: {
+                        ...(edge.style as Record<string, unknown>),
+                        opacity: sameGroup ? 1 : 0.15,
+                        transition: "opacity 0.3s ease"
+                    }
+                };
+            });
         } else {
             styledEdges = layoutEdges;
+        }
+
+        // Override: restore opacity for selected node's direct connections when tag grouping is active
+        if (chunkTagGroupMap && chunkTagGroupMap.size > 0 && selectedChunkId) {
+            const selectedDirectEdgeIds = new Set<string>();
+            for (const edge of layoutEdges) {
+                if (edge.source === selectedChunkId || edge.target === selectedChunkId) {
+                    selectedDirectEdgeIds.add(edge.id);
+                }
+            }
+            styledEdges = styledEdges.map(edge => {
+                if (selectedDirectEdgeIds.has(edge.id)) {
+                    return { ...edge, style: { ...(edge.style as Record<string, unknown>), opacity: 1 } };
+                }
+                return edge;
+            });
         }
 
         setEdges(styledEdges);
@@ -857,7 +905,9 @@ function GraphViewInner() {
         selectedNeighborNodes,
         selectedEdgeIds,
         multiSelectedIds,
-        pathResult
+        pathResult,
+        chunkTagGroupMap,
+        selectedChunkId
     ]);
 
     // Fit view once after first layout positions arrive
