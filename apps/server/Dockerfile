@@ -38,16 +38,28 @@ ENV PORT=3000
 # Copy package files to preserve workspace resolution
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/apps/server/package.json ./apps/server/package.json
+COPY --from=builder /app/packages/db/package.json ./packages/db/package.json
+COPY --from=builder /app/packages/env/package.json ./packages/env/package.json
 
 # Copy node_modules
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/apps/server/node_modules ./apps/server/node_modules
+COPY --from=builder /app/packages/db/node_modules ./packages/db/node_modules
+COPY --from=builder /app/packages/env/node_modules ./packages/env/node_modules
 
 # Copy built application
 COPY --from=builder /app/apps/server/dist ./apps/server/dist
+
+# Copy db package for migrations and seeding (bun runs TS natively)
+COPY --from=builder /app/packages/db/src ./packages/db/src
+COPY --from=builder /app/packages/db/drizzle.config.ts ./packages/db/drizzle.config.ts
+COPY --from=builder /app/packages/env/src ./packages/env/src
+
+# Copy entrypoint script
+COPY --from=builder /app/apps/server/entrypoint.sh ./apps/server/entrypoint.sh
 
 EXPOSE 3000
 
 WORKDIR /app/apps/server
 
-CMD ["bun", "run", "dist/index.mjs"]
+ENTRYPOINT ["sh", "entrypoint.sh"]

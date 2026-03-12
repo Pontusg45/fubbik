@@ -35,6 +35,7 @@ services:
             - NODE_ENV=production
             - PORT=3000
             - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-password}@db:5432/${POSTGRES_DB:-fubbik}
+            - SEED_DATABASE=${SEED_DATABASE:-false}
         healthcheck:
             test:
                 [
@@ -45,15 +46,17 @@ services:
                 ]
             interval: 10s
             timeout: 5s
-            retries: 3
+            retries: 10
+            start_period: 30s
         restart: unless-stopped
         depends_on:
-            - db
+            db:
+                condition: service_healthy
         networks:
             - fubbik-network
 
     db:
-        image: postgres:16-alpine
+        image: pgvector/pgvector:pg16
         container_name: fubbik-postgres
         environment:
             POSTGRES_DB: ${POSTGRES_DB:-fubbik}
