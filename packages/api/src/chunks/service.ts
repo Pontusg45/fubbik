@@ -4,12 +4,14 @@ import {
     deleteChunk as deleteChunkRepo,
     deleteMany as deleteManyRepo,
     exportAllChunks as exportAllChunksRepo,
+    findOrCreateTag,
     getChunkById,
     getChunkConnections,
     getNextVersionNumber,
     getVersionsByChunkId,
     listChunks as listChunksRepo,
     semanticSearch as semanticSearchRepo,
+    setChunkTags,
     updateChunk as updateChunkRepo
 } from "@fubbik/db/repository";
 import { Effect } from "effect";
@@ -88,6 +90,14 @@ export function createChunk(userId: string, body: { title: string; content?: str
         userId
     }).pipe(
         Effect.tap(() => {
+            if (body.tags && body.tags.length > 0) {
+                return Effect.all(body.tags.map(name => findOrCreateTag(name, userId)), { concurrency: 5 }).pipe(
+                    Effect.flatMap(tags => setChunkTags(id, tags.map(t => t.id)))
+                );
+            }
+            return Effect.void;
+        }),
+        Effect.tap(() => {
             Effect.runPromise(enrichChunkIfEmpty(id)).catch(() => {});
             return Effect.void;
         })
@@ -123,6 +133,14 @@ export function updateChunk(
             })
         ),
         Effect.flatMap(() => updateChunkRepo(chunkId, body)),
+        Effect.tap(() => {
+            if (body.tags) {
+                return Effect.all(body.tags.map(name => findOrCreateTag(name, userId)), { concurrency: 5 }).pipe(
+                    Effect.flatMap(tags => setChunkTags(chunkId, tags.map(t => t.id)))
+                );
+            }
+            return Effect.void;
+        }),
         Effect.tap(() => {
             if (body.title !== undefined || body.content !== undefined) {
                 Effect.runPromise(enrichChunk(chunkId)).catch(() => {});
