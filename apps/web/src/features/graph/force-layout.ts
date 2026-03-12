@@ -23,7 +23,8 @@ const RELATION_SPRING_LEN: Record<string, number> = {
 
 export function runForceLayout(
     nodes: { id: string; type: string }[],
-    edges: { source: string; target: string; relation: string }[]
+    edges: { source: string; target: string; relation: string }[],
+    tagGroups?: Map<string, string[]> // tagValue -> nodeIds in that group
 ): Record<string, { x: number; y: number }> {
     const nodeCount = nodes.length;
     const spacing = Math.max(400, Math.sqrt(nodeCount) * 180);
@@ -99,6 +100,30 @@ export function runForceLayout(
             const cy = c.y / c.count;
             p.vx += (cx - p.x) * CLUSTER_K * temp;
             p.vy += (cy - p.y) * CLUSTER_K * temp;
+        }
+
+        // Tag-based clustering (when grouping is active)
+        if (tagGroups && tagGroups.size > 0) {
+            const TAG_CLUSTER_K = 0.003;
+            const tagCentroids = new Map<string, { x: number; y: number; count: number }>();
+            for (const [tagValue, nodeIds] of tagGroups) {
+                let cx = 0, cy = 0, count = 0;
+                for (const nid of nodeIds) {
+                    const p = pos.get(nid);
+                    if (p) { cx += p.x; cy += p.y; count++; }
+                }
+                if (count > 0) tagCentroids.set(tagValue, { x: cx / count, y: cy / count, count });
+            }
+            for (const [tagValue, nodeIds] of tagGroups) {
+                const c = tagCentroids.get(tagValue);
+                if (!c) continue;
+                for (const nid of nodeIds) {
+                    const p = pos.get(nid);
+                    if (!p) continue;
+                    p.vx += (c.x - p.x) * TAG_CLUSTER_K * temp;
+                    p.vy += (c.y - p.y) * TAG_CLUSTER_K * temp;
+                }
+            }
         }
 
         for (const p of pos.values()) {
