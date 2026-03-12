@@ -4,7 +4,6 @@ export * from "./chunk-version";
 export * from "./connection";
 export * from "./stats";
 export * from "./graph";
-export * from "./tags";
 export * from "./semantic";
 export * from "./tag-type";
 export * from "./tag-new";
