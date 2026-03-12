@@ -155,6 +155,13 @@
     }
 }
 
+/* ReactFlow group node: transparent wrapper so custom component controls visuals */
+.react-flow__node-group {
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+}
+
 @layer base {
     * {
         @apply border-border outline-ring/50;

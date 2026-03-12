@@ -7,13 +7,32 @@ function getNodeCenter(node: { internals: { positionAbsolute: { x: number; y: nu
     };
 }
 
-function getRectIntersection(center: { x: number; y: number }, angle: number, halfW: number, halfH: number) {
-    const cos = Math.cos(angle);
-    const sin = Math.sin(angle);
-    const scaleX = halfW > 0 ? Math.abs(halfW / cos) : Infinity;
-    const scaleY = halfH > 0 ? Math.abs(halfH / sin) : Infinity;
-    const scale = Math.min(scaleX, scaleY);
-    return { x: center.x + cos * scale, y: center.y + sin * scale };
+/** Snap to the nearest of the 4 cardinal handle points (top, right, bottom, left) */
+function getHandlePoint(
+    center: { x: number; y: number },
+    halfW: number,
+    halfH: number,
+    otherCenter: { x: number; y: number }
+): { x: number; y: number; position: Position } {
+    const dx = otherCenter.x - center.x;
+    const dy = otherCenter.y - center.y;
+
+    // Pick the side that faces the other node
+    if (Math.abs(dx) > Math.abs(dy)) {
+        // Horizontal dominant
+        if (dx > 0) return { x: center.x + halfW, y: center.y, position: Position.Right };
+        return { x: center.x - halfW, y: center.y, position: Position.Left };
+    }
+    // Vertical dominant
+    if (dy > 0) return { x: center.x, y: center.y + halfH, position: Position.Bottom };
+    return { x: center.x, y: center.y - halfH, position: Position.Top };
+}
+
+function oppositePosition(pos: Position): Position {
+    if (pos === Position.Top) return Position.Bottom;
+    if (pos === Position.Bottom) return Position.Top;
+    if (pos === Position.Left) return Position.Right;
+    return Position.Left;
 }
 
 export function FloatingEdge({ id, source, target, style, data, label, labelStyle, labelBgStyle }: EdgeProps) {
@@ -24,31 +43,24 @@ export function FloatingEdge({ id, source, target, style, data, label, labelStyl
 
     const sourceCenter = getNodeCenter(sourceNode);
     const targetCenter = getNodeCenter(targetNode);
-    const dx = targetCenter.x - sourceCenter.x;
-    const dy = targetCenter.y - sourceCenter.y;
-    const angle = Math.atan2(dy, dx);
 
     const sourceW = (sourceNode.measured.width ?? 0) / 2;
     const sourceH = (sourceNode.measured.height ?? 0) / 2;
     const targetW = (targetNode.measured.width ?? 0) / 2;
     const targetH = (targetNode.measured.height ?? 0) / 2;
 
-    const si = getRectIntersection(sourceCenter, angle, sourceW, sourceH);
-    const ti = getRectIntersection(targetCenter, angle + Math.PI, targetW, targetH);
+    const { x: sx, y: sy, position: sourcePosition } = getHandlePoint(sourceCenter, sourceW, sourceH, targetCenter);
+    const { x: tx, y: ty, position: targetPosition } = getHandlePoint(targetCenter, targetW, targetH, sourceCenter);
+
+    const si = { x: sx, y: sy };
+    const ti = { x: tx, y: ty };
 
     const curveOffset = (data as { curveOffset?: number })?.curveOffset ?? 0;
 
     let edgePath: string;
     let lx: number;
     let ly: number;
-    // Direction angle at the target end (for arrowhead)
     let arrivalAngle: number;
-
-    // Determine which side of each node the edge exits/enters
-    const sourcePosition =
-        Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? Position.Right : Position.Left) : dy > 0 ? Position.Bottom : Position.Top;
-    const targetPosition =
-        Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? Position.Left : Position.Right) : dy > 0 ? Position.Top : Position.Bottom;
 
     if (curveOffset === 0) {
         const [p, px, py] = getBezierPath({

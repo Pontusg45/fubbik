@@ -16,7 +16,9 @@ export function GraphFilters({
     onToggleRelation,
     tagTypes,
     activeTagTypeIds,
-    onToggleTagType
+    onToggleTagType,
+    edgeAnimated,
+    onToggleEdgeAnimated
 }: {
     types: string[];
     relations: string[];
@@ -27,6 +29,8 @@ export function GraphFilters({
     tagTypes?: TagTypeInfo[];
     activeTagTypeIds?: Set<string>;
     onToggleTagType?: (id: string) => void;
+    edgeAnimated?: boolean;
+    onToggleEdgeAnimated?: () => void;
 }) {
     return (
         <div className="bg-background/80 absolute top-4 left-4 z-10 max-w-[200px] space-y-3 rounded-lg border p-3 backdrop-blur-sm">
@@ -85,6 +89,19 @@ export function GraphFilters({
                             </Badge>
                         ))}
                     </div>
+                </div>
+            )}
+            {onToggleEdgeAnimated && (
+                <div className="border-t pt-3">
+                    <label className="flex cursor-pointer items-center gap-2 text-[10px]">
+                        <input
+                            type="checkbox"
+                            checked={edgeAnimated}
+                            onChange={onToggleEdgeAnimated}
+                            className="accent-primary size-3"
+                        />
+                        <span className="text-muted-foreground font-medium uppercase">Animate edges</span>
+                    </label>
                 </div>
             )}
         </div>

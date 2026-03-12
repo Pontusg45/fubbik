@@ -6,6 +6,7 @@ import { drizzle } from "drizzle-orm/node-postgres";
 
 import { user } from "./schema/auth";
 import { chunk, chunkConnection } from "./schema/chunk";
+import { chunkTag, tag, tagType } from "./schema/tag";
 
 config({ path: resolve(import.meta.dirname, "../../../apps/server/.env") });
 
@@ -27,7 +28,10 @@ if (!existing) {
     });
 }
 
-// Clear existing chunks for dev user
+// Clear existing data for dev user (order matters for FK constraints)
+await db.delete(chunkTag);
+await db.delete(tag).where(eq(tag.userId, DEV_USER_ID));
+await db.delete(tagType).where(eq(tagType.userId, DEV_USER_ID));
 await db.delete(chunk).where(eq(chunk.userId, DEV_USER_ID));
 
 // Deterministic IDs for seed data
@@ -63,7 +67,6 @@ const chunks = [
         id: ids.arch,
         title: "Fubbik Architecture Overview",
         type: "document",
-        tags: ["architecture", "overview", "monorepo"],
         content: `Fubbik is a local-first knowledge framework for humans and machines. It stores knowledge as **chunks** (atomic units) connected by **typed relationships** in a graph.
 
 ## Core Data Flow
@@ -111,7 +114,7 @@ fubbik/
         id: ids.schemaChunks,
         title: "Database Schema: Chunks",
         type: "schema",
-        tags: ["database", "schema", "chunks", "postgresql"],
+
         content: `The \`chunk\` table is the core data model. Each chunk is an atomic unit of knowledge owned by a user.
 
 \`\`\`sql
@@ -160,7 +163,6 @@ jsonb_array_elements_text(tags)     -- unnest for aggregation
         id: ids.schemaConn,
         title: "Database Schema: Connections",
         type: "schema",
-        tags: ["database", "schema", "connections", "postgresql"],
         content: `Connections are directed, typed edges between two chunks forming a knowledge graph.
 
 \`\`\`sql
@@ -196,7 +198,6 @@ The unique index prevents duplicate connections with the same relation between t
         id: ids.schemaVer,
         title: "Database Schema: Versions",
         type: "schema",
-        tags: ["database", "schema", "versions", "history"],
         content: `Chunk versions track edit history. A version is created every time a chunk is updated.
 
 \`\`\`sql
@@ -220,7 +221,6 @@ Versions are created in the chunk service before applying updates, preserving th
         id: ids.schemaAuth,
         title: "Database Schema: Auth Tables",
         type: "schema",
-        tags: ["database", "schema", "authentication", "better-auth"],
         content: `Authentication uses Better Auth with four tables managed by the Drizzle adapter.
 
 \`\`\`sql
@@ -270,7 +270,6 @@ In dev mode, a \`DEV_SESSION\` with \`userId="dev-user"\` is injected when no au
         id: ids.effect,
         title: "Effect Error Handling Pattern",
         type: "guide",
-        tags: ["architecture", "error-handling", "effect", "backend"],
         content: `All backend code uses the Effect library for typed error handling. Errors flow from repositories through services to a global handler.
 
 ## Error Types
@@ -337,7 +336,6 @@ function getChunkDetail(id, userId) {
         id: ids.apiChunks,
         title: "API Endpoints: Chunks",
         type: "reference",
-        tags: ["api", "chunks", "endpoints", "rest"],
         content: `All chunk endpoints are defined in \`packages/api/src/chunks/routes.ts\`.
 
 ## List Chunks
@@ -385,7 +383,6 @@ All inputs validated with Elysia's \`t.Object()\` (TypeBox):
         id: ids.apiConnGraph,
         title: "API Endpoints: Connections, Graph & Stats",
         type: "reference",
-        tags: ["api", "connections", "graph", "stats", "endpoints"],
         content: `## Connections
 
 Defined in \`packages/api/src/connections/routes.ts\`.
@@ -424,7 +421,6 @@ Defined in \`packages/api/src/graph/routes.ts\`.
         id: ids.apiAI,
         title: "API Endpoints: AI & Enrichment",
         type: "reference",
-        tags: ["api", "ai", "enrichment", "ollama", "openai"],
         content: `## OpenAI Endpoints
 
 Defined in \`packages/api/src/ai/routes.ts\`. Require \`OPENAI_API_KEY\`.
@@ -457,7 +453,6 @@ Enrichment also fires automatically (async, fire-and-forget) when a chunk is cre
         id: ids.enrich,
         title: "Enrichment Pipeline",
         type: "guide",
-        tags: ["enrichment", "ollama", "ai", "embeddings", "pipeline"],
         content: `The enrichment pipeline generates AI metadata for chunks using Ollama (local LLM).
 
 ## Flow
@@ -509,7 +504,6 @@ Without Ollama, all other features work normally. Enrichment fails gracefully.`
         id: ids.semantic,
         title: "Semantic Search",
         type: "guide",
-        tags: ["search", "semantic", "embeddings", "pgvector"],
         content: `Semantic search uses vector embeddings to find chunks by meaning rather than keywords.
 
 ## How It Works
@@ -566,7 +560,6 @@ Chunks must be enriched (have embeddings) to appear in semantic search results.`
         id: ids.repo,
         title: "Repository Layer",
         type: "reference",
-        tags: ["backend", "repository", "database", "drizzle"],
         content: `Repositories provide pure data access with no business logic. All functions return \`Effect<T, DatabaseError>\`.
 
 Defined in \`packages/db/src/repository/\`.
@@ -620,7 +613,6 @@ getTagsWithCounts(userId?)         // SELECT tag, COUNT(*) GROUP BY tag
         id: ids.service,
         title: "Service Layer",
         type: "reference",
-        tags: ["backend", "service", "business-logic", "effect"],
         content: `Services compose repository Effects and add business logic. Defined in \`packages/api/src/*/service.ts\`.
 
 ## Chunk Service
@@ -663,7 +655,6 @@ getUserGraph(userId?)
         id: ids.eden,
         title: "Eden Treaty API Client",
         type: "guide",
-        tags: ["frontend", "api-client", "eden", "elysia", "typescript"],
         content: `The frontend communicates with the backend using Eden Treaty \u2014 a type-safe RPC-like client generated from Elysia's route definitions.
 
 ## Setup
@@ -702,7 +693,6 @@ The \`Api\` type is exported from \`packages/api/src/index.ts\` and includes all
         id: ids.routes,
         title: "Frontend Route Structure",
         type: "reference",
-        tags: ["frontend", "routes", "tanstack", "react"],
         content: `The web app uses TanStack Start with file-based routing.
 
 ## Routes
@@ -744,7 +734,6 @@ features/
         id: ids.graph,
         title: "Graph Visualization",
         type: "document",
-        tags: ["frontend", "graph", "visualization", "reactflow"],
         content: `The graph view renders the knowledge base as an interactive node-edge diagram using \`@xyflow/react\` (React Flow).
 
 ## Architecture
@@ -800,7 +789,6 @@ ReactFlow renders nodes + edges
         id: ids.graphLayout,
         title: "Graph Layout Algorithms",
         type: "reference",
-        tags: ["graph", "layout", "algorithms", "force-directed", "web-worker"],
         content: `Three layout algorithms are available, selectable via dropdown in the graph toolbar.
 
 ## Force-Directed (default)
@@ -837,7 +825,6 @@ Manually dragged nodes persist their positions across layout recalculations via 
         id: ids.auth,
         title: "Authentication System",
         type: "document",
-        tags: ["authentication", "better-auth", "sessions", "security"],
         content: `Fubbik uses Better Auth for email/password authentication with a Drizzle adapter for PostgreSQL.
 
 ## Configuration
@@ -886,7 +873,6 @@ type Session = {
         id: ids.cli,
         title: "CLI Commands",
         type: "reference",
-        tags: ["cli", "commands", "local-first"],
         content: `The Fubbik CLI (\`apps/cli\`) provides local-first knowledge management with optional server sync.
 
 ## Setup
@@ -948,7 +934,6 @@ fubbik get <id> -q           # Quiet mode (just ID)
         id: ids.cliStore,
         title: "CLI Local Store",
         type: "reference",
-        tags: ["cli", "storage", "local-first", "sync"],
         content: `The CLI uses a JSON file at \`.fubbik/store.json\` for local-first storage.
 
 ## Structure
@@ -994,7 +979,6 @@ The server URL is saved after first sync for future use.`
         id: ids.cliScanner,
         title: "CLI Project Scanner",
         type: "guide",
-        tags: ["cli", "scanner", "project", "indexing"],
         content: `The project scanner (\`apps/cli/src/lib/scanner.ts\`) auto-generates chunks from a codebase.
 
 ## What Gets Scanned
@@ -1033,7 +1017,6 @@ The scanner extracts markdown titles from \`# Heading\` lines and generates path
         id: ids.env,
         title: "Environment Variables",
         type: "reference",
-        tags: ["configuration", "environment", "deployment"],
         content: `Environment validation uses \`@t3-oss/env-core\` with Arktype schemas. Defined in \`packages/env/src/\`.
 
 ## Server Variables
@@ -1071,7 +1054,6 @@ DATABASE_URL=postgresql://postgres:password@db:5432/fubbik
         id: ids.docker,
         title: "Docker Deployment",
         type: "guide",
-        tags: ["deployment", "docker", "development", "ci"],
         content: `Fubbik can be deployed via Docker Compose with three services.
 
 ## Services
@@ -1130,7 +1112,6 @@ bun ci           # type-check \u2192 lint \u2192 test \u2192 build \u2192 format
         id: ids.turbo,
         title: "Turborepo Build System",
         type: "reference",
-        tags: ["build", "turborepo", "monorepo", "development"],
         content: `Fubbik uses Turborepo for monorepo task orchestration.
 
 ## Task Pipeline
@@ -1262,7 +1243,190 @@ for (const conn of connections) {
 }
 console.log(`  \u2713 ${connections.length} connections`);
 
-console.log(`\n\u2705 Database seeded: ${chunks.length} chunks, ${connections.length} connections`);
+// Seed tag types
+const tagTypeIds = {
+    feature: "seed-tt-feature",
+    techstack: "seed-tt-techstack",
+    infrastructure: "seed-tt-infrastructure",
+    pattern: "seed-tt-pattern",
+    documentation: "seed-tt-documentation"
+};
+
+const seedTagTypes = [
+    { id: tagTypeIds.feature, name: "feature", color: "#3b82f6", userId: DEV_USER_ID },
+    { id: tagTypeIds.techstack, name: "techstack", color: "#10b981", userId: DEV_USER_ID },
+    { id: tagTypeIds.infrastructure, name: "infrastructure", color: "#f59e0b", userId: DEV_USER_ID },
+    { id: tagTypeIds.pattern, name: "pattern", color: "#8b5cf6", userId: DEV_USER_ID },
+    { id: tagTypeIds.documentation, name: "documentation", color: "#ef4444", userId: DEV_USER_ID }
+];
+
+for (const tt of seedTagTypes) {
+    await db.insert(tagType).values(tt).catch(e => console.error(`  \u2717 Tag type ${tt.name}:`, e));
+}
+console.log(`  \u2713 ${seedTagTypes.length} tag types`);
+
+// Seed tags (each assigned to a tag type)
+const seedTags: { id: string; name: string; tagTypeId: string; userId: string }[] = [
+    // feature tags
+    { id: "seed-tag-authentication", name: "authentication", tagTypeId: tagTypeIds.feature, userId: DEV_USER_ID },
+    { id: "seed-tag-search", name: "search", tagTypeId: tagTypeIds.feature, userId: DEV_USER_ID },
+    { id: "seed-tag-enrichment", name: "enrichment", tagTypeId: tagTypeIds.feature, userId: DEV_USER_ID },
+    { id: "seed-tag-graph", name: "graph", tagTypeId: tagTypeIds.feature, userId: DEV_USER_ID },
+    { id: "seed-tag-visualization", name: "visualization", tagTypeId: tagTypeIds.feature, userId: DEV_USER_ID },
+    { id: "seed-tag-cli", name: "cli", tagTypeId: tagTypeIds.feature, userId: DEV_USER_ID },
+    { id: "seed-tag-deployment", name: "deployment", tagTypeId: tagTypeIds.feature, userId: DEV_USER_ID },
+    { id: "seed-tag-scanner", name: "scanner", tagTypeId: tagTypeIds.feature, userId: DEV_USER_ID },
+    { id: "seed-tag-storage", name: "storage", tagTypeId: tagTypeIds.feature, userId: DEV_USER_ID },
+    { id: "seed-tag-sync", name: "sync", tagTypeId: tagTypeIds.feature, userId: DEV_USER_ID },
+    // techstack tags
+    { id: "seed-tag-postgresql", name: "postgresql", tagTypeId: tagTypeIds.techstack, userId: DEV_USER_ID },
+    { id: "seed-tag-drizzle", name: "drizzle", tagTypeId: tagTypeIds.techstack, userId: DEV_USER_ID },
+    { id: "seed-tag-effect", name: "effect", tagTypeId: tagTypeIds.techstack, userId: DEV_USER_ID },
+    { id: "seed-tag-elysia", name: "elysia", tagTypeId: tagTypeIds.techstack, userId: DEV_USER_ID },
+    { id: "seed-tag-eden", name: "eden", tagTypeId: tagTypeIds.techstack, userId: DEV_USER_ID },
+    { id: "seed-tag-tanstack", name: "tanstack", tagTypeId: tagTypeIds.techstack, userId: DEV_USER_ID },
+    { id: "seed-tag-react", name: "react", tagTypeId: tagTypeIds.techstack, userId: DEV_USER_ID },
+    { id: "seed-tag-reactflow", name: "reactflow", tagTypeId: tagTypeIds.techstack, userId: DEV_USER_ID },
+    { id: "seed-tag-ollama", name: "ollama", tagTypeId: tagTypeIds.techstack, userId: DEV_USER_ID },
+    { id: "seed-tag-pgvector", name: "pgvector", tagTypeId: tagTypeIds.techstack, userId: DEV_USER_ID },
+    { id: "seed-tag-better-auth", name: "better-auth", tagTypeId: tagTypeIds.techstack, userId: DEV_USER_ID },
+    { id: "seed-tag-docker", name: "docker", tagTypeId: tagTypeIds.techstack, userId: DEV_USER_ID },
+    { id: "seed-tag-turborepo", name: "turborepo", tagTypeId: tagTypeIds.techstack, userId: DEV_USER_ID },
+    { id: "seed-tag-typescript", name: "typescript", tagTypeId: tagTypeIds.techstack, userId: DEV_USER_ID },
+    // infrastructure tags
+    { id: "seed-tag-database", name: "database", tagTypeId: tagTypeIds.infrastructure, userId: DEV_USER_ID },
+    { id: "seed-tag-api", name: "api", tagTypeId: tagTypeIds.infrastructure, userId: DEV_USER_ID },
+    { id: "seed-tag-frontend", name: "frontend", tagTypeId: tagTypeIds.infrastructure, userId: DEV_USER_ID },
+    { id: "seed-tag-backend", name: "backend", tagTypeId: tagTypeIds.infrastructure, userId: DEV_USER_ID },
+    { id: "seed-tag-monorepo", name: "monorepo", tagTypeId: tagTypeIds.infrastructure, userId: DEV_USER_ID },
+    { id: "seed-tag-configuration", name: "configuration", tagTypeId: tagTypeIds.infrastructure, userId: DEV_USER_ID },
+    { id: "seed-tag-ci", name: "ci", tagTypeId: tagTypeIds.infrastructure, userId: DEV_USER_ID },
+    // pattern tags
+    { id: "seed-tag-repository", name: "repository", tagTypeId: tagTypeIds.pattern, userId: DEV_USER_ID },
+    { id: "seed-tag-service", name: "service", tagTypeId: tagTypeIds.pattern, userId: DEV_USER_ID },
+    { id: "seed-tag-error-handling", name: "error-handling", tagTypeId: tagTypeIds.pattern, userId: DEV_USER_ID },
+    { id: "seed-tag-force-directed", name: "force-directed", tagTypeId: tagTypeIds.pattern, userId: DEV_USER_ID },
+    { id: "seed-tag-rest", name: "rest", tagTypeId: tagTypeIds.pattern, userId: DEV_USER_ID },
+    // documentation tags
+    { id: "seed-tag-overview", name: "overview", tagTypeId: tagTypeIds.documentation, userId: DEV_USER_ID },
+    { id: "seed-tag-schema", name: "schema", tagTypeId: tagTypeIds.documentation, userId: DEV_USER_ID },
+    { id: "seed-tag-guide", name: "guide", tagTypeId: tagTypeIds.documentation, userId: DEV_USER_ID },
+    { id: "seed-tag-reference", name: "reference", tagTypeId: tagTypeIds.documentation, userId: DEV_USER_ID }
+];
+
+for (const t of seedTags) {
+    await db.insert(tag).values(t).catch(e => console.error(`  \u2717 Tag ${t.name}:`, e));
+}
+console.log(`  \u2713 ${seedTags.length} tags`);
+
+// Chunk-to-tag associations
+const chunkTagAssociations: { chunkId: string; tagId: string }[] = [
+    // Architecture Overview
+    { chunkId: ids.arch, tagId: "seed-tag-overview" },
+    { chunkId: ids.arch, tagId: "seed-tag-monorepo" },
+    // Schema: Chunks
+    { chunkId: ids.schemaChunks, tagId: "seed-tag-database" },
+    { chunkId: ids.schemaChunks, tagId: "seed-tag-schema" },
+    { chunkId: ids.schemaChunks, tagId: "seed-tag-postgresql" },
+    // Schema: Connections
+    { chunkId: ids.schemaConn, tagId: "seed-tag-database" },
+    { chunkId: ids.schemaConn, tagId: "seed-tag-schema" },
+    { chunkId: ids.schemaConn, tagId: "seed-tag-postgresql" },
+    // Schema: Versions
+    { chunkId: ids.schemaVer, tagId: "seed-tag-database" },
+    { chunkId: ids.schemaVer, tagId: "seed-tag-schema" },
+    // Schema: Auth
+    { chunkId: ids.schemaAuth, tagId: "seed-tag-database" },
+    { chunkId: ids.schemaAuth, tagId: "seed-tag-schema" },
+    { chunkId: ids.schemaAuth, tagId: "seed-tag-authentication" },
+    { chunkId: ids.schemaAuth, tagId: "seed-tag-better-auth" },
+    // Effect Error Handling
+    { chunkId: ids.effect, tagId: "seed-tag-error-handling" },
+    { chunkId: ids.effect, tagId: "seed-tag-effect" },
+    { chunkId: ids.effect, tagId: "seed-tag-backend" },
+    // API: Chunks
+    { chunkId: ids.apiChunks, tagId: "seed-tag-api" },
+    { chunkId: ids.apiChunks, tagId: "seed-tag-rest" },
+    // API: Connections, Graph & Stats
+    { chunkId: ids.apiConnGraph, tagId: "seed-tag-api" },
+    { chunkId: ids.apiConnGraph, tagId: "seed-tag-graph" },
+    // API: AI & Enrichment
+    { chunkId: ids.apiAI, tagId: "seed-tag-api" },
+    { chunkId: ids.apiAI, tagId: "seed-tag-enrichment" },
+    { chunkId: ids.apiAI, tagId: "seed-tag-ollama" },
+    // Enrichment Pipeline
+    { chunkId: ids.enrich, tagId: "seed-tag-enrichment" },
+    { chunkId: ids.enrich, tagId: "seed-tag-ollama" },
+    { chunkId: ids.enrich, tagId: "seed-tag-guide" },
+    // Semantic Search
+    { chunkId: ids.semantic, tagId: "seed-tag-search" },
+    { chunkId: ids.semantic, tagId: "seed-tag-pgvector" },
+    // Repository Layer
+    { chunkId: ids.repo, tagId: "seed-tag-repository" },
+    { chunkId: ids.repo, tagId: "seed-tag-drizzle" },
+    { chunkId: ids.repo, tagId: "seed-tag-backend" },
+    // Service Layer
+    { chunkId: ids.service, tagId: "seed-tag-service" },
+    { chunkId: ids.service, tagId: "seed-tag-effect" },
+    { chunkId: ids.service, tagId: "seed-tag-backend" },
+    // Eden Treaty
+    { chunkId: ids.eden, tagId: "seed-tag-eden" },
+    { chunkId: ids.eden, tagId: "seed-tag-elysia" },
+    { chunkId: ids.eden, tagId: "seed-tag-frontend" },
+    { chunkId: ids.eden, tagId: "seed-tag-typescript" },
+    // Frontend Routes
+    { chunkId: ids.routes, tagId: "seed-tag-frontend" },
+    { chunkId: ids.routes, tagId: "seed-tag-tanstack" },
+    { chunkId: ids.routes, tagId: "seed-tag-react" },
+    // Graph Visualization
+    { chunkId: ids.graph, tagId: "seed-tag-graph" },
+    { chunkId: ids.graph, tagId: "seed-tag-visualization" },
+    { chunkId: ids.graph, tagId: "seed-tag-reactflow" },
+    { chunkId: ids.graph, tagId: "seed-tag-frontend" },
+    // Graph Layout
+    { chunkId: ids.graphLayout, tagId: "seed-tag-graph" },
+    { chunkId: ids.graphLayout, tagId: "seed-tag-force-directed" },
+    { chunkId: ids.graphLayout, tagId: "seed-tag-visualization" },
+    // Authentication System
+    { chunkId: ids.auth, tagId: "seed-tag-authentication" },
+    { chunkId: ids.auth, tagId: "seed-tag-better-auth" },
+    // CLI Commands
+    { chunkId: ids.cli, tagId: "seed-tag-cli" },
+    { chunkId: ids.cli, tagId: "seed-tag-reference" },
+    // CLI Local Store
+    { chunkId: ids.cliStore, tagId: "seed-tag-cli" },
+    { chunkId: ids.cliStore, tagId: "seed-tag-storage" },
+    { chunkId: ids.cliStore, tagId: "seed-tag-sync" },
+    // CLI Scanner
+    { chunkId: ids.cliScanner, tagId: "seed-tag-cli" },
+    { chunkId: ids.cliScanner, tagId: "seed-tag-scanner" },
+    // Environment Variables
+    { chunkId: ids.env, tagId: "seed-tag-configuration" },
+    { chunkId: ids.env, tagId: "seed-tag-reference" },
+    // Docker Deployment
+    { chunkId: ids.docker, tagId: "seed-tag-deployment" },
+    { chunkId: ids.docker, tagId: "seed-tag-docker" },
+    { chunkId: ids.docker, tagId: "seed-tag-ci" },
+    // Turborepo Build
+    { chunkId: ids.turbo, tagId: "seed-tag-turborepo" },
+    { chunkId: ids.turbo, tagId: "seed-tag-monorepo" }
+];
+
+for (const ct of chunkTagAssociations) {
+    await db.insert(chunkTag).values(ct).catch(e => console.error(`  \u2717 chunk_tag:`, e));
+}
+console.log(`  \u2713 ${chunkTagAssociations.length} chunk-tag associations`);
+
+console.log(`\n\u2705 Database seeded: ${chunks.length} chunks, ${connections.length} connections, ${seedTagTypes.length} tag types, ${seedTags.length} tags`);
+
+// Build a lookup for enrichment prompts (replacing old tags property)
+const chunkTagNames = new Map<string, string[]>();
+for (const ct of chunkTagAssociations) {
+    const tagName = seedTags.find(t => t.id === ct.tagId)?.name ?? "";
+    const existing = chunkTagNames.get(ct.chunkId) ?? [];
+    existing.push(tagName);
+    chunkTagNames.set(ct.chunkId, existing);
+}
 
 // Attempt to enrich all seeded chunks via Ollama
 const OLLAMA_URL = process.env.OLLAMA_URL ?? "http://localhost:11434";
@@ -1284,7 +1448,7 @@ try {
 
 Title: ${c.title}
 Type: ${c.type}
-Tags: ${c.tags.join(", ")}
+Tags: ${(chunkTagNames.get(c.id) ?? []).join(", ")}
 Content: ${c.content}`,
                         format: "json",
                         stream: false
