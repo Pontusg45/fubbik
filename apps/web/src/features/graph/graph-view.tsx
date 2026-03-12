@@ -34,6 +34,7 @@ import { GraphFilters } from "@/features/graph/graph-filters";
 import { GraphLegend } from "@/features/graph/graph-legend";
 import { GraphMetrics } from "@/features/graph/graph-metrics";
 import { GraphNode } from "@/features/graph/graph-node";
+import { GraphTagRegions } from "@/features/graph/graph-tag-regions";
 import type { LayoutWorkerInput, LayoutWorkerOutput } from "@/features/graph/layout.worker";
 import { type LayoutAlgorithm, hierarchicalLayout, radialLayout } from "@/features/graph/layouts";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
@@ -910,6 +911,34 @@ function GraphViewInner() {
         selectedChunkId
     ]);
 
+    const nodePositionMap = useMemo(() => {
+        const map = new Map<string, { x: number; y: number; width: number; height: number }>();
+        for (const node of nodes) {
+            map.set(node.id, {
+                x: node.position.x,
+                y: node.position.y,
+                width: node.measured?.width ?? 150,
+                height: node.measured?.height ?? 40
+            });
+        }
+        return map;
+    }, [nodes]);
+
+    const tagRegions = useMemo(() => {
+        if (!tagGroups || !data?.chunkTags) return [];
+        const typeColorMap = new Map<string, string>();
+        for (const tt of data.tagTypes ?? []) {
+            typeColorMap.set(tt.id, tt.color);
+        }
+        const regions: { tagName: string; color: string; nodeIds: string[] }[] = [];
+        for (const [tagName, nodeIds] of tagGroups) {
+            const tagEntry = data.chunkTags.find(ct => ct.tagName === tagName && ct.tagTypeId);
+            const color = tagEntry?.tagTypeColor ?? "#8b5cf6";
+            regions.push({ tagName, color, nodeIds });
+        }
+        return regions;
+    }, [tagGroups, data]);
+
     // Fit view once after first layout positions arrive
     const fitViewRef = useRef(fitView);
     fitViewRef.current = fitView;
@@ -1212,6 +1241,10 @@ function GraphViewInner() {
                         />
                     </ReactFlow>
                 </ZoomContext.Provider>
+
+                {tagRegions.length > 0 && (
+                    <GraphTagRegions regions={tagRegions} nodePositions={nodePositionMap} />
+                )}
 
                 {/* Keyboard shortcut help overlay */}
                 {showHelp && (
