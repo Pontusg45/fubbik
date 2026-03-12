@@ -265,6 +265,60 @@ function GraphViewInner() {
         });
     }
 
+    // Tag grouping state
+    const [activeTagTypeIds, setActiveTagTypeIds] = useState<Set<string>>(new Set());
+
+    function toggleTagType(id: string) {
+        setActiveTagTypeIds(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    }
+
+    // Tag types for the filter panel
+    const tagTypeInfos = useMemo(() => {
+        if (!data?.tagTypes) return [];
+        const tagCountByType = new Map<string, number>();
+        for (const ct of data.chunkTags ?? []) {
+            if (ct.tagTypeId) {
+                tagCountByType.set(ct.tagTypeId, (tagCountByType.get(ct.tagTypeId) ?? 0) + 1);
+            }
+        }
+        return data.tagTypes.map(tt => ({
+            id: tt.id,
+            name: tt.name,
+            color: tt.color,
+            tagCount: tagCountByType.get(tt.id) ?? 0
+        }));
+    }, [data]);
+
+    // Build tag groups: tagName -> chunkIds (for active tag types only)
+    const tagGroups = useMemo(() => {
+        if (activeTagTypeIds.size === 0 || !data?.chunkTags) return null;
+        const groups = new Map<string, string[]>();
+        for (const ct of data.chunkTags) {
+            if (!ct.tagTypeId || !activeTagTypeIds.has(ct.tagTypeId)) continue;
+            if (!groups.has(ct.tagName)) groups.set(ct.tagName, []);
+            groups.get(ct.tagName)!.push(ct.chunkId);
+        }
+        return groups;
+    }, [activeTagTypeIds, data]);
+
+    // Build chunk-to-tag-group lookup for edge opacity
+    const chunkTagGroupMap = useMemo(() => {
+        if (!tagGroups) return null;
+        const map = new Map<string, Set<string>>();
+        for (const [tagName, chunkIds] of tagGroups) {
+            for (const cid of chunkIds) {
+                if (!map.has(cid)) map.set(cid, new Set());
+                map.get(cid)!.add(tagName);
+            }
+        }
+        return map;
+    }, [tagGroups]);
+
     // --- Web Worker for force-directed layout ---
     const workerRef = useRef<Worker | null>(null);
     const requestIdRef = useRef<number>(0);
@@ -383,10 +437,11 @@ function GraphViewInner() {
         }
 
         if (layoutAlgorithm === "force") {
+            const tagGroupsObj = tagGroups ? Object.fromEntries(tagGroups) : undefined;
             if (useMainThread) {
                 setIsLayouting(true);
                 // Run synchronously on main thread — avoids worker serialization overhead
-                const positions = runForceLayout(workerNodes, workerEdges);
+                const positions = runForceLayout(workerNodes, workerEdges, tagGroups ?? undefined);
                 setLayoutPositions(positions);
                 setIsLayouting(false);
             } else {
@@ -396,7 +451,8 @@ function GraphViewInner() {
                 workerRef.current.postMessage({
                     requestId: requestIdRef.current,
                     nodes: workerNodes,
-                    edges: workerEdges
+                    edges: workerEdges,
+                    tagGroups: tagGroupsObj
                 } satisfies LayoutWorkerInput);
             }
         } else {
@@ -411,7 +467,7 @@ function GraphViewInner() {
             setLayoutPositions(positions);
             setIsLayouting(false);
         }
-    }, [filteredGraph, layoutAlgorithm, useMainThread, selectedChunkId]);
+    }, [filteredGraph, layoutAlgorithm, useMainThread, selectedChunkId, tagGroups]);
 
     // Build layoutNodes and layoutEdges from positions (cheap: styling + edge creation only)
     const { layoutNodes, layoutEdges } = useMemo(() => {
@@ -1151,6 +1207,9 @@ function GraphViewInner() {
                         activeRelations={filterRelations}
                         onToggleType={toggleType}
                         onToggleRelation={toggleRelation}
+                        tagTypes={tagTypeInfos}
+                        activeTagTypeIds={activeTagTypeIds}
+                        onToggleTagType={toggleTagType}
                     />
                 </div>
 
