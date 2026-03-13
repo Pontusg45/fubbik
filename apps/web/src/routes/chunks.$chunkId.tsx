@@ -118,6 +118,14 @@ function ChunkDetail() {
                         type={chunk.type}
                         tags={[]}
                     />
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        render={<Link to="/graph" search={{ pathFrom: chunkId }} />}
+                    >
+                        <Network className="size-3.5" />
+                        Find path
+                    </Button>
                     <Button variant="outline" size="sm" render={<Link to="/chunks/$chunkId/edit" params={{ chunkId }} />}>
                         <Edit className="size-3.5" />
                         Edit
