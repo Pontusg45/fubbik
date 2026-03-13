@@ -70,6 +70,14 @@ export class FubbikApi {
         return (await response.json()) as { chunks: Chunk[]; total: number };
     }
 
+    async getChunk(id: string): Promise<{ chunk: Chunk; connections: unknown[] }> {
+        const response = await fetch(`${this.baseUrl}/api/chunks/${id}`);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch chunk: ${response.status} ${response.statusText}`);
+        }
+        return response.json() as Promise<{ chunk: Chunk; connections: unknown[] }>;
+    }
+
     async createChunk(body: CreateChunkBody): Promise<Chunk> {
         const response = await fetch(`${this.baseUrl}/api/chunks`, {
             method: "POST",

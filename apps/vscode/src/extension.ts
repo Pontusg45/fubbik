@@ -12,6 +12,7 @@ export async function activate(context: vscode.ExtensionContext) {
     const serverUrl = config.get<string>("serverUrl", "http://localhost:3000");
     const api = new FubbikApi(serverUrl);
     const sidebarProvider = new SidebarProvider(context.extensionUri);
+    sidebarProvider.setApi(api);
 
     // Register sidebar
     context.subscriptions.push(

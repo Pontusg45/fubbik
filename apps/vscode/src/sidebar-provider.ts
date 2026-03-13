@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import type { Chunk } from "./api";
+import type { Chunk, FubbikApi } from "./api";
 import { getBaseHtml, getNonce } from "./webview-utils";
 
 interface SidebarState {
@@ -16,7 +16,13 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
     private view?: vscode.WebviewView;
     private state: SidebarState = {};
 
+    private api?: FubbikApi;
+
     constructor(private readonly extensionUri: vscode.Uri) {}
+
+    public setApi(api: FubbikApi) {
+        this.api = api;
+    }
 
     public resolveWebviewView(
         webviewView: vscode.WebviewView,
@@ -29,14 +35,13 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
             enableScripts: true,
         };
 
-        webviewView.webview.onDidReceiveMessage((message) => {
+        webviewView.webview.onDidReceiveMessage(async (message) => {
             switch (message.type) {
                 case "openChunk": {
-                    const webAppUrl = vscode.workspace
-                        .getConfiguration("fubbik")
-                        .get<string>("webAppUrl", "http://localhost:3001");
-                    const url = `${webAppUrl}/chunks/${message.id}`;
-                    vscode.env.openExternal(vscode.Uri.parse(url));
+                    if (this.api) {
+                        const { showChunkDetail } = await import("./chunk-detail");
+                        showChunkDetail(this.api, message.id);
+                    }
                     break;
                 }
                 case "refresh": {
