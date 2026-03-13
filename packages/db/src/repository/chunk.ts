@@ -162,6 +162,9 @@ export interface CreateChunkParams {
     content: string;
     type: string;
     userId: string;
+    rationale?: string;
+    alternatives?: string[];
+    consequences?: string;
 }
 
 export function createChunk(params: CreateChunkParams) {
@@ -182,6 +185,9 @@ export interface UpdateChunkParams {
     aliases?: string[];
     notAbout?: string[];
     scope?: Record<string, string>;
+    rationale?: string;
+    alternatives?: string[];
+    consequences?: string;
 }
 
 export function updateChunk(chunkId: string, params: UpdateChunkParams) {
@@ -196,7 +202,10 @@ export function updateChunk(chunkId: string, params: UpdateChunkParams) {
                     ...(params.summary !== undefined && { summary: params.summary }),
                     ...(params.aliases !== undefined && { aliases: params.aliases }),
                     ...(params.notAbout !== undefined && { notAbout: params.notAbout }),
-                    ...(params.scope !== undefined && { scope: params.scope })
+                    ...(params.scope !== undefined && { scope: params.scope }),
+                    ...(params.rationale !== undefined && { rationale: params.rationale }),
+                    ...(params.alternatives !== undefined && { alternatives: params.alternatives }),
+                    ...(params.consequences !== undefined && { consequences: params.consequences })
                 })
                 .where(eq(chunk.id, chunkId))
                 .returning();

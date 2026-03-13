@@ -34,6 +34,9 @@ export const chunk = pgTable(
         aliases: jsonb("aliases").$type<string[]>().notNull().default([]),
         notAbout: jsonb("not_about").$type<string[]>().notNull().default([]),
         scope: jsonb("scope").$type<Record<string, string>>().notNull().default({}),
+        rationale: text("rationale"),
+        alternatives: jsonb("alternatives").$type<string[]>(),
+        consequences: text("consequences"),
         embedding: vector("embedding")
     },
     table => [index("chunk_userId_idx").on(table.userId), index("chunk_type_idx").on(table.type)]
