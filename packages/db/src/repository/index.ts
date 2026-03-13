@@ -1,3 +1,4 @@
+export * from "./applies-to";
 export * from "./health";
 export * from "./chunk";
 export * from "./chunk-version";

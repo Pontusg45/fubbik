@@ -1,3 +1,4 @@
+export * from "./applies-to";
 export * from "./auth";
 export * from "./chunk";
 export * from "./chunk-version";
