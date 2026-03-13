@@ -1,6 +1,7 @@
 export * from "./health";
 export * from "./chunk";
 export * from "./chunk-version";
+export * from "./codebase";
 export * from "./connection";
 export * from "./stats";
 export * from "./graph";

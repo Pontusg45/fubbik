@@ -1,14 +1,27 @@
-import { eq, or, sql } from "drizzle-orm";
+import { and, eq, or, sql } from "drizzle-orm";
 import { Effect } from "effect";
 
 import { DatabaseError } from "../errors";
 import { db } from "../index";
 import { chunk, chunkConnection } from "../schema/chunk";
+import { chunkCodebase } from "../schema/codebase";
 import { chunkTag, tag, tagType } from "../schema/tag";
 
-export function getAllChunksMeta(userId?: string) {
+export function getAllChunksMeta(userId?: string, codebaseId?: string) {
     return Effect.tryPromise({
         try: () => {
+            const conditions = [];
+            if (userId) conditions.push(eq(chunk.userId, userId));
+            if (codebaseId) {
+                const inCodebase = db
+                    .select({ chunkId: chunkCodebase.chunkId })
+                    .from(chunkCodebase)
+                    .where(eq(chunkCodebase.codebaseId, codebaseId));
+                const inAnyCodebase = db.select({ chunkId: chunkCodebase.chunkId }).from(chunkCodebase);
+                conditions.push(
+                    or(sql`${chunk.id} IN (${inCodebase})`, sql`${chunk.id} NOT IN (${inAnyCodebase})`)!
+                );
+            }
             const query = db
                 .select({
                     id: chunk.id,
@@ -18,7 +31,7 @@ export function getAllChunksMeta(userId?: string) {
                     createdAt: chunk.createdAt
                 })
                 .from(chunk);
-            return userId ? query.where(eq(chunk.userId, userId)) : query;
+            return conditions.length > 0 ? query.where(and(...conditions)) : query;
         },
         catch: cause => new DatabaseError({ cause })
     });

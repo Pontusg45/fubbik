@@ -4,6 +4,7 @@ import { Effect } from "effect";
 import { DatabaseError } from "../errors";
 import { db } from "../index";
 import { chunk, chunkConnection } from "../schema/chunk";
+import { chunkCodebase } from "../schema/codebase";
 
 export interface ListChunksParams {
     userId?: string;
@@ -17,6 +18,8 @@ export interface ListChunksParams {
     after?: Date;
     enrichment?: "missing" | "complete";
     minConnections?: number;
+    codebaseId?: string;
+    globalOnly?: boolean;
     limit: number;
     offset: number;
 }
@@ -61,6 +64,20 @@ export function listChunks(params: ListChunksParams) {
                            OR ${chunkConnection.targetId} = ${chunk.id}
                     ) >= ${params.minConnections}`
                 );
+            }
+            if (params.codebaseId) {
+                const inCodebase = db
+                    .select({ chunkId: chunkCodebase.chunkId })
+                    .from(chunkCodebase)
+                    .where(eq(chunkCodebase.codebaseId, params.codebaseId));
+                const inAnyCodebase = db.select({ chunkId: chunkCodebase.chunkId }).from(chunkCodebase);
+                conditions.push(
+                    or(sql`${chunk.id} IN (${inCodebase})`, sql`${chunk.id} NOT IN (${inAnyCodebase})`)!
+                );
+            }
+            if (params.globalOnly) {
+                const inAnyCodebase = db.select({ chunkId: chunkCodebase.chunkId }).from(chunkCodebase);
+                conditions.push(sql`${chunk.id} NOT IN (${inAnyCodebase})`);
             }
             if (params.enrichment === "missing") {
                 conditions.push(or(isNull(chunk.summary), isNull(chunk.embedding), sql`jsonb_array_length(${chunk.aliases}) = 0`)!);
