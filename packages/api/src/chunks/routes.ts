@@ -91,7 +91,10 @@ export const chunkRoutes = new Elysia()
                 content: t.Optional(t.String({ maxLength: 50000 })),
                 type: t.Optional(t.String({ maxLength: 20 })),
                 tags: t.Optional(t.Array(t.String({ maxLength: 50 }), { maxItems: 20 })),
-                codebaseIds: t.Optional(t.Array(t.String(), { maxItems: 20 }))
+                codebaseIds: t.Optional(t.Array(t.String(), { maxItems: 20 })),
+                rationale: t.Optional(t.String({ maxLength: 5000 })),
+                alternatives: t.Optional(t.Array(t.String({ maxLength: 500 }), { maxItems: 10 })),
+                consequences: t.Optional(t.String({ maxLength: 5000 }))
             })
         }
     )
@@ -111,7 +114,10 @@ export const chunkRoutes = new Elysia()
                 summary: t.Optional(t.Union([t.String({ maxLength: 500 }), t.Null()])),
                 aliases: t.Optional(t.Array(t.String({ maxLength: 100 }), { maxItems: 20 })),
                 notAbout: t.Optional(t.Array(t.String({ maxLength: 100 }), { maxItems: 20 })),
-                scope: t.Optional(t.Record(t.String(), t.String()))
+                scope: t.Optional(t.Record(t.String(), t.String())),
+                rationale: t.Optional(t.String({ maxLength: 5000 })),
+                alternatives: t.Optional(t.Array(t.String({ maxLength: 500 }), { maxItems: 10 })),
+                consequences: t.Optional(t.String({ maxLength: 5000 }))
             })
         }
     )

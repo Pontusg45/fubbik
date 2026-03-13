@@ -92,14 +92,29 @@ export function getChunkDetail(chunkId: string, userId?: string) {
     );
 }
 
-export function createChunk(userId: string, body: { title: string; content?: string; type?: string; tags?: string[]; codebaseIds?: string[] }) {
+export function createChunk(
+    userId: string,
+    body: {
+        title: string;
+        content?: string;
+        type?: string;
+        tags?: string[];
+        codebaseIds?: string[];
+        rationale?: string;
+        alternatives?: string[];
+        consequences?: string;
+    }
+) {
     const id = crypto.randomUUID();
     return createChunkRepo({
         id,
         title: body.title,
         content: body.content ?? "",
         type: body.type ?? "note",
-        userId
+        userId,
+        rationale: body.rationale,
+        alternatives: body.alternatives,
+        consequences: body.consequences
     }).pipe(
         Effect.tap(() => {
             if (body.tags && body.tags.length > 0) {
@@ -135,6 +150,9 @@ export function updateChunk(
         aliases?: string[];
         notAbout?: string[];
         scope?: Record<string, string>;
+        rationale?: string;
+        alternatives?: string[];
+        consequences?: string;
     }
 ) {
     return getChunkById(chunkId, userId).pipe(
