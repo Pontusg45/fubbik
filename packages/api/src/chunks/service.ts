@@ -7,10 +7,12 @@ import {
     findOrCreateTag,
     getChunkById,
     getChunkConnections,
+    getCodebasesForChunk,
     getNextVersionNumber,
     getVersionsByChunkId,
     listChunks as listChunksRepo,
     semanticSearch as semanticSearchRepo,
+    setChunkCodebases,
     setChunkTags,
     updateChunk as updateChunkRepo
 } from "@fubbik/db/repository";
@@ -35,6 +37,8 @@ export function listChunks(
         after?: string;
         enrichment?: "missing" | "complete";
         minConnections?: string;
+        codebaseId?: string;
+        global?: string;
     }
 ) {
     const limit = Math.min(Number(query.limit ?? 50), 100);
@@ -55,6 +59,7 @@ export function listChunks(
     const tags = parsedTags?.length ? parsedTags : undefined;
     const after = query.after ? new Date(Date.now() - Number(query.after) * 86400000) : undefined;
     const minConnections = query.minConnections ? Number(query.minConnections) : undefined;
+    const globalOnly = query.global === "true";
     return listChunksRepo({
         userId,
         type: query.type,
@@ -67,6 +72,8 @@ export function listChunks(
         after,
         enrichment: query.enrichment,
         minConnections,
+        codebaseId: query.codebaseId,
+        globalOnly,
         limit,
         offset
     }).pipe(Effect.map(result => ({ ...result, limit, offset })));
@@ -75,11 +82,17 @@ export function listChunks(
 export function getChunkDetail(chunkId: string, userId?: string) {
     return getChunkById(chunkId, userId).pipe(
         Effect.flatMap(found => (found ? Effect.succeed(found) : Effect.fail(new NotFoundError({ resource: "Chunk" })))),
-        Effect.flatMap(found => getChunkConnections(chunkId).pipe(Effect.map(connections => ({ chunk: found, connections }))))
+        Effect.flatMap(found =>
+            Effect.all({
+                chunk: Effect.succeed(found),
+                connections: getChunkConnections(chunkId),
+                codebases: getCodebasesForChunk(chunkId)
+            })
+        )
     );
 }
 
-export function createChunk(userId: string, body: { title: string; content?: string; type?: string; tags?: string[] }) {
+export function createChunk(userId: string, body: { title: string; content?: string; type?: string; tags?: string[]; codebaseIds?: string[] }) {
     const id = crypto.randomUUID();
     return createChunkRepo({
         id,
@@ -93,6 +106,12 @@ export function createChunk(userId: string, body: { title: string; content?: str
                 return Effect.all(body.tags.map(name => findOrCreateTag(name, userId)), { concurrency: 5 }).pipe(
                     Effect.flatMap(tags => setChunkTags(id, tags.map(t => t.id)))
                 );
+            }
+            return Effect.void;
+        }),
+        Effect.tap(() => {
+            if (body.codebaseIds && body.codebaseIds.length > 0) {
+                return setChunkCodebases(id, body.codebaseIds);
             }
             return Effect.void;
         }),
@@ -111,6 +130,7 @@ export function updateChunk(
         content?: string;
         type?: string;
         tags?: string[];
+        codebaseIds?: string[];
         summary?: string | null;
         aliases?: string[];
         notAbout?: string[];
@@ -140,6 +160,12 @@ export function updateChunk(
                 return Effect.all(body.tags.map(name => findOrCreateTag(name, userId)), { concurrency: 5 }).pipe(
                     Effect.flatMap(tags => setChunkTags(chunkId, tags.map(t => t.id)))
                 );
+            }
+            return Effect.void;
+        }),
+        Effect.tap(() => {
+            if (body.codebaseIds) {
+                return setChunkCodebases(chunkId, body.codebaseIds);
             }
             return Effect.void;
         }),

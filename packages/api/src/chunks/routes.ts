@@ -21,7 +21,9 @@ export const chunkRoutes = new Elysia()
                 tags: t.Optional(t.String()),
                 after: t.Optional(t.String()),
                 enrichment: t.Optional(t.Union([t.Literal("missing"), t.Literal("complete")])),
-                minConnections: t.Optional(t.String())
+                minConnections: t.Optional(t.String()),
+                codebaseId: t.Optional(t.String()),
+                global: t.Optional(t.String())
             })
         }
     )
@@ -88,7 +90,8 @@ export const chunkRoutes = new Elysia()
                 title: t.String({ maxLength: 200 }),
                 content: t.Optional(t.String({ maxLength: 50000 })),
                 type: t.Optional(t.String({ maxLength: 20 })),
-                tags: t.Optional(t.Array(t.String({ maxLength: 50 }), { maxItems: 20 }))
+                tags: t.Optional(t.Array(t.String({ maxLength: 50 }), { maxItems: 20 })),
+                codebaseIds: t.Optional(t.Array(t.String(), { maxItems: 20 }))
             })
         }
     )
@@ -104,6 +107,7 @@ export const chunkRoutes = new Elysia()
                 content: t.Optional(t.String({ maxLength: 50000 })),
                 type: t.Optional(t.String({ maxLength: 20 })),
                 tags: t.Optional(t.Array(t.String({ maxLength: 50 }), { maxItems: 20 })),
+                codebaseIds: t.Optional(t.Array(t.String(), { maxItems: 20 })),
                 summary: t.Optional(t.Union([t.String({ maxLength: 500 }), t.Null()])),
                 aliases: t.Optional(t.Array(t.String({ maxLength: 100 }), { maxItems: 20 })),
                 notAbout: t.Optional(t.Array(t.String({ maxLength: 100 }), { maxItems: 20 })),
