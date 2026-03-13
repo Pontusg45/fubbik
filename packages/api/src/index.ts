@@ -3,6 +3,7 @@ import { Cause, Effect, Option } from "effect";
 import { Elysia } from "elysia";
 
 import { aiRoutes } from "./ai/routes";
+import { appliesToRoutes } from "./applies-to/routes";
 import { chunkRoutes } from "./chunks/routes";
 import { codebaseRoutes } from "./codebases/routes";
 import { connectionRoutes } from "./connections/routes";
@@ -96,6 +97,7 @@ export const api = new Elysia({ prefix: "/api" })
         Effect.runPromise(requireSession(ctx).pipe(Effect.map(session => ({ message: "This is private" as const, user: session.user }))))
     )
     .use(chunkRoutes)
+    .use(appliesToRoutes)
     .use(statsRoutes)
     .use(connectionRoutes)
     .use(graphRoutes)

@@ -5,6 +5,7 @@ import {
     deleteMany as deleteManyRepo,
     exportAllChunks as exportAllChunksRepo,
     findOrCreateTag,
+    getAppliesToForChunk,
     getChunkById,
     getChunkConnections,
     getCodebasesForChunk,
@@ -86,7 +87,8 @@ export function getChunkDetail(chunkId: string, userId?: string) {
             Effect.all({
                 chunk: Effect.succeed(found),
                 connections: getChunkConnections(chunkId),
-                codebases: getCodebasesForChunk(chunkId)
+                codebases: getCodebasesForChunk(chunkId),
+                appliesTo: getAppliesToForChunk(chunkId)
             })
         )
     );
