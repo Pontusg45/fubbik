@@ -1,0 +1,89 @@
+export interface Chunk {
+    id: string;
+    content: string;
+    title: string | null;
+    source: string | null;
+    tags: string[];
+    codebaseId: string | null;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface CreateChunkBody {
+    content: string;
+    title?: string;
+    source?: string;
+    tags?: string[];
+    codebaseId?: string;
+}
+
+export interface DetectResult {
+    id: string;
+    name: string;
+    remoteUrl: string | null;
+    localPath: string | null;
+}
+
+export class FubbikApi {
+    private baseUrl: string;
+
+    constructor(serverUrl: string) {
+        this.baseUrl = serverUrl.replace(/\/+$/, "");
+    }
+
+    async detectCodebase(params: {
+        remoteUrl?: string;
+        localPath?: string;
+    }): Promise<DetectResult | null> {
+        try {
+            const response = await fetch(`${this.baseUrl}/codebases/detect`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(params),
+            });
+
+            if (!response.ok) {
+                return null;
+            }
+
+            return (await response.json()) as DetectResult;
+        } catch {
+            return null;
+        }
+    }
+
+    async getChunks(
+        codebaseId?: string
+    ): Promise<{ chunks: Chunk[]; total: number }> {
+        const url = new URL(`${this.baseUrl}/chunks`);
+        if (codebaseId) {
+            url.searchParams.set("codebaseId", codebaseId);
+        }
+
+        const response = await fetch(url.toString());
+
+        if (!response.ok) {
+            throw new Error(
+                `Failed to fetch chunks: ${response.status} ${response.statusText}`
+            );
+        }
+
+        return (await response.json()) as { chunks: Chunk[]; total: number };
+    }
+
+    async createChunk(body: CreateChunkBody): Promise<Chunk> {
+        const response = await fetch(`${this.baseUrl}/chunks`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+        });
+
+        if (!response.ok) {
+            throw new Error(
+                `Failed to create chunk: ${response.status} ${response.statusText}`
+            );
+        }
+
+        return (await response.json()) as Chunk;
+    }
+}
