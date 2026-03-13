@@ -6,6 +6,7 @@ import { aiRoutes } from "./ai/routes";
 import { chunkRoutes } from "./chunks/routes";
 import { codebaseRoutes } from "./codebases/routes";
 import { connectionRoutes } from "./connections/routes";
+import { knowledgeHealthRoutes } from "./knowledge-health/routes";
 import type { Session } from "./context";
 import { enrichRoutes } from "./enrich/routes";
 import { graphRoutes } from "./graph/routes";
@@ -102,6 +103,7 @@ export const api = new Elysia({ prefix: "/api" })
     .use(enrichRoutes)
     .use(tagRoutes)
     .use(tagTypeRoutes)
-    .use(codebaseRoutes);
+    .use(codebaseRoutes)
+    .use(knowledgeHealthRoutes);
 
 export type Api = typeof api;
