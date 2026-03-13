@@ -3,6 +3,7 @@ import { Command } from "commander";
 import { addCommand } from "./commands/add";
 import { bulkAddCommand } from "./commands/bulk-add";
 import { catCommand } from "./commands/cat";
+import { codebaseCommand } from "./commands/codebase";
 import { diffCommand } from "./commands/diff";
 import { enrichCommand } from "./commands/enrich";
 import { exportCommand } from "./commands/export";
@@ -48,5 +49,6 @@ program.addCommand(importCommand);
 program.addCommand(diffCommand);
 program.addCommand(syncCommand);
 program.addCommand(enrichCommand);
+program.addCommand(codebaseCommand);
 
 program.parse();
