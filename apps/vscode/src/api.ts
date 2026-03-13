@@ -36,11 +36,10 @@ export class FubbikApi {
         localPath?: string;
     }): Promise<DetectResult | null> {
         try {
-            const response = await fetch(`${this.baseUrl}/codebases/detect`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(params),
-            });
+            const query = new URLSearchParams();
+            if (params.remoteUrl) query.set("remoteUrl", params.remoteUrl);
+            else if (params.localPath) query.set("localPath", params.localPath);
+            const response = await fetch(`${this.baseUrl}/api/codebases/detect?${query}`);
 
             if (!response.ok) {
                 return null;
@@ -55,7 +54,7 @@ export class FubbikApi {
     async getChunks(
         codebaseId?: string
     ): Promise<{ chunks: Chunk[]; total: number }> {
-        const url = new URL(`${this.baseUrl}/chunks`);
+        const url = new URL(`${this.baseUrl}/api/chunks`);
         if (codebaseId) {
             url.searchParams.set("codebaseId", codebaseId);
         }
@@ -72,7 +71,7 @@ export class FubbikApi {
     }
 
     async createChunk(body: CreateChunkBody): Promise<Chunk> {
-        const response = await fetch(`${this.baseUrl}/chunks`, {
+        const response = await fetch(`${this.baseUrl}/api/chunks`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(body),
