@@ -152,7 +152,7 @@ export function updateChunk(
             })
         ),
         Effect.flatMap(() => {
-            const { tags: _tags, ...repoBody } = body;
+            const { tags: _tags, codebaseIds: _codebaseIds, ...repoBody } = body;
             return updateChunkRepo(chunkId, repoBody);
         }),
         Effect.tap(() => {
