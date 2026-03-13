@@ -8,3 +8,4 @@ export * from "./graph";
 export * from "./semantic";
 export * from "./tag-type";
 export * from "./tag-new";
+export * from "./knowledge-health";
