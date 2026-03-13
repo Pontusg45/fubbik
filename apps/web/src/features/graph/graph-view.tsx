@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 import "@xyflow/react/dist/style.css";
 import {
     Background,
@@ -18,7 +18,7 @@ import {
     type Viewport
 } from "@xyflow/react";
 import { toPng } from "html-to-image";
-import { Download, Settings2 } from "lucide-react";
+import { Download, Route, Settings2 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -43,6 +43,7 @@ import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 import { GraphTimeline } from "./graph-timeline";
+import { PathPanel } from "./path-panel";
 import { useSavedGraphViews } from "./use-saved-views";
 
 
@@ -205,6 +206,20 @@ function GraphViewInner() {
     // Path highlighting state
     const [pathStartId, setPathStartId] = useState<string | null>(null);
     const [pathEndId, setPathEndId] = useState<string | null>(null);
+    const [showPathPanel, setShowPathPanel] = useState(false);
+
+    // Read path params from URL search
+    const search = useSearch({ strict: false }) as { pathFrom?: string; pathTo?: string };
+    useEffect(() => {
+        if (search.pathFrom) {
+            setPathStartId(search.pathFrom);
+            setShowPathPanel(true);
+        }
+        if (search.pathTo) {
+            setPathEndId(search.pathTo);
+            setShowPathPanel(true);
+        }
+    }, [search.pathFrom, search.pathTo]);
 
     // Collapsible clusters
     const [collapsedParents, setCollapsedParents] = useState<Set<string>>(new Set());
@@ -730,7 +745,7 @@ function GraphViewInner() {
                 }
             }
         }
-        return { pathNodeIds, pathEdgeIds, length: path.length - 1 };
+        return { pathNodeIds, pathEdgeIds, length: path.length - 1, path };
     }, [pathStartId, pathEndId, layoutEdges]);
 
     const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
@@ -1338,6 +1353,32 @@ function GraphViewInner() {
                         placeholder="Search nodes..."
                         className="bg-background/80 focus:ring-ring w-36 rounded-md border px-2.5 py-1.5 text-xs backdrop-blur-sm focus:ring-2 focus:outline-none"
                     />
+                    <Popover open={showPathPanel} onOpenChange={setShowPathPanel}>
+                        <PopoverTrigger
+                            className={`rounded-md border p-1.5 backdrop-blur-sm ${
+                                showPathPanel || pathStartId
+                                    ? "bg-primary text-primary-foreground"
+                                    : "bg-background/80 text-muted-foreground hover:text-foreground"
+                            }`}
+                        >
+                            <Route className="size-4" />
+                        </PopoverTrigger>
+                        <PopoverPopup side="bottom" align="end" sideOffset={8} className="w-72">
+                            <PathPanel
+                                chunks={(data?.chunks ?? []).map(c => ({ id: c.id, title: c.title }))}
+                                pathStartId={pathStartId}
+                                pathEndId={pathEndId}
+                                pathResult={pathResult}
+                                edges={layoutEdges.map(e => ({ id: e.id, source: e.source, target: e.target, data: e.data as { relation?: string } | undefined }))}
+                                onSetStart={setPathStartId}
+                                onSetEnd={setPathEndId}
+                                onClear={() => {
+                                    setPathStartId(null);
+                                    setPathEndId(null);
+                                }}
+                            />
+                        </PopoverPopup>
+                    </Popover>
                     <Popover>
                         <PopoverTrigger className="bg-background/80 text-muted-foreground hover:text-foreground rounded-md border p-1.5 backdrop-blur-sm">
                             <Settings2 className="size-4" />

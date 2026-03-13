@@ -6,6 +6,10 @@ import { getUser } from "@/functions/get-user";
 const GraphView = lazy(() => import("@/features/graph/graph-view"));
 
 export const Route = createFileRoute("/graph")({
+    validateSearch: (search: Record<string, unknown>): { pathFrom?: string; pathTo?: string } => ({
+        pathFrom: typeof search.pathFrom === "string" ? search.pathFrom : undefined,
+        pathTo: typeof search.pathTo === "string" ? search.pathTo : undefined
+    }),
     component: () => (
         <Suspense
             fallback={
