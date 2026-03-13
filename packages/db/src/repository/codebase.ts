@@ -82,7 +82,7 @@ export function getCodebaseByLocalPath(localPath: string, userId: string) {
 
 export interface UpdateCodebaseParams {
     name?: string;
-    remoteUrl?: string;
+    remoteUrl?: string | null;
     localPaths?: string[];
 }
 
