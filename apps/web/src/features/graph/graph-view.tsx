@@ -37,6 +37,7 @@ import { GraphNode } from "@/features/graph/graph-node";
 import { GraphGroupNode } from "@/features/graph/graph-group-node";
 import type { LayoutWorkerInput, LayoutWorkerOutput } from "@/features/graph/layout.worker";
 import { type LayoutAlgorithm, hierarchicalLayout, radialLayout } from "@/features/graph/layouts";
+import { useActiveCodebase } from "@/features/codebases/use-active-codebase";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
@@ -173,10 +174,18 @@ function GraphViewInner() {
         return () => mql.removeEventListener("change", handler);
     }, []);
 
+    const { codebaseId } = useActiveCodebase();
+
     const { data, isLoading } = useQuery({
-        queryKey: ["graph"],
+        queryKey: ["graph", codebaseId],
         queryFn: async () => {
-            return unwrapEden(await api.api.graph.get());
+            return unwrapEden(
+                await api.api.graph.get({
+                    query: {
+                        ...(codebaseId && codebaseId !== "global" ? { codebaseId } : {})
+                    }
+                })
+            );
         }
     });
 

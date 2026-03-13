@@ -13,6 +13,7 @@ import { Route as TagsRouteImport } from "./routes/tags";
 import { Route as LoginRouteImport } from "./routes/login";
 import { Route as GraphRouteImport } from "./routes/graph";
 import { Route as DashboardRouteImport } from "./routes/dashboard";
+import { Route as CodebasesRouteImport } from "./routes/codebases";
 import { Route as IndexRouteImport } from "./routes/index";
 import { Route as ChunksIndexRouteImport } from "./routes/chunks.index";
 import { Route as ChunksNewRouteImport } from "./routes/chunks.new";
@@ -37,6 +38,11 @@ const GraphRoute = GraphRouteImport.update({
 const DashboardRoute = DashboardRouteImport.update({
   id: "/dashboard",
   path: "/dashboard",
+  getParentRoute: () => rootRouteImport,
+} as any);
+const CodebasesRoute = CodebasesRouteImport.update({
+  id: "/codebases",
+  path: "/codebases",
   getParentRoute: () => rootRouteImport,
 } as any);
 const IndexRoute = IndexRouteImport.update({
@@ -67,6 +73,7 @@ const ChunksChunkIdEditRoute = ChunksChunkIdEditRouteImport.update({
 
 export interface FileRoutesByFullPath {
   "/": typeof IndexRoute;
+  "/codebases": typeof CodebasesRoute;
   "/dashboard": typeof DashboardRoute;
   "/graph": typeof GraphRoute;
   "/login": typeof LoginRoute;
@@ -78,6 +85,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   "/": typeof IndexRoute;
+  "/codebases": typeof CodebasesRoute;
   "/dashboard": typeof DashboardRoute;
   "/graph": typeof GraphRoute;
   "/login": typeof LoginRoute;
@@ -90,6 +98,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport;
   "/": typeof IndexRoute;
+  "/codebases": typeof CodebasesRoute;
   "/dashboard": typeof DashboardRoute;
   "/graph": typeof GraphRoute;
   "/login": typeof LoginRoute;
@@ -103,6 +112,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath;
   fullPaths:
     | "/"
+    | "/codebases"
     | "/dashboard"
     | "/graph"
     | "/login"
@@ -114,6 +124,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo;
   to:
     | "/"
+    | "/codebases"
     | "/dashboard"
     | "/graph"
     | "/login"
@@ -125,6 +136,7 @@ export interface FileRouteTypes {
   id:
     | "__root__"
     | "/"
+    | "/codebases"
     | "/dashboard"
     | "/graph"
     | "/login"
@@ -137,6 +149,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute;
+  CodebasesRoute: typeof CodebasesRoute;
   DashboardRoute: typeof DashboardRoute;
   GraphRoute: typeof GraphRoute;
   LoginRoute: typeof LoginRoute;
@@ -175,6 +188,13 @@ declare module "@tanstack/react-router" {
       path: "/dashboard";
       fullPath: "/dashboard";
       preLoaderRoute: typeof DashboardRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/codebases": {
+      id: "/codebases";
+      path: "/codebases";
+      fullPath: "/codebases";
+      preLoaderRoute: typeof CodebasesRouteImport;
       parentRoute: typeof rootRouteImport;
     };
     "/": {
@@ -217,6 +237,7 @@ declare module "@tanstack/react-router" {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  CodebasesRoute: CodebasesRoute,
   DashboardRoute: DashboardRoute,
   GraphRoute: GraphRoute,
   LoginRoute: LoginRoute,

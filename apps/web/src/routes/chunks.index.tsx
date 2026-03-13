@@ -29,6 +29,7 @@ import { KanbanView } from "@/features/chunks/kanban-view";
 import { useCollections } from "@/features/chunks/use-collections";
 import { usePinnedChunks } from "@/features/chunks/use-pinned-chunks";
 import { useSavedFilters } from "@/features/chunks/use-saved-filters";
+import { useActiveCodebase } from "@/features/codebases/use-active-codebase";
 import { getUser } from "@/functions/get-user";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
@@ -68,6 +69,7 @@ function ChunksList() {
     const [searchInput, setSearchInput] = useState(q ?? "");
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const { filters: savedFilters, saveFilter, deleteFilter } = useSavedFilters();
+    const { codebaseId } = useActiveCodebase();
     const limit = 20;
     const offset = ((page ?? 1) - 1) * limit;
 
@@ -75,7 +77,7 @@ function ChunksList() {
     const hasActiveFilters = !!(type || q || sort || tags || size || after || enrichment || minConnections);
 
     const chunksQuery = useQuery({
-        queryKey: ["chunks-list", type, q, page, sort, tags, after, enrichment, minConnections],
+        queryKey: ["chunks-list", type, q, page, sort, tags, after, enrichment, minConnections, codebaseId],
         queryFn: async () => {
             try {
                 return unwrapEden(
@@ -89,7 +91,8 @@ function ChunksList() {
                             enrichment: enrichment as "missing" | "complete" | undefined,
                             minConnections,
                             limit: String(limit),
-                            offset: String(offset)
+                            offset: String(offset),
+                            ...(codebaseId === "global" ? { global: "true" } : codebaseId ? { codebaseId } : {})
                         }
                     })
                 );

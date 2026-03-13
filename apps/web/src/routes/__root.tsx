@@ -10,6 +10,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { Toaster } from "@/components/ui/sonner";
 import UserMenu from "@/features/auth/user-menu";
 import { MobileNav } from "@/features/nav/mobile-nav";
+import { CodebaseSwitcher } from "@/features/codebases/codebase-switcher";
 import { ChunkSearch } from "@/features/search/chunk-search";
 
 import appCss from "../index.css?url";
@@ -58,6 +59,7 @@ function RootDocument() {
                                     <FubbikLogo className="size-6" />
                                     <span className="font-bold">fubbik</span>
                                 </Link>
+                                <CodebaseSwitcher />
                                 <nav className="hidden items-center gap-1 md:flex">
                                     <Link
                                         to="/dashboard"
@@ -96,6 +98,12 @@ function RootDocument() {
                                         className="text-muted-foreground hover:text-foreground [&.active]:text-foreground rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
                                     >
                                         Tags
+                                    </Link>
+                                    <Link
+                                        to="/codebases"
+                                        className="text-muted-foreground hover:text-foreground [&.active]:text-foreground rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
+                                    >
+                                        Codebases
                                     </Link>
                                 </nav>
                                 <div className="flex items-center gap-2">
