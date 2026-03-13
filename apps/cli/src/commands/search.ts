@@ -1,5 +1,6 @@
 import { Command } from "commander";
 
+import { resolveCodebaseId } from "../lib/detect-codebase";
 import { output, outputError, outputQuiet } from "../lib/output";
 import { readStore, searchChunks } from "../lib/store";
 
@@ -10,7 +11,9 @@ export const searchCommand = new Command("search")
     .option("--offset <n>", "skip first n results")
     .option("--fields <fields>", "comma-separated fields to include")
     .option("--semantic", "use semantic (AI embedding) search via server")
-    .action(async (query: string, opts: { limit?: string; offset?: string; fields?: string; semantic?: boolean }, cmd: Command) => {
+    .option("--global", "skip codebase scoping (search all chunks)")
+    .option("--codebase <name>", "scope to a specific codebase by name")
+    .action(async (query: string, opts: { limit?: string; offset?: string; fields?: string; semantic?: boolean; global?: boolean; codebase?: string }, cmd: Command) => {
         if (opts.semantic) {
             const store = readStore();
             if (!store.serverUrl) {
@@ -19,6 +22,13 @@ export const searchCommand = new Command("search")
             }
             const params = new URLSearchParams({ q: query });
             if (opts.limit) params.set("limit", opts.limit);
+
+            const codebaseId = await resolveCodebaseId(store.serverUrl, {
+                global: opts.global,
+                codebase: opts.codebase
+            });
+            if (codebaseId) params.set("codebaseId", codebaseId);
+
             const res = await fetch(`${store.serverUrl}/api/chunks/search/semantic?${params}`);
             if (!res.ok) {
                 outputError(`Semantic search failed: ${res.status}`);

@@ -1,5 +1,6 @@
 import { Command } from "commander";
 
+import { resolveCodebaseId } from "../lib/detect-codebase";
 import { output, outputError, outputQuiet } from "../lib/output";
 import { listChunks, readStore } from "../lib/store";
 
@@ -14,6 +15,8 @@ export const listCommand = new Command("list")
     .option("--fields <fields>", "comma-separated fields to include (e.g. id,title)")
     .option("--scope <pairs>", "filter by scope (key:value,key:value) — requires server")
     .option("--exclude <terms>", "exclude chunks about these terms (comma-separated) — requires server")
+    .option("--global", "skip codebase scoping (show all chunks)")
+    .option("--codebase <name>", "scope to a specific codebase by name")
     .action(
         async (
             opts: {
@@ -26,6 +29,8 @@ export const listCommand = new Command("list")
                 fields?: string;
                 scope?: string;
                 exclude?: string;
+                global?: boolean;
+                codebase?: string;
             },
             cmd: Command
         ) => {
@@ -41,6 +46,13 @@ export const listCommand = new Command("list")
                 if (opts.exclude) params.set("exclude", opts.exclude);
                 if (opts.limit) params.set("limit", opts.limit);
                 if (opts.offset) params.set("offset", opts.offset);
+
+                const codebaseId = await resolveCodebaseId(store.serverUrl, {
+                    global: opts.global,
+                    codebase: opts.codebase
+                });
+                if (codebaseId) params.set("codebaseId", codebaseId);
+
                 const res = await fetch(`${store.serverUrl}/api/chunks?${params}`);
                 if (!res.ok) {
                     outputError(`Server list failed: ${res.status}`);

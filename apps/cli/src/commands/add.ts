@@ -10,7 +10,9 @@ export const addCommand = new Command("add")
     .option("--type <type>", "chunk type", "note")
     .option("--tags <tags>", "comma-separated tags", "")
     .option("--content-file <path>", "read content from file (use - for stdin)")
-    .action(async (opts: { title: string; content: string; type: string; tags: string; contentFile?: string }, cmd: Command) => {
+    .option("--global", "skip codebase scoping")
+    .option("--codebase <name>", "scope to a specific codebase by name")
+    .action(async (opts: { title: string; content: string; type: string; tags: string; contentFile?: string; global?: boolean; codebase?: string }, cmd: Command) => {
         let content = opts.content;
         if (opts.contentFile) {
             if (opts.contentFile === "-") {
@@ -22,6 +24,11 @@ export const addCommand = new Command("add")
         }
 
         const tags = opts.tags ? opts.tags.split(",").map(t => t.trim()) : [];
+
+        // TODO: When add supports server-backed creation, pass codebaseId from
+        // resolveCodebaseId(serverUrl, { global: opts.global, codebase: opts.codebase })
+        // For now, codebase scoping only applies to local storage as metadata.
+
         const chunk = addChunk({ title: opts.title, content, type: opts.type, tags });
 
         outputQuiet(cmd, chunk.id);
