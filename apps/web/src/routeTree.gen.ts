@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from "./routes/__root";
 import { Route as TagsRouteImport } from "./routes/tags";
 import { Route as LoginRouteImport } from "./routes/login";
+import { Route as KnowledgeHealthRouteImport } from "./routes/knowledge-health";
 import { Route as GraphRouteImport } from "./routes/graph";
 import { Route as DashboardRouteImport } from "./routes/dashboard";
 import { Route as CodebasesRouteImport } from "./routes/codebases";
@@ -28,6 +29,11 @@ const TagsRoute = TagsRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: "/login",
   path: "/login",
+  getParentRoute: () => rootRouteImport,
+} as any);
+const KnowledgeHealthRoute = KnowledgeHealthRouteImport.update({
+  id: "/knowledge-health",
+  path: "/knowledge-health",
   getParentRoute: () => rootRouteImport,
 } as any);
 const GraphRoute = GraphRouteImport.update({
@@ -76,6 +82,7 @@ export interface FileRoutesByFullPath {
   "/codebases": typeof CodebasesRoute;
   "/dashboard": typeof DashboardRoute;
   "/graph": typeof GraphRoute;
+  "/knowledge-health": typeof KnowledgeHealthRoute;
   "/login": typeof LoginRoute;
   "/tags": typeof TagsRoute;
   "/chunks/$chunkId": typeof ChunksChunkIdRoute;
@@ -88,6 +95,7 @@ export interface FileRoutesByTo {
   "/codebases": typeof CodebasesRoute;
   "/dashboard": typeof DashboardRoute;
   "/graph": typeof GraphRoute;
+  "/knowledge-health": typeof KnowledgeHealthRoute;
   "/login": typeof LoginRoute;
   "/tags": typeof TagsRoute;
   "/chunks/$chunkId": typeof ChunksChunkIdRoute;
@@ -101,6 +109,7 @@ export interface FileRoutesById {
   "/codebases": typeof CodebasesRoute;
   "/dashboard": typeof DashboardRoute;
   "/graph": typeof GraphRoute;
+  "/knowledge-health": typeof KnowledgeHealthRoute;
   "/login": typeof LoginRoute;
   "/tags": typeof TagsRoute;
   "/chunks/$chunkId": typeof ChunksChunkIdRoute;
@@ -115,6 +124,7 @@ export interface FileRouteTypes {
     | "/codebases"
     | "/dashboard"
     | "/graph"
+    | "/knowledge-health"
     | "/login"
     | "/tags"
     | "/chunks/$chunkId"
@@ -127,6 +137,7 @@ export interface FileRouteTypes {
     | "/codebases"
     | "/dashboard"
     | "/graph"
+    | "/knowledge-health"
     | "/login"
     | "/tags"
     | "/chunks/$chunkId"
@@ -139,6 +150,7 @@ export interface FileRouteTypes {
     | "/codebases"
     | "/dashboard"
     | "/graph"
+    | "/knowledge-health"
     | "/login"
     | "/tags"
     | "/chunks/$chunkId"
@@ -152,6 +164,7 @@ export interface RootRouteChildren {
   CodebasesRoute: typeof CodebasesRoute;
   DashboardRoute: typeof DashboardRoute;
   GraphRoute: typeof GraphRoute;
+  KnowledgeHealthRoute: typeof KnowledgeHealthRoute;
   LoginRoute: typeof LoginRoute;
   TagsRoute: typeof TagsRoute;
   ChunksChunkIdRoute: typeof ChunksChunkIdRoute;
@@ -181,6 +194,13 @@ declare module "@tanstack/react-router" {
       path: "/graph";
       fullPath: "/graph";
       preLoaderRoute: typeof GraphRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/knowledge-health": {
+      id: "/knowledge-health";
+      path: "/knowledge-health";
+      fullPath: "/knowledge-health";
+      preLoaderRoute: typeof KnowledgeHealthRouteImport;
       parentRoute: typeof rootRouteImport;
     };
     "/dashboard": {
@@ -240,6 +260,7 @@ const rootRouteChildren: RootRouteChildren = {
   CodebasesRoute: CodebasesRoute,
   DashboardRoute: DashboardRoute,
   GraphRoute: GraphRoute,
+  KnowledgeHealthRoute: KnowledgeHealthRoute,
   LoginRoute: LoginRoute,
   TagsRoute: TagsRoute,
   ChunksChunkIdRoute: ChunksChunkIdRoute,

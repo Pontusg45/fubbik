@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Blocks, FolderGit2, LayoutDashboard, Menu, Network, Tags } from "lucide-react";
+import { Activity, Blocks, FolderGit2, LayoutDashboard, Menu, Network, Tags } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ const navItems = [
     { label: "Chunks", to: "/chunks" as const, icon: Blocks },
     { label: "Graph", to: "/graph" as const, icon: Network },
     { label: "Tags", to: "/tags" as const, icon: Tags },
+    { label: "Health", to: "/knowledge-health" as const, icon: Activity },
     { label: "Codebases", to: "/codebases" as const, icon: FolderGit2 }
 ];
 

@@ -100,6 +100,12 @@ function RootDocument() {
                                         Tags
                                     </Link>
                                     <Link
+                                        to="/knowledge-health"
+                                        className="text-muted-foreground hover:text-foreground [&.active]:text-foreground rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
+                                    >
+                                        Health
+                                    </Link>
+                                    <Link
                                         to="/codebases"
                                         className="text-muted-foreground hover:text-foreground [&.active]:text-foreground rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
                                     >
