@@ -150,7 +150,7 @@ function RequirementsPage() {
                         </Badge>
                     )}
                 </div>
-                <Button size="sm" render={<Link to={"/requirements/new" as string} />}>
+                <Button size="sm" render={<Link to="/requirements/new" />}>
                     <Plus className="mr-1 size-4" />
                     New Requirement
                 </Button>
