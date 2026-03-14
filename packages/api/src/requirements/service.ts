@@ -38,7 +38,7 @@ function getVocabularyWarnings(
             }));
             const allWarnings: StepVocabularyWarning[] = [];
             for (let i = 0; i < steps.length; i++) {
-                const result = parseStepText(steps[i].text, vocabEntries);
+                const result = parseStepText(steps[i]!.text, vocabEntries);
                 for (const w of result.warnings) {
                     allWarnings.push({ ...w, step: i });
                 }

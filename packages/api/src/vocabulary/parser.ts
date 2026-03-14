@@ -82,7 +82,7 @@ export function parseStepText(text: string, vocabulary: VocabEntry[]): ParseResu
 
     // Replace literals with spaces in the processed string
     for (let i = literals.length - 1; i >= 0; i--) {
-        const lit = literals[i];
+        const lit = literals[i]!;
         processed = processed.substring(0, lit.start) + " ".repeat(lit.end - lit.start) + processed.substring(lit.end);
     }
 
@@ -118,7 +118,7 @@ export function parseStepText(text: string, vocabulary: VocabEntry[]): ParseResu
         }
 
         // Skip whitespace
-        if (/\s/.test(lowered[pos])) {
+        if (/\s/.test(lowered[pos]!)) {
             pos++;
             continue;
         }
@@ -127,8 +127,8 @@ export function parseStepText(text: string, vocabulary: VocabEntry[]): ParseResu
 
         // Try each vocab entry (longest first)
         for (let vi = 0; vi < sortedVocab.length; vi++) {
-            const vocabWord = loweredVocabWords[vi];
-            const vocabEntry = sortedVocab[vi];
+            const vocabWord = loweredVocabWords[vi]!;
+            const vocabEntry = sortedVocab[vi]!;
             const end = pos + vocabWord.length;
 
             // Check if the word matches at this position
@@ -136,10 +136,10 @@ export function parseStepText(text: string, vocabulary: VocabEntry[]): ParseResu
             if (lowered.substring(pos, end) !== vocabWord) continue;
 
             // Check word boundary: next char must be whitespace, end, or consumed (literal)
-            if (end < lowered.length && !/\s/.test(lowered[end]) && !consumed.has(end)) continue;
+            if (end < lowered.length && !/\s/.test(lowered[end]!) && !consumed.has(end)) continue;
 
             // Check start boundary: previous non-consumed char must be whitespace or start
-            if (pos > 0 && !/\s/.test(lowered[pos - 1]) && !consumed.has(pos - 1)) continue;
+            if (pos > 0 && !/\s/.test(lowered[pos - 1]!) && !consumed.has(pos - 1)) continue;
 
             tokens.push({
                 text: text.substring(pos, end),
@@ -157,7 +157,7 @@ export function parseStepText(text: string, vocabulary: VocabEntry[]): ParseResu
         if (!matched) {
             // Consume one whitespace-delimited word as unknown
             let wordEnd = pos;
-            while (wordEnd < lowered.length && !/\s/.test(lowered[wordEnd]) && !consumed.has(wordEnd)) {
+            while (wordEnd < lowered.length && !/\s/.test(lowered[wordEnd]!) && !consumed.has(wordEnd)) {
                 wordEnd++;
             }
             const unknownWord = text.substring(pos, wordEnd);

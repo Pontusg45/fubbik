@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from "./routes/__root";
+import { Route as VocabularyRouteImport } from "./routes/vocabulary";
 import { Route as TemplatesRouteImport } from "./routes/templates";
 import { Route as TagsRouteImport } from "./routes/tags";
 import { Route as RequirementsRouteImport } from "./routes/requirements";
@@ -25,6 +26,11 @@ import { Route as ChunksNewRouteImport } from "./routes/chunks.new";
 import { Route as ChunksChunkIdRouteImport } from "./routes/chunks.$chunkId";
 import { Route as ChunksChunkIdEditRouteImport } from "./routes/chunks.$chunkId_.edit";
 
+const VocabularyRoute = VocabularyRouteImport.update({
+  id: "/vocabulary",
+  path: "/vocabulary",
+  getParentRoute: () => rootRouteImport,
+} as any);
 const TemplatesRoute = TemplatesRouteImport.update({
   id: "/templates",
   path: "/templates",
@@ -112,6 +118,7 @@ export interface FileRoutesByFullPath {
   "/requirements": typeof RequirementsRoute;
   "/tags": typeof TagsRoute;
   "/templates": typeof TemplatesRoute;
+  "/vocabulary": typeof VocabularyRoute;
   "/chunks/$chunkId": typeof ChunksChunkIdRoute;
   "/chunks/new": typeof ChunksNewRoute;
   "/requirements/$requirementId": typeof RequirementsRequirementIdRoute;
@@ -129,6 +136,7 @@ export interface FileRoutesByTo {
   "/requirements": typeof RequirementsRoute;
   "/tags": typeof TagsRoute;
   "/templates": typeof TemplatesRoute;
+  "/vocabulary": typeof VocabularyRoute;
   "/chunks/$chunkId": typeof ChunksChunkIdRoute;
   "/chunks/new": typeof ChunksNewRoute;
   "/requirements/$requirementId": typeof RequirementsRequirementIdRoute;
@@ -147,6 +155,7 @@ export interface FileRoutesById {
   "/requirements": typeof RequirementsRoute;
   "/tags": typeof TagsRoute;
   "/templates": typeof TemplatesRoute;
+  "/vocabulary": typeof VocabularyRoute;
   "/chunks/$chunkId": typeof ChunksChunkIdRoute;
   "/chunks/new": typeof ChunksNewRoute;
   "/requirements_/$requirementId": typeof RequirementsRequirementIdRoute;
@@ -166,6 +175,7 @@ export interface FileRouteTypes {
     | "/requirements"
     | "/tags"
     | "/templates"
+    | "/vocabulary"
     | "/chunks/$chunkId"
     | "/chunks/new"
     | "/requirements/$requirementId"
@@ -183,6 +193,7 @@ export interface FileRouteTypes {
     | "/requirements"
     | "/tags"
     | "/templates"
+    | "/vocabulary"
     | "/chunks/$chunkId"
     | "/chunks/new"
     | "/requirements/$requirementId"
@@ -200,6 +211,7 @@ export interface FileRouteTypes {
     | "/requirements"
     | "/tags"
     | "/templates"
+    | "/vocabulary"
     | "/chunks/$chunkId"
     | "/chunks/new"
     | "/requirements_/$requirementId"
@@ -218,6 +230,7 @@ export interface RootRouteChildren {
   RequirementsRoute: typeof RequirementsRoute;
   TagsRoute: typeof TagsRoute;
   TemplatesRoute: typeof TemplatesRoute;
+  VocabularyRoute: typeof VocabularyRoute;
   ChunksChunkIdRoute: typeof ChunksChunkIdRoute;
   ChunksNewRoute: typeof ChunksNewRoute;
   RequirementsRequirementIdRoute: typeof RequirementsRequirementIdRoute;
@@ -228,6 +241,13 @@ export interface RootRouteChildren {
 
 declare module "@tanstack/react-router" {
   interface FileRoutesByPath {
+    "/vocabulary": {
+      id: "/vocabulary";
+      path: "/vocabulary";
+      fullPath: "/vocabulary";
+      preLoaderRoute: typeof VocabularyRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     "/templates": {
       id: "/templates";
       path: "/templates";
@@ -346,6 +366,7 @@ const rootRouteChildren: RootRouteChildren = {
   RequirementsRoute: RequirementsRoute,
   TagsRoute: TagsRoute,
   TemplatesRoute: TemplatesRoute,
+  VocabularyRoute: VocabularyRoute,
   ChunksChunkIdRoute: ChunksChunkIdRoute,
   ChunksNewRoute: ChunksNewRoute,
   RequirementsRequirementIdRoute: RequirementsRequirementIdRoute,

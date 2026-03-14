@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Activity, Blocks, ClipboardCheck, FileText, FolderGit2, LayoutDashboard, Menu, Network, Tags } from "lucide-react";
+import { Activity, Blocks, BookOpen, ClipboardCheck, FileText, FolderGit2, LayoutDashboard, Menu, Network, Tags } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ const navItems = [
     { label: "Health", to: "/knowledge-health" as const, icon: Activity },
     { label: "Codebases", to: "/codebases" as const, icon: FolderGit2 },
     { label: "Requirements", to: "/requirements" as const, icon: ClipboardCheck },
+    { label: "Vocabulary", to: "/vocabulary" as const, icon: BookOpen },
     { label: "Templates", to: "/templates" as const, icon: FileText }
 ];
 

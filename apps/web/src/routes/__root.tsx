@@ -118,6 +118,12 @@ function RootDocument() {
                                         Requirements
                                     </Link>
                                     <Link
+                                        to="/vocabulary"
+                                        className="text-muted-foreground hover:text-foreground [&.active]:text-foreground rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
+                                    >
+                                        Vocabulary
+                                    </Link>
+                                    <Link
                                         to="/templates"
                                         className="text-muted-foreground hover:text-foreground [&.active]:text-foreground rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
                                     >
