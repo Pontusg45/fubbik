@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link, useSearch } from "@tanstack/react-router";
-import { Book, ChevronRight, Code, Layers, Network, Terminal, Zap } from "lucide-react";
+import { Book, ChevronRight, Code, ExternalLink, Globe, Layers, Network, Terminal, Zap } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
@@ -357,7 +357,10 @@ function MarkdownBlock({ content }: { content: string }) {
 
 function DocsPage() {
     const search = useSearch({ from: "/docs" });
-    const [tab, setTab] = useState<"guide" | "dev">(search.tab === "dev" ? "dev" : "guide");
+    const [tab, setTab] = useState<"guide" | "dev" | "api">(search.tab === "dev" ? "dev" : search.tab === "api" ? "api" : "guide");
+    const [diagramSource, setDiagramSource] = useState<string | null>(null);
+    const [diagramLoading, setDiagramLoading] = useState(false);
+    const { codebaseId } = useActiveCodebase();
     const [activeSection, setActiveSection] = useState(
         search.section && guidesSections.some(s => s.id === search.section)
             ? search.section
@@ -372,6 +375,9 @@ function DocsPage() {
         }
         if (search.tab === "dev") {
             setTab("dev");
+        }
+        if (search.tab === "api") {
+            setTab("api");
         }
     }, [search.section, search.tab]);
 
@@ -413,10 +419,23 @@ function DocsPage() {
                         Developer Docs
                     </span>
                 </button>
+                <button
+                    onClick={() => setTab("api")}
+                    className={`-mb-px border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
+                        tab === "api"
+                            ? "border-foreground text-foreground"
+                            : "text-muted-foreground hover:text-foreground border-transparent"
+                    }`}
+                >
+                    <span className="flex items-center gap-2">
+                        <Globe className="size-4" />
+                        API Reference
+                    </span>
+                </button>
             </div>
 
             {/* Content */}
-            {tab === "guide" ? (
+            {tab === "guide" && (
                 <div className="grid gap-8 lg:grid-cols-[220px_1fr]">
                     {/* Sidebar nav */}
                     <nav className="hidden lg:block">
@@ -460,8 +479,72 @@ function DocsPage() {
                         <MarkdownBlock content={currentGuide!.content} />
                     </div>
                 </div>
-            ) : (
-                <DeveloperDocs />
+            )}
+
+            {tab === "dev" && (
+                <div className="space-y-6">
+                    {codebaseId && (
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={async () => {
+                                    if (!codebaseId) return;
+                                    setDiagramLoading(true);
+                                    try {
+                                        const result = unwrapEden(
+                                            await api.api.codebases({ id: codebaseId }).diagram.get()
+                                        );
+                                        setDiagramSource(result?.diagram ?? null);
+                                    } catch {
+                                        setDiagramSource("Error generating diagram");
+                                    } finally {
+                                        setDiagramLoading(false);
+                                    }
+                                }}
+                                disabled={diagramLoading}
+                                className="bg-muted hover:bg-muted/80 inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors disabled:opacity-50"
+                            >
+                                <Network className="size-4" />
+                                {diagramLoading ? "Generating..." : "Generate Diagram"}
+                            </button>
+                        </div>
+                    )}
+
+                    {diagramSource && (
+                        <div className="space-y-2">
+                            <h3 className="text-sm font-semibold">Architecture Diagram (Mermaid)</h3>
+                            <pre className="bg-muted/50 overflow-x-auto rounded-lg border p-4 font-mono text-[13px] leading-relaxed">
+                                <code>{diagramSource}</code>
+                            </pre>
+                        </div>
+                    )}
+
+                    <DeveloperDocs />
+                </div>
+            )}
+
+            {tab === "api" && (
+                <div className="space-y-3">
+                    <div className="flex items-center justify-end">
+                        {/* TODO: Read API URL from config instead of hardcoding */}
+                        <a
+                            href="http://localhost:3000/docs"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-sm transition-colors"
+                        >
+                            Open in new tab
+                            <ExternalLink className="size-3.5" />
+                        </a>
+                    </div>
+                    <div className="rounded-lg border overflow-hidden" style={{ height: "calc(100vh - 200px)" }}>
+                        {/* TODO: Read API URL from config instead of hardcoding */}
+                        <iframe
+                            src="http://localhost:3000/docs"
+                            className="w-full h-full border-0"
+                            title="Fubbik API Documentation"
+                        />
+                    </div>
+                </div>
             )}
         </div>
     );

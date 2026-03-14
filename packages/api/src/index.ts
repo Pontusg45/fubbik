@@ -7,6 +7,7 @@ import { appliesToRoutes } from "./applies-to/routes";
 import { chunkRoutes } from "./chunks/routes";
 import { commentRoutes } from "./comments/routes";
 import { coverageRoutes } from "./coverage/routes";
+import { diagramRoutes } from "./diagram/routes";
 import { codebaseRoutes } from "./codebases/routes";
 import { collectionRoutes } from "./collections/routes";
 import { connectionRoutes } from "./connections/routes";
@@ -137,6 +138,7 @@ export const api = new Elysia({ prefix: "/api" })
     .use(activityRoutes)
     .use(settingsRoutes)
     .use(commentRoutes)
-    .use(coverageRoutes);
+    .use(coverageRoutes)
+    .use(diagramRoutes);
 
 export type Api = typeof api;
