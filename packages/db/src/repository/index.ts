@@ -13,3 +13,4 @@ export * from "./file-ref";
 export * from "./knowledge-health";
 export * from "./template";
 export * from "./requirement";
+export * from "./vocabulary";
