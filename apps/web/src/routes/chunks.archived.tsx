@@ -1,7 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Archive, ArrowLeft, RotateCcw, Trash2 } from "lucide-react";
+import { useState } from "react";
 
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardPanel } from "@/components/ui/card";
@@ -23,6 +25,7 @@ export const Route = createFileRoute("/chunks/archived")({
 
 function ArchivedChunks() {
     const queryClient = useQueryClient();
+    const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
     const archivedQuery = useQuery({
         queryKey: ["chunks-archived"],
@@ -65,8 +68,7 @@ function ArchivedChunks() {
     }
 
     function handleDelete(id: string) {
-        if (!confirm("Permanently delete this chunk? This cannot be undone.")) return; // TODO: replace with styled dialog
-        deleteMutation.mutate(id);
+        setDeleteTarget(id);
     }
 
     return (
@@ -132,6 +134,22 @@ function ArchivedChunks() {
                     ))}
                 </Card>
             )}
+
+            <ConfirmDialog
+                open={deleteTarget !== null}
+                onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}
+                title="Delete chunk permanently"
+                description="Permanently delete this chunk? This cannot be undone."
+                confirmLabel="Delete"
+                confirmVariant="destructive"
+                onConfirm={() => {
+                    if (deleteTarget) {
+                        deleteMutation.mutate(deleteTarget);
+                        setDeleteTarget(null);
+                    }
+                }}
+                loading={deleteMutation.isPending}
+            />
         </div>
     );
 }

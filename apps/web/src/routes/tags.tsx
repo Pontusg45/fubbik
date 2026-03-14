@@ -4,6 +4,7 @@ import { Palette, Pencil, Plus, Search, Tags as TagsIcon, Trash2, X } from "luci
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { getUser } from "@/functions/get-user";
@@ -38,6 +39,7 @@ interface TagType {
 function TagsPage() {
     const queryClient = useQueryClient();
     const [search, setSearch] = useState("");
+    const [deleteTagTarget, setDeleteTagTarget] = useState<{ id: string; name: string } | null>(null);
     const [showTagTypeForm, setShowTagTypeForm] = useState(false);
     const [editingTagType, setEditingTagType] = useState<TagType | null>(null);
     const [ttName, setTtName] = useState("");
@@ -238,9 +240,7 @@ function TagsPage() {
                                                     {t.name}
                                                 </Link>
                                                 <button
-                                                    onClick={() => {
-                                                        if (confirm(`Delete tag "${t.name}"?`)) deleteTagMutation.mutate(t.id); // TODO: replace with styled dialog
-                                                    }}
+                                                    onClick={() => setDeleteTagTarget({ id: t.id, name: t.name })}
                                                     className="text-muted-foreground/0 group-hover:text-muted-foreground hover:text-destructive ml-1 transition-colors"
                                                 >
                                                     <X className="size-3" />
@@ -338,6 +338,22 @@ function TagsPage() {
                     )}
                 </div>
             </div>
+
+            <ConfirmDialog
+                open={deleteTagTarget !== null}
+                onOpenChange={(open) => { if (!open) setDeleteTagTarget(null); }}
+                title="Delete tag"
+                description={deleteTagTarget ? `Delete tag "${deleteTagTarget.name}"?` : ""}
+                confirmLabel="Delete"
+                confirmVariant="destructive"
+                onConfirm={() => {
+                    if (deleteTagTarget) {
+                        deleteTagMutation.mutate(deleteTagTarget.id);
+                        setDeleteTagTarget(null);
+                    }
+                }}
+                loading={deleteTagMutation.isPending}
+            />
         </div>
     );
 }

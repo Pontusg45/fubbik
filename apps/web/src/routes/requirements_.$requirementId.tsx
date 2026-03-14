@@ -1,9 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Bot, Check, Copy, Trash2, X } from "lucide-react";
+import { useState } from "react";
 import { toast } from "sonner";
 
 import { BackLink } from "@/components/back-link";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { getUser } from "@/functions/get-user";
@@ -48,6 +50,7 @@ function RequirementDetail() {
     const { requirementId } = Route.useParams();
     const navigate = useNavigate();
     const queryClient = useQueryClient();
+    const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
     const { data, isLoading, error } = useQuery({
         queryKey: ["requirement", requirementId],
@@ -295,14 +298,25 @@ function RequirementDetail() {
                     variant="outline"
                     size="sm"
                     className="text-destructive"
-                    onClick={() => {
-                        if (confirm(`Delete "${title}"?`)) deleteMutation.mutate(); // TODO: replace with styled dialog
-                    }}
+                    onClick={() => setShowDeleteDialog(true)}
                     disabled={deleteMutation.isPending}
                 >
                     <Trash2 className="size-3.5" />
                     {deleteMutation.isPending ? "Deleting..." : "Delete Requirement"}
                 </Button>
+                <ConfirmDialog
+                    open={showDeleteDialog}
+                    onOpenChange={setShowDeleteDialog}
+                    title="Delete requirement"
+                    description={`Delete "${title}"? This cannot be undone.`}
+                    confirmLabel="Delete"
+                    confirmVariant="destructive"
+                    onConfirm={() => {
+                        setShowDeleteDialog(false);
+                        deleteMutation.mutate();
+                    }}
+                    loading={deleteMutation.isPending}
+                />
             </div>
         </Shell>
     );

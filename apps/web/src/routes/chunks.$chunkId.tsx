@@ -1,8 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Archive, ArrowLeft, Bot, Calendar, Clock, Code, Edit, FileCode, FileText, Hash, Network, Scale, Star, Trash2 } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
+
+import { ConfirmDialog } from "@/components/confirm-dialog";
 
 import { MarkdownRenderer } from "@/components/markdown-renderer";
 import { Badge } from "@/components/ui/badge";
@@ -43,6 +45,7 @@ function ChunkDetail() {
     const queryClient = useQueryClient();
     const { trackView } = useRecentChunks();
     const { toggleFavorite, isFavorite } = useFavorites();
+    const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
     useEffect(() => {
         trackView(chunkId);
@@ -192,14 +195,25 @@ function ChunkDetail() {
                         variant="outline"
                         size="sm"
                         className="text-destructive"
-                        onClick={() => {
-                            if (confirm("Permanently delete this chunk? This cannot be undone.")) deleteMutation.mutate(); // TODO: replace with styled dialog
-                        }}
+                        onClick={() => setShowDeleteDialog(true)}
                         disabled={deleteMutation.isPending}
                     >
                         <Trash2 className="size-3.5" />
                         {deleteMutation.isPending ? "Deleting..." : "Delete"}
                     </Button>
+                    <ConfirmDialog
+                        open={showDeleteDialog}
+                        onOpenChange={setShowDeleteDialog}
+                        title="Delete chunk"
+                        description="Permanently delete this chunk? This cannot be undone."
+                        confirmLabel="Delete"
+                        confirmVariant="destructive"
+                        onConfirm={() => {
+                            setShowDeleteDialog(false);
+                            deleteMutation.mutate();
+                        }}
+                        loading={deleteMutation.isPending}
+                    />
                 </div>
             </div>
 
