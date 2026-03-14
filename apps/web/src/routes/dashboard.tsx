@@ -30,7 +30,7 @@ function RouteComponent() {
     const { session } = Route.useRouteContext();
     const queryClient = useQueryClient();
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const { favoriteIds } = useFavorites();
+    const { favoriteIds, isLoading: favoritesLoading } = useFavorites();
 
     const exportMutation = useMutation({
         mutationFn: async () => {
@@ -115,13 +115,17 @@ function RouteComponent() {
         }
     });
 
-    const favoritesQuery = useQuery({
+    const favoritesChunksQuery = useQuery({
         queryKey: ["chunks-favorites", favoriteIds],
         queryFn: async () => {
             if (favoriteIds.length === 0) return [];
             try {
                 const result = unwrapEden(await api.api.chunks.get({ query: { limit: "100" } }));
-                return (result?.chunks ?? []).filter(c => favoriteIds.includes(c.id));
+                const chunks = result?.chunks ?? [];
+                // Return chunks in favorite order
+                return favoriteIds
+                    .map(id => chunks.find(c => c.id === id))
+                    .filter((c): c is NonNullable<typeof c> => !!c);
             } catch {
                 return [];
             }
@@ -183,20 +187,20 @@ function RouteComponent() {
                 ))}
             </div>
 
-            {favoriteIds.length > 0 && (
+            {!favoritesLoading && favoriteIds.length > 0 && (
                 <div className="mb-6">
                     <div className="mb-3 flex items-center gap-2">
                         <Star className="size-4 fill-yellow-500 text-yellow-500" />
                         <h2 className="font-semibold">Favorites</h2>
                     </div>
                     <Card>
-                        {favoritesQuery.isLoading ? (
+                        {favoritesChunksQuery.isLoading ? (
                             <CardPanel className="p-4 text-center">
                                 <p className="text-muted-foreground text-sm">Loading...</p>
                             </CardPanel>
                         ) : (
                             <div className="grid gap-px sm:grid-cols-2">
-                                {(favoritesQuery.data ?? []).map(chunk => (
+                                {(favoritesChunksQuery.data ?? []).map(chunk => (
                                     <Link key={chunk.id} to="/chunks/$chunkId" params={{ chunkId: chunk.id }}>
                                         <CardPanel className="hover:bg-muted/50 p-3 transition-colors">
                                             <p className="truncate text-sm font-medium">{chunk.title}</p>

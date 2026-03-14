@@ -1,16 +1,50 @@
-import { useLocalStorage } from "@/hooks/use-local-storage";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+
+import { api } from "@/utils/api";
+import { unwrapEden } from "@/utils/eden";
 
 export function useFavorites() {
-    const [favoriteIds, setFavoriteIds] = useLocalStorage<string[]>("fubbik:favorites", []);
-    const favoriteSet = new Set(favoriteIds);
+    const queryClient = useQueryClient();
 
-    function toggleFavorite(id: string) {
-        setFavoriteIds(prev => (prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]));
+    const favoritesQuery = useQuery({
+        queryKey: ["favorites"],
+        queryFn: async () => {
+            return unwrapEden(await api.api.favorites.get());
+        }
+    });
+
+    const favorites = favoritesQuery.data ?? [];
+    const favoriteIds = favorites.map(f => f.chunkId);
+
+    const addMutation = useMutation({
+        mutationFn: async (chunkId: string) => {
+            return unwrapEden(await api.api.favorites.post({ chunkId }));
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["favorites"] });
+        }
+    });
+
+    const removeMutation = useMutation({
+        mutationFn: async (chunkId: string) => {
+            return unwrapEden(await api.api.favorites({ chunkId }).delete());
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["favorites"] });
+        }
+    });
+
+    function toggleFavorite(chunkId: string) {
+        if (favoriteIds.includes(chunkId)) {
+            removeMutation.mutate(chunkId);
+        } else {
+            addMutation.mutate(chunkId);
+        }
     }
 
-    function isFavorite(id: string) {
-        return favoriteSet.has(id);
+    function isFavorite(chunkId: string) {
+        return favoriteIds.includes(chunkId);
     }
 
-    return { favoriteIds, toggleFavorite, isFavorite };
+    return { favorites, favoriteIds, toggleFavorite, isFavorite, isLoading: favoritesQuery.isLoading };
 }
