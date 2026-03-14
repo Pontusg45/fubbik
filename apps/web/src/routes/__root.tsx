@@ -9,6 +9,8 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Toaster } from "@/components/ui/sonner";
 import UserMenu from "@/features/auth/user-menu";
+import { Breadcrumbs } from "@/features/nav/breadcrumbs";
+import { KeyboardShortcutsHelp, useGlobalShortcuts } from "@/features/nav/keyboard-shortcuts";
 import { MobileNav } from "@/features/nav/mobile-nav";
 import { CodebaseSwitcher } from "@/features/codebases/codebase-switcher";
 import { ChunkSearch } from "@/features/search/chunk-search";
@@ -46,6 +48,8 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
 });
 
 function RootDocument() {
+    const { helpOpen, setHelpOpen } = useGlobalShortcuts();
+
     return (
         <html lang="en" suppressHydrationWarning>
             <head>
@@ -141,6 +145,7 @@ function RootDocument() {
                                 </div>
                             </div>
                         </header>
+                        <Breadcrumbs />
                         <main>
                             <ErrorBoundary>
                                 <Outlet />
@@ -148,6 +153,7 @@ function RootDocument() {
                         </main>
                     </div>
                     <CommandPalette />
+                    <KeyboardShortcutsHelp open={helpOpen} onOpenChange={setHelpOpen} />
                     <Toaster richColors />
                 </ThemeProvider>
 
