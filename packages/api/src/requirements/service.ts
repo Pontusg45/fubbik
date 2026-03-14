@@ -55,6 +55,8 @@ export function listRequirements(
         codebaseId?: string;
         status?: string;
         priority?: string;
+        origin?: string;
+        reviewStatus?: string;
         limit?: string;
         offset?: string;
     }
@@ -67,6 +69,8 @@ export function listRequirements(
         codebaseId: query.codebaseId,
         status: query.status,
         priority: query.priority,
+        origin: query.origin,
+        reviewStatus: query.reviewStatus,
         limit,
         offset
     });
@@ -94,6 +98,7 @@ export function createRequirement(
         steps: Array<{ keyword: "given" | "when" | "then" | "and" | "but"; text: string; params?: Record<string, string> }>;
         priority?: string;
         codebaseId?: string;
+        origin?: string;
     }
 ) {
     return Effect.gen(function* () {
@@ -102,6 +107,7 @@ export function createRequirement(
             return yield* Effect.fail(new StepValidationError({ errors }));
         }
 
+        const origin = body.origin ?? "human";
         const id = crypto.randomUUID();
         const requirement = yield* createRequirementRepo({
             id,
@@ -110,7 +116,9 @@ export function createRequirement(
             steps: body.steps,
             priority: body.priority,
             codebaseId: body.codebaseId,
-            userId
+            userId,
+            origin,
+            reviewStatus: origin === "ai" ? "draft" : "approved"
         });
         const warnings = yield* crossReferenceSteps(body.steps, userId);
         const vocabularyWarnings = yield* getVocabularyWarnings(body.steps, body.codebaseId);
@@ -127,6 +135,8 @@ export function updateRequirement(
         steps?: Array<{ keyword: "given" | "when" | "then" | "and" | "but"; text: string; params?: Record<string, string> }>;
         priority?: string | null;
         codebaseId?: string | null;
+        origin?: string;
+        reviewStatus?: string;
     }
 ) {
     return Effect.gen(function* () {
@@ -140,7 +150,13 @@ export function updateRequirement(
             }
         }
 
-        const requirement = yield* updateRequirementRepo(id, userId, body);
+        const repoBody: Record<string, unknown> = { ...body };
+        if (body.reviewStatus !== undefined) {
+            repoBody.reviewedBy = userId;
+            repoBody.reviewedAt = new Date();
+        }
+
+        const requirement = yield* updateRequirementRepo(id, userId, repoBody as Parameters<typeof updateRequirementRepo>[2]);
         if (!requirement) return yield* Effect.fail(new NotFoundError({ resource: "Requirement" }));
 
         const warnings = body.steps

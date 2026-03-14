@@ -8,7 +8,7 @@ import { Effect } from "effect";
 
 import { NotFoundError, ValidationError } from "../errors";
 
-export function createConnection(userId: string, body: { sourceId: string; targetId: string; relation: string }) {
+export function createConnection(userId: string, body: { sourceId: string; targetId: string; relation: string; origin?: string }) {
     return Effect.suspend(() => {
         if (body.sourceId === body.targetId) {
             return Effect.fail(new ValidationError({ message: "Cannot connect a chunk to itself" }));
@@ -19,14 +19,17 @@ export function createConnection(userId: string, body: { sourceId: string; targe
         Effect.flatMap(source => (source ? Effect.succeed(source) : Effect.fail(new NotFoundError({ resource: "Source chunk" })))),
         Effect.flatMap(() => getChunkById(body.targetId, userId)),
         Effect.flatMap(target => (target ? Effect.succeed(target) : Effect.fail(new NotFoundError({ resource: "Target chunk" })))),
-        Effect.flatMap(() =>
-            createConnectionRepo({
+        Effect.flatMap(() => {
+            const origin = body.origin ?? "human";
+            return createConnectionRepo({
                 id: crypto.randomUUID(),
                 sourceId: body.sourceId,
                 targetId: body.targetId,
-                relation: body.relation
-            })
-        )
+                relation: body.relation,
+                origin,
+                reviewStatus: origin === "ai" ? "draft" : "approved"
+            });
+        })
     );
 }
 

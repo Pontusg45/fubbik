@@ -35,7 +35,8 @@ export const tagRoutes = new Elysia()
         {
             body: t.Object({
                 name: t.Optional(t.String({ maxLength: 50 })),
-                tagTypeId: t.Optional(t.Union([t.String(), t.Null()]))
+                tagTypeId: t.Optional(t.Union([t.String(), t.Null()])),
+                reviewStatus: t.Optional(t.Union([t.Literal("draft"), t.Literal("reviewed"), t.Literal("approved")]))
             })
         }
     )

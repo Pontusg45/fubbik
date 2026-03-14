@@ -89,6 +89,8 @@ export const requirementRoutes = new Elysia()
                 codebaseId: t.Optional(t.String()),
                 status: t.Optional(t.String()),
                 priority: t.Optional(t.String()),
+                origin: t.Optional(t.Union([t.Literal("human"), t.Literal("ai")])),
+                reviewStatus: t.Optional(t.Union([t.Literal("draft"), t.Literal("reviewed"), t.Literal("approved")])),
                 limit: t.Optional(t.String()),
                 offset: t.Optional(t.String())
             })
@@ -112,7 +114,8 @@ export const requirementRoutes = new Elysia()
                 description: t.Optional(t.String({ maxLength: 5000 })),
                 steps: t.Array(StepSchema, { minItems: 1 }),
                 priority: PrioritySchema,
-                codebaseId: t.Optional(t.String())
+                codebaseId: t.Optional(t.String()),
+                origin: t.Optional(t.Union([t.Literal("human"), t.Literal("ai")]))
             })
         }
     )
@@ -147,7 +150,9 @@ export const requirementRoutes = new Elysia()
                     t.Literal("wont"),
                     t.Null()
                 ])),
-                codebaseId: t.Optional(t.Union([t.String(), t.Null()]))
+                codebaseId: t.Optional(t.Union([t.String(), t.Null()])),
+                origin: t.Optional(t.Union([t.Literal("human"), t.Literal("ai")])),
+                reviewStatus: t.Optional(t.Union([t.Literal("draft"), t.Literal("reviewed"), t.Literal("approved")]))
             })
         }
     )

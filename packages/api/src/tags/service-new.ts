@@ -14,13 +14,19 @@ export function getUserTags(userId: string) {
     return getTagsForUser(userId);
 }
 
-export function createUserTag(userId: string, body: { name: string; tagTypeId?: string }) {
+export function createUserTag(userId: string, body: { name: string; tagTypeId?: string; origin?: string }) {
     const id = crypto.randomUUID();
-    return createTagRepo({ id, name: body.name, tagTypeId: body.tagTypeId, userId });
+    const origin = body.origin ?? "human";
+    return createTagRepo({ id, name: body.name, tagTypeId: body.tagTypeId, userId, origin, reviewStatus: origin === "ai" ? "draft" : "approved" });
 }
 
-export function updateUserTag(id: string, userId: string, body: { name?: string; tagTypeId?: string | null }) {
-    return updateTagRepo(id, userId, body).pipe(
+export function updateUserTag(id: string, userId: string, body: { name?: string; tagTypeId?: string | null; reviewStatus?: string }) {
+    const data: Parameters<typeof updateTagRepo>[2] = { ...body };
+    if (body.reviewStatus !== undefined) {
+        data.reviewedBy = userId;
+        data.reviewedAt = new Date();
+    }
+    return updateTagRepo(id, userId, data).pipe(
         Effect.flatMap(updated => (updated ? Effect.succeed(updated) : Effect.fail(new NotFoundError({ resource: "Tag" }))))
     );
 }

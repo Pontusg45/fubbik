@@ -41,6 +41,8 @@ export function listChunks(
         minConnections?: string;
         codebaseId?: string;
         global?: string;
+        origin?: string;
+        reviewStatus?: string;
     }
 ) {
     const limit = Math.min(Number(query.limit ?? 50), 100);
@@ -76,6 +78,8 @@ export function listChunks(
         minConnections,
         codebaseId: query.codebaseId,
         globalOnly,
+        origin: query.origin,
+        reviewStatus: query.reviewStatus,
         limit,
         offset
     }).pipe(Effect.map(result => ({ ...result, limit, offset })));
@@ -107,9 +111,11 @@ export function createChunk(
         rationale?: string;
         alternatives?: string[];
         consequences?: string;
+        origin?: string;
     }
 ) {
     const id = crypto.randomUUID();
+    const origin = body.origin ?? "human";
     return createChunkRepo({
         id,
         title: body.title,
@@ -118,7 +124,9 @@ export function createChunk(
         userId,
         rationale: body.rationale,
         alternatives: body.alternatives,
-        consequences: body.consequences
+        consequences: body.consequences,
+        origin,
+        reviewStatus: origin === "ai" ? "draft" : "approved"
     }).pipe(
         Effect.tap(() => {
             if (body.tags && body.tags.length > 0) {
@@ -157,6 +165,8 @@ export function updateChunk(
         rationale?: string;
         alternatives?: string[];
         consequences?: string;
+        origin?: string;
+        reviewStatus?: string;
     }
 ) {
     return getChunkById(chunkId, userId).pipe(
@@ -175,8 +185,13 @@ export function updateChunk(
         ),
         Effect.flatMap(() => {
             const { tags: _tags, codebaseIds: _codebaseIds, ...repoBody } = body;
-            if (Object.keys(repoBody).length === 0) return Effect.void;
-            return updateChunkRepo(chunkId, repoBody).pipe(Effect.asVoid);
+            const updateData: Record<string, unknown> = { ...repoBody };
+            if (body.reviewStatus !== undefined) {
+                updateData.reviewedBy = userId;
+                updateData.reviewedAt = new Date();
+            }
+            if (Object.keys(updateData).length === 0) return Effect.void;
+            return updateChunkRepo(chunkId, updateData as Parameters<typeof updateChunkRepo>[1]).pipe(Effect.asVoid);
         }),
         Effect.tap(() => {
             if (body.tags) {
