@@ -280,6 +280,19 @@ export function CommandPalette() {
 
                     {/* Footer */}
                     <div className="flex items-center gap-4 border-t px-4 py-2 text-muted-foreground text-xs">
+                        {query.trim().length >= 2 && (
+                            <button
+                                type="button"
+                                className="text-primary hover:underline"
+                                onClick={() => {
+                                    navigate({ to: "/search", search: { q: query.trim() } });
+                                    close();
+                                }}
+                            >
+                                See all results
+                            </button>
+                        )}
+                        <span className="flex-1" />
                         <span className="flex items-center gap-1">
                             <Kbd>↑↓</Kbd> Navigate
                         </span>

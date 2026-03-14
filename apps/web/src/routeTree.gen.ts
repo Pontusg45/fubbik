@@ -13,12 +13,14 @@ import { Route as VocabularyRouteImport } from "./routes/vocabulary";
 import { Route as TemplatesRouteImport } from "./routes/templates";
 import { Route as TagsRouteImport } from "./routes/tags";
 import { Route as SettingsRouteImport } from "./routes/settings";
+import { Route as SearchRouteImport } from "./routes/search";
 import { Route as RequirementsRouteImport } from "./routes/requirements";
 import { Route as LoginRouteImport } from "./routes/login";
 import { Route as KnowledgeHealthRouteImport } from "./routes/knowledge-health";
 import { Route as GraphRouteImport } from "./routes/graph";
 import { Route as DocsRouteImport } from "./routes/docs";
 import { Route as DashboardRouteImport } from "./routes/dashboard";
+import { Route as CoverageRouteImport } from "./routes/coverage";
 import { Route as CodebasesRouteImport } from "./routes/codebases";
 import { Route as ActivityRouteImport } from "./routes/activity";
 import { Route as IndexRouteImport } from "./routes/index";
@@ -50,6 +52,11 @@ const SettingsRoute = SettingsRouteImport.update({
   path: "/settings",
   getParentRoute: () => rootRouteImport,
 } as any);
+const SearchRoute = SearchRouteImport.update({
+  id: "/search",
+  path: "/search",
+  getParentRoute: () => rootRouteImport,
+} as any);
 const RequirementsRoute = RequirementsRouteImport.update({
   id: "/requirements",
   path: "/requirements",
@@ -78,6 +85,11 @@ const DocsRoute = DocsRouteImport.update({
 const DashboardRoute = DashboardRouteImport.update({
   id: "/dashboard",
   path: "/dashboard",
+  getParentRoute: () => rootRouteImport,
+} as any);
+const CoverageRoute = CoverageRouteImport.update({
+  id: "/coverage",
+  path: "/coverage",
   getParentRoute: () => rootRouteImport,
 } as any);
 const CodebasesRoute = CodebasesRouteImport.update({
@@ -136,12 +148,14 @@ export interface FileRoutesByFullPath {
   "/": typeof IndexRoute;
   "/activity": typeof ActivityRoute;
   "/codebases": typeof CodebasesRoute;
+  "/coverage": typeof CoverageRoute;
   "/dashboard": typeof DashboardRoute;
   "/docs": typeof DocsRoute;
   "/graph": typeof GraphRoute;
   "/knowledge-health": typeof KnowledgeHealthRoute;
   "/login": typeof LoginRoute;
   "/requirements": typeof RequirementsRoute;
+  "/search": typeof SearchRoute;
   "/settings": typeof SettingsRoute;
   "/tags": typeof TagsRoute;
   "/templates": typeof TemplatesRoute;
@@ -158,12 +172,14 @@ export interface FileRoutesByTo {
   "/": typeof IndexRoute;
   "/activity": typeof ActivityRoute;
   "/codebases": typeof CodebasesRoute;
+  "/coverage": typeof CoverageRoute;
   "/dashboard": typeof DashboardRoute;
   "/docs": typeof DocsRoute;
   "/graph": typeof GraphRoute;
   "/knowledge-health": typeof KnowledgeHealthRoute;
   "/login": typeof LoginRoute;
   "/requirements": typeof RequirementsRoute;
+  "/search": typeof SearchRoute;
   "/settings": typeof SettingsRoute;
   "/tags": typeof TagsRoute;
   "/templates": typeof TemplatesRoute;
@@ -181,12 +197,14 @@ export interface FileRoutesById {
   "/": typeof IndexRoute;
   "/activity": typeof ActivityRoute;
   "/codebases": typeof CodebasesRoute;
+  "/coverage": typeof CoverageRoute;
   "/dashboard": typeof DashboardRoute;
   "/docs": typeof DocsRoute;
   "/graph": typeof GraphRoute;
   "/knowledge-health": typeof KnowledgeHealthRoute;
   "/login": typeof LoginRoute;
   "/requirements": typeof RequirementsRoute;
+  "/search": typeof SearchRoute;
   "/settings": typeof SettingsRoute;
   "/tags": typeof TagsRoute;
   "/templates": typeof TemplatesRoute;
@@ -205,12 +223,14 @@ export interface FileRouteTypes {
     | "/"
     | "/activity"
     | "/codebases"
+    | "/coverage"
     | "/dashboard"
     | "/docs"
     | "/graph"
     | "/knowledge-health"
     | "/login"
     | "/requirements"
+    | "/search"
     | "/settings"
     | "/tags"
     | "/templates"
@@ -227,12 +247,14 @@ export interface FileRouteTypes {
     | "/"
     | "/activity"
     | "/codebases"
+    | "/coverage"
     | "/dashboard"
     | "/docs"
     | "/graph"
     | "/knowledge-health"
     | "/login"
     | "/requirements"
+    | "/search"
     | "/settings"
     | "/tags"
     | "/templates"
@@ -249,12 +271,14 @@ export interface FileRouteTypes {
     | "/"
     | "/activity"
     | "/codebases"
+    | "/coverage"
     | "/dashboard"
     | "/docs"
     | "/graph"
     | "/knowledge-health"
     | "/login"
     | "/requirements"
+    | "/search"
     | "/settings"
     | "/tags"
     | "/templates"
@@ -272,12 +296,14 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute;
   ActivityRoute: typeof ActivityRoute;
   CodebasesRoute: typeof CodebasesRoute;
+  CoverageRoute: typeof CoverageRoute;
   DashboardRoute: typeof DashboardRoute;
   DocsRoute: typeof DocsRoute;
   GraphRoute: typeof GraphRoute;
   KnowledgeHealthRoute: typeof KnowledgeHealthRoute;
   LoginRoute: typeof LoginRoute;
   RequirementsRoute: typeof RequirementsRoute;
+  SearchRoute: typeof SearchRoute;
   SettingsRoute: typeof SettingsRoute;
   TagsRoute: typeof TagsRoute;
   TemplatesRoute: typeof TemplatesRoute;
@@ -321,6 +347,13 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof SettingsRouteImport;
       parentRoute: typeof rootRouteImport;
     };
+    "/search": {
+      id: "/search";
+      path: "/search";
+      fullPath: "/search";
+      preLoaderRoute: typeof SearchRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     "/requirements": {
       id: "/requirements";
       path: "/requirements";
@@ -361,6 +394,13 @@ declare module "@tanstack/react-router" {
       path: "/dashboard";
       fullPath: "/dashboard";
       preLoaderRoute: typeof DashboardRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/coverage": {
+      id: "/coverage";
+      path: "/coverage";
+      fullPath: "/coverage";
+      preLoaderRoute: typeof CoverageRouteImport;
       parentRoute: typeof rootRouteImport;
     };
     "/codebases": {
@@ -440,12 +480,14 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ActivityRoute: ActivityRoute,
   CodebasesRoute: CodebasesRoute,
+  CoverageRoute: CoverageRoute,
   DashboardRoute: DashboardRoute,
   DocsRoute: DocsRoute,
   GraphRoute: GraphRoute,
   KnowledgeHealthRoute: KnowledgeHealthRoute,
   LoginRoute: LoginRoute,
   RequirementsRoute: RequirementsRoute,
+  SearchRoute: SearchRoute,
   SettingsRoute: SettingsRoute,
   TagsRoute: TagsRoute,
   TemplatesRoute: TemplatesRoute,
