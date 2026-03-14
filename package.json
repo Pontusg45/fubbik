@@ -45,7 +45,16 @@
         "sherif": "sherif",
         "sherif:fix": "sherif --fix",
         "ci": "turbo run check-types lint test build && pnpm run fmt:check && pnpm run sherif",
-        "ci:fix": "turbo run check-types lint test build && pnpm run fmt && pnpm run sherif --fix && pnpm run lint:fix"
+        "ci:fix": "turbo run check-types lint test build && pnpm run fmt && pnpm run sherif --fix && pnpm run lint:fix",
+        "kill:server": "lsof -ti :3000 | xargs kill -9 2>/dev/null || echo 'Port 3000 is free'",
+        "kill:web": "lsof -ti :3001 | xargs kill -9 2>/dev/null || echo 'Port 3001 is free'",
+        "kill:all": "pnpm run kill:server && pnpm run kill:web",
+        "service:start": "launchctl load ~/Library/LaunchAgents/com.fubbik.server.plist && launchctl start com.fubbik.server && echo 'Fubbik started'",
+        "service:stop": "launchctl stop com.fubbik.server && launchctl unload ~/Library/LaunchAgents/com.fubbik.server.plist && echo 'Fubbik stopped'",
+        "service:restart": "pnpm run service:stop; pnpm run service:start",
+        "service:status": "launchctl list com.fubbik.server 2>/dev/null && echo '--- Logs (last 10 lines) ---' && tail -10 ~/.fubbik/logs/server.log || echo 'Not running'",
+        "service:logs": "tail -f ~/.fubbik/logs/server.log",
+        "service:errors": "tail -f ~/.fubbik/logs/server.err"
     },
     "devDependencies": {
         "@fubbik/config": "workspace:*",
