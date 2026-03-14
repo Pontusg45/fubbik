@@ -7,6 +7,9 @@ import { appliesToRoutes } from "./applies-to/routes";
 import { chunkRoutes } from "./chunks/routes";
 import { codebaseRoutes } from "./codebases/routes";
 import { connectionRoutes } from "./connections/routes";
+import { contextExportRoutes } from "./context-export/routes";
+import { favoriteRoutes } from "./favorites/routes";
+import { generateInstructionsRoutes } from "./generate-instructions/routes";
 import { knowledgeHealthRoutes } from "./knowledge-health/routes";
 import { requirementRoutes } from "./requirements/routes";
 import type { Session } from "./context";
@@ -103,6 +106,7 @@ export const api = new Elysia({ prefix: "/api" })
     .get("/me", ctx =>
         Effect.runPromise(requireSession(ctx).pipe(Effect.map(session => ({ message: "This is private" as const, user: session.user }))))
     )
+    .use(contextExportRoutes)
     .use(chunkRoutes)
     .use(appliesToRoutes)
     .use(statsRoutes)
@@ -113,10 +117,12 @@ export const api = new Elysia({ prefix: "/api" })
     .use(tagRoutes)
     .use(tagTypeRoutes)
     .use(codebaseRoutes)
+    .use(generateInstructionsRoutes)
     .use(fileRefRoutes)
     .use(templateRoutes)
     .use(knowledgeHealthRoutes)
     .use(requirementRoutes)
-    .use(vocabularyRoutes);
+    .use(vocabularyRoutes)
+    .use(favoriteRoutes);
 
 export type Api = typeof api;
