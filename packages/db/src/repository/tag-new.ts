@@ -5,7 +5,7 @@ import { DatabaseError } from "../errors";
 import { db } from "../index";
 import { tag, chunkTag, tagType } from "../schema/tag";
 
-export function createTag(params: { id: string; name: string; tagTypeId?: string; userId: string }) {
+export function createTag(params: { id: string; name: string; tagTypeId?: string; userId: string; origin?: string; reviewStatus?: string }) {
     return Effect.tryPromise({
         try: async () => {
             const [created] = await db.insert(tag).values(params).returning();
@@ -33,7 +33,7 @@ export function getTagsForUser(userId: string) {
     });
 }
 
-export function updateTag(id: string, userId: string, data: { name?: string; tagTypeId?: string | null }) {
+export function updateTag(id: string, userId: string, data: { name?: string; tagTypeId?: string | null; origin?: string; reviewStatus?: string; reviewedBy?: string | null; reviewedAt?: Date | null }) {
     return Effect.tryPromise({
         try: async () => {
             const [updated] = await db

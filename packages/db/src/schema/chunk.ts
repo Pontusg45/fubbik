@@ -37,7 +37,11 @@ export const chunk = pgTable(
         rationale: text("rationale"),
         alternatives: jsonb("alternatives").$type<string[]>(),
         consequences: text("consequences"),
-        embedding: vector("embedding")
+        embedding: vector("embedding"),
+        origin: text("origin").notNull().default("human"),
+        reviewStatus: text("review_status").notNull().default("approved"),
+        reviewedBy: text("reviewed_by").references(() => user.id, { onDelete: "set null" }),
+        reviewedAt: timestamp("reviewed_at")
     },
     table => [index("chunk_userId_idx").on(table.userId), index("chunk_type_idx").on(table.type)]
 );
@@ -53,7 +57,11 @@ export const chunkConnection = pgTable(
             .notNull()
             .references(() => chunk.id, { onDelete: "cascade" }),
         relation: text("relation").notNull().default("related"),
-        createdAt: timestamp("created_at").defaultNow().notNull()
+        createdAt: timestamp("created_at").defaultNow().notNull(),
+        origin: text("origin").notNull().default("human"),
+        reviewStatus: text("review_status").notNull().default("approved"),
+        reviewedBy: text("reviewed_by").references(() => user.id, { onDelete: "set null" }),
+        reviewedAt: timestamp("reviewed_at")
     },
     table => [
         index("connection_sourceId_idx").on(table.sourceId),

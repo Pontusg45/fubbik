@@ -20,6 +20,8 @@ export interface ListChunksParams {
     minConnections?: number;
     codebaseId?: string;
     globalOnly?: boolean;
+    origin?: string;
+    reviewStatus?: string;
     limit: number;
     offset: number;
 }
@@ -78,6 +80,12 @@ export function listChunks(params: ListChunksParams) {
             if (params.globalOnly) {
                 const inAnyCodebase = db.select({ chunkId: chunkCodebase.chunkId }).from(chunkCodebase);
                 conditions.push(sql`${chunk.id} NOT IN (${inAnyCodebase})`);
+            }
+            if (params.origin) {
+                conditions.push(eq(chunk.origin, params.origin));
+            }
+            if (params.reviewStatus) {
+                conditions.push(eq(chunk.reviewStatus, params.reviewStatus));
             }
             if (params.enrichment === "missing") {
                 conditions.push(or(isNull(chunk.summary), isNull(chunk.embedding), sql`jsonb_array_length(${chunk.aliases}) = 0`)!);
@@ -165,6 +173,8 @@ export interface CreateChunkParams {
     rationale?: string;
     alternatives?: string[];
     consequences?: string;
+    origin?: string;
+    reviewStatus?: string;
 }
 
 export function createChunk(params: CreateChunkParams) {
@@ -188,6 +198,10 @@ export interface UpdateChunkParams {
     rationale?: string;
     alternatives?: string[];
     consequences?: string;
+    origin?: string;
+    reviewStatus?: string;
+    reviewedBy?: string | null;
+    reviewedAt?: Date | null;
 }
 
 export function updateChunk(chunkId: string, params: UpdateChunkParams) {
@@ -205,7 +219,11 @@ export function updateChunk(chunkId: string, params: UpdateChunkParams) {
                     ...(params.scope !== undefined && { scope: params.scope }),
                     ...(params.rationale !== undefined && { rationale: params.rationale }),
                     ...(params.alternatives !== undefined && { alternatives: params.alternatives }),
-                    ...(params.consequences !== undefined && { consequences: params.consequences })
+                    ...(params.consequences !== undefined && { consequences: params.consequences }),
+                    ...(params.origin !== undefined && { origin: params.origin }),
+                    ...(params.reviewStatus !== undefined && { reviewStatus: params.reviewStatus }),
+                    ...(params.reviewedBy !== undefined && { reviewedBy: params.reviewedBy }),
+                    ...(params.reviewedAt !== undefined && { reviewedAt: params.reviewedAt })
                 })
                 .where(eq(chunk.id, chunkId))
                 .returning();

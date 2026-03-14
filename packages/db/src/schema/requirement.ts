@@ -27,7 +27,11 @@ export const requirement = pgTable(
         updatedAt: timestamp("updated_at")
             .defaultNow()
             .$onUpdate(() => new Date())
-            .notNull()
+            .notNull(),
+        origin: text("origin").notNull().default("human"),
+        reviewStatus: text("review_status").notNull().default("approved"),
+        reviewedBy: text("reviewed_by").references(() => user.id, { onDelete: "set null" }),
+        reviewedAt: timestamp("reviewed_at")
     },
     table => [
         index("requirement_userId_idx").on(table.userId),

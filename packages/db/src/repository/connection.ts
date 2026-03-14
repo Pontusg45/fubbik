@@ -5,7 +5,7 @@ import { DatabaseError } from "../errors";
 import { db } from "../index";
 import { chunkConnection } from "../schema/chunk";
 
-export function createConnection(params: { id: string; sourceId: string; targetId: string; relation: string }) {
+export function createConnection(params: { id: string; sourceId: string; targetId: string; relation: string; origin?: string; reviewStatus?: string }) {
     return Effect.tryPromise({
         try: async () => {
             const [created] = await db.insert(chunkConnection).values(params).returning();

@@ -27,7 +27,11 @@ export const tag = pgTable(
         userId: text("user_id")
             .notNull()
             .references(() => user.id, { onDelete: "cascade" }),
-        createdAt: timestamp("created_at").defaultNow().notNull()
+        createdAt: timestamp("created_at").defaultNow().notNull(),
+        origin: text("origin").notNull().default("human"),
+        reviewStatus: text("review_status").notNull().default("approved"),
+        reviewedBy: text("reviewed_by").references(() => user.id, { onDelete: "set null" }),
+        reviewedAt: timestamp("reviewed_at")
     },
     table => [uniqueIndex("tag_user_name_idx").on(table.userId, table.name)]
 );

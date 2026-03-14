@@ -16,6 +16,8 @@ export interface CreateRequirementParams {
     priority?: string;
     codebaseId?: string;
     userId: string;
+    origin?: string;
+    reviewStatus?: string;
 }
 
 export function createRequirement(params: CreateRequirementParams) {
@@ -48,6 +50,8 @@ export interface ListRequirementsParams {
     codebaseId?: string;
     status?: string;
     priority?: string;
+    origin?: string;
+    reviewStatus?: string;
     limit: number;
     offset: number;
 }
@@ -59,6 +63,8 @@ export function listRequirements(params: ListRequirementsParams) {
             if (params.codebaseId) conditions.push(eq(requirement.codebaseId, params.codebaseId));
             if (params.status) conditions.push(eq(requirement.status, params.status));
             if (params.priority) conditions.push(eq(requirement.priority, params.priority));
+            if (params.origin) conditions.push(eq(requirement.origin, params.origin));
+            if (params.reviewStatus) conditions.push(eq(requirement.reviewStatus, params.reviewStatus));
 
             const requirements = await db
                 .select()
@@ -85,6 +91,10 @@ export interface UpdateRequirementParams {
     status?: string;
     priority?: string | null;
     codebaseId?: string | null;
+    origin?: string;
+    reviewStatus?: string;
+    reviewedBy?: string | null;
+    reviewedAt?: Date | null;
 }
 
 export function updateRequirement(id: string, userId: string, params: UpdateRequirementParams) {
@@ -97,6 +107,10 @@ export function updateRequirement(id: string, userId: string, params: UpdateRequ
             if (params.status !== undefined) setClause.status = params.status;
             if (params.priority !== undefined) setClause.priority = params.priority;
             if (params.codebaseId !== undefined) setClause.codebaseId = params.codebaseId;
+            if (params.origin !== undefined) setClause.origin = params.origin;
+            if (params.reviewStatus !== undefined) setClause.reviewStatus = params.reviewStatus;
+            if (params.reviewedBy !== undefined) setClause.reviewedBy = params.reviewedBy;
+            if (params.reviewedAt !== undefined) setClause.reviewedAt = params.reviewedAt;
 
             if (Object.keys(setClause).length === 0) {
                 const [found] = await db
