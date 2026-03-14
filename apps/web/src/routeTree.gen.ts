@@ -20,6 +20,7 @@ import { Route as CodebasesRouteImport } from "./routes/codebases";
 import { Route as IndexRouteImport } from "./routes/index";
 import { Route as ChunksIndexRouteImport } from "./routes/chunks.index";
 import { Route as RequirementsNewRouteImport } from "./routes/requirements_.new";
+import { Route as RequirementsRequirementIdRouteImport } from "./routes/requirements_.$requirementId";
 import { Route as ChunksNewRouteImport } from "./routes/chunks.new";
 import { Route as ChunksChunkIdRouteImport } from "./routes/chunks.$chunkId";
 import { Route as ChunksChunkIdEditRouteImport } from "./routes/chunks.$chunkId_.edit";
@@ -79,6 +80,12 @@ const RequirementsNewRoute = RequirementsNewRouteImport.update({
   path: "/requirements/new",
   getParentRoute: () => rootRouteImport,
 } as any);
+const RequirementsRequirementIdRoute =
+  RequirementsRequirementIdRouteImport.update({
+    id: "/requirements_/$requirementId",
+    path: "/requirements/$requirementId",
+    getParentRoute: () => rootRouteImport,
+  } as any);
 const ChunksNewRoute = ChunksNewRouteImport.update({
   id: "/chunks/new",
   path: "/chunks/new",
@@ -107,6 +114,7 @@ export interface FileRoutesByFullPath {
   "/templates": typeof TemplatesRoute;
   "/chunks/$chunkId": typeof ChunksChunkIdRoute;
   "/chunks/new": typeof ChunksNewRoute;
+  "/requirements/$requirementId": typeof RequirementsRequirementIdRoute;
   "/requirements/new": typeof RequirementsNewRoute;
   "/chunks/": typeof ChunksIndexRoute;
   "/chunks/$chunkId/edit": typeof ChunksChunkIdEditRoute;
@@ -123,6 +131,7 @@ export interface FileRoutesByTo {
   "/templates": typeof TemplatesRoute;
   "/chunks/$chunkId": typeof ChunksChunkIdRoute;
   "/chunks/new": typeof ChunksNewRoute;
+  "/requirements/$requirementId": typeof RequirementsRequirementIdRoute;
   "/requirements/new": typeof RequirementsNewRoute;
   "/chunks": typeof ChunksIndexRoute;
   "/chunks/$chunkId/edit": typeof ChunksChunkIdEditRoute;
@@ -140,6 +149,7 @@ export interface FileRoutesById {
   "/templates": typeof TemplatesRoute;
   "/chunks/$chunkId": typeof ChunksChunkIdRoute;
   "/chunks/new": typeof ChunksNewRoute;
+  "/requirements_/$requirementId": typeof RequirementsRequirementIdRoute;
   "/requirements_/new": typeof RequirementsNewRoute;
   "/chunks/": typeof ChunksIndexRoute;
   "/chunks/$chunkId_/edit": typeof ChunksChunkIdEditRoute;
@@ -158,6 +168,7 @@ export interface FileRouteTypes {
     | "/templates"
     | "/chunks/$chunkId"
     | "/chunks/new"
+    | "/requirements/$requirementId"
     | "/requirements/new"
     | "/chunks/"
     | "/chunks/$chunkId/edit";
@@ -174,6 +185,7 @@ export interface FileRouteTypes {
     | "/templates"
     | "/chunks/$chunkId"
     | "/chunks/new"
+    | "/requirements/$requirementId"
     | "/requirements/new"
     | "/chunks"
     | "/chunks/$chunkId/edit";
@@ -190,6 +202,7 @@ export interface FileRouteTypes {
     | "/templates"
     | "/chunks/$chunkId"
     | "/chunks/new"
+    | "/requirements_/$requirementId"
     | "/requirements_/new"
     | "/chunks/"
     | "/chunks/$chunkId_/edit";
@@ -207,6 +220,7 @@ export interface RootRouteChildren {
   TemplatesRoute: typeof TemplatesRoute;
   ChunksChunkIdRoute: typeof ChunksChunkIdRoute;
   ChunksNewRoute: typeof ChunksNewRoute;
+  RequirementsRequirementIdRoute: typeof RequirementsRequirementIdRoute;
   RequirementsNewRoute: typeof RequirementsNewRoute;
   ChunksIndexRoute: typeof ChunksIndexRoute;
   ChunksChunkIdEditRoute: typeof ChunksChunkIdEditRoute;
@@ -291,6 +305,13 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof RequirementsNewRouteImport;
       parentRoute: typeof rootRouteImport;
     };
+    "/requirements_/$requirementId": {
+      id: "/requirements_/$requirementId";
+      path: "/requirements/$requirementId";
+      fullPath: "/requirements/$requirementId";
+      preLoaderRoute: typeof RequirementsRequirementIdRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     "/chunks/new": {
       id: "/chunks/new";
       path: "/chunks/new";
@@ -327,6 +348,7 @@ const rootRouteChildren: RootRouteChildren = {
   TemplatesRoute: TemplatesRoute,
   ChunksChunkIdRoute: ChunksChunkIdRoute,
   ChunksNewRoute: ChunksNewRoute,
+  RequirementsRequirementIdRoute: RequirementsRequirementIdRoute,
   RequirementsNewRoute: RequirementsNewRoute,
   ChunksIndexRoute: ChunksIndexRoute,
   ChunksChunkIdEditRoute: ChunksChunkIdEditRoute,

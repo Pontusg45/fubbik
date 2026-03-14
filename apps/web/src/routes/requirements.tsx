@@ -234,8 +234,8 @@ function RequirementsPage() {
                                         <div className="min-w-0 flex-1">
                                             <div className="flex items-center gap-2">
                                                 <Link
-                                                    to={"/requirements/$requirementId" as string}
-                                                    params={{ requirementId: id } as Record<string, string>}
+                                                    to="/requirements/$requirementId"
+                                                    params={{ requirementId: id }}
                                                     className="truncate font-medium hover:underline"
                                                 >
                                                     {title}

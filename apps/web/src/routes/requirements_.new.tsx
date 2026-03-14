@@ -54,7 +54,7 @@ function validateSteps(steps: StepRow[]): StepError[] {
         return errors;
     }
 
-    const firstKeyword = steps[0].keyword;
+    const firstKeyword = steps[0]!.keyword;
     if (firstKeyword === "and" || firstKeyword === "but") {
         errors.push({ step: 0, error: "First step cannot be 'and' or 'but'" });
     } else if (firstKeyword !== "given") {
@@ -63,7 +63,7 @@ function validateSteps(steps: StepRow[]): StepError[] {
 
     let phase: "given" | "when" | "then" = "given";
     for (let i = 0; i < steps.length; i++) {
-        const { keyword } = steps[i];
+        const { keyword } = steps[i]!;
         if (keyword === "and" || keyword === "but") continue;
         if (keyword === "given") {
             if (phase === "when" || phase === "then") {
@@ -214,9 +214,9 @@ function NewRequirement() {
             }
 
             navigate({
-                to: "/requirements/$requirementId" as string,
-                params: { requirementId: result.requirement.id } as Record<string, string>
-            } as Parameters<typeof navigate>[0]);
+                to: "/requirements/$requirementId",
+                params: { requirementId: result.requirement.id }
+            });
         },
         onError: () => {
             toast.error("Failed to create requirement");
