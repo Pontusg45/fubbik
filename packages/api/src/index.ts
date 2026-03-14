@@ -10,6 +10,7 @@ import { connectionRoutes } from "./connections/routes";
 import { knowledgeHealthRoutes } from "./knowledge-health/routes";
 import type { Session } from "./context";
 import { enrichRoutes } from "./enrich/routes";
+import { fileRefRoutes } from "./file-refs/routes";
 import { graphRoutes } from "./graph/routes";
 import { healthRoutes } from "./health/routes";
 import { requireSession } from "./require-session";
@@ -106,6 +107,7 @@ export const api = new Elysia({ prefix: "/api" })
     .use(tagRoutes)
     .use(tagTypeRoutes)
     .use(codebaseRoutes)
+    .use(fileRefRoutes)
     .use(knowledgeHealthRoutes);
 
 export type Api = typeof api;

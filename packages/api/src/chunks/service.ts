@@ -9,6 +9,7 @@ import {
     getChunkById,
     getChunkConnections,
     getCodebasesForChunk,
+    getFileRefsForChunk,
     getNextVersionNumber,
     getVersionsByChunkId,
     listChunks as listChunksRepo,
@@ -88,7 +89,8 @@ export function getChunkDetail(chunkId: string, userId?: string) {
                 chunk: Effect.succeed(found),
                 connections: getChunkConnections(chunkId),
                 codebases: getCodebasesForChunk(chunkId),
-                appliesTo: getAppliesToForChunk(chunkId)
+                appliesTo: getAppliesToForChunk(chunkId),
+                fileReferences: getFileRefsForChunk(chunkId)
             })
         )
     );
