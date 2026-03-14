@@ -51,12 +51,9 @@ function RequirementDetail() {
     const { data, isLoading, error } = useQuery({
         queryKey: ["requirement", requirementId],
         queryFn: async () => {
-            try {
-                return unwrapEden(await api.api.requirements({ id: requirementId }).get()) as Record<string, unknown>;
-            } catch (e) {
-                console.error("Failed to fetch requirement", e);
-                return null;
-            }
+            const res = await api.api.requirements({ id: requirementId }).get();
+            if (res.error) throw new Error("Failed to fetch");
+            return res.data as Record<string, unknown>;
         }
     });
 
