@@ -12,7 +12,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Toaster } from "@/components/ui/sonner";
 import UserMenu from "@/features/auth/user-menu";
-import { Breadcrumbs } from "@/features/nav/breadcrumbs";
+
 import { KeyboardShortcutsHelp, useGlobalShortcuts } from "@/features/nav/keyboard-shortcuts";
 import { MobileNav } from "@/features/nav/mobile-nav";
 import { CodebaseSwitcher } from "@/features/codebases/codebase-switcher";
@@ -154,7 +154,6 @@ function RootDocument() {
                                 </div>
                             </header>
                         )}
-                        {!isLanding && <Breadcrumbs />}
                         <main>
                             <ErrorBoundary>
                                 <Outlet />
