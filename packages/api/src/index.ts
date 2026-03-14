@@ -17,6 +17,7 @@ import { requireSession } from "./require-session";
 import { statsRoutes } from "./stats/routes";
 import { tagTypeRoutes } from "./tag-types/routes";
 import { tagRoutes } from "./tags/routes";
+import { templateRoutes } from "./templates/routes";
 
 const FiberFailureCauseSymbol = Symbol.for("effect/Runtime/FiberFailure/Cause");
 
@@ -108,6 +109,7 @@ export const api = new Elysia({ prefix: "/api" })
     .use(tagTypeRoutes)
     .use(codebaseRoutes)
     .use(fileRefRoutes)
+    .use(templateRoutes)
     .use(knowledgeHealthRoutes);
 
 export type Api = typeof api;
