@@ -1485,4 +1485,26 @@ Content: ${c.content}`,
     console.log("\nOllama not available \u2014 skipping enrichment");
 }
 
+// Seed default instance settings
+import { instanceSettings } from "./schema/settings";
+
+const defaultInstanceSettings: Array<{ key: string; value: unknown }> = [
+    { key: "aiEnabled", value: true },
+    { key: "ollamaUrl", value: process.env.OLLAMA_URL ?? "http://localhost:11434" },
+    { key: "enrichmentEnabled", value: true },
+    { key: "semanticSearchEnabled", value: true },
+    { key: "aiSuggestionsEnabled", value: true },
+    { key: "vocabularySuggestEnabled", value: true },
+    { key: "registrationEnabled", value: true },
+    { key: "maxChunksPerCodebase", value: 10000 }
+];
+
+for (const setting of defaultInstanceSettings) {
+    await db
+        .insert(instanceSettings)
+        .values({ key: setting.key, value: setting.value })
+        .onConflictDoNothing();
+}
+console.log("\nSeeded default instance settings");
+
 process.exit(0);

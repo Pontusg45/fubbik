@@ -12,3 +12,4 @@ export * from "./favorite";
 export * from "./collection";
 export * from "./notification";
 export * from "./activity";
+export * from "./settings";
