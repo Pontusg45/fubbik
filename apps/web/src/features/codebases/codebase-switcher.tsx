@@ -1,10 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
-    DropdownMenuSeparator,
     DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
 import { api } from "@/utils/api";
@@ -25,24 +25,29 @@ export function CodebaseSwitcher() {
         }
     });
 
-    const activeName =
-        codebaseId === "global"
-            ? "Global"
-            : codebaseId
-              ? codebases?.find((c: { id: string }) => c.id === codebaseId)?.name ?? "..."
-              : "All";
+    // Auto-select the first codebase if none is active
+    useEffect(() => {
+        if (!codebaseId && codebases && codebases.length > 0) {
+            setCodebaseId(codebases[0].id);
+        }
+    }, [codebaseId, codebases, setCodebaseId]);
+
+    const activeName = codebaseId
+        ? codebases?.find((c: { id: string }) => c.id === codebaseId)?.name ?? "..."
+        : "Select codebase";
 
     return (
         <DropdownMenu>
-            <DropdownMenuTrigger render={<Button variant="outline" size="sm" className="max-w-[150px] truncate" />}>
+            <DropdownMenuTrigger render={<Button variant="outline" size="sm" className="max-w-[180px] truncate" />}>
                 {activeName}
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start">
-                <DropdownMenuItem onClick={() => setCodebaseId(null)}>All</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setCodebaseId("global")}>Global</DropdownMenuItem>
-                <DropdownMenuSeparator />
                 {codebases?.map((c: { id: string; name: string }) => (
-                    <DropdownMenuItem key={c.id} onClick={() => setCodebaseId(c.id)}>
+                    <DropdownMenuItem
+                        key={c.id}
+                        onClick={() => setCodebaseId(c.id)}
+                        className={codebaseId === c.id ? "bg-accent" : ""}
+                    >
                         {c.name}
                     </DropdownMenuItem>
                 ))}
