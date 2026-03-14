@@ -1663,7 +1663,7 @@ function GraphViewInner() {
                         <div className="bg-border h-4 w-px" />
                         <button
                             onClick={() => {
-                                if (confirm(`Delete ${multiSelectedIds.size} chunks?`)) {
+                                if (confirm(`Delete ${multiSelectedIds.size} chunks?`)) { // TODO: replace with styled dialog
                                     deleteManyMutation.mutate([...multiSelectedIds]);
                                 }
                             }}

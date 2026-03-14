@@ -184,7 +184,7 @@ export interface CreateChunkParams {
 export function createChunk(params: CreateChunkParams) {
     return Effect.tryPromise({
         try: async () => {
-            const [created] = await db.insert(chunk).values(params).returning();
+            const [created] = await db.insert(chunk).values({ ...params, title: params.title.trim() }).returning();
             return created;
         },
         catch: cause => new DatabaseError({ cause })
@@ -214,7 +214,7 @@ export function updateChunk(chunkId: string, params: UpdateChunkParams) {
             const [updated] = await db
                 .update(chunk)
                 .set({
-                    ...(params.title !== undefined && { title: params.title }),
+                    ...(params.title !== undefined && { title: params.title.trim() }),
                     ...(params.content !== undefined && { content: params.content }),
                     ...(params.type !== undefined && { type: params.type }),
                     ...(params.summary !== undefined && { summary: params.summary }),

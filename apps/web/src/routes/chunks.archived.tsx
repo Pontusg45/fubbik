@@ -65,7 +65,7 @@ function ArchivedChunks() {
     }
 
     function handleDelete(id: string) {
-        if (!confirm("Permanently delete this chunk? This cannot be undone.")) return;
+        if (!confirm("Permanently delete this chunk? This cannot be undone.")) return; // TODO: replace with styled dialog
         deleteMutation.mutate(id);
     }
 

@@ -138,7 +138,7 @@ function RequirementsPage() {
     const requirements = data?.requirements ?? [];
 
     function handleDelete(id: string, title: string) {
-        if (!confirm(`Delete requirement "${title}"?`)) return;
+        if (!confirm(`Delete requirement "${title}"?`)) return; // TODO: replace with styled dialog
         deleteMutation.mutate(id);
     }
 
@@ -241,7 +241,17 @@ function RequirementsPage() {
                     {listQuery.isLoading ? (
                         <p className="text-muted-foreground text-sm">Loading...</p>
                     ) : requirements.length === 0 ? (
-                        <p className="text-muted-foreground text-sm">No requirements yet.</p>
+                        <div className="flex flex-col items-center gap-3 py-12">
+                            <ClipboardCheck className="text-muted-foreground/20 size-10" />
+                            <div className="text-center">
+                                <p className="text-muted-foreground font-medium">No requirements yet</p>
+                                <p className="text-muted-foreground/70 mt-1 text-sm">Define requirements to track what your knowledge base should cover.</p>
+                            </div>
+                            <Button size="sm" render={<Link to="/requirements/new" />}>
+                                <Plus className="size-3.5" />
+                                Create your first requirement
+                            </Button>
+                        </div>
                     ) : (
                         <div className="divide-y">
                             {requirements.map(req => {

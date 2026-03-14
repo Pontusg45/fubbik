@@ -126,7 +126,7 @@ function TemplatesPage() {
     }
 
     function handleDelete(id: string, templateName: string) {
-        if (!confirm(`Delete template "${templateName}"?`)) return;
+        if (!confirm(`Delete template "${templateName}"?`)) return; // TODO: replace with styled dialog
         deleteMutation.mutate(id);
     }
 

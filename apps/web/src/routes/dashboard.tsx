@@ -255,10 +255,14 @@ function DashboardPage() {
                         {recentQuery.isLoading ? (
                             <p className="text-muted-foreground py-4 text-center text-sm">Loading...</p>
                         ) : recentChunks.length === 0 ? (
-                            <div className="flex flex-col items-center gap-2 py-8">
-                                <Blocks className="text-muted-foreground/30 size-8" />
-                                <p className="text-muted-foreground text-sm">No chunks yet</p>
-                                <Button size="sm" variant="outline" render={<Link to="/chunks/new" />}>
+                            <div className="flex flex-col items-center gap-3 py-12">
+                                <Blocks className="text-muted-foreground/20 size-10" />
+                                <div className="text-center">
+                                    <p className="text-muted-foreground font-medium">No chunks yet</p>
+                                    <p className="text-muted-foreground/70 mt-1 text-sm">Start building your knowledge base by creating your first chunk.</p>
+                                </div>
+                                <Button size="sm" render={<Link to="/chunks/new" />}>
+                                    <Plus className="size-3.5" />
                                     Create your first chunk
                                 </Button>
                             </div>

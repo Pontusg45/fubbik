@@ -193,7 +193,7 @@ function ChunkDetail() {
                         size="sm"
                         className="text-destructive"
                         onClick={() => {
-                            if (confirm("Permanently delete this chunk? This cannot be undone.")) deleteMutation.mutate();
+                            if (confirm("Permanently delete this chunk? This cannot be undone.")) deleteMutation.mutate(); // TODO: replace with styled dialog
                         }}
                         disabled={deleteMutation.isPending}
                     >

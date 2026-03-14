@@ -328,12 +328,12 @@ function ChunksList() {
     const [bulkTagAction, setBulkTagAction] = useState<"add_tags" | "remove_tags">("add_tags");
 
     function handleBulkDelete() {
-        if (!confirm(`Delete ${selectedIds.size} chunks permanently?`)) return;
+        if (!confirm(`Delete ${selectedIds.size} chunks permanently?`)) return; // TODO: replace with styled dialog
         bulkUpdateMutation.mutate({ ids: [...selectedIds], action: "delete" });
     }
 
     function handleBulkArchive() {
-        if (!confirm(`Archive ${selectedIds.size} chunks?`)) return;
+        if (!confirm(`Archive ${selectedIds.size} chunks?`)) return; // TODO: replace with styled dialog
         bulkUpdateMutation.mutate({ ids: [...selectedIds], action: "archive" });
     }
 

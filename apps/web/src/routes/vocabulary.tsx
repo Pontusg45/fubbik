@@ -202,7 +202,7 @@ function VocabularyPage() {
     }
 
     function handleDelete(id: string, entryWord: string) {
-        if (!confirm(`Delete vocabulary entry "${entryWord}"?`)) return;
+        if (!confirm(`Delete vocabulary entry "${entryWord}"?`)) return; // TODO: replace with styled dialog
         deleteMutation.mutate(id);
     }
 

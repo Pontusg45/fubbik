@@ -239,7 +239,7 @@ function TagsPage() {
                                                 </Link>
                                                 <button
                                                     onClick={() => {
-                                                        if (confirm(`Delete tag "${t.name}"?`)) deleteTagMutation.mutate(t.id);
+                                                        if (confirm(`Delete tag "${t.name}"?`)) deleteTagMutation.mutate(t.id); // TODO: replace with styled dialog
                                                     }}
                                                     className="text-muted-foreground/0 group-hover:text-muted-foreground hover:text-destructive ml-1 transition-colors"
                                                 >
@@ -323,7 +323,7 @@ function TagsPage() {
                                             </button>
                                             <button
                                                 onClick={() => {
-                                                    if (confirm(`Delete tag type "${tt.name}"? Tags in this type will become uncategorized.`))
+                                                    if (confirm(`Delete tag type "${tt.name}"? Tags in this type will become uncategorized.`)) // TODO: replace with styled dialog
                                                         deleteTagTypeMutation.mutate(tt.id);
                                                 }}
                                                 className="text-muted-foreground hover:text-destructive"

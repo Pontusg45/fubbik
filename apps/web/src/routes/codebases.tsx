@@ -72,7 +72,7 @@ function CodebasesPage() {
     }
 
     function handleDelete(id: string, codebaseName: string) {
-        if (!confirm(`Delete codebase "${codebaseName}"?`)) return;
+        if (!confirm(`Delete codebase "${codebaseName}"?`)) return; // TODO: replace with styled dialog
         deleteMutation.mutate(id);
     }
 

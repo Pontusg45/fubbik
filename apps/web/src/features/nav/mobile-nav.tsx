@@ -1,22 +1,40 @@
 import { Link } from "@tanstack/react-router";
-import { Activity, Blocks, BookOpen, ClipboardCheck, Clock, FileText, FolderGit2, LayoutDashboard, Menu, Network, Tags } from "lucide-react";
+import {
+    Activity,
+    Blocks,
+    BookOpen,
+    ClipboardCheck,
+    Clock,
+    FileText,
+    FolderGit2,
+    LayoutDashboard,
+    Menu,
+    Network,
+    Settings,
+    Tags
+} from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
-const navItems = [
+const primaryItems = [
     { label: "Dashboard", to: "/dashboard" as const, icon: LayoutDashboard },
     { label: "Chunks", to: "/chunks" as const, icon: Blocks },
     { label: "Graph", to: "/graph" as const, icon: Network },
-    { label: "Tags", to: "/tags" as const, icon: Tags },
-    { label: "Health", to: "/knowledge-health" as const, icon: Activity },
-    { label: "Codebases", to: "/codebases" as const, icon: FolderGit2 },
     { label: "Requirements", to: "/requirements" as const, icon: ClipboardCheck },
-    { label: "Vocabulary", to: "/vocabulary" as const, icon: BookOpen },
+    { label: "Docs", to: "/docs" as const, icon: FileText }
+];
+
+const manageItems = [
+    { label: "Tags", to: "/tags" as const, icon: Tags },
     { label: "Templates", to: "/templates" as const, icon: FileText },
-    { label: "Activity", to: "/activity" as const, icon: Clock }
+    { label: "Vocabulary", to: "/vocabulary" as const, icon: BookOpen },
+    { label: "Codebases", to: "/codebases" as const, icon: FolderGit2 },
+    { label: "Health", to: "/knowledge-health" as const, icon: Activity },
+    { label: "Activity", to: "/activity" as const, icon: Clock },
+    { label: "Settings", to: "/settings" as const, icon: Settings }
 ];
 
 export function MobileNav() {
@@ -33,7 +51,25 @@ export function MobileNav() {
                 </div>
                 <Separator />
                 <nav className="space-y-1 p-2">
-                    {navItems.map(item => (
+                    {primaryItems.map(item => (
+                        <Link
+                            key={item.to}
+                            to={item.to}
+                            search={{} as any}
+                            onClick={() => setOpen(false)}
+                            className="hover:bg-muted flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors"
+                        >
+                            <item.icon className="size-4" />
+                            {item.label}
+                        </Link>
+                    ))}
+                </nav>
+                <Separator />
+                <div className="px-5 pt-3 pb-1">
+                    <span className="text-muted-foreground text-xs font-medium uppercase tracking-wide">Manage</span>
+                </div>
+                <nav className="space-y-1 p-2">
+                    {manageItems.map(item => (
                         <Link
                             key={item.to}
                             to={item.to}

@@ -1,8 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Bot, Check, Copy, Trash2, X } from "lucide-react";
+import { Bot, Check, Copy, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 
+import { BackLink } from "@/components/back-link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { getUser } from "@/functions/get-user";
@@ -295,7 +296,7 @@ function RequirementDetail() {
                     size="sm"
                     className="text-destructive"
                     onClick={() => {
-                        if (confirm(`Delete "${title}"?`)) deleteMutation.mutate();
+                        if (confirm(`Delete "${title}"?`)) deleteMutation.mutate(); // TODO: replace with styled dialog
                     }}
                     disabled={deleteMutation.isPending}
                 >
@@ -310,12 +311,7 @@ function RequirementDetail() {
 function Shell({ children }: { children: React.ReactNode }) {
     return (
         <div className="container mx-auto max-w-3xl px-4 py-8">
-            <div className="mb-6">
-                <Link to="/requirements" className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-sm transition-colors">
-                    <ArrowLeft className="size-3.5" />
-                    Requirements
-                </Link>
-            </div>
+            <BackLink to="/requirements" label="Requirements" />
             {children}
         </div>
     );
