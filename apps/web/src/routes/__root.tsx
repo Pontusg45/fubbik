@@ -3,17 +3,19 @@ import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { HeadContent, Link, Outlet, Scripts, createRootRouteWithContext } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 
+import { Settings, Tags, FileText, BookOpen, Languages, Folder } from "lucide-react";
+
 import { ErrorBoundary } from "@/components/error-boundary";
 import FubbikLogo from "@/components/fubbik-logo";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Toaster } from "@/components/ui/sonner";
 import UserMenu from "@/features/auth/user-menu";
 import { Breadcrumbs } from "@/features/nav/breadcrumbs";
 import { KeyboardShortcutsHelp, useGlobalShortcuts } from "@/features/nav/keyboard-shortcuts";
 import { MobileNav } from "@/features/nav/mobile-nav";
 import { CodebaseSwitcher } from "@/features/codebases/codebase-switcher";
-import { ChunkSearch } from "@/features/search/chunk-search";
 import { CommandPalette } from "@/features/command-palette/command-palette";
 import { NotificationBell } from "@/features/nav/notification-bell";
 
@@ -75,22 +77,7 @@ function RootDocument() {
                                     </Link>
                                     <Link
                                         to="/chunks"
-                                        search={{
-                                            page: 1,
-                                            type: undefined,
-                                            q: undefined,
-                                            sort: undefined,
-                                            tags: undefined,
-                                            size: undefined,
-                                            after: undefined,
-                                            enrichment: undefined,
-                                            minConnections: undefined,
-                                            group: undefined,
-                                            collection: undefined,
-                                            view: undefined,
-                                            origin: undefined,
-                                            reviewStatus: undefined
-                                        }}
+                                        search={{} as any}
                                         className="text-muted-foreground hover:text-foreground [&.active]:text-foreground rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
                                     >
                                         Chunks
@@ -102,51 +89,49 @@ function RootDocument() {
                                         Graph
                                     </Link>
                                     <Link
-                                        to="/tags"
-                                        className="text-muted-foreground hover:text-foreground [&.active]:text-foreground rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
-                                    >
-                                        Tags
-                                    </Link>
-                                    <Link
-                                        to="/knowledge-health"
-                                        className="text-muted-foreground hover:text-foreground [&.active]:text-foreground rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
-                                    >
-                                        Health
-                                    </Link>
-                                    <Link
-                                        to="/codebases"
-                                        className="text-muted-foreground hover:text-foreground [&.active]:text-foreground rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
-                                    >
-                                        Codebases
-                                    </Link>
-                                    <Link
                                         to="/requirements"
                                         className="text-muted-foreground hover:text-foreground [&.active]:text-foreground rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
                                     >
                                         Requirements
                                     </Link>
-                                    <Link
-                                        to="/vocabulary"
-                                        className="text-muted-foreground hover:text-foreground [&.active]:text-foreground rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
-                                    >
-                                        Vocabulary
-                                    </Link>
-                                    <Link
-                                        to="/templates"
-                                        className="text-muted-foreground hover:text-foreground [&.active]:text-foreground rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
-                                    >
-                                        Templates
-                                    </Link>
-                                    <Link
-                                        to="/activity"
-                                        className="text-muted-foreground hover:text-foreground [&.active]:text-foreground rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
-                                    >
-                                        Activity
-                                    </Link>
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger className="text-muted-foreground hover:text-foreground rounded-md px-3 py-1.5 text-sm font-medium transition-colors">
+                                            <span className="flex items-center gap-1">
+                                                Manage
+                                                <Settings className="size-3.5" />
+                                            </span>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="start">
+                                            <DropdownMenuItem render={<Link to="/tags" />}>
+                                                <Tags className="size-4" />
+                                                Tags
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem render={<Link to="/templates" />}>
+                                                <FileText className="size-4" />
+                                                Templates
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem render={<Link to="/vocabulary" />}>
+                                                <Languages className="size-4" />
+                                                Vocabulary
+                                            </DropdownMenuItem>
+                                            <DropdownMenuSeparator />
+                                            <DropdownMenuItem render={<Link to="/codebases" />}>
+                                                <Folder className="size-4" />
+                                                Codebases
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem render={<Link to="/knowledge-health" />}>
+                                                <BookOpen className="size-4" />
+                                                Health
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem render={<Link to="/activity" />}>
+                                                <BookOpen className="size-4" />
+                                                Activity
+                                            </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
                                 </nav>
                                 <div className="flex items-center gap-2">
                                     <MobileNav />
-                                    <ChunkSearch />
                                     <NotificationBell />
                                     <ThemeToggle />
                                     <UserMenu />
