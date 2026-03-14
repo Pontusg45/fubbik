@@ -145,6 +145,7 @@ function NewRequirement() {
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
     const [priority, setPriority] = useState("");
+    const [useCaseId, setUseCaseId] = useState("");
     const [steps, setSteps] = useState<StepRow[]>([
         { keyword: "given", text: "" },
         { keyword: "when", text: "" },
@@ -253,6 +254,23 @@ function NewRequirement() {
         }
     });
 
+    const useCasesQuery = useQuery({
+        queryKey: ["use-cases", codebaseId],
+        queryFn: async () => {
+            try {
+                const query: { codebaseId?: string } = {};
+                if (codebaseId) query.codebaseId = codebaseId;
+                const result = unwrapEden(await api.api["use-cases"].get({ query })) as
+                    Array<{ id: string; name: string }>;
+                return result ?? [];
+            } catch {
+                return [];
+            }
+        }
+    });
+
+    const allUseCases = useCasesQuery.data ?? [];
+
     const chunksQuery = useQuery({
         queryKey: ["chunks-for-linking", codebaseId],
         queryFn: async () => {
@@ -346,6 +364,7 @@ function NewRequirement() {
                 steps: Array<{ keyword: Keyword; text: string }>;
                 priority?: "must" | "should" | "could" | "wont";
                 codebaseId?: string;
+                useCaseId?: string;
             } = {
                 title: title.trim(),
                 steps: steps.map(s => ({ keyword: s.keyword, text: s.text.trim() }))
@@ -353,6 +372,7 @@ function NewRequirement() {
             if (description.trim()) body.description = description.trim();
             if (priority) body.priority = priority as "must" | "should" | "could" | "wont";
             if (codebaseId) body.codebaseId = codebaseId;
+            if (useCaseId) body.useCaseId = useCaseId;
 
             const result = unwrapEden(await api.api.requirements.post(body)) as unknown as {
                 requirement: { id: string };
@@ -444,6 +464,25 @@ function NewRequirement() {
                             ))}
                         </select>
                     </div>
+
+                    {/* Use Case */}
+                    {allUseCases.length > 0 && (
+                        <div>
+                            <label className="mb-1.5 block text-sm font-medium">Use Case (optional)</label>
+                            <select
+                                value={useCaseId}
+                                onChange={e => setUseCaseId(e.target.value)}
+                                className="bg-background focus:ring-ring w-full rounded-md border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
+                            >
+                                <option value="">(none)</option>
+                                {allUseCases.map(uc => (
+                                    <option key={uc.id} value={uc.id}>
+                                        {uc.name}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
 
                     <Separator />
 

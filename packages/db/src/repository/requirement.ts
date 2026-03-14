@@ -15,6 +15,7 @@ export interface CreateRequirementParams {
     status?: string;
     priority?: string;
     codebaseId?: string;
+    useCaseId?: string;
     userId: string;
     origin?: string;
     reviewStatus?: string;
@@ -48,6 +49,7 @@ export function getRequirementById(id: string, userId?: string) {
 export interface ListRequirementsParams {
     userId: string;
     codebaseId?: string;
+    useCaseId?: string;
     status?: string;
     priority?: string;
     origin?: string;
@@ -61,6 +63,7 @@ export function listRequirements(params: ListRequirementsParams) {
         try: async () => {
             const conditions = [eq(requirement.userId, params.userId)];
             if (params.codebaseId) conditions.push(eq(requirement.codebaseId, params.codebaseId));
+            if (params.useCaseId) conditions.push(eq(requirement.useCaseId, params.useCaseId));
             if (params.status) conditions.push(eq(requirement.status, params.status));
             if (params.priority) conditions.push(eq(requirement.priority, params.priority));
             if (params.origin) conditions.push(eq(requirement.origin, params.origin));
@@ -91,6 +94,7 @@ export interface UpdateRequirementParams {
     status?: string;
     priority?: string | null;
     codebaseId?: string | null;
+    useCaseId?: string | null;
     origin?: string;
     reviewStatus?: string;
     reviewedBy?: string | null;
@@ -107,6 +111,7 @@ export function updateRequirement(id: string, userId: string, params: UpdateRequ
             if (params.status !== undefined) setClause.status = params.status;
             if (params.priority !== undefined) setClause.priority = params.priority;
             if (params.codebaseId !== undefined) setClause.codebaseId = params.codebaseId;
+            if (params.useCaseId !== undefined) setClause.useCaseId = params.useCaseId;
             if (params.origin !== undefined) setClause.origin = params.origin;
             if (params.reviewStatus !== undefined) setClause.reviewStatus = params.reviewStatus;
             if (params.reviewedBy !== undefined) setClause.reviewedBy = params.reviewedBy;

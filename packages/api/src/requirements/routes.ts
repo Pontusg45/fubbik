@@ -115,6 +115,7 @@ export const requirementRoutes = new Elysia()
                 steps: t.Array(StepSchema, { minItems: 1 }),
                 priority: PrioritySchema,
                 codebaseId: t.Optional(t.String()),
+                useCaseId: t.Optional(t.String()),
                 origin: t.Optional(t.Union([t.Literal("human"), t.Literal("ai")]))
             })
         }
@@ -151,6 +152,7 @@ export const requirementRoutes = new Elysia()
                     t.Null()
                 ])),
                 codebaseId: t.Optional(t.Union([t.String(), t.Null()])),
+                useCaseId: t.Optional(t.Union([t.String(), t.Null()])),
                 origin: t.Optional(t.Union([t.Literal("human"), t.Literal("ai")])),
                 reviewStatus: t.Optional(t.Union([t.Literal("draft"), t.Literal("reviewed"), t.Literal("approved")]))
             })

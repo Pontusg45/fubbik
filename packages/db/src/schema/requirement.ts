@@ -3,6 +3,7 @@ import { index, jsonb, pgTable, primaryKey, text, timestamp } from "drizzle-orm/
 import { user } from "./auth";
 import { chunk } from "./chunk";
 import { codebase } from "./codebase";
+import { useCase } from "./use-case";
 
 export interface RequirementStep {
     keyword: "given" | "when" | "then" | "and" | "but";
@@ -30,6 +31,7 @@ export const requirement = pgTable(
             .notNull(),
         origin: text("origin").notNull().default("human"),
         reviewStatus: text("review_status").notNull().default("approved"),
+        useCaseId: text("use_case_id").references(() => useCase.id, { onDelete: "set null" }),
         reviewedBy: text("reviewed_by").references(() => user.id, { onDelete: "set null" }),
         reviewedAt: timestamp("reviewed_at")
     },
@@ -56,6 +58,7 @@ export const requirementChunk = pgTable(
 export const requirementRelations = relations(requirement, ({ one, many }) => ({
     user: one(user, { fields: [requirement.userId], references: [user.id] }),
     codebase: one(codebase, { fields: [requirement.codebaseId], references: [codebase.id] }),
+    useCase: one(useCase, { fields: [requirement.useCaseId], references: [useCase.id] }),
     requirementChunks: many(requirementChunk)
 }));
 

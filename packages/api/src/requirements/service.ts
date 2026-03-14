@@ -98,6 +98,7 @@ export function createRequirement(
         steps: Array<{ keyword: "given" | "when" | "then" | "and" | "but"; text: string; params?: Record<string, string> }>;
         priority?: string;
         codebaseId?: string;
+        useCaseId?: string;
         origin?: string;
     }
 ) {
@@ -116,6 +117,7 @@ export function createRequirement(
             steps: body.steps,
             priority: body.priority,
             codebaseId: body.codebaseId,
+            useCaseId: body.useCaseId,
             userId,
             origin,
             reviewStatus: origin === "ai" ? "draft" : "approved"
@@ -135,6 +137,7 @@ export function updateRequirement(
         steps?: Array<{ keyword: "given" | "when" | "then" | "and" | "but"; text: string; params?: Record<string, string> }>;
         priority?: string | null;
         codebaseId?: string | null;
+        useCaseId?: string | null;
         origin?: string;
         reviewStatus?: string;
     }

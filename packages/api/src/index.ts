@@ -25,6 +25,7 @@ import { statsRoutes } from "./stats/routes";
 import { tagTypeRoutes } from "./tag-types/routes";
 import { tagRoutes } from "./tags/routes";
 import { templateRoutes } from "./templates/routes";
+import { useCaseRoutes } from "./use-cases/routes";
 import { activityRoutes } from "./activity/routes";
 import { notificationRoutes } from "./notifications/routes";
 import { settingsRoutes } from "./settings/routes";
@@ -128,6 +129,7 @@ export const api = new Elysia({ prefix: "/api" })
     .use(templateRoutes)
     .use(knowledgeHealthRoutes)
     .use(requirementRoutes)
+    .use(useCaseRoutes)
     .use(vocabularyRoutes)
     .use(favoriteRoutes)
     .use(collectionRoutes)

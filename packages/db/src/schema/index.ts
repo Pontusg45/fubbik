@@ -6,6 +6,7 @@ export * from "./codebase";
 export * from "./file-ref";
 export * from "./tag";
 export * from "./template";
+export * from "./use-case";
 export * from "./requirement";
 export * from "./vocabulary";
 export * from "./favorite";
