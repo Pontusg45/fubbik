@@ -6,3 +6,4 @@ export * from "./codebase";
 export * from "./file-ref";
 export * from "./tag";
 export * from "./template";
+export * from "./requirement";
