@@ -1,5 +1,6 @@
 import { MarkdownRenderer } from "@/components/markdown-renderer";
 import { Tabs, TabsContent, TabsList, TabsTab } from "@/components/ui/tabs";
+import { SizeIndicator } from "@/features/chunks/size-indicator";
 
 interface MarkdownEditorProps {
     value: string;
@@ -12,7 +13,10 @@ interface MarkdownEditorProps {
 export function MarkdownEditor({ value, onChange, placeholder, rows = 10, error }: MarkdownEditorProps) {
     return (
         <div>
-            <label className="mb-1.5 block text-sm font-medium">Content</label>
+            <div className="mb-1.5 flex items-center justify-between">
+                <label className="block text-sm font-medium">Content</label>
+                <SizeIndicator length={value.length} />
+            </div>
             <Tabs defaultValue={0}>
                 <TabsList>
                     <TabsTab value={0}>Write</TabsTab>
