@@ -25,6 +25,7 @@ import { tagRoutes } from "./tags/routes";
 import { templateRoutes } from "./templates/routes";
 import { activityRoutes } from "./activity/routes";
 import { notificationRoutes } from "./notifications/routes";
+import { settingsRoutes } from "./settings/routes";
 import { vocabularyRoutes } from "./vocabulary/routes";
 
 const FiberFailureCauseSymbol = Symbol.for("effect/Runtime/FiberFailure/Cause");
@@ -129,6 +130,7 @@ export const api = new Elysia({ prefix: "/api" })
     .use(favoriteRoutes)
     .use(collectionRoutes)
     .use(notificationRoutes)
-    .use(activityRoutes);
+    .use(activityRoutes)
+    .use(settingsRoutes);
 
 export type Api = typeof api;
