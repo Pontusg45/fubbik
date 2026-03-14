@@ -14,7 +14,7 @@ import { Effect } from "effect";
 
 import { NotFoundError, StepValidationError } from "../errors";
 import { validateSteps } from "./validator";
-import { crossReferenceSteps } from "./cross-ref";
+import { crossReferenceSteps, type CrossRefWarning } from "./cross-ref";
 import { toGherkin, toVitest, toMarkdown } from "./export";
 
 export function listRequirements(
@@ -42,12 +42,15 @@ export function listRequirements(
 
 export function getRequirement(id: string, userId: string) {
     return getRequirementById(id, userId).pipe(
-        Effect.flatMap(req => {
-            if (!req) return Effect.fail(new NotFoundError({ resource: "Requirement" }));
-            return getChunksForRequirement(id).pipe(
+        Effect.filterOrFail(
+            (req): req is NonNullable<typeof req> => req !== null,
+            () => new NotFoundError({ resource: "Requirement" })
+        ),
+        Effect.flatMap(req =>
+            getChunksForRequirement(id).pipe(
                 Effect.map(chunks => ({ ...req, chunks }))
-            );
-        })
+            )
+        )
     );
 }
 
@@ -61,27 +64,25 @@ export function createRequirement(
         codebaseId?: string;
     }
 ) {
-    const errors = validateSteps(body.steps);
-    if (errors.length > 0) {
-        return Effect.fail(new StepValidationError({ errors }));
-    }
+    return Effect.gen(function* () {
+        const errors = validateSteps(body.steps);
+        if (errors.length > 0) {
+            return yield* Effect.fail(new StepValidationError({ errors }));
+        }
 
-    const id = crypto.randomUUID();
-    return createRequirementRepo({
-        id,
-        title: body.title,
-        description: body.description,
-        steps: body.steps,
-        priority: body.priority,
-        codebaseId: body.codebaseId,
-        userId
-    }).pipe(
-        Effect.flatMap(requirement =>
-            crossReferenceSteps(body.steps, userId).pipe(
-                Effect.map(warnings => ({ requirement, warnings }))
-            )
-        )
-    );
+        const id = crypto.randomUUID();
+        const requirement = yield* createRequirementRepo({
+            id,
+            title: body.title,
+            description: body.description,
+            steps: body.steps,
+            priority: body.priority,
+            codebaseId: body.codebaseId,
+            userId
+        });
+        const warnings = yield* crossReferenceSteps(body.steps, userId);
+        return { requirement, warnings };
+    });
 }
 
 export function updateRequirement(
@@ -95,63 +96,60 @@ export function updateRequirement(
         codebaseId?: string | null;
     }
 ) {
-    return getRequirementById(id, userId).pipe(
-        Effect.flatMap(existing => {
-            if (!existing) return Effect.fail(new NotFoundError({ resource: "Requirement" }));
+    return Effect.gen(function* () {
+        const existing = yield* getRequirementById(id, userId);
+        if (!existing) return yield* Effect.fail(new NotFoundError({ resource: "Requirement" }));
 
-            if (body.steps) {
-                const errors = validateSteps(body.steps);
-                if (errors.length > 0) {
-                    return Effect.fail(new StepValidationError({ errors }));
-                }
+        if (body.steps) {
+            const errors = validateSteps(body.steps);
+            if (errors.length > 0) {
+                return yield* Effect.fail(new StepValidationError({ errors }));
             }
+        }
 
-            return updateRequirementRepo(id, userId, body).pipe(
-                Effect.flatMap(requirement => {
-                    if (!requirement) return Effect.fail(new NotFoundError({ resource: "Requirement" }));
+        const requirement = yield* updateRequirementRepo(id, userId, body);
+        if (!requirement) return yield* Effect.fail(new NotFoundError({ resource: "Requirement" }));
 
-                    if (body.steps) {
-                        return crossReferenceSteps(body.steps, userId).pipe(
-                            Effect.map(warnings => ({ requirement, warnings }))
-                        );
-                    }
-                    return Effect.succeed({ requirement, warnings: [] });
-                })
-            );
-        })
-    );
+        const warnings = body.steps
+            ? yield* crossReferenceSteps(body.steps, userId)
+            : ([] as CrossRefWarning[]);
+
+        return { requirement, warnings };
+    });
 }
 
 export function deleteRequirement(id: string, userId: string) {
     return getRequirementById(id, userId).pipe(
-        Effect.flatMap(existing => {
-            if (!existing) return Effect.fail(new NotFoundError({ resource: "Requirement" }));
-            return deleteRequirementRepo(id, userId);
-        })
+        Effect.filterOrFail(
+            (existing): existing is NonNullable<typeof existing> => existing !== null,
+            () => new NotFoundError({ resource: "Requirement" })
+        ),
+        Effect.flatMap(() => deleteRequirementRepo(id, userId))
     );
 }
 
 export function updateStatus(id: string, userId: string, status: string) {
     return updateRequirementStatus(id, userId, status).pipe(
-        Effect.flatMap(updated => {
-            if (!updated) return Effect.fail(new NotFoundError({ resource: "Requirement" }));
-            return Effect.succeed(updated);
-        })
+        Effect.filterOrFail(
+            (updated): updated is NonNullable<typeof updated> => updated !== null,
+            () => new NotFoundError({ resource: "Requirement" })
+        )
     );
 }
 
 export function setChunks(requirementId: string, userId: string, chunkIds: string[]) {
     return getRequirementById(requirementId, userId).pipe(
-        Effect.flatMap(req => {
-            if (!req) return Effect.fail(new NotFoundError({ resource: "Requirement" }));
-
-            // Verify all chunk IDs belong to user
+        Effect.filterOrFail(
+            (req): req is NonNullable<typeof req> => req !== null,
+            () => new NotFoundError({ resource: "Requirement" })
+        ),
+        Effect.flatMap(() => {
             const verifications = chunkIds.map(chunkId =>
                 getChunkById(chunkId, userId).pipe(
-                    Effect.flatMap(chunk => {
-                        if (!chunk) return Effect.fail(new NotFoundError({ resource: `Chunk ${chunkId}` }));
-                        return Effect.succeed(chunk);
-                    })
+                    Effect.filterOrFail(
+                        (chunk): chunk is NonNullable<typeof chunk> => chunk !== null && chunk !== undefined,
+                        () => new NotFoundError({ resource: `Chunk ${chunkId}` })
+                    )
                 )
             );
 
@@ -185,10 +183,11 @@ function exportOne(
 
 export function exportRequirement(id: string, userId: string, format: string) {
     return getRequirementById(id, userId).pipe(
-        Effect.flatMap(req => {
-            if (!req) return Effect.fail(new NotFoundError({ resource: "Requirement" }));
-            return Effect.succeed(exportOne(req.title, req.steps, format));
-        })
+        Effect.filterOrFail(
+            (req): req is NonNullable<typeof req> => req !== null,
+            () => new NotFoundError({ resource: "Requirement" })
+        ),
+        Effect.map(req => exportOne(req.title, req.steps, format))
     );
 }
 

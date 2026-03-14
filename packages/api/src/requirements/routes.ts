@@ -43,11 +43,10 @@ export const requirementRoutes = new Elysia()
         "/requirements/stats",
         ctx =>
             Effect.runPromise(
-                requireSession(ctx).pipe(
-                    Effect.flatMap(session =>
-                        requirementService.getStats(session.user.id, ctx.query.codebaseId)
-                    )
-                )
+                Effect.gen(function* () {
+                    const session = yield* requireSession(ctx);
+                    return yield* requirementService.getStats(session.user.id, ctx.query.codebaseId);
+                })
             ),
         {
             query: t.Object({
@@ -60,14 +59,13 @@ export const requirementRoutes = new Elysia()
         "/requirements/export",
         ctx =>
             Effect.runPromise(
-                requireSession(ctx).pipe(
-                    Effect.flatMap(session =>
-                        requirementService.exportAll(session.user.id, {
-                            codebaseId: ctx.query.codebaseId,
-                            format: ctx.query.format
-                        })
-                    )
-                )
+                Effect.gen(function* () {
+                    const session = yield* requireSession(ctx);
+                    return yield* requirementService.exportAll(session.user.id, {
+                        codebaseId: ctx.query.codebaseId,
+                        format: ctx.query.format
+                    });
+                })
             ),
         {
             query: t.Object({
@@ -81,11 +79,10 @@ export const requirementRoutes = new Elysia()
         "/requirements",
         ctx =>
             Effect.runPromise(
-                requireSession(ctx).pipe(
-                    Effect.flatMap(session =>
-                        requirementService.listRequirements(session.user.id, ctx.query)
-                    )
-                )
+                Effect.gen(function* () {
+                    const session = yield* requireSession(ctx);
+                    return yield* requirementService.listRequirements(session.user.id, ctx.query);
+                })
             ),
         {
             query: t.Object({
@@ -102,16 +99,12 @@ export const requirementRoutes = new Elysia()
         "/requirements",
         ctx =>
             Effect.runPromise(
-                requireSession(ctx).pipe(
-                    Effect.flatMap(session =>
-                        requirementService.createRequirement(session.user.id, ctx.body)
-                    ),
-                    Effect.tap(() =>
-                        Effect.sync(() => {
-                            ctx.set.status = 201;
-                        })
-                    )
-                )
+                Effect.gen(function* () {
+                    const session = yield* requireSession(ctx);
+                    const result = yield* requirementService.createRequirement(session.user.id, ctx.body);
+                    ctx.set.status = 201;
+                    return result;
+                })
             ),
         {
             body: t.Object({
@@ -126,11 +119,10 @@ export const requirementRoutes = new Elysia()
     // 5. Get by ID
     .get("/requirements/:id", ctx =>
         Effect.runPromise(
-            requireSession(ctx).pipe(
-                Effect.flatMap(session =>
-                    requirementService.getRequirement(ctx.params.id, session.user.id)
-                )
-            )
+            Effect.gen(function* () {
+                const session = yield* requireSession(ctx);
+                return yield* requirementService.getRequirement(ctx.params.id, session.user.id);
+            })
         )
     )
     // 6. Update
@@ -138,11 +130,10 @@ export const requirementRoutes = new Elysia()
         "/requirements/:id",
         ctx =>
             Effect.runPromise(
-                requireSession(ctx).pipe(
-                    Effect.flatMap(session =>
-                        requirementService.updateRequirement(ctx.params.id, session.user.id, ctx.body)
-                    )
-                )
+                Effect.gen(function* () {
+                    const session = yield* requireSession(ctx);
+                    return yield* requirementService.updateRequirement(ctx.params.id, session.user.id, ctx.body);
+                })
             ),
         {
             body: t.Object({
@@ -163,12 +154,11 @@ export const requirementRoutes = new Elysia()
     // 7. Delete
     .delete("/requirements/:id", ctx =>
         Effect.runPromise(
-            requireSession(ctx).pipe(
-                Effect.flatMap(session =>
-                    requirementService.deleteRequirement(ctx.params.id, session.user.id)
-                ),
-                Effect.map(() => ({ message: "Deleted" }))
-            )
+            Effect.gen(function* () {
+                const session = yield* requireSession(ctx);
+                yield* requirementService.deleteRequirement(ctx.params.id, session.user.id);
+                return { message: "Deleted" };
+            })
         )
     )
     // 8. Update status
@@ -176,11 +166,10 @@ export const requirementRoutes = new Elysia()
         "/requirements/:id/status",
         ctx =>
             Effect.runPromise(
-                requireSession(ctx).pipe(
-                    Effect.flatMap(session =>
-                        requirementService.updateStatus(ctx.params.id, session.user.id, ctx.body.status)
-                    )
-                )
+                Effect.gen(function* () {
+                    const session = yield* requireSession(ctx);
+                    return yield* requirementService.updateStatus(ctx.params.id, session.user.id, ctx.body.status);
+                })
             ),
         {
             body: t.Object({
@@ -193,11 +182,10 @@ export const requirementRoutes = new Elysia()
         "/requirements/:id/chunks",
         ctx =>
             Effect.runPromise(
-                requireSession(ctx).pipe(
-                    Effect.flatMap(session =>
-                        requirementService.setChunks(ctx.params.id, session.user.id, ctx.body.chunkIds)
-                    )
-                )
+                Effect.gen(function* () {
+                    const session = yield* requireSession(ctx);
+                    return yield* requirementService.setChunks(ctx.params.id, session.user.id, ctx.body.chunkIds);
+                })
             ),
         {
             body: t.Object({
@@ -210,11 +198,10 @@ export const requirementRoutes = new Elysia()
         "/requirements/:id/export",
         ctx =>
             Effect.runPromise(
-                requireSession(ctx).pipe(
-                    Effect.flatMap(session =>
-                        requirementService.exportRequirement(ctx.params.id, session.user.id, ctx.query.format)
-                    )
-                )
+                Effect.gen(function* () {
+                    const session = yield* requireSession(ctx);
+                    return yield* requirementService.exportRequirement(ctx.params.id, session.user.id, ctx.query.format);
+                })
             ),
         {
             query: t.Object({

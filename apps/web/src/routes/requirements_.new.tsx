@@ -185,9 +185,9 @@ function NewRequirement() {
             if (priority) body.priority = priority as "must" | "should" | "could" | "wont";
             if (codebaseId) body.codebaseId = codebaseId;
 
-            const result = unwrapEden(await api.api.requirements.post(body)) as {
+            const result = unwrapEden(await api.api.requirements.post(body)) as unknown as {
                 requirement: { id: string };
-                warnings: Array<{ step: number; warning: string }>;
+                warnings: Array<{ step: number; type: string; reference: string }>;
             };
 
             // Link chunks if any selected
@@ -203,7 +203,7 @@ function NewRequirement() {
 
             return result;
         },
-        onSuccess: result => {
+        onSuccess: (result: { requirement: { id: string }; warnings: Array<{ step: number; type: string; reference: string }> }) => {
             queryClient.invalidateQueries({ queryKey: ["requirements"] });
             queryClient.invalidateQueries({ queryKey: ["requirements-stats"] });
 

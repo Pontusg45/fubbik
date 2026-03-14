@@ -15,7 +15,7 @@ export function validateSteps(steps: RequirementStep[]): StepError[] {
         return errors;
     }
 
-    const firstKeyword = steps[0].keyword;
+    const firstKeyword = steps[0]!.keyword;
     if (firstKeyword === "and" || firstKeyword === "but") {
         errors.push({ step: 0, error: "First step cannot be 'and' or 'but'" });
     } else if (firstKeyword !== "given") {
@@ -25,7 +25,7 @@ export function validateSteps(steps: RequirementStep[]): StepError[] {
     let phase: Phase = "given";
 
     for (let i = 0; i < steps.length; i++) {
-        const { keyword } = steps[i];
+        const { keyword } = steps[i]!;
 
         if (keyword === "and" || keyword === "but") {
             if (i === 0) continue; // already reported above

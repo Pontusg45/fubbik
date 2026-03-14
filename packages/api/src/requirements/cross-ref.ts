@@ -15,7 +15,7 @@ function extractFilePaths(text: string): string[] {
     let match: RegExpExecArray | null;
     const regex = new RegExp(FILE_PATH_REGEX.source, FILE_PATH_REGEX.flags);
     while ((match = regex.exec(text)) !== null) {
-        const path = match[1];
+        const path = match[1]!;
         // Must contain at least one slash to look like a file path
         if (path.includes("/")) {
             paths.push(path);
@@ -33,7 +33,7 @@ export function crossReferenceSteps(
             const warnings: CrossRefWarning[] = [];
 
             for (let i = 0; i < steps.length; i++) {
-                const paths = extractFilePaths(steps[i].text);
+                const paths = extractFilePaths(steps[i]!.text);
                 for (const path of paths) {
                     const results = await Effect.runPromise(
                         lookupChunksByFilePath(path, userId).pipe(
