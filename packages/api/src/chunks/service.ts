@@ -11,6 +11,7 @@ import {
     getCodebasesForChunk,
     getFileRefsForChunk,
     getNextVersionNumber,
+    getTagsForChunk,
     getVersionsByChunkId,
     listChunks as listChunksRepo,
     semanticSearch as semanticSearchRepo,
@@ -94,7 +95,8 @@ export function getChunkDetail(chunkId: string, userId?: string) {
                 connections: getChunkConnections(chunkId),
                 codebases: getCodebasesForChunk(chunkId),
                 appliesTo: getAppliesToForChunk(chunkId),
-                fileReferences: getFileRefsForChunk(chunkId)
+                fileReferences: getFileRefsForChunk(chunkId),
+                tags: getTagsForChunk(chunkId)
             })
         )
     );

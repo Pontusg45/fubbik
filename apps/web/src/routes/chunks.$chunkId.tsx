@@ -10,11 +10,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardHeader, CardPanel, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { AiSection } from "@/features/chunks/ai-section";
+import { ChunkLink } from "@/features/chunks/chunk-link";
 import { getChunkSize } from "@/features/chunks/chunk-size";
 import { DeleteConnectionButton } from "@/features/chunks/delete-connection-button";
 import { LinkChunkDialog } from "@/features/chunks/link-chunk-dialog";
+import { RelatedChunks } from "@/features/chunks/related-chunks";
 import { relationColor } from "@/features/chunks/relation-colors";
 import { SplitChunkDialog } from "@/features/chunks/split-chunk-dialog";
+import { SuggestedConnections } from "@/features/chunks/suggested-connections";
 import { useFavorites } from "@/features/chunks/use-favorites";
 import { useRecentChunks } from "@/features/chunks/use-recent-chunks";
 import { VersionHistory } from "@/features/chunks/version-history";
@@ -126,6 +129,7 @@ function ChunkDetail() {
     const fileReferences = (data as Record<string, unknown>).fileReferences as
         | Array<{ id: string; path: string; anchor?: string | null; relation: string }>
         | undefined;
+    const tags = ((data as Record<string, unknown>).tags as Array<{ id: string; name: string }> | undefined) ?? [];
     const rationale = (chunk as Record<string, unknown>).rationale as string | null | undefined;
     const alternatives = (chunk as Record<string, unknown>).alternatives as string[] | null | undefined;
     const consequences = (chunk as Record<string, unknown>).consequences as string | null | undefined;
@@ -367,9 +371,9 @@ function ChunkDetail() {
                                 key={conn.id}
                                 className="hover:bg-muted flex items-center justify-between rounded-md border px-3 py-2 text-sm transition-colors"
                             >
-                                <Link to="/chunks/$chunkId" params={{ chunkId: conn.targetId }} className="flex-1 font-medium">
+                                <ChunkLink chunkId={conn.targetId}>
                                     {conn.title ?? conn.targetId}
-                                </Link>
+                                </ChunkLink>
                                 <div className="flex items-center gap-2">
                                     <Badge
                                         variant="outline"
@@ -393,9 +397,9 @@ function ChunkDetail() {
                                 key={conn.id}
                                 className="hover:bg-muted flex items-center justify-between rounded-md border px-3 py-2 text-sm transition-colors"
                             >
-                                <Link to="/chunks/$chunkId" params={{ chunkId: conn.sourceId }} className="flex-1 font-medium">
+                                <ChunkLink chunkId={conn.sourceId}>
                                     {conn.title ?? conn.sourceId}
-                                </Link>
+                                </ChunkLink>
                                 <div className="flex items-center gap-2">
                                     <Badge
                                         variant="outline"
@@ -417,6 +421,12 @@ function ChunkDetail() {
                     </CardPanel>
                 )}
             </Card>
+
+            <Separator className="my-6" />
+            <SuggestedConnections chunkId={chunkId} />
+
+            <Separator className="my-6" />
+            <RelatedChunks chunkId={chunkId} connections={connections} tags={tags} />
 
             <Separator className="my-6" />
             <VersionHistory chunkId={chunkId} />
