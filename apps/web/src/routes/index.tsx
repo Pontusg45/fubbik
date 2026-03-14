@@ -251,8 +251,27 @@ function LandingPage() {
             </div>
 
             <div className="relative z-10">
+                {/* Landing nav */}
+                <header className="container mx-auto flex max-w-3xl items-center justify-between px-4 py-4">
+                    <Link to="/" className="flex items-center gap-2">
+                        <FubbikLogo className="size-6 opacity-80" />
+                        <span className="font-bold">fubbik</span>
+                    </Link>
+                    <div className="flex items-center gap-4">
+                        <Link to="/docs" search={{} as any} className="text-muted-foreground hover:text-foreground text-sm font-medium transition-colors">
+                            Docs
+                        </Link>
+                        <Link
+                            to="/dashboard"
+                            className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-md px-4 py-1.5 text-sm font-medium transition-colors"
+                        >
+                            Get Started
+                        </Link>
+                    </div>
+                </header>
+
                 {/* Hero */}
-                <section className="container mx-auto max-w-3xl px-4 pt-20 pb-16 text-center">
+                <section className="container mx-auto max-w-3xl px-4 pt-12 pb-16 text-center">
                     <div className="mb-6 inline-flex items-center gap-3">
                         <FubbikLogo className="size-10 opacity-80" />
                         <Badge variant="outline" className="border-border/60 font-mono text-[10px] uppercase tracking-widest">
