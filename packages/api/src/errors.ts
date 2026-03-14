@@ -13,3 +13,7 @@ export class AiError extends Data.TaggedError("AiError")<{
 export class ValidationError extends Data.TaggedError("ValidationError")<{
     message: string;
 }> {}
+
+export class StepValidationError extends Data.TaggedError("StepValidationError")<{
+    errors: Array<{ step: number; error: string }>;
+}> {}

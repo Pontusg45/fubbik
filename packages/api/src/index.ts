@@ -84,6 +84,9 @@ export const api = new Elysia({ prefix: "/api" })
                     set.status = 502;
                     console.error("AI service error", effectError.cause);
                     return { message: "AI service error" };
+                case "StepValidationError":
+                    set.status = 400;
+                    return { message: "Invalid steps", errors: effectError.errors };
                 case "DatabaseError":
                     set.status = 500;
                     console.error("Database error", effectError.cause);
