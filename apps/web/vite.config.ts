@@ -20,6 +20,13 @@ export default defineConfig({
     ],
     server: {
         port: 3001,
-        allowedHosts: ["app.fubbik.test"]
+        allowedHosts: ["app.fubbik.test"],
+        hmr: {
+            clientPort: 3001,
+            host: "localhost"
+        },
+        watch: {
+            ignored: ["**/routeTree.gen.ts"]
+        }
     }
 });
