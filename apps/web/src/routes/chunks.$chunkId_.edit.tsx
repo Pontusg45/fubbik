@@ -315,9 +315,7 @@ function EditChunk() {
                                     type="text"
                                     value={row.pattern}
                                     onChange={e => {
-                                        const updated = [...appliesTo];
-                                        updated[i] = { ...updated[i], pattern: e.target.value };
-                                        setAppliesTo(updated);
+                                        setAppliesTo(appliesTo.map((a, j) => (j === i ? { ...a, pattern: e.target.value } : a)));
                                     }}
                                     placeholder="Pattern (e.g. src/**/*.ts)"
                                     className="bg-background focus:ring-ring flex-1 rounded-md border px-3 py-2 font-mono text-sm focus:ring-2 focus:outline-none"
@@ -326,9 +324,7 @@ function EditChunk() {
                                     type="text"
                                     value={row.note}
                                     onChange={e => {
-                                        const updated = [...appliesTo];
-                                        updated[i] = { ...updated[i], note: e.target.value };
-                                        setAppliesTo(updated);
+                                        setAppliesTo(appliesTo.map((a, j) => (j === i ? { ...a, note: e.target.value } : a)));
                                     }}
                                     placeholder="Note (optional)"
                                     className="bg-background focus:ring-ring w-40 rounded-md border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
@@ -363,9 +359,7 @@ function EditChunk() {
                                     type="text"
                                     value={row.path}
                                     onChange={e => {
-                                        const updated = [...fileRefs];
-                                        updated[i] = { ...updated[i], path: e.target.value };
-                                        setFileRefs(updated);
+                                        setFileRefs(fileRefs.map((f, j) => (j === i ? { ...f, path: e.target.value } : f)));
                                     }}
                                     placeholder="File path"
                                     className="bg-background focus:ring-ring flex-1 rounded-md border px-3 py-2 font-mono text-sm focus:ring-2 focus:outline-none"
@@ -374,9 +368,7 @@ function EditChunk() {
                                     type="text"
                                     value={row.anchor}
                                     onChange={e => {
-                                        const updated = [...fileRefs];
-                                        updated[i] = { ...updated[i], anchor: e.target.value };
-                                        setFileRefs(updated);
+                                        setFileRefs(fileRefs.map((f, j) => (j === i ? { ...f, anchor: e.target.value } : f)));
                                     }}
                                     placeholder="Anchor (optional)"
                                     className="bg-background focus:ring-ring w-32 rounded-md border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
@@ -384,12 +376,11 @@ function EditChunk() {
                                 <select
                                     value={row.relation}
                                     onChange={e => {
-                                        const updated = [...fileRefs];
-                                        updated[i] = {
-                                            ...updated[i],
-                                            relation: e.target.value as FileRefRow["relation"]
-                                        };
-                                        setFileRefs(updated);
+                                        setFileRefs(
+                                            fileRefs.map((f, j) =>
+                                                j === i ? { ...f, relation: e.target.value as FileRefRow["relation"] } : f
+                                            )
+                                        );
                                     }}
                                     className="bg-background focus:ring-ring w-32 rounded-md border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
                                 >

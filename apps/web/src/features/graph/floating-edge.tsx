@@ -28,13 +28,6 @@ function getHandlePoint(
     return { x: center.x, y: center.y - halfH, position: Position.Top };
 }
 
-function oppositePosition(pos: Position): Position {
-    if (pos === Position.Top) return Position.Bottom;
-    if (pos === Position.Bottom) return Position.Top;
-    if (pos === Position.Left) return Position.Right;
-    return Position.Left;
-}
-
 export function FloatingEdge({ id, source, target, style, data, label, labelStyle, labelBgStyle }: EdgeProps) {
     const sourceNode = useInternalNode(source);
     const targetNode = useInternalNode(target);
