@@ -108,6 +108,12 @@ function RootDocument() {
                                             >
                                                 Requirements
                                             </Link>
+                                            <Link
+                                                to="/docs"
+                                                className="text-muted-foreground hover:text-foreground [&.active]:text-foreground rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
+                                            >
+                                                Docs
+                                            </Link>
                                             <DropdownMenu>
                                                 <DropdownMenuTrigger className="text-muted-foreground hover:text-foreground rounded-md px-3 py-1.5 text-sm font-medium transition-colors">
                                                     <span className="flex items-center gap-1">
