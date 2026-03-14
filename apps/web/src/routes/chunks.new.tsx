@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, FileText, Loader2, Sparkles } from "lucide-react";
+import { ArrowLeft, ChevronDown, FileText, Loader2, Plus, Sparkles, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -27,6 +27,17 @@ export const Route = createFileRoute("/chunks/new")({
     }
 });
 
+interface ApplyToRow {
+    pattern: string;
+    note: string;
+}
+
+interface FileRefRow {
+    path: string;
+    anchor: string;
+    relation: "documents" | "configures" | "tests" | "implements";
+}
+
 function NewChunk() {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
@@ -38,6 +49,35 @@ function NewChunk() {
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [aiPrompt, setAiPrompt] = useState("");
     const debouncedTitle = useDebouncedValue(title, 500);
+
+    // New fields
+    const [appliesTo, setAppliesTo] = useState<ApplyToRow[]>([]);
+    const [fileRefs, setFileRefs] = useState<FileRefRow[]>([]);
+    const [showDecisionContext, setShowDecisionContext] = useState(false);
+    const [rationale, setRationale] = useState("");
+    const [alternativesInput, setAlternativesInput] = useState("");
+    const [consequences, setConsequences] = useState("");
+    const [selectedTemplateId, setSelectedTemplateId] = useState("");
+
+    const templatesQuery = useQuery({
+        queryKey: ["templates"],
+        queryFn: async () => {
+            try {
+                return unwrapEden(await api.api.templates.get()) as Array<{
+                    id: string;
+                    name: string;
+                    description: string | null;
+                    type: string;
+                    content: string;
+                    isBuiltIn: boolean;
+                }>;
+            } catch {
+                return [];
+            }
+        }
+    });
+
+    const serverTemplates = Array.isArray(templatesQuery.data) ? templatesQuery.data : [];
 
     const duplicateQuery = useQuery({
         queryKey: ["duplicate-check", debouncedTitle],
@@ -87,14 +127,57 @@ function NewChunk() {
 
     const createMutation = useMutation({
         mutationFn: async () => {
-            return unwrapEden(
+            const alternatives = alternativesInput
+                .split(",")
+                .map(s => s.trim())
+                .filter(Boolean);
+            const chunk = unwrapEden(
                 await api.api.chunks.post({
                     title,
                     content,
                     type,
-                    tags
+                    tags,
+                    ...(rationale ? { rationale } : {}),
+                    ...(alternatives.length > 0 ? { alternatives } : {}),
+                    ...(consequences ? { consequences } : {})
                 })
             );
+
+            const chunkId = (chunk as Record<string, unknown>)?.id as string | undefined;
+            if (!chunkId) return chunk;
+
+            // Set applies-to after chunk creation
+            const validAppliesTo = appliesTo.filter(a => a.pattern.trim());
+            if (validAppliesTo.length > 0) {
+                try {
+                    await api.api.chunks({ id: chunkId })["applies-to"].put(
+                        validAppliesTo.map(a => ({
+                            pattern: a.pattern.trim(),
+                            ...(a.note.trim() ? { note: a.note.trim() } : {})
+                        }))
+                    );
+                } catch {
+                    // non-critical
+                }
+            }
+
+            // Set file refs after chunk creation
+            const validFileRefs = fileRefs.filter(f => f.path.trim());
+            if (validFileRefs.length > 0) {
+                try {
+                    await api.api.chunks({ id: chunkId })["file-refs"].put(
+                        validFileRefs.map(f => ({
+                            path: f.path.trim(),
+                            ...(f.anchor.trim() ? { anchor: f.anchor.trim() } : {}),
+                            relation: f.relation
+                        }))
+                    );
+                } catch {
+                    // non-critical
+                }
+            }
+
+            return chunk;
         },
         onSuccess: data => {
             queryClient.invalidateQueries({ queryKey: ["chunks"] });
@@ -116,6 +199,27 @@ function NewChunk() {
         }
         setTagInput("");
     };
+
+    function handleTemplateSelect(templateId: string) {
+        setSelectedTemplateId(templateId);
+        if (!templateId) return;
+
+        // Check server templates first
+        const serverTmpl = serverTemplates.find(t => t.id === templateId);
+        if (serverTmpl) {
+            setContent(serverTmpl.content);
+            setType(serverTmpl.type);
+            return;
+        }
+
+        // Check local templates
+        const localTmpl = chunkTemplates.find(t => t.name === templateId);
+        if (localTmpl) {
+            setContent(localTmpl.content);
+            setType(localTmpl.type);
+            setTags(localTmpl.tags);
+        }
+    }
 
     return (
         <div className="container mx-auto max-w-3xl px-4 py-8">
@@ -166,6 +270,29 @@ function NewChunk() {
                         <FileText className="size-4" />
                         <span className="text-sm font-medium">Start from Template</span>
                     </div>
+                    <select
+                        value={selectedTemplateId}
+                        onChange={e => handleTemplateSelect(e.target.value)}
+                        className="bg-background focus:ring-ring mb-3 w-full rounded-md border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
+                    >
+                        <option value="">(none)</option>
+                        {serverTemplates.length > 0 && (
+                            <optgroup label="Custom Templates">
+                                {serverTemplates.map(t => (
+                                    <option key={t.id} value={t.id}>
+                                        {t.name} {t.isBuiltIn ? "(built-in)" : ""}
+                                    </option>
+                                ))}
+                            </optgroup>
+                        )}
+                        <optgroup label="Local Templates">
+                            {chunkTemplates.map(tmpl => (
+                                <option key={tmpl.name} value={tmpl.name}>
+                                    {tmpl.name}
+                                </option>
+                            ))}
+                        </optgroup>
+                    </select>
                     <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                         {chunkTemplates.map(tmpl => (
                             <button
@@ -176,6 +303,7 @@ function NewChunk() {
                                     setContent(tmpl.content);
                                     setType(tmpl.type);
                                     setTags(tmpl.tags);
+                                    setSelectedTemplateId(tmpl.name);
                                 }}
                                 className="hover:bg-muted rounded-md border p-3 text-left transition-colors"
                             >
@@ -271,6 +399,169 @@ function NewChunk() {
                         rows={10}
                         error={errors.content}
                     />
+
+                    <Separator />
+
+                    {/* Applies-to repeatable field */}
+                    <div>
+                        <div className="mb-2 flex items-center justify-between">
+                            <label className="text-sm font-medium">Applies To</label>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setAppliesTo([...appliesTo, { pattern: "", note: "" }])}
+                            >
+                                <Plus className="mr-1 size-3" />
+                                Add
+                            </Button>
+                        </div>
+                        {appliesTo.map((row, i) => (
+                            <div key={i} className="mb-2 flex gap-2">
+                                <input
+                                    type="text"
+                                    value={row.pattern}
+                                    onChange={e => {
+                                        const updated = [...appliesTo];
+                                        updated[i] = { ...updated[i], pattern: e.target.value };
+                                        setAppliesTo(updated);
+                                    }}
+                                    placeholder="Pattern (e.g. src/**/*.ts)"
+                                    className="bg-background focus:ring-ring flex-1 rounded-md border px-3 py-2 font-mono text-sm focus:ring-2 focus:outline-none"
+                                />
+                                <input
+                                    type="text"
+                                    value={row.note}
+                                    onChange={e => {
+                                        const updated = [...appliesTo];
+                                        updated[i] = { ...updated[i], note: e.target.value };
+                                        setAppliesTo(updated);
+                                    }}
+                                    placeholder="Note (optional)"
+                                    className="bg-background focus:ring-ring w-40 rounded-md border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
+                                />
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setAppliesTo(appliesTo.filter((_, j) => j !== i))}
+                                >
+                                    <Trash2 className="size-3.5" />
+                                </Button>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* File references repeatable field */}
+                    <div>
+                        <div className="mb-2 flex items-center justify-between">
+                            <label className="text-sm font-medium">File References</label>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setFileRefs([...fileRefs, { path: "", anchor: "", relation: "documents" }])}
+                            >
+                                <Plus className="mr-1 size-3" />
+                                Add
+                            </Button>
+                        </div>
+                        {fileRefs.map((row, i) => (
+                            <div key={i} className="mb-2 flex gap-2">
+                                <input
+                                    type="text"
+                                    value={row.path}
+                                    onChange={e => {
+                                        const updated = [...fileRefs];
+                                        updated[i] = { ...updated[i], path: e.target.value };
+                                        setFileRefs(updated);
+                                    }}
+                                    placeholder="File path"
+                                    className="bg-background focus:ring-ring flex-1 rounded-md border px-3 py-2 font-mono text-sm focus:ring-2 focus:outline-none"
+                                />
+                                <input
+                                    type="text"
+                                    value={row.anchor}
+                                    onChange={e => {
+                                        const updated = [...fileRefs];
+                                        updated[i] = { ...updated[i], anchor: e.target.value };
+                                        setFileRefs(updated);
+                                    }}
+                                    placeholder="Anchor (optional)"
+                                    className="bg-background focus:ring-ring w-32 rounded-md border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
+                                />
+                                <select
+                                    value={row.relation}
+                                    onChange={e => {
+                                        const updated = [...fileRefs];
+                                        updated[i] = {
+                                            ...updated[i],
+                                            relation: e.target.value as FileRefRow["relation"]
+                                        };
+                                        setFileRefs(updated);
+                                    }}
+                                    className="bg-background focus:ring-ring w-32 rounded-md border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
+                                >
+                                    <option value="documents">documents</option>
+                                    <option value="configures">configures</option>
+                                    <option value="tests">tests</option>
+                                    <option value="implements">implements</option>
+                                </select>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setFileRefs(fileRefs.filter((_, j) => j !== i))}
+                                >
+                                    <Trash2 className="size-3.5" />
+                                </Button>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Decision context collapsible */}
+                    <div>
+                        <button
+                            type="button"
+                            onClick={() => setShowDecisionContext(!showDecisionContext)}
+                            className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-sm font-medium transition-colors"
+                        >
+                            <ChevronDown
+                                className={`size-4 transition-transform ${showDecisionContext ? "rotate-0" : "-rotate-90"}`}
+                            />
+                            Decision Context
+                        </button>
+                        {showDecisionContext && (
+                            <div className="mt-3 space-y-3 rounded-md border p-4">
+                                <div>
+                                    <label className="mb-1.5 block text-sm font-medium">Rationale</label>
+                                    <textarea
+                                        value={rationale}
+                                        onChange={e => setRationale(e.target.value)}
+                                        placeholder="Why was this decision made?"
+                                        rows={3}
+                                        className="bg-background focus:ring-ring w-full rounded-md border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="mb-1.5 block text-sm font-medium">Alternatives Considered</label>
+                                    <input
+                                        type="text"
+                                        value={alternativesInput}
+                                        onChange={e => setAlternativesInput(e.target.value)}
+                                        placeholder="Comma-separated alternatives"
+                                        className="bg-background focus:ring-ring w-full rounded-md border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="mb-1.5 block text-sm font-medium">Consequences</label>
+                                    <textarea
+                                        value={consequences}
+                                        onChange={e => setConsequences(e.target.value)}
+                                        placeholder="What becomes easier or harder?"
+                                        rows={3}
+                                        className="bg-background focus:ring-ring w-full rounded-md border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
+                                    />
+                                </div>
+                            </div>
+                        )}
+                    </div>
 
                     <Separator />
 

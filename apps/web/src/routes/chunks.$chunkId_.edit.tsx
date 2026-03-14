@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ChevronDown, Plus, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -25,6 +25,17 @@ export const Route = createFileRoute("/chunks/$chunkId_/edit")({
     }
 });
 
+interface ApplyToRow {
+    pattern: string;
+    note: string;
+}
+
+interface FileRefRow {
+    path: string;
+    anchor: string;
+    relation: "documents" | "configures" | "tests" | "implements";
+}
+
 function EditChunk() {
     const { chunkId } = Route.useParams();
     const navigate = useNavigate();
@@ -37,6 +48,14 @@ function EditChunk() {
     const [tags, setTags] = useState<string[]>([]);
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [initialized, setInitialized] = useState(false);
+
+    // New fields
+    const [appliesTo, setAppliesTo] = useState<ApplyToRow[]>([]);
+    const [fileRefs, setFileRefs] = useState<FileRefRow[]>([]);
+    const [showDecisionContext, setShowDecisionContext] = useState(false);
+    const [rationale, setRationale] = useState("");
+    const [alternativesInput, setAlternativesInput] = useState("");
+    const [consequences, setConsequences] = useState("");
 
     const { data, isLoading, error } = useQuery({
         queryKey: ["chunk", chunkId],
@@ -52,6 +71,45 @@ function EditChunk() {
             setContent(chunk.content);
             setType(chunk.type);
             setTags([]);
+
+            // Initialize decision context fields
+            const chunkAny = chunk as Record<string, unknown>;
+            if (chunkAny.rationale) {
+                setRationale(chunkAny.rationale as string);
+                setShowDecisionContext(true);
+            }
+            if (Array.isArray(chunkAny.alternatives) && (chunkAny.alternatives as string[]).length > 0) {
+                setAlternativesInput((chunkAny.alternatives as string[]).join(", "));
+                setShowDecisionContext(true);
+            }
+            if (chunkAny.consequences) {
+                setConsequences(chunkAny.consequences as string);
+                setShowDecisionContext(true);
+            }
+
+            // Initialize applies-to
+            const dataAny = data as Record<string, unknown>;
+            if (Array.isArray(dataAny.appliesTo)) {
+                const items = dataAny.appliesTo as Array<{ pattern: string; note?: string | null }>;
+                setAppliesTo(items.map(a => ({ pattern: a.pattern, note: a.note ?? "" })));
+            }
+
+            // Initialize file references
+            if (Array.isArray(dataAny.fileReferences)) {
+                const items = dataAny.fileReferences as Array<{
+                    path: string;
+                    anchor?: string | null;
+                    relation: string;
+                }>;
+                setFileRefs(
+                    items.map(f => ({
+                        path: f.path,
+                        anchor: f.anchor ?? "",
+                        relation: f.relation as FileRefRow["relation"]
+                    }))
+                );
+            }
+
             setInitialized(true);
         }
     }, [data, initialized]);
@@ -67,14 +125,48 @@ function EditChunk() {
 
     const updateMutation = useMutation({
         mutationFn: async () => {
-            return unwrapEden(
+            const alternatives = alternativesInput
+                .split(",")
+                .map(s => s.trim())
+                .filter(Boolean);
+            await unwrapEden(
                 await api.api.chunks({ id: chunkId }).patch({
                     title,
                     content,
                     type,
-                    tags
+                    tags,
+                    ...(rationale ? { rationale } : {}),
+                    ...(alternatives.length > 0 ? { alternatives } : {}),
+                    ...(consequences ? { consequences } : {})
                 })
             );
+
+            // Update applies-to
+            const validAppliesTo = appliesTo.filter(a => a.pattern.trim());
+            try {
+                await api.api.chunks({ id: chunkId })["applies-to"].put(
+                    validAppliesTo.map(a => ({
+                        pattern: a.pattern.trim(),
+                        ...(a.note.trim() ? { note: a.note.trim() } : {})
+                    }))
+                );
+            } catch {
+                // non-critical
+            }
+
+            // Update file refs
+            const validFileRefs = fileRefs.filter(f => f.path.trim());
+            try {
+                await api.api.chunks({ id: chunkId })["file-refs"].put(
+                    validFileRefs.map(f => ({
+                        path: f.path.trim(),
+                        ...(f.anchor.trim() ? { anchor: f.anchor.trim() } : {}),
+                        relation: f.relation
+                    }))
+                );
+            } catch {
+                // non-critical
+            }
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["chunks"] });
@@ -201,6 +293,169 @@ function EditChunk() {
                         rows={10}
                         error={errors.content}
                     />
+
+                    <Separator />
+
+                    {/* Applies-to repeatable field */}
+                    <div>
+                        <div className="mb-2 flex items-center justify-between">
+                            <label className="text-sm font-medium">Applies To</label>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setAppliesTo([...appliesTo, { pattern: "", note: "" }])}
+                            >
+                                <Plus className="mr-1 size-3" />
+                                Add
+                            </Button>
+                        </div>
+                        {appliesTo.map((row, i) => (
+                            <div key={i} className="mb-2 flex gap-2">
+                                <input
+                                    type="text"
+                                    value={row.pattern}
+                                    onChange={e => {
+                                        const updated = [...appliesTo];
+                                        updated[i] = { ...updated[i], pattern: e.target.value };
+                                        setAppliesTo(updated);
+                                    }}
+                                    placeholder="Pattern (e.g. src/**/*.ts)"
+                                    className="bg-background focus:ring-ring flex-1 rounded-md border px-3 py-2 font-mono text-sm focus:ring-2 focus:outline-none"
+                                />
+                                <input
+                                    type="text"
+                                    value={row.note}
+                                    onChange={e => {
+                                        const updated = [...appliesTo];
+                                        updated[i] = { ...updated[i], note: e.target.value };
+                                        setAppliesTo(updated);
+                                    }}
+                                    placeholder="Note (optional)"
+                                    className="bg-background focus:ring-ring w-40 rounded-md border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
+                                />
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setAppliesTo(appliesTo.filter((_, j) => j !== i))}
+                                >
+                                    <Trash2 className="size-3.5" />
+                                </Button>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* File references repeatable field */}
+                    <div>
+                        <div className="mb-2 flex items-center justify-between">
+                            <label className="text-sm font-medium">File References</label>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setFileRefs([...fileRefs, { path: "", anchor: "", relation: "documents" }])}
+                            >
+                                <Plus className="mr-1 size-3" />
+                                Add
+                            </Button>
+                        </div>
+                        {fileRefs.map((row, i) => (
+                            <div key={i} className="mb-2 flex gap-2">
+                                <input
+                                    type="text"
+                                    value={row.path}
+                                    onChange={e => {
+                                        const updated = [...fileRefs];
+                                        updated[i] = { ...updated[i], path: e.target.value };
+                                        setFileRefs(updated);
+                                    }}
+                                    placeholder="File path"
+                                    className="bg-background focus:ring-ring flex-1 rounded-md border px-3 py-2 font-mono text-sm focus:ring-2 focus:outline-none"
+                                />
+                                <input
+                                    type="text"
+                                    value={row.anchor}
+                                    onChange={e => {
+                                        const updated = [...fileRefs];
+                                        updated[i] = { ...updated[i], anchor: e.target.value };
+                                        setFileRefs(updated);
+                                    }}
+                                    placeholder="Anchor (optional)"
+                                    className="bg-background focus:ring-ring w-32 rounded-md border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
+                                />
+                                <select
+                                    value={row.relation}
+                                    onChange={e => {
+                                        const updated = [...fileRefs];
+                                        updated[i] = {
+                                            ...updated[i],
+                                            relation: e.target.value as FileRefRow["relation"]
+                                        };
+                                        setFileRefs(updated);
+                                    }}
+                                    className="bg-background focus:ring-ring w-32 rounded-md border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
+                                >
+                                    <option value="documents">documents</option>
+                                    <option value="configures">configures</option>
+                                    <option value="tests">tests</option>
+                                    <option value="implements">implements</option>
+                                </select>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setFileRefs(fileRefs.filter((_, j) => j !== i))}
+                                >
+                                    <Trash2 className="size-3.5" />
+                                </Button>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Decision context collapsible */}
+                    <div>
+                        <button
+                            type="button"
+                            onClick={() => setShowDecisionContext(!showDecisionContext)}
+                            className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-sm font-medium transition-colors"
+                        >
+                            <ChevronDown
+                                className={`size-4 transition-transform ${showDecisionContext ? "rotate-0" : "-rotate-90"}`}
+                            />
+                            Decision Context
+                        </button>
+                        {showDecisionContext && (
+                            <div className="mt-3 space-y-3 rounded-md border p-4">
+                                <div>
+                                    <label className="mb-1.5 block text-sm font-medium">Rationale</label>
+                                    <textarea
+                                        value={rationale}
+                                        onChange={e => setRationale(e.target.value)}
+                                        placeholder="Why was this decision made?"
+                                        rows={3}
+                                        className="bg-background focus:ring-ring w-full rounded-md border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="mb-1.5 block text-sm font-medium">Alternatives Considered</label>
+                                    <input
+                                        type="text"
+                                        value={alternativesInput}
+                                        onChange={e => setAlternativesInput(e.target.value)}
+                                        placeholder="Comma-separated alternatives"
+                                        className="bg-background focus:ring-ring w-full rounded-md border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="mb-1.5 block text-sm font-medium">Consequences</label>
+                                    <textarea
+                                        value={consequences}
+                                        onChange={e => setConsequences(e.target.value)}
+                                        placeholder="What becomes easier or harder?"
+                                        rows={3}
+                                        className="bg-background focus:ring-ring w-full rounded-md border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
+                                    />
+                                </div>
+                            </div>
+                        )}
+                    </div>
 
                     <Separator />
 
