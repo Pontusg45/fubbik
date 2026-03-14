@@ -1,0 +1,6 @@
+{
+    "extends": "@fubbik/config/tsconfig.base.json",
+    "compilerOptions": {
+        "types": ["node"]
+    }
+}

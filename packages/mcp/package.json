@@ -1,0 +1,21 @@
+{
+    "name": "@fubbik/mcp",
+    "version": "0.0.1",
+    "type": "module",
+    "main": "src/index.ts",
+    "bin": {
+        "fubbik-mcp": "src/index.ts"
+    },
+    "scripts": {
+        "start": "npx tsx src/index.ts"
+    },
+    "dependencies": {
+        "@modelcontextprotocol/sdk": "^1.0.0",
+        "zod": "^3.23.0"
+    },
+    "devDependencies": {
+        "@types/node": "^22.0.0",
+        "tsx": "^4.0.0",
+        "typescript": "^5.7.0"
+    }
+}
