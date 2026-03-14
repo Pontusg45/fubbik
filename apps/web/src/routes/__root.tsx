@@ -80,7 +80,7 @@ function RootDocument() {
                                         </Link>
                                         <Link
                                             to="/chunks"
-                                            search={{} as any}
+                                            search={{}}
                                             className="text-muted-foreground hover:text-foreground [&.active]:text-foreground rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
                                         >
                                             Chunks
@@ -99,7 +99,7 @@ function RootDocument() {
                                         </Link>
                                         <Link
                                             to="/docs"
-                                            search={{} as any}
+                                            search={{}}
                                             className="text-muted-foreground hover:text-foreground [&.active]:text-foreground rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
                                         >
                                             Docs

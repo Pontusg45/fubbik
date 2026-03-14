@@ -29,13 +29,7 @@ function ArchivedChunks() {
 
     const archivedQuery = useQuery({
         queryKey: ["chunks-archived"],
-        queryFn: async () => {
-            try {
-                return unwrapEden(await (api.api.chunks as any).archived.get());
-            } catch {
-                return [];
-            }
-        }
+        queryFn: async () => unwrapEden(await (api.api.chunks as any).archived.get())
     });
 
     const restoreMutation = useMutation({
@@ -75,7 +69,7 @@ function ArchivedChunks() {
         <div className="container mx-auto max-w-5xl px-4 py-8">
             <div className="mb-6 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                    <Link to="/chunks" search={{} as any} className="text-muted-foreground hover:text-foreground">
+                    <Link to="/chunks" search={{}} className="text-muted-foreground hover:text-foreground">
                         <ArrowLeft className="size-5" />
                     </Link>
                     <div>
@@ -89,7 +83,7 @@ function ArchivedChunks() {
                 <div className="text-muted-foreground flex flex-col items-center gap-3 py-16 text-center">
                     <Archive className="size-12 opacity-30" />
                     <p className="text-sm">No archived chunks</p>
-                    <Link to="/chunks" search={{} as any} className="text-primary text-sm hover:underline">
+                    <Link to="/chunks" search={{}} className="text-primary text-sm hover:underline">
                         Back to chunks
                     </Link>
                 </div>

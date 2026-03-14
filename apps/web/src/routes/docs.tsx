@@ -11,7 +11,7 @@ import { unwrapEden } from "@/utils/eden";
 
 export const Route = createFileRoute("/docs")({
     component: DocsPage,
-    validateSearch: (search: Record<string, unknown>) => ({
+    validateSearch: (search: Record<string, unknown>): { section?: string; tab?: string } => ({
         section: (search.section as string) ?? undefined,
         tab: (search.tab as string) ?? undefined
     }),

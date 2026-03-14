@@ -50,72 +50,38 @@ function DashboardPage() {
 
     const statsQuery = useQuery({
         queryKey: ["stats", codebaseId],
-        queryFn: async () => {
-            try {
-                return unwrapEden(await api.api.stats.get({ query: codebaseQuery as any }));
-            } catch {
-                return null;
-            }
-        }
+        queryFn: async () => unwrapEden(await api.api.stats.get({ query: codebaseQuery as any }))
     });
 
     const recentQuery = useQuery({
         queryKey: ["dashboard-recent", codebaseId],
-        queryFn: async () => {
-            try {
-                return unwrapEden(await api.api.chunks.get({ query: { ...codebaseQuery, limit: "8", sort: "updated" } as any }));
-            } catch {
-                return null;
-            }
-        }
+        queryFn: async () => unwrapEden(await api.api.chunks.get({ query: { ...codebaseQuery, limit: "8", sort: "updated" } as any }))
     });
 
     const healthQuery = useQuery({
         queryKey: ["dashboard-health", codebaseId],
-        queryFn: async () => {
-            try {
-                return unwrapEden(await api.api.health.knowledge.get({ query: codebaseQuery as any }));
-            } catch {
-                return null;
-            }
-        }
+        queryFn: async () => unwrapEden(await api.api.health.knowledge.get({ query: codebaseQuery as any }))
     });
 
     const requirementsQuery = useQuery({
         queryKey: ["dashboard-requirements", codebaseId],
-        queryFn: async () => {
-            try {
-                return unwrapEden(await api.api.requirements.stats.get({ query: codebaseQuery as any }));
-            } catch {
-                return null;
-            }
-        }
+        queryFn: async () => unwrapEden(await api.api.requirements.stats.get({ query: codebaseQuery as any }))
     });
 
     const activityQuery = useQuery({
         queryKey: ["dashboard-activity"],
-        queryFn: async () => {
-            try {
-                return unwrapEden(await api.api.activity.get({ query: { limit: "5" } as any }));
-            } catch {
-                return null;
-            }
-        }
+        queryFn: async () => unwrapEden(await api.api.activity.get({ query: { limit: "5" } as any }))
     });
 
     const favoritesChunksQuery = useQuery({
         queryKey: ["chunks-favorites", favoriteIds],
         queryFn: async () => {
             if (favoriteIds.length === 0) return [];
-            try {
-                const result = unwrapEden(await api.api.chunks.get({ query: { limit: "100" } as any }));
-                const chunks = result?.chunks ?? [];
-                return favoriteIds
-                    .map(id => chunks.find(c => c.id === id))
-                    .filter((c): c is NonNullable<typeof c> => !!c);
-            } catch {
-                return [];
-            }
+            const result = unwrapEden(await api.api.chunks.get({ query: { limit: "100" } as any }));
+            const chunks = result?.chunks ?? [];
+            return favoriteIds
+                .map(id => chunks.find(c => c.id === id))
+                .filter((c): c is NonNullable<typeof c> => !!c);
         },
         enabled: favoriteIds.length > 0
     });
@@ -247,7 +213,7 @@ function DashboardPage() {
                         icon={Clock}
                         title="Recent Chunks"
                         action={
-                            <Link to="/chunks" search={{} as any} className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-xs transition-colors">
+                            <Link to="/chunks" search={{}} className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-xs transition-colors">
                                 View all <ArrowRight className="size-3" />
                             </Link>
                         }

@@ -157,29 +157,6 @@ function CopyBtn({ text }: { text: string }) {
     );
 }
 
-/* ─── API pulse ─── */
-
-function ApiPulse() {
-    const { data, isLoading } = useQuery({
-        queryKey: ["health"],
-        queryFn: async () => {
-            const { data } = await api.api.health.get();
-            return data;
-        }
-    });
-    const color = data ? "bg-emerald-400" : isLoading ? "bg-amber-400" : "bg-red-400";
-    const label = data ? "Online" : isLoading ? "Checking..." : "Offline";
-    return (
-        <div className="flex items-center gap-2 font-mono text-[11px] tracking-wide opacity-60">
-            <span className="relative flex size-1.5">
-                <span className={`absolute inline-flex size-full animate-ping rounded-full opacity-75 ${color}`} />
-                <span className={`relative inline-flex size-1.5 rounded-full ${color}`} />
-            </span>
-            {label}
-        </div>
-    );
-}
-
 /* ─── Feature pill ─── */
 
 const features = [
@@ -195,7 +172,7 @@ function FeatureRow({ icon: Icon, title, desc, index, docsSection }: { icon: typ
     return (
         <Link
             to="/docs"
-            search={{ section: docsSection } as any}
+            search={{ section: docsSection }}
             className="group border-border/50 hover:border-border hover:bg-muted/30 flex items-start gap-4 border-b py-5 transition-all duration-300 last:border-0"
             style={{ animationDelay: `${index * 80}ms` }}
         >
@@ -283,7 +260,7 @@ function LandingPage() {
                             <Network className="size-4" />
                             Explore Graph
                         </Button>
-                        <Button variant="outline" size="lg" render={<Link to="/docs" search={{} as any} />}>
+                        <Button variant="outline" size="lg" render={<Link to="/docs" search={{}} />}>
                             Docs
                         </Button>
                     </div>
@@ -327,7 +304,7 @@ function LandingPage() {
                             <Link
                                 key={cap.label}
                                 to="/docs"
-                                search={{ section: cap.section } as any}
+                                search={{ section: cap.section }}
                                 className="bg-muted/20 hover:bg-muted/40 rounded-lg border p-4 transition-colors"
                             >
                                 <div className="text-foreground mb-1 text-sm font-semibold">{cap.label}</div>

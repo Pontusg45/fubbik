@@ -39,7 +39,22 @@ import { unwrapEden } from "@/utils/eden";
 
 export const Route = createFileRoute("/chunks/")({
     component: ChunksList,
-    validateSearch: (search: Record<string, unknown>) => ({
+    validateSearch: (search: Record<string, unknown>): {
+        type?: string;
+        q?: string;
+        page?: number;
+        sort?: string;
+        tags?: string;
+        size?: string;
+        after?: string;
+        enrichment?: string;
+        minConnections?: string;
+        group?: string;
+        collection?: string;
+        view?: string;
+        origin?: string;
+        reviewStatus?: string;
+    } => ({
         type: (search.type as string) || undefined,
         q: (search.q as string) || undefined,
         page: Number(search.page) || 1,
@@ -69,7 +84,8 @@ export const Route = createFileRoute("/chunks/")({
 function ChunksList() {
     const navigate = useNavigate({ from: "/chunks/" });
     const navTo = useNavigate();
-    const { type, q, page, sort, tags, size, after, enrichment, minConnections, group, collection, view, origin, reviewStatus } = Route.useSearch();
+    const { type, q, page: rawPage, sort, tags, size, after, enrichment, minConnections, group, collection, view, origin, reviewStatus } = Route.useSearch();
+    const page = rawPage ?? 1;
     const queryClient = useQueryClient();
     const [searchInput, setSearchInput] = useState(q ?? "");
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -769,7 +785,7 @@ function ChunksList() {
                                                         group,
                                                         collection: undefined,
                                                         view
-                                                    } as any
+                                                    }
                                                 });
                                             }}
                                         >
@@ -904,7 +920,7 @@ function ChunksList() {
                             key={f.name}
                             variant="outline"
                             className="cursor-pointer gap-1"
-                            onClick={() => navigate({ search: { ...f.params, page: 1 } as any })}
+                            onClick={() => navigate({ search: { ...f.params, page: 1 } })}
                         >
                             {f.name}
                             <button

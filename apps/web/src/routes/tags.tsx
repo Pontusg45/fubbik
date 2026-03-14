@@ -234,7 +234,7 @@ function TagsPage() {
                                                 )}
                                                 <Link
                                                     to="/chunks"
-                                                    search={{ tags: t.name } as any}
+                                                    search={{ tags: t.name }}
                                                     className="text-sm hover:underline"
                                                 >
                                                     {t.name}

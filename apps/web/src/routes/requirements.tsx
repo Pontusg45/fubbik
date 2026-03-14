@@ -94,45 +94,33 @@ function RequirementsPage() {
     const statsQuery = useQuery({
         queryKey: ["requirements-stats", codebaseId],
         queryFn: async () => {
-            try {
-                const query: { codebaseId?: string } = {};
-                if (codebaseId) query.codebaseId = codebaseId;
-                return unwrapEden(await api.api.requirements.stats.get({ query }));
-            } catch {
-                return { total: 0, passing: 0, failing: 0, untested: 0 };
-            }
+            const query: { codebaseId?: string } = {};
+            if (codebaseId) query.codebaseId = codebaseId;
+            return unwrapEden(await api.api.requirements.stats.get({ query }));
         }
     });
 
     const listQuery = useQuery({
         queryKey: ["requirements", codebaseId, statusFilter, priorityFilter, originFilter, reviewStatusFilter],
         queryFn: async () => {
-            try {
-                const query: { codebaseId?: string; status?: string; priority?: string; origin?: "human" | "ai"; reviewStatus?: "draft" | "reviewed" | "approved"; limit?: string } = {
-                    limit: "50"
-                };
-                if (codebaseId) query.codebaseId = codebaseId;
-                if (statusFilter) query.status = statusFilter;
-                if (priorityFilter) query.priority = priorityFilter;
-                if (originFilter) query.origin = originFilter as "human" | "ai";
-                if (reviewStatusFilter) query.reviewStatus = reviewStatusFilter as "draft" | "reviewed" | "approved";
-                return unwrapEden(await api.api.requirements.get({ query }));
-            } catch {
-                return { requirements: [], total: 0 };
-            }
+            const query: { codebaseId?: string; status?: string; priority?: string; origin?: "human" | "ai"; reviewStatus?: "draft" | "reviewed" | "approved"; limit?: string } = {
+                limit: "50"
+            };
+            if (codebaseId) query.codebaseId = codebaseId;
+            if (statusFilter) query.status = statusFilter;
+            if (priorityFilter) query.priority = priorityFilter;
+            if (originFilter) query.origin = originFilter as "human" | "ai";
+            if (reviewStatusFilter) query.reviewStatus = reviewStatusFilter as "draft" | "reviewed" | "approved";
+            return unwrapEden(await api.api.requirements.get({ query }));
         }
     });
 
     const useCasesQuery = useQuery({
         queryKey: ["use-cases", codebaseId],
         queryFn: async () => {
-            try {
-                const query: { codebaseId?: string } = {};
-                if (codebaseId) query.codebaseId = codebaseId;
-                return unwrapEden(await api.api["use-cases"].get({ query })) as UseCase[];
-            } catch {
-                return [] as UseCase[];
-            }
+            const query: { codebaseId?: string } = {};
+            if (codebaseId) query.codebaseId = codebaseId;
+            return unwrapEden(await api.api["use-cases"].get({ query })) as UseCase[];
         }
     });
 

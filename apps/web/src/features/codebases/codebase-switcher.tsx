@@ -16,19 +16,13 @@ export function CodebaseSwitcher() {
 
     const { data: codebases } = useQuery({
         queryKey: ["codebases"],
-        queryFn: async () => {
-            try {
-                return unwrapEden(await api.api.codebases.get());
-            } catch {
-                return [];
-            }
-        }
+        queryFn: async () => unwrapEden(await api.api.codebases.get())
     });
 
     // Auto-select the first codebase if none is active
     useEffect(() => {
         if (!codebaseId && codebases && codebases.length > 0) {
-            setCodebaseId(codebases[0].id);
+            setCodebaseId(codebases[0]!.id);
         }
     }, [codebaseId, codebases, setCodebaseId]);
 

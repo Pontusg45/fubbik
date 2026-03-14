@@ -85,7 +85,7 @@ function ChunkDetail() {
             queryClient.invalidateQueries({ queryKey: ["chunks-list"] });
             queryClient.invalidateQueries({ queryKey: ["stats"] });
             toast.success("Chunk archived");
-            navigate({ to: "/chunks", search: {} as any });
+            navigate({ to: "/chunks", search: {} });
         },
         onError: () => {
             toast.error("Failed to archive chunk");
