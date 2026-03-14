@@ -234,7 +234,9 @@ function RouteComponent() {
                                         minConnections: undefined,
                                         group: undefined,
                                         collection: undefined,
-                                        view: undefined
+                                        view: undefined,
+                                        origin: undefined,
+                                        reviewStatus: undefined
                                     }}
                                 />
                             }

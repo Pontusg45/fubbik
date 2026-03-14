@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
     Bookmark,
+    Bot,
     ChevronRight,
     Clock,
     Columns3,
@@ -48,7 +49,9 @@ export const Route = createFileRoute("/chunks/")({
         minConnections: (search.minConnections as string) || undefined,
         group: (search.group as string) || undefined,
         collection: (search.collection as string) || undefined,
-        view: (search.view as string) || undefined
+        view: (search.view as string) || undefined,
+        origin: (search.origin as string) || undefined,
+        reviewStatus: (search.reviewStatus as string) || undefined
     }),
     beforeLoad: async () => {
         let session = null;
@@ -64,7 +67,7 @@ export const Route = createFileRoute("/chunks/")({
 function ChunksList() {
     const navigate = useNavigate({ from: "/chunks/" });
     const navTo = useNavigate();
-    const { type, q, page, sort, tags, size, after, enrichment, minConnections, group, collection, view } = Route.useSearch();
+    const { type, q, page, sort, tags, size, after, enrichment, minConnections, group, collection, view, origin, reviewStatus } = Route.useSearch();
     const queryClient = useQueryClient();
     const [searchInput, setSearchInput] = useState(q ?? "");
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -73,11 +76,11 @@ function ChunksList() {
     const limit = 20;
     const offset = ((page ?? 1) - 1) * limit;
 
-    const activeFilterCount = [tags, size, after, enrichment, minConnections].filter(Boolean).length;
-    const hasActiveFilters = !!(type || q || sort || tags || size || after || enrichment || minConnections);
+    const activeFilterCount = [tags, size, after, enrichment, minConnections, origin, reviewStatus].filter(Boolean).length;
+    const hasActiveFilters = !!(type || q || sort || tags || size || after || enrichment || minConnections || origin || reviewStatus);
 
     const chunksQuery = useQuery({
-        queryKey: ["chunks-list", type, q, page, sort, tags, after, enrichment, minConnections, codebaseId],
+        queryKey: ["chunks-list", type, q, page, sort, tags, after, enrichment, minConnections, codebaseId, origin, reviewStatus],
         queryFn: async () => {
             try {
                 return unwrapEden(
@@ -92,7 +95,9 @@ function ChunksList() {
                             minConnections,
                             limit: String(limit),
                             offset: String(offset),
-                            ...(codebaseId === "global" ? { global: "true" } : codebaseId ? { codebaseId } : {})
+                            ...(codebaseId === "global" ? { global: "true" } : codebaseId ? { codebaseId } : {}),
+                            origin: origin as "human" | "ai" | undefined,
+                            reviewStatus: reviewStatus as "draft" | "reviewed" | "approved" | undefined
                         }
                     })
                 );
@@ -242,6 +247,8 @@ function ChunksList() {
             group: string;
             collection: string;
             view: string;
+            origin: string;
+            reviewStatus: string;
         }>
     ) {
         navigate({
@@ -257,7 +264,9 @@ function ChunksList() {
                 minConnections: params.minConnections !== undefined ? params.minConnections : minConnections,
                 group: params.group !== undefined ? params.group : group,
                 collection: params.collection !== undefined ? params.collection : collection,
-                view: params.view !== undefined ? params.view : view
+                view: params.view !== undefined ? params.view : view,
+                origin: params.origin !== undefined ? params.origin : origin,
+                reviewStatus: params.reviewStatus !== undefined ? params.reviewStatus : reviewStatus
             }
         });
     }
@@ -276,7 +285,9 @@ function ChunksList() {
                 minConnections: undefined,
                 group,
                 collection,
-                view
+                view,
+                origin: undefined,
+                reviewStatus: undefined
             }
         });
         setSearchInput("");
@@ -535,6 +546,63 @@ function ChunksList() {
                                 </div>
                             </div>
 
+                            {/* Origin */}
+                            <div>
+                                <p className="text-muted-foreground mb-2 text-xs font-medium tracking-wider uppercase">Origin</p>
+                                <div className="flex gap-1">
+                                    <Button
+                                        variant={!origin ? "default" : "outline"}
+                                        size="sm"
+                                        onClick={() => updateSearch({ origin: undefined })}
+                                    >
+                                        All
+                                    </Button>
+                                    <Button
+                                        variant={origin === "human" ? "default" : "outline"}
+                                        size="sm"
+                                        onClick={() => updateSearch({ origin: origin === "human" ? undefined : "human" })}
+                                    >
+                                        Human
+                                    </Button>
+                                    <Button
+                                        variant={origin === "ai" ? "default" : "outline"}
+                                        size="sm"
+                                        onClick={() => updateSearch({ origin: origin === "ai" ? undefined : "ai" })}
+                                    >
+                                        <Bot className="mr-1 size-3" />
+                                        AI
+                                    </Button>
+                                </div>
+                            </div>
+
+                            <Separator />
+
+                            {/* Review Status */}
+                            <div>
+                                <p className="text-muted-foreground mb-2 text-xs font-medium tracking-wider uppercase">Review status</p>
+                                <div className="flex gap-1">
+                                    <Button
+                                        variant={!reviewStatus ? "default" : "outline"}
+                                        size="sm"
+                                        onClick={() => updateSearch({ reviewStatus: undefined })}
+                                    >
+                                        All
+                                    </Button>
+                                    {(["draft", "reviewed", "approved"] as const).map(s => (
+                                        <Button
+                                            key={s}
+                                            variant={reviewStatus === s ? "default" : "outline"}
+                                            size="sm"
+                                            onClick={() => updateSearch({ reviewStatus: reviewStatus === s ? undefined : s })}
+                                        >
+                                            {s.charAt(0).toUpperCase() + s.slice(1)}
+                                        </Button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <Separator />
+
                             {/* Save / Clear */}
                             {hasActiveFilters && (
                                 <>
@@ -679,6 +747,22 @@ function ChunksList() {
                         <Badge variant="secondary" size="sm" className="gap-1">
                             {minConnections}+ connections
                             <button onClick={() => updateSearch({ minConnections: undefined })}>
+                                <X className="size-2.5" />
+                            </button>
+                        </Badge>
+                    )}
+                    {origin && (
+                        <Badge variant="secondary" size="sm" className="gap-1">
+                            Origin: {origin}
+                            <button onClick={() => updateSearch({ origin: undefined })}>
+                                <X className="size-2.5" />
+                            </button>
+                        </Badge>
+                    )}
+                    {reviewStatus && (
+                        <Badge variant="secondary" size="sm" className="gap-1">
+                            Review: {reviewStatus}
+                            <button onClick={() => updateSearch({ reviewStatus: undefined })}>
                                 <X className="size-2.5" />
                             </button>
                         </Badge>
@@ -838,6 +922,22 @@ function ChunksList() {
                                             <Badge variant="secondary" size="sm" className="font-mono text-[10px]">
                                                 {chunk.type}
                                             </Badge>
+                                            {(chunk as Record<string, unknown>).origin === "ai" && (
+                                                <Badge
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className={
+                                                        (chunk as Record<string, unknown>).reviewStatus === "draft"
+                                                            ? "border-yellow-500/30 bg-yellow-500/10 text-[10px] text-yellow-600"
+                                                            : (chunk as Record<string, unknown>).reviewStatus === "reviewed"
+                                                              ? "border-blue-500/30 bg-blue-500/10 text-[10px] text-blue-600"
+                                                              : "border-green-500/30 bg-green-500/10 text-[10px] text-green-600"
+                                                    }
+                                                >
+                                                    <Bot className="mr-0.5 size-2.5" />
+                                                    AI
+                                                </Badge>
+                                            )}
                                             {([] as string[]).map(tag => (
                                                 <Badge key={tag} variant="outline" size="sm" className="text-[10px]">
                                                     {tag}

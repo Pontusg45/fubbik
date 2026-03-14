@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ClipboardCheck, Plus, Trash2 } from "lucide-react";
+import { Bot, ClipboardCheck, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -71,6 +71,8 @@ function RequirementsPage() {
     const { codebaseId } = useActiveCodebase();
     const [statusFilter, setStatusFilter] = useState("");
     const [priorityFilter, setPriorityFilter] = useState("");
+    const [originFilter, setOriginFilter] = useState("");
+    const [reviewStatusFilter, setReviewStatusFilter] = useState("");
 
     const statsQuery = useQuery({
         queryKey: ["requirements-stats", codebaseId],
@@ -86,15 +88,17 @@ function RequirementsPage() {
     });
 
     const listQuery = useQuery({
-        queryKey: ["requirements", codebaseId, statusFilter, priorityFilter],
+        queryKey: ["requirements", codebaseId, statusFilter, priorityFilter, originFilter, reviewStatusFilter],
         queryFn: async () => {
             try {
-                const query: { codebaseId?: string; status?: string; priority?: string; limit?: string } = {
+                const query: { codebaseId?: string; status?: string; priority?: string; origin?: "human" | "ai"; reviewStatus?: "draft" | "reviewed" | "approved"; limit?: string } = {
                     limit: "50"
                 };
                 if (codebaseId) query.codebaseId = codebaseId;
                 if (statusFilter) query.status = statusFilter;
                 if (priorityFilter) query.priority = priorityFilter;
+                if (originFilter) query.origin = originFilter as "human" | "ai";
+                if (reviewStatusFilter) query.reviewStatus = reviewStatusFilter as "draft" | "reviewed" | "approved";
                 return unwrapEden(await api.api.requirements.get({ query }));
             } catch {
                 return { requirements: [], total: 0 };
@@ -210,6 +214,25 @@ function RequirementsPage() {
                         </option>
                     ))}
                 </select>
+                <select
+                    value={originFilter}
+                    onChange={e => setOriginFilter(e.target.value)}
+                    className="bg-background focus:ring-ring rounded-md border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
+                >
+                    <option value="">All origins</option>
+                    <option value="human">Human</option>
+                    <option value="ai">AI</option>
+                </select>
+                <select
+                    value={reviewStatusFilter}
+                    onChange={e => setReviewStatusFilter(e.target.value)}
+                    className="bg-background focus:ring-ring rounded-md border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
+                >
+                    <option value="">All review statuses</option>
+                    <option value="draft">Draft</option>
+                    <option value="reviewed">Reviewed</option>
+                    <option value="approved">Approved</option>
+                </select>
             </div>
 
             {/* List */}
@@ -228,6 +251,8 @@ function RequirementsPage() {
                                 const priority = req.priority as string | null;
                                 const steps = req.steps as Array<unknown>;
                                 const createdAt = req.createdAt as string;
+                                const reqOrigin = req.origin as string | undefined;
+                                const reqReviewStatus = req.reviewStatus as string | undefined;
 
                                 return (
                                     <div key={id} className="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0">
@@ -243,6 +268,22 @@ function RequirementsPage() {
                                                 <Badge variant="outline" size="sm" className={statusColor(status)}>
                                                     {status}
                                                 </Badge>
+                                                {reqOrigin === "ai" && (
+                                                    <Badge
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className={
+                                                            reqReviewStatus === "draft"
+                                                                ? "border-yellow-500/30 bg-yellow-500/10 text-[10px] text-yellow-600"
+                                                                : reqReviewStatus === "reviewed"
+                                                                  ? "border-blue-500/30 bg-blue-500/10 text-[10px] text-blue-600"
+                                                                  : "border-green-500/30 bg-green-500/10 text-[10px] text-green-600"
+                                                        }
+                                                    >
+                                                        <Bot className="mr-0.5 size-2.5" />
+                                                        AI
+                                                    </Badge>
+                                                )}
                                                 {priority && (
                                                     <Badge variant="secondary" size="sm">
                                                         {priorityLabel(priority)}

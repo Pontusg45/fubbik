@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Calendar, Clock, Code, Edit, FileCode, FileText, Hash, Network, Scale, Star, Trash2 } from "lucide-react";
+import { ArrowLeft, Bot, Calendar, Clock, Code, Edit, FileCode, FileText, Hash, Network, Scale, Star, Trash2 } from "lucide-react";
 import { useEffect } from "react";
 import { toast } from "sonner";
 
@@ -54,6 +54,21 @@ function ChunkDetail() {
         }
     });
 
+    const reviewMutation = useMutation({
+        mutationFn: async (reviewStatus: "reviewed" | "approved") => {
+            const { error } = await api.api.chunks({ id: chunkId }).patch({ reviewStatus });
+            if (error) throw new Error("Failed to update review status");
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["chunk", chunkId] });
+            queryClient.invalidateQueries({ queryKey: ["chunks"] });
+            toast.success("Review status updated");
+        },
+        onError: () => {
+            toast.error("Failed to update review status");
+        }
+    });
+
     const deleteMutation = useMutation({
         mutationFn: async () => {
             const { error } = await api.api.chunks({ id: chunkId }).delete();
@@ -99,6 +114,9 @@ function ChunkDetail() {
     }
 
     const chunk = data.chunk;
+    const origin = (chunk as Record<string, unknown>).origin as string | undefined;
+    const reviewStatus = (chunk as Record<string, unknown>).reviewStatus as string | undefined;
+    const isAi = origin === "ai";
     const connections = data.connections ?? [];
     const outgoing = connections.filter(c => c.sourceId === chunkId);
     const incoming = connections.filter(c => c.sourceId !== chunkId);
@@ -165,6 +183,21 @@ function ChunkDetail() {
                 </div>
                 <div className="flex items-center gap-2">
                     <h1 className="text-2xl font-bold tracking-tight">{chunk.title}</h1>
+                    {isAi && (
+                        <Badge
+                            variant="outline"
+                            className={
+                                reviewStatus === "draft"
+                                    ? "border-yellow-500/30 bg-yellow-500/10 text-yellow-600"
+                                    : reviewStatus === "reviewed"
+                                      ? "border-blue-500/30 bg-blue-500/10 text-blue-600"
+                                      : "border-green-500/30 bg-green-500/10 text-green-600"
+                            }
+                        >
+                            <Bot className="mr-1 size-3" />
+                            AI {reviewStatus === "draft" ? "Draft" : reviewStatus === "reviewed" ? "Reviewed" : "Approved"}
+                        </Badge>
+                    )}
                     <button
                         onClick={() => toggleFavorite(chunkId)}
                         className="text-muted-foreground transition-colors hover:text-yellow-500"
@@ -173,6 +206,28 @@ function ChunkDetail() {
                         <Star className={`size-4 ${isFavorite(chunkId) ? "fill-yellow-500 text-yellow-500" : ""}`} />
                     </button>
                 </div>
+                {isAi && reviewStatus !== "approved" && (
+                    <div className="mt-2 flex items-center gap-2">
+                        {reviewStatus === "draft" && (
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => reviewMutation.mutate("reviewed")}
+                                disabled={reviewMutation.isPending}
+                            >
+                                Mark Reviewed
+                            </Button>
+                        )}
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => reviewMutation.mutate("approved")}
+                            disabled={reviewMutation.isPending}
+                        >
+                            Mark Approved
+                        </Button>
+                    </div>
+                )}
                 <div className="text-muted-foreground mt-2 flex flex-wrap items-center gap-4 text-xs">
                     <span className="flex items-center gap-1">
                         <Calendar className="size-3" />

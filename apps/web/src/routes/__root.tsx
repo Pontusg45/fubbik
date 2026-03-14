@@ -81,7 +81,9 @@ function RootDocument() {
                                             minConnections: undefined,
                                             group: undefined,
                                             collection: undefined,
-                                            view: undefined
+                                            view: undefined,
+                                            origin: undefined,
+                                            reviewStatus: undefined
                                         }}
                                         className="text-muted-foreground hover:text-foreground [&.active]:text-foreground rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
                                     >

@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Clipboard, Trash2 } from "lucide-react";
+import { ArrowLeft, Bot, Clipboard, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
@@ -80,6 +80,20 @@ function RequirementDetail() {
         }
     });
 
+    const reviewMutation = useMutation({
+        mutationFn: async (newReviewStatus: "reviewed" | "approved") => {
+            return unwrapEden(await api.api.requirements({ id: requirementId }).patch({ reviewStatus: newReviewStatus }));
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["requirement", requirementId] });
+            queryClient.invalidateQueries({ queryKey: ["requirements"] });
+            toast.success("Review status updated");
+        },
+        onError: () => {
+            toast.error("Failed to update review status");
+        }
+    });
+
     const statusMutation = useMutation({
         mutationFn: async (status: Status) => {
             return unwrapEden(await api.api.requirements({ id: requirementId }).status.patch({ status }));
@@ -155,6 +169,9 @@ function RequirementDetail() {
     const description = req.description as string | null;
     const status = (req.status as string) ?? "untested";
     const priority = req.priority as string | null;
+    const reqOrigin = req.origin as string | undefined;
+    const reqReviewStatus = (req.reviewStatus as string) ?? "approved";
+    const isAi = reqOrigin === "ai";
     const steps = (req.steps as Array<{ keyword: string; text: string }>) ?? [];
     const chunks = (req.chunks as Array<{ id: string; title: string }>) ?? [];
     const warnings = (req as Record<string, unknown>).warnings as Array<{ step: number; warning: string }> | undefined;
@@ -190,6 +207,21 @@ function RequirementDetail() {
                     <Badge variant="outline" className={statusColor(status)}>
                         {status}
                     </Badge>
+                    {isAi && (
+                        <Badge
+                            variant="outline"
+                            className={
+                                reqReviewStatus === "draft"
+                                    ? "border-yellow-500/30 bg-yellow-500/10 text-yellow-600"
+                                    : reqReviewStatus === "reviewed"
+                                      ? "border-blue-500/30 bg-blue-500/10 text-blue-600"
+                                      : "border-green-500/30 bg-green-500/10 text-green-600"
+                            }
+                        >
+                            <Bot className="mr-1 size-3" />
+                            AI {reqReviewStatus === "draft" ? "Draft" : reqReviewStatus === "reviewed" ? "Reviewed" : "Approved"}
+                        </Badge>
+                    )}
                     {priority && (
                         <Badge variant="secondary">{priorityLabel(priority)}</Badge>
                     )}
@@ -198,6 +230,30 @@ function RequirementDetail() {
                     <p className="text-muted-foreground text-sm">{description}</p>
                 )}
             </div>
+
+            {/* Review actions */}
+            {isAi && reqReviewStatus !== "approved" && (
+                <div className="mb-4 flex items-center gap-2">
+                    {reqReviewStatus === "draft" && (
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => reviewMutation.mutate("reviewed")}
+                            disabled={reviewMutation.isPending}
+                        >
+                            Mark Reviewed
+                        </Button>
+                    )}
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => reviewMutation.mutate("approved")}
+                        disabled={reviewMutation.isPending}
+                    >
+                        Mark Approved
+                    </Button>
+                </div>
+            )}
 
             {/* Status toggle */}
             <div className="mb-6 flex items-center gap-2">
