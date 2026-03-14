@@ -12,6 +12,7 @@ import UserMenu from "@/features/auth/user-menu";
 import { MobileNav } from "@/features/nav/mobile-nav";
 import { CodebaseSwitcher } from "@/features/codebases/codebase-switcher";
 import { ChunkSearch } from "@/features/search/chunk-search";
+import { CommandPalette } from "@/features/command-palette/command-palette";
 
 import appCss from "../index.css?url";
 
@@ -146,6 +147,7 @@ function RootDocument() {
                             </ErrorBoundary>
                         </main>
                     </div>
+                    <CommandPalette />
                     <Toaster richColors />
                 </ThemeProvider>
 
