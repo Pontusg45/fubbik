@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { Copy, FileText, Pencil, Plus, Trash2 } from "lucide-react";
+import { Copy, Eye, FileText, Pencil, Plus, Trash2, X } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -38,6 +38,7 @@ function TemplatesPage() {
     const queryClient = useQueryClient();
     const [showForm, setShowForm] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
+    const [previewTemplate, setPreviewTemplate] = useState<Template | null>(null);
     const [name, setName] = useState("");
     const [description, setDescription] = useState("");
     const [formType, setFormType] = useState("note");
@@ -253,7 +254,12 @@ function TemplatesPage() {
                                 <div key={t.id} className="flex items-start justify-between gap-4 py-3 first:pt-0 last:pb-0">
                                     <div className="min-w-0 flex-1">
                                         <div className="flex items-center gap-2">
-                                            <p className="font-medium">{t.name}</p>
+                                            <button
+                                                onClick={() => setPreviewTemplate(t)}
+                                                className="hover:text-primary text-left font-medium transition-colors hover:underline"
+                                            >
+                                                {t.name}
+                                            </button>
                                             <Badge variant="secondary" size="sm" className="text-[10px]">
                                                 {t.type}
                                             </Badge>
@@ -271,6 +277,14 @@ function TemplatesPage() {
                                         </p>
                                     </div>
                                     <div className="flex gap-1">
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => setPreviewTemplate(t)}
+                                            title="Preview"
+                                        >
+                                            <Eye className="size-3.5" />
+                                        </Button>
                                         <Button
                                             variant="ghost"
                                             size="sm"
@@ -307,6 +321,57 @@ function TemplatesPage() {
                     )}
                 </CardPanel>
             </Card>
+
+            {/* Preview dialog */}
+            {previewTemplate && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center">
+                    <div className="bg-black/50 absolute inset-0 backdrop-blur-sm" onClick={() => setPreviewTemplate(null)} />
+                    <div className="bg-card relative mx-4 w-full max-w-2xl max-h-[80vh] overflow-hidden rounded-xl border shadow-2xl">
+                        <div className="flex items-center justify-between border-b px-6 py-4">
+                            <div className="flex items-center gap-3">
+                                <FileText className="text-muted-foreground size-5" />
+                                <div>
+                                    <h2 className="font-semibold">{previewTemplate.name}</h2>
+                                    <div className="flex items-center gap-2 mt-0.5">
+                                        <Badge variant="secondary" size="sm" className="text-[10px]">
+                                            {previewTemplate.type}
+                                        </Badge>
+                                        {previewTemplate.isBuiltIn && (
+                                            <Badge variant="outline" size="sm" className="text-[10px]">
+                                                Built-in
+                                            </Badge>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                            <Button variant="ghost" size="sm" onClick={() => setPreviewTemplate(null)}>
+                                <X className="size-4" />
+                            </Button>
+                        </div>
+                        {previewTemplate.description && (
+                            <div className="text-muted-foreground border-b px-6 py-3 text-sm">
+                                {previewTemplate.description}
+                            </div>
+                        )}
+                        <div className="overflow-y-auto px-6 py-4" style={{ maxHeight: "calc(80vh - 140px)" }}>
+                            <pre className="whitespace-pre-wrap font-mono text-sm leading-relaxed">{previewTemplate.content}</pre>
+                        </div>
+                        <div className="flex justify-end gap-2 border-t px-6 py-3">
+                            <Button variant="outline" size="sm" onClick={() => { handleDuplicate(previewTemplate); setPreviewTemplate(null); }}>
+                                <Copy className="size-3.5" />
+                                Duplicate
+                            </Button>
+                            <Button size="sm" onClick={() => {
+                                navigator.clipboard.writeText(previewTemplate.content);
+                                toast.success("Content copied");
+                            }}>
+                                <Copy className="size-3.5" />
+                                Copy Content
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
