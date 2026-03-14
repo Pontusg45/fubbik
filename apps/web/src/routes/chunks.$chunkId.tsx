@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Calendar, Clock, Edit, FileText, Hash, Network, Star, Trash2 } from "lucide-react";
+import { ArrowLeft, Calendar, Clock, Code, Edit, FileCode, FileText, Hash, Network, Scale, Star, Trash2 } from "lucide-react";
 import { useEffect } from "react";
 import { toast } from "sonner";
 
@@ -102,6 +102,16 @@ function ChunkDetail() {
     const connections = data.connections ?? [];
     const outgoing = connections.filter(c => c.sourceId === chunkId);
     const incoming = connections.filter(c => c.sourceId !== chunkId);
+    const appliesTo = (data as Record<string, unknown>).appliesTo as
+        | Array<{ id: string; pattern: string; note?: string | null }>
+        | undefined;
+    const fileReferences = (data as Record<string, unknown>).fileReferences as
+        | Array<{ id: string; path: string; anchor?: string | null; relation: string }>
+        | undefined;
+    const rationale = (chunk as Record<string, unknown>).rationale as string | null | undefined;
+    const alternatives = (chunk as Record<string, unknown>).alternatives as string[] | null | undefined;
+    const consequences = (chunk as Record<string, unknown>).consequences as string | null | undefined;
+    const hasDecisionContext = !!rationale || (alternatives && alternatives.length > 0) || !!consequences;
 
     return (
         <div className="container mx-auto max-w-3xl px-4 py-8">
@@ -193,6 +203,89 @@ function ChunkDetail() {
             <div className="prose dark:prose-invert prose-sm max-w-none">
                 <MarkdownRenderer>{chunk.content}</MarkdownRenderer>
             </div>
+
+            {appliesTo && appliesTo.length > 0 && (
+                <>
+                    <Separator className="my-6" />
+                    <div>
+                        <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold">
+                            <Code className="size-4" />
+                            Applies To
+                        </h2>
+                        <div className="flex flex-wrap gap-2">
+                            {appliesTo.map(item => (
+                                <Badge key={item.id} variant="outline" className="font-mono text-xs">
+                                    {item.pattern}
+                                    {item.note && (
+                                        <span className="text-muted-foreground ml-1 font-sans">({item.note})</span>
+                                    )}
+                                </Badge>
+                            ))}
+                        </div>
+                    </div>
+                </>
+            )}
+
+            {fileReferences && fileReferences.length > 0 && (
+                <>
+                    <Separator className="my-6" />
+                    <div>
+                        <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold">
+                            <FileCode className="size-4" />
+                            File References
+                        </h2>
+                        <div className="space-y-2">
+                            {fileReferences.map(ref => (
+                                <div key={ref.id} className="flex items-center gap-2 text-sm">
+                                    <code className="bg-muted rounded px-1.5 py-0.5 font-mono text-xs">{ref.path}</code>
+                                    {ref.anchor && (
+                                        <Badge variant="secondary" size="sm" className="text-[10px]">
+                                            {ref.anchor}
+                                        </Badge>
+                                    )}
+                                    <span className="text-muted-foreground text-xs">{ref.relation}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </>
+            )}
+
+            {hasDecisionContext && (
+                <>
+                    <Separator className="my-6" />
+                    <div className="bg-muted/50 rounded-lg border p-4">
+                        <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold">
+                            <Scale className="size-4" />
+                            Decision Context
+                        </h2>
+                        {rationale && (
+                            <div className="mb-3">
+                                <p className="text-muted-foreground mb-1 text-xs font-medium uppercase tracking-wide">Rationale</p>
+                                <p className="text-sm">{rationale}</p>
+                            </div>
+                        )}
+                        {alternatives && alternatives.length > 0 && (
+                            <div className="mb-3">
+                                <p className="text-muted-foreground mb-1 text-xs font-medium uppercase tracking-wide">
+                                    Alternatives Considered
+                                </p>
+                                <ul className="list-inside list-disc space-y-0.5 text-sm">
+                                    {alternatives.map((alt, i) => (
+                                        <li key={i}>{alt}</li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
+                        {consequences && (
+                            <div>
+                                <p className="text-muted-foreground mb-1 text-xs font-medium uppercase tracking-wide">Consequences</p>
+                                <p className="text-sm">{consequences}</p>
+                            </div>
+                        )}
+                    </div>
+                </>
+            )}
 
             <Separator className="my-6" />
             <AiSection chunkId={chunkId} />
