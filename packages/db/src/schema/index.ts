@@ -5,3 +5,4 @@ export * from "./chunk-version";
 export * from "./codebase";
 export * from "./file-ref";
 export * from "./tag";
+export * from "./template";

@@ -11,3 +11,4 @@ export * from "./tag-type";
 export * from "./tag-new";
 export * from "./file-ref";
 export * from "./knowledge-health";
+export * from "./template";
