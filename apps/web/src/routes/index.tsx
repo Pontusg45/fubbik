@@ -183,17 +183,19 @@ function ApiPulse() {
 /* ─── Feature pill ─── */
 
 const features = [
-    { icon: Layers, title: "Chunk-Based", desc: "Self-contained knowledge units with metadata, history, and typed relationships" },
-    { icon: Network, title: "Knowledge Graphs", desc: "Visualize connections between chunks as an interactive force-directed graph" },
-    { icon: GitBranch, title: "Multi-Codebase", desc: "Organize knowledge per-project with auto-detection from git remotes" },
-    { icon: Sparkles, title: "AI-Native", desc: "MCP server, vocabulary parser, requirement generation, and semantic search" },
-    { icon: Scan, title: "Requirements", desc: "Given/When/Then specs with controlled vocabulary and multi-format export" },
-    { icon: Map, title: "Health Dashboard", desc: "Detect orphans, stale content, and thin chunks across your knowledge base" }
+    { icon: Layers, title: "Chunk-Based", desc: "Self-contained knowledge units with metadata, history, and typed relationships", docsSection: "chunks" },
+    { icon: Network, title: "Knowledge Graphs", desc: "Visualize connections between chunks as an interactive force-directed graph", docsSection: "graph" },
+    { icon: GitBranch, title: "Multi-Codebase", desc: "Organize knowledge per-project with auto-detection from git remotes", docsSection: "getting-started" },
+    { icon: Sparkles, title: "AI-Native", desc: "MCP server, vocabulary parser, requirement generation, and semantic search", docsSection: "cli" },
+    { icon: Scan, title: "Requirements", desc: "Given/When/Then specs with controlled vocabulary and multi-format export", docsSection: "requirements" },
+    { icon: Map, title: "Health Dashboard", desc: "Detect orphans, stale content, and thin chunks across your knowledge base", docsSection: "chunks" }
 ];
 
-function FeatureRow({ icon: Icon, title, desc, index }: { icon: typeof Layers; title: string; desc: string; index: number }) {
+function FeatureRow({ icon: Icon, title, desc, index, docsSection }: { icon: typeof Layers; title: string; desc: string; index: number; docsSection: string }) {
     return (
-        <div
+        <Link
+            to="/docs"
+            search={{ section: docsSection } as any}
             className="group border-border/50 hover:border-border hover:bg-muted/30 flex items-start gap-4 border-b py-5 transition-all duration-300 last:border-0"
             style={{ animationDelay: `${index * 80}ms` }}
         >
@@ -205,7 +207,7 @@ function FeatureRow({ icon: Icon, title, desc, index }: { icon: typeof Layers; t
                 <div className="text-muted-foreground text-[13px] leading-relaxed">{desc}</div>
             </div>
             <ArrowRight className="text-muted-foreground/0 group-hover:text-muted-foreground mt-1 ml-auto size-4 shrink-0 transition-all duration-300 group-hover:translate-x-0.5" />
-        </div>
+        </Link>
     );
 }
 
@@ -243,10 +245,9 @@ function LandingPage() {
     return (
         <div className="relative min-h-[calc(100vh-4rem)] overflow-hidden">
             {/* Background */}
-            <div className="pointer-events-none absolute inset-0">
+            <div className="pointer-events-none absolute inset-0 -top-16">
                 <ConstellationCanvas />
-                <div className="from-background via-background/80 absolute inset-0 bg-gradient-to-b to-transparent" />
-                <div className="from-background absolute right-0 bottom-0 left-0 h-64 bg-gradient-to-t" />
+                <div className="from-background via-background/70 absolute right-0 bottom-0 left-0 h-[60%] bg-gradient-to-t to-transparent" />
             </div>
 
             <div className="relative z-10">
@@ -280,6 +281,9 @@ function LandingPage() {
                         <Button variant="outline" size="lg" render={<Link to="/graph" />}>
                             <Network className="size-4" />
                             Explore Graph
+                        </Button>
+                        <Button variant="outline" size="lg" render={<Link to="/docs" search={{} as any} />}>
+                            Docs
                         </Button>
                     </div>
 
@@ -318,17 +322,19 @@ function LandingPage() {
                 <section className="container mx-auto max-w-3xl px-4 pb-16">
                     <div className="grid gap-3 sm:grid-cols-3">
                         {[
-                            { label: "VS Code Extension", detail: "Browse and create chunks from your editor" },
-                            { label: "MCP Server", detail: "AI agents query your knowledge base directly" },
-                            { label: "CLI", detail: "fubbik context | fubbik generate claude.md" }
+                            { label: "VS Code Extension", detail: "Browse and create chunks from your editor", section: "cli" },
+                            { label: "MCP Server", detail: "AI agents query your knowledge base directly", section: "cli" },
+                            { label: "CLI", detail: "fubbik context | fubbik generate claude.md", section: "cli" }
                         ].map(cap => (
-                            <div
+                            <Link
                                 key={cap.label}
+                                to="/docs"
+                                search={{ section: cap.section } as any}
                                 className="bg-muted/20 hover:bg-muted/40 rounded-lg border p-4 transition-colors"
                             >
                                 <div className="text-foreground mb-1 text-sm font-semibold">{cap.label}</div>
                                 <div className="text-muted-foreground text-xs leading-relaxed">{cap.detail}</div>
-                            </div>
+                            </Link>
                         ))}
                     </div>
                 </section>

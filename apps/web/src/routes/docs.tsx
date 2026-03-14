@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useSearch } from "@tanstack/react-router";
 import { Book, ChevronRight, Code, Layers, Network, Terminal, Zap } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { useActiveCodebase } from "@/features/codebases/use-active-codebase";
@@ -11,6 +11,10 @@ import { unwrapEden } from "@/utils/eden";
 
 export const Route = createFileRoute("/docs")({
     component: DocsPage,
+    validateSearch: (search: Record<string, unknown>) => ({
+        section: (search.section as string) ?? undefined,
+        tab: (search.tab as string) ?? undefined
+    }),
     beforeLoad: async () => {
         let session = null;
         try {
@@ -352,8 +356,24 @@ function MarkdownBlock({ content }: { content: string }) {
 /* ─── Main page ─── */
 
 function DocsPage() {
-    const [tab, setTab] = useState<"guide" | "dev">("guide");
-    const [activeSection, setActiveSection] = useState(guidesSections[0]!.id);
+    const search = useSearch({ from: "/docs" });
+    const [tab, setTab] = useState<"guide" | "dev">(search.tab === "dev" ? "dev" : "guide");
+    const [activeSection, setActiveSection] = useState(
+        search.section && guidesSections.some(s => s.id === search.section)
+            ? search.section
+            : guidesSections[0]!.id
+    );
+
+    // Respond to search param changes (e.g., navigating from landing page)
+    useEffect(() => {
+        if (search.section && guidesSections.some(s => s.id === search.section)) {
+            setActiveSection(search.section);
+            setTab("guide");
+        }
+        if (search.tab === "dev") {
+            setTab("dev");
+        }
+    }, [search.section, search.tab]);
 
     const currentGuide = guidesSections.find(s => s.id === activeSection) ?? guidesSections[0]!;
 

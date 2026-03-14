@@ -71,7 +71,14 @@ function RootDocument() {
                                 </Link>
                                 {!isLanding && <CodebaseSwitcher />}
                                 {isLanding ? (
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-3">
+                                        <Link
+                                            to="/docs"
+                                            search={{} as any}
+                                            className="text-muted-foreground hover:text-foreground text-sm font-medium transition-colors"
+                                        >
+                                            Docs
+                                        </Link>
                                         <ThemeToggle />
                                         <Link
                                             to="/dashboard"
@@ -110,6 +117,7 @@ function RootDocument() {
                                             </Link>
                                             <Link
                                                 to="/docs"
+                                                search={{} as any}
                                                 className="text-muted-foreground hover:text-foreground [&.active]:text-foreground rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
                                             >
                                                 Docs
