@@ -3,6 +3,7 @@ import { Elysia, t } from "elysia";
 
 import { requireSession } from "../require-session";
 import * as aiService from "./service";
+import { structureRequirement } from "./structure-requirement";
 
 export const aiRoutes = new Elysia()
     .post(
@@ -25,4 +26,19 @@ export const aiRoutes = new Elysia()
         "/ai/generate",
         ctx => Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(() => aiService.generateChunk(ctx.body.prompt)))),
         { body: t.Object({ prompt: t.String() }) }
+    )
+    .post(
+        "/ai/structure-requirement",
+        ctx =>
+            Effect.runPromise(
+                requireSession(ctx).pipe(
+                    Effect.flatMap(() => structureRequirement(ctx.body.description, ctx.body.codebaseId))
+                )
+            ),
+        {
+            body: t.Object({
+                description: t.String({ maxLength: 5000 }),
+                codebaseId: t.Optional(t.String())
+            })
+        }
     );

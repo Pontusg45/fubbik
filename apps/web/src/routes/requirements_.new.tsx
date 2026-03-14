@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronRight, Loader2, Plus, Sparkles, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -154,6 +154,33 @@ function NewRequirement() {
     const [chunkSearch, setChunkSearch] = useState("");
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [stepErrors, setStepErrors] = useState<StepError[]>([]);
+
+    // AI description state
+    const [aiDescription, setAiDescription] = useState("");
+    const [aiExpanded, setAiExpanded] = useState(false);
+
+    const generateStepsMutation = useMutation({
+        mutationFn: async () => {
+            const body: { description: string; codebaseId?: string } = {
+                description: aiDescription.trim()
+            };
+            if (codebaseId) body.codebaseId = codebaseId;
+            const result = unwrapEden(await api.api.ai["structure-requirement"].post(body)) as {
+                steps: Array<{ keyword: Keyword; text: string }>;
+            };
+            return result;
+        },
+        onSuccess: data => {
+            if (data.steps && data.steps.length > 0) {
+                setSteps(data.steps.map(s => ({ keyword: s.keyword as Keyword, text: s.text })));
+                setParseResults({});
+                toast.success("Steps generated from description");
+            }
+        },
+        onError: () => {
+            toast.error("Failed to generate steps. Is Ollama running?");
+        }
+    });
 
     // Vocabulary parsing state
     const [parseResults, setParseResults] = useState<Record<number, ParseResult>>({});
@@ -419,6 +446,57 @@ function NewRequirement() {
                     </div>
 
                     <Separator />
+
+                    {/* AI description section */}
+                    <div>
+                        <button
+                            type="button"
+                            onClick={() => setAiExpanded(!aiExpanded)}
+                            className="mb-2 flex items-center gap-1.5 text-sm font-medium"
+                        >
+                            {aiExpanded ? (
+                                <ChevronDown className="size-3.5" />
+                            ) : (
+                                <ChevronRight className="size-3.5" />
+                            )}
+                            <Sparkles className="size-3.5" />
+                            Describe in plain English
+                        </button>
+
+                        {aiExpanded && (
+                            <div className="bg-muted/50 mb-4 space-y-2 rounded-md border p-3">
+                                <textarea
+                                    value={aiDescription}
+                                    onChange={e => setAiDescription(e.target.value)}
+                                    placeholder="Describe what you want in plain English, e.g. 'When a user logs in with valid credentials, they should see the dashboard and their name in the header'"
+                                    rows={3}
+                                    className="bg-background focus:ring-ring w-full rounded-md border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
+                                />
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => generateStepsMutation.mutate()}
+                                    disabled={generateStepsMutation.isPending || !aiDescription.trim()}
+                                >
+                                    {generateStepsMutation.isPending ? (
+                                        <>
+                                            <Loader2 className="mr-1 size-3.5 animate-spin" />
+                                            Generating...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Sparkles className="mr-1 size-3.5" />
+                                            Generate steps
+                                        </>
+                                    )}
+                                </Button>
+                                <p className="text-muted-foreground text-xs">
+                                    AI will convert your description into Given/When/Then steps. You can edit them after.
+                                </p>
+                            </div>
+                        )}
+                    </div>
 
                     {/* Steps builder */}
                     <div>
