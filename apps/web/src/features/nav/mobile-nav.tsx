@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Activity, Blocks, FolderGit2, LayoutDashboard, Menu, Network, Tags } from "lucide-react";
+import { Activity, Blocks, FileText, FolderGit2, LayoutDashboard, Menu, Network, Tags } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,8 @@ const navItems = [
     { label: "Graph", to: "/graph" as const, icon: Network },
     { label: "Tags", to: "/tags" as const, icon: Tags },
     { label: "Health", to: "/knowledge-health" as const, icon: Activity },
-    { label: "Codebases", to: "/codebases" as const, icon: FolderGit2 }
+    { label: "Codebases", to: "/codebases" as const, icon: FolderGit2 },
+    { label: "Templates", to: "/templates" as const, icon: FileText }
 ];
 
 export function MobileNav() {

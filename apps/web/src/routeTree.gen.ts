@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from "./routes/__root";
+import { Route as TemplatesRouteImport } from "./routes/templates";
 import { Route as TagsRouteImport } from "./routes/tags";
 import { Route as LoginRouteImport } from "./routes/login";
 import { Route as KnowledgeHealthRouteImport } from "./routes/knowledge-health";
@@ -21,6 +22,11 @@ import { Route as ChunksNewRouteImport } from "./routes/chunks.new";
 import { Route as ChunksChunkIdRouteImport } from "./routes/chunks.$chunkId";
 import { Route as ChunksChunkIdEditRouteImport } from "./routes/chunks.$chunkId_.edit";
 
+const TemplatesRoute = TemplatesRouteImport.update({
+  id: "/templates",
+  path: "/templates",
+  getParentRoute: () => rootRouteImport,
+} as any);
 const TagsRoute = TagsRouteImport.update({
   id: "/tags",
   path: "/tags",
@@ -85,6 +91,7 @@ export interface FileRoutesByFullPath {
   "/knowledge-health": typeof KnowledgeHealthRoute;
   "/login": typeof LoginRoute;
   "/tags": typeof TagsRoute;
+  "/templates": typeof TemplatesRoute;
   "/chunks/$chunkId": typeof ChunksChunkIdRoute;
   "/chunks/new": typeof ChunksNewRoute;
   "/chunks/": typeof ChunksIndexRoute;
@@ -98,6 +105,7 @@ export interface FileRoutesByTo {
   "/knowledge-health": typeof KnowledgeHealthRoute;
   "/login": typeof LoginRoute;
   "/tags": typeof TagsRoute;
+  "/templates": typeof TemplatesRoute;
   "/chunks/$chunkId": typeof ChunksChunkIdRoute;
   "/chunks/new": typeof ChunksNewRoute;
   "/chunks": typeof ChunksIndexRoute;
@@ -112,6 +120,7 @@ export interface FileRoutesById {
   "/knowledge-health": typeof KnowledgeHealthRoute;
   "/login": typeof LoginRoute;
   "/tags": typeof TagsRoute;
+  "/templates": typeof TemplatesRoute;
   "/chunks/$chunkId": typeof ChunksChunkIdRoute;
   "/chunks/new": typeof ChunksNewRoute;
   "/chunks/": typeof ChunksIndexRoute;
@@ -127,6 +136,7 @@ export interface FileRouteTypes {
     | "/knowledge-health"
     | "/login"
     | "/tags"
+    | "/templates"
     | "/chunks/$chunkId"
     | "/chunks/new"
     | "/chunks/"
@@ -140,6 +150,7 @@ export interface FileRouteTypes {
     | "/knowledge-health"
     | "/login"
     | "/tags"
+    | "/templates"
     | "/chunks/$chunkId"
     | "/chunks/new"
     | "/chunks"
@@ -153,6 +164,7 @@ export interface FileRouteTypes {
     | "/knowledge-health"
     | "/login"
     | "/tags"
+    | "/templates"
     | "/chunks/$chunkId"
     | "/chunks/new"
     | "/chunks/"
@@ -167,6 +179,7 @@ export interface RootRouteChildren {
   KnowledgeHealthRoute: typeof KnowledgeHealthRoute;
   LoginRoute: typeof LoginRoute;
   TagsRoute: typeof TagsRoute;
+  TemplatesRoute: typeof TemplatesRoute;
   ChunksChunkIdRoute: typeof ChunksChunkIdRoute;
   ChunksNewRoute: typeof ChunksNewRoute;
   ChunksIndexRoute: typeof ChunksIndexRoute;
@@ -175,6 +188,13 @@ export interface RootRouteChildren {
 
 declare module "@tanstack/react-router" {
   interface FileRoutesByPath {
+    "/templates": {
+      id: "/templates";
+      path: "/templates";
+      fullPath: "/templates";
+      preLoaderRoute: typeof TemplatesRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     "/tags": {
       id: "/tags";
       path: "/tags";
@@ -189,18 +209,18 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof LoginRouteImport;
       parentRoute: typeof rootRouteImport;
     };
-    "/graph": {
-      id: "/graph";
-      path: "/graph";
-      fullPath: "/graph";
-      preLoaderRoute: typeof GraphRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
     "/knowledge-health": {
       id: "/knowledge-health";
       path: "/knowledge-health";
       fullPath: "/knowledge-health";
       preLoaderRoute: typeof KnowledgeHealthRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/graph": {
+      id: "/graph";
+      path: "/graph";
+      fullPath: "/graph";
+      preLoaderRoute: typeof GraphRouteImport;
       parentRoute: typeof rootRouteImport;
     };
     "/dashboard": {
@@ -263,6 +283,7 @@ const rootRouteChildren: RootRouteChildren = {
   KnowledgeHealthRoute: KnowledgeHealthRoute,
   LoginRoute: LoginRoute,
   TagsRoute: TagsRoute,
+  TemplatesRoute: TemplatesRoute,
   ChunksChunkIdRoute: ChunksChunkIdRoute,
   ChunksNewRoute: ChunksNewRoute,
   ChunksIndexRoute: ChunksIndexRoute,
