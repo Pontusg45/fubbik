@@ -2,6 +2,7 @@ import { Effect } from "effect";
 import { Elysia, t } from "elysia";
 
 import { requireSession } from "../require-session";
+import * as bulkService from "./bulk-service";
 import * as chunkService from "./service";
 import { getConnectionSuggestions } from "./suggestions";
 
@@ -56,6 +57,44 @@ export const chunkRoutes = new Elysia()
             })
         }
     )
+    .post(
+        "/chunks/bulk-update",
+        ctx =>
+            Effect.runPromise(
+                requireSession(ctx).pipe(
+                    Effect.flatMap(session => bulkService.bulkUpdate(session.user.id, ctx.body) as Effect.Effect<{ updated: number }, any>)
+                )
+            ),
+        {
+            body: t.Object({
+                ids: t.Array(t.String(), { maxItems: 100 }),
+                action: t.Union([
+                    t.Literal("add_tags"),
+                    t.Literal("remove_tags"),
+                    t.Literal("set_type"),
+                    t.Literal("set_codebase"),
+                    t.Literal("set_review_status"),
+                    t.Literal("archive"),
+                    t.Literal("delete")
+                ]),
+                value: t.Optional(t.Union([t.String(), t.Null()]))
+            })
+        }
+    )
+    .get(
+        "/chunks/archived",
+        ctx =>
+            Effect.runPromise(
+                requireSession(ctx).pipe(
+                    Effect.flatMap(session => chunkService.listArchivedChunks(session.user.id, ctx.query.codebaseId))
+                )
+            ),
+        {
+            query: t.Object({
+                codebaseId: t.Optional(t.String())
+            })
+        }
+    )
     .get(
         "/chunks/search/semantic",
         ctx =>
@@ -77,6 +116,22 @@ export const chunkRoutes = new Elysia()
     )
     .get("/chunks/:id", ctx =>
         Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(session => chunkService.getChunkDetail(ctx.params.id, session.user.id))))
+    )
+    .post("/chunks/:id/archive", ctx =>
+        Effect.runPromise(
+            requireSession(ctx).pipe(
+                Effect.flatMap(session => chunkService.archiveChunk(ctx.params.id, session.user.id)),
+                Effect.map(() => ({ message: "Archived" }))
+            )
+        )
+    )
+    .post("/chunks/:id/restore", ctx =>
+        Effect.runPromise(
+            requireSession(ctx).pipe(
+                Effect.flatMap(session => chunkService.restoreChunk(ctx.params.id, session.user.id)),
+                Effect.map(() => ({ message: "Restored" }))
+            )
+        )
     )
     .post(
         "/chunks",

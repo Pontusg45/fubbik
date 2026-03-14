@@ -41,7 +41,8 @@ export const chunk = pgTable(
         origin: text("origin").notNull().default("human"),
         reviewStatus: text("review_status").notNull().default("approved"),
         reviewedBy: text("reviewed_by").references(() => user.id, { onDelete: "set null" }),
-        reviewedAt: timestamp("reviewed_at")
+        reviewedAt: timestamp("reviewed_at"),
+        archivedAt: timestamp("archived_at")
     },
     table => [index("chunk_userId_idx").on(table.userId), index("chunk_type_idx").on(table.type)]
 );

@@ -20,8 +20,8 @@ export function GraphGroupNode({ data }: NodeProps) {
         <div
             className="relative h-full w-full"
             style={{
-                backgroundColor: `rgba(${r}, ${g}, ${b}, 0.08)`,
-                border: `2px dashed rgba(${r}, ${g}, ${b}, 0.3)`,
+                backgroundColor: `rgba(${r}, ${g}, ${b}, 0.3)`,
+                border: `2px dashed rgba(${r}, ${g}, ${b}, 0.6)`,
                 borderRadius: 16
             }}
         >

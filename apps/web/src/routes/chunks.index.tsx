@@ -308,17 +308,7 @@ function ChunksList() {
         }
     }
 
-    const bulkDeleteMutation = useMutation({
-        mutationFn: async (ids: string[]) => {
-            const { error } = await api.api.chunks.bulk.delete({ ids });
-            if (error) throw new Error("Failed to delete chunks");
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["chunks-list"] });
-            queryClient.invalidateQueries({ queryKey: ["stats"] });
-            setSelectedIds(new Set());
-        }
-    });
+
 
     const bulkUpdateMutation = useMutation({
         mutationFn: async (body: { ids: string[]; action: string; value?: string | null }) => {

@@ -22,6 +22,7 @@ export interface ListChunksParams {
     globalOnly?: boolean;
     origin?: string;
     reviewStatus?: string;
+    includeArchived?: boolean;
     limit: number;
     offset: number;
 }
@@ -30,6 +31,9 @@ export function listChunks(params: ListChunksParams) {
     return Effect.tryPromise({
         try: async () => {
             const conditions = params.userId ? [eq(chunk.userId, params.userId)] : [];
+            if (!params.includeArchived) {
+                conditions.push(isNull(chunk.archivedAt));
+            }
             if (params.type) {
                 conditions.push(eq(chunk.type, params.type));
             }
@@ -289,6 +293,80 @@ export function deleteMany(ids: string[], userId: string) {
         try: () =>
             db
                 .delete(chunk)
+                .where(and(inArray(chunk.id, ids), eq(chunk.userId, userId)))
+                .returning({ id: chunk.id }),
+        catch: cause => new DatabaseError({ cause })
+    });
+}
+
+export function archiveChunk(chunkId: string, userId: string) {
+    return Effect.tryPromise({
+        try: async () => {
+            const [updated] = await db
+                .update(chunk)
+                .set({ archivedAt: new Date() })
+                .where(and(eq(chunk.id, chunkId), eq(chunk.userId, userId)))
+                .returning();
+            return updated ?? null;
+        },
+        catch: cause => new DatabaseError({ cause })
+    });
+}
+
+export function archiveMany(ids: string[], userId: string) {
+    return Effect.tryPromise({
+        try: () =>
+            db
+                .update(chunk)
+                .set({ archivedAt: new Date() })
+                .where(and(inArray(chunk.id, ids), eq(chunk.userId, userId)))
+                .returning({ id: chunk.id }),
+        catch: cause => new DatabaseError({ cause })
+    });
+}
+
+export function restoreChunk(chunkId: string, userId: string) {
+    return Effect.tryPromise({
+        try: async () => {
+            const [updated] = await db
+                .update(chunk)
+                .set({ archivedAt: null })
+                .where(and(eq(chunk.id, chunkId), eq(chunk.userId, userId)))
+                .returning();
+            return updated ?? null;
+        },
+        catch: cause => new DatabaseError({ cause })
+    });
+}
+
+export function listArchivedChunks(userId: string, codebaseId?: string) {
+    return Effect.tryPromise({
+        try: async () => {
+            const conditions = [eq(chunk.userId, userId), isNotNull(chunk.archivedAt)];
+            if (codebaseId) {
+                const inCodebase = db
+                    .select({ chunkId: chunkCodebase.chunkId })
+                    .from(chunkCodebase)
+                    .where(eq(chunkCodebase.codebaseId, codebaseId));
+                conditions.push(sql`${chunk.id} IN (${inCodebase})`);
+            }
+            const chunks = await db
+                .select()
+                .from(chunk)
+                .where(and(...conditions))
+                .orderBy(desc(chunk.archivedAt));
+            return chunks;
+        },
+        catch: cause => new DatabaseError({ cause })
+    });
+}
+
+export function updateManyChunks(ids: string[], userId: string, data: Partial<{ type: string; reviewStatus: string }>) {
+    return Effect.tryPromise({
+        try: () =>
+            db
+                .update(chunk)
+                .set(data)
                 .where(and(inArray(chunk.id, ids), eq(chunk.userId, userId)))
                 .returning({ id: chunk.id }),
         catch: cause => new DatabaseError({ cause })

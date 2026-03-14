@@ -19,6 +19,7 @@ export default defineConfig({
         viteReact()
     ],
     server: {
-        port: 3001
+        port: 3001,
+        allowedHosts: ["app.fubbik.test"]
     }
 });

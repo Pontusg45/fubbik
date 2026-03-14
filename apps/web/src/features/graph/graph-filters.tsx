@@ -18,7 +18,9 @@ export function GraphFilters({
     activeTagTypeIds,
     onToggleTagType,
     edgeAnimated,
-    onToggleEdgeAnimated
+    onToggleEdgeAnimated,
+    showUngrouped,
+    onToggleUngrouped
 }: {
     types: string[];
     relations: string[];
@@ -31,6 +33,8 @@ export function GraphFilters({
     onToggleTagType?: (id: string) => void;
     edgeAnimated?: boolean;
     onToggleEdgeAnimated?: () => void;
+    showUngrouped?: boolean;
+    onToggleUngrouped?: () => void;
 }) {
     return (
         <div className="bg-background/80 absolute top-4 left-4 z-10 max-w-[200px] space-y-3 rounded-lg border p-3 backdrop-blur-sm">
@@ -89,6 +93,19 @@ export function GraphFilters({
                             </Badge>
                         ))}
                     </div>
+                </div>
+            )}
+            {onToggleUngrouped && activeTagTypeIds && activeTagTypeIds.size > 0 && (
+                <div className="border-t pt-3">
+                    <label className="flex cursor-pointer items-center gap-2 text-[10px]">
+                        <input
+                            type="checkbox"
+                            checked={showUngrouped}
+                            onChange={onToggleUngrouped}
+                            className="accent-primary size-3"
+                        />
+                        <span className="text-muted-foreground font-medium uppercase">Show ungrouped</span>
+                    </label>
                 </div>
             )}
             {onToggleEdgeAnimated && (

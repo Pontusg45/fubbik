@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Bot, Calendar, Clock, Code, Edit, FileCode, FileText, Hash, Network, Scale, Star, Trash2 } from "lucide-react";
+import { Archive, ArrowLeft, Bot, Calendar, Clock, Code, Edit, FileCode, FileText, Hash, Network, Scale, Star, Trash2 } from "lucide-react";
 import { useEffect } from "react";
 import { toast } from "sonner";
 
@@ -69,6 +69,23 @@ function ChunkDetail() {
         },
         onError: () => {
             toast.error("Failed to update review status");
+        }
+    });
+
+    const archiveMutation = useMutation({
+        mutationFn: async () => {
+            const { error } = await (api.api.chunks as any)[chunkId].archive.post();
+            if (error) throw new Error("Failed to archive chunk");
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["chunks"] });
+            queryClient.invalidateQueries({ queryKey: ["chunks-list"] });
+            queryClient.invalidateQueries({ queryKey: ["stats"] });
+            toast.success("Chunk archived");
+            navigate({ to: "/chunks", search: {} as any });
+        },
+        onError: () => {
+            toast.error("Failed to archive chunk");
         }
     });
 
@@ -165,8 +182,19 @@ function ChunkDetail() {
                     <Button
                         variant="outline"
                         size="sm"
+                        onClick={() => archiveMutation.mutate()}
+                        disabled={archiveMutation.isPending}
+                    >
+                        <Archive className="size-3.5" />
+                        {archiveMutation.isPending ? "Archiving..." : "Archive"}
+                    </Button>
+                    <Button
+                        variant="outline"
+                        size="sm"
                         className="text-destructive"
-                        onClick={() => deleteMutation.mutate()}
+                        onClick={() => {
+                            if (confirm("Permanently delete this chunk? This cannot be undone.")) deleteMutation.mutate();
+                        }}
                         disabled={deleteMutation.isPending}
                     >
                         <Trash2 className="size-3.5" />

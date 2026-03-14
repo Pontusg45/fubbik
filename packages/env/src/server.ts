@@ -7,7 +7,7 @@ export const env = createEnv({
         DATABASE_URL: type("string >= 1"),
         BETTER_AUTH_SECRET: type("string >= 32"),
         BETTER_AUTH_URL: type("string.url"),
-        CORS_ORIGIN: type("string.url"),
+        CORS_ORIGIN: type("string >= 1"),
         NODE_ENV: type("'development' | 'production' | 'test'"),
         OPENAI_API_KEY: type("string | undefined"),
         OPENAI_MODEL: type("string | undefined"),

@@ -178,7 +178,7 @@ function runGroupedLayout(
     }
 
     // Run force layout for groups
-    const groupSpacing = Math.max(600, Math.sqrt(groupCount) * 400);
+    const groupSpacing = Math.max(400, Math.sqrt(groupCount) * 250);
     const groupPos = new Map<string, { x: number; y: number; vx: number; vy: number }>();
     for (let i = 0; i < groupNames.length; i++) {
         const angle = (2 * Math.PI * i) / groupNames.length;
@@ -201,9 +201,9 @@ function runGroupedLayout(
         groupRadius.set(name, Math.sqrt(w * w + h * h) + 60); // 60px padding
     }
 
-    const GROUP_REPULSION = 500000;
-    const GROUP_SPRING_K = 0.001;
-    const GROUP_SPRING_LEN = 600;
+    const GROUP_REPULSION = 200000;
+    const GROUP_SPRING_K = 0.002;
+    const GROUP_SPRING_LEN = 350;
     const GROUP_DAMPING = 0.85;
     const GROUP_ITERATIONS = 200;
 

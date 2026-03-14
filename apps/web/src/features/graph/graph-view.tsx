@@ -203,6 +203,10 @@ function GraphViewInner() {
     // Focus mode state
     const [focusedNodeId, setFocusedNodeId] = useState<string | null>(null);
 
+    // Measured node sizes for group bounding box calculation (ref + counter to trigger recalc)
+    const measuredNodeSizesRef = useRef(new Map<string, { w: number; h: number }>());
+    const [measuredSizesVersion, setMeasuredSizesVersion] = useState(0);
+
     // Path highlighting state
     const [pathStartId, setPathStartId] = useState<string | null>(null);
     const [pathEndId, setPathEndId] = useState<string | null>(null);
@@ -280,6 +284,7 @@ function GraphViewInner() {
 
     // Tag grouping state
     const [activeTagTypeIds, setActiveTagTypeIds] = useState<Set<string>>(new Set());
+    const [showUngrouped, setShowUngrouped] = useState(true);
 
     // Edge animation toggle
     const [edgeAnimated, setEdgeAnimated] = useState(true);
@@ -481,7 +486,7 @@ function GraphViewInner() {
             connectionCounts.set(conn.targetId, (connectionCounts.get(conn.targetId) ?? 0) + 1);
         }
 
-        const rawNodes: Node[] = [
+        let rawNodes: Node[] = [
             ...chunks
                 .filter(c => !hiddenIds.has(c.id))
                 .map(c => {
@@ -579,8 +584,15 @@ function GraphViewInner() {
 
             // Add "ungrouped" group for chunks without a tag in this type
             const groupedChunkIds = new Set(chunkToGroupId.keys());
-            const ungroupedChunks = rawNodes.filter(n => !tagGroupNodeIds.has(n.id) && !groupedChunkIds.has(n.id));
-            if (ungroupedChunks.length > 0) {
+            const ungroupedChunkIds = new Set(
+                rawNodes.filter(n => !tagGroupNodeIds.has(n.id) && !groupedChunkIds.has(n.id)).map(n => n.id)
+            );
+            if (!showUngrouped && ungroupedChunkIds.size > 0) {
+                // Remove ungrouped chunks from the graph entirely
+                rawNodes = rawNodes.filter(n => !ungroupedChunkIds.has(n.id));
+            }
+            if (showUngrouped && ungroupedChunkIds.size > 0) {
+                const ungroupedChunks = rawNodes.filter(n => ungroupedChunkIds.has(n.id));
                 const ungroupedId = "tag-group-ungrouped";
                 tagGroupNodeIds.add(ungroupedId);
                 for (const c of ungroupedChunks) {
@@ -589,7 +601,7 @@ function GraphViewInner() {
                 rawNodes.unshift({
                     id: ungroupedId,
                     type: "group",
-                    data: { label: "ungrouped", color: isDark ? "#6b7280" : "#9ca3af" },
+                    data: { label: "ungrouped", color: isDark ? "#475569" : "#94a3b8" },
                     position: { x: 0, y: 0 },
                     selectable: false,
                     draggable: true,
@@ -607,46 +619,54 @@ function GraphViewInner() {
         }
 
         // Pre-compute group bounding boxes from child layout positions
-        const PADDING = 50;
-        const NODE_W = 280;
-        const NODE_H = 40;
+        const PADDING = 14;
+        const PADDING_TOP = 40;
+        const PADDING_BOTTOM = 28;
+        const DEFAULT_NODE_W = 180;
+        const DEFAULT_NODE_H = 36;
         const groupBounds = new Map<string, { minX: number; minY: number; maxX: number; maxY: number }>();
+
+        const measuredSizes = measuredNodeSizesRef.current;
 
         if (tagGroupNodeIds.size > 0 && layoutPositions) {
             for (const [chunkId, groupId] of chunkToGroupId) {
-                const cp = layoutPositions[chunkId];
-                if (!cp) continue;
-                const x = cp.x - NODE_W / 2;
-                const y = cp.y - NODE_H / 2;
+                const dragged = draggedPositions.get(chunkId);
+                const lp = layoutPositions[chunkId];
+                if (!dragged && !lp) continue;
+                const size = measuredSizes.get(chunkId);
+                const w = size?.w ?? DEFAULT_NODE_W;
+                const h = size?.h ?? DEFAULT_NODE_H;
+                // dragged positions are top-left, layout positions are centers
+                const x = dragged ? dragged.x : lp!.x - w / 2;
+                const y = dragged ? dragged.y : lp!.y - h / 2;
                 const prev = groupBounds.get(groupId);
                 if (prev) {
                     prev.minX = Math.min(prev.minX, x);
                     prev.minY = Math.min(prev.minY, y);
-                    prev.maxX = Math.max(prev.maxX, x + NODE_W);
-                    prev.maxY = Math.max(prev.maxY, y + NODE_H);
+                    prev.maxX = Math.max(prev.maxX, x + w);
+                    prev.maxY = Math.max(prev.maxY, y + h);
                 } else {
-                    groupBounds.set(groupId, { minX: x, minY: y, maxX: x + NODE_W, maxY: y + NODE_H });
+                    groupBounds.set(groupId, { minX: x, minY: y, maxX: x + w, maxY: y + h });
                 }
             }
         }
 
         // Apply positions from worker (or fallback to origin)
         const layoutNodes = rawNodes.map(node => {
-            const dragged = draggedPositions.get(node.id);
-            if (dragged) return { ...node, position: dragged };
             const p = layoutPositions?.[node.id] ?? { x: 0, y: 0 };
 
-            // Group nodes: position at bounding box with padding, set width/height
+            // Group nodes: always compute size from bounds, use dragged position if available
             if (tagGroupNodeIds.has(node.id)) {
                 const bounds = groupBounds.get(node.id);
                 if (bounds) {
+                    const dragged = draggedPositions.get(node.id);
                     return {
                         ...node,
-                        position: { x: bounds.minX - PADDING, y: bounds.minY - PADDING },
+                        position: dragged ?? { x: bounds.minX - PADDING, y: bounds.minY - PADDING_TOP },
                         style: {
                             ...node.style,
                             width: bounds.maxX - bounds.minX + PADDING * 2,
-                            height: bounds.maxY - bounds.minY + PADDING * 2,
+                            height: bounds.maxY - bounds.minY + PADDING_BOTTOM + PADDING_TOP,
                             background: "transparent",
                             border: "none",
                             padding: 0
@@ -656,7 +676,13 @@ function GraphViewInner() {
                 return { ...node, position: { x: 0, y: 0 } };
             }
 
-            return { ...node, position: { x: p.x - 100, y: p.y - 25 } };
+            const dragged = draggedPositions.get(node.id);
+            if (dragged) return { ...node, position: dragged };
+
+            const size = measuredSizes.get(node.id);
+            const hw = (size?.w ?? DEFAULT_NODE_W) / 2;
+            const hh = (size?.h ?? DEFAULT_NODE_H) / 2;
+            return { ...node, position: { x: p.x - hw, y: p.y - hh } };
         });
 
         if (bundleEdges) {
@@ -699,7 +725,7 @@ function GraphViewInner() {
         }
 
         return { layoutNodes, layoutEdges: rawEdges, groupToChunkIds };
-    }, [filteredGraph, layoutPositions, draggedPositions, isDark, TYPE_COLORS, collapsedParents, bundleEdges, tagGroups, data, edgeAnimated]);
+    }, [filteredGraph, layoutPositions, draggedPositions, isDark, TYPE_COLORS, collapsedParents, bundleEdges, tagGroups, data, edgeAnimated, measuredSizesVersion, showUngrouped]);
 
     const focusNeighbors = useMemo(() => {
         if (!focusedNodeId) return null;
@@ -751,6 +777,20 @@ function GraphViewInner() {
     const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
     const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
 
+    // Keep measured sizes ref in sync for group bounding box calculation
+    useEffect(() => {
+        const sizes = new Map<string, { w: number; h: number }>();
+        for (const n of nodes) {
+            if (n.measured?.width && n.measured?.height) {
+                sizes.set(n.id, { w: n.measured.width, h: n.measured.height });
+            }
+        }
+        if (sizes.size > 0 && sizes.size !== measuredNodeSizesRef.current.size) {
+            measuredNodeSizesRef.current = sizes;
+            setMeasuredSizesVersion(v => v + 1);
+        }
+    }, [nodes]);
+
     /** Preserve React DOM identity so CSS transform transitions work. */
     function mergeNodes(newNodes: Node[]) {
         setNodes(prev => {
@@ -772,7 +812,7 @@ function GraphViewInner() {
     }, []);
 
     const onInit = useCallback(() => {
-        initialFitDoneRef.current = true;
+        // no-op: let fitView run after layout positions arrive
     }, []);
 
     const chunkMap = useMemo(() => {
@@ -796,7 +836,7 @@ function GraphViewInner() {
                 style: {
                     ...(node.style as Record<string, unknown>),
                     opacity: pathResult.pathNodeIds.has(node.id) ? 1 : 0.1,
-                    boxShadow: pathResult.pathNodeIds.has(node.id) ? "0 0 16px 4px #f472b6" : "none",
+                    boxShadow: "none",
                     transition: "opacity 0.2s, box-shadow 0.2s"
                 }
             }));
@@ -845,7 +885,7 @@ function GraphViewInner() {
                     ...node,
                     style: {
                         ...(node.style as Record<string, unknown>),
-                        opacity: inGroup ? 1 : 0.4,
+                        opacity: inGroup ? 1 : 0.85,
                         transition: "opacity 0.2s"
                     }
                 };
@@ -974,7 +1014,7 @@ function GraphViewInner() {
     useEffect(() => {
         if (layoutPositions && !initialFitDoneRef.current) {
             initialFitDoneRef.current = true;
-            const timer = setTimeout(() => fitViewRef.current(), 100);
+            const timer = setTimeout(() => fitViewRef.current({ padding: 0.1 }), 200);
             return () => clearTimeout(timer);
         }
     }, [layoutPositions]);
@@ -1213,22 +1253,44 @@ function GraphViewInner() {
                                 groupDragStartRef.current = { groupId: node.id, startPos: { ...node.position } };
                             }
                         }}
-                        onNodeDragStop={(_, node) => {
+                        onNodeDrag={(_, node) => {
                             if (node.id.startsWith("tag-group-") && groupDragStartRef.current?.groupId === node.id) {
                                 const dx = node.position.x - groupDragStartRef.current.startPos.x;
                                 const dy = node.position.y - groupDragStartRef.current.startPos.y;
-                                groupDragStartRef.current = null;
-                                if (Math.abs(dx) < 1 && Math.abs(dy) < 1) return;
                                 const childIds = groupToChunkIds.get(node.id);
                                 if (!childIds) return;
+                                setNodes(prev => prev.map(n => {
+                                    if (!childIds.includes(n.id)) return n;
+                                    const dragged = draggedPositions.get(n.id);
+                                    const lp = layoutPositions?.[n.id];
+                                    if (!dragged && !lp) return n;
+                                    // dragged is top-left, layoutPositions is center — normalize to top-left
+                                    let baseX: number, baseY: number;
+                                    if (dragged) {
+                                        baseX = dragged.x;
+                                        baseY = dragged.y;
+                                    } else {
+                                        const size = measuredNodeSizesRef.current.get(n.id);
+                                        baseX = lp!.x - (size?.w ?? 180) / 2;
+                                        baseY = lp!.y - (size?.h ?? 36) / 2;
+                                    }
+                                    return { ...n, position: { x: baseX + dx, y: baseY + dy } };
+                                }));
+                            }
+                        }}
+                        onNodeDragStop={(_, node) => {
+                            if (node.id.startsWith("tag-group-") && groupDragStartRef.current?.groupId === node.id) {
+                                groupDragStartRef.current = null;
+                                const childIds = groupToChunkIds.get(node.id);
+                                if (!childIds) return;
+                                // Persist the current visual positions of children (already moved during onNodeDrag)
                                 setDraggedPositions(prev => {
                                     const next = new Map(prev);
                                     next.set(node.id, node.position);
                                     for (const cid of childIds) {
-                                        // Find current position of child from nodes state
                                         const childNode = nodes.find(n => n.id === cid);
                                         if (childNode) {
-                                            next.set(cid, { x: childNode.position.x + dx, y: childNode.position.y + dy });
+                                            next.set(cid, childNode.position);
                                         }
                                     }
                                     return next;
@@ -1341,6 +1403,8 @@ function GraphViewInner() {
                         onToggleTagType={toggleTagType}
                         edgeAnimated={edgeAnimated}
                         onToggleEdgeAnimated={() => setEdgeAnimated(v => !v)}
+                        showUngrouped={showUngrouped}
+                        onToggleUngrouped={() => setShowUngrouped(v => !v)}
                     />
                 </div>
 

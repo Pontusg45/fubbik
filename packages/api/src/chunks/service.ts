@@ -1,4 +1,5 @@
 import {
+    archiveChunk as archiveChunkRepo,
     createChunk as createChunkRepo,
     createVersion,
     deleteChunk as deleteChunkRepo,
@@ -13,7 +14,9 @@ import {
     getNextVersionNumber,
     getTagsForChunk,
     getVersionsByChunkId,
+    listArchivedChunks as listArchivedChunksRepo,
     listChunks as listChunksRepo,
+    restoreChunk as restoreChunkRepo,
     semanticSearch as semanticSearchRepo,
     setChunkCodebases,
     setChunkTags,
@@ -244,6 +247,22 @@ export function deleteChunk(chunkId: string, userId: string) {
 
 export function deleteMany(ids: string[], userId: string) {
     return deleteManyRepo(ids, userId);
+}
+
+export function archiveChunk(chunkId: string, userId: string) {
+    return archiveChunkRepo(chunkId, userId).pipe(
+        Effect.flatMap(archived => (archived ? Effect.succeed(archived) : Effect.fail(new NotFoundError({ resource: "Chunk" }))))
+    );
+}
+
+export function restoreChunk(chunkId: string, userId: string) {
+    return restoreChunkRepo(chunkId, userId).pipe(
+        Effect.flatMap(restored => (restored ? Effect.succeed(restored) : Effect.fail(new NotFoundError({ resource: "Chunk" }))))
+    );
+}
+
+export function listArchivedChunks(userId: string, codebaseId?: string) {
+    return listArchivedChunksRepo(userId, codebaseId);
 }
 
 export function semanticSearch(userId: string | undefined, query: { q: string; limit?: string; exclude?: string; scope?: string }) {
