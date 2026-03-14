@@ -175,6 +175,7 @@ export function updateChunk(
         ),
         Effect.flatMap(() => {
             const { tags: _tags, codebaseIds: _codebaseIds, ...repoBody } = body;
+            if (Object.keys(repoBody).length === 0) return Effect.void;
             return updateChunkRepo(chunkId, repoBody);
         }),
         Effect.tap(() => {
