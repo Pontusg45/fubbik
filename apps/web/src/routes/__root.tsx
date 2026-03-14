@@ -62,7 +62,7 @@ function RootDocument() {
             </head>
             <body>
                 <ThemeProvider>
-                    <div className={`grid min-h-svh ${isLanding ? "grid-rows-[1fr]" : "grid-rows-[auto_1fr]"}`}>
+                    <div className={isLanding ? "min-h-svh" : ""}>
                         {!isLanding && (
                             <header className="border-b">
                                 <div className="container mx-auto flex items-center justify-between px-4 py-3">
