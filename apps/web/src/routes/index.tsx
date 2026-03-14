@@ -295,9 +295,6 @@ function LandingPage() {
                         <CopyBtn text="pnpm dev" />
                     </div>
 
-                    <div className="mt-6">
-                        <ApiPulse />
-                    </div>
                 </section>
 
                 {/* Stats bar */}
