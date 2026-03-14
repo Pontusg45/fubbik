@@ -255,6 +255,7 @@ function LandingPage() {
                 <section className="container mx-auto max-w-3xl px-4 pt-20 pb-16 text-center">
                     <div className="mb-6 inline-flex items-center gap-3">
                         <FubbikLogo className="size-10 opacity-80" />
+                        <span className="text-foreground text-2xl font-bold tracking-tight">fubbik</span>
                         <Badge variant="outline" className="border-border/60 font-mono text-[10px] uppercase tracking-widest">
                             v0.1
                         </Badge>
