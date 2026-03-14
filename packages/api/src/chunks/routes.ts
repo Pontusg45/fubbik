@@ -3,6 +3,7 @@ import { Elysia, t } from "elysia";
 
 import { requireSession } from "../require-session";
 import * as chunkService from "./service";
+import { getConnectionSuggestions } from "./suggestions";
 
 export const chunkRoutes = new Elysia()
     .get(
@@ -67,6 +68,9 @@ export const chunkRoutes = new Elysia()
                 scope: t.Optional(t.String())
             })
         }
+    )
+    .get("/chunks/:id/suggestions", ctx =>
+        Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(session => getConnectionSuggestions(ctx.params.id, session.user.id))))
     )
     .get("/chunks/:id/history", ctx =>
         Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(session => chunkService.getChunkHistory(ctx.params.id, session.user.id))))

@@ -15,3 +15,4 @@ export * from "./template";
 export * from "./requirement";
 export * from "./vocabulary";
 export * from "./favorite";
+export * from "./suggestion";
