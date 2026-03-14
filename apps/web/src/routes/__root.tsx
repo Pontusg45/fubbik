@@ -155,7 +155,7 @@ function RootDocument() {
                             </header>
                         )}
                         {!isLanding && <Breadcrumbs />}
-                        <main>
+                        <main className="self-start">
                             <ErrorBoundary>
                                 <Outlet />
                             </ErrorBoundary>
