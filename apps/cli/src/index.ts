@@ -7,6 +7,7 @@ import { codebaseCommand } from "./commands/codebase";
 import { diffCommand } from "./commands/diff";
 import { enrichCommand } from "./commands/enrich";
 import { exportCommand } from "./commands/export";
+import { requirementsCommand } from "./commands/requirements";
 import { getCommand } from "./commands/get";
 import { healthCommand } from "./commands/health";
 import { importCommand } from "./commands/import";
@@ -50,5 +51,6 @@ program.addCommand(diffCommand);
 program.addCommand(syncCommand);
 program.addCommand(enrichCommand);
 program.addCommand(codebaseCommand);
+program.addCommand(requirementsCommand);
 
 program.parse();
