@@ -8,14 +8,46 @@ import {
     setRequirementChunks,
     getChunksForRequirement,
     getRequirementStats,
-    getChunkById
+    getChunkById,
+    listVocabulary
 } from "@fubbik/db/repository";
 import { Effect } from "effect";
 
 import { NotFoundError, StepValidationError } from "../errors";
+import { parseStepText, type VocabEntry, type VocabularyWarning } from "../vocabulary/parser";
 import { validateSteps } from "./validator";
 import { crossReferenceSteps, type CrossRefWarning } from "./cross-ref";
 import { toGherkin, toVitest, toMarkdown } from "./export";
+
+interface StepVocabularyWarning extends VocabularyWarning {
+    step: number;
+}
+
+function getVocabularyWarnings(
+    steps: Array<{ text: string }>,
+    codebaseId: string | undefined | null
+): Effect.Effect<StepVocabularyWarning[], never> {
+    if (!codebaseId) return Effect.succeed([]);
+
+    return listVocabulary(codebaseId).pipe(
+        Effect.map(vocab => {
+            const vocabEntries: VocabEntry[] = vocab.map(v => ({
+                word: v.word,
+                category: v.category,
+                expects: v.expects
+            }));
+            const allWarnings: StepVocabularyWarning[] = [];
+            for (let i = 0; i < steps.length; i++) {
+                const result = parseStepText(steps[i].text, vocabEntries);
+                for (const w of result.warnings) {
+                    allWarnings.push({ ...w, step: i });
+                }
+            }
+            return allWarnings;
+        }),
+        Effect.catchAll(() => Effect.succeed([] as StepVocabularyWarning[]))
+    );
+}
 
 export function listRequirements(
     userId: string,
@@ -81,7 +113,8 @@ export function createRequirement(
             userId
         });
         const warnings = yield* crossReferenceSteps(body.steps, userId);
-        return { requirement, warnings };
+        const vocabularyWarnings = yield* getVocabularyWarnings(body.steps, body.codebaseId);
+        return { requirement, warnings, vocabularyWarnings };
     });
 }
 
@@ -114,7 +147,12 @@ export function updateRequirement(
             ? yield* crossReferenceSteps(body.steps, userId)
             : ([] as CrossRefWarning[]);
 
-        return { requirement, warnings };
+        const codebaseId = body.codebaseId !== undefined ? body.codebaseId : existing.codebaseId;
+        const vocabularyWarnings = body.steps
+            ? yield* getVocabularyWarnings(body.steps, codebaseId)
+            : ([] as StepVocabularyWarning[]);
+
+        return { requirement, warnings, vocabularyWarnings };
     });
 }
 
