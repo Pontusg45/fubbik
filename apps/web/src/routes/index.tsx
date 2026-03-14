@@ -1,232 +1,354 @@
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
-import { Blocks, Bot, ChevronRight, Copy, Check, HardDrive, History, Network, Tags, Terminal, MousePointer2 } from "lucide-react";
-import { useState } from "react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { ArrowRight, Check, Copy, GitBranch, Layers, Map, Network, Scan, Sparkles, Terminal } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import FubbikLogo from "@/components/fubbik-logo";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardDescription, CardHeader, CardPanel, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTab } from "@/components/ui/tabs";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { api } from "@/utils/api";
 
 export const Route = createFileRoute("/")({
-    component: HomeComponent
+    component: LandingPage
 });
 
-const features = [
-    {
-        icon: Blocks,
-        title: "Chunk-Based Storage",
-        description:
-            "Self-contained units of information that reference each other, tagged and typed. No rigid schemas — just content with shape."
-    },
-    {
-        icon: Bot,
-        title: "AI & Human Friendly",
-        description: "A CLI optimized for programmatic and AI-agent access. A GUI built for human exploration. Both first-class."
-    },
-    {
-        icon: HardDrive,
-        title: "Local First",
-        description: "Your data lives on your machine. No accounts, no cloud sync required. Fully offline, portable, and yours."
-    },
-    {
-        icon: History,
-        title: "Transaction Logs",
-        description: "Every change is recorded in an append-only log. Audit history, replay changes, or roll back to any previous state."
-    },
-    {
-        icon: Tags,
-        title: "Dynamic Metadata",
-        description: "Add, remove, or reshape metadata fields at any time without migrations. Your data model evolves with your needs."
-    },
-    {
-        icon: Network,
-        title: "Knowledge Graphs",
-        description: "Relationships between chunks form a graph you can see. Explore connections and navigate your knowledge spatially."
-    }
-] as const;
+/* ─── Animated constellation background ─── */
 
-function CopyButton({ text }: { text: string }) {
-    const [copied, setCopied] = useState(false);
+interface Star {
+    x: number;
+    y: number;
+    vx: number;
+    vy: number;
+    r: number;
+    pulse: number;
+    pulseSpeed: number;
+}
 
-    return (
-        <Tooltip>
-            <TooltipTrigger
-                render={
-                    <Button
-                        variant="ghost"
-                        size="icon-xs"
-                        onClick={() => {
-                            navigator.clipboard.writeText(text);
-                            setCopied(true);
-                            setTimeout(() => setCopied(false), 2000);
-                        }}
-                    />
+function ConstellationCanvas() {
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const starsRef = useRef<Star[]>([]);
+    const mouseRef = useRef({ x: -1000, y: -1000 });
+    const frameRef = useRef(0);
+
+    const init = useCallback((canvas: HTMLCanvasElement) => {
+        const count = Math.floor((canvas.width * canvas.height) / 18000);
+        starsRef.current = Array.from({ length: count }, () => ({
+            x: Math.random() * canvas.width,
+            y: Math.random() * canvas.height,
+            vx: (Math.random() - 0.5) * 0.3,
+            vy: (Math.random() - 0.5) * 0.3,
+            r: Math.random() * 1.5 + 0.5,
+            pulse: Math.random() * Math.PI * 2,
+            pulseSpeed: Math.random() * 0.02 + 0.005
+        }));
+    }, []);
+
+    useEffect(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
+
+        const resize = () => {
+            canvas.width = canvas.offsetWidth * window.devicePixelRatio;
+            canvas.height = canvas.offsetHeight * window.devicePixelRatio;
+            ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+            init(canvas);
+        };
+        resize();
+        window.addEventListener("resize", resize);
+
+        const onMouse = (e: MouseEvent) => {
+            const rect = canvas.getBoundingClientRect();
+            mouseRef.current = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+        };
+        canvas.addEventListener("mousemove", onMouse);
+
+        let running = true;
+        const draw = () => {
+            if (!running) return;
+            const w = canvas.offsetWidth;
+            const h = canvas.offsetHeight;
+            ctx.clearRect(0, 0, w, h);
+
+            const stars = starsRef.current;
+            const mouse = mouseRef.current;
+
+            for (const s of stars) {
+                s.x += s.vx;
+                s.y += s.vy;
+                s.pulse += s.pulseSpeed;
+                if (s.x < 0) s.x = w;
+                if (s.x > w) s.x = 0;
+                if (s.y < 0) s.y = h;
+                if (s.y > h) s.y = 0;
+            }
+
+            // Draw connections
+            const connectionDist = 120;
+            for (let i = 0; i < stars.length; i++) {
+                for (let j = i + 1; j < stars.length; j++) {
+                    const dx = stars[i]!.x - stars[j]!.x;
+                    const dy = stars[i]!.y - stars[j]!.y;
+                    const d = Math.sqrt(dx * dx + dy * dy);
+                    if (d < connectionDist) {
+                        const alpha = (1 - d / connectionDist) * 0.15;
+                        ctx.strokeStyle = `rgba(160, 180, 200, ${alpha})`;
+                        ctx.lineWidth = 0.5;
+                        ctx.beginPath();
+                        ctx.moveTo(stars[i]!.x, stars[i]!.y);
+                        ctx.lineTo(stars[j]!.x, stars[j]!.y);
+                        ctx.stroke();
+                    }
                 }
-            >
-                {copied ? <Check className="size-3 text-green-500" /> : <Copy className="size-3" />}
-            </TooltipTrigger>
-            <TooltipContent>{copied ? "Copied!" : "Copy"}</TooltipContent>
-        </Tooltip>
-    );
+            }
+
+            // Draw stars
+            for (const s of stars) {
+                const dist = Math.sqrt((s.x - mouse.x) ** 2 + (s.y - mouse.y) ** 2);
+                const glow = dist < 150 ? (1 - dist / 150) * 0.6 : 0;
+                const pulseAlpha = 0.3 + Math.sin(s.pulse) * 0.15;
+                const alpha = pulseAlpha + glow;
+                ctx.fillStyle = `rgba(180, 200, 220, ${alpha})`;
+                ctx.beginPath();
+                ctx.arc(s.x, s.y, s.r + glow * 2, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Mouse glow
+            if (mouse.x > 0) {
+                const gradient = ctx.createRadialGradient(mouse.x, mouse.y, 0, mouse.x, mouse.y, 180);
+                gradient.addColorStop(0, "rgba(140, 180, 255, 0.04)");
+                gradient.addColorStop(1, "rgba(140, 180, 255, 0)");
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, w, h);
+            }
+
+            frameRef.current = requestAnimationFrame(draw);
+        };
+        draw();
+
+        return () => {
+            running = false;
+            cancelAnimationFrame(frameRef.current);
+            window.removeEventListener("resize", resize);
+            canvas.removeEventListener("mousemove", onMouse);
+        };
+    }, [init]);
+
+    return <canvas ref={canvasRef} className="pointer-events-auto absolute inset-0 size-full" />;
 }
 
-function InstallBlock() {
-    return (
-        <div className="mt-8">
-            <Tabs defaultValue="bun">
-                <TabsList>
-                    <TabsTab value="bun">bun</TabsTab>
-                    <TabsTab value="cli">CLI</TabsTab>
-                    <TabsTab value="docker">Docker</TabsTab>
-                </TabsList>
-                <TabsContent value="bun">
-                    <CodeBlock code="bun install && bun dev" />
-                </TabsContent>
-                <TabsContent value="cli">
-                    <CodeBlock code="fubbik init my-knowledge-base" />
-                </TabsContent>
-                <TabsContent value="docker">
-                    <CodeBlock code="docker compose up" />
-                </TabsContent>
-            </Tabs>
-        </div>
-    );
-}
+/* ─── Copy button ─── */
 
-function CodeBlock({ code }: { code: string }) {
+function CopyBtn({ text }: { text: string }) {
+    const [ok, setOk] = useState(false);
     return (
-        <div className="bg-muted/50 mt-2 flex items-center justify-between gap-4 rounded-lg border px-4 py-3 font-mono text-sm">
-            <div className="flex items-center gap-2 overflow-x-auto">
-                <Terminal className="text-muted-foreground size-3.5 shrink-0" />
-                <code>{code}</code>
-            </div>
-            <CopyButton text={code} />
-        </div>
-    );
-}
-
-function FeatureCard({ feature, index }: { feature: (typeof features)[number]; index: number }) {
-    const [hovered, setHovered] = useState(false);
-
-    return (
-        <Card
-            className={`transition-all duration-200 ${hovered ? "border-foreground/20 -translate-y-0.5 shadow-md" : ""}`}
-            onMouseEnter={() => setHovered(true)}
-            onMouseLeave={() => setHovered(false)}
+        <button
+            onClick={() => {
+                navigator.clipboard.writeText(text);
+                setOk(true);
+                setTimeout(() => setOk(false), 1500);
+            }}
+            className="text-muted-foreground hover:text-foreground shrink-0 transition-colors"
         >
-            <CardHeader>
-                <div className="mb-1 flex items-center gap-2">
-                    <feature.icon
-                        className={`size-4 transition-colors duration-200 ${hovered ? "text-foreground" : "text-muted-foreground"}`}
-                    />
-                    <Badge variant="secondary" size="sm" className="font-mono">
-                        {String(index + 1).padStart(2, "0")}
-                    </Badge>
-                </div>
-                <CardTitle className="font-mono text-base">{feature.title}</CardTitle>
-                <CardDescription>{feature.description}</CardDescription>
-            </CardHeader>
-            <CardPanel className="pt-0">
-                <div className={`flex items-center gap-1 text-xs transition-opacity duration-200 ${hovered ? "opacity-100" : "opacity-0"}`}>
-                    <span className="text-muted-foreground">Learn more</span>
-                    <ChevronRight className="text-muted-foreground size-3" />
-                </div>
-            </CardPanel>
-        </Card>
+            {ok ? <Check className="size-3.5 text-emerald-400" /> : <Copy className="size-3.5" />}
+        </button>
     );
 }
 
-function ApiStatus() {
-    const healthCheck = useQuery({
+/* ─── API pulse ─── */
+
+function ApiPulse() {
+    const { data, isLoading } = useQuery({
         queryKey: ["health"],
         queryFn: async () => {
             const { data } = await api.api.health.get();
             return data;
         }
     });
-
+    const color = data ? "bg-emerald-400" : isLoading ? "bg-amber-400" : "bg-red-400";
+    const label = data ? "Online" : isLoading ? "Checking..." : "Offline";
     return (
-        <Tooltip>
-            <TooltipTrigger
-                render={
-                    <button className="hover:bg-muted/50 inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 font-mono text-xs transition-colors" />
-                }
-            >
-                <span className="relative flex size-2">
-                    <span
-                        className={`absolute inline-flex size-full animate-ping rounded-full opacity-75 ${healthCheck.data ? "bg-green-400" : healthCheck.isLoading ? "bg-yellow-400" : "bg-red-400"}`}
-                    />
-                    <span
-                        className={`relative inline-flex size-2 rounded-full ${healthCheck.data ? "bg-green-500" : healthCheck.isLoading ? "bg-yellow-500" : "bg-red-500"}`}
-                    />
-                </span>
-                <span className="text-muted-foreground">API</span>
-            </TooltipTrigger>
-            <TooltipContent>
-                {healthCheck.isLoading ? "Checking connection..." : healthCheck.data ? "API is connected" : "API is disconnected"}
-            </TooltipContent>
-        </Tooltip>
+        <div className="flex items-center gap-2 font-mono text-[11px] tracking-wide opacity-60">
+            <span className="relative flex size-1.5">
+                <span className={`absolute inline-flex size-full animate-ping rounded-full opacity-75 ${color}`} />
+                <span className={`relative inline-flex size-1.5 rounded-full ${color}`} />
+            </span>
+            {label}
+        </div>
     );
 }
 
-function HomeComponent() {
+/* ─── Feature pill ─── */
+
+const features = [
+    { icon: Layers, title: "Chunk-Based", desc: "Self-contained knowledge units with metadata, history, and typed relationships" },
+    { icon: Network, title: "Knowledge Graphs", desc: "Visualize connections between chunks as an interactive force-directed graph" },
+    { icon: GitBranch, title: "Multi-Codebase", desc: "Organize knowledge per-project with auto-detection from git remotes" },
+    { icon: Sparkles, title: "AI-Native", desc: "MCP server, vocabulary parser, requirement generation, and semantic search" },
+    { icon: Scan, title: "Requirements", desc: "Given/When/Then specs with controlled vocabulary and multi-format export" },
+    { icon: Map, title: "Health Dashboard", desc: "Detect orphans, stale content, and thin chunks across your knowledge base" }
+];
+
+function FeatureRow({ icon: Icon, title, desc, index }: { icon: typeof Layers; title: string; desc: string; index: number }) {
     return (
-        <TooltipProvider>
-            <div className="container mx-auto max-w-4xl px-4 py-16">
-                <div className="mb-16 flex items-center justify-between gap-12">
-                    <div className="flex flex-col items-start gap-6">
-                        <div className="flex items-center gap-3">
-                            <Badge variant="outline" className="font-mono text-xs">
-                                Proof of Concept
-                            </Badge>
-                            <ApiStatus />
-                        </div>
+        <div
+            className="group border-border/50 hover:border-border hover:bg-muted/30 flex items-start gap-4 border-b py-5 transition-all duration-300 last:border-0"
+            style={{ animationDelay: `${index * 80}ms` }}
+        >
+            <div className="bg-muted/50 group-hover:bg-muted mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg transition-colors">
+                <Icon className="text-muted-foreground group-hover:text-foreground size-4 transition-colors" />
+            </div>
+            <div className="min-w-0">
+                <div className="text-foreground mb-0.5 text-sm font-semibold tracking-tight">{title}</div>
+                <div className="text-muted-foreground text-[13px] leading-relaxed">{desc}</div>
+            </div>
+            <ArrowRight className="text-muted-foreground/0 group-hover:text-muted-foreground mt-1 ml-auto size-4 shrink-0 transition-all duration-300 group-hover:translate-x-0.5" />
+        </div>
+    );
+}
 
-                        <h1 className="text-4xl font-bold tracking-tight">fubbik</h1>
-                        <p className="text-muted-foreground max-w-lg text-sm leading-relaxed">
-                            A local-first knowledge framework for humans and machines. Store, navigate, and evolve structured knowledge as
-                            discrete chunks — each with its own metadata, history, and relationships.
-                        </p>
+/* ─── Stats ─── */
 
-                        <div className="flex gap-2">
-                            <Button size="lg" render={<a href="/dashboard" />}>
-                                Get Started
-                                <ChevronRight className="size-4" />
-                            </Button>
-                            <Button
-                                variant="outline"
-                                size="lg"
-                                render={<a href="https://github.com/pontusg45/fubbik" target="_blank" rel="noopener noreferrer" />}
-                            >
-                                GitHub
-                            </Button>
-                        </div>
+function LiveStats() {
+    const { data } = useQuery({
+        queryKey: ["landing-stats"],
+        queryFn: async () => {
+            const { data } = await api.api.stats.get();
+            return data;
+        }
+    });
+    if (!data) return null;
+    const items = [
+        { label: "Chunks", value: data.chunks },
+        { label: "Connections", value: data.connections },
+        { label: "Tags", value: data.tags }
+    ];
+    return (
+        <div className="flex gap-6">
+            {items.map(s => (
+                <div key={s.label} className="text-center">
+                    <div className="text-foreground text-2xl font-bold tabular-nums tracking-tight">{s.value}</div>
+                    <div className="text-muted-foreground text-[10px] font-medium uppercase tracking-widest">{s.label}</div>
+                </div>
+            ))}
+        </div>
+    );
+}
 
-                        <InstallBlock />
+/* ─── Main ─── */
+
+function LandingPage() {
+    return (
+        <div className="relative min-h-[calc(100vh-4rem)] overflow-hidden">
+            {/* Background */}
+            <div className="pointer-events-none absolute inset-0">
+                <ConstellationCanvas />
+                <div className="from-background via-background/80 absolute inset-0 bg-gradient-to-b to-transparent" />
+                <div className="from-background absolute right-0 bottom-0 left-0 h-64 bg-gradient-to-t" />
+            </div>
+
+            <div className="relative z-10">
+                {/* Hero */}
+                <section className="container mx-auto max-w-3xl px-4 pt-20 pb-16 text-center">
+                    <div className="mb-6 inline-flex items-center gap-3">
+                        <FubbikLogo className="size-10 opacity-80" />
+                        <Badge variant="outline" className="border-border/60 font-mono text-[10px] uppercase tracking-widest">
+                            v0.1
+                        </Badge>
                     </div>
 
-                    <FubbikLogo className="hidden size-48 shrink-0 sm:block" />
-                </div>
+                    <h1 className="text-foreground mb-4 text-5xl leading-[1.1] font-bold tracking-tight sm:text-6xl">
+                        Map your
+                        <br />
+                        <span className="bg-gradient-to-r from-blue-400 via-cyan-300 to-emerald-400 bg-clip-text text-transparent">
+                            knowledge terrain
+                        </span>
+                    </h1>
 
-                <div className="mb-4 flex items-center gap-2">
-                    <MousePointer2 className="text-muted-foreground size-3.5" />
-                    <span className="text-muted-foreground text-xs">Hover to explore features</span>
-                </div>
+                    <p className="text-muted-foreground mx-auto mb-8 max-w-lg text-base leading-relaxed">
+                        A local-first knowledge framework for humans and machines. Store, navigate, and evolve structured knowledge as
+                        interconnected chunks — each with its own metadata, history, and relationships.
+                    </p>
 
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    {features.map((feature, i) => (
-                        <FeatureCard key={feature.title} feature={feature} index={i} />
-                    ))}
-                </div>
+                    <div className="mb-8 flex items-center justify-center gap-3">
+                        <Button size="lg" render={<Link to="/dashboard" />}>
+                            Open Dashboard
+                            <ArrowRight className="size-4" />
+                        </Button>
+                        <Button variant="outline" size="lg" render={<Link to="/graph" />}>
+                            <Network className="size-4" />
+                            Explore Graph
+                        </Button>
+                    </div>
 
-                <div className="text-muted-foreground mt-16 border-t pt-4 font-mono text-xs">
-                    Built with TanStack Start · Elysia · Eden · Drizzle · Better Auth
-                </div>
+                    {/* Install snippet */}
+                    <div className="bg-muted/40 mx-auto flex max-w-sm items-center gap-3 rounded-lg border px-4 py-2.5 backdrop-blur-sm">
+                        <Terminal className="text-muted-foreground size-4 shrink-0" />
+                        <code className="text-muted-foreground flex-1 text-left font-mono text-sm">pnpm dev</code>
+                        <CopyBtn text="pnpm dev" />
+                    </div>
+
+                    <div className="mt-6">
+                        <ApiPulse />
+                    </div>
+                </section>
+
+                {/* Stats bar */}
+                <section className="border-border/40 container mx-auto flex max-w-3xl items-center justify-center border-y px-4 py-8">
+                    <LiveStats />
+                </section>
+
+                {/* Features */}
+                <section className="container mx-auto max-w-2xl px-4 py-16">
+                    <div className="mb-8 text-center">
+                        <h2 className="text-foreground mb-2 text-2xl font-bold tracking-tight">Built for knowledge work</h2>
+                        <p className="text-muted-foreground text-sm">Everything you need to capture, connect, and evolve what you know.</p>
+                    </div>
+
+                    <div className="border-border/50 rounded-xl border">
+                        {features.map((f, i) => (
+                            <FeatureRow key={f.title} {...f} index={i} />
+                        ))}
+                    </div>
+                </section>
+
+                {/* Capabilities grid */}
+                <section className="container mx-auto max-w-3xl px-4 pb-16">
+                    <div className="grid gap-3 sm:grid-cols-3">
+                        {[
+                            { label: "VS Code Extension", detail: "Browse and create chunks from your editor" },
+                            { label: "MCP Server", detail: "AI agents query your knowledge base directly" },
+                            { label: "CLI", detail: "fubbik context | fubbik generate claude.md" }
+                        ].map(cap => (
+                            <div
+                                key={cap.label}
+                                className="bg-muted/20 hover:bg-muted/40 rounded-lg border p-4 transition-colors"
+                            >
+                                <div className="text-foreground mb-1 text-sm font-semibold">{cap.label}</div>
+                                <div className="text-muted-foreground text-xs leading-relaxed">{cap.detail}</div>
+                            </div>
+                        ))}
+                    </div>
+                </section>
+
+                {/* Footer */}
+                <footer className="border-border/40 border-t">
+                    <div className="container mx-auto flex max-w-3xl items-center justify-between px-4 py-6">
+                        <div className="text-muted-foreground flex items-center gap-2 text-xs">
+                            <FubbikLogo className="size-3.5 opacity-50" />
+                            <span className="opacity-50">fubbik</span>
+                        </div>
+                        <div className="text-muted-foreground flex gap-4 font-mono text-[10px] uppercase tracking-widest">
+                            <span>TanStack</span>
+                            <span>Elysia</span>
+                            <span>Drizzle</span>
+                            <span>Effect</span>
+                        </div>
+                    </div>
+                </footer>
             </div>
-        </TooltipProvider>
+        </div>
     );
 }
