@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
+    Archive,
     Bookmark,
     Bot,
     ChevronRight,
@@ -14,6 +15,7 @@ import {
     Plus,
     Search,
     SlidersHorizontal,
+    Tags,
     Trash2,
     X
 } from "lucide-react";
@@ -128,7 +130,9 @@ function ChunksList() {
 
     const chunks = chunksQuery.data?.chunks ?? [];
     const { pinnedIds, togglePin, isPinned } = usePinnedChunks();
-    const { collections, createCollection, addToCollection } = useCollections();
+    const { collections, createCollection, deleteCollection: deleteCol } = useCollections();
+    const [showSaveCollection, setShowSaveCollection] = useState(false);
+    const [newCollectionName, setNewCollectionName] = useState("");
 
     const processedChunks = useMemo(() => {
         const source = chunksQuery.data?.chunks ?? [];
@@ -142,13 +146,7 @@ function ChunksList() {
         // eslint-disable-next-line react-hooks/exhaustive-deps -- chunksQuery.data is stable per fetch
     }, [chunksQuery.data, size, pinnedIds]);
 
-    const collectionFilteredChunks = useMemo(() => {
-        if (!collection) return processedChunks;
-        const col = collections.find(c => c.id === collection);
-        if (!col) return processedChunks;
-        const idSet = new Set(col.chunkIds);
-        return processedChunks.filter(c => idSet.has(c.id));
-    }, [processedChunks, collection, collections]);
+    const collectionFilteredChunks = processedChunks;
 
     const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
     function toggleCollapsed(key: string) {
@@ -322,9 +320,42 @@ function ChunksList() {
         }
     });
 
+    const bulkUpdateMutation = useMutation({
+        mutationFn: async (body: { ids: string[]; action: string; value?: string | null }) => {
+            const { error } = await (api.api.chunks as any)["bulk-update"].post(body);
+            if (error) throw new Error("Bulk update failed");
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["chunks-list"] });
+            queryClient.invalidateQueries({ queryKey: ["stats"] });
+            queryClient.invalidateQueries({ queryKey: ["tags"] });
+            setSelectedIds(new Set());
+        }
+    });
+
+    const [showBulkTagInput, setShowBulkTagInput] = useState(false);
+    const [bulkTagInput, setBulkTagInput] = useState("");
+    const [bulkTagAction, setBulkTagAction] = useState<"add_tags" | "remove_tags">("add_tags");
+
     function handleBulkDelete() {
-        if (!confirm(`Delete ${selectedIds.size} chunks?`)) return;
-        bulkDeleteMutation.mutate([...selectedIds]);
+        if (!confirm(`Delete ${selectedIds.size} chunks permanently?`)) return;
+        bulkUpdateMutation.mutate({ ids: [...selectedIds], action: "delete" });
+    }
+
+    function handleBulkArchive() {
+        if (!confirm(`Archive ${selectedIds.size} chunks?`)) return;
+        bulkUpdateMutation.mutate({ ids: [...selectedIds], action: "archive" });
+    }
+
+    function handleBulkTagSubmit() {
+        if (!bulkTagInput.trim()) return;
+        bulkUpdateMutation.mutate({
+            ids: [...selectedIds],
+            action: bulkTagAction,
+            value: bulkTagInput.trim()
+        });
+        setBulkTagInput("");
+        setShowBulkTagInput(false);
     }
 
     return (
@@ -348,10 +379,16 @@ function ChunksList() {
                         </p>
                     </div>
                 </div>
-                <Button render={<Link to="/chunks/new" />}>
-                    <Plus className="size-4" />
-                    New Chunk
-                </Button>
+                <div className="flex items-center gap-2">
+                    <Link to="/chunks/archived" className="text-muted-foreground flex items-center gap-1 text-xs hover:underline">
+                        <Archive className="size-3.5" />
+                        View archived
+                    </Link>
+                    <Button render={<Link to="/chunks/new" />}>
+                        <Plus className="size-4" />
+                        New Chunk
+                    </Button>
+                </div>
             </div>
 
             {/* Search bar + controls */}
@@ -621,11 +658,80 @@ function ChunksList() {
                                             <Bookmark className="size-3.5" />
                                             Save preset
                                         </Button>
-                                        <Button variant="ghost" size="sm" className="flex-1" onClick={clearAllFilters}>
-                                            <X className="size-3.5" />
-                                            Clear all
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="flex-1"
+                                            onClick={() => {
+                                                setShowSaveCollection(true);
+                                            }}
+                                        >
+                                            <FolderPlus className="size-3.5" />
+                                            Save collection
                                         </Button>
                                     </div>
+                                    {showSaveCollection && (
+                                        <div className="flex gap-1.5">
+                                            <input
+                                                type="text"
+                                                value={newCollectionName}
+                                                onChange={e => setNewCollectionName(e.target.value)}
+                                                onKeyDown={e => {
+                                                    if (e.key === "Enter" && newCollectionName.trim()) {
+                                                        createCollection(
+                                                            newCollectionName.trim(),
+                                                            {
+                                                                type,
+                                                                search: q,
+                                                                sort,
+                                                                tags,
+                                                                after,
+                                                                enrichment,
+                                                                minConnections,
+                                                                origin,
+                                                                reviewStatus
+                                                            },
+                                                            codebaseId ?? undefined
+                                                        );
+                                                        setNewCollectionName("");
+                                                        setShowSaveCollection(false);
+                                                    }
+                                                }}
+                                                placeholder="Collection name..."
+                                                className="bg-background flex-1 rounded-md border px-2 py-1 text-sm"
+                                                autoFocus
+                                            />
+                                            <Button
+                                                size="sm"
+                                                disabled={!newCollectionName.trim()}
+                                                onClick={() => {
+                                                    createCollection(
+                                                        newCollectionName.trim(),
+                                                        {
+                                                            type,
+                                                            search: q,
+                                                            sort,
+                                                            tags,
+                                                            after,
+                                                            enrichment,
+                                                            minConnections,
+                                                            origin,
+                                                            reviewStatus
+                                                        },
+                                                        codebaseId ?? undefined
+                                                    );
+                                                    setNewCollectionName("");
+                                                    setShowSaveCollection(false);
+                                                }}
+                                            >
+                                                Save
+                                            </Button>
+                                        </div>
+                                    )}
+                                    <Button variant="ghost" size="sm" className="w-full" onClick={clearAllFilters}>
+                                        <X className="size-3.5" />
+                                        Clear all
+                                    </Button>
                                 </>
                             )}
                         </div>
@@ -643,28 +749,54 @@ function ChunksList() {
                     <option value="tag">Group by tag</option>
                 </select>
 
-                <select
-                    value={collection ?? ""}
-                    onChange={e => updateSearch({ collection: e.target.value || undefined })}
-                    className="bg-background rounded-md border px-2 py-2 text-sm"
-                >
-                    <option value="">All chunks</option>
-                    {collections.map(c => (
-                        <option key={c.id} value={c.id}>
-                            {c.name} ({c.chunkIds.length})
-                        </option>
-                    ))}
-                </select>
-                <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                        const name = prompt("Collection name:");
-                        if (name) createCollection(name);
-                    }}
-                >
-                    <FolderPlus className="size-3.5" />
-                </Button>
+                {collections.length > 0 && (
+                    <Popover>
+                        <PopoverTrigger className="hover:bg-muted inline-flex items-center gap-1.5 rounded-md border px-3 py-2 text-sm font-medium transition-colors">
+                            <FolderPlus className="size-3.5" />
+                            Collections
+                        </PopoverTrigger>
+                        <PopoverContent side="bottom" align="end" className="w-56">
+                            <div className="space-y-1">
+                                {collections.map(c => (
+                                    <div key={c.id} className="flex items-center justify-between gap-1 rounded px-2 py-1.5 text-sm">
+                                        <button
+                                            className="hover:text-foreground text-muted-foreground flex-1 truncate text-left"
+                                            onClick={() => {
+                                                const f = c.filter as Record<string, string | undefined>;
+                                                navigate({
+                                                    search: {
+                                                        type: f.type,
+                                                        q: f.search,
+                                                        sort: f.sort,
+                                                        tags: f.tags,
+                                                        after: f.after,
+                                                        enrichment: f.enrichment,
+                                                        minConnections: f.minConnections,
+                                                        origin: f.origin,
+                                                        reviewStatus: f.reviewStatus,
+                                                        page: 1,
+                                                        size: undefined,
+                                                        group,
+                                                        collection: undefined,
+                                                        view
+                                                    } as any
+                                                });
+                                            }}
+                                        >
+                                            {c.name}
+                                        </button>
+                                        <button
+                                            onClick={() => deleteCol(c.id)}
+                                            className="text-muted-foreground hover:text-destructive shrink-0"
+                                        >
+                                            <X className="size-3" />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        </PopoverContent>
+                    </Popover>
+                )}
 
                 <div className="flex rounded-md border">
                     <button onClick={() => updateSearch({ view: undefined })} className={`px-2 py-1.5 text-xs ${!view ? "bg-muted" : ""}`}>
@@ -985,31 +1117,98 @@ function ChunksList() {
             {selectedIds.size > 0 && (
                 <div className="bg-background fixed bottom-6 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-lg border px-4 py-2.5 shadow-lg">
                     <span className="text-sm font-medium">{selectedIds.size} selected</span>
-                    <Button variant="destructive" size="sm" onClick={handleBulkDelete} disabled={bulkDeleteMutation.isPending}>
+                    <Separator orientation="vertical" className="h-5" />
+                    {showBulkTagInput ? (
+                        <div className="flex items-center gap-1.5">
+                            <input
+                                type="text"
+                                value={bulkTagInput}
+                                onChange={e => setBulkTagInput(e.target.value)}
+                                onKeyDown={e => e.key === "Enter" && handleBulkTagSubmit()}
+                                placeholder="tag1, tag2, ..."
+                                className="bg-background w-36 rounded border px-2 py-1 text-xs"
+                                autoFocus
+                            />
+                            <Button size="sm" variant="outline" onClick={handleBulkTagSubmit} disabled={bulkUpdateMutation.isPending}>
+                                {bulkTagAction === "add_tags" ? "Add" : "Remove"}
+                            </Button>
+                            <Button size="sm" variant="ghost" onClick={() => setShowBulkTagInput(false)}>
+                                <X className="size-3" />
+                            </Button>
+                        </div>
+                    ) : (
+                        <>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                    setBulkTagAction("add_tags");
+                                    setShowBulkTagInput(true);
+                                }}
+                            >
+                                <Tags className="size-3.5" />
+                                Add Tags
+                            </Button>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                    setBulkTagAction("remove_tags");
+                                    setShowBulkTagInput(true);
+                                }}
+                            >
+                                <Tags className="size-3.5" />
+                                Remove Tags
+                            </Button>
+                        </>
+                    )}
+                    <select
+                        onChange={e => {
+                            if (e.target.value) {
+                                bulkUpdateMutation.mutate({ ids: [...selectedIds], action: "set_type", value: e.target.value });
+                            }
+                        }}
+                        className="bg-background rounded-md border px-2 py-1 text-xs"
+                        defaultValue=""
+                    >
+                        <option value="" disabled>
+                            Set Type...
+                        </option>
+                        {["note", "decision", "pattern", "convention", "rule", "reference"].map(t => (
+                            <option key={t} value={t}>
+                                {t}
+                            </option>
+                        ))}
+                    </select>
+                    <select
+                        onChange={e => {
+                            if (e.target.value) {
+                                bulkUpdateMutation.mutate({
+                                    ids: [...selectedIds],
+                                    action: "set_review_status",
+                                    value: e.target.value
+                                });
+                            }
+                        }}
+                        className="bg-background rounded-md border px-2 py-1 text-xs"
+                        defaultValue=""
+                    >
+                        <option value="" disabled>
+                            Set Status...
+                        </option>
+                        <option value="draft">Draft</option>
+                        <option value="reviewed">Reviewed</option>
+                        <option value="approved">Approved</option>
+                    </select>
+                    <Separator orientation="vertical" className="h-5" />
+                    <Button variant="outline" size="sm" onClick={handleBulkArchive} disabled={bulkUpdateMutation.isPending}>
+                        <Archive className="size-3.5" />
+                        Archive
+                    </Button>
+                    <Button variant="destructive" size="sm" onClick={handleBulkDelete} disabled={bulkUpdateMutation.isPending}>
                         <Trash2 className="size-3.5" />
                         Delete
                     </Button>
-                    {collections.length > 0 && (
-                        <select
-                            onChange={e => {
-                                if (e.target.value) {
-                                    addToCollection(e.target.value, [...selectedIds]);
-                                    setSelectedIds(new Set());
-                                }
-                            }}
-                            className="bg-background rounded-md border px-2 py-1 text-xs"
-                            defaultValue=""
-                        >
-                            <option value="" disabled>
-                                Add to...
-                            </option>
-                            {collections.map(c => (
-                                <option key={c.id} value={c.id}>
-                                    {c.name}
-                                </option>
-                            ))}
-                        </select>
-                    )}
                     <Button variant="ghost" size="sm" onClick={() => setSelectedIds(new Set())}>
                         Cancel
                     </Button>

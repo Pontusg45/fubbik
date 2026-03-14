@@ -18,11 +18,13 @@ import { Route as KnowledgeHealthRouteImport } from "./routes/knowledge-health";
 import { Route as GraphRouteImport } from "./routes/graph";
 import { Route as DashboardRouteImport } from "./routes/dashboard";
 import { Route as CodebasesRouteImport } from "./routes/codebases";
+import { Route as ActivityRouteImport } from "./routes/activity";
 import { Route as IndexRouteImport } from "./routes/index";
 import { Route as ChunksIndexRouteImport } from "./routes/chunks.index";
 import { Route as RequirementsNewRouteImport } from "./routes/requirements_.new";
 import { Route as RequirementsRequirementIdRouteImport } from "./routes/requirements_.$requirementId";
 import { Route as ChunksNewRouteImport } from "./routes/chunks.new";
+import { Route as ChunksArchivedRouteImport } from "./routes/chunks.archived";
 import { Route as ChunksChunkIdRouteImport } from "./routes/chunks.$chunkId";
 import { Route as ChunksChunkIdEditRouteImport } from "./routes/chunks.$chunkId_.edit";
 
@@ -71,6 +73,11 @@ const CodebasesRoute = CodebasesRouteImport.update({
   path: "/codebases",
   getParentRoute: () => rootRouteImport,
 } as any);
+const ActivityRoute = ActivityRouteImport.update({
+  id: "/activity",
+  path: "/activity",
+  getParentRoute: () => rootRouteImport,
+} as any);
 const IndexRoute = IndexRouteImport.update({
   id: "/",
   path: "/",
@@ -97,6 +104,11 @@ const ChunksNewRoute = ChunksNewRouteImport.update({
   path: "/chunks/new",
   getParentRoute: () => rootRouteImport,
 } as any);
+const ChunksArchivedRoute = ChunksArchivedRouteImport.update({
+  id: "/chunks/archived",
+  path: "/chunks/archived",
+  getParentRoute: () => rootRouteImport,
+} as any);
 const ChunksChunkIdRoute = ChunksChunkIdRouteImport.update({
   id: "/chunks/$chunkId",
   path: "/chunks/$chunkId",
@@ -110,6 +122,7 @@ const ChunksChunkIdEditRoute = ChunksChunkIdEditRouteImport.update({
 
 export interface FileRoutesByFullPath {
   "/": typeof IndexRoute;
+  "/activity": typeof ActivityRoute;
   "/codebases": typeof CodebasesRoute;
   "/dashboard": typeof DashboardRoute;
   "/graph": typeof GraphRoute;
@@ -120,6 +133,7 @@ export interface FileRoutesByFullPath {
   "/templates": typeof TemplatesRoute;
   "/vocabulary": typeof VocabularyRoute;
   "/chunks/$chunkId": typeof ChunksChunkIdRoute;
+  "/chunks/archived": typeof ChunksArchivedRoute;
   "/chunks/new": typeof ChunksNewRoute;
   "/requirements/$requirementId": typeof RequirementsRequirementIdRoute;
   "/requirements/new": typeof RequirementsNewRoute;
@@ -128,6 +142,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   "/": typeof IndexRoute;
+  "/activity": typeof ActivityRoute;
   "/codebases": typeof CodebasesRoute;
   "/dashboard": typeof DashboardRoute;
   "/graph": typeof GraphRoute;
@@ -138,6 +153,7 @@ export interface FileRoutesByTo {
   "/templates": typeof TemplatesRoute;
   "/vocabulary": typeof VocabularyRoute;
   "/chunks/$chunkId": typeof ChunksChunkIdRoute;
+  "/chunks/archived": typeof ChunksArchivedRoute;
   "/chunks/new": typeof ChunksNewRoute;
   "/requirements/$requirementId": typeof RequirementsRequirementIdRoute;
   "/requirements/new": typeof RequirementsNewRoute;
@@ -147,6 +163,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport;
   "/": typeof IndexRoute;
+  "/activity": typeof ActivityRoute;
   "/codebases": typeof CodebasesRoute;
   "/dashboard": typeof DashboardRoute;
   "/graph": typeof GraphRoute;
@@ -157,6 +174,7 @@ export interface FileRoutesById {
   "/templates": typeof TemplatesRoute;
   "/vocabulary": typeof VocabularyRoute;
   "/chunks/$chunkId": typeof ChunksChunkIdRoute;
+  "/chunks/archived": typeof ChunksArchivedRoute;
   "/chunks/new": typeof ChunksNewRoute;
   "/requirements_/$requirementId": typeof RequirementsRequirementIdRoute;
   "/requirements_/new": typeof RequirementsNewRoute;
@@ -167,6 +185,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath;
   fullPaths:
     | "/"
+    | "/activity"
     | "/codebases"
     | "/dashboard"
     | "/graph"
@@ -177,6 +196,7 @@ export interface FileRouteTypes {
     | "/templates"
     | "/vocabulary"
     | "/chunks/$chunkId"
+    | "/chunks/archived"
     | "/chunks/new"
     | "/requirements/$requirementId"
     | "/requirements/new"
@@ -185,6 +205,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo;
   to:
     | "/"
+    | "/activity"
     | "/codebases"
     | "/dashboard"
     | "/graph"
@@ -195,6 +216,7 @@ export interface FileRouteTypes {
     | "/templates"
     | "/vocabulary"
     | "/chunks/$chunkId"
+    | "/chunks/archived"
     | "/chunks/new"
     | "/requirements/$requirementId"
     | "/requirements/new"
@@ -203,6 +225,7 @@ export interface FileRouteTypes {
   id:
     | "__root__"
     | "/"
+    | "/activity"
     | "/codebases"
     | "/dashboard"
     | "/graph"
@@ -213,6 +236,7 @@ export interface FileRouteTypes {
     | "/templates"
     | "/vocabulary"
     | "/chunks/$chunkId"
+    | "/chunks/archived"
     | "/chunks/new"
     | "/requirements_/$requirementId"
     | "/requirements_/new"
@@ -222,6 +246,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute;
+  ActivityRoute: typeof ActivityRoute;
   CodebasesRoute: typeof CodebasesRoute;
   DashboardRoute: typeof DashboardRoute;
   GraphRoute: typeof GraphRoute;
@@ -232,6 +257,7 @@ export interface RootRouteChildren {
   TemplatesRoute: typeof TemplatesRoute;
   VocabularyRoute: typeof VocabularyRoute;
   ChunksChunkIdRoute: typeof ChunksChunkIdRoute;
+  ChunksArchivedRoute: typeof ChunksArchivedRoute;
   ChunksNewRoute: typeof ChunksNewRoute;
   RequirementsRequirementIdRoute: typeof RequirementsRequirementIdRoute;
   RequirementsNewRoute: typeof RequirementsNewRoute;
@@ -304,6 +330,13 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof CodebasesRouteImport;
       parentRoute: typeof rootRouteImport;
     };
+    "/activity": {
+      id: "/activity";
+      path: "/activity";
+      fullPath: "/activity";
+      preLoaderRoute: typeof ActivityRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     "/": {
       id: "/";
       path: "/";
@@ -339,6 +372,13 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof ChunksNewRouteImport;
       parentRoute: typeof rootRouteImport;
     };
+    "/chunks/archived": {
+      id: "/chunks/archived";
+      path: "/chunks/archived";
+      fullPath: "/chunks/archived";
+      preLoaderRoute: typeof ChunksArchivedRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     "/chunks/$chunkId": {
       id: "/chunks/$chunkId";
       path: "/chunks/$chunkId";
@@ -358,6 +398,7 @@ declare module "@tanstack/react-router" {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ActivityRoute: ActivityRoute,
   CodebasesRoute: CodebasesRoute,
   DashboardRoute: DashboardRoute,
   GraphRoute: GraphRoute,
@@ -368,6 +409,7 @@ const rootRouteChildren: RootRouteChildren = {
   TemplatesRoute: TemplatesRoute,
   VocabularyRoute: VocabularyRoute,
   ChunksChunkIdRoute: ChunksChunkIdRoute,
+  ChunksArchivedRoute: ChunksArchivedRoute,
   ChunksNewRoute: ChunksNewRoute,
   RequirementsRequirementIdRoute: RequirementsRequirementIdRoute,
   RequirementsNewRoute: RequirementsNewRoute,

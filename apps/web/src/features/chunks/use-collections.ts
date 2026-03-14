@@ -1,31 +1,66 @@
-import { useLocalStorage } from "@/hooks/use-local-storage";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-export interface Collection {
-    id: string;
-    name: string;
-    chunkIds: string[];
+import { api } from "@/utils/api";
+import { unwrapEden } from "@/utils/eden";
+
+export interface CollectionFilter {
+    type?: string;
+    tags?: string;
+    search?: string;
+    sort?: string;
+    after?: string;
+    enrichment?: string;
+    minConnections?: string;
+    origin?: string;
+    reviewStatus?: string;
 }
 
 export function useCollections() {
-    const [collections, setCollections] = useLocalStorage<Collection[]>("fubbik:collections", []);
+    const queryClient = useQueryClient();
 
-    function createCollection(name: string) {
-        const id = crypto.randomUUID();
-        setCollections(prev => [...prev, { id, name, chunkIds: [] }]);
-        return id;
+    const collectionsQuery = useQuery({
+        queryKey: ["collections"],
+        queryFn: async () => {
+            try {
+                return unwrapEden(await api.api.collections.get());
+            } catch {
+                return [];
+            }
+        }
+    });
+
+    const createMutation = useMutation({
+        mutationFn: async (body: { name: string; description?: string; filter: CollectionFilter; codebaseId?: string }) => {
+            return unwrapEden(await api.api.collections.post(body));
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["collections"] });
+        }
+    });
+
+    const deleteMutation = useMutation({
+        mutationFn: async (id: string) => {
+            return unwrapEden(await api.api.collections({ id }).delete());
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["collections"] });
+        }
+    });
+
+    const collections = collectionsQuery.data ?? [];
+
+    function createCollection(name: string, filter: CollectionFilter, codebaseId?: string) {
+        createMutation.mutate({ name, filter, codebaseId });
     }
 
     function deleteCollection(id: string) {
-        setCollections(prev => prev.filter(c => c.id !== id));
+        deleteMutation.mutate(id);
     }
 
-    function addToCollection(collectionId: string, chunkIds: string[]) {
-        setCollections(prev => prev.map(c => (c.id === collectionId ? { ...c, chunkIds: [...new Set([...c.chunkIds, ...chunkIds])] } : c)));
-    }
-
-    function removeFromCollection(collectionId: string, chunkId: string) {
-        setCollections(prev => prev.map(c => (c.id === collectionId ? { ...c, chunkIds: c.chunkIds.filter(id => id !== chunkId) } : c)));
-    }
-
-    return { collections, createCollection, deleteCollection, addToCollection, removeFromCollection };
+    return {
+        collections,
+        isLoading: collectionsQuery.isLoading,
+        createCollection,
+        deleteCollection
+    };
 }

@@ -16,3 +16,6 @@ export * from "./requirement";
 export * from "./vocabulary";
 export * from "./favorite";
 export * from "./suggestion";
+export * from "./collection";
+export * from "./notification";
+export * from "./activity";

@@ -6,6 +6,7 @@ import { aiRoutes } from "./ai/routes";
 import { appliesToRoutes } from "./applies-to/routes";
 import { chunkRoutes } from "./chunks/routes";
 import { codebaseRoutes } from "./codebases/routes";
+import { collectionRoutes } from "./collections/routes";
 import { connectionRoutes } from "./connections/routes";
 import { contextExportRoutes } from "./context-export/routes";
 import { favoriteRoutes } from "./favorites/routes";
@@ -22,6 +23,8 @@ import { statsRoutes } from "./stats/routes";
 import { tagTypeRoutes } from "./tag-types/routes";
 import { tagRoutes } from "./tags/routes";
 import { templateRoutes } from "./templates/routes";
+import { activityRoutes } from "./activity/routes";
+import { notificationRoutes } from "./notifications/routes";
 import { vocabularyRoutes } from "./vocabulary/routes";
 
 const FiberFailureCauseSymbol = Symbol.for("effect/Runtime/FiberFailure/Cause");
@@ -123,6 +126,9 @@ export const api = new Elysia({ prefix: "/api" })
     .use(knowledgeHealthRoutes)
     .use(requirementRoutes)
     .use(vocabularyRoutes)
-    .use(favoriteRoutes);
+    .use(favoriteRoutes)
+    .use(collectionRoutes)
+    .use(notificationRoutes)
+    .use(activityRoutes);
 
 export type Api = typeof api;

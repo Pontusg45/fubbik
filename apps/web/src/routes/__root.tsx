@@ -15,6 +15,7 @@ import { MobileNav } from "@/features/nav/mobile-nav";
 import { CodebaseSwitcher } from "@/features/codebases/codebase-switcher";
 import { ChunkSearch } from "@/features/search/chunk-search";
 import { CommandPalette } from "@/features/command-palette/command-palette";
+import { NotificationBell } from "@/features/nav/notification-bell";
 
 import appCss from "../index.css?url";
 
@@ -136,10 +137,17 @@ function RootDocument() {
                                     >
                                         Templates
                                     </Link>
+                                    <Link
+                                        to="/activity"
+                                        className="text-muted-foreground hover:text-foreground [&.active]:text-foreground rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
+                                    >
+                                        Activity
+                                    </Link>
                                 </nav>
                                 <div className="flex items-center gap-2">
                                     <MobileNav />
                                     <ChunkSearch />
+                                    <NotificationBell />
                                     <ThemeToggle />
                                     <UserMenu />
                                 </div>
