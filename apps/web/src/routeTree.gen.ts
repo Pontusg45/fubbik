@@ -12,10 +12,12 @@ import { Route as rootRouteImport } from "./routes/__root";
 import { Route as VocabularyRouteImport } from "./routes/vocabulary";
 import { Route as TemplatesRouteImport } from "./routes/templates";
 import { Route as TagsRouteImport } from "./routes/tags";
+import { Route as SettingsRouteImport } from "./routes/settings";
 import { Route as RequirementsRouteImport } from "./routes/requirements";
 import { Route as LoginRouteImport } from "./routes/login";
 import { Route as KnowledgeHealthRouteImport } from "./routes/knowledge-health";
 import { Route as GraphRouteImport } from "./routes/graph";
+import { Route as DocsRouteImport } from "./routes/docs";
 import { Route as DashboardRouteImport } from "./routes/dashboard";
 import { Route as CodebasesRouteImport } from "./routes/codebases";
 import { Route as ActivityRouteImport } from "./routes/activity";
@@ -43,6 +45,11 @@ const TagsRoute = TagsRouteImport.update({
   path: "/tags",
   getParentRoute: () => rootRouteImport,
 } as any);
+const SettingsRoute = SettingsRouteImport.update({
+  id: "/settings",
+  path: "/settings",
+  getParentRoute: () => rootRouteImport,
+} as any);
 const RequirementsRoute = RequirementsRouteImport.update({
   id: "/requirements",
   path: "/requirements",
@@ -61,6 +68,11 @@ const KnowledgeHealthRoute = KnowledgeHealthRouteImport.update({
 const GraphRoute = GraphRouteImport.update({
   id: "/graph",
   path: "/graph",
+  getParentRoute: () => rootRouteImport,
+} as any);
+const DocsRoute = DocsRouteImport.update({
+  id: "/docs",
+  path: "/docs",
   getParentRoute: () => rootRouteImport,
 } as any);
 const DashboardRoute = DashboardRouteImport.update({
@@ -125,10 +137,12 @@ export interface FileRoutesByFullPath {
   "/activity": typeof ActivityRoute;
   "/codebases": typeof CodebasesRoute;
   "/dashboard": typeof DashboardRoute;
+  "/docs": typeof DocsRoute;
   "/graph": typeof GraphRoute;
   "/knowledge-health": typeof KnowledgeHealthRoute;
   "/login": typeof LoginRoute;
   "/requirements": typeof RequirementsRoute;
+  "/settings": typeof SettingsRoute;
   "/tags": typeof TagsRoute;
   "/templates": typeof TemplatesRoute;
   "/vocabulary": typeof VocabularyRoute;
@@ -145,10 +159,12 @@ export interface FileRoutesByTo {
   "/activity": typeof ActivityRoute;
   "/codebases": typeof CodebasesRoute;
   "/dashboard": typeof DashboardRoute;
+  "/docs": typeof DocsRoute;
   "/graph": typeof GraphRoute;
   "/knowledge-health": typeof KnowledgeHealthRoute;
   "/login": typeof LoginRoute;
   "/requirements": typeof RequirementsRoute;
+  "/settings": typeof SettingsRoute;
   "/tags": typeof TagsRoute;
   "/templates": typeof TemplatesRoute;
   "/vocabulary": typeof VocabularyRoute;
@@ -166,10 +182,12 @@ export interface FileRoutesById {
   "/activity": typeof ActivityRoute;
   "/codebases": typeof CodebasesRoute;
   "/dashboard": typeof DashboardRoute;
+  "/docs": typeof DocsRoute;
   "/graph": typeof GraphRoute;
   "/knowledge-health": typeof KnowledgeHealthRoute;
   "/login": typeof LoginRoute;
   "/requirements": typeof RequirementsRoute;
+  "/settings": typeof SettingsRoute;
   "/tags": typeof TagsRoute;
   "/templates": typeof TemplatesRoute;
   "/vocabulary": typeof VocabularyRoute;
@@ -188,10 +206,12 @@ export interface FileRouteTypes {
     | "/activity"
     | "/codebases"
     | "/dashboard"
+    | "/docs"
     | "/graph"
     | "/knowledge-health"
     | "/login"
     | "/requirements"
+    | "/settings"
     | "/tags"
     | "/templates"
     | "/vocabulary"
@@ -208,10 +228,12 @@ export interface FileRouteTypes {
     | "/activity"
     | "/codebases"
     | "/dashboard"
+    | "/docs"
     | "/graph"
     | "/knowledge-health"
     | "/login"
     | "/requirements"
+    | "/settings"
     | "/tags"
     | "/templates"
     | "/vocabulary"
@@ -228,10 +250,12 @@ export interface FileRouteTypes {
     | "/activity"
     | "/codebases"
     | "/dashboard"
+    | "/docs"
     | "/graph"
     | "/knowledge-health"
     | "/login"
     | "/requirements"
+    | "/settings"
     | "/tags"
     | "/templates"
     | "/vocabulary"
@@ -249,10 +273,12 @@ export interface RootRouteChildren {
   ActivityRoute: typeof ActivityRoute;
   CodebasesRoute: typeof CodebasesRoute;
   DashboardRoute: typeof DashboardRoute;
+  DocsRoute: typeof DocsRoute;
   GraphRoute: typeof GraphRoute;
   KnowledgeHealthRoute: typeof KnowledgeHealthRoute;
   LoginRoute: typeof LoginRoute;
   RequirementsRoute: typeof RequirementsRoute;
+  SettingsRoute: typeof SettingsRoute;
   TagsRoute: typeof TagsRoute;
   TemplatesRoute: typeof TemplatesRoute;
   VocabularyRoute: typeof VocabularyRoute;
@@ -288,6 +314,13 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof TagsRouteImport;
       parentRoute: typeof rootRouteImport;
     };
+    "/settings": {
+      id: "/settings";
+      path: "/settings";
+      fullPath: "/settings";
+      preLoaderRoute: typeof SettingsRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     "/requirements": {
       id: "/requirements";
       path: "/requirements";
@@ -314,6 +347,13 @@ declare module "@tanstack/react-router" {
       path: "/graph";
       fullPath: "/graph";
       preLoaderRoute: typeof GraphRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/docs": {
+      id: "/docs";
+      path: "/docs";
+      fullPath: "/docs";
+      preLoaderRoute: typeof DocsRouteImport;
       parentRoute: typeof rootRouteImport;
     };
     "/dashboard": {
@@ -401,10 +441,12 @@ const rootRouteChildren: RootRouteChildren = {
   ActivityRoute: ActivityRoute,
   CodebasesRoute: CodebasesRoute,
   DashboardRoute: DashboardRoute,
+  DocsRoute: DocsRoute,
   GraphRoute: GraphRoute,
   KnowledgeHealthRoute: KnowledgeHealthRoute,
   LoginRoute: LoginRoute,
   RequirementsRoute: RequirementsRoute,
+  SettingsRoute: SettingsRoute,
   TagsRoute: TagsRoute,
   TemplatesRoute: TemplatesRoute,
   VocabularyRoute: VocabularyRoute,

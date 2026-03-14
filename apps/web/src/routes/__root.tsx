@@ -3,7 +3,7 @@ import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { HeadContent, Link, Outlet, Scripts, createRootRouteWithContext, useLocation } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 
-import { Settings, Tags, FileText, BookOpen, Languages, Folder } from "lucide-react";
+import { Settings, SlidersHorizontal, Tags, FileText, BookOpen, Languages, Folder } from "lucide-react";
 
 import { ErrorBoundary } from "@/components/error-boundary";
 import FubbikLogo from "@/components/fubbik-logo";
@@ -136,6 +136,11 @@ function RootDocument() {
                                                 <DropdownMenuItem render={<Link to="/activity" />}>
                                                     <BookOpen className="size-4" />
                                                     Activity
+                                                </DropdownMenuItem>
+                                                <DropdownMenuSeparator />
+                                                <DropdownMenuItem render={<Link to="/settings" />}>
+                                                    <SlidersHorizontal className="size-4" />
+                                                    Settings
                                                 </DropdownMenuItem>
                                             </DropdownMenuContent>
                                         </DropdownMenu>
