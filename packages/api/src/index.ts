@@ -19,6 +19,7 @@ import { statsRoutes } from "./stats/routes";
 import { tagTypeRoutes } from "./tag-types/routes";
 import { tagRoutes } from "./tags/routes";
 import { templateRoutes } from "./templates/routes";
+import { vocabularyRoutes } from "./vocabulary/routes";
 
 const FiberFailureCauseSymbol = Symbol.for("effect/Runtime/FiberFailure/Cause");
 
@@ -115,6 +116,7 @@ export const api = new Elysia({ prefix: "/api" })
     .use(fileRefRoutes)
     .use(templateRoutes)
     .use(knowledgeHealthRoutes)
-    .use(requirementRoutes);
+    .use(requirementRoutes)
+    .use(vocabularyRoutes);
 
 export type Api = typeof api;
