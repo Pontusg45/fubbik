@@ -158,6 +158,7 @@ function RequirementDetail() {
     const steps = (req.steps as Array<{ keyword: string; text: string }>) ?? [];
     const chunks = (req.chunks as Array<{ id: string; title: string }>) ?? [];
     const warnings = (req as Record<string, unknown>).warnings as Array<{ step: number; warning: string }> | undefined;
+    const vocabularyWarnings = (req as Record<string, unknown>).vocabularyWarnings as Array<{ step: number; type: string; word: string; message: string }> | undefined;
 
     return (
         <div className="container mx-auto max-w-5xl px-4 py-8">
@@ -246,6 +247,22 @@ function RequirementDetail() {
                         {warnings.map((w, i) => (
                             <li key={i} className="text-sm text-yellow-600 dark:text-yellow-400">
                                 {w.step >= 0 ? `Step ${w.step + 1}: ` : ""}{w.warning}
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            )}
+
+            {/* Vocabulary Warnings */}
+            {vocabularyWarnings && vocabularyWarnings.length > 0 && (
+                <div className="mb-6 rounded-md border border-amber-500/30 bg-amber-500/10 p-4">
+                    <h3 className="mb-2 text-sm font-semibold text-amber-600 dark:text-amber-400">
+                        Vocabulary Warnings
+                    </h3>
+                    <ul className="space-y-1">
+                        {vocabularyWarnings.map((w, i) => (
+                            <li key={i} className="text-sm text-amber-600 dark:text-amber-400">
+                                {w.step >= 0 ? `Step ${w.step + 1}: ` : ""}{w.message}
                             </li>
                         ))}
                     </ul>
