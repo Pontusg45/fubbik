@@ -40,7 +40,7 @@ lerna-debug.log*
 .alchemy
 
 # Testing
-coverage
+/coverage
 .nyc_output
 
 # Misc

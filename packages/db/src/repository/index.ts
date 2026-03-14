@@ -20,3 +20,5 @@ export * from "./collection";
 export * from "./notification";
 export * from "./activity";
 export * from "./settings";
+export * from "./comment";
+export * from "./coverage";
