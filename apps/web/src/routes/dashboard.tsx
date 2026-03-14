@@ -1,114 +1,102 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Blocks, Clock, Download, Network, Plus, Star, Tags, Upload } from "lucide-react";
+import {
+    AlertTriangle,
+    ArrowRight,
+    Blocks,
+    Clock,
+    Download,
+    FileText,
+    Network,
+    Plus,
+    Star,
+    Tags,
+    Upload
+} from "lucide-react";
 import { useRef } from "react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardDescription, CardHeader, CardPanel, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import { useFavorites } from "@/features/chunks/use-favorites";
+import { useActiveCodebase } from "@/features/codebases/use-active-codebase";
 import { getUser } from "@/functions/get-user";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 export const Route = createFileRoute("/dashboard")({
-    component: RouteComponent,
+    component: DashboardPage,
     beforeLoad: async () => {
         let session = null;
         try {
             session = await getUser();
-        } catch {
-            // allow unauthenticated access
-        }
+        } catch {}
         return { session };
     }
 });
 
-function RouteComponent() {
+function DashboardPage() {
     const { session } = Route.useRouteContext();
     const queryClient = useQueryClient();
     const fileInputRef = useRef<HTMLInputElement>(null);
     const { favoriteIds, isLoading: favoritesLoading } = useFavorites();
+    const { codebaseId } = useActiveCodebase();
 
-    const exportMutation = useMutation({
-        mutationFn: async () => {
-            return unwrapEden(await api.api.chunks.export.get());
-        },
-        onSuccess: data => {
-            const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = `fubbik-export-${new Date().toISOString().slice(0, 10)}.json`;
-            a.click();
-            URL.revokeObjectURL(url);
-            toast.success(`Exported ${Array.isArray(data) ? data.length : 0} chunks`);
-        },
-        onError: () => toast.error("Failed to export chunks")
-    });
+    const codebaseQuery = codebaseId
+        ? { codebaseId }
+        : {};
 
-    const importMutation = useMutation({
-        mutationFn: async (chunks: { title: string; content?: string; type?: string; tags?: string[] }[]) => {
-            return unwrapEden(await api.api.chunks.import.post({ chunks }));
-        },
-        onSuccess: data => {
-            toast.success(`Imported ${data.imported} chunks`);
-            queryClient.invalidateQueries({ queryKey: ["chunks"] });
-            queryClient.invalidateQueries({ queryKey: ["stats"] });
-        },
-        onError: () => toast.error("Failed to import chunks")
-    });
-
-    const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = () => {
-            try {
-                const parsed = JSON.parse(reader.result as string);
-                const chunks = Array.isArray(parsed) ? parsed : parsed.chunks;
-                if (!Array.isArray(chunks)) {
-                    toast.error("Invalid file format: expected an array of chunks");
-                    return;
-                }
-                importMutation.mutate(chunks);
-            } catch {
-                toast.error("Failed to parse JSON file");
-            }
-        };
-        reader.readAsText(file);
-        e.target.value = "";
-    };
-
-    const healthCheck = useQuery({
-        queryKey: ["health"],
-        queryFn: async () => {
-            try {
-                return unwrapEden(await api.api.health.get());
-            } catch {
-                return null;
-            }
-        }
-    });
+    // ─── Queries ───
 
     const statsQuery = useQuery({
-        queryKey: ["stats"],
+        queryKey: ["stats", codebaseId],
         queryFn: async () => {
             try {
-                return unwrapEden(await api.api.stats.get());
+                return unwrapEden(await api.api.stats.get({ query: codebaseQuery as any }));
             } catch {
                 return null;
             }
         }
     });
 
-    const chunksQuery = useQuery({
-        queryKey: ["chunks"],
+    const recentQuery = useQuery({
+        queryKey: ["dashboard-recent", codebaseId],
         queryFn: async () => {
             try {
-                return unwrapEden(await api.api.chunks.get({ query: { limit: "5" } }));
+                return unwrapEden(await api.api.chunks.get({ query: { ...codebaseQuery, limit: "8", sort: "updated" } as any }));
+            } catch {
+                return null;
+            }
+        }
+    });
+
+    const healthQuery = useQuery({
+        queryKey: ["dashboard-health", codebaseId],
+        queryFn: async () => {
+            try {
+                return unwrapEden(await api.api.health.knowledge.get({ query: codebaseQuery as any }));
+            } catch {
+                return null;
+            }
+        }
+    });
+
+    const requirementsQuery = useQuery({
+        queryKey: ["dashboard-requirements", codebaseId],
+        queryFn: async () => {
+            try {
+                return unwrapEden(await api.api.requirements.stats.get({ query: codebaseQuery as any }));
+            } catch {
+                return null;
+            }
+        }
+    });
+
+    const activityQuery = useQuery({
+        queryKey: ["dashboard-activity"],
+        queryFn: async () => {
+            try {
+                return unwrapEden(await api.api.activity.get({ query: { limit: "5" } as any }));
             } catch {
                 return null;
             }
@@ -120,9 +108,8 @@ function RouteComponent() {
         queryFn: async () => {
             if (favoriteIds.length === 0) return [];
             try {
-                const result = unwrapEden(await api.api.chunks.get({ query: { limit: "100" } }));
+                const result = unwrapEden(await api.api.chunks.get({ query: { limit: "100" } as any }));
                 const chunks = result?.chunks ?? [];
-                // Return chunks in favorite order
                 return favoriteIds
                     .map(id => chunks.find(c => c.id === id))
                     .filter((c): c is NonNullable<typeof c> => !!c);
@@ -133,193 +120,328 @@ function RouteComponent() {
         enabled: favoriteIds.length > 0
     });
 
-    const stats = [
-        { label: "Chunks", value: statsQuery.data?.chunks ?? 0, icon: Blocks, to: "/dashboard" as const },
-        { label: "Connections", value: statsQuery.data?.connections ?? 0, icon: Network, to: "/dashboard" as const },
-        { label: "Tags", value: statsQuery.data?.tags ?? 0, icon: Tags, to: "/tags" as const }
-    ];
+    // ─── Mutations ───
 
-    const recentChunks = chunksQuery.data?.chunks ?? [];
+    const exportMutation = useMutation({
+        mutationFn: async () => unwrapEden(await api.api.chunks.export.get()),
+        onSuccess: data => {
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `fubbik-export-${new Date().toISOString().slice(0, 10)}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            toast.success(`Exported ${Array.isArray(data) ? data.length : 0} chunks`);
+        },
+        onError: () => toast.error("Failed to export")
+    });
+
+    const importMutation = useMutation({
+        mutationFn: async (chunks: { title: string; content?: string; type?: string; tags?: string[] }[]) =>
+            unwrapEden(await api.api.chunks.import.post({ chunks })),
+        onSuccess: data => {
+            toast.success(`Imported ${data.imported} chunks`);
+            queryClient.invalidateQueries({ queryKey: ["stats"] });
+            queryClient.invalidateQueries({ queryKey: ["dashboard-recent"] });
+        },
+        onError: () => toast.error("Failed to import")
+    });
+
+    const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+            try {
+                const parsed = JSON.parse(reader.result as string);
+                const chunks = Array.isArray(parsed) ? parsed : parsed.chunks;
+                if (!Array.isArray(chunks)) {
+                    toast.error("Invalid format");
+                    return;
+                }
+                importMutation.mutate(chunks);
+            } catch {
+                toast.error("Failed to parse JSON");
+            }
+        };
+        reader.readAsText(file);
+        e.target.value = "";
+    };
+
+    // ─── Derived data ───
+
+    const recentChunks = recentQuery.data?.chunks ?? [];
+    const healthData = healthQuery.data;
+    const healthTotal = (healthData?.orphans?.count ?? 0) + (healthData?.stale?.count ?? 0) + (healthData?.thin?.count ?? 0);
+    const reqStats = requirementsQuery.data;
+    const activities = (activityQuery.data as any)?.activities ?? activityQuery.data ?? [];
 
     return (
-        <div className="container mx-auto max-w-5xl px-4 py-8">
+        <div className="container mx-auto max-w-6xl px-4 py-8">
+            {/* Header */}
             <div className="mb-8 flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold tracking-tight">Welcome back{session?.user.name ? `, ${session.user.name}` : ""}</h1>
-                    <p className="text-muted-foreground text-sm">Here's an overview of your knowledge base.</p>
+                    <h1 className="text-2xl font-bold tracking-tight">
+                        {session?.user.name ? `Welcome back, ${session.user.name}` : "Dashboard"}
+                    </h1>
+                    <p className="text-muted-foreground mt-0.5 text-sm">Your knowledge base at a glance.</p>
                 </div>
                 <div className="flex items-center gap-2">
                     <input ref={fileInputRef} type="file" accept=".json" className="hidden" onChange={handleImportFile} />
-                    <Button variant="outline" onClick={() => exportMutation.mutate()} disabled={exportMutation.isPending}>
-                        <Download className="size-4" />
-                        Export
+                    <Button variant="ghost" size="sm" onClick={() => exportMutation.mutate()} disabled={exportMutation.isPending}>
+                        <Download className="size-3.5" />
                     </Button>
-                    <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={importMutation.isPending}>
-                        <Upload className="size-4" />
-                        Import
+                    <Button variant="ghost" size="sm" onClick={() => fileInputRef.current?.click()} disabled={importMutation.isPending}>
+                        <Upload className="size-3.5" />
                     </Button>
-                    <Button variant="outline" render={<Link to="/graph" />}>
-                        <Network className="size-4" />
-                        Graph
-                    </Button>
-                    <Button render={<Link to="/chunks/new" />}>
-                        <Plus className="size-4" />
+                    <Button size="sm" render={<Link to="/chunks/new" />}>
+                        <Plus className="size-3.5" />
                         New Chunk
                     </Button>
                 </div>
             </div>
 
-            <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-3">
-                {stats.map(stat => (
-                    <Link key={stat.label} to={stat.to}>
-                        <Card>
-                            <CardPanel className="hover:bg-muted/50 flex items-center gap-3 p-4 transition-colors">
-                                <div className="bg-muted rounded-md p-2">
-                                    <stat.icon className="text-muted-foreground size-4" />
-                                </div>
-                                <div>
-                                    <p className="text-2xl font-bold">{statsQuery.isLoading ? "—" : stat.value}</p>
-                                    <p className="text-muted-foreground text-xs">{stat.label}</p>
-                                </div>
-                            </CardPanel>
-                        </Card>
-                    </Link>
-                ))}
+            {/* Stats row */}
+            <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <StatCard icon={Blocks} label="Chunks" value={statsQuery.data?.chunks} loading={statsQuery.isLoading} />
+                <StatCard icon={Network} label="Connections" value={statsQuery.data?.connections} loading={statsQuery.isLoading} />
+                <StatCard icon={Tags} label="Tags" value={statsQuery.data?.tags} loading={statsQuery.isLoading} />
+                <StatCard
+                    icon={FileText}
+                    label="Requirements"
+                    value={reqStats ? (reqStats as any).total : undefined}
+                    loading={requirementsQuery.isLoading}
+                    sub={reqStats ? `${(reqStats as any).passing ?? 0} passing` : undefined}
+                />
             </div>
 
-            {!favoritesLoading && favoriteIds.length > 0 && (
-                <div className="mb-6">
-                    <div className="mb-3 flex items-center gap-2">
-                        <Star className="size-4 fill-yellow-500 text-yellow-500" />
-                        <h2 className="font-semibold">Favorites</h2>
-                    </div>
-                    <Card>
-                        {favoritesChunksQuery.isLoading ? (
-                            <CardPanel className="p-4 text-center">
-                                <p className="text-muted-foreground text-sm">Loading...</p>
-                            </CardPanel>
+            {/* Main grid */}
+            <div className="grid gap-6 lg:grid-cols-3">
+                {/* Left column — 2/3 */}
+                <div className="space-y-6 lg:col-span-2">
+                    {/* Favorites */}
+                    {!favoritesLoading && favoriteIds.length > 0 && (
+                        <DashboardSection icon={Star} title="Favorites" iconClass="fill-yellow-500 text-yellow-500">
+                            <div className="grid gap-1 sm:grid-cols-2">
+                                {(favoritesChunksQuery.data ?? []).slice(0, 6).map(chunk => (
+                                    <Link
+                                        key={chunk.id}
+                                        to="/chunks/$chunkId"
+                                        params={{ chunkId: chunk.id }}
+                                        className="hover:bg-muted/50 flex items-center gap-2 rounded-md px-3 py-2 transition-colors"
+                                    >
+                                        <Star className="size-3 shrink-0 fill-yellow-500/40 text-yellow-500/40" />
+                                        <span className="truncate text-sm">{chunk.title}</span>
+                                        <Badge variant="secondary" size="sm" className="ml-auto shrink-0 font-mono text-[9px]">
+                                            {chunk.type}
+                                        </Badge>
+                                    </Link>
+                                ))}
+                            </div>
+                        </DashboardSection>
+                    )}
+
+                    {/* Recent chunks */}
+                    <DashboardSection
+                        icon={Clock}
+                        title="Recent Chunks"
+                        action={
+                            <Link to="/chunks" search={{} as any} className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-xs transition-colors">
+                                View all <ArrowRight className="size-3" />
+                            </Link>
+                        }
+                    >
+                        {recentQuery.isLoading ? (
+                            <p className="text-muted-foreground py-4 text-center text-sm">Loading...</p>
+                        ) : recentChunks.length === 0 ? (
+                            <div className="flex flex-col items-center gap-2 py-8">
+                                <Blocks className="text-muted-foreground/30 size-8" />
+                                <p className="text-muted-foreground text-sm">No chunks yet</p>
+                                <Button size="sm" variant="outline" render={<Link to="/chunks/new" />}>
+                                    Create your first chunk
+                                </Button>
+                            </div>
                         ) : (
-                            <div className="grid gap-px sm:grid-cols-2">
-                                {(favoritesChunksQuery.data ?? []).map(chunk => (
-                                    <Link key={chunk.id} to="/chunks/$chunkId" params={{ chunkId: chunk.id }}>
-                                        <CardPanel className="hover:bg-muted/50 p-3 transition-colors">
+                            <div className="divide-border divide-y">
+                                {recentChunks.map(chunk => (
+                                    <Link
+                                        key={chunk.id}
+                                        to="/chunks/$chunkId"
+                                        params={{ chunkId: chunk.id }}
+                                        className="hover:bg-muted/30 flex items-center gap-3 px-1 py-2.5 transition-colors"
+                                    >
+                                        <div className="min-w-0 flex-1">
                                             <p className="truncate text-sm font-medium">{chunk.title}</p>
-                                            <Badge variant="secondary" size="sm" className="mt-1 font-mono text-[10px]">
-                                                {chunk.type}
-                                            </Badge>
-                                        </CardPanel>
+                                            <div className="mt-0.5 flex items-center gap-2">
+                                                <Badge variant="secondary" size="sm" className="font-mono text-[9px]">
+                                                    {chunk.type}
+                                                </Badge>
+                                                <span className="text-muted-foreground text-[11px]">
+                                                    {timeAgo(chunk.updatedAt)}
+                                                </span>
+                                            </div>
+                                        </div>
                                     </Link>
                                 ))}
                             </div>
                         )}
-                    </Card>
+                    </DashboardSection>
                 </div>
-            )}
 
-            <div className="grid gap-6 lg:grid-cols-3">
-                <div className="lg:col-span-2">
-                    <div className="mb-3 flex items-center justify-between">
-                        <h2 className="font-semibold">Recent Chunks</h2>
-                        <Button
-                            variant="link"
-                            size="sm"
-                            render={
-                                <Link
-                                    to="/chunks"
-                                    search={{
-                                        page: 1,
-                                        type: undefined,
-                                        q: undefined,
-                                        sort: undefined,
-                                        tags: undefined,
-                                        size: undefined,
-                                        after: undefined,
-                                        enrichment: undefined,
-                                        minConnections: undefined,
-                                        group: undefined,
-                                        collection: undefined,
-                                        view: undefined,
-                                        origin: undefined,
-                                        reviewStatus: undefined
-                                    }}
-                                />
+                {/* Right column — 1/3 */}
+                <div className="space-y-6">
+                    {/* Health summary */}
+                    <DashboardSection
+                        icon={AlertTriangle}
+                        title="Knowledge Health"
+                        iconClass={healthTotal > 0 ? "text-amber-500" : "text-emerald-500"}
+                        action={
+                            <Link to="/knowledge-health" className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-xs transition-colors">
+                                Details <ArrowRight className="size-3" />
+                            </Link>
+                        }
+                    >
+                        {healthQuery.isLoading ? (
+                            <p className="text-muted-foreground py-2 text-center text-sm">Loading...</p>
+                        ) : healthTotal === 0 ? (
+                            <p className="text-muted-foreground py-2 text-center text-sm">All chunks healthy</p>
+                        ) : (
+                            <div className="space-y-2">
+                                {(healthData?.orphans?.count ?? 0) > 0 && (
+                                    <HealthRow label="Orphan chunks" count={healthData!.orphans.count} color="text-red-400" />
+                                )}
+                                {(healthData?.stale?.count ?? 0) > 0 && (
+                                    <HealthRow label="Stale chunks" count={healthData!.stale.count} color="text-amber-400" />
+                                )}
+                                {(healthData?.thin?.count ?? 0) > 0 && (
+                                    <HealthRow label="Thin chunks" count={healthData!.thin.count} color="text-blue-400" />
+                                )}
+                            </div>
+                        )}
+                    </DashboardSection>
+
+                    {/* Requirements summary */}
+                    {reqStats && (
+                        <DashboardSection
+                            icon={FileText}
+                            title="Requirements"
+                            action={
+                                <Link to="/requirements" className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-xs transition-colors">
+                                    View all <ArrowRight className="size-3" />
+                                </Link>
                             }
                         >
-                            View All
-                        </Button>
-                    </div>
-                    <Card>
-                        {chunksQuery.isLoading ? (
-                            <CardPanel className="p-8 text-center">
-                                <p className="text-muted-foreground text-sm">Loading...</p>
-                            </CardPanel>
-                        ) : recentChunks.length === 0 ? (
-                            <CardPanel className="p-8 text-center">
-                                <p className="text-muted-foreground text-sm">No chunks yet. Create your first one!</p>
-                            </CardPanel>
-                        ) : (
-                            recentChunks.map((chunk, i) => (
-                                <div key={chunk.id}>
-                                    {i > 0 && <Separator />}
-                                    <Link to="/chunks/$chunkId" params={{ chunkId: chunk.id }} className="block">
-                                        <CardPanel className="hover:bg-muted/50 flex items-center justify-between gap-4 p-4 transition-colors">
-                                            <div className="min-w-0">
-                                                <p className="truncate text-sm font-medium">{chunk.title}</p>
-                                                <div className="mt-1 flex items-center gap-2">
-                                                    <Badge variant="secondary" size="sm" className="font-mono text-[10px]">
-                                                        {chunk.type}
-                                                    </Badge>
-                                                    {([] as string[]).map(tag => (
-                                                        <Badge key={tag} variant="outline" size="sm" className="text-[10px]">
-                                                            {tag}
-                                                        </Badge>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                            <span className="text-muted-foreground flex shrink-0 items-center gap-1 text-xs">
-                                                <Clock className="size-3" />
-                                                {new Date(chunk.updatedAt).toLocaleDateString()}
-                                            </span>
-                                        </CardPanel>
-                                    </Link>
+                            <div className="grid grid-cols-3 gap-2 text-center">
+                                <div>
+                                    <div className="text-lg font-bold text-emerald-500">{(reqStats as any).passing ?? 0}</div>
+                                    <div className="text-muted-foreground text-[10px] uppercase">Passing</div>
                                 </div>
-                            ))
-                        )}
-                    </Card>
-                </div>
+                                <div>
+                                    <div className="text-lg font-bold text-red-500">{(reqStats as any).failing ?? 0}</div>
+                                    <div className="text-muted-foreground text-[10px] uppercase">Failing</div>
+                                </div>
+                                <div>
+                                    <div className="text-muted-foreground text-lg font-bold">{(reqStats as any).untested ?? 0}</div>
+                                    <div className="text-muted-foreground text-[10px] uppercase">Untested</div>
+                                </div>
+                            </div>
+                        </DashboardSection>
+                    )}
 
-                <div>
-                    <h2 className="mb-3 font-semibold">System</h2>
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="text-sm">Status</CardTitle>
-                            <CardDescription>Service health</CardDescription>
-                        </CardHeader>
-                        <CardPanel className="space-y-3 pt-0">
-                            <div className="flex items-center justify-between text-sm">
-                                <span>API Server</span>
-                                <Badge variant={healthCheck.data ? "default" : "destructive"} size="sm">
-                                    {healthCheck.isLoading ? "checking..." : healthCheck.data ? "online" : "offline"}
-                                </Badge>
+                    {/* Activity */}
+                    <DashboardSection
+                        icon={Clock}
+                        title="Recent Activity"
+                        action={
+                            <Link to="/activity" className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-xs transition-colors">
+                                View all <ArrowRight className="size-3" />
+                            </Link>
+                        }
+                    >
+                        {Array.isArray(activities) && activities.length > 0 ? (
+                            <div className="space-y-2">
+                                {activities.slice(0, 5).map((a: any) => (
+                                    <div key={a.id} className="flex items-center gap-2 text-xs">
+                                        <span className="text-muted-foreground shrink-0">{timeAgo(a.createdAt)}</span>
+                                        <span className="truncate">
+                                            <span className="font-medium capitalize">{a.action}</span>{" "}
+                                            <span className="text-muted-foreground">{a.entityTitle ?? a.entityType}</span>
+                                        </span>
+                                    </div>
+                                ))}
                             </div>
-                            <Separator />
-                            <div className="flex items-center justify-between text-sm">
-                                <span>Database</span>
-                                <Badge variant={healthCheck.data ? "default" : "destructive"} size="sm">
-                                    {healthCheck.isLoading ? "checking..." : healthCheck.data ? "connected" : "disconnected"}
-                                </Badge>
-                            </div>
-                            <Separator />
-                            <div className="flex items-center justify-between text-sm">
-                                <span>Auth</span>
-                                <Badge variant={session ? "default" : "secondary"} size="sm">
-                                    {session ? "authenticated" : "guest"}
-                                </Badge>
-                            </div>
-                        </CardPanel>
-                    </Card>
+                        ) : (
+                            <p className="text-muted-foreground py-2 text-center text-sm">No activity yet</p>
+                        )}
+                    </DashboardSection>
                 </div>
             </div>
         </div>
     );
+}
+
+/* ─── Components ─── */
+
+function StatCard({ icon: Icon, label, value, loading, sub }: {
+    icon: typeof Blocks;
+    label: string;
+    value?: number;
+    loading: boolean;
+    sub?: string;
+}) {
+    return (
+        <div className="bg-card rounded-lg border p-4">
+            <div className="flex items-center gap-2">
+                <Icon className="text-muted-foreground size-4" />
+                <span className="text-muted-foreground text-xs font-medium uppercase tracking-wide">{label}</span>
+            </div>
+            <div className="mt-2 text-2xl font-bold tabular-nums tracking-tight">
+                {loading ? "—" : value ?? 0}
+            </div>
+            {sub && <div className="text-muted-foreground mt-0.5 text-[11px]">{sub}</div>}
+        </div>
+    );
+}
+
+function DashboardSection({ icon: Icon, title, iconClass, action, children }: {
+    icon: typeof Blocks;
+    title: string;
+    iconClass?: string;
+    action?: React.ReactNode;
+    children: React.ReactNode;
+}) {
+    return (
+        <div className="rounded-lg border">
+            <div className="flex items-center justify-between border-b px-4 py-3">
+                <div className="flex items-center gap-2">
+                    <Icon className={`size-4 ${iconClass ?? "text-muted-foreground"}`} />
+                    <h2 className="text-sm font-semibold">{title}</h2>
+                </div>
+                {action}
+            </div>
+            <div className="p-4">{children}</div>
+        </div>
+    );
+}
+
+function HealthRow({ label, count, color }: { label: string; count: number; color: string }) {
+    return (
+        <div className="flex items-center justify-between text-sm">
+            <span>{label}</span>
+            <span className={`font-mono font-bold ${color}`}>{count}</span>
+        </div>
+    );
+}
+
+function timeAgo(dateStr: string | Date): string {
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return "just now";
+    if (mins < 60) return `${mins}m ago`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    if (days < 7) return `${days}d ago`;
+    return new Date(dateStr).toLocaleDateString();
 }
