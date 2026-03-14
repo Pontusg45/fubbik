@@ -157,7 +157,7 @@ function TagsPage() {
     });
 
     return (
-        <div className="container mx-auto max-w-4xl px-4 py-8">
+        <div className="container mx-auto max-w-3xl px-4 py-8">
             {/* Header */}
             <div className="mb-6 flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -167,7 +167,7 @@ function TagsPage() {
                 </div>
             </div>
 
-            <div className="grid gap-6 lg:grid-cols-[1fr_280px]">
+            <div className="grid gap-6 lg:grid-cols-[1fr_220px]">
                 {/* Main content */}
                 <div>
                     {/* Search */}
