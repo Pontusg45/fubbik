@@ -1,6 +1,6 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
-import { HeadContent, Link, Outlet, Scripts, createRootRouteWithContext } from "@tanstack/react-router";
+import { HeadContent, Link, Outlet, Scripts, createRootRouteWithContext, useLocation } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 
 import { Settings, Tags, FileText, BookOpen, Languages, Folder } from "lucide-react";
@@ -52,6 +52,8 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
 
 function RootDocument() {
     const { helpOpen, setHelpOpen } = useGlobalShortcuts();
+    const location = useLocation();
+    const isLanding = location.pathname === "/";
 
     return (
         <html lang="en" suppressHydrationWarning>
@@ -61,84 +63,98 @@ function RootDocument() {
             <body>
                 <ThemeProvider>
                     <div className="grid min-h-svh grid-rows-[auto_1fr]">
-                        <header className="border-b">
+                        <header className={isLanding ? "" : "border-b"}>
                             <div className="container mx-auto flex items-center justify-between px-4 py-3">
                                 <Link to="/" className="flex items-center gap-2">
                                     <FubbikLogo className="size-6" />
                                     <span className="font-bold">fubbik</span>
                                 </Link>
-                                <CodebaseSwitcher />
-                                <nav className="hidden items-center gap-1 md:flex">
-                                    <Link
-                                        to="/dashboard"
-                                        className="text-muted-foreground hover:text-foreground [&.active]:text-foreground rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
-                                    >
-                                        Dashboard
-                                    </Link>
-                                    <Link
-                                        to="/chunks"
-                                        search={{} as any}
-                                        className="text-muted-foreground hover:text-foreground [&.active]:text-foreground rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
-                                    >
-                                        Chunks
-                                    </Link>
-                                    <Link
-                                        to="/graph"
-                                        className="text-muted-foreground hover:text-foreground [&.active]:text-foreground rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
-                                    >
-                                        Graph
-                                    </Link>
-                                    <Link
-                                        to="/requirements"
-                                        className="text-muted-foreground hover:text-foreground [&.active]:text-foreground rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
-                                    >
-                                        Requirements
-                                    </Link>
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger className="text-muted-foreground hover:text-foreground rounded-md px-3 py-1.5 text-sm font-medium transition-colors">
-                                            <span className="flex items-center gap-1">
-                                                Manage
-                                                <Settings className="size-3.5" />
-                                            </span>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="start">
-                                            <DropdownMenuItem render={<Link to="/tags" />}>
-                                                <Tags className="size-4" />
-                                                Tags
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem render={<Link to="/templates" />}>
-                                                <FileText className="size-4" />
-                                                Templates
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem render={<Link to="/vocabulary" />}>
-                                                <Languages className="size-4" />
-                                                Vocabulary
-                                            </DropdownMenuItem>
-                                            <DropdownMenuSeparator />
-                                            <DropdownMenuItem render={<Link to="/codebases" />}>
-                                                <Folder className="size-4" />
-                                                Codebases
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem render={<Link to="/knowledge-health" />}>
-                                                <BookOpen className="size-4" />
-                                                Health
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem render={<Link to="/activity" />}>
-                                                <BookOpen className="size-4" />
-                                                Activity
-                                            </DropdownMenuItem>
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
-                                </nav>
-                                <div className="flex items-center gap-2">
-                                    <MobileNav />
-                                    <NotificationBell />
-                                    <ThemeToggle />
-                                    <UserMenu />
-                                </div>
+                                {!isLanding && <CodebaseSwitcher />}
+                                {isLanding ? (
+                                    <div className="flex items-center gap-2">
+                                        <ThemeToggle />
+                                        <Link
+                                            to="/dashboard"
+                                            className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-md px-4 py-1.5 text-sm font-medium transition-colors"
+                                        >
+                                            Get Started
+                                        </Link>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <nav className="hidden items-center gap-1 md:flex">
+                                            <Link
+                                                to="/dashboard"
+                                                className="text-muted-foreground hover:text-foreground [&.active]:text-foreground rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
+                                            >
+                                                Dashboard
+                                            </Link>
+                                            <Link
+                                                to="/chunks"
+                                                search={{} as any}
+                                                className="text-muted-foreground hover:text-foreground [&.active]:text-foreground rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
+                                            >
+                                                Chunks
+                                            </Link>
+                                            <Link
+                                                to="/graph"
+                                                className="text-muted-foreground hover:text-foreground [&.active]:text-foreground rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
+                                            >
+                                                Graph
+                                            </Link>
+                                            <Link
+                                                to="/requirements"
+                                                className="text-muted-foreground hover:text-foreground [&.active]:text-foreground rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
+                                            >
+                                                Requirements
+                                            </Link>
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger className="text-muted-foreground hover:text-foreground rounded-md px-3 py-1.5 text-sm font-medium transition-colors">
+                                                    <span className="flex items-center gap-1">
+                                                        Manage
+                                                        <Settings className="size-3.5" />
+                                                    </span>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="start">
+                                                    <DropdownMenuItem render={<Link to="/tags" />}>
+                                                        <Tags className="size-4" />
+                                                        Tags
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem render={<Link to="/templates" />}>
+                                                        <FileText className="size-4" />
+                                                        Templates
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem render={<Link to="/vocabulary" />}>
+                                                        <Languages className="size-4" />
+                                                        Vocabulary
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuSeparator />
+                                                    <DropdownMenuItem render={<Link to="/codebases" />}>
+                                                        <Folder className="size-4" />
+                                                        Codebases
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem render={<Link to="/knowledge-health" />}>
+                                                        <BookOpen className="size-4" />
+                                                        Health
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem render={<Link to="/activity" />}>
+                                                        <BookOpen className="size-4" />
+                                                        Activity
+                                                    </DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        </nav>
+                                        <div className="flex items-center gap-2">
+                                            <MobileNav />
+                                            <NotificationBell />
+                                            <ThemeToggle />
+                                            <UserMenu />
+                                        </div>
+                                    </>
+                                )}
                             </div>
                         </header>
-                        <Breadcrumbs />
+                        {!isLanding && <Breadcrumbs />}
                         <main>
                             <ErrorBoundary>
                                 <Outlet />
