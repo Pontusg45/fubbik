@@ -112,6 +112,12 @@ function RootDocument() {
                                         Codebases
                                     </Link>
                                     <Link
+                                        to="/requirements"
+                                        className="text-muted-foreground hover:text-foreground [&.active]:text-foreground rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
+                                    >
+                                        Requirements
+                                    </Link>
+                                    <Link
                                         to="/templates"
                                         className="text-muted-foreground hover:text-foreground [&.active]:text-foreground rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
                                     >
