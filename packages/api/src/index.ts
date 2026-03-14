@@ -8,6 +8,7 @@ import { chunkRoutes } from "./chunks/routes";
 import { codebaseRoutes } from "./codebases/routes";
 import { connectionRoutes } from "./connections/routes";
 import { knowledgeHealthRoutes } from "./knowledge-health/routes";
+import { requirementRoutes } from "./requirements/routes";
 import type { Session } from "./context";
 import { enrichRoutes } from "./enrich/routes";
 import { fileRefRoutes } from "./file-refs/routes";
@@ -113,6 +114,7 @@ export const api = new Elysia({ prefix: "/api" })
     .use(codebaseRoutes)
     .use(fileRefRoutes)
     .use(templateRoutes)
-    .use(knowledgeHealthRoutes);
+    .use(knowledgeHealthRoutes)
+    .use(requirementRoutes);
 
 export type Api = typeof api;

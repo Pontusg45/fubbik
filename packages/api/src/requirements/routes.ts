@@ -1,0 +1,224 @@
+import { Effect } from "effect";
+import { Elysia, t } from "elysia";
+
+import { requireSession } from "../require-session";
+import * as requirementService from "./service";
+
+const StepSchema = t.Object({
+    keyword: t.Union([
+        t.Literal("given"),
+        t.Literal("when"),
+        t.Literal("then"),
+        t.Literal("and"),
+        t.Literal("but")
+    ]),
+    text: t.String({ maxLength: 1000 }),
+    params: t.Optional(t.Record(t.String(), t.String()))
+});
+
+const StatusSchema = t.Union([
+    t.Literal("passing"),
+    t.Literal("failing"),
+    t.Literal("untested")
+]);
+
+const PrioritySchema = t.Optional(
+    t.Union([
+        t.Literal("must"),
+        t.Literal("should"),
+        t.Literal("could"),
+        t.Literal("wont")
+    ])
+);
+
+const FormatSchema = t.Union([
+    t.Literal("gherkin"),
+    t.Literal("vitest"),
+    t.Literal("markdown")
+]);
+
+export const requirementRoutes = new Elysia()
+    // 1. Stats
+    .get(
+        "/requirements/stats",
+        ctx =>
+            Effect.runPromise(
+                requireSession(ctx).pipe(
+                    Effect.flatMap(session =>
+                        requirementService.getStats(session.user.id, ctx.query.codebaseId)
+                    )
+                )
+            ),
+        {
+            query: t.Object({
+                codebaseId: t.Optional(t.String())
+            })
+        }
+    )
+    // 2. Export all
+    .get(
+        "/requirements/export",
+        ctx =>
+            Effect.runPromise(
+                requireSession(ctx).pipe(
+                    Effect.flatMap(session =>
+                        requirementService.exportAll(session.user.id, {
+                            codebaseId: ctx.query.codebaseId,
+                            format: ctx.query.format
+                        })
+                    )
+                )
+            ),
+        {
+            query: t.Object({
+                format: FormatSchema,
+                codebaseId: t.Optional(t.String())
+            })
+        }
+    )
+    // 3. List
+    .get(
+        "/requirements",
+        ctx =>
+            Effect.runPromise(
+                requireSession(ctx).pipe(
+                    Effect.flatMap(session =>
+                        requirementService.listRequirements(session.user.id, ctx.query)
+                    )
+                )
+            ),
+        {
+            query: t.Object({
+                codebaseId: t.Optional(t.String()),
+                status: t.Optional(t.String()),
+                priority: t.Optional(t.String()),
+                limit: t.Optional(t.String()),
+                offset: t.Optional(t.String())
+            })
+        }
+    )
+    // 4. Create
+    .post(
+        "/requirements",
+        ctx =>
+            Effect.runPromise(
+                requireSession(ctx).pipe(
+                    Effect.flatMap(session =>
+                        requirementService.createRequirement(session.user.id, ctx.body)
+                    ),
+                    Effect.tap(() =>
+                        Effect.sync(() => {
+                            ctx.set.status = 201;
+                        })
+                    )
+                )
+            ),
+        {
+            body: t.Object({
+                title: t.String({ maxLength: 200 }),
+                description: t.Optional(t.String({ maxLength: 5000 })),
+                steps: t.Array(StepSchema, { minItems: 1 }),
+                priority: PrioritySchema,
+                codebaseId: t.Optional(t.String())
+            })
+        }
+    )
+    // 5. Get by ID
+    .get("/requirements/:id", ctx =>
+        Effect.runPromise(
+            requireSession(ctx).pipe(
+                Effect.flatMap(session =>
+                    requirementService.getRequirement(ctx.params.id, session.user.id)
+                )
+            )
+        )
+    )
+    // 6. Update
+    .patch(
+        "/requirements/:id",
+        ctx =>
+            Effect.runPromise(
+                requireSession(ctx).pipe(
+                    Effect.flatMap(session =>
+                        requirementService.updateRequirement(ctx.params.id, session.user.id, ctx.body)
+                    )
+                )
+            ),
+        {
+            body: t.Object({
+                title: t.Optional(t.String({ maxLength: 200 })),
+                description: t.Optional(t.Union([t.String({ maxLength: 5000 }), t.Null()])),
+                steps: t.Optional(t.Array(StepSchema, { minItems: 1 })),
+                priority: t.Optional(t.Union([
+                    t.Literal("must"),
+                    t.Literal("should"),
+                    t.Literal("could"),
+                    t.Literal("wont"),
+                    t.Null()
+                ])),
+                codebaseId: t.Optional(t.Union([t.String(), t.Null()]))
+            })
+        }
+    )
+    // 7. Delete
+    .delete("/requirements/:id", ctx =>
+        Effect.runPromise(
+            requireSession(ctx).pipe(
+                Effect.flatMap(session =>
+                    requirementService.deleteRequirement(ctx.params.id, session.user.id)
+                ),
+                Effect.map(() => ({ message: "Deleted" }))
+            )
+        )
+    )
+    // 8. Update status
+    .patch(
+        "/requirements/:id/status",
+        ctx =>
+            Effect.runPromise(
+                requireSession(ctx).pipe(
+                    Effect.flatMap(session =>
+                        requirementService.updateStatus(ctx.params.id, session.user.id, ctx.body.status)
+                    )
+                )
+            ),
+        {
+            body: t.Object({
+                status: StatusSchema
+            })
+        }
+    )
+    // 9. Set chunks
+    .put(
+        "/requirements/:id/chunks",
+        ctx =>
+            Effect.runPromise(
+                requireSession(ctx).pipe(
+                    Effect.flatMap(session =>
+                        requirementService.setChunks(ctx.params.id, session.user.id, ctx.body.chunkIds)
+                    )
+                )
+            ),
+        {
+            body: t.Object({
+                chunkIds: t.Array(t.String(), { maxItems: 100 })
+            })
+        }
+    )
+    // 10. Export single
+    .get(
+        "/requirements/:id/export",
+        ctx =>
+            Effect.runPromise(
+                requireSession(ctx).pipe(
+                    Effect.flatMap(session =>
+                        requirementService.exportRequirement(ctx.params.id, session.user.id, ctx.query.format)
+                    )
+                )
+            ),
+        {
+            query: t.Object({
+                format: FormatSchema
+            })
+        }
+    );
