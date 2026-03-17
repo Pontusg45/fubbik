@@ -1,6 +1,8 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
@@ -14,6 +16,9 @@ interface BulkActionsProps {
 export function BulkActions({ selectedIds, onClearSelection, useCases }: BulkActionsProps) {
     const queryClient = useQueryClient();
 
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const pendingCountRef = useRef(selectedIds.length);
+
     const bulkMutation = useMutation({
         mutationFn: async (body: {
             ids: string[];
@@ -21,11 +26,24 @@ export function BulkActions({ selectedIds, onClearSelection, useCases }: BulkAct
             status?: "passing" | "failing" | "untested";
             useCaseId?: string | null;
         }) => {
+            pendingCountRef.current = body.ids.length;
             return unwrapEden(await api.api.requirements.bulk.patch(body));
         },
-        onSuccess: () => {
+        onSuccess: (_data, variables) => {
             queryClient.invalidateQueries({ queryKey: ["requirements"] });
             queryClient.invalidateQueries({ queryKey: ["requirements-stats"] });
+            const count = pendingCountRef.current;
+            switch (variables.action) {
+                case "set_status":
+                    toast.success(`Set ${count} requirement(s) to ${variables.status}`);
+                    break;
+                case "set_use_case":
+                    toast.success(variables.useCaseId ? "Assigned use case" : "Removed use case assignment");
+                    break;
+                case "delete":
+                    toast.success(`Deleted ${count} requirement(s)`);
+                    break;
+            }
             onClearSelection();
         },
         onError: () => {
@@ -34,30 +52,16 @@ export function BulkActions({ selectedIds, onClearSelection, useCases }: BulkAct
     });
 
     function handleSetStatus(status: "passing" | "failing" | "untested") {
-        bulkMutation.mutate({
-            ids: selectedIds,
-            action: "set_status",
-            status
-        });
-        toast.success(`Set ${selectedIds.length} requirement(s) to ${status}`);
+        bulkMutation.mutate({ ids: selectedIds, action: "set_status", status });
     }
 
     function handleAssignUseCase(useCaseId: string | null) {
-        bulkMutation.mutate({
-            ids: selectedIds,
-            action: "set_use_case",
-            useCaseId
-        });
-        toast.success(useCaseId ? "Assigned use case" : "Removed use case assignment");
+        bulkMutation.mutate({ ids: selectedIds, action: "set_use_case", useCaseId });
     }
 
     function handleDelete() {
-        if (!confirm(`Delete ${selectedIds.length} requirement(s)?`)) return;
-        bulkMutation.mutate({
-            ids: selectedIds,
-            action: "delete"
-        });
-        toast.success(`Deleted ${selectedIds.length} requirement(s)`);
+        setShowDeleteConfirm(false);
+        bulkMutation.mutate({ ids: selectedIds, action: "delete" });
     }
 
     if (selectedIds.length === 0) return null;
@@ -118,11 +122,21 @@ export function BulkActions({ selectedIds, onClearSelection, useCases }: BulkAct
             <Button
                 variant="destructive"
                 size="sm"
-                onClick={handleDelete}
+                onClick={() => setShowDeleteConfirm(true)}
                 disabled={bulkMutation.isPending}
             >
                 Delete
             </Button>
+            <ConfirmDialog
+                open={showDeleteConfirm}
+                onOpenChange={setShowDeleteConfirm}
+                title="Delete requirements"
+                description={`Delete ${selectedIds.length} requirement(s)? This cannot be undone.`}
+                confirmLabel="Delete"
+                confirmVariant="destructive"
+                onConfirm={handleDelete}
+                loading={bulkMutation.isPending}
+            />
 
             <Button
                 variant="ghost"

@@ -8,7 +8,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 interface RequirementCardProps {
     id: string;
     title: string;
-    description: string | null;
     status: string;
     priority: string | null;
     steps: Array<{ keyword: string; text: string }>;

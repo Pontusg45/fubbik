@@ -70,7 +70,8 @@ export function listRequirements(params: ListRequirementsParams) {
             if (params.origin) conditions.push(eq(requirement.origin, params.origin));
             if (params.reviewStatus) conditions.push(eq(requirement.reviewStatus, params.reviewStatus));
             if (params.search) {
-                const pattern = `%${params.search}%`;
+                const escaped = params.search.replace(/[%_\\]/g, c => `\\${c}`);
+                const pattern = `%${escaped}%`;
                 conditions.push(
                     or(
                         ilike(requirement.title, pattern),

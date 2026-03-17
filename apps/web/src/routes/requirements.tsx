@@ -248,7 +248,6 @@ function RequirementsPage() {
                                         key={id}
                                         id={id}
                                         title={req.title as string}
-                                        description={(req.description as string | null) ?? null}
                                         status={(req.status as string) ?? "untested"}
                                         priority={(req.priority as string | null) ?? null}
                                         steps={(req.steps as Array<{ keyword: string; text: string }>) ?? []}
