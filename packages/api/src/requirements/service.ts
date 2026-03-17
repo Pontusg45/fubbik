@@ -53,6 +53,8 @@ export function listRequirements(
     userId: string,
     query: {
         codebaseId?: string;
+        useCaseId?: string;
+        search?: string;
         status?: string;
         priority?: string;
         origin?: string;
@@ -67,6 +69,8 @@ export function listRequirements(
     return listRequirementsRepo({
         userId,
         codebaseId: query.codebaseId,
+        useCaseId: query.useCaseId,
+        search: query.search,
         status: query.status,
         priority: query.priority,
         origin: query.origin,

@@ -87,6 +87,8 @@ export const requirementRoutes = new Elysia()
         {
             query: t.Object({
                 codebaseId: t.Optional(t.String()),
+                useCaseId: t.Optional(t.String()),
+                search: t.Optional(t.String()),
                 status: t.Optional(t.String()),
                 priority: t.Optional(t.String()),
                 origin: t.Optional(t.Union([t.Literal("human"), t.Literal("ai")])),

@@ -1,4 +1,4 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, ilike, or, sql } from "drizzle-orm";
 import { Effect } from "effect";
 
 import { DatabaseError } from "../errors";
@@ -54,6 +54,7 @@ export interface ListRequirementsParams {
     priority?: string;
     origin?: string;
     reviewStatus?: string;
+    search?: string;
     limit: number;
     offset: number;
 }
@@ -68,6 +69,15 @@ export function listRequirements(params: ListRequirementsParams) {
             if (params.priority) conditions.push(eq(requirement.priority, params.priority));
             if (params.origin) conditions.push(eq(requirement.origin, params.origin));
             if (params.reviewStatus) conditions.push(eq(requirement.reviewStatus, params.reviewStatus));
+            if (params.search) {
+                const pattern = `%${params.search}%`;
+                conditions.push(
+                    or(
+                        ilike(requirement.title, pattern),
+                        ilike(requirement.description, pattern)
+                    )!
+                );
+            }
 
             const requirements = await db
                 .select()
