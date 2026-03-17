@@ -1,5 +1,17 @@
-import { getChunkCoverage } from "@fubbik/db/repository";
+import { getChunkCoverage, getChunkCoverageMatrix } from "@fubbik/db/repository";
 import { Effect } from "effect";
+
+export function getCoverageMatrix(userId: string, codebaseId?: string) {
+    return Effect.all({
+        coverage: getCoverage(userId, codebaseId),
+        matrix: getChunkCoverageMatrix(userId, codebaseId)
+    }).pipe(
+        Effect.map(({ coverage, matrix }) => ({
+            ...coverage,
+            matrix
+        }))
+    );
+}
 
 export function getCoverage(userId: string, codebaseId?: string) {
     return getChunkCoverage(userId, codebaseId).pipe(

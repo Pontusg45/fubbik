@@ -5,7 +5,7 @@ import { DatabaseError } from "../errors";
 import { db } from "../index";
 import { chunk } from "../schema/chunk";
 import { chunkCodebase } from "../schema/codebase";
-import { requirementChunk } from "../schema/requirement";
+import { requirement, requirementChunk } from "../schema/requirement";
 
 export function getChunkCoverage(userId: string, codebaseId?: string) {
     return Effect.tryPromise({
@@ -39,6 +39,49 @@ export function getChunkCoverage(userId: string, codebaseId?: string) {
             }
 
             return chunkQuery;
+        },
+        catch: cause => new DatabaseError({ cause })
+    });
+}
+
+export function getChunkCoverageMatrix(userId: string, codebaseId?: string) {
+    return Effect.tryPromise({
+        try: async () => {
+            if (codebaseId) {
+                return db
+                    .select({
+                        chunkId: requirementChunk.chunkId,
+                        chunkTitle: chunk.title,
+                        requirementId: requirementChunk.requirementId,
+                        requirementTitle: requirement.title,
+                        requirementStatus: requirement.status
+                    })
+                    .from(requirementChunk)
+                    .innerJoin(chunk, eq(requirementChunk.chunkId, chunk.id))
+                    .innerJoin(requirement, eq(requirementChunk.requirementId, requirement.id))
+                    .innerJoin(chunkCodebase, eq(chunkCodebase.chunkId, chunk.id))
+                    .where(and(
+                        eq(chunk.userId, userId),
+                        isNull(chunk.archivedAt),
+                        eq(chunkCodebase.codebaseId, codebaseId)
+                    ));
+            } else {
+                return db
+                    .select({
+                        chunkId: requirementChunk.chunkId,
+                        chunkTitle: chunk.title,
+                        requirementId: requirementChunk.requirementId,
+                        requirementTitle: requirement.title,
+                        requirementStatus: requirement.status
+                    })
+                    .from(requirementChunk)
+                    .innerJoin(chunk, eq(requirementChunk.chunkId, chunk.id))
+                    .innerJoin(requirement, eq(requirementChunk.requirementId, requirement.id))
+                    .where(and(
+                        eq(chunk.userId, userId),
+                        isNull(chunk.archivedAt)
+                    ));
+            }
         },
         catch: cause => new DatabaseError({ cause })
     });

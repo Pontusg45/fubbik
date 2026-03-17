@@ -10,13 +10,16 @@ export const coverageRoutes = new Elysia().get(
         Effect.runPromise(
             requireSession(ctx).pipe(
                 Effect.flatMap(session =>
-                    coverageService.getCoverage(session.user.id, ctx.query.codebaseId)
+                    ctx.query.detail === "true"
+                        ? coverageService.getCoverageMatrix(session.user.id, ctx.query.codebaseId)
+                        : coverageService.getCoverage(session.user.id, ctx.query.codebaseId)
                 )
             )
         ),
     {
         query: t.Object({
-            codebaseId: t.Optional(t.String())
+            codebaseId: t.Optional(t.String()),
+            detail: t.Optional(t.String())
         })
     }
 );
