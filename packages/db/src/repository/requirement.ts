@@ -1,4 +1,4 @@
-import { and, eq, ilike, or, sql } from "drizzle-orm";
+import { and, eq, ilike, inArray, or, sql } from "drizzle-orm";
 import { Effect } from "effect";
 
 import { DatabaseError } from "../errors";
@@ -201,6 +201,41 @@ export function getChunksForRequirement(requirementId: string) {
                 .from(requirementChunk)
                 .innerJoin(chunk, eq(requirementChunk.chunkId, chunk.id))
                 .where(eq(requirementChunk.requirementId, requirementId)),
+        catch: cause => new DatabaseError({ cause })
+    });
+}
+
+export function bulkUpdateRequirements(
+    ids: string[],
+    userId: string,
+    params: { status?: string; useCaseId?: string | null }
+) {
+    return Effect.tryPromise({
+        try: async () => {
+            const setClause: Record<string, unknown> = {};
+            if (params.status !== undefined) setClause.status = params.status;
+            if (params.useCaseId !== undefined) setClause.useCaseId = params.useCaseId;
+
+            if (Object.keys(setClause).length === 0) return 0;
+
+            const result = await db
+                .update(requirement)
+                .set(setClause)
+                .where(and(inArray(requirement.id, ids), eq(requirement.userId, userId)));
+            return result.rowCount ?? 0;
+        },
+        catch: cause => new DatabaseError({ cause })
+    });
+}
+
+export function bulkDeleteRequirements(ids: string[], userId: string) {
+    return Effect.tryPromise({
+        try: async () => {
+            const result = await db
+                .delete(requirement)
+                .where(and(inArray(requirement.id, ids), eq(requirement.userId, userId)));
+            return result.rowCount ?? 0;
+        },
         catch: cause => new DatabaseError({ cause })
     });
 }

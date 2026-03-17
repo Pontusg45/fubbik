@@ -54,7 +54,30 @@ export const requirementRoutes = new Elysia()
             })
         }
     )
-    // 2. Export all
+    // 2. Bulk operations
+    .patch(
+        "/requirements/bulk",
+        ctx =>
+            Effect.runPromise(
+                Effect.gen(function* () {
+                    const session = yield* requireSession(ctx);
+                    return yield* requirementService.bulkAction(session.user.id, ctx.body);
+                })
+            ),
+        {
+            body: t.Object({
+                ids: t.Array(t.String(), { minItems: 1, maxItems: 100 }),
+                action: t.Union([
+                    t.Literal("set_status"),
+                    t.Literal("set_use_case"),
+                    t.Literal("delete")
+                ]),
+                status: t.Optional(StatusSchema),
+                useCaseId: t.Optional(t.Union([t.String(), t.Null()]))
+            })
+        }
+    )
+    // 3. Export all
     .get(
         "/requirements/export",
         ctx =>
@@ -74,7 +97,7 @@ export const requirementRoutes = new Elysia()
             })
         }
     )
-    // 3. List
+    // 4. List
     .get(
         "/requirements",
         ctx =>
@@ -98,7 +121,7 @@ export const requirementRoutes = new Elysia()
             })
         }
     )
-    // 4. Create
+    // 5. Create
     .post(
         "/requirements",
         ctx =>
@@ -122,7 +145,7 @@ export const requirementRoutes = new Elysia()
             })
         }
     )
-    // 5. Get by ID
+    // 6. Get by ID
     .get("/requirements/:id", ctx =>
         Effect.runPromise(
             Effect.gen(function* () {
@@ -131,7 +154,7 @@ export const requirementRoutes = new Elysia()
             })
         )
     )
-    // 6. Update
+    // 7. Update
     .patch(
         "/requirements/:id",
         ctx =>
@@ -160,7 +183,7 @@ export const requirementRoutes = new Elysia()
             })
         }
     )
-    // 7. Delete
+    // 8. Delete
     .delete("/requirements/:id", ctx =>
         Effect.runPromise(
             Effect.gen(function* () {
@@ -170,7 +193,7 @@ export const requirementRoutes = new Elysia()
             })
         )
     )
-    // 8. Update status
+    // 9. Update status
     .patch(
         "/requirements/:id/status",
         ctx =>
@@ -186,7 +209,7 @@ export const requirementRoutes = new Elysia()
             })
         }
     )
-    // 9. Set chunks
+    // 10. Set chunks
     .put(
         "/requirements/:id/chunks",
         ctx =>
@@ -202,7 +225,7 @@ export const requirementRoutes = new Elysia()
             })
         }
     )
-    // 10. Export single
+    // 11. Export single
     .get(
         "/requirements/:id/export",
         ctx =>

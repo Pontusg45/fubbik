@@ -8,6 +8,8 @@ import {
     setRequirementChunks,
     getChunksForRequirement,
     getRequirementStats,
+    bulkUpdateRequirements,
+    bulkDeleteRequirements,
     getChunkById,
     listVocabulary
 } from "@fubbik/db/repository";
@@ -223,6 +225,25 @@ export function setChunks(requirementId: string, userId: string, chunkIds: strin
 
 export function getStats(userId: string, codebaseId?: string) {
     return getRequirementStats(userId, codebaseId);
+}
+
+export function bulkAction(
+    userId: string,
+    body: {
+        ids: string[];
+        action: "set_status" | "set_use_case" | "delete";
+        status?: string;
+        useCaseId?: string | null;
+    }
+) {
+    switch (body.action) {
+        case "set_status":
+            return bulkUpdateRequirements(body.ids, userId, { status: body.status });
+        case "set_use_case":
+            return bulkUpdateRequirements(body.ids, userId, { useCaseId: body.useCaseId });
+        case "delete":
+            return bulkDeleteRequirements(body.ids, userId);
+    }
 }
 
 function exportOne(
