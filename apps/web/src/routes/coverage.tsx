@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { CheckCircle, XCircle, BarChart3 } from "lucide-react";
-import { useState } from "react";
+import { CheckCircle, XCircle, BarChart3, Grid3x3 } from "lucide-react";
+import { useMemo, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -27,12 +27,14 @@ export const Route = createFileRoute("/coverage")({
 function CoveragePage() {
     const { codebaseId } = useActiveCodebase();
     const [showCovered, setShowCovered] = useState(false);
+    const [showMatrix, setShowMatrix] = useState(false);
 
     const coverageQuery = useQuery({
-        queryKey: ["coverage", codebaseId],
+        queryKey: ["coverage", codebaseId, showMatrix],
         queryFn: async () => {
-            const query: { codebaseId?: string } = {};
+            const query: { codebaseId?: string; detail?: string } = {};
             if (codebaseId) query.codebaseId = codebaseId;
+            if (showMatrix) query.detail = "true";
             return unwrapEden(await (api.api.requirements as any).coverage.get({ query }));
         }
     });
@@ -42,8 +44,45 @@ function CoveragePage() {
               covered: { id: string; title: string; requirementCount: number }[];
               uncovered: { id: string; title: string }[];
               stats: { total: number; covered: number; uncovered: number; percentage: number };
+              matrix?: Array<{
+                  chunkId: string;
+                  chunkTitle: string;
+                  requirementId: string;
+                  requirementTitle: string;
+                  requirementStatus: string;
+              }>;
           }
         | undefined;
+
+    const uniqueRequirements = useMemo(() => {
+        if (!data?.matrix) return [];
+        const map = new Map<string, { id: string; title: string }>();
+        for (const pair of data.matrix) {
+            map.set(pair.requirementId, { id: pair.requirementId, title: pair.requirementTitle });
+        }
+        return Array.from(map.values());
+    }, [data?.matrix]);
+
+    const allChunks = useMemo(() => {
+        if (!data) return [];
+        return [
+            ...data.covered.map(c => ({ id: c.id, title: c.title })),
+            ...data.uncovered.map(c => ({ id: c.id, title: c.title }))
+        ];
+    }, [data]);
+
+    const coverageMap = useMemo(() => {
+        if (!data?.matrix) return new Map<string, Set<string>>();
+        const map = new Map<string, Set<string>>();
+        for (const pair of data.matrix) {
+            if (!map.has(pair.chunkId)) map.set(pair.chunkId, new Set());
+            map.get(pair.chunkId)!.add(pair.requirementId);
+        }
+        return map;
+    }, [data?.matrix]);
+
+    const isCovered = (chunkId: string) =>
+        coverageMap.has(chunkId) && coverageMap.get(chunkId)!.size > 0;
 
     return (
         <div className="container mx-auto max-w-5xl px-4 py-8">
@@ -96,6 +135,77 @@ function CoveragePage() {
                             style={{ width: `${data.stats.percentage}%` }}
                         />
                     </div>
+
+                    <div className="mb-4 flex items-center justify-between">
+                        <Button
+                            variant={showMatrix ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setShowMatrix(!showMatrix)}
+                        >
+                            <Grid3x3 className="mr-1 size-4" />
+                            {showMatrix ? "Hide Matrix" : "Show Matrix"}
+                        </Button>
+                    </div>
+
+                    {showMatrix && data?.matrix && (
+                        <Card className="mt-6">
+                            <CardPanel className="overflow-x-auto p-0">
+                                <table className="w-full text-sm">
+                                    <thead>
+                                        <tr className="border-b">
+                                            <th className="bg-background sticky left-0 z-10 min-w-[200px] px-4 py-2 text-left font-medium">
+                                                Chunk
+                                            </th>
+                                            {uniqueRequirements.map(req => (
+                                                <th
+                                                    key={req.id}
+                                                    className="min-w-[100px] px-3 py-2 text-center"
+                                                >
+                                                    <Link
+                                                        to="/requirements/$requirementId"
+                                                        params={{ requirementId: req.id }}
+                                                        className="block max-w-[120px] truncate text-xs font-medium hover:underline"
+                                                    >
+                                                        {req.title}
+                                                    </Link>
+                                                </th>
+                                            ))}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {allChunks.map(chunk => (
+                                            <tr
+                                                key={chunk.id}
+                                                className={
+                                                    isCovered(chunk.id) ? "" : "bg-amber-500/5"
+                                                }
+                                            >
+                                                <td className="bg-background sticky left-0 z-10 border-t px-4 py-2">
+                                                    <Link
+                                                        to="/chunks/$chunkId"
+                                                        params={{ chunkId: chunk.id }}
+                                                        className="block max-w-[250px] truncate hover:underline"
+                                                    >
+                                                        {chunk.title}
+                                                    </Link>
+                                                </td>
+                                                {uniqueRequirements.map(req => (
+                                                    <td
+                                                        key={req.id}
+                                                        className="border-t px-3 py-2 text-center"
+                                                    >
+                                                        {coverageMap.get(chunk.id)?.has(req.id) ? (
+                                                            <CheckCircle className="inline size-4 text-emerald-500" />
+                                                        ) : null}
+                                                    </td>
+                                                ))}
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </CardPanel>
+                        </Card>
+                    )}
 
                     <div className="space-y-6">
                         <Card>
