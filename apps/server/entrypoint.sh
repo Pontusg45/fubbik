@@ -3,8 +3,11 @@
 echo "Running database migrations..."
 cd /app/packages/db
 
+# drizzle-kit is in the flat node_modules at /app/node_modules
+export PATH="/app/node_modules/.bin:$PATH"
+
 # Apply Drizzle-managed schema migrations (tracked in __drizzle_migrations table)
-if ! bun drizzle-kit migrate 2>&1; then
+if ! drizzle-kit migrate 2>&1; then
     echo "Warning: drizzle-kit migrate failed. Continuing..."
 fi
 
@@ -18,5 +21,5 @@ if [ "$SEED_DATABASE" = "true" ]; then
 fi
 
 echo "Starting server..."
-cd /app/apps/server
+cd /app
 exec bun run dist/index.mjs

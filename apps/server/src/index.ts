@@ -52,4 +52,3 @@ new Elysia()
     .listen(Number(env.PORT), () => {
         logger.info(`Server is running on http://localhost:${env.PORT}`);
     });
-// cache test Wed Mar 18 23:41:28 CET 2026

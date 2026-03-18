@@ -1,15 +1,13 @@
 # Dockerfile for fubbik server
-# Optimized multi-stage build with aggressive caching
+# Uses pnpm deploy for minimal, flat node_modules (no symlinks)
 
-# Build stage
 FROM node:22-slim AS builder
 
 RUN corepack enable && corepack prepare pnpm@10.10.0 --activate
 
 WORKDIR /app
 
-# 1. Copy ALL package files first (cache layer for deps)
-#    pnpm --frozen-lockfile validates every workspace package.json against the lockfile
+# 1. Copy package files (cache layer for deps)
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/cli/package.json ./apps/cli/
 COPY apps/server/package.json ./apps/server/
@@ -23,7 +21,7 @@ COPY packages/env/package.json ./packages/env/
 
 RUN PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 pnpm install --frozen-lockfile
 
-# 2. Copy only source needed for the server build (not web/cli/vscode/docs)
+# 2. Copy only source needed for the server build
 COPY packages/config/ ./packages/config/
 COPY packages/env/ ./packages/env/
 COPY packages/db/ ./packages/db/
@@ -32,8 +30,11 @@ COPY packages/api/ ./packages/api/
 COPY apps/server/ ./apps/server/
 COPY turbo.json ./
 
-# 3. Build only the server
+# 3. Build the server (tsdown bundles workspace deps)
 RUN pnpm run build --filter=server
+
+# 4. Deploy: creates flat node_modules with only server's deps (757MB vs 3.4GB)
+RUN pnpm --filter=server deploy --legacy /app/deploy
 
 # Production stage
 FROM oven/bun:1.3.10-slim AS runner
@@ -43,19 +44,15 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3000
 
-# Copy node_modules (root + workspace-level for pnpm symlink resolution)
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/package.json ./package.json
-COPY --from=builder /app/apps/server/node_modules ./apps/server/node_modules
-COPY --from=builder /app/packages/db/node_modules ./packages/db/node_modules
-COPY --from=builder /app/packages/env/node_modules ./packages/env/node_modules
+# Copy the deployed flat node_modules (no pnpm symlinks)
+COPY --from=builder /app/deploy/node_modules ./node_modules
 
 # Copy built application
-COPY --from=builder /app/apps/server/dist ./apps/server/dist
-COPY --from=builder /app/apps/server/package.json ./apps/server/package.json
-COPY --from=builder /app/apps/server/entrypoint.sh ./apps/server/entrypoint.sh
+COPY --from=builder /app/apps/server/dist ./dist
+COPY --from=builder /app/apps/server/package.json ./package.json
+COPY --from=builder /app/apps/server/entrypoint.sh ./entrypoint.sh
 
-# Copy db package for migrations and seeding (bun runs TS natively)
+# Copy db package for migrations and seeding
 COPY --from=builder /app/packages/db/src ./packages/db/src
 COPY --from=builder /app/packages/db/package.json ./packages/db/package.json
 COPY --from=builder /app/packages/db/drizzle.config.ts ./packages/db/drizzle.config.ts
@@ -63,7 +60,5 @@ COPY --from=builder /app/packages/env/src ./packages/env/src
 COPY --from=builder /app/packages/env/package.json ./packages/env/package.json
 
 EXPOSE 3000
-
-WORKDIR /app/apps/server
 
 ENTRYPOINT ["sh", "entrypoint.sh"]
