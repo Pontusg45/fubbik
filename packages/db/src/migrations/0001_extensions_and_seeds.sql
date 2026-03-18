@@ -1,3 +1,20 @@
+-- Enable extensions
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+CREATE EXTENSION IF NOT EXISTS vector;
+
+-- Trigram indexes for fuzzy search
+CREATE INDEX IF NOT EXISTS chunk_title_trgm_idx ON chunk USING gin (title gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS chunk_content_trgm_idx ON chunk USING gin (content gin_trgm_ops);
+
+-- GIN indexes for JSONB queries
+CREATE INDEX IF NOT EXISTS chunk_tags_gin_idx ON chunk USING gin (tags);
+CREATE INDEX IF NOT EXISTS chunk_aliases_gin_idx ON chunk USING gin (aliases);
+CREATE INDEX IF NOT EXISTS chunk_not_about_gin_idx ON chunk USING gin (not_about);
+CREATE INDEX IF NOT EXISTS chunk_scope_gin_idx ON chunk USING gin (scope);
+
+-- HNSW index for vector similarity search (cosine distance)
+CREATE INDEX IF NOT EXISTS chunk_embedding_hnsw_idx ON chunk USING hnsw (embedding vector_cosine_ops);
+
 -- Seed built-in chunk templates
 INSERT INTO chunk_template (id, name, description, type, content, is_built_in, user_id, created_at)
 VALUES

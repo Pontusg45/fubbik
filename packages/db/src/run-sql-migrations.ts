@@ -4,11 +4,8 @@ import { Client } from "pg";
 const DATABASE_URL = process.env.DATABASE_URL;
 if (!DATABASE_URL) throw new Error("DATABASE_URL not set");
 
-const files = [
-    "src/migrations/0002_add_trgm.sql",
-    "src/migrations/0003_add_retrieval_fields.sql",
-    "src/migrations/0004_seed_templates.sql"
-];
+// Custom SQL migrations that Drizzle can't manage (extensions, indexes, seeds)
+const files = ["src/migrations/0001_extensions_and_seeds.sql"];
 
 const client = new Client({ connectionString: DATABASE_URL });
 await client.connect();
@@ -21,14 +18,6 @@ for (const file of files) {
     } catch (err) {
         console.warn(`  Warning applying ${file}:`, (err as Error).message);
     }
-}
-
-// Ensure embedding column exists even without pgvector (as text fallback)
-try {
-    await client.query("ALTER TABLE chunk ADD COLUMN IF NOT EXISTS embedding text;");
-    console.log("  Ensured embedding column exists");
-} catch (err) {
-    console.warn("  Warning adding embedding column:", (err as Error).message);
 }
 
 await client.end();

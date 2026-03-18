@@ -1,15 +1,14 @@
 #!/bin/sh
 
-echo "Running database schema push..."
+echo "Running database migrations..."
 cd /app/packages/db
 
-# drizzle-kit push may fail if pgvector extension is not available
-# In that case, we continue — embedding column is optional
-if ! bun drizzle-kit push --force 2>&1; then
-    echo "Warning: drizzle-kit push failed (likely missing pgvector). Continuing..."
+# Apply Drizzle-managed schema migrations (tracked in __drizzle_migrations table)
+if ! bun drizzle-kit migrate 2>&1; then
+    echo "Warning: drizzle-kit migrate failed. Continuing..."
 fi
 
-echo "Running SQL migrations..."
+echo "Running SQL extensions and seeds..."
 bun run src/run-sql-migrations.ts 2>&1 || echo "Warning: some SQL migrations may have failed. Continuing..."
 
 if [ "$SEED_DATABASE" = "true" ]; then

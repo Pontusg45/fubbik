@@ -1,1 +1,0 @@
-CREATE UNIQUE INDEX "connection_unique_idx" ON "chunk_connection" USING btree ("source_id","target_id","relation");
