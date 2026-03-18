@@ -8,8 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardPanel } from "@/components/ui/card";
 import { useActiveCodebase } from "@/features/codebases/use-active-codebase";
 import { BulkActions } from "@/features/requirements/bulk-actions";
-import { RequirementCard } from "@/features/requirements/requirement-card";
 import { SidebarFilters } from "@/features/requirements/sidebar-filters";
+import { SortableRequirementList } from "@/features/requirements/sortable-requirement-list";
 import { getUser } from "@/functions/get-user";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
@@ -258,28 +258,12 @@ function RequirementsPage() {
                         </Card>
                     ) : (
                         <>
-                            {filteredRequirements.map(req => {
-                                const id = req.id as string;
-                                const useCaseId = req.useCaseId as string | null | undefined;
-                                const uc = useCaseId ? useCaseMap.get(useCaseId) : undefined;
-
-                                return (
-                                    <RequirementCard
-                                        key={id}
-                                        id={id}
-                                        title={req.title as string}
-                                        status={(req.status as string) ?? "untested"}
-                                        priority={(req.priority as string | null) ?? null}
-                                        steps={(req.steps as Array<{ keyword: string; text: string }>) ?? []}
-                                        origin={(req.origin as string) ?? "human"}
-                                        reviewStatus={(req.reviewStatus as string) ?? "draft"}
-                                        useCaseName={uc?.name}
-                                        chunkCount={req.chunkCount as number | undefined}
-                                        selected={selectedIds.includes(id)}
-                                        onSelectChange={selected => toggleSelection(id, selected)}
-                                    />
-                                );
-                            })}
+                            <SortableRequirementList
+                                requirements={filteredRequirements}
+                                selectedIds={selectedIds}
+                                onToggleSelection={toggleSelection}
+                                useCaseMap={useCaseMap}
+                            />
 
                             {/* Pagination */}
                             {data && data.total > pageSize && (

@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Bot } from "lucide-react";
+import { Bot, GripVertical } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardPanel } from "@/components/ui/card";
@@ -17,6 +17,7 @@ interface RequirementCardProps {
     chunkCount?: number;
     selected: boolean;
     onSelectChange: (selected: boolean) => void;
+    dragHandleProps?: React.HTMLAttributes<HTMLDivElement>;
 }
 
 function statusColor(status: string) {
@@ -81,7 +82,8 @@ export function RequirementCard({
     useCaseName,
     chunkCount,
     selected,
-    onSelectChange
+    onSelectChange,
+    dragHandleProps
 }: RequirementCardProps) {
     const isFailing = status === "failing";
 
@@ -93,6 +95,11 @@ export function RequirementCard({
         >
             <CardPanel className="p-4">
                 <div className="flex items-start gap-3">
+                    {dragHandleProps && (
+                        <div {...dragHandleProps} className="cursor-grab text-muted-foreground hover:text-foreground touch-none">
+                            <GripVertical className="size-4" />
+                        </div>
+                    )}
                     <div className="pt-0.5">
                         <Checkbox
                             checked={selected}
