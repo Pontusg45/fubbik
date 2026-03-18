@@ -40,7 +40,8 @@ export const useCaseRoutes = new Elysia()
             body: t.Object({
                 name: t.String({ maxLength: 200 }),
                 description: t.Optional(t.String({ maxLength: 2000 })),
-                codebaseId: t.Optional(t.String())
+                codebaseId: t.Optional(t.String()),
+                parentId: t.Optional(t.String())
             })
         }
     )
@@ -67,7 +68,8 @@ export const useCaseRoutes = new Elysia()
             body: t.Object({
                 name: t.Optional(t.String({ maxLength: 200 })),
                 description: t.Optional(t.Union([t.String({ maxLength: 2000 }), t.Null()])),
-                order: t.Optional(t.Number())
+                order: t.Optional(t.Number()),
+                parentId: t.Optional(t.Union([t.String(), t.Null()]))
             })
         }
     )

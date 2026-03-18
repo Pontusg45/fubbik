@@ -32,6 +32,7 @@ interface UseCase {
     name: string;
     description: string | null;
     requirementCount: number;
+    parentId: string | null;
 }
 
 function RequirementsPage() {
@@ -73,6 +74,20 @@ function RequirementsPage() {
         }
     });
 
+    const useCases = (useCasesQuery.data ?? []) as UseCase[];
+
+    const activeUseCaseIds = useMemo(() => {
+        if (!activeUseCaseId) return null;
+        const ids = new Set([activeUseCaseId]);
+        // Add children if this is a parent
+        for (const uc of useCases) {
+            if (uc.parentId === activeUseCaseId) {
+                ids.add(uc.id);
+            }
+        }
+        return ids;
+    }, [activeUseCaseId, useCases]);
+
     const listQuery = useQuery({
         queryKey: [
             "requirements",
@@ -103,17 +118,19 @@ function RequirementsPage() {
             if (statusFilters.length === 1) query.status = statusFilters[0];
             if (priorityFilters.length === 1) query.priority = priorityFilters[0];
             if (originFilter) query.origin = originFilter as "human" | "ai";
-            if (activeUseCaseId) query.useCaseId = activeUseCaseId;
+            // If parent use case with children, fetch all and filter client-side
+            if (activeUseCaseIds && activeUseCaseIds.size === 1) {
+                query.useCaseId = activeUseCaseId!;
+            }
             return unwrapEden(await api.api.requirements.get({ query }));
         }
     });
 
     const stats = statsQuery.data as { total: number; passing: number; failing: number; untested: number } | undefined;
     const data = listQuery.data as { requirements: Array<Record<string, unknown>>; total: number } | undefined;
-    const useCases = useCasesQuery.data ?? [];
     const useCaseMap = new Map(useCases.map(uc => [uc.id, uc]));
 
-    // Client-side post-filtering for multi-select status/priority
+    // Client-side post-filtering for multi-select status/priority and parent use cases
     const filteredRequirements = useMemo(() => {
         if (!data?.requirements) return [];
         let reqs = data.requirements;
@@ -123,8 +140,11 @@ function RequirementsPage() {
         if (priorityFilters.length > 1) {
             reqs = reqs.filter(r => priorityFilters.includes(r.priority as string));
         }
+        if (activeUseCaseIds && activeUseCaseIds.size > 0) {
+            reqs = reqs.filter(r => activeUseCaseIds.has(r.useCaseId as string));
+        }
         return reqs;
-    }, [data, statusFilters, priorityFilters]);
+    }, [data, statusFilters, priorityFilters, activeUseCaseIds]);
 
     function toggleSelection(id: string, selected: boolean) {
         setSelectedIds(prev =>

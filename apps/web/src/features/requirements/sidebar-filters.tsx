@@ -1,4 +1,6 @@
-import { FolderOpen, Search } from "lucide-react";
+import { ChevronDown, ChevronRight, FolderOpen, Search } from "lucide-react";
+
+import { useState } from "react";
 
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -12,7 +14,7 @@ interface SidebarFiltersProps {
     onPriorityFiltersChange: (priorities: string[]) => void;
     originFilter: string;
     onOriginFilterChange: (origin: string) => void;
-    useCases: Array<{ id: string; name: string; requirementCount: number }>;
+    useCases: Array<{ id: string; name: string; requirementCount: number; parentId: string | null }>;
     activeUseCaseId: string | null;
     onUseCaseClick: (id: string | null) => void;
 }
@@ -133,43 +135,137 @@ export function SidebarFilters({
 
             {/* Use Cases */}
             {useCases.length > 0 && (
-                <div>
-                    <h4 className="text-muted-foreground mb-2 text-xs font-semibold uppercase tracking-wider">
-                        Use Cases
-                    </h4>
-                    <div className="space-y-0.5">
-                        <button
-                            type="button"
-                            onClick={() => onUseCaseClick(null)}
-                            className={`flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-sm transition-colors ${
-                                activeUseCaseId === null
-                                    ? "bg-indigo-500/10 font-medium text-indigo-600"
-                                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                            }`}
-                        >
-                            <span>All</span>
-                        </button>
-                        {useCases.map(uc => (
-                            <button
-                                key={uc.id}
-                                type="button"
-                                onClick={() => onUseCaseClick(uc.id)}
-                                className={`flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-sm transition-colors ${
-                                    activeUseCaseId === uc.id
-                                        ? "bg-indigo-500/10 font-medium text-indigo-600"
-                                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                                }`}
-                            >
-                                <span className="flex items-center gap-1.5 truncate">
-                                    <FolderOpen className="size-3.5 shrink-0" />
-                                    {uc.name}
-                                </span>
-                                <span className="text-xs tabular-nums">{uc.requirementCount}</span>
-                            </button>
-                        ))}
-                    </div>
-                </div>
+                <UseCaseTree
+                    useCases={useCases}
+                    activeUseCaseId={activeUseCaseId}
+                    onUseCaseClick={onUseCaseClick}
+                />
             )}
+        </div>
+    );
+}
+
+function UseCaseTree({
+    useCases,
+    activeUseCaseId,
+    onUseCaseClick
+}: {
+    useCases: SidebarFiltersProps["useCases"];
+    activeUseCaseId: string | null;
+    onUseCaseClick: (id: string | null) => void;
+}) {
+    const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
+    const parents = useCases.filter(uc => uc.parentId === null);
+    const childrenMap = new Map<string, typeof useCases>();
+    for (const uc of useCases) {
+        if (uc.parentId) {
+            const list = childrenMap.get(uc.parentId) ?? [];
+            list.push(uc);
+            childrenMap.set(uc.parentId, list);
+        }
+    }
+
+    function toggleExpanded(id: string) {
+        setExpanded(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) {
+                next.delete(id);
+            } else {
+                next.add(id);
+            }
+            return next;
+        });
+    }
+
+    function getTotalCount(uc: { id: string; requirementCount: number }) {
+        const children = childrenMap.get(uc.id);
+        if (!children) return uc.requirementCount;
+        return uc.requirementCount + children.reduce((sum, c) => sum + c.requirementCount, 0);
+    }
+
+    return (
+        <div>
+            <h4 className="text-muted-foreground mb-2 text-xs font-semibold uppercase tracking-wider">
+                Use Cases
+            </h4>
+            <div className="space-y-0.5">
+                <button
+                    type="button"
+                    onClick={() => onUseCaseClick(null)}
+                    className={`flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-sm transition-colors ${
+                        activeUseCaseId === null
+                            ? "bg-indigo-500/10 font-medium text-indigo-600"
+                            : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                    }`}
+                >
+                    <span>All</span>
+                </button>
+                {parents.map(uc => {
+                    const children = childrenMap.get(uc.id);
+                    const hasChildren = !!children && children.length > 0;
+                    const isExpanded = expanded.has(uc.id);
+
+                    return (
+                        <div key={uc.id}>
+                            <div className="flex items-center">
+                                {hasChildren ? (
+                                    <button
+                                        type="button"
+                                        onClick={() => toggleExpanded(uc.id)}
+                                        className="text-muted-foreground hover:text-foreground flex shrink-0 items-center justify-center rounded p-0.5"
+                                    >
+                                        {isExpanded ? (
+                                            <ChevronDown className="size-3.5" />
+                                        ) : (
+                                            <ChevronRight className="size-3.5" />
+                                        )}
+                                    </button>
+                                ) : (
+                                    <span className="w-4.5 shrink-0" />
+                                )}
+                                <button
+                                    type="button"
+                                    onClick={() => onUseCaseClick(uc.id)}
+                                    className={`flex min-w-0 flex-1 items-center justify-between rounded-md px-2 py-1.5 text-left text-sm transition-colors ${
+                                        activeUseCaseId === uc.id
+                                            ? "bg-indigo-500/10 font-medium text-indigo-600"
+                                            : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                                    }`}
+                                >
+                                    <span className="flex items-center gap-1.5 truncate">
+                                        <FolderOpen className="size-3.5 shrink-0" />
+                                        {uc.name}
+                                    </span>
+                                    <span className="text-xs tabular-nums">{getTotalCount(uc)}</span>
+                                </button>
+                            </div>
+                            {hasChildren && isExpanded && (
+                                <div className="space-y-0.5 pl-6">
+                                    {children.map(child => (
+                                        <button
+                                            key={child.id}
+                                            type="button"
+                                            onClick={() => onUseCaseClick(child.id)}
+                                            className={`flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-xs transition-colors ${
+                                                activeUseCaseId === child.id
+                                                    ? "bg-indigo-500/10 font-medium text-indigo-600"
+                                                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                                            }`}
+                                        >
+                                            <span className="flex items-center gap-1.5 truncate">
+                                                <FolderOpen className="size-3 shrink-0" />
+                                                {child.name}
+                                            </span>
+                                            <span className="text-xs tabular-nums">{child.requirementCount}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    );
+                })}
+            </div>
         </div>
     );
 }
