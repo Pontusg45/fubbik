@@ -4,6 +4,7 @@ import {
     Blocks,
     BookOpen,
     ClipboardCheck,
+    ClipboardList,
     Clock,
     FileText,
     FolderGit2,
@@ -24,6 +25,7 @@ const primaryItems = [
     { label: "Chunks", to: "/chunks" as const, icon: Blocks },
     { label: "Graph", to: "/graph" as const, icon: Network },
     { label: "Requirements", to: "/requirements" as const, icon: ClipboardCheck },
+    { label: "Reviews", to: "/reviews" as const, icon: ClipboardList },
     { label: "Docs", to: "/docs" as const, icon: FileText }
 ];
 

@@ -14,6 +14,7 @@ import { Route as TemplatesRouteImport } from "./routes/templates";
 import { Route as TagsRouteImport } from "./routes/tags";
 import { Route as SettingsRouteImport } from "./routes/settings";
 import { Route as SearchRouteImport } from "./routes/search";
+import { Route as ReviewsRouteImport } from "./routes/reviews";
 import { Route as RequirementsRouteImport } from "./routes/requirements";
 import { Route as LoginRouteImport } from "./routes/login";
 import { Route as KnowledgeHealthRouteImport } from "./routes/knowledge-health";
@@ -55,6 +56,11 @@ const SettingsRoute = SettingsRouteImport.update({
 const SearchRoute = SearchRouteImport.update({
   id: "/search",
   path: "/search",
+  getParentRoute: () => rootRouteImport,
+} as any);
+const ReviewsRoute = ReviewsRouteImport.update({
+  id: "/reviews",
+  path: "/reviews",
   getParentRoute: () => rootRouteImport,
 } as any);
 const RequirementsRoute = RequirementsRouteImport.update({
@@ -155,6 +161,7 @@ export interface FileRoutesByFullPath {
   "/knowledge-health": typeof KnowledgeHealthRoute;
   "/login": typeof LoginRoute;
   "/requirements": typeof RequirementsRoute;
+  "/reviews": typeof ReviewsRoute;
   "/search": typeof SearchRoute;
   "/settings": typeof SettingsRoute;
   "/tags": typeof TagsRoute;
@@ -179,6 +186,7 @@ export interface FileRoutesByTo {
   "/knowledge-health": typeof KnowledgeHealthRoute;
   "/login": typeof LoginRoute;
   "/requirements": typeof RequirementsRoute;
+  "/reviews": typeof ReviewsRoute;
   "/search": typeof SearchRoute;
   "/settings": typeof SettingsRoute;
   "/tags": typeof TagsRoute;
@@ -204,6 +212,7 @@ export interface FileRoutesById {
   "/knowledge-health": typeof KnowledgeHealthRoute;
   "/login": typeof LoginRoute;
   "/requirements": typeof RequirementsRoute;
+  "/reviews": typeof ReviewsRoute;
   "/search": typeof SearchRoute;
   "/settings": typeof SettingsRoute;
   "/tags": typeof TagsRoute;
@@ -230,6 +239,7 @@ export interface FileRouteTypes {
     | "/knowledge-health"
     | "/login"
     | "/requirements"
+    | "/reviews"
     | "/search"
     | "/settings"
     | "/tags"
@@ -254,6 +264,7 @@ export interface FileRouteTypes {
     | "/knowledge-health"
     | "/login"
     | "/requirements"
+    | "/reviews"
     | "/search"
     | "/settings"
     | "/tags"
@@ -278,6 +289,7 @@ export interface FileRouteTypes {
     | "/knowledge-health"
     | "/login"
     | "/requirements"
+    | "/reviews"
     | "/search"
     | "/settings"
     | "/tags"
@@ -303,6 +315,7 @@ export interface RootRouteChildren {
   KnowledgeHealthRoute: typeof KnowledgeHealthRoute;
   LoginRoute: typeof LoginRoute;
   RequirementsRoute: typeof RequirementsRoute;
+  ReviewsRoute: typeof ReviewsRoute;
   SearchRoute: typeof SearchRoute;
   SettingsRoute: typeof SettingsRoute;
   TagsRoute: typeof TagsRoute;
@@ -352,6 +365,13 @@ declare module "@tanstack/react-router" {
       path: "/search";
       fullPath: "/search";
       preLoaderRoute: typeof SearchRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/reviews": {
+      id: "/reviews";
+      path: "/reviews";
+      fullPath: "/reviews";
+      preLoaderRoute: typeof ReviewsRouteImport;
       parentRoute: typeof rootRouteImport;
     };
     "/requirements": {
@@ -487,6 +507,7 @@ const rootRouteChildren: RootRouteChildren = {
   KnowledgeHealthRoute: KnowledgeHealthRoute,
   LoginRoute: LoginRoute,
   RequirementsRoute: RequirementsRoute,
+  ReviewsRoute: ReviewsRoute,
   SearchRoute: SearchRoute,
   SettingsRoute: SettingsRoute,
   TagsRoute: TagsRoute,
