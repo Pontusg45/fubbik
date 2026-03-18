@@ -16,6 +16,7 @@ import { favoriteRoutes } from "./favorites/routes";
 import { generateInstructionsRoutes } from "./generate-instructions/routes";
 import { knowledgeHealthRoutes } from "./knowledge-health/routes";
 import { requirementRoutes } from "./requirements/routes";
+import { dependencyRoutes } from "./requirements/dependency-routes";
 import type { Session } from "./context";
 import { enrichRoutes } from "./enrich/routes";
 import { fileRefRoutes } from "./file-refs/routes";
@@ -130,6 +131,7 @@ export const api = new Elysia({ prefix: "/api" })
     .use(templateRoutes)
     .use(knowledgeHealthRoutes)
     .use(requirementRoutes)
+    .use(dependencyRoutes)
     .use(useCaseRoutes)
     .use(vocabularyRoutes)
     .use(favoriteRoutes)
