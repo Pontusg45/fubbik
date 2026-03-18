@@ -26,6 +26,19 @@ export function createUseCase(params: CreateUseCaseParams) {
     });
 }
 
+export function getUseCaseByName(userId: string, name: string) {
+    return Effect.tryPromise({
+        try: async () => {
+            const [found] = await db
+                .select()
+                .from(useCase)
+                .where(and(eq(useCase.userId, userId), eq(useCase.name, name)));
+            return found ?? null;
+        },
+        catch: cause => new DatabaseError({ cause })
+    });
+}
+
 export function getUseCaseById(id: string, userId?: string) {
     return Effect.tryPromise({
         try: async () => {

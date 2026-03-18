@@ -2,6 +2,7 @@ import { Effect } from "effect";
 import { Elysia, t } from "elysia";
 
 import { requireSession } from "../require-session";
+import * as batchService from "./batch-service";
 import * as requirementService from "./service";
 import * as suggestContextService from "./suggest-context-service";
 
@@ -176,6 +177,35 @@ export const requirementRoutes = new Elysia()
         {
             query: t.Object({
                 focus: t.Optional(t.String()),
+                codebaseId: t.Optional(t.String())
+            })
+        }
+    )
+    // 5c. Batch create
+    .post(
+        "/requirements/batch",
+        ctx =>
+            Effect.runPromise(
+                Effect.gen(function* () {
+                    const session = yield* requireSession(ctx);
+                    ctx.set.status = 201;
+                    return yield* batchService.batchCreateRequirements(session.user.id, ctx.body);
+                })
+            ),
+        {
+            body: t.Object({
+                requirements: t.Array(
+                    t.Object({
+                        title: t.String({ maxLength: 200 }),
+                        description: t.Optional(t.String({ maxLength: 5000 })),
+                        steps: t.Array(StepSchema, { minItems: 1 }),
+                        priority: PrioritySchema,
+                        useCaseId: t.Optional(t.String()),
+                        useCaseName: t.Optional(t.String()),
+                        parentUseCaseName: t.Optional(t.String())
+                    }),
+                    { minItems: 1, maxItems: 50 }
+                ),
                 codebaseId: t.Optional(t.String())
             })
         }
