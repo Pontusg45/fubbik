@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Activity } from "lucide-react";
+import { Activity, Lightbulb } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -32,6 +32,14 @@ function daysAgo(date: string | Date): string {
 
 function KnowledgeHealthPage() {
     const { codebaseId } = useActiveCodebase();
+
+    const gapsQuery = useQuery({
+        queryKey: ["knowledge-gaps"],
+        queryFn: async () => {
+            return unwrapEden(await (api.api.sessions as any)["knowledge-gaps"].get()) as
+                Array<{ description: string; frequency: number; session_ids: string[] }>;
+        }
+    });
 
     const healthQuery = useQuery({
         queryKey: ["knowledge-health", codebaseId],
@@ -204,6 +212,36 @@ function KnowledgeHealthPage() {
                             )}
                         </CardPanel>
                     </Card>
+                    {/* Knowledge Gaps from AI Sessions */}
+                    {gapsQuery.data && gapsQuery.data.length > 0 && (
+                        <Card>
+                            <CardPanel className="p-6">
+                                <div className="mb-3 flex items-center gap-2">
+                                    <Lightbulb className="size-4 text-amber-500" />
+                                    <h2 className="text-lg font-semibold">Knowledge Gaps from AI</h2>
+                                    <Badge variant="secondary">{gapsQuery.data.length}</Badge>
+                                </div>
+                                <p className="text-muted-foreground mb-4 text-sm">
+                                    These knowledge gaps were identified during AI review sessions. Consider creating chunks to address them.
+                                </p>
+                                <div className="divide-y">
+                                    {gapsQuery.data.map((gap: any, i: number) => (
+                                        <div key={i} className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
+                                            <div className="min-w-0 flex-1">
+                                                <span className="text-sm">{gap.description}</span>
+                                                <span className="text-muted-foreground ml-2 text-xs">
+                                                    ({gap.frequency}x across {gap.session_ids?.length ?? 0} sessions)
+                                                </span>
+                                            </div>
+                                            <Button variant="outline" size="sm" render={<Link to="/chunks/new" />}>
+                                                Create chunk
+                                            </Button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </CardPanel>
+                        </Card>
+                    )}
                 </div>
             ) : null}
         </div>
