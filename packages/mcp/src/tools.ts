@@ -227,7 +227,41 @@ export function registerTools(server: McpServer): void {
         }
     );
 
-    // 6. search_vocabulary
+    // 6. update_chunk
+    server.tool(
+        "update_chunk",
+        "Update an existing knowledge chunk. Use this to keep chunks accurate when you notice they're outdated while working on code they cover.",
+        {
+            id: z.string().describe("Chunk ID to update"),
+            title: z.string().optional().describe("New title"),
+            content: z.string().optional().describe("New content"),
+            type: z.string().optional().describe("New type"),
+            rationale: z.string().optional().describe("New rationale")
+        },
+        async ({ id, title, content, type, rationale }) => {
+            const body: Record<string, unknown> = {};
+            if (title) body.title = title;
+            if (content) body.content = content;
+            if (type) body.type = type;
+            if (rationale) body.rationale = rationale;
+
+            const data = (await apiFetch(`/chunks/${id}`, {
+                method: "PATCH",
+                body: JSON.stringify(body)
+            })) as { id: string; title: string };
+
+            return {
+                content: [
+                    {
+                        type: "text" as const,
+                        text: `Chunk updated: ${data.title} (${data.id})`
+                    }
+                ]
+            };
+        }
+    );
+
+    // 7. search_vocabulary
     server.tool(
         "search_vocabulary",
         "Search vocabulary entries for a codebase",

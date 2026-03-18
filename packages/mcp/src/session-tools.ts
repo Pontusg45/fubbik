@@ -148,4 +148,49 @@ export function registerSessionTools(server: McpServer): void {
             };
         }
     );
+
+    // 6. resolve_assumption_as_chunk
+    server.tool(
+        "resolve_assumption_as_chunk",
+        "Resolve a session assumption by creating a knowledge chunk from it. This turns knowledge gaps into documented chunks automatically — the assumption is marked resolved and a new chunk is created with the assumption context as content.",
+        {
+            sessionId: z.string().describe("Session ID"),
+            assumptionId: z.string().describe("Assumption ID to resolve"),
+            chunkTitle: z.string().describe("Title for the new chunk"),
+            chunkContent: z.string().describe("Content for the new chunk (expand on the assumption with the correct answer)"),
+            chunkType: z.string().optional().describe("Chunk type (default: note)"),
+            codebaseId: z.string().optional().describe("Codebase ID to associate the chunk with"),
+            resolution: z.string().optional().describe("Resolution note (defaults to 'Resolved by creating chunk')")
+        },
+        async ({ sessionId, assumptionId, chunkTitle, chunkContent, chunkType, codebaseId, resolution }) => {
+            // 1. Create the chunk
+            const chunkBody: Record<string, unknown> = {
+                title: chunkTitle,
+                content: chunkContent
+            };
+            if (chunkType) chunkBody.type = chunkType;
+            if (codebaseId) chunkBody.codebaseIds = [codebaseId];
+
+            const chunk = (await apiFetch("/chunks", {
+                method: "POST",
+                body: JSON.stringify(chunkBody)
+            })) as { id: string; title: string };
+
+            // 2. Resolve the assumption
+            await apiFetch(`/sessions/${sessionId}/assumptions/${assumptionId}`, {
+                method: "PATCH",
+                body: JSON.stringify({
+                    resolved: true,
+                    resolution: resolution ?? `Resolved by creating chunk: ${chunk.title} (${chunk.id})`
+                })
+            });
+
+            return {
+                content: [{
+                    type: "text" as const,
+                    text: `Assumption resolved and chunk created:\n- Chunk: ${chunk.title} (${chunk.id})\n- Assumption marked as resolved`
+                }]
+            };
+        }
+    );
 }
