@@ -1,5 +1,5 @@
 # Dockerfile for fubbik TanStack Start app
-# Optimized multi-stage build for Docker deployment
+# Optimized multi-stage build with aggressive caching
 
 FROM node:22-slim AS builder
 
@@ -7,28 +7,41 @@ RUN corepack enable && corepack prepare pnpm@10.10.0 --activate
 
 WORKDIR /app
 
-# Copy package files for all workspaces
+# 1. Copy ONLY package files first (cache layer for deps)
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-COPY apps/cli/package.json ./apps/cli/
 COPY apps/web/package.json ./apps/web/
-COPY apps/server/package.json ./apps/server/
 COPY packages/api/package.json ./packages/api/
 COPY packages/auth/package.json ./packages/auth/
 COPY packages/config/package.json ./packages/config/
 COPY packages/db/package.json ./packages/db/
 COPY packages/env/package.json ./packages/env/
+# Stubs for unused workspaces
+RUN mkdir -p apps/cli apps/server apps/vscode && \
+    echo '{"name":"cli","version":"0.0.1"}' > apps/cli/package.json && \
+    echo '{"name":"server","version":"0.0.1"}' > apps/server/package.json && \
+    echo '{"name":"fubbik-vscode","version":"0.0.1"}' > apps/vscode/package.json
 
 RUN PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 pnpm install --frozen-lockfile
 
-# Copy source code
-COPY . .
+# 2. Copy only source needed for the web build
+COPY packages/config/ ./packages/config/
+COPY packages/env/ ./packages/env/
+COPY packages/db/ ./packages/db/
+COPY packages/auth/ ./packages/auth/
+COPY packages/api/ ./packages/api/
+COPY apps/web/ ./apps/web/
+COPY turbo.json ./
 
-# Vite inlines VITE_* at build time — pass as build arg
+# Vite inlines VITE_* at build time
 ARG VITE_SERVER_URL
 ENV VITE_SERVER_URL=${VITE_SERVER_URL}
 
-# Build the application
+# 3. Build only the web app
 RUN pnpm run build --filter=web
+
+# 4. Prune dev dependencies
+RUN pnpm prune --prod --no-optional && \
+    rm -rf apps/cli apps/server apps/vscode
 
 FROM oven/bun:1.3.10-slim AS runner
 
@@ -37,13 +50,10 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3000
 
-# Copy package files to preserve workspace resolution
+# Copy pruned node_modules (single layer)
+COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/apps/web/package.json ./apps/web/package.json
-
-# Copy node_modules
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/apps/web/node_modules ./apps/web/node_modules
 
 # Copy built output
 COPY --from=builder /app/apps/web/dist ./apps/web/dist
