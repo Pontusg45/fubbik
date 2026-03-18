@@ -13,6 +13,7 @@ export interface CreateUseCaseParams {
     codebaseId?: string;
     userId: string;
     order?: number;
+    parentId?: string;
 }
 
 export function createUseCase(params: CreateUseCaseParams) {
@@ -47,7 +48,18 @@ export function listUseCases(userId: string, codebaseId?: string) {
             if (codebaseId) conditions.push(eq(useCase.codebaseId, codebaseId));
 
             const useCases = await db
-                .select()
+                .select({
+                    id: useCase.id,
+                    name: useCase.name,
+                    description: useCase.description,
+                    codebaseId: useCase.codebaseId,
+                    userId: useCase.userId,
+                    order: useCase.order,
+                    parentId: useCase.parentId,
+                    createdAt: useCase.createdAt,
+                    updatedAt: useCase.updatedAt,
+                    childCount: sql<number>`(SELECT count(*) FROM use_case uc2 WHERE uc2.parent_id = ${useCase.id})`.as("child_count")
+                })
                 .from(useCase)
                 .where(and(...conditions))
                 .orderBy(asc(useCase.order), asc(useCase.name));
@@ -71,6 +83,7 @@ export function listUseCases(userId: string, codebaseId?: string) {
 
             return useCases.map(uc => ({
                 ...uc,
+                childCount: Number(uc.childCount),
                 requirementCount: countMap.get(uc.id) ?? 0
             }));
         },
@@ -82,6 +95,7 @@ export interface UpdateUseCaseParams {
     name?: string;
     description?: string | null;
     order?: number;
+    parentId?: string | null;
 }
 
 export function updateUseCase(id: string, userId: string, params: UpdateUseCaseParams) {
@@ -91,6 +105,7 @@ export function updateUseCase(id: string, userId: string, params: UpdateUseCaseP
             if (params.name !== undefined) setClause.name = params.name;
             if (params.description !== undefined) setClause.description = params.description;
             if (params.order !== undefined) setClause.order = params.order;
+            if (params.parentId !== undefined) setClause.parentId = params.parentId;
 
             if (Object.keys(setClause).length === 0) {
                 const [found] = await db
