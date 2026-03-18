@@ -3,6 +3,7 @@ import { Elysia, t } from "elysia";
 
 import { requireSession } from "../require-session";
 import * as requirementService from "./service";
+import * as suggestContextService from "./suggest-context-service";
 
 const StepSchema = t.Object({
     keyword: t.Union([
@@ -159,6 +160,23 @@ export const requirementRoutes = new Elysia()
                 codebaseId: t.Optional(t.String()),
                 useCaseId: t.Optional(t.String()),
                 origin: t.Optional(t.Union([t.Literal("human"), t.Literal("ai")]))
+            })
+        }
+    )
+    // 5b. Suggest context (must be before /:id routes)
+    .get(
+        "/requirements/suggest-context",
+        ctx =>
+            Effect.runPromise(
+                Effect.gen(function* () {
+                    const session = yield* requireSession(ctx);
+                    return yield* suggestContextService.getSuggestContext(session.user.id, ctx.query);
+                })
+            ),
+        {
+            query: t.Object({
+                focus: t.Optional(t.String()),
+                codebaseId: t.Optional(t.String())
             })
         }
     )
