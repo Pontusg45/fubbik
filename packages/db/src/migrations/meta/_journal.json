@@ -15,6 +15,13 @@
       "when": 1773864717209,
       "tag": "0001_happy_warbird",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1773868878457,
+      "tag": "0002_volatile_obadiah_stane",
+      "breakpoints": true
     }
   ]
 }
