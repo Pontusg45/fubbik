@@ -10,6 +10,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ChunkLinker } from "@/features/requirements/chunk-linker";
+import { DependencyGraph } from "@/features/requirements/dependency-graph";
+import { DependencySection } from "@/features/requirements/dependency-section";
 import { StepBuilder } from "@/features/requirements/step-builder";
 import { validateSteps, type Keyword, type StepRow, type StepError } from "@/features/requirements/validation";
 import { useActiveCodebase } from "@/features/codebases/use-active-codebase";
@@ -386,6 +388,12 @@ function RequirementDetail() {
                             ))}
                         </div>
                     </div>
+
+                    {/* Dependencies */}
+                    <div className="mb-6">
+                        <DependencySection requirementId={requirementId} />
+                    </div>
+                    <DependencyGraph requirementId={requirementId} />
 
                     {/* Warnings */}
                     {warnings.length > 0 && (
