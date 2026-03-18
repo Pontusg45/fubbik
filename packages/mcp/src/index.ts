@@ -3,6 +3,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 
 import { registerTools } from "./tools.js";
+import { registerSessionTools } from "./session-tools.js";
 
 const server = new McpServer({
     name: "fubbik",
@@ -10,6 +11,7 @@ const server = new McpServer({
 });
 
 registerTools(server);
+registerSessionTools(server);
 
 const transport = new StdioServerTransport();
 await server.connect(transport);
