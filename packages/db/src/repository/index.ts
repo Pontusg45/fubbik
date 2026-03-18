@@ -23,3 +23,4 @@ export * from "./activity";
 export * from "./settings";
 export * from "./comment";
 export * from "./coverage";
+export * from "./requirement-dependency";
