@@ -1,4 +1,4 @@
-import { and, eq, ilike, inArray, or, sql } from "drizzle-orm";
+import { and, asc, eq, ilike, inArray, or, sql } from "drizzle-orm";
 import { Effect } from "effect";
 
 import { DatabaseError } from "../errors";
@@ -84,6 +84,7 @@ export function listRequirements(params: ListRequirementsParams) {
                 .select()
                 .from(requirement)
                 .where(and(...conditions))
+                .orderBy(asc(requirement.order), asc(requirement.createdAt))
                 .limit(params.limit)
                 .offset(params.offset);
 
@@ -236,6 +237,31 @@ export function bulkDeleteRequirements(ids: string[], userId: string) {
                 .delete(requirement)
                 .where(and(inArray(requirement.id, ids), eq(requirement.userId, userId)));
             return result.rowCount ?? 0;
+        },
+        catch: cause => new DatabaseError({ cause })
+    });
+}
+
+export function getRequirementsByIds(ids: string[], userId: string) {
+    return Effect.tryPromise({
+        try: () =>
+            db.select({ id: requirement.id, useCaseId: requirement.useCaseId })
+                .from(requirement)
+                .where(and(inArray(requirement.id, ids), eq(requirement.userId, userId))),
+        catch: cause => new DatabaseError({ cause })
+    });
+}
+
+export function setRequirementOrder(requirementIds: string[]) {
+    return Effect.tryPromise({
+        try: async () => {
+            for (let i = 0; i < requirementIds.length; i++) {
+                await db
+                    .update(requirement)
+                    .set({ order: i })
+                    .where(eq(requirement.id, requirementIds[i]!));
+            }
+            return requirementIds.length;
         },
         catch: cause => new DatabaseError({ cause })
     });

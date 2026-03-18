@@ -11,11 +11,13 @@ import {
     bulkUpdateRequirements,
     bulkDeleteRequirements,
     getChunkById,
-    listVocabulary
+    listVocabulary,
+    getRequirementsByIds,
+    setRequirementOrder
 } from "@fubbik/db/repository";
 import { Effect } from "effect";
 
-import { NotFoundError, StepValidationError } from "../errors";
+import { NotFoundError, StepValidationError, ValidationError } from "../errors";
 import { parseStepText, type VocabEntry, type VocabularyWarning } from "../vocabulary/parser";
 import { validateSteps } from "./validator";
 import { crossReferenceSteps, type CrossRefWarning } from "./cross-ref";
@@ -244,6 +246,23 @@ export function bulkAction(
         case "delete":
             return bulkDeleteRequirements(body.ids, userId);
     }
+}
+
+export function reorderRequirements(requirementIds: string[], userId: string) {
+    return Effect.gen(function* () {
+        const existing = yield* getRequirementsByIds(requirementIds, userId);
+
+        if (existing.length !== requirementIds.length) {
+            return yield* Effect.fail(new ValidationError({ message: "Some requirements not found or not owned by user" }));
+        }
+
+        const useCaseIds = new Set(existing.map(r => r.useCaseId));
+        if (useCaseIds.size > 1) {
+            return yield* Effect.fail(new ValidationError({ message: "Requirements must belong to the same use case" }));
+        }
+
+        return yield* setRequirementOrder(requirementIds);
+    });
 }
 
 function exportOne(

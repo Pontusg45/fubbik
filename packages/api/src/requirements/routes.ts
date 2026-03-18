@@ -77,7 +77,24 @@ export const requirementRoutes = new Elysia()
             })
         }
     )
-    // 3. Export all
+    // 3. Reorder
+    .patch(
+        "/requirements/reorder",
+        ctx =>
+            Effect.runPromise(
+                Effect.gen(function* () {
+                    const session = yield* requireSession(ctx);
+                    const updated = yield* requirementService.reorderRequirements(ctx.body.requirementIds, session.user.id);
+                    return { updated };
+                })
+            ),
+        {
+            body: t.Object({
+                requirementIds: t.Array(t.String(), { minItems: 1, maxItems: 200 })
+            })
+        }
+    )
+    // 4. Export all
     .get(
         "/requirements/export",
         ctx =>
