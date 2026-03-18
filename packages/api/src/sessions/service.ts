@@ -10,7 +10,9 @@ import {
     addRequirementRef as addRequirementRefRepo,
     updateRequirementStatus,
     listRequirements,
-    listChunks
+    listChunks,
+    getSessionsForRequirement as getSessionsForRequirementRepo,
+    getUnresolvedAssumptionsSummary
 } from "@fubbik/db/repository";
 import { Effect } from "effect";
 import { NotFoundError } from "../errors";
@@ -265,4 +267,12 @@ export function reviewSession(
 
         return updated;
     });
+}
+
+export function getSessionsForRequirement(requirementId: string) {
+    return getSessionsForRequirementRepo(requirementId);
+}
+
+export function getKnowledgeGaps(userId: string) {
+    return getUnresolvedAssumptionsSummary(userId);
 }
