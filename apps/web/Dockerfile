@@ -37,10 +37,6 @@ ENV VITE_SERVER_URL=${VITE_SERVER_URL}
 # 3. Build only the web app
 RUN pnpm run build --filter=web
 
-# 4. Prune dev dependencies
-RUN pnpm prune --prod --no-optional && \
-    rm -rf apps/cli apps/server apps/vscode
-
 FROM oven/bun:1.3.10-slim AS runner
 
 WORKDIR /app
@@ -48,9 +44,10 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3000
 
-# Copy pruned node_modules (single layer)
+# Copy node_modules (root + workspace-level for pnpm symlink resolution)
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/apps/web/node_modules ./apps/web/node_modules
 COPY --from=builder /app/apps/web/package.json ./apps/web/package.json
 
 # Copy built output
