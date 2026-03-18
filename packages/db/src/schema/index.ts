@@ -8,6 +8,7 @@ export * from "./tag";
 export * from "./template";
 export * from "./use-case";
 export * from "./requirement";
+export * from "./requirement-dependency";
 export * from "./vocabulary";
 export * from "./favorite";
 export * from "./collection";

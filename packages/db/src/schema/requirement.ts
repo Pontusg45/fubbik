@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm";
-import { index, jsonb, pgTable, primaryKey, text, timestamp } from "drizzle-orm/pg-core";
+import { index, integer, jsonb, pgTable, primaryKey, text, timestamp } from "drizzle-orm/pg-core";
 import { user } from "./auth";
 import { chunk } from "./chunk";
 import { codebase } from "./codebase";
@@ -18,6 +18,7 @@ export const requirement = pgTable(
         title: text("title").notNull(),
         description: text("description"),
         steps: jsonb("steps").$type<RequirementStep[]>().notNull(),
+        order: integer("order").notNull().default(0),
         status: text("status").notNull().default("untested"),
         priority: text("priority"),
         codebaseId: text("codebase_id").references(() => codebase.id, { onDelete: "set null" }),
