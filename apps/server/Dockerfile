@@ -8,19 +8,18 @@ RUN corepack enable && corepack prepare pnpm@10.10.0 --activate
 
 WORKDIR /app
 
-# 1. Copy ONLY package files first (cache layer for deps)
+# 1. Copy ALL package files first (cache layer for deps)
+#    pnpm --frozen-lockfile validates every workspace package.json against the lockfile
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps/cli/package.json ./apps/cli/
 COPY apps/server/package.json ./apps/server/
+COPY apps/web/package.json ./apps/web/
+COPY apps/vscode/package.json ./apps/vscode/
 COPY packages/api/package.json ./packages/api/
 COPY packages/auth/package.json ./packages/auth/
 COPY packages/config/package.json ./packages/config/
 COPY packages/db/package.json ./packages/db/
 COPY packages/env/package.json ./packages/env/
-# Stubs for unused workspaces (pnpm needs them to resolve the lockfile)
-RUN mkdir -p apps/cli apps/web apps/vscode && \
-    echo '{"name":"cli","version":"0.0.1"}' > apps/cli/package.json && \
-    echo '{"name":"web","version":"0.0.1"}' > apps/web/package.json && \
-    echo '{"name":"fubbik-vscode","version":"0.0.1"}' > apps/vscode/package.json
 
 RUN PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 pnpm install --frozen-lockfile
 
