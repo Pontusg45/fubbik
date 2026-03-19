@@ -23,8 +23,11 @@ export async function activate(context: vscode.ExtensionContext) {
     async function refreshChunks() {
         sidebarProvider.setState({ loading: true, error: null });
         try {
-            const { chunks, total } = await api.getChunks(codebaseId ?? undefined);
-            sidebarProvider.setState({ chunks, total, loading: false });
+            const [chunksRes, tags] = await Promise.all([
+                api.getChunks(codebaseId ?? undefined),
+                api.getTags(),
+            ]);
+            sidebarProvider.setState({ chunks: chunksRes.chunks, total: chunksRes.total, tags, loading: false });
         } catch {
             sidebarProvider.setState({
                 chunks: [],

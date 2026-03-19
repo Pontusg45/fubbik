@@ -78,6 +78,16 @@ export class FubbikApi {
         return response.json() as Promise<{ chunk: Chunk; connections: unknown[] }>;
     }
 
+    async getTags(): Promise<Array<{ id: string; name: string }>> {
+        try {
+            const res = await fetch(`${this.baseUrl}/api/tags`);
+            if (!res.ok) return [];
+            return res.json();
+        } catch {
+            return [];
+        }
+    }
+
     async createChunk(body: CreateChunkBody): Promise<Chunk> {
         const response = await fetch(`${this.baseUrl}/api/chunks`, {
             method: "POST",
