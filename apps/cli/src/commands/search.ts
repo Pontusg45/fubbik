@@ -1,9 +1,9 @@
 import { Command } from "commander";
 
-import { formatId, formatScore, formatTag, formatTitle, formatType } from "../lib/colors";
 import { resolveCodebaseId } from "../lib/detect-codebase";
 import { output, outputError, outputQuiet } from "../lib/output";
 import { readStore, searchChunks } from "../lib/store";
+import { formatChunkTable, formatSemanticTable } from "../lib/table";
 
 export const searchCommand = new Command("search")
     .description("Search chunks by title, content, or tags")
@@ -40,11 +40,7 @@ export const searchCommand = new Command("search")
             if (results.length === 0) {
                 output(cmd, results, `No semantic matches for "${query}".`);
             } else {
-                const lines = [`${results.length} semantic result(s) for "${query}":\n`];
-                for (const r of results) {
-                    lines.push(`  ${formatId(r.id)}  ${formatTitle(r.title)}  ${formatType(r.type)}  score: ${formatScore(r.similarity.toFixed(3))}`);
-                }
-                output(cmd, results, lines.join("\n"));
+                output(cmd, results, `${results.length} semantic result(s) for "${query}":\n\n${formatSemanticTable(results)}`);
             }
             return;
         }
@@ -73,11 +69,6 @@ export const searchCommand = new Command("search")
         if (results.length === 0) {
             output(cmd, data, `No chunks matching "${query}".`);
         } else {
-            const lines = [`${results.length} result(s) for "${query}":\n`];
-            for (const chunk of results) {
-                const tags = chunk.tags.length > 0 ? ` [${chunk.tags.map(formatTag).join(", ")}]` : "";
-                lines.push(`  ${formatId(chunk.id)}  ${formatTitle(chunk.title)}  ${formatType(chunk.type)}${tags}`);
-            }
-            output(cmd, data, lines.join("\n"));
+            output(cmd, data, `${results.length} result(s) for "${query}":\n\n${formatChunkTable(results)}`);
         }
     });

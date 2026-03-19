@@ -13,6 +13,7 @@
     },
     "dependencies": {
         "@fubbik/api": "workspace:*",
+        "cli-table3": "^0.6.5",
         "commander": "^13.1.0",
         "picocolors": "^1.1.1"
     },
