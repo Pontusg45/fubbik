@@ -11,7 +11,7 @@ export function undoableAction({
     message: string;
     duration?: number;
 }) {
-    action();
+    void action();
     toast(message, {
         duration,
         action: {

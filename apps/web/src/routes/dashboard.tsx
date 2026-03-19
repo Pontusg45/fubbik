@@ -98,11 +98,16 @@ function DashboardPage() {
         queryKey: ["chunks-recent-viewed", recentIds],
         queryFn: async () => {
             if (recentIds.length === 0) return [];
-            const result = unwrapEden(await api.api.chunks.get({ query: { limit: "100" } as any }));
-            const chunks = result?.chunks ?? [];
-            return recentIds
-                .map(id => chunks.find(c => c.id === id))
-                .filter((c): c is NonNullable<typeof c> => !!c);
+            const results = await Promise.all(
+                recentIds.map(async (id) => {
+                    try {
+                        return unwrapEden(await api.api.chunks({ id }).get());
+                    } catch {
+                        return null;
+                    }
+                })
+            );
+            return results.filter((c): c is NonNullable<typeof c> => !!c);
         },
         enabled: recentIds.length > 0
     });

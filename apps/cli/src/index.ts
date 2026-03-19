@@ -62,7 +62,7 @@ program.addCommand(requirementsCommand);
 
 program.command("completions")
     .description("Generate shell completions")
-    .argument("<shell>", "shell type: zsh, bash")
+    .argument("<shell>", "shell type: zsh")
     .action((shell: string) => {
         if (shell === "zsh") {
             console.log(generateZshCompletions(program));

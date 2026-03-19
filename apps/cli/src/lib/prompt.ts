@@ -34,13 +34,15 @@ export async function openEditor(initialContent = ""): Promise<string> {
     const tmpFile = join(tmpdir(), `fubbik-${Date.now()}.md`);
     writeFileSync(tmpFile, initialContent);
 
-    const editor = process.env.EDITOR || process.env.VISUAL || "vi";
-    const parts = editor.split(" ");
-    const cmd = parts[0]!;
-    const args = parts.slice(1);
-    execFileSync(cmd, [...args, tmpFile], { stdio: "inherit" });
+    try {
+        const editor = process.env.EDITOR || process.env.VISUAL || "vi";
+        const parts = editor.split(" ");
+        const cmd = parts[0]!;
+        const args = parts.slice(1);
+        execFileSync(cmd, [...args, tmpFile], { stdio: "inherit" });
 
-    const content = readFileSync(tmpFile, "utf-8");
-    unlinkSync(tmpFile);
-    return content;
+        return readFileSync(tmpFile, "utf-8");
+    } finally {
+        try { unlinkSync(tmpFile); } catch {}
+    }
 }

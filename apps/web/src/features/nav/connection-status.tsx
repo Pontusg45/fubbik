@@ -1,14 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { WifiOff } from "lucide-react";
 
+import { api } from "@/utils/api";
+import { unwrapEden } from "@/utils/eden";
+
 export function ConnectionStatus() {
     const { isError } = useQuery({
         queryKey: ["health"],
-        queryFn: async () => {
-            const res = await fetch("/api/health");
-            if (!res.ok) throw new Error("Server error");
-            return res.json();
-        },
+        queryFn: async () => unwrapEden(await api.api.health.get()),
         refetchInterval: 30_000,
         retry: false,
     });
