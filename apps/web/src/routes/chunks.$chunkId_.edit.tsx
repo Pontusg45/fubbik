@@ -1,13 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, ChevronDown, Plus, Trash2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardPanel } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { loadDraft, useAutosave } from "@/features/chunks/use-autosave";
 import { MarkdownEditor } from "@/features/editor/markdown-editor";
 import { getUser } from "@/functions/get-user";
 import { api } from "@/utils/api";
@@ -36,10 +37,23 @@ interface FileRefRow {
     relation: "documents" | "configures" | "tests" | "implements";
 }
 
+interface EditChunkDraft {
+    title: string;
+    content: string;
+    type: string;
+    tags: string[];
+    appliesTo: ApplyToRow[];
+    fileRefs: FileRefRow[];
+    rationale: string;
+    alternativesInput: string;
+    consequences: string;
+}
+
 function EditChunk() {
     const { chunkId } = Route.useParams();
     const navigate = useNavigate();
     const queryClient = useQueryClient();
+    const draftKey = `chunk-draft-edit-${chunkId}`;
 
     const [title, setTitle] = useState("");
     const [content, setContent] = useState("");
@@ -57,6 +71,8 @@ function EditChunk() {
     const [alternativesInput, setAlternativesInput] = useState("");
     const [consequences, setConsequences] = useState("");
 
+    const draftRef = useRef(loadDraft<EditChunkDraft>(draftKey));
+
     const { data, isLoading, error } = useQuery({
         queryKey: ["chunk", chunkId],
         queryFn: async () => {
@@ -66,6 +82,27 @@ function EditChunk() {
 
     useEffect(() => {
         if (data?.chunk && !initialized) {
+            const draft = draftRef.current;
+
+            // If there's a saved draft, restore it instead of server data
+            if (draft && (draft.title || draft.content)) {
+                setTitle(draft.title);
+                setContent(draft.content);
+                setType(draft.type);
+                setTags(draft.tags);
+                setAppliesTo(draft.appliesTo);
+                setFileRefs(draft.fileRefs);
+                setRationale(draft.rationale);
+                setAlternativesInput(draft.alternativesInput);
+                setConsequences(draft.consequences);
+                if (draft.rationale || draft.alternativesInput || draft.consequences) {
+                    setShowDecisionContext(true);
+                }
+                toast.info("Restored unsaved draft");
+                setInitialized(true);
+                return;
+            }
+
             const chunk = data.chunk;
             setTitle(chunk.title);
             setContent(chunk.content);
@@ -113,6 +150,13 @@ function EditChunk() {
             setInitialized(true);
         }
     }, [data, initialized]);
+
+    // Autosave form state
+    const formState = useMemo<EditChunkDraft>(
+        () => ({ title, content, type, tags, appliesTo, fileRefs, rationale, alternativesInput, consequences }),
+        [title, content, type, tags, appliesTo, fileRefs, rationale, alternativesInput, consequences]
+    );
+    const { clearDraft } = useAutosave(draftKey, formState, initialized);
 
     function validate() {
         const e: Record<string, string> = {};
@@ -169,6 +213,7 @@ function EditChunk() {
             }
         },
         onSuccess: () => {
+            clearDraft();
             queryClient.invalidateQueries({ queryKey: ["chunks"] });
             queryClient.invalidateQueries({ queryKey: ["chunk", chunkId] });
             queryClient.invalidateQueries({ queryKey: ["stats"] });

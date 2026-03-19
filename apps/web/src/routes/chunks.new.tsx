@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, ChevronDown, FileText, Loader2, Plus, Sparkles, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardPanel } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { chunkTemplates } from "@/features/chunks/templates";
+import { loadDraft, useAutosave } from "@/features/chunks/use-autosave";
 import { MarkdownEditor } from "@/features/editor/markdown-editor";
 import { getUser } from "@/functions/get-user";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
@@ -38,26 +39,58 @@ interface FileRefRow {
     relation: "documents" | "configures" | "tests" | "implements";
 }
 
+const DRAFT_KEY = "chunk-draft-new";
+
+interface ChunkDraft {
+    title: string;
+    content: string;
+    type: string;
+    tags: string[];
+    appliesTo: ApplyToRow[];
+    fileRefs: FileRefRow[];
+    rationale: string;
+    alternativesInput: string;
+    consequences: string;
+}
+
 function NewChunk() {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
-    const [title, setTitle] = useState("");
-    const [content, setContent] = useState("");
-    const [type, setType] = useState("note");
+
+    const draft = useRef(loadDraft<ChunkDraft>(DRAFT_KEY)).current;
+
+    const [title, setTitle] = useState(draft?.title ?? "");
+    const [content, setContent] = useState(draft?.content ?? "");
+    const [type, setType] = useState(draft?.type ?? "note");
     const [tagInput, setTagInput] = useState("");
-    const [tags, setTags] = useState<string[]>([]);
+    const [tags, setTags] = useState<string[]>(draft?.tags ?? []);
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [aiPrompt, setAiPrompt] = useState("");
     const debouncedTitle = useDebouncedValue(title, 500);
 
     // New fields
-    const [appliesTo, setAppliesTo] = useState<ApplyToRow[]>([]);
-    const [fileRefs, setFileRefs] = useState<FileRefRow[]>([]);
+    const [appliesTo, setAppliesTo] = useState<ApplyToRow[]>(draft?.appliesTo ?? []);
+    const [fileRefs, setFileRefs] = useState<FileRefRow[]>(draft?.fileRefs ?? []);
     const [showDecisionContext, setShowDecisionContext] = useState(false);
-    const [rationale, setRationale] = useState("");
-    const [alternativesInput, setAlternativesInput] = useState("");
-    const [consequences, setConsequences] = useState("");
+    const [rationale, setRationale] = useState(draft?.rationale ?? "");
+    const [alternativesInput, setAlternativesInput] = useState(draft?.alternativesInput ?? "");
+    const [consequences, setConsequences] = useState(draft?.consequences ?? "");
     const [selectedTemplateId, setSelectedTemplateId] = useState("");
+
+    // Show toast if draft was restored
+    useEffect(() => {
+        if (draft && (draft.title || draft.content)) {
+            toast.info("Restored unsaved draft");
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    // Autosave form state
+    const formState = useMemo<ChunkDraft>(
+        () => ({ title, content, type, tags, appliesTo, fileRefs, rationale, alternativesInput, consequences }),
+        [title, content, type, tags, appliesTo, fileRefs, rationale, alternativesInput, consequences]
+    );
+    const { clearDraft } = useAutosave(DRAFT_KEY, formState);
 
     const templatesQuery = useQuery({
         queryKey: ["templates"],
@@ -180,6 +213,7 @@ function NewChunk() {
             return chunk;
         },
         onSuccess: data => {
+            clearDraft();
             queryClient.invalidateQueries({ queryKey: ["chunks"] });
             queryClient.invalidateQueries({ queryKey: ["stats"] });
             toast.success("Chunk created");
