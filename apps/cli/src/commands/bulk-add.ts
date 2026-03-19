@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 
 import { Command } from "commander";
 
+import { formatError, formatSuccess } from "../lib/colors";
 import { output, outputQuiet } from "../lib/output";
 import { addChunk } from "../lib/store";
 
@@ -44,8 +45,8 @@ export const bulkAddCommand = new Command("bulk-add")
             cmd,
             { added, errors },
             [
-                `✓ Added ${added.length} chunk(s)`,
-                ...(errors.length > 0 ? [`✗ ${errors.length} error(s):`] : []),
+                formatSuccess(`Added ${added.length} chunk(s)`),
+                ...(errors.length > 0 ? [formatError(`${errors.length} error(s):`)] : []),
                 ...errors.map(e => `  Line ${e.line}: ${e.error}`)
             ].join("\n")
         );

@@ -1,5 +1,6 @@
 import { Command } from "commander";
 
+import { formatSuccess } from "../lib/colors";
 import { output, outputError, outputQuiet } from "../lib/output";
 import { getServerUrl } from "../lib/store";
 
@@ -25,14 +26,14 @@ export const unlinkCommand = new Command("unlink")
             });
 
             if (!res.ok) {
-                outputError(`✗ Failed to delete connection: ${res.status}`);
+                outputError(`Failed to delete connection: ${res.status}`);
                 process.exit(1);
             }
 
             outputQuiet(cmd, connectionId);
-            output(cmd, { id: connectionId }, `✓ Removed connection ${connectionId}`);
+            output(cmd, { id: connectionId }, formatSuccess(`Removed connection ${connectionId}`));
         } catch (err) {
-            outputError(`✗ ${(err as Error).message}`);
+            outputError((err as Error).message);
             process.exit(1);
         }
     });

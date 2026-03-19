@@ -1,5 +1,6 @@
 import { Command } from "commander";
 
+import { formatId, formatSuccess, formatTag, formatType } from "../lib/colors";
 import { output, outputQuiet } from "../lib/output";
 import { addChunk } from "../lib/store";
 
@@ -36,10 +37,10 @@ export const addCommand = new Command("add")
             cmd,
             chunk,
             [
-                `✓ Created chunk ${chunk.id}`,
+                formatSuccess(`Created chunk ${formatId(chunk.id)}`),
                 `  Title: ${chunk.title}`,
-                `  Type: ${chunk.type}`,
-                ...(tags.length > 0 ? [`  Tags: ${tags.join(", ")}`] : [])
+                `  Type: ${formatType(chunk.type)}`,
+                ...(tags.length > 0 ? [`  Tags: ${tags.map(formatTag).join(", ")}`] : [])
             ].join("\n")
         );
     });

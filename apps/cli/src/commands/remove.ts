@@ -1,5 +1,6 @@
 import { Command } from "commander";
 
+import { formatSuccess } from "../lib/colors";
 import { output, outputError, outputQuiet } from "../lib/output";
 import { deleteChunk, getChunk } from "../lib/store";
 
@@ -9,11 +10,11 @@ export const removeCommand = new Command("remove")
     .action((id: string, _opts: unknown, cmd: Command) => {
         const chunk = getChunk(id);
         if (!chunk) {
-            outputError(`✗ Chunk "${id}" not found.`);
+            outputError(`Chunk "${id}" not found.`);
             process.exit(1);
         }
 
         deleteChunk(id);
         outputQuiet(cmd, id);
-        output(cmd, { id, title: chunk.title }, `✓ Removed chunk ${id} (${chunk.title})`);
+        output(cmd, { id, title: chunk.title }, formatSuccess(`Removed chunk ${id} (${chunk.title})`));
     });

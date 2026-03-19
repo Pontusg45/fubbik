@@ -1,5 +1,6 @@
 import { Command } from "commander";
 
+import { formatId, formatTag, formatTitle, formatType } from "../lib/colors";
 import { resolveCodebaseId } from "../lib/detect-codebase";
 import { output, outputError, outputQuiet } from "../lib/output";
 import { listChunks, readStore } from "../lib/store";
@@ -66,8 +67,8 @@ export const listCommand = new Command("list")
                 } else {
                     const lines = [`${chunks.length} chunk(s):\n`];
                     for (const chunk of chunks) {
-                        const tags = chunk.tags.length > 0 ? ` [${chunk.tags.join(", ")}]` : "";
-                        lines.push(`  ${chunk.id}  ${chunk.title}  (${chunk.type})${tags}`);
+                        const tags = chunk.tags.length > 0 ? ` [${chunk.tags.map(formatTag).join(", ")}]` : "";
+                        lines.push(`  ${formatId(chunk.id)}  ${formatTitle(chunk.title)}  ${formatType(chunk.type)}${tags}`);
                     }
                     output(cmd, chunks, lines.join("\n"));
                 }
@@ -111,8 +112,8 @@ export const listCommand = new Command("list")
             } else {
                 const lines = [`${chunks.length} chunk(s):\n`];
                 for (const chunk of chunks) {
-                    const tags = chunk.tags.length > 0 ? ` [${chunk.tags.join(", ")}]` : "";
-                    lines.push(`  ${chunk.id}  ${chunk.title}  (${chunk.type})${tags}`);
+                    const tags = chunk.tags.length > 0 ? ` [${chunk.tags.map(formatTag).join(", ")}]` : "";
+                    lines.push(`  ${formatId(chunk.id)}  ${formatTitle(chunk.title)}  ${formatType(chunk.type)}${tags}`);
                 }
                 output(cmd, data, lines.join("\n"));
             }

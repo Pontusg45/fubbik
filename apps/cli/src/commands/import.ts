@@ -3,6 +3,7 @@ import { join } from "node:path";
 
 import { Command } from "commander";
 
+import { formatSuccess } from "../lib/colors";
 import { output, outputQuiet } from "../lib/output";
 import { addChunk } from "../lib/store";
 
@@ -69,5 +70,5 @@ export const importCommand = new Command("import")
         }
 
         outputQuiet(cmd, added.map(a => a.id).join("\n"));
-        output(cmd, { added }, `✓ Imported ${added.length} chunk(s)`);
+        output(cmd, { added }, formatSuccess(`Imported ${added.length} chunk(s)`));
     });

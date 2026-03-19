@@ -1,5 +1,6 @@
 import { Command } from "commander";
 
+import { formatId, formatScore, formatTag, formatTitle, formatType } from "../lib/colors";
 import { resolveCodebaseId } from "../lib/detect-codebase";
 import { output, outputError, outputQuiet } from "../lib/output";
 import { readStore, searchChunks } from "../lib/store";
@@ -41,7 +42,7 @@ export const searchCommand = new Command("search")
             } else {
                 const lines = [`${results.length} semantic result(s) for "${query}":\n`];
                 for (const r of results) {
-                    lines.push(`  ${r.id}  ${r.title}  (${r.type})  score: ${r.similarity.toFixed(3)}`);
+                    lines.push(`  ${formatId(r.id)}  ${formatTitle(r.title)}  ${formatType(r.type)}  score: ${formatScore(r.similarity.toFixed(3))}`);
                 }
                 output(cmd, results, lines.join("\n"));
             }
@@ -74,8 +75,8 @@ export const searchCommand = new Command("search")
         } else {
             const lines = [`${results.length} result(s) for "${query}":\n`];
             for (const chunk of results) {
-                const tags = chunk.tags.length > 0 ? ` [${chunk.tags.join(", ")}]` : "";
-                lines.push(`  ${chunk.id}  ${chunk.title}  (${chunk.type})${tags}`);
+                const tags = chunk.tags.length > 0 ? ` [${chunk.tags.map(formatTag).join(", ")}]` : "";
+                lines.push(`  ${formatId(chunk.id)}  ${formatTitle(chunk.title)}  ${formatType(chunk.type)}${tags}`);
             }
             output(cmd, data, lines.join("\n"));
         }

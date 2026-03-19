@@ -9,7 +9,7 @@ export const catCommand = new Command("cat")
     .action((id: string) => {
         const chunk = getChunk(id);
         if (!chunk) {
-            outputError(`✗ Chunk "${id}" not found.`);
+            outputError(`Chunk "${id}" not found.`);
             process.exit(1);
         }
         process.stdout.write(chunk.content);

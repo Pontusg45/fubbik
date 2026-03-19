@@ -13,7 +13,8 @@
     },
     "dependencies": {
         "@fubbik/api": "workspace:*",
-        "commander": "^13.1.0"
+        "commander": "^13.1.0",
+        "picocolors": "^1.1.1"
     },
     "devDependencies": {
         "@fubbik/config": "workspace:*",

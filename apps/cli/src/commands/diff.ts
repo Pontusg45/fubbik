@@ -21,7 +21,7 @@ export const diffCommand = new Command("diff")
         try {
             const res = await fetch(`${serverUrl}/api/chunks?limit=1000`, { headers });
             if (!res.ok) {
-                outputError(`✗ Server returned ${res.status}`);
+                outputError(`Server returned ${res.status}`);
                 process.exit(1);
             }
 
@@ -68,7 +68,7 @@ export const diffCommand = new Command("diff")
 
             output(cmd, data, lines.join("\n"));
         } catch (err) {
-            outputError(`✗ ${(err as Error).message}`);
+            outputError((err as Error).message);
             process.exit(1);
         }
     });

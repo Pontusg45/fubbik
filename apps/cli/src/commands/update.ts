@@ -1,5 +1,6 @@
 import { Command } from "commander";
 
+import { formatSuccess, formatTag, formatType } from "../lib/colors";
 import { output, outputError, outputQuiet } from "../lib/output";
 import { updateChunk } from "../lib/store";
 
@@ -34,13 +35,13 @@ export const updateCommand = new Command("update")
             }
 
             if (Object.keys(updates).length === 0) {
-                outputError("✗ No updates provided. Use --title, --content, --type, --tags, or --content-file.");
+                outputError("No updates provided. Use --title, --content, --type, --tags, or --content-file.");
                 process.exit(1);
             }
 
             const chunk = updateChunk(id, updates);
             if (!chunk) {
-                outputError(`✗ Chunk "${id}" not found.`);
+                outputError(`Chunk "${id}" not found.`);
                 process.exit(1);
             }
 
@@ -49,10 +50,10 @@ export const updateCommand = new Command("update")
                 cmd,
                 chunk,
                 [
-                    `✓ Updated chunk ${chunk.id}`,
+                    formatSuccess(`Updated chunk ${chunk.id}`),
                     `  Title: ${chunk.title}`,
-                    `  Type: ${chunk.type}`,
-                    ...(chunk.tags.length > 0 ? [`  Tags: ${chunk.tags.join(", ")}`] : [])
+                    `  Type: ${formatType(chunk.type)}`,
+                    ...(chunk.tags.length > 0 ? [`  Tags: ${chunk.tags.map(formatTag).join(", ")}`] : [])
                 ].join("\n")
             );
         }
