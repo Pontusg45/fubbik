@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { Copy, Eye, FileText, Pencil, Plus, Trash2, X } from "lucide-react";
+import { Copy, Eye, FileText, LayoutTemplate, Pencil, Plus, Trash2, X } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -8,6 +8,7 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardPanel } from "@/components/ui/card";
+import { Empty, EmptyAction, EmptyDescription, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { getUser } from "@/functions/get-user";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
@@ -248,7 +249,14 @@ function TemplatesPage() {
                     {templatesQuery.isLoading ? (
                         <p className="text-muted-foreground text-sm">Loading...</p>
                     ) : templates.length === 0 ? (
-                        <p className="text-muted-foreground text-sm">No templates yet.</p>
+                        <Empty>
+                            <EmptyMedia variant="icon"><LayoutTemplate className="h-10 w-10" /></EmptyMedia>
+                            <EmptyTitle>No custom templates</EmptyTitle>
+                            <EmptyDescription>Templates pre-fill chunk forms for common patterns.</EmptyDescription>
+                            <EmptyAction>
+                                <Button onClick={() => setShowForm(true)}>Create Template</Button>
+                            </EmptyAction>
+                        </Empty>
                     ) : (
                         <div className="divide-y">
                             {templates.map(t => (

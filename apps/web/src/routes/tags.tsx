@@ -1,12 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Palette, Pencil, Plus, Search, Tags as TagsIcon, Trash2, X } from "lucide-react";
+import { Palette, Pencil, Plus, Search, Tag, Tags as TagsIcon, Trash2, X } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Empty, EmptyAction, EmptyDescription, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { getUser } from "@/functions/get-user";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
@@ -194,12 +195,21 @@ function TagsPage() {
                     {tagsQuery.isLoading ? (
                         <p className="text-muted-foreground py-8 text-center text-sm">Loading tags...</p>
                     ) : filteredTags.length === 0 ? (
-                        <div className="flex flex-col items-center gap-2 py-12">
-                            <TagsIcon className="text-muted-foreground/30 size-8" />
-                            <p className="text-muted-foreground text-sm">
-                                {search ? "No tags match your search" : "No tags yet"}
-                            </p>
-                        </div>
+                        search ? (
+                            <div className="flex flex-col items-center gap-2 py-12">
+                                <TagsIcon className="text-muted-foreground/30 size-8" />
+                                <p className="text-muted-foreground text-sm">No tags match your search</p>
+                            </div>
+                        ) : (
+                            <Empty>
+                                <EmptyMedia variant="icon"><Tag className="h-10 w-10" /></EmptyMedia>
+                                <EmptyTitle>No tags yet</EmptyTitle>
+                                <EmptyDescription>Tags help categorize and filter your chunks.</EmptyDescription>
+                                <EmptyAction>
+                                    <Button render={<Link to="/chunks/new" />}>Create Tag</Button>
+                                </EmptyAction>
+                            </Empty>
+                        )
                     ) : (
                         <div className="space-y-6">
                             {sortedGroups.map(([key, { tagType, tags: groupTags }]) => (

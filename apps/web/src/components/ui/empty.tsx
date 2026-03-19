@@ -84,4 +84,8 @@ function EmptyContent({ className, ...props }: React.ComponentProps<"div">) {
     );
 }
 
-export { Empty, EmptyHeader, EmptyTitle, EmptyDescription, EmptyContent, EmptyMedia };
+function EmptyAction({ className, ...props }: React.ComponentProps<"div">) {
+    return <div className={cn("mt-4", className)} data-slot="empty-action" {...props} />;
+}
+
+export { Empty, EmptyAction, EmptyHeader, EmptyTitle, EmptyDescription, EmptyContent, EmptyMedia };

@@ -8,6 +8,7 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardPanel } from "@/components/ui/card";
+import { Empty, EmptyAction, EmptyDescription, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { useActiveCodebase } from "@/features/codebases/use-active-codebase";
@@ -448,7 +449,14 @@ function VocabularyPage() {
                     {vocabQuery.isLoading ? (
                         <p className="text-muted-foreground text-sm">Loading...</p>
                     ) : entries.length === 0 ? (
-                        <p className="text-muted-foreground text-sm">No vocabulary entries yet. Add one or use AI suggestions.</p>
+                        <Empty>
+                            <EmptyMedia variant="icon"><BookOpen className="h-10 w-10" /></EmptyMedia>
+                            <EmptyTitle>No vocabulary</EmptyTitle>
+                            <EmptyDescription>Define domain terms to standardize your knowledge base.</EmptyDescription>
+                            <EmptyAction>
+                                <Button onClick={() => setShowForm(true)}>Add Term</Button>
+                            </EmptyAction>
+                        </Empty>
                     ) : (
                         <div className="space-y-1">
                             {CATEGORIES.map(cat => {
