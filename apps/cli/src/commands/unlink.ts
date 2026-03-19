@@ -2,6 +2,7 @@ import { Command } from "commander";
 
 import { formatSuccess } from "../lib/colors";
 import { output, outputError, outputQuiet } from "../lib/output";
+import { confirm } from "../lib/prompt";
 import { getServerUrl } from "../lib/store";
 
 export const unlinkCommand = new Command("unlink")
@@ -9,7 +10,16 @@ export const unlinkCommand = new Command("unlink")
     .argument("<connection-id>", "connection ID")
     .option("-u, --url <url>", "server URL")
     .option("--token <token>", "auth token")
-    .action(async (connectionId: string, opts: { url?: string; token?: string }, cmd: Command) => {
+    .option("-y, --yes", "skip confirmation prompt")
+    .action(async (connectionId: string, opts: { url?: string; token?: string; yes?: boolean }, cmd: Command) => {
+        if (!opts.yes) {
+            const ok = await confirm(`Delete connection "${connectionId}"?`);
+            if (!ok) {
+                console.error("Aborted.");
+                return;
+            }
+        }
+
         const serverUrl = opts.url ?? getServerUrl();
         if (!serverUrl) {
             outputError("No server URL configured. Use --url or run sync once with --url.");
