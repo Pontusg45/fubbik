@@ -4,9 +4,11 @@ import {
     AlertTriangle,
     ArrowRight,
     Blocks,
+    ChevronDown,
     Clock,
     Download,
     Eye,
+    FileCode,
     FileText,
     Network,
     Plus,
@@ -19,6 +21,7 @@ import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SkeletonList } from "@/components/ui/skeleton-list";
 import { useFavorites } from "@/features/chunks/use-favorites";
@@ -106,7 +109,7 @@ function DashboardPage() {
 
     // ─── Mutations ───
 
-    const exportMutation = useMutation({
+    const exportJsonMutation = useMutation({
         mutationFn: async () => unwrapEden(await api.api.chunks.export.get()),
         onSuccess: data => {
             const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
@@ -116,7 +119,26 @@ function DashboardPage() {
             a.download = `fubbik-export-${new Date().toISOString().slice(0, 10)}.json`;
             a.click();
             URL.revokeObjectURL(url);
-            toast.success(`Exported ${Array.isArray(data) ? data.length : 0} chunks`);
+            toast.success(`Exported ${Array.isArray(data) ? data.length : 0} chunks as JSON`);
+        },
+        onError: () => toast.error("Failed to export")
+    });
+
+    const exportMarkdownMutation = useMutation({
+        mutationFn: async () => unwrapEden(await api.api.chunks.export.get()),
+        onSuccess: data => {
+            const chunks = Array.isArray(data) ? data : [];
+            const md = chunks.map((c: any) =>
+                `# ${c.title}\n\n**Type:** ${c.type}\n**Tags:** ${(c.tags || []).map((t: any) => t.name || t).join(", ")}\n\n${c.content || ""}`
+            ).join("\n\n---\n\n");
+            const blob = new Blob([md], { type: "text/markdown" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `fubbik-export-${new Date().toISOString().slice(0, 10)}.md`;
+            a.click();
+            URL.revokeObjectURL(url);
+            toast.success(`Exported ${chunks.length} chunks as Markdown`);
         },
         onError: () => toast.error("Failed to export")
     });
@@ -173,9 +195,24 @@ function DashboardPage() {
                 </div>
                 <div className="flex items-center gap-2">
                     <input ref={fileInputRef} type="file" accept=".json" className="hidden" onChange={handleImportFile} />
-                    <Button variant="ghost" size="sm" onClick={() => exportMutation.mutate()} disabled={exportMutation.isPending}>
-                        <Download className="size-3.5" />
-                    </Button>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger
+                            className="inline-flex items-center justify-center gap-1 rounded-md px-2.5 py-1.5 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-50"
+                        >
+                            <Download className="size-3.5" />
+                            <ChevronDown className="size-3" />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => exportJsonMutation.mutate()}>
+                                <FileCode className="size-4" />
+                                Export as JSON
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => exportMarkdownMutation.mutate()}>
+                                <FileText className="size-4" />
+                                Export as Markdown
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                     <Button variant="ghost" size="sm" onClick={() => fileInputRef.current?.click()} disabled={importMutation.isPending}>
                         <Upload className="size-3.5" />
                     </Button>

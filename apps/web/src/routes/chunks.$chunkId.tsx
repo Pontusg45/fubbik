@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Archive, ArrowLeft, Bot, Calendar, Clock, Code, Edit, FileCode, FileText, Hash, MessageSquare, Network, Pencil, Scale, Star, Trash2 } from "lucide-react";
+import { Archive, ArrowLeft, Bot, Calendar, Clock, Code, Download, Edit, FileCode, FileText, Hash, MessageSquare, Network, Pencil, Scale, Star, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -218,6 +218,23 @@ function ChunkDetail() {
                     >
                         <Network className="size-3.5" />
                         Find path
+                    </Button>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                            const md = `# ${chunk.title}\n\n**Type:** ${chunk.type}\n**Tags:** ${tags.map((t: any) => t.name || t).join(", ")}\n\n${chunk.content}`;
+                            const blob = new Blob([md], { type: "text/markdown" });
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement("a");
+                            a.href = url;
+                            a.download = `${chunk.title.replace(/[^a-z0-9]/gi, "-").toLowerCase()}.md`;
+                            a.click();
+                            URL.revokeObjectURL(url);
+                        }}
+                    >
+                        <Download className="size-3.5" />
+                        Export MD
                     </Button>
                     <Button variant="outline" size="sm" render={<Link to="/chunks/$chunkId/edit" params={{ chunkId }} />}>
                         <Edit className="size-3.5" />
