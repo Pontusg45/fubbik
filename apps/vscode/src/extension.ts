@@ -3,16 +3,23 @@ import * as vscode from "vscode";
 import { FubbikApi } from "./api";
 import { registerCreateChunkCommand } from "./create-chunk";
 import { detectCodebase } from "./detect-codebase";
+import { getChunksForFile } from "./file-chunks";
 import { SidebarProvider } from "./sidebar-provider";
+import { FubbikStatusBar } from "./status-bar";
 
 let codebaseId: string | null = null;
 
 export async function activate(context: vscode.ExtensionContext) {
     const config = vscode.workspace.getConfiguration("fubbik");
     const serverUrl = config.get<string>("serverUrl", "http://localhost:3000");
+    const webAppUrl = config.get<string>("webAppUrl", "http://localhost:3001");
     const api = new FubbikApi(serverUrl);
     const sidebarProvider = new SidebarProvider(context.extensionUri);
     sidebarProvider.setApi(api);
+
+    // Status bar
+    const statusBar = new FubbikStatusBar();
+    context.subscriptions.push(statusBar);
 
     // Register sidebar
     context.subscriptions.push(
@@ -28,6 +35,7 @@ export async function activate(context: vscode.ExtensionContext) {
                 api.getTags(),
             ]);
             sidebarProvider.setState({ chunks: chunksRes.chunks, total: chunksRes.total, tags, loading: false });
+            statusBar.update(api, codebaseId ?? undefined);
         } catch {
             sidebarProvider.setState({
                 chunks: [],
@@ -35,6 +43,7 @@ export async function activate(context: vscode.ExtensionContext) {
                 loading: false,
                 error: `Cannot connect to ${serverUrl}`
             });
+            statusBar.update(api, codebaseId ?? undefined);
         }
     }
 
@@ -45,6 +54,110 @@ export async function activate(context: vscode.ExtensionContext) {
     // Create chunk command
     context.subscriptions.push(
         registerCreateChunkCommand(context, api, () => codebaseId, refreshChunks)
+    );
+
+    // Search chunks command
+    context.subscriptions.push(
+        vscode.commands.registerCommand("fubbik.searchChunks", async () => {
+            const quickPick = vscode.window.createQuickPick();
+            quickPick.placeholder = "Search chunks...";
+            quickPick.matchOnDescription = true;
+
+            quickPick.onDidChangeValue(async (value) => {
+                if (value.length < 2) {
+                    quickPick.items = [];
+                    return;
+                }
+                quickPick.busy = true;
+                try {
+                    const result = await api.searchChunks(value, codebaseId ?? undefined);
+                    quickPick.items = result.chunks.map((chunk) => ({
+                        label: chunk.title || "Untitled",
+                        description: `${chunk.source || "note"} ${(chunk.tags || []).join(", ")}`,
+                        detail: chunk.content?.substring(0, 100),
+                        id: chunk.id,
+                    }));
+                } catch {
+                    quickPick.items = [];
+                }
+                quickPick.busy = false;
+            });
+
+            quickPick.onDidAccept(() => {
+                const selected = quickPick.selectedItems[0] as { id?: string } | undefined;
+                if (selected?.id) {
+                    import("./chunk-detail").then(({ showChunkDetail }) => {
+                        showChunkDetail(api, selected.id!);
+                    });
+                }
+                quickPick.dispose();
+            });
+
+            quickPick.onDidHide(() => quickPick.dispose());
+            quickPick.show();
+        })
+    );
+
+    // Open graph in browser
+    context.subscriptions.push(
+        vscode.commands.registerCommand("fubbik.openGraph", () => {
+            vscode.env.openExternal(vscode.Uri.parse(`${webAppUrl}/graph`));
+        })
+    );
+
+    // Open dashboard in browser
+    context.subscriptions.push(
+        vscode.commands.registerCommand("fubbik.openDashboard", () => {
+            vscode.env.openExternal(vscode.Uri.parse(`${webAppUrl}/dashboard`));
+        })
+    );
+
+    // Quick add note
+    context.subscriptions.push(
+        vscode.commands.registerCommand("fubbik.quickAddNote", async () => {
+            const title = await vscode.window.showInputBox({
+                prompt: "Note title",
+                placeHolder: "Enter a title for the note",
+            });
+            if (!title) return;
+
+            const content = await vscode.window.showInputBox({
+                prompt: "Note content",
+                placeHolder: "Enter note content",
+            });
+            if (!content) return;
+
+            try {
+                const body: Parameters<typeof api.createChunk>[0] = {
+                    content,
+                    title,
+                    source: "note",
+                };
+                if (codebaseId) body.codebaseId = codebaseId;
+                await api.createChunk(body);
+                vscode.window.showInformationMessage("Note added to Fubbik!");
+                vscode.commands.executeCommand("fubbik.refreshSidebar");
+            } catch (err) {
+                const message = err instanceof Error ? err.message : "Unknown error";
+                vscode.window.showErrorMessage(`Failed to add note: ${message}`);
+            }
+        })
+    );
+
+    // File-aware chunk surfacing
+    context.subscriptions.push(
+        vscode.window.onDidChangeActiveTextEditor(async (editor) => {
+            if (editor) {
+                try {
+                    const fileChunks = await getChunksForFile(api, editor.document.uri);
+                    sidebarProvider.setFileChunks(fileChunks);
+                } catch {
+                    sidebarProvider.setFileChunks([]);
+                }
+            } else {
+                sidebarProvider.setFileChunks([]);
+            }
+        })
     );
 
     // Detect codebase on activation
@@ -62,6 +175,16 @@ export async function activate(context: vscode.ExtensionContext) {
 
     // Fetch initial chunks
     await refreshChunks();
+
+    // Check file chunks for current editor
+    if (vscode.window.activeTextEditor) {
+        try {
+            const fileChunks = await getChunksForFile(api, vscode.window.activeTextEditor.document.uri);
+            sidebarProvider.setFileChunks(fileChunks);
+        } catch {
+            // Ignore errors on initial load
+        }
+    }
 
     // Re-detect on workspace folder change
     context.subscriptions.push(

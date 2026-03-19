@@ -55,12 +55,16 @@ export function showChunkDetail(api: FubbikApi, chunkId: string) {
 
         // Actions
         body += `<div style="margin-top:12px;display:flex;gap:8px;">`;
+        body += `<button onclick="editChunk()">Edit</button>`;
         body += `<button onclick="openInBrowser()">Open in Browser</button>`;
         body += `<button class="secondary" onclick="copyContent()">Copy Content</button>`;
         body += `</div>`;
 
         const script = `
             const vscode = acquireVsCodeApi();
+            function editChunk() {
+                vscode.postMessage({ type: "editChunk" });
+            }
             function openInBrowser() {
                 vscode.postMessage({ type: "openInBrowser" });
             }
@@ -71,8 +75,16 @@ export function showChunkDetail(api: FubbikApi, chunkId: string) {
 
         panel.webview.html = getBaseHtml(panel.webview, freshNonce, body, script);
 
-        panel.webview.onDidReceiveMessage(msg => {
-            if (msg.type === "openInBrowser") {
+        panel.webview.onDidReceiveMessage(async (msg) => {
+            if (msg.type === "editChunk") {
+                const { showEditChunk } = await import("./edit-chunk");
+                showEditChunk(api, chunk, () => {
+                    // Re-open the detail view to show updated data
+                    panel.dispose();
+                    showChunkDetail(api, chunkId);
+                    vscode.commands.executeCommand("fubbik.refreshSidebar");
+                });
+            } else if (msg.type === "openInBrowser") {
                 const webAppUrl = vscode.workspace
                     .getConfiguration("fubbik")
                     .get<string>("webAppUrl", "http://localhost:3001");

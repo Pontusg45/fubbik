@@ -9,6 +9,7 @@ interface SidebarState {
     tags?: Array<{ id: string; name: string }>;
     error?: string;
     loading?: boolean;
+    fileChunks?: Chunk[];
 }
 
 export class SidebarProvider implements vscode.WebviewViewProvider {
@@ -55,6 +56,11 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
         this.render();
     }
 
+    public setFileChunks(chunks: Chunk[]): void {
+        this.state = { ...this.state, fileChunks: chunks };
+        this.render();
+    }
+
     public setState(state: SidebarState): void {
         this.state = { ...this.state, ...state };
         this.render();
@@ -78,7 +84,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
     }
 
     private buildBody(): string {
-        const { codebaseName, chunks, total, tags, error, loading } = this.state;
+        const { codebaseName, chunks, total, tags, error, loading, fileChunks } = this.state;
 
         let html = `<div id="sidebar">`;
 
@@ -104,6 +110,21 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
             html += `<p class="muted">No chunks found</p>`;
             html += `</div>`;
             return html;
+        }
+
+        // File-related chunks
+        if (fileChunks && fileChunks.length > 0) {
+            html += `<div class="mb-3" style="border:1px solid var(--vscode-panel-border);border-radius:4px;padding:8px;">`;
+            html += `<h3 style="font-size:0.9em;margin-bottom:6px;">Related to this file</h3>`;
+            for (const fc of fileChunks) {
+                const fcTitle = fc.title || "Untitled";
+                const fcType = fc.source || "note";
+                html += `<div class="list-item chunk-item" data-id="${escapeAttr(fc.id)}" data-title="${escapeAttr(fcTitle)}" data-type="${escapeAttr(fcType)}" data-tags="${escapeAttr((fc.tags || []).join(","))}" data-created="${escapeAttr(fc.createdAt)}">`;
+                html += `<span class="badge">${escapeHtml(fcType)}</span> `;
+                html += `<a href="#" class="chunk-link">${escapeHtml(fcTitle)}</a>`;
+                html += `</div>`;
+            }
+            html += `</div>`;
         }
 
         // Search input

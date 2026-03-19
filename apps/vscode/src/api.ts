@@ -88,6 +88,48 @@ export class FubbikApi {
         }
     }
 
+    async updateChunk(
+        id: string,
+        body: Partial<CreateChunkBody>
+    ): Promise<Chunk> {
+        const response = await fetch(`${this.baseUrl}/api/chunks/${id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+        });
+        if (!response.ok) {
+            throw new Error(
+                `Failed to update chunk: ${response.status} ${response.statusText}`
+            );
+        }
+        return (await response.json()) as Chunk;
+    }
+
+    async searchChunks(
+        query: string,
+        codebaseId?: string
+    ): Promise<{ chunks: Chunk[]; total: number }> {
+        const params = new URLSearchParams({ search: query });
+        if (codebaseId) params.set("codebaseId", codebaseId);
+        const response = await fetch(
+            `${this.baseUrl}/api/chunks?${params}`
+        );
+        if (!response.ok) return { chunks: [], total: 0 };
+        return (await response.json()) as { chunks: Chunk[]; total: number };
+    }
+
+    async getFileRefLookup(path: string): Promise<Chunk[]> {
+        try {
+            const response = await fetch(
+                `${this.baseUrl}/api/file-refs/lookup?path=${encodeURIComponent(path)}`
+            );
+            if (!response.ok) return [];
+            return (await response.json()) as Chunk[];
+        } catch {
+            return [];
+        }
+    }
+
     async createChunk(body: CreateChunkBody): Promise<Chunk> {
         const response = await fetch(`${this.baseUrl}/api/chunks`, {
             method: "POST",
