@@ -4,6 +4,7 @@ import { BarChart3, ClipboardCheck, Plus } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
+import { SkeletonList } from "@/components/ui/skeleton-list";
 import { Button } from "@/components/ui/button";
 import { Card, CardPanel } from "@/components/ui/card";
 import { useActiveCodebase } from "@/features/codebases/use-active-codebase";
@@ -231,7 +232,7 @@ function RequirementsPage() {
                     {listQuery.isLoading ? (
                         <Card>
                             <CardPanel className="p-6">
-                                <p className="text-muted-foreground text-sm">Loading...</p>
+                                <SkeletonList count={5} />
                             </CardPanel>
                         </Card>
                     ) : filteredRequirements.length === 0 ? (

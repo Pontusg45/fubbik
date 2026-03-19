@@ -5,6 +5,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { SkeletonList } from "@/components/ui/skeleton-list";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardPanel } from "@/components/ui/card";
@@ -247,7 +248,7 @@ function TemplatesPage() {
             <Card>
                 <CardPanel className="p-6">
                     {templatesQuery.isLoading ? (
-                        <p className="text-muted-foreground text-sm">Loading...</p>
+                        <SkeletonList count={4} />
                     ) : templates.length === 0 ? (
                         <Empty>
                             <EmptyMedia variant="icon"><LayoutTemplate className="h-10 w-10" /></EmptyMedia>

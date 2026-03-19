@@ -5,6 +5,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { SkeletonList } from "@/components/ui/skeleton-list";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyAction, EmptyDescription, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
@@ -193,7 +194,7 @@ function TagsPage() {
 
                     {/* Tag groups */}
                     {tagsQuery.isLoading ? (
-                        <p className="text-muted-foreground py-8 text-center text-sm">Loading tags...</p>
+                        <SkeletonList count={6} />
                     ) : filteredTags.length === 0 ? (
                         search ? (
                             <div className="flex flex-col items-center gap-2 py-12">
@@ -307,7 +308,7 @@ function TagsPage() {
                     )}
 
                     {tagTypesQuery.isLoading ? (
-                        <p className="text-muted-foreground text-xs">Loading...</p>
+                        <SkeletonList count={3} />
                     ) : tagTypes.length === 0 ? (
                         <p className="text-muted-foreground text-xs">No tag types yet.</p>
                     ) : (

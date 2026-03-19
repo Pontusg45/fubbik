@@ -4,6 +4,7 @@ import { FolderGit2, GitBranch, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { SkeletonList } from "@/components/ui/skeleton-list";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardPanel } from "@/components/ui/card";
@@ -118,7 +119,7 @@ function CodebasesPage() {
             <Card>
                 <CardPanel className="p-6">
                     {codebasesQuery.isLoading ? (
-                        <p className="text-muted-foreground text-sm">Loading...</p>
+                        <SkeletonList count={3} />
                     ) : codebases.length === 0 ? (
                         <Empty>
                             <EmptyMedia variant="icon"><GitBranch className="h-10 w-10" /></EmptyMedia>
