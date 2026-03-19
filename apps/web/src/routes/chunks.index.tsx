@@ -21,6 +21,8 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { ConfirmDialog } from "@/components/confirm-dialog";
+import { PromptDialog } from "@/components/prompt-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardPanel } from "@/components/ui/card";
@@ -342,15 +344,23 @@ function ChunksList() {
     const [showBulkTagInput, setShowBulkTagInput] = useState(false);
     const [bulkTagInput, setBulkTagInput] = useState("");
     const [bulkTagAction, setBulkTagAction] = useState<"add_tags" | "remove_tags">("add_tags");
+    const [confirmAction, setConfirmAction] = useState<{ title: string; description: string; action: () => void } | null>(null);
+    const [showSaveFilter, setShowSaveFilter] = useState(false);
 
     function handleBulkDelete() {
-        if (!confirm(`Delete ${selectedIds.size} chunks permanently?`)) return; // TODO: replace with styled dialog
-        bulkUpdateMutation.mutate({ ids: [...selectedIds], action: "delete" });
+        setConfirmAction({
+            title: "Delete chunks",
+            description: `Delete ${selectedIds.size} chunks permanently?`,
+            action: () => bulkUpdateMutation.mutate({ ids: [...selectedIds], action: "delete" }),
+        });
     }
 
     function handleBulkArchive() {
-        if (!confirm(`Archive ${selectedIds.size} chunks?`)) return; // TODO: replace with styled dialog
-        bulkUpdateMutation.mutate({ ids: [...selectedIds], action: "archive" });
+        setConfirmAction({
+            title: "Archive chunks",
+            description: `Archive ${selectedIds.size} chunks?`,
+            action: () => bulkUpdateMutation.mutate({ ids: [...selectedIds], action: "archive" }),
+        });
     }
 
     function handleBulkTagSubmit() {
@@ -655,11 +665,7 @@ function ChunksList() {
                                             variant="outline"
                                             size="sm"
                                             className="flex-1"
-                                            onClick={() => {
-                                                const name = prompt("Filter name:");
-                                                if (name)
-                                                    saveFilter(name, { type, q, sort, tags, size, after, enrichment, minConnections });
-                                            }}
+                                            onClick={() => setShowSaveFilter(true)}
                                         >
                                             <Bookmark className="size-3.5" />
                                             Save preset
@@ -1220,6 +1226,33 @@ function ChunksList() {
                     </Button>
                 </div>
             )}
+
+            <ConfirmDialog
+                open={confirmAction !== null}
+                onOpenChange={(open) => { if (!open) setConfirmAction(null); }}
+                title={confirmAction?.title ?? ""}
+                description={confirmAction?.description}
+                confirmLabel="Confirm"
+                confirmVariant="destructive"
+                onConfirm={() => {
+                    confirmAction?.action();
+                    setConfirmAction(null);
+                }}
+                loading={bulkUpdateMutation.isPending}
+            />
+
+            <PromptDialog
+                open={showSaveFilter}
+                onOpenChange={setShowSaveFilter}
+                title="Save filter preset"
+                description="Give this filter combination a name so you can quickly apply it later."
+                placeholder="Filter name"
+                submitLabel="Save"
+                onSubmit={(name) => {
+                    saveFilter(name, { type, q, sort, tags, size, after, enrichment, minConnections });
+                    setShowSaveFilter(false);
+                }}
+            />
         </div>
     );
 }

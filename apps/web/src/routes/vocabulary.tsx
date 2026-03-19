@@ -4,6 +4,7 @@ import { BookOpen, ChevronDown, ChevronRight, Loader2, Pencil, Plus, Sparkles, T
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardPanel } from "@/components/ui/card";
@@ -78,6 +79,8 @@ function VocabularyPage() {
     const [word, setWord] = useState("");
     const [category, setCategory] = useState<Category>("actor");
     const [expects, setExpects] = useState<string[]>([]);
+
+    const [deleteTarget, setDeleteTarget] = useState<{ id: string; word: string } | null>(null);
 
     // Collapsible sections
     const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
@@ -202,8 +205,7 @@ function VocabularyPage() {
     }
 
     function handleDelete(id: string, entryWord: string) {
-        if (!confirm(`Delete vocabulary entry "${entryWord}"?`)) return; // TODO: replace with styled dialog
-        deleteMutation.mutate(id);
+        setDeleteTarget({ id, word: entryWord });
     }
 
     function handleSubmit(e: React.FormEvent) {
@@ -530,6 +532,22 @@ function VocabularyPage() {
                     )}
                 </CardPanel>
             </Card>
+
+            <ConfirmDialog
+                open={deleteTarget !== null}
+                onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}
+                title="Delete vocabulary entry"
+                description={deleteTarget ? `Delete vocabulary entry "${deleteTarget.word}"?` : ""}
+                confirmLabel="Delete"
+                confirmVariant="destructive"
+                onConfirm={() => {
+                    if (deleteTarget) {
+                        deleteMutation.mutate(deleteTarget.id);
+                        setDeleteTarget(null);
+                    }
+                }}
+                loading={deleteMutation.isPending}
+            />
         </div>
     );
 }

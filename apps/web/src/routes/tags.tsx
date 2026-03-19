@@ -40,6 +40,7 @@ function TagsPage() {
     const queryClient = useQueryClient();
     const [search, setSearch] = useState("");
     const [deleteTagTarget, setDeleteTagTarget] = useState<{ id: string; name: string } | null>(null);
+    const [deleteTagTypeTarget, setDeleteTagTypeTarget] = useState<{ id: string; name: string } | null>(null);
     const [showTagTypeForm, setShowTagTypeForm] = useState(false);
     const [editingTagType, setEditingTagType] = useState<TagType | null>(null);
     const [ttName, setTtName] = useState("");
@@ -322,10 +323,7 @@ function TagsPage() {
                                                 <Pencil className="size-3" />
                                             </button>
                                             <button
-                                                onClick={() => {
-                                                    if (confirm(`Delete tag type "${tt.name}"? Tags in this type will become uncategorized.`)) // TODO: replace with styled dialog
-                                                        deleteTagTypeMutation.mutate(tt.id);
-                                                }}
+                                                onClick={() => setDeleteTagTypeTarget({ id: tt.id, name: tt.name })}
                                                 className="text-muted-foreground hover:text-destructive"
                                             >
                                                 <Trash2 className="size-3" />
@@ -353,6 +351,22 @@ function TagsPage() {
                     }
                 }}
                 loading={deleteTagMutation.isPending}
+            />
+
+            <ConfirmDialog
+                open={deleteTagTypeTarget !== null}
+                onOpenChange={(open) => { if (!open) setDeleteTagTypeTarget(null); }}
+                title="Delete tag type"
+                description={deleteTagTypeTarget ? `Delete tag type "${deleteTagTypeTarget.name}"? Tags in this type will become uncategorized.` : ""}
+                confirmLabel="Delete"
+                confirmVariant="destructive"
+                onConfirm={() => {
+                    if (deleteTagTypeTarget) {
+                        deleteTagTypeMutation.mutate(deleteTagTypeTarget.id);
+                        setDeleteTagTypeTarget(null);
+                    }
+                }}
+                loading={deleteTagTypeMutation.isPending}
             />
         </div>
     );

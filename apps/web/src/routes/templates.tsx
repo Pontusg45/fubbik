@@ -4,6 +4,7 @@ import { Copy, Eye, FileText, Pencil, Plus, Trash2, X } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardPanel } from "@/components/ui/card";
@@ -39,6 +40,7 @@ function TemplatesPage() {
     const [showForm, setShowForm] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [previewTemplate, setPreviewTemplate] = useState<Template | null>(null);
+    const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
     const [name, setName] = useState("");
     const [description, setDescription] = useState("");
     const [formType, setFormType] = useState("note");
@@ -126,8 +128,7 @@ function TemplatesPage() {
     }
 
     function handleDelete(id: string, templateName: string) {
-        if (!confirm(`Delete template "${templateName}"?`)) return; // TODO: replace with styled dialog
-        deleteMutation.mutate(id);
+        setDeleteTarget({ id, name: templateName });
     }
 
     function handleSubmit(e: React.FormEvent) {
@@ -321,6 +322,22 @@ function TemplatesPage() {
                     )}
                 </CardPanel>
             </Card>
+
+            <ConfirmDialog
+                open={deleteTarget !== null}
+                onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}
+                title="Delete template"
+                description={deleteTarget ? `Delete template "${deleteTarget.name}"?` : ""}
+                confirmLabel="Delete"
+                confirmVariant="destructive"
+                onConfirm={() => {
+                    if (deleteTarget) {
+                        deleteMutation.mutate(deleteTarget.id);
+                        setDeleteTarget(null);
+                    }
+                }}
+                loading={deleteMutation.isPending}
+            />
 
             {/* Preview dialog */}
             {previewTemplate && (

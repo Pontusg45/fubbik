@@ -3,6 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { FolderGit2, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardPanel } from "@/components/ui/card";
@@ -61,6 +62,7 @@ function CodebasesPage() {
     });
 
     const codebases = Array.isArray(codebasesQuery.data) ? codebasesQuery.data : [];
+    const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
 
     function handleCreate(e: React.FormEvent) {
         e.preventDefault();
@@ -72,8 +74,7 @@ function CodebasesPage() {
     }
 
     function handleDelete(id: string, codebaseName: string) {
-        if (!confirm(`Delete codebase "${codebaseName}"?`)) return; // TODO: replace with styled dialog
-        deleteMutation.mutate(id);
+        setDeleteTarget({ id, name: codebaseName });
     }
 
     return (
@@ -150,6 +151,22 @@ function CodebasesPage() {
                     )}
                 </CardPanel>
             </Card>
+
+            <ConfirmDialog
+                open={deleteTarget !== null}
+                onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}
+                title="Delete codebase"
+                description={deleteTarget ? `Delete codebase "${deleteTarget.name}"?` : ""}
+                confirmLabel="Delete"
+                confirmVariant="destructive"
+                onConfirm={() => {
+                    if (deleteTarget) {
+                        deleteMutation.mutate(deleteTarget.id);
+                        setDeleteTarget(null);
+                    }
+                }}
+                loading={deleteMutation.isPending}
+            />
         </div>
     );
 }

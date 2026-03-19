@@ -22,6 +22,7 @@ import { Download, Route, Settings2 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Dialog, DialogPopup, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Popover, PopoverTrigger, PopoverPopup } from "@/components/ui/popover";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
@@ -234,6 +235,7 @@ function GraphViewInner() {
 
     // Multi-select
     const [multiSelectedIds, setMultiSelectedIds] = useState<Set<string>>(new Set());
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
     // Help overlay
     const [showHelp, setShowHelp] = useState(false);
@@ -1662,11 +1664,7 @@ function GraphViewInner() {
                         <span className="text-xs font-medium">{multiSelectedIds.size} selected</span>
                         <div className="bg-border h-4 w-px" />
                         <button
-                            onClick={() => {
-                                if (confirm(`Delete ${multiSelectedIds.size} chunks?`)) { // TODO: replace with styled dialog
-                                    deleteManyMutation.mutate([...multiSelectedIds]);
-                                }
-                            }}
+                            onClick={() => setShowDeleteConfirm(true)}
                             className="text-destructive hover:bg-destructive/10 rounded-md px-2 py-1 text-xs"
                         >
                             Delete
@@ -1764,6 +1762,20 @@ function GraphViewInner() {
                     </div>
                 )}
             </div>
+
+            <ConfirmDialog
+                open={showDeleteConfirm}
+                onOpenChange={setShowDeleteConfirm}
+                title="Delete chunks"
+                description={`Delete ${multiSelectedIds.size} chunks?`}
+                confirmLabel="Delete"
+                confirmVariant="destructive"
+                onConfirm={() => {
+                    deleteManyMutation.mutate([...multiSelectedIds]);
+                    setShowDeleteConfirm(false);
+                }}
+                loading={deleteManyMutation.isPending}
+            />
         </div>
     );
 }
