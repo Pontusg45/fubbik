@@ -36,6 +36,7 @@ import { GraphLegend } from "@/features/graph/graph-legend";
 import { GraphMetrics } from "@/features/graph/graph-metrics";
 import { GraphNode } from "@/features/graph/graph-node";
 import { GraphGroupNode } from "@/features/graph/graph-group-node";
+import { GraphWelcome } from "@/features/graph/graph-welcome";
 import type { LayoutWorkerInput, LayoutWorkerOutput } from "@/features/graph/layout.worker";
 import { type LayoutAlgorithm, hierarchicalLayout, radialLayout } from "@/features/graph/layouts";
 import { useActiveCodebase } from "@/features/codebases/use-active-codebase";
@@ -239,6 +240,20 @@ function GraphViewInner() {
 
     // Help overlay
     const [showHelp, setShowHelp] = useState(false);
+
+    // Welcome overlay (SSR-safe)
+    const [showWelcome, setShowWelcome] = useState(false);
+
+    useEffect(() => {
+        if (typeof window !== "undefined" && !localStorage.getItem("fubbik-graph-welcomed")) {
+            setShowWelcome(true);
+        }
+    }, []);
+
+    const dismissWelcome = () => {
+        setShowWelcome(false);
+        localStorage.setItem("fubbik-graph-welcomed", "true");
+    };
 
     // Layout algorithm
     const [layoutAlgorithm, setLayoutAlgorithm] = useState<LayoutAlgorithm>("force");
@@ -1355,6 +1370,9 @@ function GraphViewInner() {
                         />
                     </ReactFlow>
 
+
+                {/* Welcome overlay for first-time visitors */}
+                {showWelcome && <GraphWelcome onDismiss={dismissWelcome} />}
 
                 {/* Keyboard shortcut help overlay */}
                 {showHelp && (

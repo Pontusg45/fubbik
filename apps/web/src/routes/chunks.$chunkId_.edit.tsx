@@ -38,6 +38,13 @@ interface FileRefRow {
     relation: "documents" | "configures" | "tests" | "implements";
 }
 
+function isValidGlob(pattern: string): boolean {
+    if (!pattern.trim()) return true;
+    const unmatched = (pattern.match(/\[/g) || []).length !== (pattern.match(/\]/g) || []).length;
+    const emptyBraces = /\{\s*\}/.test(pattern);
+    return !unmatched && !emptyBraces;
+}
+
 interface EditChunkDraft {
     title: string;
     content: string;
@@ -356,32 +363,37 @@ function EditChunk() {
                             </Button>
                         </div>
                         {appliesTo.map((row, i) => (
-                            <div key={i} className="mb-2 flex gap-2">
-                                <input
-                                    type="text"
-                                    value={row.pattern}
-                                    onChange={e => {
-                                        setAppliesTo(appliesTo.map((a, j) => (j === i ? { ...a, pattern: e.target.value } : a)));
-                                    }}
-                                    placeholder="Pattern (e.g. src/**/*.ts)"
-                                    className="bg-background focus:ring-ring flex-1 rounded-md border px-3 py-2 font-mono text-sm focus:ring-2 focus:outline-none"
-                                />
-                                <input
-                                    type="text"
-                                    value={row.note}
-                                    onChange={e => {
-                                        setAppliesTo(appliesTo.map((a, j) => (j === i ? { ...a, note: e.target.value } : a)));
-                                    }}
-                                    placeholder="Note (optional)"
-                                    className="bg-background focus:ring-ring w-40 rounded-md border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
-                                />
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => setAppliesTo(appliesTo.filter((_, j) => j !== i))}
-                                >
-                                    <Trash2 className="size-3.5" />
-                                </Button>
+                            <div key={i} className="mb-2">
+                                <div className="flex gap-2">
+                                    <input
+                                        type="text"
+                                        value={row.pattern}
+                                        onChange={e => {
+                                            setAppliesTo(appliesTo.map((a, j) => (j === i ? { ...a, pattern: e.target.value } : a)));
+                                        }}
+                                        placeholder="Pattern (e.g. src/**/*.ts)"
+                                        className="bg-background focus:ring-ring flex-1 rounded-md border px-3 py-2 font-mono text-sm focus:ring-2 focus:outline-none"
+                                    />
+                                    <input
+                                        type="text"
+                                        value={row.note}
+                                        onChange={e => {
+                                            setAppliesTo(appliesTo.map((a, j) => (j === i ? { ...a, note: e.target.value } : a)));
+                                        }}
+                                        placeholder="Note (optional)"
+                                        className="bg-background focus:ring-ring w-40 rounded-md border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
+                                    />
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => setAppliesTo(appliesTo.filter((_, j) => j !== i))}
+                                    >
+                                        <Trash2 className="size-3.5" />
+                                    </Button>
+                                </div>
+                                {row.pattern && !isValidGlob(row.pattern) && (
+                                    <p className="text-destructive mt-1 text-xs">Invalid glob pattern</p>
+                                )}
                             </div>
                         ))}
                     </div>
