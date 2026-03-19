@@ -29,6 +29,7 @@ import { Card, CardPanel } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
+import { SkeletonList } from "@/components/ui/skeleton-list";
 import { getChunkSize } from "@/features/chunks/chunk-size";
 import { KanbanView } from "@/features/chunks/kanban-view";
 import { useCollections } from "@/features/chunks/use-collections";
@@ -946,11 +947,7 @@ function ChunksList() {
             {view === "kanban" ? (
                 <KanbanView chunks={collectionFilteredChunks} />
             ) : chunksQuery.isLoading ? (
-                <Card>
-                    <CardPanel className="p-8 text-center">
-                        <p className="text-muted-foreground text-sm">Loading...</p>
-                    </CardPanel>
-                </Card>
+                <SkeletonList count={10} />
             ) : collectionFilteredChunks.length === 0 ? (
                 <Card>
                     <CardPanel className="p-8 text-center">

@@ -5,12 +5,12 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
-
 import { MarkdownRenderer } from "@/components/markdown-renderer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardHeader, CardPanel, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 import { AiSection } from "@/features/chunks/ai-section";
 import { ChunkLink } from "@/features/chunks/chunk-link";
 import { getChunkSize } from "@/features/chunks/chunk-size";
@@ -115,8 +115,33 @@ function ChunkDetail() {
                     <ArrowLeft className="size-4" />
                     Back
                 </Button>
-                <div className="mt-8 text-center">
-                    <p className="text-muted-foreground">Loading...</p>
+                <div className="mt-8 space-y-6">
+                    {/* Title skeleton */}
+                    <div className="space-y-3">
+                        <Skeleton className="h-5 w-20" />
+                        <Skeleton className="h-8 w-2/3" />
+                        <div className="flex gap-4">
+                            <Skeleton className="h-3 w-32" />
+                            <Skeleton className="h-3 w-32" />
+                        </div>
+                    </div>
+                    <Separator />
+                    {/* Content skeleton */}
+                    <div className="space-y-3">
+                        <Skeleton className="h-4 w-full" />
+                        <Skeleton className="h-4 w-full" />
+                        <Skeleton className="h-4 w-5/6" />
+                        <Skeleton className="h-4 w-full" />
+                        <Skeleton className="h-4 w-3/4" />
+                        <Skeleton className="h-4 w-full" />
+                        <Skeleton className="h-4 w-2/3" />
+                    </div>
+                    <Separator />
+                    {/* Metadata skeleton */}
+                    <div className="space-y-2">
+                        <Skeleton className="h-5 w-32" />
+                        <Skeleton className="h-12 w-full" />
+                    </div>
                 </div>
             </div>
         );

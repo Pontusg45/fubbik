@@ -18,6 +18,8 @@ import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { SkeletonList } from "@/components/ui/skeleton-list";
 import { useFavorites } from "@/features/chunks/use-favorites";
 import { useActiveCodebase } from "@/features/codebases/use-active-codebase";
 import { getUser } from "@/functions/get-user";
@@ -219,7 +221,7 @@ function DashboardPage() {
                         }
                     >
                         {recentQuery.isLoading ? (
-                            <p className="text-muted-foreground py-4 text-center text-sm">Loading...</p>
+                            <SkeletonList count={5} />
                         ) : recentChunks.length === 0 ? (
                             <div className="flex flex-col items-center gap-3 py-12">
                                 <Blocks className="text-muted-foreground/20 size-10" />
@@ -273,7 +275,11 @@ function DashboardPage() {
                         }
                     >
                         {healthQuery.isLoading ? (
-                            <p className="text-muted-foreground py-2 text-center text-sm">Loading...</p>
+                            <div className="space-y-2">
+                                <Skeleton className="h-4 w-full" />
+                                <Skeleton className="h-4 w-3/4" />
+                                <Skeleton className="h-4 w-1/2" />
+                            </div>
                         ) : healthTotal === 0 ? (
                             <p className="text-muted-foreground py-2 text-center text-sm">All chunks healthy</p>
                         ) : (
@@ -367,7 +373,7 @@ function StatCard({ icon: Icon, label, value, loading, sub }: {
                 <span className="text-muted-foreground text-xs font-medium uppercase tracking-wide">{label}</span>
             </div>
             <div className="mt-2 text-2xl font-bold tabular-nums tracking-tight">
-                {loading ? "—" : value ?? 0}
+                {loading ? <Skeleton className="h-8 w-16" /> : value ?? 0}
             </div>
             {sub && <div className="text-muted-foreground mt-0.5 text-[11px]">{sub}</div>}
         </div>
