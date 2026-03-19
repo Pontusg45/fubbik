@@ -4,8 +4,11 @@ import {
     AlertTriangle,
     ArrowRight,
     Blocks,
+    ChevronDown,
     Clock,
     Download,
+    Eye,
+    FileCode,
     FileText,
     Network,
     Plus,
@@ -18,7 +21,11 @@ import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Skeleton } from "@/components/ui/skeleton";
+import { SkeletonList } from "@/components/ui/skeleton-list";
 import { useFavorites } from "@/features/chunks/use-favorites";
+import { useRecentChunks } from "@/features/chunks/use-recent-chunks";
 import { useActiveCodebase } from "@/features/codebases/use-active-codebase";
 import { getUser } from "@/functions/get-user";
 import { api } from "@/utils/api";
@@ -40,6 +47,7 @@ function DashboardPage() {
     const queryClient = useQueryClient();
     const fileInputRef = useRef<HTMLInputElement>(null);
     const { favoriteIds, isLoading: favoritesLoading } = useFavorites();
+    const { recentIds } = useRecentChunks();
     const { codebaseId } = useActiveCodebase();
 
     const codebaseQuery = codebaseId
@@ -86,9 +94,27 @@ function DashboardPage() {
         enabled: favoriteIds.length > 0
     });
 
+    const recentChunksQuery = useQuery({
+        queryKey: ["chunks-recent-viewed", recentIds],
+        queryFn: async () => {
+            if (recentIds.length === 0) return [];
+            const results = await Promise.all(
+                recentIds.map(async (id) => {
+                    try {
+                        return unwrapEden(await api.api.chunks({ id }).get());
+                    } catch {
+                        return null;
+                    }
+                })
+            );
+            return results.filter((c): c is NonNullable<typeof c> => !!c);
+        },
+        enabled: recentIds.length > 0
+    });
+
     // ─── Mutations ───
 
-    const exportMutation = useMutation({
+    const exportJsonMutation = useMutation({
         mutationFn: async () => unwrapEden(await api.api.chunks.export.get()),
         onSuccess: data => {
             const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
@@ -98,7 +124,26 @@ function DashboardPage() {
             a.download = `fubbik-export-${new Date().toISOString().slice(0, 10)}.json`;
             a.click();
             URL.revokeObjectURL(url);
-            toast.success(`Exported ${Array.isArray(data) ? data.length : 0} chunks`);
+            toast.success(`Exported ${Array.isArray(data) ? data.length : 0} chunks as JSON`);
+        },
+        onError: () => toast.error("Failed to export")
+    });
+
+    const exportMarkdownMutation = useMutation({
+        mutationFn: async () => unwrapEden(await api.api.chunks.export.get()),
+        onSuccess: data => {
+            const chunks = Array.isArray(data) ? data : [];
+            const md = chunks.map((c: any) =>
+                `# ${c.title}\n\n**Type:** ${c.type}\n**Tags:** ${(c.tags || []).map((t: any) => t.name || t).join(", ")}\n\n${c.content || ""}`
+            ).join("\n\n---\n\n");
+            const blob = new Blob([md], { type: "text/markdown" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `fubbik-export-${new Date().toISOString().slice(0, 10)}.md`;
+            a.click();
+            URL.revokeObjectURL(url);
+            toast.success(`Exported ${chunks.length} chunks as Markdown`);
         },
         onError: () => toast.error("Failed to export")
     });
@@ -155,9 +200,24 @@ function DashboardPage() {
                 </div>
                 <div className="flex items-center gap-2">
                     <input ref={fileInputRef} type="file" accept=".json" className="hidden" onChange={handleImportFile} />
-                    <Button variant="ghost" size="sm" onClick={() => exportMutation.mutate()} disabled={exportMutation.isPending}>
-                        <Download className="size-3.5" />
-                    </Button>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger
+                            className="inline-flex items-center justify-center gap-1 rounded-md px-2.5 py-1.5 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-50"
+                        >
+                            <Download className="size-3.5" />
+                            <ChevronDown className="size-3" />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => exportJsonMutation.mutate()}>
+                                <FileCode className="size-4" />
+                                Export as JSON
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => exportMarkdownMutation.mutate()}>
+                                <FileText className="size-4" />
+                                Export as Markdown
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                     <Button variant="ghost" size="sm" onClick={() => fileInputRef.current?.click()} disabled={importMutation.isPending}>
                         <Upload className="size-3.5" />
                     </Button>
@@ -208,6 +268,28 @@ function DashboardPage() {
                         </DashboardSection>
                     )}
 
+                    {/* Recently viewed */}
+                    {recentIds.length > 0 && (
+                        <DashboardSection icon={Eye} title="Recently Viewed">
+                            <div className="grid gap-1 sm:grid-cols-2">
+                                {(recentChunksQuery.data ?? []).slice(0, 6).map(chunk => (
+                                    <Link
+                                        key={chunk.id}
+                                        to="/chunks/$chunkId"
+                                        params={{ chunkId: chunk.id }}
+                                        className="hover:bg-muted/50 flex items-center gap-2 rounded-md px-3 py-2 transition-colors"
+                                    >
+                                        <Eye className="size-3 shrink-0 text-muted-foreground" />
+                                        <span className="truncate text-sm">{chunk.title}</span>
+                                        <Badge variant="secondary" size="sm" className="ml-auto shrink-0 font-mono text-[9px]">
+                                            {chunk.type}
+                                        </Badge>
+                                    </Link>
+                                ))}
+                            </div>
+                        </DashboardSection>
+                    )}
+
                     {/* Recent chunks */}
                     <DashboardSection
                         icon={Clock}
@@ -219,7 +301,7 @@ function DashboardPage() {
                         }
                     >
                         {recentQuery.isLoading ? (
-                            <p className="text-muted-foreground py-4 text-center text-sm">Loading...</p>
+                            <SkeletonList count={5} />
                         ) : recentChunks.length === 0 ? (
                             <div className="flex flex-col items-center gap-3 py-12">
                                 <Blocks className="text-muted-foreground/20 size-10" />
@@ -273,7 +355,11 @@ function DashboardPage() {
                         }
                     >
                         {healthQuery.isLoading ? (
-                            <p className="text-muted-foreground py-2 text-center text-sm">Loading...</p>
+                            <div className="space-y-2">
+                                <Skeleton className="h-4 w-full" />
+                                <Skeleton className="h-4 w-3/4" />
+                                <Skeleton className="h-4 w-1/2" />
+                            </div>
                         ) : healthTotal === 0 ? (
                             <p className="text-muted-foreground py-2 text-center text-sm">All chunks healthy</p>
                         ) : (
@@ -367,7 +453,7 @@ function StatCard({ icon: Icon, label, value, loading, sub }: {
                 <span className="text-muted-foreground text-xs font-medium uppercase tracking-wide">{label}</span>
             </div>
             <div className="mt-2 text-2xl font-bold tabular-nums tracking-tight">
-                {loading ? "—" : value ?? 0}
+                {loading ? <Skeleton className="h-8 w-16" /> : value ?? 0}
             </div>
             {sub && <div className="text-muted-foreground mt-0.5 text-[11px]">{sub}</div>}
         </div>

@@ -1,11 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { FolderGit2, Plus, Trash2 } from "lucide-react";
+import { FolderGit2, GitBranch, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardPanel } from "@/components/ui/card";
+import { Empty, EmptyAction, EmptyDescription, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Input } from "@/components/ui/input";
 import { getUser } from "@/functions/get-user";
 import { api } from "@/utils/api";
@@ -61,6 +63,7 @@ function CodebasesPage() {
     });
 
     const codebases = Array.isArray(codebasesQuery.data) ? codebasesQuery.data : [];
+    const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
 
     function handleCreate(e: React.FormEvent) {
         e.preventDefault();
@@ -72,8 +75,7 @@ function CodebasesPage() {
     }
 
     function handleDelete(id: string, codebaseName: string) {
-        if (!confirm(`Delete codebase "${codebaseName}"?`)) return; // TODO: replace with styled dialog
-        deleteMutation.mutate(id);
+        setDeleteTarget({ id, name: codebaseName });
     }
 
     return (
@@ -118,7 +120,14 @@ function CodebasesPage() {
                     {codebasesQuery.isLoading ? (
                         <p className="text-muted-foreground text-sm">Loading...</p>
                     ) : codebases.length === 0 ? (
-                        <p className="text-muted-foreground text-sm">No codebases yet.</p>
+                        <Empty>
+                            <EmptyMedia variant="icon"><GitBranch className="h-10 w-10" /></EmptyMedia>
+                            <EmptyTitle>No codebases</EmptyTitle>
+                            <EmptyDescription>Add a codebase to scope chunks to specific projects.</EmptyDescription>
+                            <EmptyAction>
+                                <Button onClick={() => document.querySelector<HTMLInputElement>('input[placeholder="Name"]')?.focus()}>Add Codebase</Button>
+                            </EmptyAction>
+                        </Empty>
                     ) : (
                         <div className="divide-y">
                             {codebases.map(c => (
@@ -150,6 +159,22 @@ function CodebasesPage() {
                     )}
                 </CardPanel>
             </Card>
+
+            <ConfirmDialog
+                open={deleteTarget !== null}
+                onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}
+                title="Delete codebase"
+                description={deleteTarget ? `Delete codebase "${deleteTarget.name}"?` : ""}
+                confirmLabel="Delete"
+                confirmVariant="destructive"
+                onConfirm={() => {
+                    if (deleteTarget) {
+                        deleteMutation.mutate(deleteTarget.id);
+                        setDeleteTarget(null);
+                    }
+                }}
+                loading={deleteMutation.isPending}
+            />
         </div>
     );
 }

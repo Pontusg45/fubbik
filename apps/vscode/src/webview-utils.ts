@@ -131,6 +131,28 @@ export function getBaseHtml(
         .mb-3 { margin-bottom: 12px; }
         .mt-2 { margin-top: 8px; }
         .mt-3 { margin-top: 12px; }
+
+        .filters {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .filter-select {
+            width: 100%;
+            padding: 3px 6px;
+            font-size: 0.9em;
+        }
+
+        .tag-badge {
+            display: inline-block;
+            background-color: var(--vscode-badge-background);
+            color: var(--vscode-badge-foreground);
+            border-radius: 8px;
+            padding: 1px 6px;
+            font-size: 0.8em;
+            opacity: 0.8;
+        }
     </style>
 </head>
 <body>

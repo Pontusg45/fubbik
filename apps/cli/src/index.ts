@@ -24,6 +24,7 @@ import { syncCommand } from "./commands/sync";
 import { tagsCommand } from "./commands/tags";
 import { unlinkCommand } from "./commands/unlink";
 import { updateCommand } from "./commands/update";
+import { generateZshCompletions } from "./lib/completions";
 
 const program = new Command();
 
@@ -58,5 +59,16 @@ program.addCommand(codebaseCommand);
 program.addCommand(contextCommand);
 program.addCommand(generateCommand);
 program.addCommand(requirementsCommand);
+
+program.command("completions")
+    .description("Generate shell completions")
+    .argument("<shell>", "shell type: zsh")
+    .action((shell: string) => {
+        if (shell === "zsh") {
+            console.log(generateZshCompletions(program));
+        } else {
+            console.error(`Unsupported shell: ${shell}. Currently only zsh is supported.`);
+        }
+    });
 
 program.parse();

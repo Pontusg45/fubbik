@@ -1,22 +1,25 @@
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import {
+    Activity,
     Blocks,
+    BookOpen,
+    Clock,
+    FileCode,
     FileText,
+    Hash,
     LayoutDashboard,
     Network,
     Plus,
     Search,
     Server,
     Tags,
-    Activity,
-    BookOpen,
-    FileCode,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Kbd } from "@/components/ui/kbd";
+import { useRecentChunks } from "@/features/chunks/use-recent-chunks";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
@@ -24,7 +27,7 @@ import { unwrapEden } from "@/utils/eden";
 interface CommandItem {
     id: string;
     title: string;
-    group: "Pages" | "Chunks" | "Actions";
+    group: "Recent" | "Pages" | "Tags" | "Chunks" | "Actions";
     icon: React.ReactNode;
     onSelect: () => void;
 }
@@ -41,9 +44,18 @@ const PAGE_ITEMS: Array<{ id: string; title: string; path: string; icon: React.R
     { id: "page-vocabulary", title: "Vocabulary", path: "/vocabulary", icon: <BookOpen className="size-4" /> },
 ];
 
-const ACTION_ITEMS: Array<{ id: string; title: string; path: string; icon: React.ReactNode }> = [
+const ACTION_ITEMS: Array<{
+    id: string;
+    title: string;
+    path: string;
+    search?: Record<string, string>;
+    icon: React.ReactNode;
+}> = [
     { id: "action-new-chunk", title: "New Chunk", path: "/chunks/new", icon: <Plus className="size-4" /> },
+    { id: "action-new-note", title: "New Note", path: "/chunks/new", search: { type: "note" }, icon: <FileText className="size-4" /> },
+    { id: "action-new-document", title: "New Document", path: "/chunks/new", search: { type: "document" }, icon: <FileText className="size-4" /> },
     { id: "action-new-requirement", title: "New Requirement", path: "/requirements/new", icon: <Plus className="size-4" /> },
+    { id: "action-view-health", title: "View Health", path: "/knowledge-health", icon: <Activity className="size-4" /> },
 ];
 
 export function CommandPalette() {
@@ -55,6 +67,10 @@ export function CommandPalette() {
     const navigate = useNavigate();
 
     const debouncedQuery = useDebouncedValue(query, 200);
+    const { recentIds } = useRecentChunks();
+
+    const isTagSearch = query.startsWith("#");
+    const tagQuery = isTagSearch ? query.slice(1).toLowerCase() : "";
 
     // Global Cmd+K / Ctrl+K shortcut
     useEffect(() => {
@@ -90,13 +106,97 @@ export function CommandPalette() {
                 return null;
             }
         },
-        enabled: open && debouncedQuery.length > 1,
+        enabled: open && debouncedQuery.length > 1 && !isTagSearch,
+    });
+
+    // Search tags via API when query starts with #
+    const tagSearch = useQuery({
+        queryKey: ["command-palette-tags"],
+        queryFn: async () => {
+            try {
+                return unwrapEden(await api.api.tags.get()) as Array<{
+                    id: string;
+                    name: string;
+                    tagTypeName: string | null;
+                    tagTypeColor: string | null;
+                }>;
+            } catch {
+                return [];
+            }
+        },
+        enabled: open && isTagSearch,
+    });
+
+    // Fetch recent chunk details
+    const recentChunksQuery = useQuery({
+        queryKey: ["command-palette-recent", recentIds],
+        queryFn: async () => {
+            if (recentIds.length === 0) return [];
+            try {
+                const results = await Promise.all(
+                    recentIds.slice(0, 5).map(async (id) => {
+                        try {
+                            const data = unwrapEden(
+                                await api.api.chunks({ id }).get()
+                            );
+                            return data;
+                        } catch {
+                            return null;
+                        }
+                    })
+                );
+                return results.filter(Boolean);
+            } catch {
+                return [];
+            }
+        },
+        enabled: open && !query.trim() && recentIds.length > 0,
     });
 
     // Build flattened items list
     const items = useMemo(() => {
         const lowerQuery = query.toLowerCase();
         const result: CommandItem[] = [];
+
+        // Tag search mode: when query starts with #
+        if (isTagSearch) {
+            const tags = tagSearch.data ?? [];
+            const filtered = tags.filter(
+                (t) => !tagQuery || t.name.toLowerCase().includes(tagQuery)
+            );
+            for (const tag of filtered.slice(0, 10)) {
+                result.push({
+                    id: `tag-${tag.id}`,
+                    title: `#${tag.name}`,
+                    group: "Tags",
+                    icon: <Hash className="size-4" />,
+                    onSelect: () => {
+                        navigate({ to: "/chunks", search: { tags: tag.name } });
+                        close();
+                    },
+                });
+            }
+            return result;
+        }
+
+        // Recent items (shown when query is empty)
+        if (!query.trim()) {
+            const recentChunks = recentChunksQuery.data ?? [];
+            for (const item of recentChunks) {
+                if (!item) continue;
+                const c = item.chunk;
+                result.push({
+                    id: `recent-${c.id}`,
+                    title: c.title ?? `Chunk ${c.id.slice(0, 8)}`,
+                    group: "Recent",
+                    icon: <Clock className="size-4" />,
+                    onSelect: () => {
+                        navigate({ to: "/chunks/$chunkId", params: { chunkId: c.id } });
+                        close();
+                    },
+                });
+            }
+        }
 
         // Pages (filtered by query)
         const filteredPages = PAGE_ITEMS.filter(
@@ -141,14 +241,14 @@ export function CommandPalette() {
                 group: "Actions",
                 icon: action.icon,
                 onSelect: () => {
-                    navigate({ to: action.path });
+                    navigate({ to: action.path, search: action.search ?? {} });
                     close();
                 },
             });
         }
 
         return result;
-    }, [query, chunkSearch.data, navigate, close]);
+    }, [query, isTagSearch, tagQuery, tagSearch.data, recentChunksQuery.data, chunkSearch.data, navigate, close]);
 
     // Clamp selected index when items change
     useEffect(() => {
@@ -223,7 +323,7 @@ export function CommandPalette() {
                                 setQuery(e.target.value);
                                 setSelectedIndex(0);
                             }}
-                            placeholder="Type a command or search..."
+                            placeholder="Type a command or search... (# for tags)"
                             autoFocus
                             className="placeholder:text-muted-foreground flex-1 bg-transparent text-sm outline-none"
                         />
@@ -265,11 +365,15 @@ export function CommandPalette() {
                                                 {item.title}
                                             </span>
                                             <Badge variant="secondary" size="sm">
-                                                {item.group === "Pages"
-                                                    ? "Page"
-                                                    : item.group === "Chunks"
-                                                      ? "Chunk"
-                                                      : "Action"}
+                                                {item.group === "Recent"
+                                                    ? "Recent"
+                                                    : item.group === "Pages"
+                                                      ? "Page"
+                                                      : item.group === "Tags"
+                                                        ? "Tag"
+                                                        : item.group === "Chunks"
+                                                          ? "Chunk"
+                                                          : "Action"}
                                             </Badge>
                                         </button>
                                     );

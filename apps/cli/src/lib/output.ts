@@ -1,5 +1,7 @@
 import type { Command } from "commander";
 
+import { formatError } from "./colors";
+
 interface GlobalOpts {
     json?: boolean;
     quiet?: boolean;
@@ -30,7 +32,7 @@ export function outputQuiet(cmd: Command, value: string): void {
 
 /** Print an error. Always prints to stderr regardless of flags. */
 export function outputError(message: string): void {
-    console.error(message);
+    console.error(formatError(message));
 }
 
 export function isJson(cmd: Command): boolean {

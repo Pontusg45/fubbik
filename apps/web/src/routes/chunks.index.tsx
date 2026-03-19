@@ -10,6 +10,7 @@ import {
     FileText,
     Filter,
     FolderPlus,
+    Link2,
     List,
     Pin,
     Plus,
@@ -20,13 +21,17 @@ import {
     X
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 
+import { ConfirmDialog } from "@/components/confirm-dialog";
+import { PromptDialog } from "@/components/prompt-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardPanel } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
+import { SkeletonList } from "@/components/ui/skeleton-list";
 import { getChunkSize } from "@/features/chunks/chunk-size";
 import { KanbanView } from "@/features/chunks/kanban-view";
 import { useCollections } from "@/features/chunks/use-collections";
@@ -206,6 +211,7 @@ function ChunksList() {
 
     const chunksRef = useRef(chunks);
     chunksRef.current = chunks;
+    const searchInputRef = useRef<HTMLInputElement>(null);
     const [selectedIndex, setSelectedIndex] = useState(-1);
 
     useEffect(() => {
@@ -235,6 +241,10 @@ function ChunksList() {
                     if (selectedIndex >= 0 && selectedIndex < list.length) {
                         navTo({ to: "/chunks/$chunkId", params: { chunkId: list[selectedIndex]!.id } });
                     }
+                    break;
+                case "/":
+                    e.preventDefault();
+                    searchInputRef.current?.focus();
                     break;
             }
         }
@@ -342,15 +352,63 @@ function ChunksList() {
     const [showBulkTagInput, setShowBulkTagInput] = useState(false);
     const [bulkTagInput, setBulkTagInput] = useState("");
     const [bulkTagAction, setBulkTagAction] = useState<"add_tags" | "remove_tags">("add_tags");
+    const [confirmAction, setConfirmAction] = useState<{ title: string; description: string; action: () => void } | null>(null);
+    const [showSaveFilter, setShowSaveFilter] = useState(false);
+
+    // Bulk connect state
+    const [showBulkConnect, setShowBulkConnect] = useState(false);
+    const [connectSearch, setConnectSearch] = useState("");
+    const [connectRelation, setConnectRelation] = useState("related_to");
+    const connectSearchQuery = useQuery({
+        queryKey: ["chunks", "bulk-connect-search", connectSearch],
+        queryFn: async () => {
+            if (!connectSearch.trim()) return { chunks: [] };
+            const { data, error } = await api.api.chunks.get({ query: { search: connectSearch, limit: "10" } });
+            if (error) throw new Error("Failed to search chunks");
+            return data;
+        },
+        enabled: showBulkConnect && connectSearch.trim().length > 0
+    });
+    const bulkConnectMutation = useMutation({
+        mutationFn: async (targetId: string) => {
+            const ids = [...selectedIds];
+            for (const sourceId of ids) {
+                const { error } = await api.api.connections.post({
+                    sourceId,
+                    targetId,
+                    relation: connectRelation
+                });
+                if (error) throw new Error("Failed to create connection");
+            }
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["chunks-list"] });
+            toast.success(`Connected ${selectedIds.size} chunks`);
+            setShowBulkConnect(false);
+            setConnectSearch("");
+            setConnectRelation("related_to");
+            setSelectedIds(new Set());
+        },
+        onError: () => {
+            toast.error("Failed to create connections");
+        }
+    });
+    const connectResults = (connectSearchQuery.data?.chunks ?? []).filter(c => !selectedIds.has(c.id));
 
     function handleBulkDelete() {
-        if (!confirm(`Delete ${selectedIds.size} chunks permanently?`)) return; // TODO: replace with styled dialog
-        bulkUpdateMutation.mutate({ ids: [...selectedIds], action: "delete" });
+        setConfirmAction({
+            title: "Delete chunks",
+            description: `Delete ${selectedIds.size} chunks permanently?`,
+            action: () => bulkUpdateMutation.mutate({ ids: [...selectedIds], action: "delete" }),
+        });
     }
 
     function handleBulkArchive() {
-        if (!confirm(`Archive ${selectedIds.size} chunks?`)) return; // TODO: replace with styled dialog
-        bulkUpdateMutation.mutate({ ids: [...selectedIds], action: "archive" });
+        setConfirmAction({
+            title: "Archive chunks",
+            description: `Archive ${selectedIds.size} chunks?`,
+            action: () => bulkUpdateMutation.mutate({ ids: [...selectedIds], action: "archive" }),
+        });
     }
 
     function handleBulkTagSubmit() {
@@ -402,6 +460,7 @@ function ChunksList() {
                 <div className="relative flex-1">
                     <Search className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
                     <input
+                        ref={searchInputRef}
                         type="text"
                         value={searchInput}
                         onChange={e => setSearchInput(e.target.value)}
@@ -655,11 +714,7 @@ function ChunksList() {
                                             variant="outline"
                                             size="sm"
                                             className="flex-1"
-                                            onClick={() => {
-                                                const name = prompt("Filter name:");
-                                                if (name)
-                                                    saveFilter(name, { type, q, sort, tags, size, after, enrichment, minConnections });
-                                            }}
+                                            onClick={() => setShowSaveFilter(true)}
                                         >
                                             <Bookmark className="size-3.5" />
                                             Save preset
@@ -940,11 +995,7 @@ function ChunksList() {
             {view === "kanban" ? (
                 <KanbanView chunks={collectionFilteredChunks} />
             ) : chunksQuery.isLoading ? (
-                <Card>
-                    <CardPanel className="p-8 text-center">
-                        <p className="text-muted-foreground text-sm">Loading...</p>
-                    </CardPanel>
-                </Card>
+                <SkeletonList count={10} />
             ) : collectionFilteredChunks.length === 0 ? (
                 <Card>
                     <CardPanel className="p-8 text-center">
@@ -1168,6 +1219,63 @@ function ChunksList() {
                             </Button>
                         </>
                     )}
+                    <Popover open={showBulkConnect} onOpenChange={setShowBulkConnect}>
+                        <PopoverTrigger render={<Button variant="outline" size="sm" />}>
+                            <Link2 className="size-3.5" />
+                            Connect to...
+                        </PopoverTrigger>
+                        <PopoverContent side="top" align="center" className="w-80">
+                            <div className="space-y-3">
+                                <div>
+                                    <label className="text-muted-foreground mb-1.5 block text-xs font-medium">Relation</label>
+                                    <select
+                                        value={connectRelation}
+                                        onChange={e => setConnectRelation(e.target.value)}
+                                        className="bg-background w-full rounded-md border px-2.5 py-1.5 text-sm"
+                                    >
+                                        {["related_to", "part_of", "depends_on", "extends", "references", "supports", "contradicts", "alternative_to"].map(r => (
+                                            <option key={r} value={r}>{r.replace(/_/g, " ")}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="text-muted-foreground mb-1.5 block text-xs font-medium">Target chunk</label>
+                                    <div className="relative">
+                                        <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2" />
+                                        <input
+                                            type="text"
+                                            value={connectSearch}
+                                            onChange={e => setConnectSearch(e.target.value)}
+                                            placeholder="Search chunks..."
+                                            className="bg-background w-full rounded-md border py-1.5 pl-8 pr-3 text-sm"
+                                            autoFocus
+                                        />
+                                    </div>
+                                </div>
+                                {connectResults.length > 0 && (
+                                    <div className="max-h-48 space-y-0.5 overflow-y-auto rounded-md border p-1">
+                                        {connectResults.map(result => (
+                                            <button
+                                                key={result.id}
+                                                type="button"
+                                                onClick={() => bulkConnectMutation.mutate(result.id)}
+                                                disabled={bulkConnectMutation.isPending}
+                                                className="hover:bg-muted flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-left text-sm transition-colors"
+                                            >
+                                                <span className="truncate font-medium">{result.title}</span>
+                                                <Badge variant="secondary" size="sm" className="ml-2 shrink-0 text-[10px]">
+                                                    {result.type}
+                                                </Badge>
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                                {connectSearch.trim().length > 0 && connectResults.length === 0 && !connectSearchQuery.isLoading && (
+                                    <p className="text-muted-foreground py-2 text-center text-xs">No chunks found</p>
+                                )}
+                            </div>
+                        </PopoverContent>
+                    </Popover>
                     <select
                         onChange={e => {
                             if (e.target.value) {
@@ -1220,6 +1328,33 @@ function ChunksList() {
                     </Button>
                 </div>
             )}
+
+            <ConfirmDialog
+                open={confirmAction !== null}
+                onOpenChange={(open) => { if (!open) setConfirmAction(null); }}
+                title={confirmAction?.title ?? ""}
+                description={confirmAction?.description}
+                confirmLabel="Confirm"
+                confirmVariant="destructive"
+                onConfirm={() => {
+                    confirmAction?.action();
+                    setConfirmAction(null);
+                }}
+                loading={bulkUpdateMutation.isPending}
+            />
+
+            <PromptDialog
+                open={showSaveFilter}
+                onOpenChange={setShowSaveFilter}
+                title="Save filter preset"
+                description="Give this filter combination a name so you can quickly apply it later."
+                placeholder="Filter name"
+                submitLabel="Save"
+                onSubmit={(name) => {
+                    saveFilter(name, { type, q, sort, tags, size, after, enrichment, minConnections });
+                    setShowSaveFilter(false);
+                }}
+            />
         </div>
     );
 }

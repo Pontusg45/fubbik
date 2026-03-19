@@ -13,6 +13,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { Toaster } from "@/components/ui/sonner";
 import UserMenu from "@/features/auth/user-menu";
 
+import { Breadcrumbs } from "@/features/nav/breadcrumbs";
+import { ConnectionStatus } from "@/features/nav/connection-status";
 import { KeyboardShortcutsHelp, useGlobalShortcuts } from "@/features/nav/keyboard-shortcuts";
 import { MobileNav } from "@/features/nav/mobile-nav";
 import { CodebaseSwitcher } from "@/features/codebases/codebase-switcher";
@@ -164,6 +166,8 @@ function RootDocument() {
                                 </div>
                             </header>
                         )}
+                        {!isLanding && <ConnectionStatus />}
+                        {!isLanding && <Breadcrumbs />}
                         <main>
                             <ErrorBoundary>
                                 <Outlet />

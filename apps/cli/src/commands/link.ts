@@ -1,5 +1,6 @@
 import { Command } from "commander";
 
+import { formatRelation, formatSuccess } from "../lib/colors";
 import { output, outputError, outputQuiet } from "../lib/output";
 import { getServerUrl } from "../lib/store";
 
@@ -28,15 +29,15 @@ export const linkCommand = new Command("link")
             });
 
             if (!res.ok) {
-                outputError(`✗ Failed to create connection: ${res.status} ${await res.text()}`);
+                outputError(`Failed to create connection: ${res.status} ${await res.text()}`);
                 process.exit(1);
             }
 
             const data = await res.json();
             outputQuiet(cmd, (data as { id?: string }).id ?? "");
-            output(cmd, data, `✓ Linked ${sourceId} → ${targetId} (${opts.relation})`);
+            output(cmd, data, formatSuccess(`Linked ${sourceId} \u2192 ${targetId} (${formatRelation(opts.relation)})`));
         } catch (err) {
-            outputError(`✗ ${(err as Error).message}`);
+            outputError((err as Error).message);
             process.exit(1);
         }
     });

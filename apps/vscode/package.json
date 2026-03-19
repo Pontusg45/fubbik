@@ -37,6 +37,22 @@
       {
         "command": "fubbik.refreshSidebar",
         "title": "Fubbik: Refresh Chunks"
+      },
+      {
+        "command": "fubbik.searchChunks",
+        "title": "Fubbik: Search Chunks"
+      },
+      {
+        "command": "fubbik.openGraph",
+        "title": "Fubbik: Open Graph in Browser"
+      },
+      {
+        "command": "fubbik.openDashboard",
+        "title": "Fubbik: Open Dashboard in Browser"
+      },
+      {
+        "command": "fubbik.quickAddNote",
+        "title": "Fubbik: Quick Add Note"
       }
     ],
     "menus": {

@@ -1,20 +1,21 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Archive, ArrowLeft, Bot, Calendar, Clock, Code, Edit, FileCode, FileText, Hash, MessageSquare, Network, Pencil, Scale, Star, Trash2 } from "lucide-react";
+import { Archive, ArrowLeft, Bot, Calendar, Clock, Code, Download, Edit, FileCode, FileText, Hash, MessageSquare, Network, Pencil, Scale, Star, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
-
 import { MarkdownRenderer } from "@/components/markdown-renderer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardHeader, CardPanel, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 import { AiSection } from "@/features/chunks/ai-section";
 import { ChunkLink } from "@/features/chunks/chunk-link";
 import { getChunkSize } from "@/features/chunks/chunk-size";
 import { DeleteConnectionButton } from "@/features/chunks/delete-connection-button";
+import { InlineTagEditor } from "@/features/chunks/inline-tag-editor";
 import { LinkChunkDialog } from "@/features/chunks/link-chunk-dialog";
 import { RelatedChunks } from "@/features/chunks/related-chunks";
 import { relationColor } from "@/features/chunks/relation-colors";
@@ -108,6 +109,21 @@ function ChunkDetail() {
         }
     });
 
+    const tagMutation = useMutation({
+        mutationFn: async (tags: string[]) => {
+            const { error } = await api.api.chunks({ id: chunkId }).patch({ tags });
+            if (error) throw new Error("Failed to update tags");
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["chunk", chunkId] });
+            queryClient.invalidateQueries({ queryKey: ["chunks"] });
+            toast.success("Tags updated");
+        },
+        onError: () => {
+            toast.error("Failed to update tags");
+        }
+    });
+
     if (isLoading) {
         return (
             <div className="container mx-auto max-w-3xl px-4 py-8">
@@ -115,8 +131,33 @@ function ChunkDetail() {
                     <ArrowLeft className="size-4" />
                     Back
                 </Button>
-                <div className="mt-8 text-center">
-                    <p className="text-muted-foreground">Loading...</p>
+                <div className="mt-8 space-y-6">
+                    {/* Title skeleton */}
+                    <div className="space-y-3">
+                        <Skeleton className="h-5 w-20" />
+                        <Skeleton className="h-8 w-2/3" />
+                        <div className="flex gap-4">
+                            <Skeleton className="h-3 w-32" />
+                            <Skeleton className="h-3 w-32" />
+                        </div>
+                    </div>
+                    <Separator />
+                    {/* Content skeleton */}
+                    <div className="space-y-3">
+                        <Skeleton className="h-4 w-full" />
+                        <Skeleton className="h-4 w-full" />
+                        <Skeleton className="h-4 w-5/6" />
+                        <Skeleton className="h-4 w-full" />
+                        <Skeleton className="h-4 w-3/4" />
+                        <Skeleton className="h-4 w-full" />
+                        <Skeleton className="h-4 w-2/3" />
+                    </div>
+                    <Separator />
+                    {/* Metadata skeleton */}
+                    <div className="space-y-2">
+                        <Skeleton className="h-5 w-32" />
+                        <Skeleton className="h-12 w-full" />
+                    </div>
                 </div>
             </div>
         );
@@ -177,6 +218,23 @@ function ChunkDetail() {
                     >
                         <Network className="size-3.5" />
                         Find path
+                    </Button>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                            const md = `# ${chunk.title}\n\n**Type:** ${chunk.type}\n**Tags:** ${tags.map((t: any) => t.name || t).join(", ")}\n\n${chunk.content}`;
+                            const blob = new Blob([md], { type: "text/markdown" });
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement("a");
+                            a.href = url;
+                            a.download = `${chunk.title.replace(/[^a-z0-9]/gi, "-").toLowerCase()}.md`;
+                            a.click();
+                            URL.revokeObjectURL(url);
+                        }}
+                    >
+                        <Download className="size-3.5" />
+                        Export MD
                     </Button>
                     <Button variant="outline" size="sm" render={<Link to="/chunks/$chunkId/edit" params={{ chunkId }} />}>
                         <Edit className="size-3.5" />
@@ -295,8 +353,12 @@ function ChunkDetail() {
                 </div>
             </div>
 
-            <div className="mb-2 flex flex-wrap gap-1.5">
-                {/* tags are now in normalized tables, rendered via tag components */}
+            <div className="mb-2">
+                <InlineTagEditor
+                    tags={tags}
+                    onUpdate={(newTags) => tagMutation.mutate(newTags)}
+                    loading={tagMutation.isPending}
+                />
             </div>
 
             <Separator className="my-6" />

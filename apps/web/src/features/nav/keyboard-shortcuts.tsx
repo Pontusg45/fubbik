@@ -87,6 +87,7 @@ const shortcuts = [
         { key: "Esc", description: "Go back" }
     ]},
     { section: "Chunks List", items: [
+        { key: "/", description: "Focus search" },
         { key: "j", description: "Move selection down" },
         { key: "k", description: "Move selection up" },
         { key: "Enter", description: "Open selected chunk" },

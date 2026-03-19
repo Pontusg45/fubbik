@@ -3,6 +3,7 @@ import { Command } from "commander";
 import { resolveCodebaseId } from "../lib/detect-codebase";
 import { output, outputError, outputQuiet } from "../lib/output";
 import { listChunks, readStore } from "../lib/store";
+import { formatChunkTable } from "../lib/table";
 
 export const listCommand = new Command("list")
     .description("List all chunks")
@@ -58,18 +59,13 @@ export const listCommand = new Command("list")
                     outputError(`Server list failed: ${res.status}`);
                     process.exit(1);
                 }
-                const data = (await res.json()) as { chunks: { id: string; title: string; type: string; tags: string[] }[] };
+                const data = (await res.json()) as { chunks: { id: string; title: string; type: string; tags: string[]; updatedAt?: string }[] };
                 const chunks = data.chunks;
                 outputQuiet(cmd, chunks.map(c => c.id).join("\n"));
                 if (chunks.length === 0) {
                     output(cmd, chunks, "No chunks found.");
                 } else {
-                    const lines = [`${chunks.length} chunk(s):\n`];
-                    for (const chunk of chunks) {
-                        const tags = chunk.tags.length > 0 ? ` [${chunk.tags.join(", ")}]` : "";
-                        lines.push(`  ${chunk.id}  ${chunk.title}  (${chunk.type})${tags}`);
-                    }
-                    output(cmd, chunks, lines.join("\n"));
+                    output(cmd, chunks, `${chunks.length} chunk(s):\n\n${formatChunkTable(chunks)}`);
                 }
                 return;
             }
@@ -109,12 +105,7 @@ export const listCommand = new Command("list")
             if (chunks.length === 0) {
                 output(cmd, data, "No chunks found.");
             } else {
-                const lines = [`${chunks.length} chunk(s):\n`];
-                for (const chunk of chunks) {
-                    const tags = chunk.tags.length > 0 ? ` [${chunk.tags.join(", ")}]` : "";
-                    lines.push(`  ${chunk.id}  ${chunk.title}  (${chunk.type})${tags}`);
-                }
-                output(cmd, data, lines.join("\n"));
+                output(cmd, data, `${chunks.length} chunk(s):\n\n${formatChunkTable(chunks)}`);
             }
         }
     );
