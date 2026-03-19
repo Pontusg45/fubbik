@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
     Archive,
@@ -20,7 +20,7 @@ import {
     Trash2,
     X
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -38,6 +38,8 @@ import { useCollections } from "@/features/chunks/use-collections";
 import { usePinnedChunks } from "@/features/chunks/use-pinned-chunks";
 import { useSavedFilters } from "@/features/chunks/use-saved-filters";
 import { useActiveCodebase } from "@/features/codebases/use-active-codebase";
+import { ShortcutHint } from "@/features/nav/shortcut-hint";
+import { useIntersectionObserver } from "@/hooks/use-intersection-observer";
 import { getUser } from "@/functions/get-user";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
@@ -47,7 +49,6 @@ export const Route = createFileRoute("/chunks/")({
     validateSearch: (search: Record<string, unknown>): {
         type?: string;
         q?: string;
-        page?: number;
         sort?: string;
         tags?: string;
         size?: string;
@@ -62,7 +63,6 @@ export const Route = createFileRoute("/chunks/")({
     } => ({
         type: (search.type as string) || undefined,
         q: (search.q as string) || undefined,
-        page: Number(search.page) || 1,
         sort: (search.sort as string) || undefined,
         tags: (search.tags as string) || undefined,
         size: (search.size as string) || undefined,
@@ -89,22 +89,20 @@ export const Route = createFileRoute("/chunks/")({
 function ChunksList() {
     const navigate = useNavigate({ from: "/chunks/" });
     const navTo = useNavigate();
-    const { type, q, page: rawPage, sort, tags, size, after, enrichment, minConnections, group, collection, view, origin, reviewStatus } = Route.useSearch();
-    const page = rawPage ?? 1;
+    const { type, q, sort, tags, size, after, enrichment, minConnections, group, collection, view, origin, reviewStatus } = Route.useSearch();
     const queryClient = useQueryClient();
     const [searchInput, setSearchInput] = useState(q ?? "");
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const { filters: savedFilters, saveFilter, deleteFilter } = useSavedFilters();
     const { codebaseId } = useActiveCodebase();
     const limit = 20;
-    const offset = ((page ?? 1) - 1) * limit;
 
     const activeFilterCount = [tags, size, after, enrichment, minConnections, origin, reviewStatus].filter(Boolean).length;
     const hasActiveFilters = !!(type || q || sort || tags || size || after || enrichment || minConnections || origin || reviewStatus);
 
-    const chunksQuery = useQuery({
-        queryKey: ["chunks-list", type, q, page, sort, tags, after, enrichment, minConnections, codebaseId, origin, reviewStatus],
-        queryFn: async () => {
+    const chunksQuery = useInfiniteQuery({
+        queryKey: ["chunks-list", type, q, sort, tags, after, enrichment, minConnections, codebaseId, origin, reviewStatus],
+        queryFn: async ({ pageParam = 1 }) => {
             try {
                 return unwrapEden(
                     await api.api.chunks.get({
@@ -117,7 +115,7 @@ function ChunksList() {
                             enrichment: enrichment as "missing" | "complete" | undefined,
                             minConnections,
                             limit: String(limit),
-                            offset: String(offset),
+                            offset: String((pageParam - 1) * limit),
                             ...(codebaseId === "global" ? { global: "true" } : codebaseId ? { codebaseId } : {}),
                             origin: origin as "human" | "ai" | undefined,
                             reviewStatus: reviewStatus as "draft" | "reviewed" | "approved" | undefined
@@ -127,6 +125,12 @@ function ChunksList() {
             } catch {
                 return null;
             }
+        },
+        initialPageParam: 1,
+        getNextPageParam: (lastPage, allPages) => {
+            if (!lastPage) return undefined;
+            const loaded = allPages.reduce((sum, p) => sum + (p?.chunks?.length ?? 0), 0);
+            return loaded < lastPage.total ? allPages.length + 1 : undefined;
         }
     });
 
@@ -149,14 +153,15 @@ function ChunksList() {
         updateSearch({ tags: next.length > 0 ? next.join(",") : undefined });
     }
 
-    const chunks = chunksQuery.data?.chunks ?? [];
+    const allChunks = chunksQuery.data?.pages.flatMap(p => p?.chunks ?? []) ?? [];
+    const chunks = allChunks;
     const { pinnedIds, togglePin, isPinned } = usePinnedChunks();
     const { collections, createCollection, deleteCollection: deleteCol } = useCollections();
     const [showSaveCollection, setShowSaveCollection] = useState(false);
     const [newCollectionName, setNewCollectionName] = useState("");
 
     const processedChunks = useMemo(() => {
-        const source = chunksQuery.data?.chunks ?? [];
+        const source = allChunks;
         const filtered = size ? source.filter(c => getChunkSize(c.content).level === size) : source;
         const pinnedSet = new Set(pinnedIds);
         return [...filtered].sort((a, b) => {
@@ -164,7 +169,7 @@ function ChunksList() {
             const bPinned = pinnedSet.has(b.id) ? 0 : 1;
             return aPinned - bPinned;
         });
-        // eslint-disable-next-line react-hooks/exhaustive-deps -- chunksQuery.data is stable per fetch
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- allChunks is stable per fetch
     }, [chunksQuery.data, size, pinnedIds]);
 
     const collectionFilteredChunks = processedChunks;
@@ -252,8 +257,15 @@ function ChunksList() {
         return () => window.removeEventListener("keydown", handleKeyDown);
     }, [selectedIndex, navTo]);
 
-    const total = chunksQuery.data?.total ?? 0;
-    const totalPages = Math.ceil(total / limit);
+    const total = chunksQuery.data?.pages[0]?.total ?? 0;
+
+    const fetchNextPageCb = useCallback(() => {
+        chunksQuery.fetchNextPage();
+    }, [chunksQuery]);
+    const loadMoreRef = useIntersectionObserver(
+        fetchNextPageCb,
+        !!chunksQuery.hasNextPage && !chunksQuery.isFetchingNextPage
+    );
 
     const types = ["note", "document", "reference", "schema", "checklist"];
 
@@ -261,7 +273,6 @@ function ChunksList() {
         params: Partial<{
             type: string;
             q: string;
-            page: number;
             sort: string;
             tags: string;
             size: string;
@@ -279,7 +290,6 @@ function ChunksList() {
             search: {
                 type: params.type !== undefined ? params.type : type,
                 q: params.q !== undefined ? params.q : q,
-                page: params.page ?? 1,
                 sort: params.sort !== undefined ? params.sort : sort,
                 tags: params.tags !== undefined ? params.tags : tags,
                 size: params.size !== undefined ? params.size : size,
@@ -300,7 +310,6 @@ function ChunksList() {
             search: {
                 type: undefined,
                 q: undefined,
-                page: 1,
                 sort: undefined,
                 tags: undefined,
                 size: undefined,
@@ -835,7 +844,6 @@ function ChunksList() {
                                                         minConnections: f.minConnections,
                                                         origin: f.origin,
                                                         reviewStatus: f.reviewStatus,
-                                                        page: 1,
                                                         size: undefined,
                                                         group,
                                                         collection: undefined,
@@ -975,7 +983,7 @@ function ChunksList() {
                             key={f.name}
                             variant="outline"
                             className="cursor-pointer gap-1"
-                            onClick={() => navigate({ search: { ...f.params, page: 1 } })}
+                            onClick={() => navigate({ search: { ...f.params } })}
                         >
                             {f.name}
                             <button
@@ -990,6 +998,10 @@ function ChunksList() {
                     ))}
                 </div>
             )}
+
+            <div className="mb-3">
+                <ShortcutHint />
+            </div>
 
             {/* Results */}
             {view === "kanban" ? (
@@ -1156,19 +1168,23 @@ function ChunksList() {
                 </Card>
             )}
 
-            {/* Pagination */}
-            {view !== "kanban" && totalPages > 1 && (
-                <div className="mt-4 flex items-center justify-center gap-2">
-                    <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => updateSearch({ page: page - 1 })}>
-                        Previous
-                    </Button>
-                    <span className="text-muted-foreground text-sm">
-                        Page {page} of {totalPages}
-                    </span>
-                    <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => updateSearch({ page: page + 1 })}>
-                        Next
+            {/* Load more trigger */}
+            {view !== "kanban" && chunksQuery.hasNextPage && (
+                <div ref={loadMoreRef} className="mt-4 flex justify-center">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => chunksQuery.fetchNextPage()}
+                        disabled={chunksQuery.isFetchingNextPage}
+                    >
+                        {chunksQuery.isFetchingNextPage ? "Loading..." : "Load more"}
                     </Button>
                 </div>
+            )}
+            {view !== "kanban" && total > 0 && (
+                <p className="text-muted-foreground mt-2 text-center text-xs">
+                    Showing {allChunks.length} of {total} chunks
+                </p>
             )}
 
             {selectedIds.size > 0 && (
