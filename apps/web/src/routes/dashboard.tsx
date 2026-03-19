@@ -6,6 +6,7 @@ import {
     Blocks,
     Clock,
     Download,
+    Eye,
     FileText,
     Network,
     Plus,
@@ -21,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SkeletonList } from "@/components/ui/skeleton-list";
 import { useFavorites } from "@/features/chunks/use-favorites";
+import { useRecentChunks } from "@/features/chunks/use-recent-chunks";
 import { useActiveCodebase } from "@/features/codebases/use-active-codebase";
 import { getUser } from "@/functions/get-user";
 import { api } from "@/utils/api";
@@ -42,6 +44,7 @@ function DashboardPage() {
     const queryClient = useQueryClient();
     const fileInputRef = useRef<HTMLInputElement>(null);
     const { favoriteIds, isLoading: favoritesLoading } = useFavorites();
+    const { recentIds } = useRecentChunks();
     const { codebaseId } = useActiveCodebase();
 
     const codebaseQuery = codebaseId
@@ -86,6 +89,19 @@ function DashboardPage() {
                 .filter((c): c is NonNullable<typeof c> => !!c);
         },
         enabled: favoriteIds.length > 0
+    });
+
+    const recentChunksQuery = useQuery({
+        queryKey: ["chunks-recent-viewed", recentIds],
+        queryFn: async () => {
+            if (recentIds.length === 0) return [];
+            const result = unwrapEden(await api.api.chunks.get({ query: { limit: "100" } as any }));
+            const chunks = result?.chunks ?? [];
+            return recentIds
+                .map(id => chunks.find(c => c.id === id))
+                .filter((c): c is NonNullable<typeof c> => !!c);
+        },
+        enabled: recentIds.length > 0
     });
 
     // ─── Mutations ───
@@ -200,6 +216,28 @@ function DashboardPage() {
                                         className="hover:bg-muted/50 flex items-center gap-2 rounded-md px-3 py-2 transition-colors"
                                     >
                                         <Star className="size-3 shrink-0 fill-yellow-500/40 text-yellow-500/40" />
+                                        <span className="truncate text-sm">{chunk.title}</span>
+                                        <Badge variant="secondary" size="sm" className="ml-auto shrink-0 font-mono text-[9px]">
+                                            {chunk.type}
+                                        </Badge>
+                                    </Link>
+                                ))}
+                            </div>
+                        </DashboardSection>
+                    )}
+
+                    {/* Recently viewed */}
+                    {recentIds.length > 0 && (
+                        <DashboardSection icon={Eye} title="Recently Viewed">
+                            <div className="grid gap-1 sm:grid-cols-2">
+                                {(recentChunksQuery.data ?? []).slice(0, 6).map(chunk => (
+                                    <Link
+                                        key={chunk.id}
+                                        to="/chunks/$chunkId"
+                                        params={{ chunkId: chunk.id }}
+                                        className="hover:bg-muted/50 flex items-center gap-2 rounded-md px-3 py-2 transition-colors"
+                                    >
+                                        <Eye className="size-3 shrink-0 text-muted-foreground" />
                                         <span className="truncate text-sm">{chunk.title}</span>
                                         <Badge variant="secondary" size="sm" className="ml-auto shrink-0 font-mono text-[9px]">
                                             {chunk.type}

@@ -209,6 +209,7 @@ function ChunksList() {
 
     const chunksRef = useRef(chunks);
     chunksRef.current = chunks;
+    const searchInputRef = useRef<HTMLInputElement>(null);
     const [selectedIndex, setSelectedIndex] = useState(-1);
 
     useEffect(() => {
@@ -238,6 +239,10 @@ function ChunksList() {
                     if (selectedIndex >= 0 && selectedIndex < list.length) {
                         navTo({ to: "/chunks/$chunkId", params: { chunkId: list[selectedIndex]!.id } });
                     }
+                    break;
+                case "/":
+                    e.preventDefault();
+                    searchInputRef.current?.focus();
                     break;
             }
         }
@@ -413,6 +418,7 @@ function ChunksList() {
                 <div className="relative flex-1">
                     <Search className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
                     <input
+                        ref={searchInputRef}
                         type="text"
                         value={searchInput}
                         onChange={e => setSearchInput(e.target.value)}
