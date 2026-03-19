@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardPanel } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { DraftIndicator } from "@/features/chunks/draft-indicator";
 import { loadDraft, useAutosave } from "@/features/chunks/use-autosave";
 import { MarkdownEditor } from "@/features/editor/markdown-editor";
 import { getUser } from "@/functions/get-user";
@@ -156,7 +157,7 @@ function EditChunk() {
         () => ({ title, content, type, tags, appliesTo, fileRefs, rationale, alternativesInput, consequences }),
         [title, content, type, tags, appliesTo, fileRefs, rationale, alternativesInput, consequences]
     );
-    const { clearDraft } = useAutosave(draftKey, formState, initialized);
+    const { clearDraft, lastSaved } = useAutosave(draftKey, formState, initialized);
 
     function validate() {
         const e: Record<string, string> = {};
@@ -495,7 +496,8 @@ function EditChunk() {
 
                     <Separator />
 
-                    <div className="flex justify-end gap-2">
+                    <div className="flex items-center justify-end gap-2">
+                        <DraftIndicator lastSaved={lastSaved} />
                         <Button variant="outline" render={<Link to="/chunks/$chunkId" params={{ chunkId }} />}>
                             Cancel
                         </Button>

@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardPanel } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { chunkTemplates } from "@/features/chunks/templates";
+import { DraftIndicator } from "@/features/chunks/draft-indicator";
 import { loadDraft, useAutosave } from "@/features/chunks/use-autosave";
 import { MarkdownEditor } from "@/features/editor/markdown-editor";
 import { getUser } from "@/functions/get-user";
@@ -90,7 +91,7 @@ function NewChunk() {
         () => ({ title, content, type, tags, appliesTo, fileRefs, rationale, alternativesInput, consequences }),
         [title, content, type, tags, appliesTo, fileRefs, rationale, alternativesInput, consequences]
     );
-    const { clearDraft } = useAutosave(DRAFT_KEY, formState);
+    const { clearDraft, lastSaved } = useAutosave(DRAFT_KEY, formState);
 
     const templatesQuery = useQuery({
         queryKey: ["templates"],
@@ -590,7 +591,8 @@ function NewChunk() {
 
                     <Separator />
 
-                    <div className="flex justify-end gap-2">
+                    <div className="flex items-center justify-end gap-2">
+                        <DraftIndicator lastSaved={lastSaved} />
                         <Button variant="outline" render={<Link to="/dashboard" />}>
                             Cancel
                         </Button>

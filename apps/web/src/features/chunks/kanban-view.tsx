@@ -38,11 +38,11 @@ export function KanbanView({ chunks }: { chunks: Chunk[] }) {
     }));
 
     return (
-        <div className="grid grid-cols-5 gap-3">
+        <div className="flex gap-3 overflow-x-auto pb-2">
             {columns.map(col => (
                 <div
                     key={col.type}
-                    className="bg-muted/30 rounded-lg border p-2"
+                    className="bg-muted/30 min-w-[200px] flex-1 rounded-lg border p-2"
                     onDragOver={e => e.preventDefault()}
                     onDrop={e => handleDrop(e, col.type)}
                 >
