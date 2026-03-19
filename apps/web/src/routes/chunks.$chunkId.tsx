@@ -15,6 +15,7 @@ import { AiSection } from "@/features/chunks/ai-section";
 import { ChunkLink } from "@/features/chunks/chunk-link";
 import { getChunkSize } from "@/features/chunks/chunk-size";
 import { DeleteConnectionButton } from "@/features/chunks/delete-connection-button";
+import { InlineTagEditor } from "@/features/chunks/inline-tag-editor";
 import { LinkChunkDialog } from "@/features/chunks/link-chunk-dialog";
 import { RelatedChunks } from "@/features/chunks/related-chunks";
 import { relationColor } from "@/features/chunks/relation-colors";
@@ -105,6 +106,21 @@ function ChunkDetail() {
         },
         onError: () => {
             toast.error("Failed to delete chunk");
+        }
+    });
+
+    const tagMutation = useMutation({
+        mutationFn: async (tags: string[]) => {
+            const { error } = await api.api.chunks({ id: chunkId }).patch({ tags });
+            if (error) throw new Error("Failed to update tags");
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["chunk", chunkId] });
+            queryClient.invalidateQueries({ queryKey: ["chunks"] });
+            toast.success("Tags updated");
+        },
+        onError: () => {
+            toast.error("Failed to update tags");
         }
     });
 
@@ -320,8 +336,12 @@ function ChunkDetail() {
                 </div>
             </div>
 
-            <div className="mb-2 flex flex-wrap gap-1.5">
-                {/* tags are now in normalized tables, rendered via tag components */}
+            <div className="mb-2">
+                <InlineTagEditor
+                    tags={tags}
+                    onUpdate={(newTags) => tagMutation.mutate(newTags)}
+                    loading={tagMutation.isPending}
+                />
             </div>
 
             <Separator className="my-6" />
