@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link2, Search } from "lucide-react";
+import { ChevronDown, ChevronUp, Link2, Search } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -9,10 +9,26 @@ import { Dialog, DialogHeader, DialogPopup, DialogTitle, DialogTrigger } from "@
 import { Input } from "@/components/ui/input";
 import { api } from "@/utils/api";
 
+const RELATION_TYPES = [
+    "related_to",
+    "part_of",
+    "depends_on",
+    "extends",
+    "references",
+    "supports",
+    "contradicts",
+    "alternative_to"
+] as const;
+
+function formatRelation(r: string) {
+    return r.replace(/_/g, " ");
+}
+
 export function LinkChunkDialog({ chunkId }: { chunkId: string }) {
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState("");
-    const [relation, setRelation] = useState("related");
+    const [relation, setRelation] = useState("related_to");
+    const [showRelationPicker, setShowRelationPicker] = useState(false);
     const queryClient = useQueryClient();
 
     const { data: searchResults } = useQuery({
@@ -39,6 +55,7 @@ export function LinkChunkDialog({ chunkId }: { chunkId: string }) {
             queryClient.invalidateQueries({ queryKey: ["chunk", chunkId] });
             toast.success("Connection created");
             setSearch("");
+            setShowRelationPicker(false);
             setOpen(false);
         },
         onError: () => {
@@ -60,14 +77,6 @@ export function LinkChunkDialog({ chunkId }: { chunkId: string }) {
                 </DialogHeader>
                 <div className="space-y-4 px-6 pb-6">
                     <div className="space-y-2">
-                        <label className="text-muted-foreground text-xs font-medium">Relation</label>
-                        <Input
-                            value={relation}
-                            onChange={e => setRelation((e.target as HTMLInputElement).value)}
-                            placeholder="e.g. related, depends-on, extends"
-                        />
-                    </div>
-                    <div className="space-y-2">
                         <label className="text-muted-foreground text-xs font-medium">Search chunks</label>
                         <div className="relative">
                             <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2" />
@@ -79,6 +88,44 @@ export function LinkChunkDialog({ chunkId }: { chunkId: string }) {
                             />
                         </div>
                     </div>
+                    <div className="flex items-center gap-2">
+                        <Badge variant="secondary" size="sm">
+                            {formatRelation(relation)}
+                        </Badge>
+                        <button
+                            type="button"
+                            onClick={() => setShowRelationPicker(v => !v)}
+                            className="text-muted-foreground hover:text-foreground flex items-center gap-0.5 text-xs transition-colors"
+                        >
+                            Change type
+                            {showRelationPicker ? (
+                                <ChevronUp className="size-3" />
+                            ) : (
+                                <ChevronDown className="size-3" />
+                            )}
+                        </button>
+                    </div>
+                    {showRelationPicker && (
+                        <div className="flex flex-wrap gap-1.5">
+                            {RELATION_TYPES.map(r => (
+                                <button
+                                    key={r}
+                                    type="button"
+                                    onClick={() => {
+                                        setRelation(r);
+                                        setShowRelationPicker(false);
+                                    }}
+                                    className={`rounded-md border px-2 py-1 text-xs transition-colors ${
+                                        relation === r
+                                            ? "bg-primary text-primary-foreground border-transparent"
+                                            : "hover:bg-muted border-border"
+                                    }`}
+                                >
+                                    {formatRelation(r)}
+                                </button>
+                            ))}
+                        </div>
+                    )}
                     {filteredResults.length > 0 && (
                         <div className="max-h-60 space-y-1 overflow-y-auto rounded-md border p-1">
                             {filteredResults.map(result => (
