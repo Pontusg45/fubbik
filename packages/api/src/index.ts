@@ -13,6 +13,7 @@ import { codebaseRoutes } from "./codebases/routes";
 import { collectionRoutes } from "./collections/routes";
 import { connectionRoutes } from "./connections/routes";
 import { contextExportRoutes } from "./context-export/routes";
+import { contextForFileRoutes } from "./context-for-file/routes";
 import { favoriteRoutes } from "./favorites/routes";
 import { generateInstructionsRoutes } from "./generate-instructions/routes";
 import { knowledgeHealthRoutes } from "./knowledge-health/routes";
@@ -117,6 +118,7 @@ export const api = new Elysia({ prefix: "/api" })
         Effect.runPromise(requireSession(ctx).pipe(Effect.map(session => ({ message: "This is private" as const, user: session.user }))))
     )
     .use(contextExportRoutes)
+    .use(contextForFileRoutes)
     .use(chunkRoutes)
     .use(appliesToRoutes)
     .use(statsRoutes)
