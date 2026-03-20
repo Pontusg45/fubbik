@@ -224,6 +224,7 @@ function RequirementsPage() {
                         useCases={useCases}
                         activeUseCaseId={activeUseCaseId}
                         onUseCaseClick={handleUseCaseClick}
+                        statusCounts={stats ? { passing: stats.passing, failing: stats.failing, untested: stats.untested } : undefined}
                     />
                 </div>
 

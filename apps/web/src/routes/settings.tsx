@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Card, CardPanel } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTab } from "@/components/ui/tabs";
 import { useActiveCodebase } from "@/features/codebases/use-active-codebase";
@@ -217,12 +218,21 @@ function CodebaseSettingsTab() {
                 <CardPanel className="space-y-6 p-6">
                     <div>
                         <Label className="mb-2 block text-sm font-medium">Default Chunk Type</Label>
-                        <Input
-                            defaultValue={defaultChunkType}
-                            placeholder="e.g. concept, decision, pattern"
-                            className="w-64"
-                            onChange={e => debouncedSave("defaultChunkType", e.target.value)}
-                        />
+                        <Select
+                            value={defaultChunkType || "note"}
+                            onValueChange={(val) => { if (val) save("defaultChunkType", val); }}
+                        >
+                            <SelectTrigger className="w-64">
+                                <SelectValue placeholder="Select a type" />
+                            </SelectTrigger>
+                            <SelectPopup>
+                                <SelectItem value="note">Note</SelectItem>
+                                <SelectItem value="document">Document</SelectItem>
+                                <SelectItem value="reference">Reference</SelectItem>
+                                <SelectItem value="schema">Schema</SelectItem>
+                                <SelectItem value="checklist">Checklist</SelectItem>
+                            </SelectPopup>
+                        </Select>
                     </div>
 
                     <div className="flex items-center justify-between">
@@ -269,6 +279,9 @@ function CodebaseSettingsTab() {
                                 debouncedSave("templateId", e.target.value || null)
                             }
                         />
+                        <p className="text-muted-foreground mt-1 text-xs">
+                            Find template IDs on the templates page.
+                        </p>
                     </div>
                 </CardPanel>
             </Card>

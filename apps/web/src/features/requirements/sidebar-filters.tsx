@@ -17,6 +17,7 @@ interface SidebarFiltersProps {
     useCases: Array<{ id: string; name: string; requirementCount: number; parentId: string | null }>;
     activeUseCaseId: string | null;
     onUseCaseClick: (id: string | null) => void;
+    statusCounts?: Record<string, number>;
 }
 
 const STATUS_OPTIONS = [
@@ -55,7 +56,8 @@ export function SidebarFilters({
     onOriginFilterChange,
     useCases,
     activeUseCaseId,
-    onUseCaseClick
+    onUseCaseClick,
+    statusCounts
 }: SidebarFiltersProps) {
     return (
         <div className="space-y-6">
@@ -85,6 +87,9 @@ export function SidebarFilters({
                                 }
                             />
                             {opt.label}
+                            {statusCounts?.[opt.value] != null && (
+                                <span className="text-muted-foreground ml-auto text-xs">{statusCounts[opt.value]}</span>
+                            )}
                         </label>
                     ))}
                 </div>

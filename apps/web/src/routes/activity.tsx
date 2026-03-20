@@ -82,9 +82,19 @@ function timeAgo(date: string | Date) {
     return new Date(date).toLocaleDateString();
 }
 
+const ACTION_TYPES = [
+    { value: "", label: "All" },
+    { value: "created", label: "Created" },
+    { value: "updated", label: "Updated" },
+    { value: "deleted", label: "Deleted" },
+    { value: "archived", label: "Archived" }
+];
+
 function ActivityPage() {
     const { codebaseId } = useActiveCodebase();
     const [entityTypeFilter, setEntityTypeFilter] = useState("");
+    const [actionFilter, setActionFilter] = useState("");
+    const [displayCount, setDisplayCount] = useState(20);
 
     const activityQuery = useQuery({
         queryKey: ["activity", codebaseId, entityTypeFilter],
@@ -97,6 +107,8 @@ function ActivityPage() {
     });
 
     const activities = activityQuery.data ?? [];
+    const filtered = activities.filter((e: Record<string, unknown>) => !actionFilter || e.action === actionFilter);
+    const displayed = filtered.slice(0, displayCount);
 
     return (
         <div className="container mx-auto max-w-3xl px-4 py-8">
@@ -105,17 +117,31 @@ function ActivityPage() {
                 <p className="text-muted-foreground text-sm">Recent changes across your knowledge base.</p>
             </div>
 
-            <div className="mb-4 flex flex-wrap gap-1">
-                {ENTITY_TYPES.map(t => (
-                    <Button
-                        key={t.value}
-                        variant={entityTypeFilter === t.value ? "default" : "outline"}
-                        size="xs"
-                        onClick={() => setEntityTypeFilter(t.value)}
-                    >
-                        {t.label}
-                    </Button>
-                ))}
+            <div className="mb-4 space-y-2">
+                <div className="flex flex-wrap gap-1">
+                    {ENTITY_TYPES.map(t => (
+                        <Button
+                            key={t.value}
+                            variant={entityTypeFilter === t.value ? "default" : "outline"}
+                            size="xs"
+                            onClick={() => setEntityTypeFilter(t.value)}
+                        >
+                            {t.label}
+                        </Button>
+                    ))}
+                </div>
+                <div className="flex flex-wrap gap-1">
+                    {ACTION_TYPES.map(a => (
+                        <Button
+                            key={a.value}
+                            variant={actionFilter === a.value ? "default" : "outline"}
+                            size="xs"
+                            onClick={() => { setActionFilter(a.value); setDisplayCount(20); }}
+                        >
+                            {a.label}
+                        </Button>
+                    ))}
+                </div>
             </div>
 
             <Card>
@@ -123,12 +149,12 @@ function ActivityPage() {
                     <CardPanel className="flex items-center justify-center p-8">
                         <Loader2 className="text-muted-foreground size-5 animate-spin" />
                     </CardPanel>
-                ) : activities.length === 0 ? (
+                ) : filtered.length === 0 ? (
                     <CardPanel className="p-8 text-center">
                         <p className="text-muted-foreground text-sm">No activity yet.</p>
                     </CardPanel>
                 ) : (
-                    activities.map((entry, i) => {
+                    displayed.map((entry: Record<string, any>, i: number) => {
                         const Icon = entityIcon(entry.entityType);
                         return (
                             <div key={entry.id}>
@@ -154,6 +180,14 @@ function ActivityPage() {
                     })
                 )}
             </Card>
+
+            {displayCount < filtered.length && (
+                <div className="mt-4 flex justify-center">
+                    <Button variant="outline" size="sm" onClick={() => setDisplayCount(c => c + 20)}>
+                        Load more ({filtered.length - displayCount} remaining)
+                    </Button>
+                </div>
+            )}
         </div>
     );
 }
