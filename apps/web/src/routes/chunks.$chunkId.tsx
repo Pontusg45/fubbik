@@ -12,6 +12,7 @@ import { Card, CardDescription, CardHeader, CardPanel, CardTitle } from "@/compo
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AiSection } from "@/features/chunks/ai-section";
+import { ChunkHealthBadge } from "@/features/chunks/chunk-health-badge";
 import { ChunkLink } from "@/features/chunks/chunk-link";
 import { getChunkSize } from "@/features/chunks/chunk-size";
 import { DeleteConnectionButton } from "@/features/chunks/delete-connection-button";
@@ -194,6 +195,9 @@ function ChunkDetail() {
     const rationale = (chunk as Record<string, unknown>).rationale as string | null | undefined;
     const alternatives = (chunk as Record<string, unknown>).alternatives as string[] | null | undefined;
     const consequences = (chunk as Record<string, unknown>).consequences as string | null | undefined;
+    const healthScore = (data as Record<string, unknown>).healthScore as
+        | { total: number; breakdown: { freshness: number; completeness: number; richness: number; connectivity: number }; issues: string[] }
+        | undefined;
     const hasDecisionContext = !!rationale || (alternatives && alternatives.length > 0) || !!consequences;
 
     return (
@@ -350,6 +354,7 @@ function ChunkDetail() {
                             </span>
                         );
                     })()}
+                    {healthScore && <ChunkHealthBadge healthScore={healthScore} />}
                 </div>
             </div>
 

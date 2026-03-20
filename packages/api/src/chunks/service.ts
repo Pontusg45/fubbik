@@ -27,6 +27,7 @@ import { Effect } from "effect";
 import { enrichChunk, enrichChunkIfEmpty } from "../enrich/service";
 import { NotFoundError } from "../errors";
 import { generateQueryEmbedding } from "../ollama/client";
+import { computeHealthScore } from "./health-score";
 
 export function listChunks(
     userId: string | undefined,
@@ -101,7 +102,20 @@ export function getChunkDetail(chunkId: string, userId?: string) {
                 fileReferences: getFileRefsForChunk(chunkId),
                 tags: getTagsForChunk(chunkId)
             })
-        )
+        ),
+        Effect.map(result => {
+            const healthScore = computeHealthScore({
+                content: result.chunk.content,
+                updatedAt: result.chunk.updatedAt,
+                summary: result.chunk.summary,
+                rationale: result.chunk.rationale,
+                alternatives: result.chunk.alternatives,
+                consequences: result.chunk.consequences,
+                connectionCount: result.connections.length,
+                hasEmbedding: result.chunk.embedding != null
+            });
+            return { ...result, healthScore };
+        })
     );
 }
 
