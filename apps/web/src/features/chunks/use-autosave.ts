@@ -1,12 +1,15 @@
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, useState } from "react";
 
 const DEBOUNCE_MS = 1000;
 
 export function useAutosave<T>(key: string, data: T, enabled = true) {
+    const [lastSaved, setLastSaved] = useState<Date | null>(null);
+
     useEffect(() => {
         if (!enabled) return;
         const timer = setTimeout(() => {
             localStorage.setItem(key, JSON.stringify(data));
+            setLastSaved(new Date());
         }, DEBOUNCE_MS);
         return () => clearTimeout(timer);
     }, [key, data, enabled]);
@@ -15,7 +18,7 @@ export function useAutosave<T>(key: string, data: T, enabled = true) {
         localStorage.removeItem(key);
     }, [key]);
 
-    return { clearDraft };
+    return { clearDraft, lastSaved };
 }
 
 export function loadDraft<T>(key: string): T | null {

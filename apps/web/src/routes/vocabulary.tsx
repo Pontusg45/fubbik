@@ -5,6 +5,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { SkeletonList } from "@/components/ui/skeleton-list";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardPanel } from "@/components/ui/card";
@@ -447,7 +448,7 @@ function VocabularyPage() {
             <Card>
                 <CardPanel className="p-6">
                     {vocabQuery.isLoading ? (
-                        <p className="text-muted-foreground text-sm">Loading...</p>
+                        <SkeletonList count={6} />
                     ) : entries.length === 0 ? (
                         <Empty>
                             <EmptyMedia variant="icon"><BookOpen className="h-10 w-10" /></EmptyMedia>

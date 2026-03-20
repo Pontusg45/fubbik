@@ -33,6 +33,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Separator } from "@/components/ui/separator";
 import { SkeletonList } from "@/components/ui/skeleton-list";
 import { getChunkSize } from "@/features/chunks/chunk-size";
+import { ChunkRowActions } from "@/features/chunks/chunk-row-actions";
 import { KanbanView } from "@/features/chunks/kanban-view";
 import { useCollections } from "@/features/chunks/use-collections";
 import { usePinnedChunks } from "@/features/chunks/use-pinned-chunks";
@@ -355,6 +356,21 @@ function ChunksList() {
             queryClient.invalidateQueries({ queryKey: ["stats"] });
             queryClient.invalidateQueries({ queryKey: ["tags"] });
             setSelectedIds(new Set());
+        }
+    });
+
+    const singleDeleteMutation = useMutation({
+        mutationFn: async (id: string) => {
+            const { error } = await api.api.chunks({ id }).delete();
+            if (error) throw new Error("Failed to delete chunk");
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["chunks-list"] });
+            queryClient.invalidateQueries({ queryKey: ["stats"] });
+            toast.success("Chunk deleted");
+        },
+        onError: () => {
+            toast.error("Failed to delete chunk");
         }
     });
 
@@ -1005,7 +1021,23 @@ function ChunksList() {
 
             {/* Results */}
             {view === "kanban" ? (
-                <KanbanView chunks={collectionFilteredChunks} />
+                <KanbanView
+                    chunks={collectionFilteredChunks}
+                    onBulkDelete={(ids) => {
+                        setConfirmAction({
+                            title: "Delete chunks",
+                            description: `Delete ${ids.size} chunks permanently?`,
+                            action: () => bulkUpdateMutation.mutate({ ids: [...ids], action: "delete" }),
+                        });
+                    }}
+                    onBulkArchive={(ids) => {
+                        setConfirmAction({
+                            title: "Archive chunks",
+                            description: `Archive ${ids.size} chunks?`,
+                            action: () => bulkUpdateMutation.mutate({ ids: [...ids], action: "archive" }),
+                        });
+                    }}
+                />
             ) : chunksQuery.isLoading ? (
                 <SkeletonList count={10} />
             ) : collectionFilteredChunks.length === 0 ? (
@@ -1081,6 +1113,20 @@ function ChunksList() {
                                                         </span>
                                                     </div>
                                                 </Link>
+                                                <div onClick={e => e.stopPropagation()}>
+                                                    <ChunkRowActions
+                                                        chunkId={chunk.id}
+                                                        isPinned={isPinned(chunk.id)}
+                                                        onTogglePin={() => togglePin(chunk.id)}
+                                                        onDelete={() =>
+                                                            setConfirmAction({
+                                                                title: "Delete chunk",
+                                                                description: `Delete "${chunk.title}" permanently?`,
+                                                                action: () => singleDeleteMutation.mutate(chunk.id)
+                                                            })
+                                                        }
+                                                    />
+                                                </div>
                                             </CardPanel>
                                         </div>
                                     ))}
@@ -1162,6 +1208,20 @@ function ChunksList() {
                                         </span>
                                     </div>
                                 </Link>
+                                <div onClick={e => e.stopPropagation()}>
+                                    <ChunkRowActions
+                                        chunkId={chunk.id}
+                                        isPinned={isPinned(chunk.id)}
+                                        onTogglePin={() => togglePin(chunk.id)}
+                                        onDelete={() =>
+                                            setConfirmAction({
+                                                title: "Delete chunk",
+                                                description: `Delete "${chunk.title}" permanently?`,
+                                                action: () => singleDeleteMutation.mutate(chunk.id)
+                                            })
+                                        }
+                                    />
+                                </div>
                             </CardPanel>
                         </div>
                     ))}

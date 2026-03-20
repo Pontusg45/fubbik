@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Card, CardPanel } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTab } from "@/components/ui/tabs";
 import { useActiveCodebase } from "@/features/codebases/use-active-codebase";
@@ -120,7 +121,7 @@ function UserSettingsTab() {
                         <select
                             value={defaultSort}
                             onChange={e => save("defaultSort", e.target.value)}
-                            className="bg-background focus:ring-ring w-48 rounded-md border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
+                            className="bg-background focus:ring-ring w-full max-w-48 rounded-md border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
                         >
                             <option value="newest">Newest</option>
                             <option value="oldest">Oldest</option>
@@ -217,12 +218,21 @@ function CodebaseSettingsTab() {
                 <CardPanel className="space-y-6 p-6">
                     <div>
                         <Label className="mb-2 block text-sm font-medium">Default Chunk Type</Label>
-                        <Input
-                            defaultValue={defaultChunkType}
-                            placeholder="e.g. concept, decision, pattern"
-                            className="w-64"
-                            onChange={e => debouncedSave("defaultChunkType", e.target.value)}
-                        />
+                        <Select
+                            value={defaultChunkType || "note"}
+                            onValueChange={(val) => { if (val) save("defaultChunkType", val); }}
+                        >
+                            <SelectTrigger className="w-full max-w-64">
+                                <SelectValue placeholder="Select a type" />
+                            </SelectTrigger>
+                            <SelectPopup>
+                                <SelectItem value="note">Note</SelectItem>
+                                <SelectItem value="document">Document</SelectItem>
+                                <SelectItem value="reference">Reference</SelectItem>
+                                <SelectItem value="schema">Schema</SelectItem>
+                                <SelectItem value="checklist">Checklist</SelectItem>
+                            </SelectPopup>
+                        </Select>
                     </div>
 
                     <div className="flex items-center justify-between">
@@ -246,7 +256,7 @@ function CodebaseSettingsTab() {
                         <Input
                             defaultValue={defaultTags.join(", ")}
                             placeholder="tag1, tag2, tag3"
-                            className="w-64"
+                            className="w-full max-w-64"
                             onChange={e =>
                                 debouncedSave(
                                     "defaultTags",
@@ -264,11 +274,14 @@ function CodebaseSettingsTab() {
                         <Input
                             defaultValue={templateId}
                             placeholder="Template ID (optional)"
-                            className="w-64"
+                            className="w-full max-w-64"
                             onChange={e =>
                                 debouncedSave("templateId", e.target.value || null)
                             }
                         />
+                        <p className="text-muted-foreground mt-1 text-xs">
+                            Find template IDs on the templates page.
+                        </p>
                     </div>
                 </CardPanel>
             </Card>
@@ -373,7 +386,7 @@ function InstanceSettingsTab() {
                         <Input
                             defaultValue={ollamaUrl}
                             placeholder="http://localhost:11434"
-                            className="w-80"
+                            className="w-full max-w-80"
                             onChange={e => debouncedSave("ollamaUrl", e.target.value)}
                         />
                     </div>

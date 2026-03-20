@@ -3,6 +3,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { Activity, Lightbulb } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import { SkeletonList } from "@/components/ui/skeleton-list";
 import { Button } from "@/components/ui/button";
 import { Card, CardPanel } from "@/components/ui/card";
 import { useActiveCodebase } from "@/features/codebases/use-active-codebase";
@@ -62,7 +63,7 @@ function KnowledgeHealthPage() {
             </div>
 
             {healthQuery.isLoading ? (
-                <p className="text-muted-foreground text-sm">Loading...</p>
+                <SkeletonList count={4} />
             ) : healthQuery.isError ? (
                 <p className="text-muted-foreground text-sm">Failed to load health data.</p>
             ) : data ? (
