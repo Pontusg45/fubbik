@@ -106,6 +106,12 @@ function RootDocument() {
                                             Reviews
                                         </Link>
                                         <Link
+                                            to="/plans"
+                                            className="text-muted-foreground hover:text-foreground [&.active]:text-foreground rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
+                                        >
+                                            Plans
+                                        </Link>
+                                        <Link
                                             to="/docs"
                                             search={{}}
                                             className="text-muted-foreground hover:text-foreground [&.active]:text-foreground rounded-md px-3 py-1.5 text-sm font-medium transition-colors"

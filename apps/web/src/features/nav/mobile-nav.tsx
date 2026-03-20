@@ -9,6 +9,7 @@ import {
     FileText,
     FolderGit2,
     LayoutDashboard,
+    ListChecks,
     Menu,
     Network,
     Settings,
@@ -26,6 +27,7 @@ const primaryItems = [
     { label: "Graph", to: "/graph" as const, icon: Network },
     { label: "Requirements", to: "/requirements" as const, icon: ClipboardCheck },
     { label: "Reviews", to: "/reviews" as const, icon: ClipboardList },
+    { label: "Plans", to: "/plans" as const, icon: ListChecks },
     { label: "Docs", to: "/docs" as const, icon: FileText }
 ];
 
