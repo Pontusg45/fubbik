@@ -19,6 +19,7 @@ import { importCommand } from "./commands/import";
 import { importDirCommand } from "./commands/import-dir";
 import { initCommand } from "./commands/init";
 import { linkCommand } from "./commands/link";
+import { planCommand } from "./commands/plan";
 import { listCommand } from "./commands/list";
 import { removeCommand } from "./commands/remove";
 import { searchCommand } from "./commands/search";
@@ -65,6 +66,7 @@ program.addCommand(generateCommand);
 program.addCommand(requirementsCommand);
 program.addCommand(checkFilesCommand);
 program.addCommand(hooksCommand);
+program.addCommand(planCommand);
 
 program.command("completions")
     .description("Generate shell completions")
