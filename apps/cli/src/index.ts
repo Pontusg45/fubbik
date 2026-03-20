@@ -3,6 +3,7 @@ import { Command } from "commander";
 import { addCommand } from "./commands/add";
 import { bulkAddCommand } from "./commands/bulk-add";
 import { catCommand } from "./commands/cat";
+import { checkFilesCommand } from "./commands/check-files";
 import { codebaseCommand } from "./commands/codebase";
 import { contextCommand } from "./commands/context";
 import { diffCommand } from "./commands/diff";
@@ -12,6 +13,7 @@ import { generateCommand } from "./commands/generate";
 import { requirementsCommand } from "./commands/requirements";
 import { getCommand } from "./commands/get";
 import { healthCommand } from "./commands/health";
+import { hooksCommand } from "./commands/hooks";
 import { importCommand } from "./commands/import";
 import { importDirCommand } from "./commands/import-dir";
 import { initCommand } from "./commands/init";
@@ -59,6 +61,8 @@ program.addCommand(codebaseCommand);
 program.addCommand(contextCommand);
 program.addCommand(generateCommand);
 program.addCommand(requirementsCommand);
+program.addCommand(checkFilesCommand);
+program.addCommand(hooksCommand);
 
 program.command("completions")
     .description("Generate shell completions")
