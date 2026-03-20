@@ -25,3 +25,4 @@ export * from "./comment";
 export * from "./coverage";
 export * from "./requirement-dependency";
 export * from "./implementation-session";
+export * from "./similarity";

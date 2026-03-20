@@ -26,6 +26,7 @@ import { Route as CodebasesRouteImport } from "./routes/codebases";
 import { Route as ActivityRouteImport } from "./routes/activity";
 import { Route as IndexRouteImport } from "./routes/index";
 import { Route as ChunksIndexRouteImport } from "./routes/chunks.index";
+import { Route as ReviewsSessionIdRouteImport } from "./routes/reviews_.$sessionId";
 import { Route as RequirementsNewRouteImport } from "./routes/requirements_.new";
 import { Route as RequirementsRequirementIdRouteImport } from "./routes/requirements_.$requirementId";
 import { Route as ChunksNewRouteImport } from "./routes/chunks.new";
@@ -118,6 +119,11 @@ const ChunksIndexRoute = ChunksIndexRouteImport.update({
   path: "/chunks/",
   getParentRoute: () => rootRouteImport,
 } as any);
+const ReviewsSessionIdRoute = ReviewsSessionIdRouteImport.update({
+  id: "/reviews_/$sessionId",
+  path: "/reviews/$sessionId",
+  getParentRoute: () => rootRouteImport,
+} as any);
 const RequirementsNewRoute = RequirementsNewRouteImport.update({
   id: "/requirements_/new",
   path: "/requirements/new",
@@ -172,6 +178,7 @@ export interface FileRoutesByFullPath {
   "/chunks/new": typeof ChunksNewRoute;
   "/requirements/$requirementId": typeof RequirementsRequirementIdRoute;
   "/requirements/new": typeof RequirementsNewRoute;
+  "/reviews/$sessionId": typeof ReviewsSessionIdRoute;
   "/chunks/": typeof ChunksIndexRoute;
   "/chunks/$chunkId/edit": typeof ChunksChunkIdEditRoute;
 }
@@ -197,6 +204,7 @@ export interface FileRoutesByTo {
   "/chunks/new": typeof ChunksNewRoute;
   "/requirements/$requirementId": typeof RequirementsRequirementIdRoute;
   "/requirements/new": typeof RequirementsNewRoute;
+  "/reviews/$sessionId": typeof ReviewsSessionIdRoute;
   "/chunks": typeof ChunksIndexRoute;
   "/chunks/$chunkId/edit": typeof ChunksChunkIdEditRoute;
 }
@@ -223,6 +231,7 @@ export interface FileRoutesById {
   "/chunks/new": typeof ChunksNewRoute;
   "/requirements_/$requirementId": typeof RequirementsRequirementIdRoute;
   "/requirements_/new": typeof RequirementsNewRoute;
+  "/reviews_/$sessionId": typeof ReviewsSessionIdRoute;
   "/chunks/": typeof ChunksIndexRoute;
   "/chunks/$chunkId_/edit": typeof ChunksChunkIdEditRoute;
 }
@@ -250,6 +259,7 @@ export interface FileRouteTypes {
     | "/chunks/new"
     | "/requirements/$requirementId"
     | "/requirements/new"
+    | "/reviews/$sessionId"
     | "/chunks/"
     | "/chunks/$chunkId/edit";
   fileRoutesByTo: FileRoutesByTo;
@@ -275,6 +285,7 @@ export interface FileRouteTypes {
     | "/chunks/new"
     | "/requirements/$requirementId"
     | "/requirements/new"
+    | "/reviews/$sessionId"
     | "/chunks"
     | "/chunks/$chunkId/edit";
   id:
@@ -300,6 +311,7 @@ export interface FileRouteTypes {
     | "/chunks/new"
     | "/requirements_/$requirementId"
     | "/requirements_/new"
+    | "/reviews_/$sessionId"
     | "/chunks/"
     | "/chunks/$chunkId_/edit";
   fileRoutesById: FileRoutesById;
@@ -326,6 +338,7 @@ export interface RootRouteChildren {
   ChunksNewRoute: typeof ChunksNewRoute;
   RequirementsRequirementIdRoute: typeof RequirementsRequirementIdRoute;
   RequirementsNewRoute: typeof RequirementsNewRoute;
+  ReviewsSessionIdRoute: typeof ReviewsSessionIdRoute;
   ChunksIndexRoute: typeof ChunksIndexRoute;
   ChunksChunkIdEditRoute: typeof ChunksChunkIdEditRoute;
 }
@@ -451,6 +464,13 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof ChunksIndexRouteImport;
       parentRoute: typeof rootRouteImport;
     };
+    "/reviews_/$sessionId": {
+      id: "/reviews_/$sessionId";
+      path: "/reviews/$sessionId";
+      fullPath: "/reviews/$sessionId";
+      preLoaderRoute: typeof ReviewsSessionIdRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     "/requirements_/new": {
       id: "/requirements_/new";
       path: "/requirements/new";
@@ -518,6 +538,7 @@ const rootRouteChildren: RootRouteChildren = {
   ChunksNewRoute: ChunksNewRoute,
   RequirementsRequirementIdRoute: RequirementsRequirementIdRoute,
   RequirementsNewRoute: RequirementsNewRoute,
+  ReviewsSessionIdRoute: ReviewsSessionIdRoute,
   ChunksIndexRoute: ChunksIndexRoute,
   ChunksChunkIdEditRoute: ChunksChunkIdEditRoute,
 };

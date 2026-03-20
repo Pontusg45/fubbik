@@ -4,6 +4,7 @@ import { Elysia, t } from "elysia";
 import { requireSession } from "../require-session";
 import * as bulkService from "./bulk-service";
 import * as chunkService from "./service";
+import { checkSimilar } from "./similarity";
 import { getConnectionSuggestions } from "./suggestions";
 
 export const chunkRoutes = new Elysia()
@@ -106,6 +107,29 @@ export const chunkRoutes = new Elysia()
                 exclude: t.Optional(t.String()),
                 scope: t.Optional(t.String())
             })
+        }
+    )
+    .post(
+        "/chunks/check-similar",
+        ctx =>
+            Effect.runPromise(
+                requireSession(ctx).pipe(
+                    Effect.flatMap(session =>
+                        checkSimilar({
+                            title: ctx.body.title,
+                            content: ctx.body.content,
+                            userId: session.user.id,
+                            excludeId: ctx.body.excludeId,
+                        })
+                    )
+                )
+            ),
+        {
+            body: t.Object({
+                title: t.String(),
+                content: t.String(),
+                excludeId: t.Optional(t.String()),
+            }),
         }
     )
     .get("/chunks/:id/suggestions", ctx =>

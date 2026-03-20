@@ -33,6 +33,7 @@ const manageItems = [
     { label: "Tags", to: "/tags" as const, icon: Tags },
     { label: "Templates", to: "/templates" as const, icon: FileText },
     { label: "Vocabulary", to: "/vocabulary" as const, icon: BookOpen },
+    { label: "Review Queue", to: "/reviews/queue" as const, icon: ClipboardCheck },
     { label: "Codebases", to: "/codebases" as const, icon: FolderGit2 },
     { label: "Health", to: "/knowledge-health" as const, icon: Activity },
     { label: "Activity", to: "/activity" as const, icon: Clock },

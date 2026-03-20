@@ -10,6 +10,7 @@ import { Card, CardPanel } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { chunkTemplates } from "@/features/chunks/templates";
 import { DraftIndicator } from "@/features/chunks/draft-indicator";
+import { SimilarChunksWarning } from "@/features/chunks/similar-chunks-warning";
 import { loadDraft, useAutosave } from "@/features/chunks/use-autosave";
 import { MarkdownEditor } from "@/features/editor/markdown-editor";
 import { getUser } from "@/functions/get-user";
@@ -441,6 +442,8 @@ function NewChunk() {
                         rows={10}
                         error={errors.content}
                     />
+
+                    <SimilarChunksWarning title={title} content={content} />
 
                     <Separator />
 
