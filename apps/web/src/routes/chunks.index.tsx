@@ -1009,7 +1009,23 @@ function ChunksList() {
 
             {/* Results */}
             {view === "kanban" ? (
-                <KanbanView chunks={collectionFilteredChunks} />
+                <KanbanView
+                    chunks={collectionFilteredChunks}
+                    onBulkDelete={(ids) => {
+                        setConfirmAction({
+                            title: "Delete chunks",
+                            description: `Delete ${ids.size} chunks permanently?`,
+                            action: () => bulkUpdateMutation.mutate({ ids: [...ids], action: "delete" }),
+                        });
+                    }}
+                    onBulkArchive={(ids) => {
+                        setConfirmAction({
+                            title: "Archive chunks",
+                            description: `Archive ${ids.size} chunks?`,
+                            action: () => bulkUpdateMutation.mutate({ ids: [...ids], action: "archive" }),
+                        });
+                    }}
+                />
             ) : chunksQuery.isLoading ? (
                 <SkeletonList count={10} />
             ) : collectionFilteredChunks.length === 0 ? (

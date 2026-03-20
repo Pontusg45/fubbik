@@ -21,6 +21,7 @@ import { toPng } from "html-to-image";
 import { Download, Route, Settings2 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Dialog, DialogPopup, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -46,6 +47,7 @@ import { unwrapEden } from "@/utils/eden";
 
 import { GraphTimeline } from "./graph-timeline";
 import { PathPanel } from "./path-panel";
+import { useGraphState } from "./use-graph-state";
 import { useSavedGraphViews } from "./use-saved-views";
 
 
@@ -118,15 +120,21 @@ function GraphViewInner() {
     const TYPE_COLORS = isDark ? TYPE_COLORS_DARK : TYPE_COLORS_LIGHT;
 
     const zoomRef = useRef(1);
-    const [selectedChunkId, setSelectedChunkId] = useState<string | null>(null);
-    const [panelWidth, setPanelWidth] = useState(380);
+    const { state: gs, dispatch, handleTimelineCutoff } = useGraphState();
     const { setCenter, getZoom, fitView } = useReactFlow();
     const initialFitDoneRef = useRef(false);
     const navigate = useNavigate();
     const queryClient = useQueryClient();
 
-    // Edge creation state
-    const [pendingConnection, setPendingConnection] = useState<{ source: string; target: string } | null>(null);
+    // Destructure frequently-used state for readability
+    const {
+        selectedChunkId, multiSelectedIds, pendingConnection,
+        exploreMode, exploredNodeIds, pathStartId, pathEndId,
+        showHelp, showWelcome, showDeleteConfirm, focusedNodeId,
+        collapsedParents, showPathPanel, showSaveDialog, viewName,
+        filterTypes, filterRelations, searchQuery, activeTagTypeIds, showUngrouped,
+        layoutAlgorithm, bundleEdges, useMainThread, timelineCutoff, panelWidth, edgeAnimated,
+    } = gs;
 
     const RELATION_TYPES = [
         "related_to",
@@ -146,7 +154,7 @@ function GraphViewInner() {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["graph"] });
-            setPendingConnection(null);
+            dispatch({ type: "SET_PENDING_CONNECTION", connection: null });
         }
     });
 
@@ -156,14 +164,29 @@ function GraphViewInner() {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["graph"] });
-            setMultiSelectedIds(new Set());
+            dispatch({ type: "CLEAR_MULTI_SELECT" });
         }
     });
 
     const onConnect = useCallback((connection: Connection) => {
         if (!connection.source || !connection.target) return;
-        setPendingConnection({ source: connection.source, target: connection.target });
-    }, []);
+        // Quick-connect: create with "related_to" immediately, offer to change type via toast
+        createConnectionMutation.mutate(
+            { sourceId: connection.source, targetId: connection.target, relation: "related_to" },
+            {
+                onSuccess: () => {
+                    const src = connection.source!;
+                    const tgt = connection.target!;
+                    toast.success("Connected", {
+                        action: {
+                            label: "Change type",
+                            onClick: () => dispatch({ type: "SET_PENDING_CONNECTION", connection: { source: src, target: tgt } }),
+                        },
+                    });
+                },
+            }
+        );
+    }, [createConnectionMutation, dispatch]);
 
     const [isMobile, setIsMobile] = useState(false);
 
@@ -195,83 +218,39 @@ function GraphViewInner() {
     // Filter state (empty = show all)
     const allTypes = useMemo(() => [...new Set((data?.chunks ?? []).map(c => c.type))], [data]);
     const allRelations = useMemo(() => [...new Set((data?.connections ?? []).map(c => c.relation))], [data]);
-    const [filterTypes, setFilterTypes] = useState<Set<string>>(new Set());
-    const [filterRelations, setFilterRelations] = useState<Set<string>>(new Set());
 
-    // Search state
-    const [searchQuery, setSearchQuery] = useState("");
     const debouncedSearchQuery = useDebouncedValue(searchQuery, 150);
-
-    // Focus mode state
-    const [focusedNodeId, setFocusedNodeId] = useState<string | null>(null);
 
     // Measured node sizes for group bounding box calculation (ref + counter to trigger recalc)
     const measuredNodeSizesRef = useRef(new Map<string, { w: number; h: number }>());
     const [measuredSizesVersion, setMeasuredSizesVersion] = useState(0);
 
-    // Path highlighting state
-    const [pathStartId, setPathStartId] = useState<string | null>(null);
-    const [pathEndId, setPathEndId] = useState<string | null>(null);
-    const [showPathPanel, setShowPathPanel] = useState(false);
-
     // Read path params from URL search
     const search = useSearch({ strict: false }) as { pathFrom?: string; pathTo?: string };
     useEffect(() => {
         if (search.pathFrom) {
-            setPathStartId(search.pathFrom);
-            setShowPathPanel(true);
+            dispatch({ type: "SET_PATH_START", id: search.pathFrom });
+            dispatch({ type: "SET_SHOW_PATH_PANEL", show: true });
         }
         if (search.pathTo) {
-            setPathEndId(search.pathTo);
-            setShowPathPanel(true);
+            dispatch({ type: "SET_PATH_END", id: search.pathTo });
+            dispatch({ type: "SET_SHOW_PATH_PANEL", show: true });
         }
-    }, [search.pathFrom, search.pathTo]);
-
-    // Collapsible clusters
-    const [collapsedParents, setCollapsedParents] = useState<Set<string>>(new Set());
-
-    // Explore mode
-    const [exploreMode, setExploreMode] = useState(false);
-    const [exploredNodeIds, setExploredNodeIds] = useState<Set<string>>(new Set());
-
-    // Multi-select
-    const [multiSelectedIds, setMultiSelectedIds] = useState<Set<string>>(new Set());
-    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-
-    // Help overlay
-    const [showHelp, setShowHelp] = useState(false);
-
-    // Welcome overlay (SSR-safe)
-    const [showWelcome, setShowWelcome] = useState(false);
+    }, [search.pathFrom, search.pathTo, dispatch]);
 
     useEffect(() => {
         if (typeof window !== "undefined" && !localStorage.getItem("fubbik-graph-welcomed")) {
-            setShowWelcome(true);
+            dispatch({ type: "SET_SHOW_WELCOME", show: true });
         }
-    }, []);
+    }, [dispatch]);
 
     const dismissWelcome = () => {
-        setShowWelcome(false);
+        dispatch({ type: "SET_SHOW_WELCOME", show: false });
         localStorage.setItem("fubbik-graph-welcomed", "true");
     };
 
-    // Layout algorithm
-    const [layoutAlgorithm, setLayoutAlgorithm] = useState<LayoutAlgorithm>("force");
-
-    // Edge bundling
-    const [bundleEdges, setBundleEdges] = useState(false);
-
-    // Main-thread layout toggle (bypasses web worker)
-    const [useMainThread, setUseMainThread] = useState(false);
-
-    // Timeline
-    const [timelineCutoff, setTimelineCutoff] = useState<Date | null>(null);
-    const handleTimelineCutoff = useCallback((d: Date | null) => setTimelineCutoff(d), []);
-
     // Saved views
     const { views: savedViews, saveView, deleteView: deleteSavedView } = useSavedGraphViews();
-    const [showSaveDialog, setShowSaveDialog] = useState(false);
-    const [viewName, setViewName] = useState("");
 
     // Dragged node positions (persist across layout changes)
     const [draggedPositions, setDraggedPositions] = useState<Map<string, { x: number; y: number }>>(new Map());
@@ -283,34 +262,13 @@ function GraphViewInner() {
 
     // Toggle helpers
     function toggleType(t: string) {
-        setFilterTypes(prev => {
-            const next = new Set(prev);
-            if (next.has(t)) next.delete(t);
-            else next.add(t);
-            return next;
-        });
+        dispatch({ type: "TOGGLE_FILTER_TYPE", filterType: t });
     }
     function toggleRelation(r: string) {
-        setFilterRelations(prev => {
-            const next = new Set(prev);
-            if (next.has(r)) next.delete(r);
-            else next.add(r);
-            return next;
-        });
+        dispatch({ type: "TOGGLE_FILTER_RELATION", relation: r });
     }
-
-    // Tag grouping state
-    const [activeTagTypeIds, setActiveTagTypeIds] = useState<Set<string>>(new Set());
-    const [showUngrouped, setShowUngrouped] = useState(true);
-
-    // Edge animation toggle
-    const [edgeAnimated, setEdgeAnimated] = useState(true);
-
     function toggleTagType(id: string) {
-        setActiveTagTypeIds(prev => {
-            if (prev.has(id)) return new Set();
-            return new Set([id]);
-        });
+        dispatch({ type: "TOGGLE_TAG_TYPE", id });
     }
 
     // Tag types for the filter panel
@@ -1051,24 +1009,23 @@ function GraphViewInner() {
             if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
 
             if (e.key === "?") {
-                setShowHelp(prev => !prev);
+                dispatch({ type: "TOGGLE_HELP" });
                 return;
             }
 
             if (e.key === "Escape") {
                 if (multiSelectedIds.size > 0) {
-                    setMultiSelectedIds(new Set());
+                    dispatch({ type: "CLEAR_MULTI_SELECT" });
                     return;
                 }
                 if (pathStartId || pathEndId) {
-                    setPathStartId(null);
-                    setPathEndId(null);
+                    dispatch({ type: "CLEAR_PATH" });
                     return;
                 }
                 if (selectedChunkId) {
-                    setSelectedChunkId(null);
+                    dispatch({ type: "SET_SELECTED_CHUNK", id: null });
                 } else if (focusedNodeId) {
-                    setFocusedNodeId(null);
+                    dispatch({ type: "SET_FOCUSED_NODE", id: null });
                 }
                 return;
             }
@@ -1086,8 +1043,7 @@ function GraphViewInner() {
                     ? (currentIdx - 1 + connectedIds.length) % connectedIds.length
                     : (currentIdx + 1) % connectedIds.length;
                 const nextId = connectedIds[nextIdx]!;
-                setSelectedChunkId(nextId);
-                setFocusedNodeId(nextId);
+                dispatch({ type: "SELECT_AND_FOCUS_NODE", id: nextId });
             }
         }
 
@@ -1131,11 +1087,8 @@ function GraphViewInner() {
                         <div className="h-full" style={{ width: panelWidth }}>
                             <GraphDetailPanel
                                 chunkId={selectedChunkId}
-                                onClose={() => setSelectedChunkId(null)}
-                                onNavigateToChunk={id => {
-                                    setSelectedChunkId(id);
-                                    setFocusedNodeId(id);
-                                }}
+                                onClose={() => dispatch({ type: "SET_SELECTED_CHUNK", id: null })}
+                                onNavigateToChunk={id => dispatch({ type: "SELECT_AND_FOCUS_NODE", id })}
                             />
                         </div>
                     )}
@@ -1148,7 +1101,7 @@ function GraphViewInner() {
                                 const startWidth = panelWidth;
                                 function onMouseMove(ev: MouseEvent) {
                                     const newWidth = Math.max(280, Math.min(600, startWidth + ev.clientX - startX));
-                                    setPanelWidth(newWidth);
+                                    dispatch({ type: "SET_PANEL_WIDTH", width: newWidth });
                                 }
                                 function onMouseUp() {
                                     document.removeEventListener("mousemove", onMouseMove);
@@ -1165,18 +1118,15 @@ function GraphViewInner() {
                 <Sheet
                     open={!!selectedChunkId}
                     onOpenChange={open => {
-                        if (!open) setSelectedChunkId(null);
+                        if (!open) dispatch({ type: "SET_SELECTED_CHUNK", id: null });
                     }}
                 >
                     <SheetContent side="bottom" showCloseButton={false} className="h-[70vh] overflow-y-auto p-0">
                         {selectedChunkId && (
                             <GraphDetailPanel
                                 chunkId={selectedChunkId}
-                                onClose={() => setSelectedChunkId(null)}
-                                onNavigateToChunk={id => {
-                                    setSelectedChunkId(id);
-                                    setFocusedNodeId(id);
-                                }}
+                                onClose={() => dispatch({ type: "SET_SELECTED_CHUNK", id: null })}
+                                onNavigateToChunk={id => dispatch({ type: "SELECT_AND_FOCUS_NODE", id })}
                             />
                         )}
                     </SheetContent>
@@ -1203,63 +1153,46 @@ function GraphViewInner() {
                         onNodeClick={(event, node) => {
                             if (node.id.startsWith("tag-group-")) return;
                             if (event.shiftKey) {
-                                setMultiSelectedIds(prev => {
-                                    const next = new Set(prev);
-                                    if (next.has(node.id)) next.delete(node.id);
-                                    else next.add(node.id);
-                                    return next;
-                                });
+                                dispatch({ type: "TOGGLE_MULTI_SELECT", id: node.id });
                                 return;
                             }
                             // Clear multi-select on normal click
                             if (multiSelectedIds.size > 0) {
-                                setMultiSelectedIds(new Set());
+                                dispatch({ type: "CLEAR_MULTI_SELECT" });
                             }
                             if (event.altKey) {
                                 if (!pathStartId) {
-                                    setPathStartId(node.id);
-                                    setPathEndId(null);
+                                    dispatch({ type: "SET_PATH_START", id: node.id });
+                                    dispatch({ type: "SET_PATH_END", id: null });
                                 } else if (!pathEndId) {
-                                    setPathEndId(node.id);
+                                    dispatch({ type: "SET_PATH_END", id: node.id });
                                 } else {
-                                    setPathStartId(node.id);
-                                    setPathEndId(null);
+                                    dispatch({ type: "SET_PATH_START", id: node.id });
+                                    dispatch({ type: "SET_PATH_END", id: null });
                                 }
                                 return;
                             }
                             if (exploreMode) {
-                                setExploredNodeIds(prev => {
-                                    const next = new Set(prev);
-                                    next.add(node.id);
-                                    for (const edge of layoutEdges) {
-                                        if (edge.source === node.id) next.add(edge.target);
-                                        if (edge.target === node.id) next.add(edge.source);
-                                    }
-                                    return next;
-                                });
-                                setSelectedChunkId(node.id);
-                                setFocusedNodeId(node.id);
+                                const neighborIds = [node.id];
+                                for (const edge of layoutEdges) {
+                                    if (edge.source === node.id) neighborIds.push(edge.target);
+                                    if (edge.target === node.id) neighborIds.push(edge.source);
+                                }
+                                dispatch({ type: "ADD_EXPLORED_NODES", ids: neighborIds });
+                                dispatch({ type: "SELECT_AND_FOCUS_NODE", id: node.id });
                                 return;
                             }
-                            setPathStartId(null);
-                            setPathEndId(null);
-                            setSelectedChunkId(node.id);
-                            setFocusedNodeId(node.id);
+                            dispatch({ type: "CLEAR_PATH" });
+                            dispatch({ type: "SELECT_AND_FOCUS_NODE", id: node.id });
                         }}
                         onPaneClick={() => {
-                            setFocusedNodeId(null);
-                            setSelectedChunkId(null);
+                            dispatch({ type: "DESELECT_ALL" });
                         }}
                         onNodeDoubleClick={(_, node) => {
                             if (selectedChunkId === node.id) {
                                 navigate({ to: "/chunks/$chunkId", params: { chunkId: node.id } });
                             } else {
-                                setCollapsedParents(prev => {
-                                    const next = new Set(prev);
-                                    if (next.has(node.id)) next.delete(node.id);
-                                    else next.add(node.id);
-                                    return next;
-                                });
+                                dispatch({ type: "TOGGLE_COLLAPSED_PARENT", id: node.id });
                             }
                         }}
                         onNodeMouseEnter={(event, node) => {
@@ -1378,7 +1311,7 @@ function GraphViewInner() {
                 {showHelp && (
                     <div
                         className="bg-background/80 absolute inset-0 z-30 flex items-center justify-center backdrop-blur-sm"
-                        onClick={() => setShowHelp(false)}
+                        onClick={() => dispatch({ type: "TOGGLE_HELP" })}
                     >
                         <div className="bg-background max-w-sm rounded-lg border p-6 shadow-lg" onClick={e => e.stopPropagation()}>
                             <h3 className="mb-4 text-sm font-semibold">Keyboard Shortcuts</h3>
@@ -1400,7 +1333,7 @@ function GraphViewInner() {
                                 ))}
                             </div>
                             <button
-                                onClick={() => setShowHelp(false)}
+                                onClick={() => dispatch({ type: "TOGGLE_HELP" })}
                                 className="bg-primary text-primary-foreground mt-4 w-full rounded-md px-3 py-1.5 text-xs"
                             >
                                 Close
@@ -1422,9 +1355,9 @@ function GraphViewInner() {
                         activeTagTypeIds={activeTagTypeIds}
                         onToggleTagType={toggleTagType}
                         edgeAnimated={edgeAnimated}
-                        onToggleEdgeAnimated={() => setEdgeAnimated(v => !v)}
+                        onToggleEdgeAnimated={() => dispatch({ type: "TOGGLE_EDGE_ANIMATED" })}
                         showUngrouped={showUngrouped}
-                        onToggleUngrouped={() => setShowUngrouped(v => !v)}
+                        onToggleUngrouped={() => dispatch({ type: "TOGGLE_UNGROUPED" })}
                     />
                 </div>
 
@@ -1433,11 +1366,11 @@ function GraphViewInner() {
                     <input
                         type="text"
                         value={searchQuery}
-                        onChange={e => setSearchQuery(e.target.value)}
+                        onChange={e => dispatch({ type: "SET_SEARCH_QUERY", query: e.target.value })}
                         placeholder="Search nodes..."
                         className="bg-background/80 focus:ring-ring w-36 rounded-md border px-2.5 py-1.5 text-xs backdrop-blur-sm focus:ring-2 focus:outline-none"
                     />
-                    <Popover open={showPathPanel} onOpenChange={setShowPathPanel}>
+                    <Popover open={showPathPanel} onOpenChange={(v) => dispatch({ type: "SET_SHOW_PATH_PANEL", show: v })}>
                         <PopoverTrigger
                             className={`rounded-md border p-1.5 backdrop-blur-sm ${
                                 showPathPanel || pathStartId
@@ -1454,12 +1387,9 @@ function GraphViewInner() {
                                 pathEndId={pathEndId}
                                 pathResult={pathResult}
                                 edges={layoutEdges.map(e => ({ id: e.id, source: e.source, target: e.target, data: e.data as { relation?: string } | undefined }))}
-                                onSetStart={setPathStartId}
-                                onSetEnd={setPathEndId}
-                                onClear={() => {
-                                    setPathStartId(null);
-                                    setPathEndId(null);
-                                }}
+                                onSetStart={(id) => dispatch({ type: "SET_PATH_START", id })}
+                                onSetEnd={(id) => dispatch({ type: "SET_PATH_END", id })}
+                                onClear={() => dispatch({ type: "CLEAR_PATH" })}
                             />
                         </PopoverPopup>
                     </Popover>
@@ -1475,7 +1405,7 @@ function GraphViewInner() {
                                     </label>
                                     <select
                                         value={layoutAlgorithm}
-                                        onChange={e => setLayoutAlgorithm(e.target.value as LayoutAlgorithm)}
+                                        onChange={e => dispatch({ type: "SET_LAYOUT_ALGORITHM", algorithm: e.target.value as LayoutAlgorithm })}
                                         className="bg-background w-full rounded-md border px-2 py-1.5 text-xs"
                                     >
                                         <option value="force">Force-directed</option>
@@ -1496,11 +1426,10 @@ function GraphViewInner() {
                                     <button
                                         onClick={() => {
                                             if (!exploreMode) {
-                                                setExploreMode(true);
-                                                setExploredNodeIds(selectedChunkId ? new Set([selectedChunkId]) : new Set());
+                                                dispatch({ type: "SET_EXPLORE_MODE", enabled: true });
+                                                dispatch({ type: "SET_EXPLORED_NODE_IDS", ids: selectedChunkId ? new Set([selectedChunkId]) : new Set() });
                                             } else {
-                                                setExploreMode(false);
-                                                setExploredNodeIds(new Set());
+                                                dispatch({ type: "SET_EXPLORE_MODE", enabled: false });
                                             }
                                         }}
                                         className={`w-full rounded-md border px-2.5 py-1.5 text-left text-xs ${
@@ -1514,14 +1443,14 @@ function GraphViewInner() {
                                     </button>
                                     {exploreMode && (
                                         <button
-                                            onClick={() => setExploredNodeIds(new Set())}
+                                            onClick={() => dispatch({ type: "SET_EXPLORED_NODE_IDS", ids: new Set() })}
                                             className="text-muted-foreground hover:text-foreground w-full rounded-md border px-2.5 py-1.5 text-left text-xs"
                                         >
                                             Reset explored
                                         </button>
                                     )}
                                     <button
-                                        onClick={() => setBundleEdges(!bundleEdges)}
+                                        onClick={() => dispatch({ type: "TOGGLE_BUNDLE_EDGES" })}
                                         className={`w-full rounded-md border px-2.5 py-1.5 text-left text-xs ${
                                             bundleEdges
                                                 ? "bg-primary text-primary-foreground"
@@ -1531,7 +1460,7 @@ function GraphViewInner() {
                                         Bundle edges
                                     </button>
                                     <button
-                                        onClick={() => setUseMainThread(!useMainThread)}
+                                        onClick={() => dispatch({ type: "TOGGLE_USE_MAIN_THREAD" })}
                                         className={`w-full rounded-md border px-2.5 py-1.5 text-left text-xs ${
                                             useMainThread
                                                 ? "bg-primary text-primary-foreground"
@@ -1544,7 +1473,7 @@ function GraphViewInner() {
                                 <div className="flex flex-col gap-2">
                                     <label className="text-muted-foreground text-[10px] font-medium tracking-wider uppercase">Views</label>
                                     <button
-                                        onClick={() => setShowSaveDialog(true)}
+                                        onClick={() => dispatch({ type: "SET_SHOW_SAVE_DIALOG", show: true })}
                                         className="text-muted-foreground hover:text-foreground w-full rounded-md border px-2.5 py-1.5 text-left text-xs"
                                     >
                                         Save current view...
@@ -1553,16 +1482,14 @@ function GraphViewInner() {
                                         <div key={view.name} className="flex items-center justify-between gap-1">
                                             <button
                                                 className="text-muted-foreground hover:text-foreground flex-1 truncate rounded-md border px-2.5 py-1.5 text-left text-xs"
-                                                onClick={() => {
-                                                    setFilterTypes(new Set(view.filterTypes));
-                                                    setFilterRelations(new Set(view.filterRelations));
-                                                    setCollapsedParents(new Set(view.collapsedParents));
-                                                    setLayoutAlgorithm(view.layoutAlgorithm as LayoutAlgorithm);
-                                                    if (view.focusNodeId) {
-                                                        setSelectedChunkId(view.focusNodeId);
-                                                        setFocusedNodeId(view.focusNodeId);
-                                                    }
-                                                }}
+                                                onClick={() => dispatch({
+                                                    type: "RESTORE_VIEW",
+                                                    filterTypes: view.filterTypes,
+                                                    filterRelations: view.filterRelations,
+                                                    collapsedParents: view.collapsedParents,
+                                                    layoutAlgorithm: view.layoutAlgorithm as LayoutAlgorithm,
+                                                    focusNodeId: view.focusNodeId,
+                                                })}
                                             >
                                                 {view.name}
                                             </button>
@@ -1621,15 +1548,16 @@ function GraphViewInner() {
                         );
                     })()}
                 {/* Edge creation dialog */}
+                {/* Change type dialog (opened from quick-connect toast) */}
                 <Dialog
                     open={!!pendingConnection}
                     onOpenChange={open => {
-                        if (!open) setPendingConnection(null);
+                        if (!open) dispatch({ type: "SET_PENDING_CONNECTION", connection: null });
                     }}
                 >
                     <DialogPopup className="max-w-sm">
                         <DialogHeader>
-                            <DialogTitle>Create Connection</DialogTitle>
+                            <DialogTitle>Change Connection Type</DialogTitle>
                             <p className="text-muted-foreground text-sm">
                                 <span className="text-foreground font-medium">
                                     {pendingConnection ? (chunkMap.get(pendingConnection.source)?.title ?? pendingConnection.source) : ""}
@@ -1670,10 +1598,7 @@ function GraphViewInner() {
                 <GraphMetrics
                     nodes={nodes}
                     edges={edges}
-                    onNodeClick={id => {
-                        setSelectedChunkId(id);
-                        setFocusedNodeId(id);
-                    }}
+                    onNodeClick={id => dispatch({ type: "SELECT_AND_FOCUS_NODE", id })}
                 />
 
                 {/* Bulk action bar */}
@@ -1682,13 +1607,13 @@ function GraphViewInner() {
                         <span className="text-xs font-medium">{multiSelectedIds.size} selected</span>
                         <div className="bg-border h-4 w-px" />
                         <button
-                            onClick={() => setShowDeleteConfirm(true)}
+                            onClick={() => dispatch({ type: "SET_SHOW_DELETE_CONFIRM", show: true })}
                             className="text-destructive hover:bg-destructive/10 rounded-md px-2 py-1 text-xs"
                         >
                             Delete
                         </button>
                         <button
-                            onClick={() => setMultiSelectedIds(new Set())}
+                            onClick={() => dispatch({ type: "CLEAR_MULTI_SELECT" })}
                             className="text-muted-foreground hover:text-foreground rounded-md px-2 py-1 text-xs"
                         >
                             Clear
@@ -1713,10 +1638,7 @@ function GraphViewInner() {
                             )}
                             {pathStartId && pathEndId && !pathResult && <span className="font-medium text-red-500">No path found</span>}
                             <button
-                                onClick={() => {
-                                    setPathStartId(null);
-                                    setPathEndId(null);
-                                }}
+                                onClick={() => dispatch({ type: "CLEAR_PATH" })}
                                 className="text-muted-foreground hover:text-foreground rounded border px-2 py-0.5 text-xs"
                             >
                                 Clear
@@ -1728,13 +1650,13 @@ function GraphViewInner() {
                 {showSaveDialog && (
                     <div
                         className="bg-background/50 absolute inset-0 z-30 flex items-center justify-center backdrop-blur-sm"
-                        onClick={() => setShowSaveDialog(false)}
+                        onClick={() => dispatch({ type: "SET_SHOW_SAVE_DIALOG", show: false })}
                     >
                         <div className="bg-background rounded-lg border p-4 shadow-lg" onClick={e => e.stopPropagation()}>
                             <h3 className="mb-2 text-sm font-semibold">Save View</h3>
                             <input
                                 value={viewName}
-                                onChange={e => setViewName(e.target.value)}
+                                onChange={e => dispatch({ type: "SET_VIEW_NAME", name: e.target.value })}
                                 placeholder="View name"
                                 className="w-full rounded-md border px-3 py-2 text-sm"
                                 autoFocus
@@ -1748,8 +1670,8 @@ function GraphViewInner() {
                                             layoutAlgorithm,
                                             focusNodeId: focusedNodeId ?? undefined
                                         });
-                                        setShowSaveDialog(false);
-                                        setViewName("");
+                                        dispatch({ type: "SET_SHOW_SAVE_DIALOG", show: false });
+                                        dispatch({ type: "SET_VIEW_NAME", name: "" });
                                     }
                                 }}
                             />
@@ -1765,14 +1687,14 @@ function GraphViewInner() {
                                             layoutAlgorithm,
                                             focusNodeId: focusedNodeId ?? undefined
                                         });
-                                        setShowSaveDialog(false);
-                                        setViewName("");
+                                        dispatch({ type: "SET_SHOW_SAVE_DIALOG", show: false });
+                                        dispatch({ type: "SET_VIEW_NAME", name: "" });
                                     }}
                                     className="bg-primary text-primary-foreground flex-1 rounded-md px-3 py-1.5 text-xs"
                                 >
                                     Save
                                 </button>
-                                <button onClick={() => setShowSaveDialog(false)} className="rounded-md border px-3 py-1.5 text-xs">
+                                <button onClick={() => dispatch({ type: "SET_SHOW_SAVE_DIALOG", show: false })} className="rounded-md border px-3 py-1.5 text-xs">
                                     Cancel
                                 </button>
                             </div>
@@ -1783,14 +1705,14 @@ function GraphViewInner() {
 
             <ConfirmDialog
                 open={showDeleteConfirm}
-                onOpenChange={setShowDeleteConfirm}
+                onOpenChange={(v) => dispatch({ type: "SET_SHOW_DELETE_CONFIRM", show: v })}
                 title="Delete chunks"
                 description={`Delete ${multiSelectedIds.size} chunks?`}
                 confirmLabel="Delete"
                 confirmVariant="destructive"
                 onConfirm={() => {
                     deleteManyMutation.mutate([...multiSelectedIds]);
-                    setShowDeleteConfirm(false);
+                    dispatch({ type: "SET_SHOW_DELETE_CONFIRM", show: false });
                 }}
                 loading={deleteManyMutation.isPending}
             />
