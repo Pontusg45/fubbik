@@ -33,6 +33,7 @@ import { useCaseRoutes } from "./use-cases/routes";
 import { activityRoutes } from "./activity/routes";
 import { notificationRoutes } from "./notifications/routes";
 import { settingsRoutes } from "./settings/routes";
+import { planRoutes } from "./plans/routes";
 import { vocabularyRoutes } from "./vocabulary/routes";
 
 const FiberFailureCauseSymbol = Symbol.for("effect/Runtime/FiberFailure/Cause");
@@ -145,6 +146,7 @@ export const api = new Elysia({ prefix: "/api" })
     .use(commentRoutes)
     .use(coverageRoutes)
     .use(sessionRoutes)
-    .use(diagramRoutes);
+    .use(diagramRoutes)
+    .use(planRoutes);
 
 export type Api = typeof api;
