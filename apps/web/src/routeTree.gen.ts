@@ -8,491 +8,531 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { Route as rootRouteImport } from "./routes/__root";
-import { Route as VocabularyRouteImport } from "./routes/vocabulary";
-import { Route as TemplatesRouteImport } from "./routes/templates";
-import { Route as TagsRouteImport } from "./routes/tags";
-import { Route as SettingsRouteImport } from "./routes/settings";
-import { Route as SearchRouteImport } from "./routes/search";
-import { Route as ReviewsRouteImport } from "./routes/reviews";
-import { Route as RequirementsRouteImport } from "./routes/requirements";
-import { Route as LoginRouteImport } from "./routes/login";
-import { Route as KnowledgeHealthRouteImport } from "./routes/knowledge-health";
-import { Route as GraphRouteImport } from "./routes/graph";
-import { Route as DocsRouteImport } from "./routes/docs";
-import { Route as DashboardRouteImport } from "./routes/dashboard";
-import { Route as CoverageRouteImport } from "./routes/coverage";
-import { Route as CodebasesRouteImport } from "./routes/codebases";
-import { Route as ActivityRouteImport } from "./routes/activity";
-import { Route as IndexRouteImport } from "./routes/index";
-import { Route as ChunksIndexRouteImport } from "./routes/chunks.index";
-import { Route as RequirementsNewRouteImport } from "./routes/requirements_.new";
-import { Route as RequirementsRequirementIdRouteImport } from "./routes/requirements_.$requirementId";
-import { Route as ChunksNewRouteImport } from "./routes/chunks.new";
-import { Route as ChunksArchivedRouteImport } from "./routes/chunks.archived";
-import { Route as ChunksChunkIdRouteImport } from "./routes/chunks.$chunkId";
-import { Route as ChunksChunkIdEditRouteImport } from "./routes/chunks.$chunkId_.edit";
+import { Route as rootRouteImport } from './routes/__root'
+import { Route as VocabularyRouteImport } from './routes/vocabulary'
+import { Route as TemplatesRouteImport } from './routes/templates'
+import { Route as TagsRouteImport } from './routes/tags'
+import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as SearchRouteImport } from './routes/search'
+import { Route as ReviewsRouteImport } from './routes/reviews'
+import { Route as RequirementsRouteImport } from './routes/requirements'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as KnowledgeHealthRouteImport } from './routes/knowledge-health'
+import { Route as GraphRouteImport } from './routes/graph'
+import { Route as DocsRouteImport } from './routes/docs'
+import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as CoverageRouteImport } from './routes/coverage'
+import { Route as CodebasesRouteImport } from './routes/codebases'
+import { Route as ActivityRouteImport } from './routes/activity'
+import { Route as IndexRouteImport } from './routes/index'
+import { Route as ChunksIndexRouteImport } from './routes/chunks.index'
+import { Route as ReviewsQueueRouteImport } from './routes/reviews_.queue'
+import { Route as ReviewsSessionIdRouteImport } from './routes/reviews_.$sessionId'
+import { Route as RequirementsNewRouteImport } from './routes/requirements_.new'
+import { Route as RequirementsRequirementIdRouteImport } from './routes/requirements_.$requirementId'
+import { Route as ChunksNewRouteImport } from './routes/chunks.new'
+import { Route as ChunksArchivedRouteImport } from './routes/chunks.archived'
+import { Route as ChunksChunkIdRouteImport } from './routes/chunks.$chunkId'
+import { Route as ChunksChunkIdEditRouteImport } from './routes/chunks.$chunkId_.edit'
 
 const VocabularyRoute = VocabularyRouteImport.update({
-  id: "/vocabulary",
-  path: "/vocabulary",
+  id: '/vocabulary',
+  path: '/vocabulary',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const TemplatesRoute = TemplatesRouteImport.update({
-  id: "/templates",
-  path: "/templates",
+  id: '/templates',
+  path: '/templates',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const TagsRoute = TagsRouteImport.update({
-  id: "/tags",
-  path: "/tags",
+  id: '/tags',
+  path: '/tags',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const SettingsRoute = SettingsRouteImport.update({
-  id: "/settings",
-  path: "/settings",
+  id: '/settings',
+  path: '/settings',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const SearchRoute = SearchRouteImport.update({
-  id: "/search",
-  path: "/search",
+  id: '/search',
+  path: '/search',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const ReviewsRoute = ReviewsRouteImport.update({
-  id: "/reviews",
-  path: "/reviews",
+  id: '/reviews',
+  path: '/reviews',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const RequirementsRoute = RequirementsRouteImport.update({
-  id: "/requirements",
-  path: "/requirements",
+  id: '/requirements',
+  path: '/requirements',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const LoginRoute = LoginRouteImport.update({
-  id: "/login",
-  path: "/login",
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const KnowledgeHealthRoute = KnowledgeHealthRouteImport.update({
-  id: "/knowledge-health",
-  path: "/knowledge-health",
+  id: '/knowledge-health',
+  path: '/knowledge-health',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const GraphRoute = GraphRouteImport.update({
-  id: "/graph",
-  path: "/graph",
+  id: '/graph',
+  path: '/graph',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const DocsRoute = DocsRouteImport.update({
-  id: "/docs",
-  path: "/docs",
+  id: '/docs',
+  path: '/docs',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const DashboardRoute = DashboardRouteImport.update({
-  id: "/dashboard",
-  path: "/dashboard",
+  id: '/dashboard',
+  path: '/dashboard',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const CoverageRoute = CoverageRouteImport.update({
-  id: "/coverage",
-  path: "/coverage",
+  id: '/coverage',
+  path: '/coverage',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const CodebasesRoute = CodebasesRouteImport.update({
-  id: "/codebases",
-  path: "/codebases",
+  id: '/codebases',
+  path: '/codebases',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const ActivityRoute = ActivityRouteImport.update({
-  id: "/activity",
-  path: "/activity",
+  id: '/activity',
+  path: '/activity',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const IndexRoute = IndexRouteImport.update({
-  id: "/",
-  path: "/",
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const ChunksIndexRoute = ChunksIndexRouteImport.update({
-  id: "/chunks/",
-  path: "/chunks/",
+  id: '/chunks/',
+  path: '/chunks/',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
+const ReviewsQueueRoute = ReviewsQueueRouteImport.update({
+  id: '/reviews_/queue',
+  path: '/reviews/queue',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReviewsSessionIdRoute = ReviewsSessionIdRouteImport.update({
+  id: '/reviews_/$sessionId',
+  path: '/reviews/$sessionId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RequirementsNewRoute = RequirementsNewRouteImport.update({
-  id: "/requirements_/new",
-  path: "/requirements/new",
+  id: '/requirements_/new',
+  path: '/requirements/new',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const RequirementsRequirementIdRoute =
   RequirementsRequirementIdRouteImport.update({
-    id: "/requirements_/$requirementId",
-    path: "/requirements/$requirementId",
+    id: '/requirements_/$requirementId',
+    path: '/requirements/$requirementId',
     getParentRoute: () => rootRouteImport,
-  } as any);
+  } as any)
 const ChunksNewRoute = ChunksNewRouteImport.update({
-  id: "/chunks/new",
-  path: "/chunks/new",
+  id: '/chunks/new',
+  path: '/chunks/new',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const ChunksArchivedRoute = ChunksArchivedRouteImport.update({
-  id: "/chunks/archived",
-  path: "/chunks/archived",
+  id: '/chunks/archived',
+  path: '/chunks/archived',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const ChunksChunkIdRoute = ChunksChunkIdRouteImport.update({
-  id: "/chunks/$chunkId",
-  path: "/chunks/$chunkId",
+  id: '/chunks/$chunkId',
+  path: '/chunks/$chunkId',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const ChunksChunkIdEditRoute = ChunksChunkIdEditRouteImport.update({
-  id: "/chunks/$chunkId_/edit",
-  path: "/chunks/$chunkId/edit",
+  id: '/chunks/$chunkId_/edit',
+  path: '/chunks/$chunkId/edit',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 
 export interface FileRoutesByFullPath {
-  "/": typeof IndexRoute;
-  "/activity": typeof ActivityRoute;
-  "/codebases": typeof CodebasesRoute;
-  "/coverage": typeof CoverageRoute;
-  "/dashboard": typeof DashboardRoute;
-  "/docs": typeof DocsRoute;
-  "/graph": typeof GraphRoute;
-  "/knowledge-health": typeof KnowledgeHealthRoute;
-  "/login": typeof LoginRoute;
-  "/requirements": typeof RequirementsRoute;
-  "/reviews": typeof ReviewsRoute;
-  "/search": typeof SearchRoute;
-  "/settings": typeof SettingsRoute;
-  "/tags": typeof TagsRoute;
-  "/templates": typeof TemplatesRoute;
-  "/vocabulary": typeof VocabularyRoute;
-  "/chunks/$chunkId": typeof ChunksChunkIdRoute;
-  "/chunks/archived": typeof ChunksArchivedRoute;
-  "/chunks/new": typeof ChunksNewRoute;
-  "/requirements/$requirementId": typeof RequirementsRequirementIdRoute;
-  "/requirements/new": typeof RequirementsNewRoute;
-  "/chunks/": typeof ChunksIndexRoute;
-  "/chunks/$chunkId/edit": typeof ChunksChunkIdEditRoute;
+  '/': typeof IndexRoute
+  '/activity': typeof ActivityRoute
+  '/codebases': typeof CodebasesRoute
+  '/coverage': typeof CoverageRoute
+  '/dashboard': typeof DashboardRoute
+  '/docs': typeof DocsRoute
+  '/graph': typeof GraphRoute
+  '/knowledge-health': typeof KnowledgeHealthRoute
+  '/login': typeof LoginRoute
+  '/requirements': typeof RequirementsRoute
+  '/reviews': typeof ReviewsRoute
+  '/search': typeof SearchRoute
+  '/settings': typeof SettingsRoute
+  '/tags': typeof TagsRoute
+  '/templates': typeof TemplatesRoute
+  '/vocabulary': typeof VocabularyRoute
+  '/chunks/$chunkId': typeof ChunksChunkIdRoute
+  '/chunks/archived': typeof ChunksArchivedRoute
+  '/chunks/new': typeof ChunksNewRoute
+  '/requirements/$requirementId': typeof RequirementsRequirementIdRoute
+  '/requirements/new': typeof RequirementsNewRoute
+  '/reviews/$sessionId': typeof ReviewsSessionIdRoute
+  '/reviews/queue': typeof ReviewsQueueRoute
+  '/chunks/': typeof ChunksIndexRoute
+  '/chunks/$chunkId/edit': typeof ChunksChunkIdEditRoute
 }
 export interface FileRoutesByTo {
-  "/": typeof IndexRoute;
-  "/activity": typeof ActivityRoute;
-  "/codebases": typeof CodebasesRoute;
-  "/coverage": typeof CoverageRoute;
-  "/dashboard": typeof DashboardRoute;
-  "/docs": typeof DocsRoute;
-  "/graph": typeof GraphRoute;
-  "/knowledge-health": typeof KnowledgeHealthRoute;
-  "/login": typeof LoginRoute;
-  "/requirements": typeof RequirementsRoute;
-  "/reviews": typeof ReviewsRoute;
-  "/search": typeof SearchRoute;
-  "/settings": typeof SettingsRoute;
-  "/tags": typeof TagsRoute;
-  "/templates": typeof TemplatesRoute;
-  "/vocabulary": typeof VocabularyRoute;
-  "/chunks/$chunkId": typeof ChunksChunkIdRoute;
-  "/chunks/archived": typeof ChunksArchivedRoute;
-  "/chunks/new": typeof ChunksNewRoute;
-  "/requirements/$requirementId": typeof RequirementsRequirementIdRoute;
-  "/requirements/new": typeof RequirementsNewRoute;
-  "/chunks": typeof ChunksIndexRoute;
-  "/chunks/$chunkId/edit": typeof ChunksChunkIdEditRoute;
+  '/': typeof IndexRoute
+  '/activity': typeof ActivityRoute
+  '/codebases': typeof CodebasesRoute
+  '/coverage': typeof CoverageRoute
+  '/dashboard': typeof DashboardRoute
+  '/docs': typeof DocsRoute
+  '/graph': typeof GraphRoute
+  '/knowledge-health': typeof KnowledgeHealthRoute
+  '/login': typeof LoginRoute
+  '/requirements': typeof RequirementsRoute
+  '/reviews': typeof ReviewsRoute
+  '/search': typeof SearchRoute
+  '/settings': typeof SettingsRoute
+  '/tags': typeof TagsRoute
+  '/templates': typeof TemplatesRoute
+  '/vocabulary': typeof VocabularyRoute
+  '/chunks/$chunkId': typeof ChunksChunkIdRoute
+  '/chunks/archived': typeof ChunksArchivedRoute
+  '/chunks/new': typeof ChunksNewRoute
+  '/requirements/$requirementId': typeof RequirementsRequirementIdRoute
+  '/requirements/new': typeof RequirementsNewRoute
+  '/reviews/$sessionId': typeof ReviewsSessionIdRoute
+  '/reviews/queue': typeof ReviewsQueueRoute
+  '/chunks': typeof ChunksIndexRoute
+  '/chunks/$chunkId/edit': typeof ChunksChunkIdEditRoute
 }
 export interface FileRoutesById {
-  __root__: typeof rootRouteImport;
-  "/": typeof IndexRoute;
-  "/activity": typeof ActivityRoute;
-  "/codebases": typeof CodebasesRoute;
-  "/coverage": typeof CoverageRoute;
-  "/dashboard": typeof DashboardRoute;
-  "/docs": typeof DocsRoute;
-  "/graph": typeof GraphRoute;
-  "/knowledge-health": typeof KnowledgeHealthRoute;
-  "/login": typeof LoginRoute;
-  "/requirements": typeof RequirementsRoute;
-  "/reviews": typeof ReviewsRoute;
-  "/search": typeof SearchRoute;
-  "/settings": typeof SettingsRoute;
-  "/tags": typeof TagsRoute;
-  "/templates": typeof TemplatesRoute;
-  "/vocabulary": typeof VocabularyRoute;
-  "/chunks/$chunkId": typeof ChunksChunkIdRoute;
-  "/chunks/archived": typeof ChunksArchivedRoute;
-  "/chunks/new": typeof ChunksNewRoute;
-  "/requirements_/$requirementId": typeof RequirementsRequirementIdRoute;
-  "/requirements_/new": typeof RequirementsNewRoute;
-  "/chunks/": typeof ChunksIndexRoute;
-  "/chunks/$chunkId_/edit": typeof ChunksChunkIdEditRoute;
+  __root__: typeof rootRouteImport
+  '/': typeof IndexRoute
+  '/activity': typeof ActivityRoute
+  '/codebases': typeof CodebasesRoute
+  '/coverage': typeof CoverageRoute
+  '/dashboard': typeof DashboardRoute
+  '/docs': typeof DocsRoute
+  '/graph': typeof GraphRoute
+  '/knowledge-health': typeof KnowledgeHealthRoute
+  '/login': typeof LoginRoute
+  '/requirements': typeof RequirementsRoute
+  '/reviews': typeof ReviewsRoute
+  '/search': typeof SearchRoute
+  '/settings': typeof SettingsRoute
+  '/tags': typeof TagsRoute
+  '/templates': typeof TemplatesRoute
+  '/vocabulary': typeof VocabularyRoute
+  '/chunks/$chunkId': typeof ChunksChunkIdRoute
+  '/chunks/archived': typeof ChunksArchivedRoute
+  '/chunks/new': typeof ChunksNewRoute
+  '/requirements_/$requirementId': typeof RequirementsRequirementIdRoute
+  '/requirements_/new': typeof RequirementsNewRoute
+  '/reviews_/$sessionId': typeof ReviewsSessionIdRoute
+  '/reviews_/queue': typeof ReviewsQueueRoute
+  '/chunks/': typeof ChunksIndexRoute
+  '/chunks/$chunkId_/edit': typeof ChunksChunkIdEditRoute
 }
 export interface FileRouteTypes {
-  fileRoutesByFullPath: FileRoutesByFullPath;
+  fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    | "/"
-    | "/activity"
-    | "/codebases"
-    | "/coverage"
-    | "/dashboard"
-    | "/docs"
-    | "/graph"
-    | "/knowledge-health"
-    | "/login"
-    | "/requirements"
-    | "/reviews"
-    | "/search"
-    | "/settings"
-    | "/tags"
-    | "/templates"
-    | "/vocabulary"
-    | "/chunks/$chunkId"
-    | "/chunks/archived"
-    | "/chunks/new"
-    | "/requirements/$requirementId"
-    | "/requirements/new"
-    | "/chunks/"
-    | "/chunks/$chunkId/edit";
-  fileRoutesByTo: FileRoutesByTo;
+    | '/'
+    | '/activity'
+    | '/codebases'
+    | '/coverage'
+    | '/dashboard'
+    | '/docs'
+    | '/graph'
+    | '/knowledge-health'
+    | '/login'
+    | '/requirements'
+    | '/reviews'
+    | '/search'
+    | '/settings'
+    | '/tags'
+    | '/templates'
+    | '/vocabulary'
+    | '/chunks/$chunkId'
+    | '/chunks/archived'
+    | '/chunks/new'
+    | '/requirements/$requirementId'
+    | '/requirements/new'
+    | '/reviews/$sessionId'
+    | '/reviews/queue'
+    | '/chunks/'
+    | '/chunks/$chunkId/edit'
+  fileRoutesByTo: FileRoutesByTo
   to:
-    | "/"
-    | "/activity"
-    | "/codebases"
-    | "/coverage"
-    | "/dashboard"
-    | "/docs"
-    | "/graph"
-    | "/knowledge-health"
-    | "/login"
-    | "/requirements"
-    | "/reviews"
-    | "/search"
-    | "/settings"
-    | "/tags"
-    | "/templates"
-    | "/vocabulary"
-    | "/chunks/$chunkId"
-    | "/chunks/archived"
-    | "/chunks/new"
-    | "/requirements/$requirementId"
-    | "/requirements/new"
-    | "/chunks"
-    | "/chunks/$chunkId/edit";
+    | '/'
+    | '/activity'
+    | '/codebases'
+    | '/coverage'
+    | '/dashboard'
+    | '/docs'
+    | '/graph'
+    | '/knowledge-health'
+    | '/login'
+    | '/requirements'
+    | '/reviews'
+    | '/search'
+    | '/settings'
+    | '/tags'
+    | '/templates'
+    | '/vocabulary'
+    | '/chunks/$chunkId'
+    | '/chunks/archived'
+    | '/chunks/new'
+    | '/requirements/$requirementId'
+    | '/requirements/new'
+    | '/reviews/$sessionId'
+    | '/reviews/queue'
+    | '/chunks'
+    | '/chunks/$chunkId/edit'
   id:
-    | "__root__"
-    | "/"
-    | "/activity"
-    | "/codebases"
-    | "/coverage"
-    | "/dashboard"
-    | "/docs"
-    | "/graph"
-    | "/knowledge-health"
-    | "/login"
-    | "/requirements"
-    | "/reviews"
-    | "/search"
-    | "/settings"
-    | "/tags"
-    | "/templates"
-    | "/vocabulary"
-    | "/chunks/$chunkId"
-    | "/chunks/archived"
-    | "/chunks/new"
-    | "/requirements_/$requirementId"
-    | "/requirements_/new"
-    | "/chunks/"
-    | "/chunks/$chunkId_/edit";
-  fileRoutesById: FileRoutesById;
+    | '__root__'
+    | '/'
+    | '/activity'
+    | '/codebases'
+    | '/coverage'
+    | '/dashboard'
+    | '/docs'
+    | '/graph'
+    | '/knowledge-health'
+    | '/login'
+    | '/requirements'
+    | '/reviews'
+    | '/search'
+    | '/settings'
+    | '/tags'
+    | '/templates'
+    | '/vocabulary'
+    | '/chunks/$chunkId'
+    | '/chunks/archived'
+    | '/chunks/new'
+    | '/requirements_/$requirementId'
+    | '/requirements_/new'
+    | '/reviews_/$sessionId'
+    | '/reviews_/queue'
+    | '/chunks/'
+    | '/chunks/$chunkId_/edit'
+  fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute;
-  ActivityRoute: typeof ActivityRoute;
-  CodebasesRoute: typeof CodebasesRoute;
-  CoverageRoute: typeof CoverageRoute;
-  DashboardRoute: typeof DashboardRoute;
-  DocsRoute: typeof DocsRoute;
-  GraphRoute: typeof GraphRoute;
-  KnowledgeHealthRoute: typeof KnowledgeHealthRoute;
-  LoginRoute: typeof LoginRoute;
-  RequirementsRoute: typeof RequirementsRoute;
-  ReviewsRoute: typeof ReviewsRoute;
-  SearchRoute: typeof SearchRoute;
-  SettingsRoute: typeof SettingsRoute;
-  TagsRoute: typeof TagsRoute;
-  TemplatesRoute: typeof TemplatesRoute;
-  VocabularyRoute: typeof VocabularyRoute;
-  ChunksChunkIdRoute: typeof ChunksChunkIdRoute;
-  ChunksArchivedRoute: typeof ChunksArchivedRoute;
-  ChunksNewRoute: typeof ChunksNewRoute;
-  RequirementsRequirementIdRoute: typeof RequirementsRequirementIdRoute;
-  RequirementsNewRoute: typeof RequirementsNewRoute;
-  ChunksIndexRoute: typeof ChunksIndexRoute;
-  ChunksChunkIdEditRoute: typeof ChunksChunkIdEditRoute;
+  IndexRoute: typeof IndexRoute
+  ActivityRoute: typeof ActivityRoute
+  CodebasesRoute: typeof CodebasesRoute
+  CoverageRoute: typeof CoverageRoute
+  DashboardRoute: typeof DashboardRoute
+  DocsRoute: typeof DocsRoute
+  GraphRoute: typeof GraphRoute
+  KnowledgeHealthRoute: typeof KnowledgeHealthRoute
+  LoginRoute: typeof LoginRoute
+  RequirementsRoute: typeof RequirementsRoute
+  ReviewsRoute: typeof ReviewsRoute
+  SearchRoute: typeof SearchRoute
+  SettingsRoute: typeof SettingsRoute
+  TagsRoute: typeof TagsRoute
+  TemplatesRoute: typeof TemplatesRoute
+  VocabularyRoute: typeof VocabularyRoute
+  ChunksChunkIdRoute: typeof ChunksChunkIdRoute
+  ChunksArchivedRoute: typeof ChunksArchivedRoute
+  ChunksNewRoute: typeof ChunksNewRoute
+  RequirementsRequirementIdRoute: typeof RequirementsRequirementIdRoute
+  RequirementsNewRoute: typeof RequirementsNewRoute
+  ReviewsSessionIdRoute: typeof ReviewsSessionIdRoute
+  ReviewsQueueRoute: typeof ReviewsQueueRoute
+  ChunksIndexRoute: typeof ChunksIndexRoute
+  ChunksChunkIdEditRoute: typeof ChunksChunkIdEditRoute
 }
 
-declare module "@tanstack/react-router" {
+declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    "/vocabulary": {
-      id: "/vocabulary";
-      path: "/vocabulary";
-      fullPath: "/vocabulary";
-      preLoaderRoute: typeof VocabularyRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/templates": {
-      id: "/templates";
-      path: "/templates";
-      fullPath: "/templates";
-      preLoaderRoute: typeof TemplatesRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/tags": {
-      id: "/tags";
-      path: "/tags";
-      fullPath: "/tags";
-      preLoaderRoute: typeof TagsRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/settings": {
-      id: "/settings";
-      path: "/settings";
-      fullPath: "/settings";
-      preLoaderRoute: typeof SettingsRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/search": {
-      id: "/search";
-      path: "/search";
-      fullPath: "/search";
-      preLoaderRoute: typeof SearchRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/reviews": {
-      id: "/reviews";
-      path: "/reviews";
-      fullPath: "/reviews";
-      preLoaderRoute: typeof ReviewsRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/requirements": {
-      id: "/requirements";
-      path: "/requirements";
-      fullPath: "/requirements";
-      preLoaderRoute: typeof RequirementsRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/login": {
-      id: "/login";
-      path: "/login";
-      fullPath: "/login";
-      preLoaderRoute: typeof LoginRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/knowledge-health": {
-      id: "/knowledge-health";
-      path: "/knowledge-health";
-      fullPath: "/knowledge-health";
-      preLoaderRoute: typeof KnowledgeHealthRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/graph": {
-      id: "/graph";
-      path: "/graph";
-      fullPath: "/graph";
-      preLoaderRoute: typeof GraphRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/docs": {
-      id: "/docs";
-      path: "/docs";
-      fullPath: "/docs";
-      preLoaderRoute: typeof DocsRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/dashboard": {
-      id: "/dashboard";
-      path: "/dashboard";
-      fullPath: "/dashboard";
-      preLoaderRoute: typeof DashboardRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/coverage": {
-      id: "/coverage";
-      path: "/coverage";
-      fullPath: "/coverage";
-      preLoaderRoute: typeof CoverageRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/codebases": {
-      id: "/codebases";
-      path: "/codebases";
-      fullPath: "/codebases";
-      preLoaderRoute: typeof CodebasesRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/activity": {
-      id: "/activity";
-      path: "/activity";
-      fullPath: "/activity";
-      preLoaderRoute: typeof ActivityRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/": {
-      id: "/";
-      path: "/";
-      fullPath: "/";
-      preLoaderRoute: typeof IndexRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/chunks/": {
-      id: "/chunks/";
-      path: "/chunks";
-      fullPath: "/chunks/";
-      preLoaderRoute: typeof ChunksIndexRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/requirements_/new": {
-      id: "/requirements_/new";
-      path: "/requirements/new";
-      fullPath: "/requirements/new";
-      preLoaderRoute: typeof RequirementsNewRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/requirements_/$requirementId": {
-      id: "/requirements_/$requirementId";
-      path: "/requirements/$requirementId";
-      fullPath: "/requirements/$requirementId";
-      preLoaderRoute: typeof RequirementsRequirementIdRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/chunks/new": {
-      id: "/chunks/new";
-      path: "/chunks/new";
-      fullPath: "/chunks/new";
-      preLoaderRoute: typeof ChunksNewRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/chunks/archived": {
-      id: "/chunks/archived";
-      path: "/chunks/archived";
-      fullPath: "/chunks/archived";
-      preLoaderRoute: typeof ChunksArchivedRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/chunks/$chunkId": {
-      id: "/chunks/$chunkId";
-      path: "/chunks/$chunkId";
-      fullPath: "/chunks/$chunkId";
-      preLoaderRoute: typeof ChunksChunkIdRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/chunks/$chunkId_/edit": {
-      id: "/chunks/$chunkId_/edit";
-      path: "/chunks/$chunkId/edit";
-      fullPath: "/chunks/$chunkId/edit";
-      preLoaderRoute: typeof ChunksChunkIdEditRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
+    '/vocabulary': {
+      id: '/vocabulary'
+      path: '/vocabulary'
+      fullPath: '/vocabulary'
+      preLoaderRoute: typeof VocabularyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/templates': {
+      id: '/templates'
+      path: '/templates'
+      fullPath: '/templates'
+      preLoaderRoute: typeof TemplatesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tags': {
+      id: '/tags'
+      path: '/tags'
+      fullPath: '/tags'
+      preLoaderRoute: typeof TagsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/search': {
+      id: '/search'
+      path: '/search'
+      fullPath: '/search'
+      preLoaderRoute: typeof SearchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reviews': {
+      id: '/reviews'
+      path: '/reviews'
+      fullPath: '/reviews'
+      preLoaderRoute: typeof ReviewsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/requirements': {
+      id: '/requirements'
+      path: '/requirements'
+      fullPath: '/requirements'
+      preLoaderRoute: typeof RequirementsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/knowledge-health': {
+      id: '/knowledge-health'
+      path: '/knowledge-health'
+      fullPath: '/knowledge-health'
+      preLoaderRoute: typeof KnowledgeHealthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/graph': {
+      id: '/graph'
+      path: '/graph'
+      fullPath: '/graph'
+      preLoaderRoute: typeof GraphRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs': {
+      id: '/docs'
+      path: '/docs'
+      fullPath: '/docs'
+      preLoaderRoute: typeof DocsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/coverage': {
+      id: '/coverage'
+      path: '/coverage'
+      fullPath: '/coverage'
+      preLoaderRoute: typeof CoverageRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/codebases': {
+      id: '/codebases'
+      path: '/codebases'
+      fullPath: '/codebases'
+      preLoaderRoute: typeof CodebasesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/activity': {
+      id: '/activity'
+      path: '/activity'
+      fullPath: '/activity'
+      preLoaderRoute: typeof ActivityRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/chunks/': {
+      id: '/chunks/'
+      path: '/chunks'
+      fullPath: '/chunks/'
+      preLoaderRoute: typeof ChunksIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reviews_/queue': {
+      id: '/reviews_/queue'
+      path: '/reviews/queue'
+      fullPath: '/reviews/queue'
+      preLoaderRoute: typeof ReviewsQueueRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reviews_/$sessionId': {
+      id: '/reviews_/$sessionId'
+      path: '/reviews/$sessionId'
+      fullPath: '/reviews/$sessionId'
+      preLoaderRoute: typeof ReviewsSessionIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/requirements_/new': {
+      id: '/requirements_/new'
+      path: '/requirements/new'
+      fullPath: '/requirements/new'
+      preLoaderRoute: typeof RequirementsNewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/requirements_/$requirementId': {
+      id: '/requirements_/$requirementId'
+      path: '/requirements/$requirementId'
+      fullPath: '/requirements/$requirementId'
+      preLoaderRoute: typeof RequirementsRequirementIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/chunks/new': {
+      id: '/chunks/new'
+      path: '/chunks/new'
+      fullPath: '/chunks/new'
+      preLoaderRoute: typeof ChunksNewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/chunks/archived': {
+      id: '/chunks/archived'
+      path: '/chunks/archived'
+      fullPath: '/chunks/archived'
+      preLoaderRoute: typeof ChunksArchivedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/chunks/$chunkId': {
+      id: '/chunks/$chunkId'
+      path: '/chunks/$chunkId'
+      fullPath: '/chunks/$chunkId'
+      preLoaderRoute: typeof ChunksChunkIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/chunks/$chunkId_/edit': {
+      id: '/chunks/$chunkId_/edit'
+      path: '/chunks/$chunkId/edit'
+      fullPath: '/chunks/$chunkId/edit'
+      preLoaderRoute: typeof ChunksChunkIdEditRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -518,18 +558,11 @@ const rootRouteChildren: RootRouteChildren = {
   ChunksNewRoute: ChunksNewRoute,
   RequirementsRequirementIdRoute: RequirementsRequirementIdRoute,
   RequirementsNewRoute: RequirementsNewRoute,
+  ReviewsSessionIdRoute: ReviewsSessionIdRoute,
+  ReviewsQueueRoute: ReviewsQueueRoute,
   ChunksIndexRoute: ChunksIndexRoute,
   ChunksChunkIdEditRoute: ChunksChunkIdEditRoute,
-};
+}
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
-  ._addFileTypes<FileRouteTypes>();
-
-import type { getRouter } from "./router.tsx";
-import type { createStart } from "@tanstack/react-start";
-declare module "@tanstack/react-start" {
-  interface Register {
-    ssr: true;
-    router: Awaited<ReturnType<typeof getRouter>>;
-  }
-}
+  ._addFileTypes<FileRouteTypes>()
