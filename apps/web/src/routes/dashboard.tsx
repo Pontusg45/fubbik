@@ -272,17 +272,17 @@ function DashboardPage() {
                     {recentIds.length > 0 && (
                         <DashboardSection icon={Eye} title="Recently Viewed">
                             <div className="grid gap-1 sm:grid-cols-2">
-                                {(recentChunksQuery.data ?? []).slice(0, 6).map(chunk => (
+                                {(recentChunksQuery.data ?? []).slice(0, 6).map(item => (
                                     <Link
-                                        key={chunk.id}
+                                        key={item.chunk.id}
                                         to="/chunks/$chunkId"
-                                        params={{ chunkId: chunk.id }}
+                                        params={{ chunkId: item.chunk.id }}
                                         className="hover:bg-muted/50 flex items-center gap-2 rounded-md px-3 py-2 transition-colors"
                                     >
                                         <Eye className="size-3 shrink-0 text-muted-foreground" />
-                                        <span className="truncate text-sm">{chunk.title}</span>
+                                        <span className="truncate text-sm">{item.chunk.title}</span>
                                         <Badge variant="secondary" size="sm" className="ml-auto shrink-0 font-mono text-[9px]">
-                                            {chunk.type}
+                                            {item.chunk.type}
                                         </Badge>
                                     </Link>
                                 ))}
