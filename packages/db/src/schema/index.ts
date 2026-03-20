@@ -17,3 +17,4 @@ export * from "./activity";
 export * from "./settings";
 export * from "./comment";
 export * from "./implementation-session";
+export * from "./plan";
