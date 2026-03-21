@@ -12,7 +12,7 @@ import {
 } from "../schema/implementation-session";
 import { requirement } from "../schema/requirement";
 
-export function createSession(params: { id: string; title: string; userId: string; codebaseId?: string }) {
+export function createSession(params: { id: string; title: string; userId: string; codebaseId?: string; planId?: string }) {
     return Effect.tryPromise({
         try: async () => {
             const [created] = await db.insert(implementationSession).values(params).returning();

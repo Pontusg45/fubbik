@@ -3,6 +3,7 @@ import { relations } from "drizzle-orm";
 import { user } from "./auth";
 import { chunk } from "./chunk";
 import { codebase } from "./codebase";
+import { plan } from "./plan";
 import { requirement } from "./requirement";
 
 export const implementationSession = pgTable(
@@ -13,6 +14,7 @@ export const implementationSession = pgTable(
         status: text("status").notNull().default("in_progress"),
         userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
         codebaseId: text("codebase_id").references(() => codebase.id, { onDelete: "set null" }),
+        planId: text("plan_id").references(() => plan.id, { onDelete: "set null" }),
         prUrl: text("pr_url"),
         reviewBrief: text("review_brief"),
         createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -23,6 +25,7 @@ export const implementationSession = pgTable(
     table => [
         index("impl_session_userId_idx").on(table.userId),
         index("impl_session_codebaseId_idx").on(table.codebaseId),
+        index("impl_session_planId_idx").on(table.planId),
         index("impl_session_status_idx").on(table.status)
     ]
 );
@@ -63,6 +66,7 @@ export const sessionRequirementRef = pgTable(
 export const implementationSessionRelations = relations(implementationSession, ({ one, many }) => ({
     user: one(user, { fields: [implementationSession.userId], references: [user.id] }),
     codebase: one(codebase, { fields: [implementationSession.codebaseId], references: [codebase.id] }),
+    plan: one(plan, { fields: [implementationSession.planId], references: [plan.id] }),
     chunkRefs: many(sessionChunkRef),
     assumptions: many(sessionAssumption),
     requirementRefs: many(sessionRequirementRef)
