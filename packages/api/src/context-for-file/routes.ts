@@ -13,7 +13,8 @@ export const contextForFileRoutes = new Elysia().get(
                     contextForFileService.getContextForFile(
                         session.user.id,
                         ctx.query.path,
-                        ctx.query.codebaseId
+                        ctx.query.codebaseId,
+                        ctx.query.deps ? ctx.query.deps.split(",").filter(Boolean) : undefined
                     )
                 )
             )
@@ -21,7 +22,8 @@ export const contextForFileRoutes = new Elysia().get(
     {
         query: t.Object({
             path: t.String(),
-            codebaseId: t.Optional(t.String())
+            codebaseId: t.Optional(t.String()),
+            deps: t.Optional(t.String())
         })
     }
 );
