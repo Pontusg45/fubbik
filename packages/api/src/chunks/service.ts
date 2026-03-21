@@ -188,7 +188,9 @@ export function createChunk(
             return Effect.void;
         }),
         Effect.tap(() => {
-            Effect.runPromise(enrichChunkIfEmpty(id)).catch(() => {});
+            Effect.runPromise(enrichChunkIfEmpty(id)).catch((err) => {
+                console.error(`[enrich] Failed to enrich new chunk ${id}:`, err);
+            });
             return Effect.void;
         })
     );
@@ -254,7 +256,9 @@ export function updateChunk(
         }),
         Effect.tap(() => {
             if (body.title !== undefined || body.content !== undefined) {
-                Effect.runPromise(enrichChunk(chunkId)).catch(() => {});
+                Effect.runPromise(enrichChunk(chunkId)).catch((err) => {
+                    console.error(`[enrich] Failed to re-enrich chunk ${chunkId}:`, err);
+                });
             }
             return Effect.void;
         })

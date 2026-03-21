@@ -1,6 +1,7 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Activity, FileText, Lightbulb } from "lucide-react";
+import { Activity, FileText, Lightbulb, RefreshCw } from "lucide-react";
+import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -210,6 +211,11 @@ function KnowledgeHealthPage() {
                             )}
                         </CardPanel>
                     </Card>
+                    {/* Stale Embeddings */}
+                    {data.staleEmbeddings && (
+                        <StaleEmbeddingsCard staleEmbeddings={data.staleEmbeddings} />
+                    )}
+
                     {/* File References */}
                     {data.fileRefs && (
                         <Card>
@@ -299,5 +305,86 @@ function KnowledgeHealthPage() {
                 </div>
             ) : null}
         </PageContainer>
+    );
+}
+
+function StaleEmbeddingsCard({
+    staleEmbeddings
+}: {
+    staleEmbeddings: { chunks: Array<{ id: string; title: string; type: string; updatedAt: string | Date; embeddingUpdatedAt: string | Date | null }>; count: number };
+}) {
+    const queryClient = useQueryClient();
+    const enrichMutation = useMutation({
+        mutationFn: async (chunkId: string) => {
+            const res = await api.api.chunks({ id: chunkId }).enrich.post();
+            if (res.error) throw new Error("Enrich failed");
+            return res.data;
+        },
+        onSuccess: () => {
+            toast.success("Re-enriched chunk successfully");
+            queryClient.invalidateQueries({ queryKey: ["knowledge-health"] });
+        },
+        onError: () => {
+            toast.error("Failed to re-enrich chunk");
+        }
+    });
+
+    return (
+        <Card>
+            <CardPanel className="p-6">
+                <div className="mb-3 flex items-center gap-2">
+                    <RefreshCw className="size-4 text-orange-500" />
+                    <h2 className="text-lg font-semibold">Stale Embeddings</h2>
+                    <Badge variant="secondary">{staleEmbeddings.count}</Badge>
+                </div>
+                <p className="text-muted-foreground mb-4 text-sm">
+                    These chunks have been updated since their embeddings were last generated. Re-enrich them to keep
+                    semantic search accurate.
+                </p>
+                {staleEmbeddings.chunks.length === 0 ? (
+                    <p className="text-muted-foreground text-sm">No stale embeddings found.</p>
+                ) : (
+                    <div className="divide-y">
+                        {staleEmbeddings.chunks.map(c => (
+                            <div
+                                key={c.id}
+                                className="flex items-center justify-between py-3 first:pt-0 last:pb-0"
+                            >
+                                <div className="min-w-0 flex-1">
+                                    <Link
+                                        to="/chunks/$chunkId"
+                                        params={{ chunkId: c.id }}
+                                        className="hover:underline font-medium"
+                                    >
+                                        {c.title}
+                                    </Link>
+                                    <div className="mt-1 flex items-center gap-2">
+                                        <Badge variant="outline" className="text-xs">
+                                            {c.type}
+                                        </Badge>
+                                        {c.embeddingUpdatedAt && (
+                                            <span className="text-muted-foreground text-xs">
+                                                Embedding {daysAgo(c.embeddingUpdatedAt)}
+                                            </span>
+                                        )}
+                                        <span className="text-muted-foreground text-xs">
+                                            Content updated {daysAgo(c.updatedAt)}
+                                        </span>
+                                    </div>
+                                </div>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={enrichMutation.isPending}
+                                    onClick={() => enrichMutation.mutate(c.id)}
+                                >
+                                    Re-enrich
+                                </Button>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </CardPanel>
+        </Card>
     );
 }
