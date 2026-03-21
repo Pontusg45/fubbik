@@ -1,8 +1,10 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { Effect } from "effect";
 
 import { DatabaseError } from "../errors";
 import { db } from "../index";
+import { chunk } from "../schema/chunk";
+import { chunkCodebase } from "../schema/codebase";
 import { tag, chunkTag, tagType } from "../schema/tag";
 
 export function createTag(params: { id: string; name: string; tagTypeId?: string; userId: string; origin?: string; reviewStatus?: string }) {
@@ -117,6 +119,67 @@ export function findOrCreateTag(name: string, userId: string) {
             const id = crypto.randomUUID();
             const [created] = await db.insert(tag).values({ id, name, userId }).returning();
             return created!;
+        },
+        catch: cause => new DatabaseError({ cause })
+    });
+}
+
+export interface ListChunksByTagParams {
+    userId: string;
+    tagName: string;
+    codebaseId?: string;
+}
+
+export function listChunksByTag(params: ListChunksByTagParams) {
+    return Effect.tryPromise({
+        try: async () => {
+            // Find the tag by name for this user
+            const [matchingTag] = await db
+                .select({ id: tag.id })
+                .from(tag)
+                .where(and(eq(tag.name, params.tagName), eq(tag.userId, params.userId)));
+
+            if (!matchingTag) return [];
+
+            // Get chunk IDs that have this tag
+            const taggedChunkIds = await db
+                .select({ chunkId: chunkTag.chunkId })
+                .from(chunkTag)
+                .where(eq(chunkTag.tagId, matchingTag.id));
+
+            if (taggedChunkIds.length === 0) return [];
+
+            const ids = taggedChunkIds.map(r => r.chunkId);
+
+            const conditions = [
+                inArray(chunk.id, ids),
+                eq(chunk.userId, params.userId),
+                isNull(chunk.archivedAt)
+            ];
+
+            if (params.codebaseId) {
+                const inCodebase = db
+                    .select({ chunkId: chunkCodebase.chunkId })
+                    .from(chunkCodebase)
+                    .where(eq(chunkCodebase.codebaseId, params.codebaseId));
+                const inAnyCodebase = db.select({ chunkId: chunkCodebase.chunkId }).from(chunkCodebase);
+                conditions.push(
+                    sql`(${chunk.id} IN (${inCodebase}) OR ${chunk.id} NOT IN (${inAnyCodebase}))`
+                );
+            }
+
+            return db
+                .select({
+                    id: chunk.id,
+                    title: chunk.title,
+                    content: chunk.content,
+                    type: chunk.type,
+                    rationale: chunk.rationale,
+                    summary: chunk.summary
+                })
+                .from(chunk)
+                .where(and(...conditions))
+                .orderBy(chunk.title);
         },
         catch: cause => new DatabaseError({ cause })
     });
