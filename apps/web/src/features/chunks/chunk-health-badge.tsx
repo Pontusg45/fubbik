@@ -1,7 +1,7 @@
 import { Heart } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipPopup, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface HealthScore {
     total: number;
@@ -34,9 +34,9 @@ export function ChunkHealthBadge({ healthScore }: { healthScore: HealthScore }) 
     const issueCount = healthScore.issues.length;
 
     return (
-        <TooltipProvider>
-            <Tooltip>
-                <TooltipTrigger asChild>
+        <Tooltip>
+            <TooltipTrigger
+                render={
                     <Badge variant="outline" className={`${color.bg} ${color.border} ${color.text} gap-1`}>
                         <Heart className="size-3" />
                         {healthScore.total}/100 · {label}
@@ -44,32 +44,32 @@ export function ChunkHealthBadge({ healthScore }: { healthScore: HealthScore }) 
                             <span className="ml-0.5 opacity-70">({issueCount})</span>
                         )}
                     </Badge>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="max-w-xs">
-                    <div className="space-y-1.5 text-xs">
-                        <div className="grid grid-cols-2 gap-x-4 gap-y-0.5">
-                            <span>Freshness:</span>
-                            <span className="font-medium">{healthScore.breakdown.freshness}/25</span>
-                            <span>Completeness:</span>
-                            <span className="font-medium">{healthScore.breakdown.completeness}/25</span>
-                            <span>Richness:</span>
-                            <span className="font-medium">{healthScore.breakdown.richness}/25</span>
-                            <span>Connectivity:</span>
-                            <span className="font-medium">{healthScore.breakdown.connectivity}/25</span>
-                        </div>
-                        {issueCount > 0 && (
-                            <div className="border-t pt-1.5">
-                                <p className="mb-1 font-medium">Issues:</p>
-                                <ul className="list-inside list-disc space-y-0.5">
-                                    {healthScore.issues.map((issue, i) => (
-                                        <li key={i}>{issue}</li>
-                                    ))}
-                                </ul>
-                            </div>
-                        )}
+                }
+            />
+            <TooltipPopup side="bottom" className="max-w-xs">
+                <div className="space-y-1.5 text-xs">
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-0.5">
+                        <span>Freshness:</span>
+                        <span className="font-medium">{healthScore.breakdown.freshness}/25</span>
+                        <span>Completeness:</span>
+                        <span className="font-medium">{healthScore.breakdown.completeness}/25</span>
+                        <span>Richness:</span>
+                        <span className="font-medium">{healthScore.breakdown.richness}/25</span>
+                        <span>Connectivity:</span>
+                        <span className="font-medium">{healthScore.breakdown.connectivity}/25</span>
                     </div>
-                </TooltipContent>
-            </Tooltip>
-        </TooltipProvider>
+                    {issueCount > 0 && (
+                        <div className="border-t pt-1.5">
+                            <p className="mb-1 font-medium">Issues:</p>
+                            <ul className="list-inside list-disc space-y-0.5">
+                                {healthScore.issues.map((issue, i) => (
+                                    <li key={i}>{issue}</li>
+                                ))}
+                            </ul>
+                        </div>
+                    )}
+                </div>
+            </TooltipPopup>
+        </Tooltip>
     );
 }

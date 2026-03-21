@@ -40,6 +40,8 @@ interface Plan {
     description?: string | null;
     status: string;
     steps?: PlanStep[];
+    totalSteps?: number;
+    doneCount?: number;
     createdAt: string;
     updatedAt: string;
 }
@@ -128,12 +130,12 @@ const listPlans = new Command("list")
 
             const lines: string[] = [];
             for (const plan of plans) {
-                const steps = plan.steps ?? [];
-                const done = steps.filter(s => s.status === "done").length;
-                const bar = progressBar(done, steps.length);
+                const total = plan.totalSteps ?? 0;
+                const done = plan.doneCount ?? 0;
+                const bar = progressBar(done, total);
                 lines.push(
                     `  ${formatBold(plan.title)} ${formatDim(`(${plan.id})`)}`,
-                    `    ${formatDim(plan.status)}  ${bar}  ${done}/${steps.length} steps`,
+                    `    ${formatDim(plan.status)}  ${bar}  ${done}/${total} steps`,
                     ""
                 );
             }
