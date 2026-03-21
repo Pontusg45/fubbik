@@ -97,6 +97,24 @@ Directed edges between chunks: `sourceId → targetId` with a `relation` type (r
 
 Built-in + user-created chunk templates (Convention, Architecture Decision, Runbook, API Endpoint). Built-in templates are seeded via SQL migration and are read-only. Users can duplicate and customize.
 
+### Plans
+
+Implementation tracking entities for AI agents and humans. Plans have ordered steps with individual status tracking.
+- `plan` table with `title`, `description`, `status` (draft/active/completed/archived), `userId`, `codebaseId`
+- `plan_step` table with `description`, `status` (pending/in_progress/done/skipped/blocked), `order`, `parentStepId` (nesting), `note`, optional `chunkId` link
+- `plan_chunk_ref` join table linking plans to chunks with `relation` (context/created/modified)
+- Web UI: `/plans` list, `/plans/new` create, `/plans/:id` detail with interactive checklist
+- CLI: `fubbik plan create/list/show/step-done/add-step/activate/complete`
+
+### Chunk Health Scores
+
+Per-chunk health scores (0-100) computed on-demand from:
+- **Freshness** (0-25): days since last update
+- **Completeness** (0-25): has rationale/alternatives/consequences
+- **Richness** (0-25): content length + AI enrichment
+- **Connectivity** (0-25): number of connections
+Exposed via chunk detail API response and shown as a badge on the detail page.
+
 ## Architecture Patterns
 
 ### Backend: Repository -> Service -> Route
@@ -134,6 +152,7 @@ Built-in + user-created chunk templates (Convention, Architecture Decision, Runb
 - `DELETE /api/chunks/:id` — delete
 - `GET /api/chunks/export` / `POST /api/chunks/import` — bulk export/import
 - `GET /api/chunks/search/semantic` — embedding-based search
+- `POST /api/chunks/check-similar` — duplicate detection (requires Ollama)
 
 ### Chunk Sub-resources
 - `GET/PUT /api/chunks/:id/applies-to` — glob pattern metadata
@@ -155,6 +174,21 @@ Built-in + user-created chunk templates (Convention, Architecture Decision, Runb
 - `POST /api/templates` — create custom
 - `PATCH /api/templates/:id` — update custom
 - `DELETE /api/templates/:id` — delete custom (built-in protected)
+
+### Plans
+- `GET /api/plans` — list plans (supports `codebaseId`, `status`)
+- `POST /api/plans` — create plan (with optional `steps` array)
+- `GET /api/plans/:id` — detail (includes steps, chunk refs, progress)
+- `PATCH /api/plans/:id` — update plan (title, description, status)
+- `DELETE /api/plans/:id` — delete plan
+- `POST /api/plans/:id/steps` — add step
+- `PATCH /api/plans/:id/steps/:stepId` — update step (status, note, description)
+- `DELETE /api/plans/:id/steps/:stepId` — delete step
+- `POST /api/plans/:id/chunks` — add chunk reference
+- `DELETE /api/plans/:id/chunks/:refId` — remove chunk reference
+
+### Context
+- `GET /api/context/for-file?path=<path>` — get chunks relevant to a file (file-refs + appliesTo matching)
 
 ### Other
 - `GET /api/graph` — graph data (nodes + edges + tags, supports `codebaseId`)
@@ -178,6 +212,10 @@ The server exposes Swagger/OpenAPI at `/docs` (e.g., `http://localhost:3000/docs
 - `/codebases` — codebase management
 - `/templates` — template management
 - `/knowledge-health` — orphan, stale, and thin chunk detection
+- `/plans` — plan list with progress bars
+- `/plans/new` — create plan with step builder
+- `/plans/:id` — plan detail with interactive step checklist
+- `/reviews/queue` — review queue for AI-generated draft chunks
 - `/login` — authentication
 
 ## CLI Commands
@@ -190,6 +228,11 @@ The server exposes Swagger/OpenAPI at `/docs` (e.g., `http://localhost:3000/docs
 - `fubbik export/import` — bulk operations
 - `fubbik enrich` — AI enrichment
 - `fubbik health/stats` — system info
+- `fubbik plan create/list/show/step-done/add-step/activate/complete` — plan management
+- `fubbik check-files [files...] [--staged]` — check files against chunk knowledge
+- `fubbik hooks install/uninstall` — git pre-commit hook management
+- `fubbik context-for <path>` — generate context document for a file
+- `fubbik completions <shell>` — generate shell completions
 - List/add/search support `--global` and `--codebase <name>` flags for scoping
 
 ## Ollama (Optional)
