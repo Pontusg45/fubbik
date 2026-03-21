@@ -8,6 +8,7 @@
     "scripts": {
         "build": "bun build --compile --minify --sourcemap --bytecode ./src/index.ts --outfile dist/fubbik",
         "start": "bun run src/index.ts",
+        "test": "vitest run",
         "check-types": "tsgo -b",
         "lint": "oxlint src"
     },
@@ -20,6 +21,7 @@
     "devDependencies": {
         "@fubbik/config": "workspace:*",
         "@types/bun": "catalog:",
-        "typescript": "catalog:"
+        "typescript": "catalog:",
+        "vitest": "catalog:"
     }
 }
