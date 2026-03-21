@@ -18,12 +18,14 @@ export function CodebaseSwitcher() {
 
     const { data: codebases } = useQuery({
         queryKey: ["codebases"],
-        queryFn: async () => unwrapEden(await api.api.codebases.get())
+        queryFn: async () => unwrapEden(await api.api.codebases.get()),
+        staleTime: 60_000 // codebases rarely change
     });
 
     const { data: workspaces } = useQuery({
         queryKey: ["workspaces"],
-        queryFn: async () => unwrapEden(await api.api.workspaces.get())
+        queryFn: async () => unwrapEden(await api.api.workspaces.get()),
+        staleTime: 60_000 // workspaces rarely change
     });
 
     // Auto-select the first codebase if none is active

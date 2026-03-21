@@ -16,11 +16,31 @@ import {
 } from "@fubbik/db/repository";
 import { Effect } from "effect";
 import { NotFoundError } from "../errors";
+import { getPlanDetail, updatePlan, updateStep } from "../plans/service";
 import { generateReviewBrief } from "./brief-generator";
 
 export function createSession(userId: string, body: { title: string; codebaseId?: string; planId?: string }) {
     return Effect.gen(function* () {
         const id = crypto.randomUUID();
+
+        // If planId provided, validate plan exists and auto-activate if draft
+        let planSteps: Array<{ id: string; description: string; status: string; order: number; chunkId: string | null }> | undefined;
+        if (body.planId) {
+            const planDetail = yield* getPlanDetail(body.planId, userId);
+            planSteps = planDetail.steps.map(s => ({
+                id: s.id,
+                description: s.description,
+                status: s.status,
+                order: s.order,
+                chunkId: s.chunkId
+            }));
+
+            // Auto-activate draft plans
+            if (planDetail.status === "draft") {
+                yield* updatePlan(body.planId, userId, { status: "active" });
+            }
+        }
+
         const session = yield* createSessionRepo({
             id,
             title: body.title,
@@ -63,7 +83,16 @@ export function createSession(userId: string, body: { title: string; codebaseId?
                     title: c.title,
                     content: c.content,
                     rationale: c.rationale
-                }))
+                })),
+                ...(planSteps ? {
+                    planSteps: planSteps.map(s => ({
+                        id: s.id,
+                        description: s.description,
+                        status: s.status,
+                        order: s.order,
+                        chunkId: s.chunkId
+                    }))
+                } : {})
             }
         };
     });
@@ -130,7 +159,19 @@ export function addChunkRef(sessionId: string, userId: string, chunkId: string, 
         if (!session) {
             return yield* Effect.fail(new NotFoundError({ resource: "session" }));
         }
-        return yield* addChunkRefRepo(sessionId, chunkId, reason);
+        const result = yield* addChunkRefRepo(sessionId, chunkId, reason);
+
+        // Auto-complete plan steps that reference this chunk
+        if (session.planId) {
+            const planDetail = yield* getPlanDetail(session.planId, userId);
+            for (const step of planDetail.steps) {
+                if (step.chunkId === chunkId && step.status !== "done") {
+                    yield* updateStep(session.planId, step.id, userId, { status: "done" });
+                }
+            }
+        }
+
+        return result;
     });
 }
 
@@ -239,6 +280,15 @@ export function completeSession(sessionId: string, userId: string, prUrl?: strin
             prUrl,
             reviewBrief
         });
+
+        // Auto-complete plan if all steps are done
+        if (session.planId) {
+            const planDetail = yield* getPlanDetail(session.planId, userId);
+            const allDone = planDetail.steps.length > 0 && planDetail.steps.every(s => s.status === "done" || s.status === "skipped");
+            if (allDone) {
+                yield* updatePlan(session.planId, userId, { status: "completed" });
+            }
+        }
 
         return updated;
     });

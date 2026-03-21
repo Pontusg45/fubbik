@@ -149,6 +149,22 @@ export const planRoutes = new Elysia()
             })
         }
     )
+    .post(
+        "/plans/:id/steps/reorder",
+        ctx =>
+            Effect.runPromise(
+                requireSession(ctx).pipe(
+                    Effect.flatMap(session =>
+                        planService.reorderSteps(ctx.params.id, session.user.id, ctx.body.stepIds)
+                    )
+                )
+            ),
+        {
+            body: t.Object({
+                stepIds: t.Array(t.String())
+            })
+        }
+    )
     .delete("/plans/:id/steps/:stepId", ctx =>
         Effect.runPromise(
             requireSession(ctx).pipe(

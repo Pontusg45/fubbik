@@ -25,8 +25,8 @@ export const implementationSession = pgTable(
     table => [
         index("impl_session_userId_idx").on(table.userId),
         index("impl_session_codebaseId_idx").on(table.codebaseId),
-        index("impl_session_status_idx").on(table.status),
-        index("impl_session_planId_idx").on(table.planId)
+        index("impl_session_planId_idx").on(table.planId),
+        index("impl_session_status_idx").on(table.status)
     ]
 );
 

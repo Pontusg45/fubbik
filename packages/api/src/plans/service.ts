@@ -285,6 +285,20 @@ export function deleteStep(planId: string, stepId: string, userId: string) {
     });
 }
 
+// ── Step Reorder ──────────────────────────────────────────────────
+
+export function reorderSteps(planId: string, userId: string, stepIds: string[]) {
+    return Effect.gen(function* () {
+        const found = yield* getPlanById(planId, userId);
+        if (!found) return yield* Effect.fail(new NotFoundError({ resource: "Plan" }));
+
+        for (let i = 0; i < stepIds.length; i++) {
+            yield* updateStepRepo(stepIds[i]!, planId, { order: i });
+        }
+        return yield* getStepsForPlan(planId);
+    });
+}
+
 // ── Chunk Refs ─────────────────────────────────────────────────────
 
 export function addPlanChunkRef(

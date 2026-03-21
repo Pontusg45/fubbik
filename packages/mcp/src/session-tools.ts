@@ -6,11 +6,11 @@ export function registerSessionTools(server: McpServer): void {
     // 1. begin_implementation
     server.tool(
         "begin_implementation",
-        "Start an implementation session. Returns context bundle with conventions, requirements, and architecture decisions. Link to a plan to auto-associate created chunks.",
+        "Start an implementation session. Returns context bundle with conventions, requirements, and architecture decisions.",
         {
             title: z.string().describe("Brief description of what you're implementing"),
             codebaseId: z.string().optional().describe("Codebase ID to scope context"),
-            planId: z.string().optional().describe("Plan ID to link this session to (enables auto-linking created chunks to the plan)")
+            planId: z.string().optional().describe("Plan ID to link this session to a plan (auto-activates draft plans, includes plan steps in context)")
         },
         async ({ title, codebaseId, planId }) => {
             const body: Record<string, unknown> = { title };
@@ -26,6 +26,7 @@ export function registerSessionTools(server: McpServer): void {
                     conventions: Array<{ id: string; title: string; content: string | null }>;
                     requirements: Array<{ id: string; title: string; steps: unknown; status: string }>;
                     architectureDecisions: Array<{ id: string; title: string; content: string | null; rationale: string | null }>;
+                    planSteps?: Array<{ id: string; description: string; status: string; order: number; chunkId: string | null }>;
                 };
             };
 
@@ -59,6 +60,15 @@ export function registerSessionTools(server: McpServer): void {
                     if (d.rationale) sections.push(`**Rationale:** ${truncate(d.rationale, 200)}`);
                     sections.push("");
                 }
+            }
+
+            if (data.context.planSteps && data.context.planSteps.length > 0) {
+                sections.push(`## Plan Steps (${data.context.planSteps.length})\n`);
+                for (const s of data.context.planSteps) {
+                    const statusIcon = s.status === "done" ? "[x]" : s.status === "skipped" ? "[-]" : "[ ]";
+                    sections.push(`${statusIcon} ${s.order + 1}. ${s.description} (${s.id})${s.chunkId ? ` → chunk:${s.chunkId}` : ""}`);
+                }
+                sections.push("");
             }
 
             return {
@@ -192,6 +202,74 @@ export function registerSessionTools(server: McpServer): void {
                     type: "text" as const,
                     text: `Assumption resolved and chunk created:\n- Chunk: ${chunk.title} (${chunk.id})\n- Assumption marked as resolved`
                 }]
+            };
+        }
+    );
+
+    // 7. mark_plan_step
+    server.tool(
+        "mark_plan_step",
+        "Mark a plan step as done",
+        {
+            sessionId: z.string().describe("Session ID from begin_implementation"),
+            stepId: z.string().describe("Plan step ID to mark as done"),
+            note: z.string().optional().describe("Optional note about the step completion")
+        },
+        async ({ sessionId, stepId, note }) => {
+            const session = (await apiFetch(`/sessions/${sessionId}`)) as { session: { planId: string | null } };
+            if (!session.session.planId) {
+                return {
+                    content: [{ type: "text" as const, text: "Session not linked to a plan" }]
+                };
+            }
+            const body: Record<string, unknown> = { status: "done" };
+            if (note) body.note = note;
+            await apiFetch(`/plans/${session.session.planId}/steps/${stepId}`, {
+                method: "PATCH",
+                body: JSON.stringify(body)
+            });
+            return {
+                content: [{ type: "text" as const, text: `Step ${stepId} marked as done` }]
+            };
+        }
+    );
+
+    // 8. get_plan_progress
+    server.tool(
+        "get_plan_progress",
+        "Get progress of the plan linked to a session",
+        {
+            sessionId: z.string().describe("Session ID from begin_implementation")
+        },
+        async ({ sessionId }) => {
+            const session = (await apiFetch(`/sessions/${sessionId}`)) as { session: { planId: string | null } };
+            if (!session.session.planId) {
+                return {
+                    content: [{ type: "text" as const, text: "Session not linked to a plan" }]
+                };
+            }
+            const plan = (await apiFetch(`/plans/${session.session.planId}`)) as {
+                title: string;
+                status: string;
+                steps: Array<{ id: string; description: string; status: string; order: number }>;
+            };
+
+            const total = plan.steps.length;
+            const done = plan.steps.filter(s => s.status === "done").length;
+            const skipped = plan.steps.filter(s => s.status === "skipped").length;
+            const pct = total > 0 ? Math.round(((done + skipped) / total) * 100) : 0;
+
+            const sections: string[] = [];
+            sections.push(`# Plan Progress: ${plan.title} [${plan.status}]\n`);
+            sections.push(`**Progress:** ${done}/${total} done (${pct}%)${skipped > 0 ? `, ${skipped} skipped` : ""}\n`);
+
+            for (const s of plan.steps.sort((a, b) => a.order - b.order)) {
+                const icon = s.status === "done" ? "[x]" : s.status === "skipped" ? "[-]" : s.status === "in_progress" ? "[~]" : "[ ]";
+                sections.push(`${icon} ${s.order + 1}. ${s.description} (${s.id})`);
+            }
+
+            return {
+                content: [{ type: "text" as const, text: sections.join("\n") }]
             };
         }
     );

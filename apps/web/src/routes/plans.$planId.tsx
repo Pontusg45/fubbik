@@ -105,6 +105,29 @@ function PlanDetail() {
         }
     });
 
+    const reorderMutation = useMutation({
+        mutationFn: async (stepIds: string[]) => {
+            return unwrapEden(
+                await api.api.plans({ id: planId }).steps.reorder.post({ stepIds })
+            );
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["plan", planId] });
+        },
+        onError: () => {
+            toast.error("Failed to reorder steps");
+        }
+    });
+
+    const moveStep = (index: number, direction: "up" | "down") => {
+        if (!plan) return;
+        const steps = [...plan.steps];
+        const targetIndex = direction === "up" ? index - 1 : index + 1;
+        if (targetIndex < 0 || targetIndex >= steps.length) return;
+        [steps[index], steps[targetIndex]] = [steps[targetIndex]!, steps[index]!];
+        reorderMutation.mutate(steps.map(s => s.id));
+    };
+
     const deleteMutation = useMutation({
         mutationFn: async () => {
             return unwrapEden(await api.api.plans({ id: planId }).delete());
@@ -184,8 +207,16 @@ function PlanDetail() {
                         <p className="text-muted-foreground text-sm py-2">No steps yet.</p>
                     ) : (
                         <div className="border rounded-md">
-                            {plan.steps.map(step => (
-                                <PlanStepItem key={step.id} step={step} planId={planId} />
+                            {plan.steps.map((step, index) => (
+                                <PlanStepItem
+                                    key={step.id}
+                                    step={step}
+                                    planId={planId}
+                                    isFirst={index === 0}
+                                    isLast={index === plan.steps.length - 1}
+                                    onMoveUp={() => moveStep(index, "up")}
+                                    onMoveDown={() => moveStep(index, "down")}
+                                />
                             ))}
                         </div>
                     )}
