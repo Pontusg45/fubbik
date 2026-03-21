@@ -38,6 +38,7 @@ export const chunk = pgTable(
         alternatives: jsonb("alternatives").$type<string[]>(),
         consequences: text("consequences"),
         embedding: vector("embedding"),
+        embeddingUpdatedAt: timestamp("embedding_updated_at"),
         origin: text("origin").notNull().default("human"),
         reviewStatus: text("review_status").notNull().default("approved"),
         reviewedBy: text("reviewed_by").references(() => user.id, { onDelete: "set null" }),

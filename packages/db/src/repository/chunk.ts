@@ -362,6 +362,7 @@ export interface EnrichChunkParams {
     notAbout?: string[];
     scope?: Record<string, string>;
     embedding?: number[];
+    embeddingUpdatedAt?: Date;
 }
 
 export function updateChunkEnrichment(chunkId: string, params: EnrichChunkParams) {
@@ -374,7 +375,7 @@ export function updateChunkEnrichment(chunkId: string, params: EnrichChunkParams
                     ...(params.aliases !== undefined && { aliases: params.aliases }),
                     ...(params.notAbout !== undefined && { notAbout: params.notAbout }),
                     ...(params.scope !== undefined && { scope: params.scope }),
-                    ...(params.embedding !== undefined && { embedding: params.embedding })
+                    ...(params.embedding !== undefined && { embedding: params.embedding, embeddingUpdatedAt: new Date() })
                 })
                 .where(eq(chunk.id, chunkId))
                 .returning();

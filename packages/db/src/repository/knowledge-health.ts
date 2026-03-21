@@ -1,4 +1,4 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, isNotNull, sql } from "drizzle-orm";
 import { Effect } from "effect";
 
 import { DatabaseError } from "../errors";
@@ -121,6 +121,39 @@ export function getThinChunks(userId: string, codebaseId?: string) {
                     title: chunk.title,
                     type: chunk.type,
                     contentLength: sql<number>`LENGTH(${chunk.content})`
+                })
+                .from(chunk)
+                .where(and(...conditions))
+                .limit(50);
+
+            const countResult = await db
+                .select({ count: sql<number>`count(*)` })
+                .from(chunk)
+                .where(and(...conditions));
+
+            return { chunks, count: Number(countResult[0]?.count ?? 0) };
+        },
+        catch: cause => new DatabaseError({ cause })
+    });
+}
+
+export function getStaleEmbeddings(userId: string, codebaseId?: string) {
+    return Effect.tryPromise({
+        try: async () => {
+            const conditions = [
+                eq(chunk.userId, userId),
+                isNotNull(chunk.embedding),
+                sql`${chunk.updatedAt} > ${chunk.embeddingUpdatedAt}`,
+                ...codebaseConditions(codebaseId)
+            ];
+
+            const chunks = await db
+                .select({
+                    id: chunk.id,
+                    title: chunk.title,
+                    type: chunk.type,
+                    updatedAt: chunk.updatedAt,
+                    embeddingUpdatedAt: chunk.embeddingUpdatedAt
                 })
                 .from(chunk)
                 .where(and(...conditions))
