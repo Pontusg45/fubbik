@@ -5,6 +5,7 @@ import { DatabaseError } from "../errors";
 import { db } from "../index";
 import { chunk, chunkConnection } from "../schema/chunk";
 import { chunkCodebase } from "../schema/codebase";
+import { chunkFileRef } from "../schema/file-ref";
 
 function codebaseConditions(codebaseId?: string) {
     if (!codebaseId) return [];
@@ -131,6 +132,37 @@ export function getThinChunks(userId: string, codebaseId?: string) {
                 .where(and(...conditions));
 
             return { chunks, count: Number(countResult[0]?.count ?? 0) };
+        },
+        catch: cause => new DatabaseError({ cause })
+    });
+}
+
+export function getFileRefsForHealth(userId: string, codebaseId?: string) {
+    return Effect.tryPromise({
+        try: async () => {
+            const conditions = [eq(chunk.userId, userId), ...codebaseConditions(codebaseId)];
+
+            const refs = await db
+                .select({
+                    refId: chunkFileRef.id,
+                    chunkId: chunkFileRef.chunkId,
+                    chunkTitle: chunk.title,
+                    chunkType: chunk.type,
+                    path: chunkFileRef.path,
+                    relation: chunkFileRef.relation
+                })
+                .from(chunkFileRef)
+                .innerJoin(chunk, eq(chunkFileRef.chunkId, chunk.id))
+                .where(and(...conditions))
+                .limit(100);
+
+            const countResult = await db
+                .select({ count: sql<number>`count(*)` })
+                .from(chunkFileRef)
+                .innerJoin(chunk, eq(chunkFileRef.chunkId, chunk.id))
+                .where(and(...conditions));
+
+            return { refs, count: Number(countResult[0]?.count ?? 0) };
         },
         catch: cause => new DatabaseError({ cause })
     });
