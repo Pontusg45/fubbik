@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { SkeletonList } from "@/components/ui/skeleton-list";
+import { PageContainer, PageEmpty, PageHeader, PageLoading } from "@/components/ui/page";
 import { useActiveCodebase } from "@/features/codebases/use-active-codebase";
 import { getUser } from "@/functions/get-user";
 import { api } from "@/utils/api";
@@ -145,22 +145,20 @@ function ReviewQueuePage() {
     const isBusy = approveMutation.isPending || rejectMutation.isPending;
 
     return (
-        <div className="container mx-auto max-w-3xl px-4 py-8">
-            <div className="mb-6">
-                <h1 className="text-2xl font-bold tracking-tight">Review Queue</h1>
-                <p className="text-muted-foreground mt-1 text-sm">
-                    AI-generated chunks awaiting review. Approve, edit, or reject each draft.
-                </p>
-            </div>
+        <PageContainer>
+            <PageHeader
+                title="Review Queue"
+                description="AI-generated chunks awaiting review. Approve, edit, or reject each draft."
+            />
 
             {isLoading ? (
-                <SkeletonList count={5} />
+                <PageLoading count={5} />
             ) : chunks.length === 0 ? (
-                <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-16">
-                    <Inbox className="text-muted-foreground mb-3 size-10" />
-                    <p className="text-lg font-medium">All caught up!</p>
-                    <p className="text-muted-foreground mt-1 text-sm">No AI-generated drafts to review.</p>
-                </div>
+                <PageEmpty
+                    icon={Inbox}
+                    title="All caught up!"
+                    description="No AI-generated drafts to review."
+                />
             ) : (
                 <>
                     {/* Bulk action bar */}
@@ -272,6 +270,6 @@ function ReviewQueuePage() {
                     </div>
                 </>
             )}
-        </div>
+        </PageContainer>
     );
 }

@@ -5,11 +5,10 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { SkeletonList } from "@/components/ui/skeleton-list";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardPanel } from "@/components/ui/card";
-import { Empty, EmptyAction, EmptyDescription, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
+import { PageContainer, PageEmpty, PageHeader, PageLoading } from "@/components/ui/page";
 import { getUser } from "@/functions/get-user";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
@@ -164,22 +163,20 @@ function TemplatesPage() {
     }
 
     return (
-        <div className="container mx-auto max-w-3xl px-4 py-8">
-            <div className="mb-6 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                    <FileText className="size-5" />
-                    <h1 className="text-2xl font-bold tracking-tight">Templates</h1>
-                    <Badge variant="secondary" className="ml-2">
-                        {templates.length}
-                    </Badge>
-                </div>
-                {!showForm && (
-                    <Button size="sm" onClick={() => setShowForm(true)}>
-                        <Plus className="mr-1 size-4" />
-                        New Template
-                    </Button>
-                )}
-            </div>
+        <PageContainer>
+            <PageHeader
+                icon={FileText}
+                title="Templates"
+                count={templates.length}
+                actions={
+                    !showForm ? (
+                        <Button size="sm" onClick={() => setShowForm(true)}>
+                            <Plus className="mr-1 size-4" />
+                            New Template
+                        </Button>
+                    ) : undefined
+                }
+            />
 
             {showForm && (
                 <Card className="mb-6">
@@ -248,16 +245,14 @@ function TemplatesPage() {
             <Card>
                 <CardPanel className="p-6">
                     {templatesQuery.isLoading ? (
-                        <SkeletonList count={4} />
+                        <PageLoading count={4} />
                     ) : templates.length === 0 ? (
-                        <Empty>
-                            <EmptyMedia variant="icon"><LayoutTemplate className="h-10 w-10" /></EmptyMedia>
-                            <EmptyTitle>No custom templates</EmptyTitle>
-                            <EmptyDescription>Templates pre-fill chunk forms for common patterns.</EmptyDescription>
-                            <EmptyAction>
-                                <Button onClick={() => setShowForm(true)}>Create Template</Button>
-                            </EmptyAction>
-                        </Empty>
+                        <PageEmpty
+                            icon={LayoutTemplate}
+                            title="No custom templates"
+                            description="Templates pre-fill chunk forms for common patterns."
+                            action={<Button onClick={() => setShowForm(true)}>Create Template</Button>}
+                        />
                     ) : (
                         <div className="divide-y">
                             {templates.map(t => (
@@ -348,7 +343,6 @@ function TemplatesPage() {
                 loading={deleteMutation.isPending}
             />
 
-            {/* Preview dialog */}
             {previewTemplate && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center">
                     <div className="bg-black/50 absolute inset-0 backdrop-blur-sm" onClick={() => setPreviewTemplate(null)} />
@@ -398,6 +392,6 @@ function TemplatesPage() {
                     </div>
                 </div>
             )}
-        </div>
+        </PageContainer>
     );
 }

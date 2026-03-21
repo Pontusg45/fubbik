@@ -5,10 +5,8 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { SkeletonList } from "@/components/ui/skeleton-list";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Empty, EmptyAction, EmptyDescription, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
+import { PageContainer, PageEmpty, PageHeader, PageLoading } from "@/components/ui/page";
 import { getUser } from "@/functions/get-user";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
@@ -162,15 +160,12 @@ function TagsPage() {
     });
 
     return (
-        <div className="container mx-auto max-w-3xl px-4 py-8">
-            {/* Header */}
-            <div className="mb-6 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                    <TagsIcon className="size-5" />
-                    <h1 className="text-2xl font-bold tracking-tight">Tags</h1>
-                    <Badge variant="secondary" className="ml-1">{tags.length}</Badge>
-                </div>
-            </div>
+        <PageContainer>
+            <PageHeader
+                icon={TagsIcon}
+                title="Tags"
+                count={tags.length}
+            />
 
             <div className="grid gap-6 lg:grid-cols-[1fr_220px]">
                 {/* Main content */}
@@ -194,7 +189,7 @@ function TagsPage() {
 
                     {/* Tag groups */}
                     {tagsQuery.isLoading ? (
-                        <SkeletonList count={6} />
+                        <PageLoading count={6} />
                     ) : filteredTags.length === 0 ? (
                         search ? (
                             <div className="flex flex-col items-center gap-2 py-12">
@@ -202,14 +197,12 @@ function TagsPage() {
                                 <p className="text-muted-foreground text-sm">No tags match your search</p>
                             </div>
                         ) : (
-                            <Empty>
-                                <EmptyMedia variant="icon"><Tag className="h-10 w-10" /></EmptyMedia>
-                                <EmptyTitle>No tags yet</EmptyTitle>
-                                <EmptyDescription>Tags help categorize and filter your chunks.</EmptyDescription>
-                                <EmptyAction>
-                                    <Button render={<Link to="/chunks/new" />}>Create Tag</Button>
-                                </EmptyAction>
-                            </Empty>
+                            <PageEmpty
+                                icon={Tag}
+                                title="No tags yet"
+                                description="Tags help categorize and filter your chunks."
+                                action={<Button render={<Link to="/chunks/new" />}>Create Tag</Button>}
+                            />
                         )
                     ) : (
                         <div className="space-y-6">
@@ -308,7 +301,7 @@ function TagsPage() {
                     )}
 
                     {tagTypesQuery.isLoading ? (
-                        <SkeletonList count={3} />
+                        <PageLoading count={3} />
                     ) : tagTypes.length === 0 ? (
                         <p className="text-muted-foreground text-xs">No tag types yet.</p>
                     ) : (
@@ -379,6 +372,6 @@ function TagsPage() {
                 }}
                 loading={deleteTagTypeMutation.isPending}
             />
-        </div>
+        </PageContainer>
     );
 }

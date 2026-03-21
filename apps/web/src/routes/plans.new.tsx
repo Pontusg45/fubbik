@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardPanel } from "@/components/ui/card";
+import { PageContainer } from "@/components/ui/page";
 import { Separator } from "@/components/ui/separator";
 import { getUser } from "@/functions/get-user";
 import { api } from "@/utils/api";
@@ -83,7 +84,7 @@ function NewPlan() {
     }
 
     return (
-        <div className="container mx-auto max-w-3xl px-4 py-8">
+        <PageContainer>
             <div className="mb-6">
                 <Button variant="ghost" size="sm" render={<Link to="/plans" />}>
                     <ArrowLeft className="size-4" />
@@ -184,6 +185,6 @@ function NewPlan() {
                     </form>
                 </CardPanel>
             </Card>
-        </div>
+        </PageContainer>
     );
 }

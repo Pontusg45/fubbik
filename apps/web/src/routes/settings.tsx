@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Card, CardPanel } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PageContainer, PageHeader } from "@/components/ui/page";
 import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTab } from "@/components/ui/tabs";
@@ -426,11 +427,8 @@ function InstanceSettingsTab() {
 
 function SettingsPage() {
     return (
-        <div className="container mx-auto max-w-3xl px-4 py-8">
-            <div className="mb-6 flex items-center gap-2">
-                <SettingsIcon className="size-5" />
-                <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
-            </div>
+        <PageContainer>
+            <PageHeader icon={SettingsIcon} title="Settings" />
 
             <Tabs defaultValue={0}>
                 <TabsList>
@@ -451,6 +449,6 @@ function SettingsPage() {
                     <InstanceSettingsTab />
                 </TabsContent>
             </Tabs>
-        </div>
+        </PageContainer>
     );
 }
