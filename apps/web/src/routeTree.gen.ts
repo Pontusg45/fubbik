@@ -22,6 +22,7 @@ import { Route as GraphRouteImport } from './routes/graph'
 import { Route as DocsRouteImport } from './routes/docs'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as CoverageRouteImport } from './routes/coverage'
+import { Route as ContextRouteImport } from './routes/context'
 import { Route as CodebasesRouteImport } from './routes/codebases'
 import { Route as ActivityRouteImport } from './routes/activity'
 import { Route as IndexRouteImport } from './routes/index'
@@ -101,6 +102,11 @@ const DashboardRoute = DashboardRouteImport.update({
 const CoverageRoute = CoverageRouteImport.update({
   id: '/coverage',
   path: '/coverage',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ContextRoute = ContextRouteImport.update({
+  id: '/context',
+  path: '/context',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CodebasesRoute = CodebasesRouteImport.update({
@@ -184,6 +190,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/activity': typeof ActivityRoute
   '/codebases': typeof CodebasesRoute
+  '/context': typeof ContextRoute
   '/coverage': typeof CoverageRoute
   '/dashboard': typeof DashboardRoute
   '/docs': typeof DocsRoute
@@ -214,6 +221,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/activity': typeof ActivityRoute
   '/codebases': typeof CodebasesRoute
+  '/context': typeof ContextRoute
   '/coverage': typeof CoverageRoute
   '/dashboard': typeof DashboardRoute
   '/docs': typeof DocsRoute
@@ -245,6 +253,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/activity': typeof ActivityRoute
   '/codebases': typeof CodebasesRoute
+  '/context': typeof ContextRoute
   '/coverage': typeof CoverageRoute
   '/dashboard': typeof DashboardRoute
   '/docs': typeof DocsRoute
@@ -277,6 +286,7 @@ export interface FileRouteTypes {
     | '/'
     | '/activity'
     | '/codebases'
+    | '/context'
     | '/coverage'
     | '/dashboard'
     | '/docs'
@@ -307,6 +317,7 @@ export interface FileRouteTypes {
     | '/'
     | '/activity'
     | '/codebases'
+    | '/context'
     | '/coverage'
     | '/dashboard'
     | '/docs'
@@ -337,6 +348,7 @@ export interface FileRouteTypes {
     | '/'
     | '/activity'
     | '/codebases'
+    | '/context'
     | '/coverage'
     | '/dashboard'
     | '/docs'
@@ -368,6 +380,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ActivityRoute: typeof ActivityRoute
   CodebasesRoute: typeof CodebasesRoute
+  ContextRoute: typeof ContextRoute
   CoverageRoute: typeof CoverageRoute
   DashboardRoute: typeof DashboardRoute
   DocsRoute: typeof DocsRoute
@@ -488,6 +501,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CoverageRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/context': {
+      id: '/context'
+      path: '/context'
+      fullPath: '/context'
+      preLoaderRoute: typeof ContextRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/codebases': {
       id: '/codebases'
       path: '/codebases'
@@ -600,6 +620,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ActivityRoute: ActivityRoute,
   CodebasesRoute: CodebasesRoute,
+  ContextRoute: ContextRoute,
   CoverageRoute: CoverageRoute,
   DashboardRoute: DashboardRoute,
   DocsRoute: DocsRoute,
