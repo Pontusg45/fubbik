@@ -5,6 +5,7 @@ import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogHeader, DialogPopup, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { api } from "@/utils/api";
@@ -29,13 +30,18 @@ export function LinkChunkDialog({ chunkId }: { chunkId: string }) {
     const [search, setSearch] = useState("");
     const [relation, setRelation] = useState("related_to");
     const [showRelationPicker, setShowRelationPicker] = useState(false);
+    const [searchAllCodebases, setSearchAllCodebases] = useState(false);
     const queryClient = useQueryClient();
 
     const { data: searchResults } = useQuery({
-        queryKey: ["chunks", "search", search],
+        queryKey: ["chunks", "search", search, searchAllCodebases],
         queryFn: async () => {
             if (!search.trim()) return { chunks: [] };
-            const { data, error } = await api.api.chunks.get({ query: { search, limit: "10" } });
+            const query: Record<string, string> = { search, limit: "10" };
+            if (searchAllCodebases) {
+                query.allCodebases = "true";
+            }
+            const { data, error } = await api.api.chunks.get({ query: query as any });
             if (error) throw new Error("Failed to search chunks");
             return data;
         },
@@ -76,6 +82,13 @@ export function LinkChunkDialog({ chunkId }: { chunkId: string }) {
                     <DialogTitle>Link Chunk</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4 px-6 pb-6">
+                    <label className="flex items-center gap-2 text-xs">
+                        <Checkbox
+                            checked={searchAllCodebases}
+                            onCheckedChange={setSearchAllCodebases as (checked: boolean) => void}
+                        />
+                        <span className="text-muted-foreground font-medium">Search all codebases</span>
+                    </label>
                     <div className="space-y-2">
                         <label className="text-muted-foreground text-xs font-medium">Search chunks</label>
                         <div className="relative">
@@ -128,20 +141,30 @@ export function LinkChunkDialog({ chunkId }: { chunkId: string }) {
                     )}
                     {filteredResults.length > 0 && (
                         <div className="max-h-60 space-y-1 overflow-y-auto rounded-md border p-1">
-                            {filteredResults.map(result => (
-                                <button
-                                    key={result.id}
-                                    type="button"
-                                    onClick={() => createMutation.mutate(result.id)}
-                                    disabled={createMutation.isPending}
-                                    className="hover:bg-muted flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm transition-colors"
-                                >
-                                    <span className="font-medium">{result.title}</span>
-                                    <Badge variant="secondary" size="sm" className="text-[10px]">
-                                        {result.type}
-                                    </Badge>
-                                </button>
-                            ))}
+                            {filteredResults.map(result => {
+                                const codebaseNames = (result as any).codebaseNames as string[] | undefined;
+                                return (
+                                    <button
+                                        key={result.id}
+                                        type="button"
+                                        onClick={() => createMutation.mutate(result.id)}
+                                        disabled={createMutation.isPending}
+                                        className="hover:bg-muted flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm transition-colors"
+                                    >
+                                        <span className="font-medium">{result.title}</span>
+                                        <div className="flex items-center gap-1.5">
+                                            {searchAllCodebases && codebaseNames && codebaseNames.length > 0 && (
+                                                <Badge variant="outline" size="sm" className="text-[10px]">
+                                                    {codebaseNames[0]}
+                                                </Badge>
+                                            )}
+                                            <Badge variant="secondary" size="sm" className="text-[10px]">
+                                                {result.type}
+                                            </Badge>
+                                        </div>
+                                    </button>
+                                );
+                            })}
                         </div>
                     )}
                     {search.trim().length > 0 && filteredResults.length === 0 && (

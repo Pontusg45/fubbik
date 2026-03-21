@@ -10,11 +10,13 @@ import {
     FileText,
     Filter,
     FolderPlus,
+    Globe,
     Link2,
     List,
     Pin,
     Plus,
     Search,
+    Server,
     SlidersHorizontal,
     Tags,
     Trash2,
@@ -61,6 +63,7 @@ export const Route = createFileRoute("/chunks/")({
         view?: string;
         origin?: string;
         reviewStatus?: string;
+        allCodebases?: string;
     } => ({
         type: (search.type as string) || undefined,
         q: (search.q as string) || undefined,
@@ -74,7 +77,8 @@ export const Route = createFileRoute("/chunks/")({
         collection: (search.collection as string) || undefined,
         view: (search.view as string) || undefined,
         origin: (search.origin as string) || undefined,
-        reviewStatus: (search.reviewStatus as string) || undefined
+        reviewStatus: (search.reviewStatus as string) || undefined,
+        allCodebases: (search.allCodebases as string) || undefined
     }),
     beforeLoad: async () => {
         let session = null;
@@ -90,7 +94,7 @@ export const Route = createFileRoute("/chunks/")({
 function ChunksList() {
     const navigate = useNavigate({ from: "/chunks/" });
     const navTo = useNavigate();
-    const { type, q, sort, tags, size, after, enrichment, minConnections, group, collection, view, origin, reviewStatus } = Route.useSearch();
+    const { type, q, sort, tags, size, after, enrichment, minConnections, group, collection, view, origin, reviewStatus, allCodebases } = Route.useSearch();
     const queryClient = useQueryClient();
     const [searchInput, setSearchInput] = useState(q ?? "");
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -100,6 +104,8 @@ function ChunksList() {
 
     const activeFilterCount = [tags, size, after, enrichment, minConnections, origin, reviewStatus].filter(Boolean).length;
     const hasActiveFilters = !!(type || q || sort || tags || size || after || enrichment || minConnections || origin || reviewStatus);
+
+    const isFederated = allCodebases === "true";
 
     const chunksQuery = useInfiniteQuery({
         queryKey: ["chunks-list", type, q, sort, tags, after, enrichment, minConnections, codebaseId, origin, reviewStatus],
@@ -127,6 +133,7 @@ function ChunksList() {
                 return null;
             }
         },
+        enabled: !isFederated,
         initialPageParam: 1,
         getNextPageParam: (lastPage, allPages) => {
             if (!lastPage) return undefined;
@@ -134,6 +141,36 @@ function ChunksList() {
             return loaded < lastPage.total ? allPages.length + 1 : undefined;
         }
     });
+
+    const federatedQuery = useInfiniteQuery({
+        queryKey: ["chunks-federated", type, q, sort, tags, origin, reviewStatus],
+        queryFn: async ({ pageParam = 1 }) => {
+            try {
+                const res = await api.api.chunks.search.federated.get({
+                    query: {
+                        type,
+                        search: q,
+                        sort: sort as "newest" | "oldest" | "alpha" | "updated" | undefined,
+                        tags,
+                        limit: String(limit),
+                        offset: String((pageParam - 1) * limit),
+                    }
+                });
+                return unwrapEden(res);
+            } catch {
+                return null;
+            }
+        },
+        enabled: isFederated,
+        initialPageParam: 1,
+        getNextPageParam: (lastPage, allPages) => {
+            if (!lastPage) return undefined;
+            const loaded = allPages.reduce((sum, p) => sum + (p?.chunks?.length ?? 0), 0);
+            return loaded < lastPage.total ? allPages.length + 1 : undefined;
+        }
+    });
+
+    const activeQuery = isFederated ? federatedQuery : chunksQuery;
 
     const tagsQuery = useQuery({
         queryKey: ["tags"],
@@ -154,7 +191,7 @@ function ChunksList() {
         updateSearch({ tags: next.length > 0 ? next.join(",") : undefined });
     }
 
-    const allChunks = chunksQuery.data?.pages.flatMap(p => p?.chunks ?? []) ?? [];
+    const allChunks = activeQuery.data?.pages.flatMap(p => p?.chunks ?? []) ?? [];
     const chunks = allChunks;
     const { pinnedIds, togglePin, isPinned } = usePinnedChunks();
     const { collections, createCollection, deleteCollection: deleteCol } = useCollections();
@@ -171,7 +208,7 @@ function ChunksList() {
             return aPinned - bPinned;
         });
         // eslint-disable-next-line react-hooks/exhaustive-deps -- allChunks is stable per fetch
-    }, [chunksQuery.data, size, pinnedIds]);
+    }, [activeQuery.data, size, pinnedIds]);
 
     const collectionFilteredChunks = processedChunks;
 
@@ -222,7 +259,7 @@ function ChunksList() {
 
     useEffect(() => {
         setSelectedIndex(-1);
-    }, [chunksQuery.dataUpdatedAt]);
+    }, [activeQuery.dataUpdatedAt]);
 
     useEffect(() => {
         function handleKeyDown(e: KeyboardEvent) {
@@ -258,14 +295,14 @@ function ChunksList() {
         return () => window.removeEventListener("keydown", handleKeyDown);
     }, [selectedIndex, navTo]);
 
-    const total = chunksQuery.data?.pages[0]?.total ?? 0;
+    const total = activeQuery.data?.pages[0]?.total ?? 0;
 
     const fetchNextPageCb = useCallback(() => {
-        chunksQuery.fetchNextPage();
-    }, [chunksQuery]);
+        activeQuery.fetchNextPage();
+    }, [activeQuery]);
     const loadMoreRef = useIntersectionObserver(
         fetchNextPageCb,
-        !!chunksQuery.hasNextPage && !chunksQuery.isFetchingNextPage
+        !!activeQuery.hasNextPage && !activeQuery.isFetchingNextPage
     );
 
     const types = ["note", "document", "reference", "schema", "checklist"];
@@ -285,6 +322,7 @@ function ChunksList() {
             view: string;
             origin: string;
             reviewStatus: string;
+            allCodebases: string;
         }>
     ) {
         navigate({
@@ -301,7 +339,8 @@ function ChunksList() {
                 collection: params.collection !== undefined ? params.collection : collection,
                 view: params.view !== undefined ? params.view : view,
                 origin: params.origin !== undefined ? params.origin : origin,
-                reviewStatus: params.reviewStatus !== undefined ? params.reviewStatus : reviewStatus
+                reviewStatus: params.reviewStatus !== undefined ? params.reviewStatus : reviewStatus,
+                allCodebases: params.allCodebases !== undefined ? params.allCodebases : allCodebases
             }
         });
     }
@@ -321,7 +360,8 @@ function ChunksList() {
                 collection,
                 view,
                 origin: undefined,
-                reviewStatus: undefined
+                reviewStatus: undefined,
+                allCodebases: undefined
             }
         });
         setSearchInput("");
@@ -496,6 +536,18 @@ function ChunksList() {
                         className="bg-background focus:ring-ring w-full rounded-md border py-2 pr-3 pl-9 text-sm focus:ring-2 focus:outline-none"
                     />
                 </div>
+
+                {/* All codebases toggle */}
+                <Button
+                    variant={isFederated ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => updateSearch({ allCodebases: isFederated ? undefined : "true" })}
+                    className="gap-1.5"
+                    title="Search across all codebases"
+                >
+                    <Globe className="size-3.5" />
+                    All
+                </Button>
 
                 {/* Filters popover */}
                 <Popover>
@@ -1038,7 +1090,7 @@ function ChunksList() {
                         });
                     }}
                 />
-            ) : chunksQuery.isLoading ? (
+            ) : activeQuery.isLoading ? (
                 <SkeletonList count={10} />
             ) : collectionFilteredChunks.length === 0 ? (
                 <Card>
@@ -1169,6 +1221,12 @@ function ChunksList() {
                                             <Badge variant="secondary" size="sm" className="font-mono text-[10px]">
                                                 {chunk.type}
                                             </Badge>
+                                            {isFederated && !!(chunk as Record<string, unknown>).codebaseName && (
+                                                <Badge variant="outline" size="sm" className="border-blue-500/30 bg-blue-500/10 text-[10px] text-blue-600">
+                                                    <Server className="mr-0.5 size-2.5" />
+                                                    {String((chunk as Record<string, unknown>).codebaseName)}
+                                                </Badge>
+                                            )}
                                             {(chunk as Record<string, unknown>).origin === "ai" && (
                                                 <Badge
                                                     variant="outline"
@@ -1229,15 +1287,15 @@ function ChunksList() {
             )}
 
             {/* Load more trigger */}
-            {view !== "kanban" && chunksQuery.hasNextPage && (
+            {view !== "kanban" && activeQuery.hasNextPage && (
                 <div ref={loadMoreRef} className="mt-4 flex justify-center">
                     <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => chunksQuery.fetchNextPage()}
-                        disabled={chunksQuery.isFetchingNextPage}
+                        onClick={() => activeQuery.fetchNextPage()}
+                        disabled={activeQuery.isFetchingNextPage}
                     >
-                        {chunksQuery.isFetchingNextPage ? "Loading..." : "Load more"}
+                        {activeQuery.isFetchingNextPage ? "Loading..." : "Load more"}
                     </Button>
                 </div>
             )}

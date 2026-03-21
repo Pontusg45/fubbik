@@ -3,6 +3,7 @@ import { Elysia, t } from "elysia";
 
 import { requireSession } from "../require-session";
 import * as bulkService from "./bulk-service";
+import { federatedSearch } from "./federated-search";
 import * as chunkService from "./service";
 import { checkSimilar } from "./similarity";
 import { getConnectionSuggestions } from "./suggestions";
@@ -26,9 +27,11 @@ export const chunkRoutes = new Elysia()
                 enrichment: t.Optional(t.Union([t.Literal("missing"), t.Literal("complete")])),
                 minConnections: t.Optional(t.String()),
                 codebaseId: t.Optional(t.String()),
+                workspaceId: t.Optional(t.String()),
                 global: t.Optional(t.String()),
                 origin: t.Optional(t.Union([t.Literal("human"), t.Literal("ai")])),
-                reviewStatus: t.Optional(t.Union([t.Literal("draft"), t.Literal("reviewed"), t.Literal("approved")]))
+                reviewStatus: t.Optional(t.Union([t.Literal("draft"), t.Literal("reviewed"), t.Literal("approved")])),
+                allCodebases: t.Optional(t.String())
             })
         }
     )
@@ -130,6 +133,23 @@ export const chunkRoutes = new Elysia()
                 content: t.String(),
                 excludeId: t.Optional(t.String()),
             }),
+        }
+    )
+    .get(
+        "/chunks/search/federated",
+        ctx =>
+            Effect.runPromise(
+                requireSession(ctx).pipe(Effect.flatMap(session => federatedSearch(session.user.id, ctx.query)))
+            ),
+        {
+            query: t.Object({
+                search: t.Optional(t.String()),
+                type: t.Optional(t.String()),
+                tags: t.Optional(t.String()),
+                limit: t.Optional(t.String()),
+                offset: t.Optional(t.String()),
+                sort: t.Optional(t.Union([t.Literal("newest"), t.Literal("oldest"), t.Literal("alpha"), t.Literal("updated")]))
+            })
         }
     )
     .get("/chunks/:id/suggestions", ctx =>

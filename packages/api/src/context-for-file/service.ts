@@ -1,4 +1,4 @@
-import { getAppliesToForChunk, getChunkById, listChunks, lookupChunksByFilePath } from "@fubbik/db/repository";
+import { getAppliesToForChunk, getChunkById, listChunks, listCodebases, lookupChunksByFilePath } from "@fubbik/db/repository";
 import { Effect } from "effect";
 
 import { globMatch } from "./glob-match";
@@ -9,13 +9,27 @@ export interface ContextChunk {
     type: string;
     content: string;
     summary: string | null;
-    matchReason: "file-ref" | "applies-to";
+    matchReason: "file-ref" | "applies-to" | "dependency";
+}
+
+/**
+ * Check if a dependency name matches a codebase name.
+ * Supports partial matching: "@acme/auth" matches codebase named "auth".
+ */
+function depMatchesCodebase(dep: string, codebaseName: string): boolean {
+    const depLower = dep.toLowerCase();
+    const cbLower = codebaseName.toLowerCase();
+    if (depLower === cbLower) return true;
+    // Extract last segment after / for scoped packages
+    const lastSegment = depLower.split("/").pop()!;
+    return lastSegment === cbLower;
 }
 
 export function getContextForFile(
     userId: string,
     filePath: string,
-    codebaseId?: string
+    codebaseId?: string,
+    deps?: string[]
 ) {
     return Effect.gen(function* () {
         const results = new Map<string, ContextChunk>();
@@ -59,6 +73,38 @@ export function getContextForFile(
                     summary: c.summary,
                     matchReason: "applies-to"
                 });
+            }
+        }
+
+        // 3. Dependency-based matches
+        if (deps && deps.length > 0) {
+            const allCodebases = yield* listCodebases(userId);
+            const matchedCodebaseIds: string[] = [];
+            for (const cb of allCodebases) {
+                if (deps.some(dep => depMatchesCodebase(dep, cb.name))) {
+                    matchedCodebaseIds.push(cb.id);
+                }
+            }
+
+            for (const cbId of matchedCodebaseIds) {
+                const { chunks: depChunks } = yield* listChunks({
+                    userId,
+                    codebaseId: cbId,
+                    limit: 5,
+                    offset: 0,
+                    sort: "updated"
+                });
+                for (const c of depChunks) {
+                    if (results.has(c.id)) continue;
+                    results.set(c.id, {
+                        id: c.id,
+                        title: c.title,
+                        type: c.type,
+                        content: c.content,
+                        summary: c.summary,
+                        matchReason: "dependency"
+                    });
+                }
             }
         }
 

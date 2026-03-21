@@ -7,6 +7,7 @@ import {
     Clock,
     FileCode,
     FileText,
+    Globe,
     Hash,
     LayoutDashboard,
     Network,
@@ -27,8 +28,9 @@ import { unwrapEden } from "@/utils/eden";
 interface CommandItem {
     id: string;
     title: string;
-    group: "Recent" | "Pages" | "Tags" | "Chunks" | "Actions";
+    group: "Recent" | "Pages" | "Tags" | "Chunks" | "Actions" | "All Codebases";
     icon: React.ReactNode;
+    badge?: string;
     onSelect: () => void;
 }
 
@@ -71,6 +73,8 @@ export function CommandPalette() {
 
     const isTagSearch = query.startsWith("#");
     const tagQuery = isTagSearch ? query.slice(1).toLowerCase() : "";
+    const isFederatedSearch = query.startsWith("*");
+    const federatedQuery = isFederatedSearch ? query.slice(1).trim() : "";
 
     // Global Cmd+K / Ctrl+K shortcut
     useEffect(() => {
@@ -91,6 +95,8 @@ export function CommandPalette() {
         setSelectedIndex(0);
     }, []);
 
+    const debouncedFederatedQuery = useDebouncedValue(federatedQuery, 200);
+
     // Search chunks via API
     const chunkSearch = useQuery({
         queryKey: ["command-palette-chunks", debouncedQuery],
@@ -106,7 +112,25 @@ export function CommandPalette() {
                 return null;
             }
         },
-        enabled: open && debouncedQuery.length > 1 && !isTagSearch,
+        enabled: open && debouncedQuery.length > 1 && !isTagSearch && !isFederatedSearch,
+    });
+
+    // Federated search (across all codebases) when query starts with *
+    const federatedSearch = useQuery({
+        queryKey: ["command-palette-federated", debouncedFederatedQuery],
+        queryFn: async () => {
+            if (!debouncedFederatedQuery.trim()) return null;
+            try {
+                return unwrapEden(
+                    await api.api.chunks.search.federated.get({
+                        query: { search: debouncedFederatedQuery, limit: "8" },
+                    })
+                );
+            } catch {
+                return null;
+            }
+        },
+        enabled: open && isFederatedSearch && debouncedFederatedQuery.length > 0,
     });
 
     // Search tags via API when query starts with #
@@ -157,6 +181,26 @@ export function CommandPalette() {
     const items = useMemo(() => {
         const lowerQuery = query.toLowerCase();
         const result: CommandItem[] = [];
+
+        // Federated search mode: when query starts with *
+        if (isFederatedSearch) {
+            const chunks = federatedSearch.data?.chunks ?? [];
+            for (const chunk of chunks) {
+                const cName = (chunk as Record<string, unknown>).codebaseName as string | null;
+                result.push({
+                    id: `fed-${chunk.id}`,
+                    title: chunk.title ?? `Chunk ${chunk.id.slice(0, 8)}`,
+                    group: "All Codebases",
+                    icon: <Globe className="size-4" />,
+                    badge: cName ?? "Global",
+                    onSelect: () => {
+                        navigate({ to: "/chunks/$chunkId", params: { chunkId: chunk.id } });
+                        close();
+                    },
+                });
+            }
+            return result;
+        }
 
         // Tag search mode: when query starts with #
         if (isTagSearch) {
@@ -248,7 +292,7 @@ export function CommandPalette() {
         }
 
         return result;
-    }, [query, isTagSearch, tagQuery, tagSearch.data, recentChunksQuery.data, chunkSearch.data, navigate, close]);
+    }, [query, isTagSearch, isFederatedSearch, tagQuery, tagSearch.data, federatedSearch.data, recentChunksQuery.data, chunkSearch.data, navigate, close]);
 
     // Clamp selected index when items change
     useEffect(() => {
@@ -323,7 +367,7 @@ export function CommandPalette() {
                                 setQuery(e.target.value);
                                 setSelectedIndex(0);
                             }}
-                            placeholder="Type a command or search... (# for tags)"
+                            placeholder="Type a command or search... (# tags, * all codebases)"
                             autoFocus
                             className="placeholder:text-muted-foreground flex-1 bg-transparent text-sm outline-none"
                         />
@@ -364,17 +408,23 @@ export function CommandPalette() {
                                             <span className="min-w-0 flex-1 truncate">
                                                 {item.title}
                                             </span>
-                                            <Badge variant="secondary" size="sm">
-                                                {item.group === "Recent"
-                                                    ? "Recent"
-                                                    : item.group === "Pages"
-                                                      ? "Page"
-                                                      : item.group === "Tags"
-                                                        ? "Tag"
-                                                        : item.group === "Chunks"
-                                                          ? "Chunk"
-                                                          : "Action"}
-                                            </Badge>
+                                            {item.badge ? (
+                                                <Badge variant="outline" size="sm" className="border-blue-500/30 bg-blue-500/10 text-blue-600">
+                                                    {item.badge}
+                                                </Badge>
+                                            ) : (
+                                                <Badge variant="secondary" size="sm">
+                                                    {item.group === "Recent"
+                                                        ? "Recent"
+                                                        : item.group === "Pages"
+                                                          ? "Page"
+                                                          : item.group === "Tags"
+                                                            ? "Tag"
+                                                            : item.group === "Chunks"
+                                                              ? "Chunk"
+                                                              : "Action"}
+                                                </Badge>
+                                            )}
                                         </button>
                                     );
                                 })}
