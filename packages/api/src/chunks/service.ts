@@ -46,6 +46,7 @@ export function listChunks(
         enrichment?: "missing" | "complete";
         minConnections?: string;
         codebaseId?: string;
+        workspaceId?: string;
         global?: string;
         origin?: string;
         reviewStatus?: string;
@@ -85,6 +86,7 @@ export function listChunks(
         enrichment: query.enrichment,
         minConnections,
         codebaseId: searchAllCodebases ? undefined : query.codebaseId,
+        workspaceId: searchAllCodebases ? undefined : query.workspaceId,
         globalOnly: searchAllCodebases ? false : globalOnly,
         origin: query.origin,
         reviewStatus: query.reviewStatus,

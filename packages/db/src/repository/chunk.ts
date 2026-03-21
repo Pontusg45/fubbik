@@ -5,6 +5,7 @@ import { DatabaseError } from "../errors";
 import { db } from "../index";
 import { chunk, chunkConnection } from "../schema/chunk";
 import { codebase, chunkCodebase } from "../schema/codebase";
+import { workspaceCodebase } from "../schema/workspace";
 
 export interface ListChunksParams {
     userId?: string;
@@ -19,6 +20,7 @@ export interface ListChunksParams {
     enrichment?: "missing" | "complete";
     minConnections?: number;
     codebaseId?: string;
+    workspaceId?: string;
     globalOnly?: boolean;
     origin?: string;
     reviewStatus?: string;
@@ -71,7 +73,20 @@ export function listChunks(params: ListChunksParams) {
                     ) >= ${params.minConnections}`
                 );
             }
-            if (params.codebaseId) {
+            if (params.workspaceId) {
+                const inWorkspace = db
+                    .select({ codebaseId: workspaceCodebase.codebaseId })
+                    .from(workspaceCodebase)
+                    .where(eq(workspaceCodebase.workspaceId, params.workspaceId));
+                const inCodebases = db
+                    .select({ chunkId: chunkCodebase.chunkId })
+                    .from(chunkCodebase)
+                    .where(sql`${chunkCodebase.codebaseId} IN (${inWorkspace})`);
+                const inAnyCodebase = db.select({ chunkId: chunkCodebase.chunkId }).from(chunkCodebase);
+                conditions.push(
+                    or(sql`${chunk.id} IN (${inCodebases})`, sql`${chunk.id} NOT IN (${inAnyCodebase})`)!
+                );
+            } else if (params.codebaseId) {
                 const inCodebase = db
                     .select({ chunkId: chunkCodebase.chunkId })
                     .from(chunkCodebase)

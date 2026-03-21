@@ -27,3 +27,4 @@ export * from "./requirement-dependency";
 export * from "./implementation-session";
 export * from "./similarity";
 export * from "./plan";
+export * from "./workspace";
