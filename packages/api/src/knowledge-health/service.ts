@@ -1,4 +1,4 @@
-import { getOrphanChunks, getStaleChunks, getThinChunks } from "@fubbik/db/repository";
+import { getFileRefsForHealth, getOrphanChunks, getStaleChunks, getThinChunks } from "@fubbik/db/repository";
 import { Effect } from "effect";
 
 export function getKnowledgeHealth(userId: string, codebaseId?: string) {
@@ -6,7 +6,8 @@ export function getKnowledgeHealth(userId: string, codebaseId?: string) {
         {
             orphans: getOrphanChunks(userId, codebaseId),
             stale: getStaleChunks(userId, codebaseId),
-            thin: getThinChunks(userId, codebaseId)
+            thin: getThinChunks(userId, codebaseId),
+            fileRefs: getFileRefsForHealth(userId, codebaseId)
         },
         { concurrency: "unbounded" }
     );

@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Activity, Lightbulb } from "lucide-react";
+import { Activity, FileText, Lightbulb } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -210,6 +210,62 @@ function KnowledgeHealthPage() {
                             )}
                         </CardPanel>
                     </Card>
+                    {/* File References */}
+                    {data.fileRefs && (
+                        <Card>
+                            <CardPanel className="p-6">
+                                <div className="mb-3 flex items-center gap-2">
+                                    <FileText className="size-4 text-blue-500" />
+                                    <h2 className="text-lg font-semibold">File References</h2>
+                                    <Badge variant="secondary">{data.fileRefs.count}</Badge>
+                                </div>
+                                <p className="text-muted-foreground mb-4 text-sm">
+                                    File paths referenced by chunks. Verify these paths still exist and are correct.
+                                </p>
+                                {data.fileRefs.refs.length === 0 ? (
+                                    <p className="text-muted-foreground text-sm">No file references found.</p>
+                                ) : (
+                                    <div className="divide-y">
+                                        {data.fileRefs.refs.map(ref => (
+                                            <div
+                                                key={ref.refId}
+                                                className="flex items-center justify-between py-3 first:pt-0 last:pb-0"
+                                            >
+                                                <div className="min-w-0 flex-1">
+                                                    <code className="text-sm">{ref.path}</code>
+                                                    <div className="mt-1 flex items-center gap-2">
+                                                        <Badge variant="outline" className="text-xs">
+                                                            {ref.relation}
+                                                        </Badge>
+                                                        <Link
+                                                            to="/chunks/$chunkId"
+                                                            params={{ chunkId: ref.chunkId }}
+                                                            className="text-muted-foreground hover:underline text-xs"
+                                                        >
+                                                            {ref.chunkTitle}
+                                                        </Link>
+                                                    </div>
+                                                </div>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    render={
+                                                        <Link
+                                                            to="/chunks/$chunkId"
+                                                            params={{ chunkId: ref.chunkId }}
+                                                        />
+                                                    }
+                                                >
+                                                    View chunk
+                                                </Button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </CardPanel>
+                        </Card>
+                    )}
+
                     {/* Knowledge Gaps from AI Sessions */}
                     {gapsQuery.data && gapsQuery.data.length > 0 && (
                         <Card>

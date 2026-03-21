@@ -3,7 +3,7 @@ import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { HeadContent, Link, Outlet, Scripts, createRootRouteWithContext, useLocation } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 
-import { Settings, SlidersHorizontal, Tags, FileText, BookOpen, Languages, Folder, BarChart3, ClipboardList } from "lucide-react";
+import { Settings, SlidersHorizontal, Tags, FileText, BookOpen, Languages, Folder, BarChart3, ClipboardList, FileSearch } from "lucide-react";
 
 import { ErrorBoundary } from "@/components/error-boundary";
 import FubbikLogo from "@/components/fubbik-logo";
@@ -143,6 +143,10 @@ function RootDocument() {
                                                     Review Queue
                                                 </DropdownMenuItem>
                                                 <DropdownMenuSeparator />
+                                                <DropdownMenuItem render={<Link to="/context" />}>
+                                                    <FileSearch className="size-4" />
+                                                    Context
+                                                </DropdownMenuItem>
                                                 <DropdownMenuItem render={<Link to="/codebases" />}>
                                                     <Folder className="size-4" />
                                                     Codebases
