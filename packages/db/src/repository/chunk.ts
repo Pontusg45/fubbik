@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gte, ilike, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, getTableColumns, gte, ilike, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
 import { Effect } from "effect";
 
 import { DatabaseError } from "../errors";
@@ -137,6 +137,97 @@ export function listChunks(params: ListChunksParams) {
                 .select({ count: sql<number>`count(*)` })
                 .from(chunk)
                 .where(and(...conditions));
+
+            return { chunks, total: Number(total[0]?.count ?? 0) };
+        },
+        catch: cause => new DatabaseError({ cause })
+    });
+}
+
+export interface ListChunksWithCodebaseParams {
+    userId?: string;
+    type?: string;
+    search?: string;
+    tags?: string[];
+    sort?: "newest" | "oldest" | "alpha" | "updated";
+    enrichment?: "missing" | "complete";
+    origin?: string;
+    reviewStatus?: string;
+    limit: number;
+    offset: number;
+}
+
+export function listChunksWithCodebase(params: ListChunksWithCodebaseParams) {
+    return Effect.tryPromise({
+        try: async () => {
+            const conditions = params.userId ? [eq(chunk.userId, params.userId)] : [];
+            conditions.push(isNull(chunk.archivedAt));
+            if (params.type) {
+                conditions.push(eq(chunk.type, params.type));
+            }
+            if (params.search) {
+                conditions.push(
+                    or(
+                        sql`${chunk.title} % ${params.search}`,
+                        sql`${chunk.content} % ${params.search}`,
+                        ilike(chunk.title, `%${params.search}%`),
+                        ilike(chunk.content, `%${params.search}%`)
+                    )!
+                );
+            }
+            if (params.origin) {
+                conditions.push(eq(chunk.origin, params.origin));
+            }
+            if (params.reviewStatus) {
+                conditions.push(eq(chunk.reviewStatus, params.reviewStatus));
+            }
+            if (params.enrichment === "missing") {
+                conditions.push(or(isNull(chunk.summary), isNull(chunk.embedding), sql`jsonb_array_length(${chunk.aliases}) = 0`)!);
+            } else if (params.enrichment === "complete") {
+                conditions.push(isNotNull(chunk.summary), isNotNull(chunk.embedding));
+            }
+            const orderClause = (() => {
+                if (params.search) return sql`similarity(${chunk.title}, ${params.search}) DESC`;
+                switch (params.sort) {
+                    case "oldest":
+                        return asc(chunk.createdAt);
+                    case "alpha":
+                        return asc(chunk.title);
+                    case "updated":
+                        return desc(chunk.updatedAt);
+                    case "newest":
+                    default:
+                        return desc(chunk.createdAt);
+                }
+            })();
+            const whereClause = and(...conditions);
+
+            // Left join with codebase to get first codebase name per chunk
+            const chunkCols = getTableColumns(chunk);
+            const rows = await db
+                .select({
+                    ...chunkCols,
+                    codebaseName: sql<string | null>`min(${codebase.name})`.as("codebase_name")
+                })
+                .from(chunk)
+                .leftJoin(chunkCodebase, eq(chunkCodebase.chunkId, chunk.id))
+                .leftJoin(codebase, eq(codebase.id, chunkCodebase.codebaseId))
+                .where(whereClause)
+                .groupBy(chunk.id)
+                .orderBy(orderClause)
+                .limit(params.limit)
+                .offset(params.offset);
+
+            // Separate count query without join to avoid inflated totals
+            const total = await db
+                .select({ count: sql<number>`count(*)` })
+                .from(chunk)
+                .where(whereClause);
+
+            const chunks = rows.map(row => {
+                const { codebaseName, ...chunkData } = row;
+                return { ...chunkData, codebaseName: codebaseName ?? null };
+            });
 
             return { chunks, total: Number(total[0]?.count ?? 0) };
         },
