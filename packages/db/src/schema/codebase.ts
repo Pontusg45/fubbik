@@ -41,7 +41,8 @@ export const chunkCodebase = pgTable(
     },
     table => [
         primaryKey({ columns: [table.chunkId, table.codebaseId] }),
-        index("chunk_codebase_chunkId_idx").on(table.chunkId)
+        index("chunk_codebase_chunkId_idx").on(table.chunkId),
+        index("chunk_codebase_codebaseId_idx").on(table.codebaseId)
     ]
 );
 
