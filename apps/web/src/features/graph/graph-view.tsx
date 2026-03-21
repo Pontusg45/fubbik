@@ -200,15 +200,16 @@ function GraphViewInner() {
         return () => mql.removeEventListener("change", handler);
     }, []);
 
-    const { codebaseId } = useActiveCodebase();
+    const { codebaseId, workspaceId } = useActiveCodebase();
 
     const { data, isLoading } = useQuery({
-        queryKey: ["graph", codebaseId],
+        queryKey: ["graph", codebaseId, workspaceId],
         queryFn: async () => {
             return unwrapEden(
                 await api.api.graph.get({
                     query: {
-                        ...(codebaseId && codebaseId !== "global" ? { codebaseId } : {})
+                        ...(workspaceId ? { workspaceId } : {}),
+                        ...(codebaseId && codebaseId !== "global" && !workspaceId ? { codebaseId } : {})
                     }
                 })
             );
@@ -474,7 +475,15 @@ function GraphViewInner() {
                     return {
                         id: c.id,
                         type: "chunk",
-                        data: { label, type: c.type, connectionCount: count, tags: [] as string[] },
+                        data: {
+                            label,
+                            type: c.type,
+                            connectionCount: count,
+                            tags: [] as string[],
+                            ...(chunkCodebaseMap.size > 0 && chunkCodebaseMap.has(c.id)
+                                ? { codebaseName: (data?.chunkCodebases ?? []).find(cc => cc.chunkId === c.id)?.codebaseName }
+                                : {})
+                        },
                         position: { x: 0, y: 0 },
                         style: {
                             cursor: "pointer",
@@ -496,8 +505,20 @@ function GraphViewInner() {
                 })
         ];
 
+        // Build chunk→codebaseId map for cross-codebase edge styling
+        const chunkCodebaseMap = new Map<string, string>();
+        for (const cc of data?.chunkCodebases ?? []) {
+            // Use first codebase assignment per chunk
+            if (!chunkCodebaseMap.has(cc.chunkId)) {
+                chunkCodebaseMap.set(cc.chunkId, cc.codebaseId);
+            }
+        }
+
         const rawEdges: Edge[] = connections.map(conn => {
             const color = relationColor(conn.relation);
+            const sourceCb = chunkCodebaseMap.get(conn.sourceId);
+            const targetCb = chunkCodebaseMap.get(conn.targetId);
+            const isCrossCodebase = sourceCb && targetCb && sourceCb !== targetCb;
             return {
                 id: conn.id,
                 source: conn.sourceId,
@@ -505,7 +526,12 @@ function GraphViewInner() {
                 type: "floating",
                 data: { relation: conn.relation, directed: true },
                 animated: edgeAnimated,
-                style: { stroke: color, strokeWidth: 2, transition: "opacity 0.3s ease" }
+                style: {
+                    stroke: color,
+                    strokeWidth: 2,
+                    transition: "opacity 0.3s ease",
+                    ...(isCrossCodebase ? { strokeDasharray: "6 3" } : {})
+                }
             };
         });
 

@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { ChevronDown, ExternalLink, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronUp, ExternalLink, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -23,6 +23,10 @@ interface PlanStep {
 interface PlanStepItemProps {
     step: PlanStep;
     planId: string;
+    isFirst?: boolean;
+    isLast?: boolean;
+    onMoveUp?: () => void;
+    onMoveDown?: () => void;
 }
 
 const statusColors: Record<string, string> = {
@@ -33,7 +37,7 @@ const statusColors: Record<string, string> = {
     blocked: "destructive"
 };
 
-export function PlanStepItem({ step, planId }: PlanStepItemProps) {
+export function PlanStepItem({ step, planId, isFirst, isLast, onMoveUp, onMoveDown }: PlanStepItemProps) {
     const queryClient = useQueryClient();
     const [expanded, setExpanded] = useState(false);
     const [note, setNote] = useState(step.note ?? "");
@@ -109,6 +113,28 @@ export function PlanStepItem({ step, planId }: PlanStepItemProps) {
                         <ExternalLink className="size-3.5" />
                     </Link>
                 )}
+                <div className="flex flex-col">
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={onMoveUp}
+                        disabled={isFirst}
+                        className="size-5 p-0 disabled:opacity-30"
+                        title="Move up"
+                    >
+                        <ChevronUp className="size-3" />
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={onMoveDown}
+                        disabled={isLast}
+                        className="size-5 p-0 disabled:opacity-30"
+                        title="Move down"
+                    >
+                        <ChevronDown className="size-3" />
+                    </Button>
+                </div>
                 <Button
                     variant="ghost"
                     size="sm"

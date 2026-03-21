@@ -11,10 +11,11 @@ const TYPE_ICONS: Record<string, typeof BookOpen> = {
 };
 
 export function GraphNode({ data }: NodeProps) {
-    const nodeData = data as { label: string; type?: string; connectionCount?: number; tags?: string[] };
+    const nodeData = data as { label: string; type?: string; connectionCount?: number; tags?: string[]; codebaseName?: string };
     const Icon = TYPE_ICONS[nodeData.type ?? ""] ?? StickyNote;
     const count = nodeData.connectionCount ?? 0;
     const tags = nodeData.tags ?? [];
+    const codebaseName = nodeData.codebaseName;
 
     return (
         <>
@@ -41,6 +42,11 @@ export function GraphNode({ data }: NodeProps) {
                         </span>
                     )}
                 </div>
+                {codebaseName && (
+                    <span className="rounded-full bg-current/10 px-1 py-px text-[7px] opacity-50 italic">
+                        {codebaseName}
+                    </span>
+                )}
                 {tags.length > 0 && (
                     <div className="flex flex-wrap gap-0.5">
                         {tags.slice(0, 3).map(tag => (

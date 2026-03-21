@@ -1,18 +1,32 @@
-import { and, eq, or, sql } from "drizzle-orm";
+import { and, eq, inArray, or, sql } from "drizzle-orm";
 import { Effect } from "effect";
 
 import { DatabaseError } from "../errors";
 import { db } from "../index";
 import { chunk, chunkConnection } from "../schema/chunk";
-import { chunkCodebase } from "../schema/codebase";
+import { codebase, chunkCodebase } from "../schema/codebase";
 import { chunkTag, tag, tagType } from "../schema/tag";
+import { workspaceCodebase } from "../schema/workspace";
 
-export function getAllChunksMeta(userId?: string, codebaseId?: string) {
+export function getAllChunksMeta(userId?: string, codebaseId?: string, workspaceId?: string) {
     return Effect.tryPromise({
         try: () => {
             const conditions = [];
             if (userId) conditions.push(eq(chunk.userId, userId));
-            if (codebaseId) {
+            if (workspaceId) {
+                const inWorkspace = db
+                    .select({ codebaseId: workspaceCodebase.codebaseId })
+                    .from(workspaceCodebase)
+                    .where(eq(workspaceCodebase.workspaceId, workspaceId));
+                const inCodebases = db
+                    .select({ chunkId: chunkCodebase.chunkId })
+                    .from(chunkCodebase)
+                    .where(inArray(chunkCodebase.codebaseId, inWorkspace));
+                const inAnyCodebase = db.select({ chunkId: chunkCodebase.chunkId }).from(chunkCodebase);
+                conditions.push(
+                    or(sql`${chunk.id} IN (${inCodebases})`, sql`${chunk.id} NOT IN (${inAnyCodebase})`)!
+                );
+            } else if (codebaseId) {
                 const inCodebase = db
                     .select({ chunkId: chunkCodebase.chunkId })
                     .from(chunkCodebase)
@@ -67,6 +81,24 @@ export function getTagTypesForGraph(userId?: string) {
         try: () => {
             const query = db.select().from(tagType);
             if (userId) return query.where(eq(tagType.userId, userId));
+            return query;
+        },
+        catch: cause => new DatabaseError({ cause })
+    });
+}
+
+export function getChunkCodebaseMappings(userId?: string) {
+    return Effect.tryPromise({
+        try: () => {
+            const query = db
+                .select({
+                    chunkId: chunkCodebase.chunkId,
+                    codebaseId: chunkCodebase.codebaseId,
+                    codebaseName: codebase.name
+                })
+                .from(chunkCodebase)
+                .innerJoin(codebase, eq(chunkCodebase.codebaseId, codebase.id));
+            if (userId) return query.where(eq(codebase.userId, userId));
             return query;
         },
         catch: cause => new DatabaseError({ cause })

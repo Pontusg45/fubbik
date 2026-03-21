@@ -9,8 +9,10 @@ export const graphRoutes = new Elysia().get(
     ctx =>
         Effect.runPromise(
             requireSession(ctx).pipe(
-                Effect.flatMap(session => graphService.getUserGraph(session.user.id, ctx.query.codebaseId))
+                Effect.flatMap(session =>
+                    graphService.getUserGraph(session.user.id, ctx.query.codebaseId, ctx.query.workspaceId)
+                )
             )
         ),
-    { query: t.Object({ codebaseId: t.Optional(t.String()) }) }
+    { query: t.Object({ codebaseId: t.Optional(t.String()), workspaceId: t.Optional(t.String()) }) }
 );
