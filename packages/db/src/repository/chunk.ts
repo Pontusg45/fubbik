@@ -4,7 +4,7 @@ import { Effect } from "effect";
 import { DatabaseError } from "../errors";
 import { db } from "../index";
 import { chunk, chunkConnection } from "../schema/chunk";
-import { chunkCodebase } from "../schema/codebase";
+import { codebase, chunkCodebase } from "../schema/codebase";
 
 export interface ListChunksParams {
     userId?: string;
@@ -153,7 +153,8 @@ export function getChunkConnections(chunkId: string) {
                     targetId: chunkConnection.targetId,
                     sourceId: chunkConnection.sourceId,
                     relation: chunkConnection.relation,
-                    title: chunk.title
+                    title: chunk.title,
+                    codebaseName: codebase.name
                 })
                 .from(chunkConnection)
                 .leftJoin(
@@ -163,6 +164,8 @@ export function getChunkConnections(chunkId: string) {
                         and(eq(chunkConnection.sourceId, chunk.id), eq(chunkConnection.targetId, chunkId))
                     )
                 )
+                .leftJoin(chunkCodebase, eq(chunkCodebase.chunkId, chunk.id))
+                .leftJoin(codebase, eq(codebase.id, chunkCodebase.codebaseId))
                 .where(or(eq(chunkConnection.sourceId, chunkId), eq(chunkConnection.targetId, chunkId))),
         catch: cause => new DatabaseError({ cause })
     });

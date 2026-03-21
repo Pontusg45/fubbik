@@ -28,7 +28,8 @@ export const chunkRoutes = new Elysia()
                 codebaseId: t.Optional(t.String()),
                 global: t.Optional(t.String()),
                 origin: t.Optional(t.Union([t.Literal("human"), t.Literal("ai")])),
-                reviewStatus: t.Optional(t.Union([t.Literal("draft"), t.Literal("reviewed"), t.Literal("approved")]))
+                reviewStatus: t.Optional(t.Union([t.Literal("draft"), t.Literal("reviewed"), t.Literal("approved")])),
+                allCodebases: t.Optional(t.String())
             })
         }
     )

@@ -185,6 +185,10 @@ function ChunkDetail() {
     const connections = data.connections ?? [];
     const outgoing = connections.filter(c => c.sourceId === chunkId);
     const incoming = connections.filter(c => c.sourceId !== chunkId);
+    const currentCodebases = (data as Record<string, unknown>).codebases as
+        | Array<{ id: string; name: string }>
+        | undefined;
+    const currentCodebaseNames = new Set(currentCodebases?.map(c => c.name) ?? []);
     const appliesTo = (data as Record<string, unknown>).appliesTo as
         | Array<{ id: string; pattern: string; note?: string | null }>
         | undefined;
@@ -487,6 +491,11 @@ function ChunkDetail() {
                                     {conn.title ?? conn.targetId}
                                 </ChunkLink>
                                 <div className="flex items-center gap-2">
+                                    {conn.codebaseName && !currentCodebaseNames.has(conn.codebaseName) && (
+                                        <Badge variant="outline" size="sm" className="text-[10px]">
+                                            {conn.codebaseName}
+                                        </Badge>
+                                    )}
                                     <Badge
                                         variant="outline"
                                         size="sm"
@@ -513,6 +522,11 @@ function ChunkDetail() {
                                     {conn.title ?? conn.sourceId}
                                 </ChunkLink>
                                 <div className="flex items-center gap-2">
+                                    {conn.codebaseName && !currentCodebaseNames.has(conn.codebaseName) && (
+                                        <Badge variant="outline" size="sm" className="text-[10px]">
+                                            {conn.codebaseName}
+                                        </Badge>
+                                    )}
                                     <Badge
                                         variant="outline"
                                         size="sm"

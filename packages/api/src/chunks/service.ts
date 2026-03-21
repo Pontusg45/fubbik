@@ -10,6 +10,7 @@ import {
     getChunkById,
     getChunkConnections,
     getCodebasesForChunk,
+    getCodebasesForChunks,
     getFileRefsForChunk,
     getNextVersionNumber,
     getTagsForChunk,
@@ -48,6 +49,7 @@ export function listChunks(
         global?: string;
         origin?: string;
         reviewStatus?: string;
+        allCodebases?: string;
     }
 ) {
     const limit = Math.min(Number(query.limit ?? 50), 100);
@@ -69,6 +71,7 @@ export function listChunks(
     const after = query.after ? new Date(Date.now() - Number(query.after) * 86400000) : undefined;
     const minConnections = query.minConnections ? Number(query.minConnections) : undefined;
     const globalOnly = query.global === "true";
+    const searchAllCodebases = query.allCodebases === "true";
     return listChunksRepo({
         userId,
         type: query.type,
@@ -81,13 +84,34 @@ export function listChunks(
         after,
         enrichment: query.enrichment,
         minConnections,
-        codebaseId: query.codebaseId,
-        globalOnly,
+        codebaseId: searchAllCodebases ? undefined : query.codebaseId,
+        globalOnly: searchAllCodebases ? false : globalOnly,
         origin: query.origin,
         reviewStatus: query.reviewStatus,
         limit,
         offset
-    }).pipe(Effect.map(result => ({ ...result, limit, offset })));
+    }).pipe(
+        Effect.flatMap(result => {
+            if (!searchAllCodebases || result.chunks.length === 0) {
+                return Effect.succeed({ ...result, limit, offset });
+            }
+            return getCodebasesForChunks(result.chunks.map(c => c.id)).pipe(
+                Effect.map(codebaseMap => {
+                    const lookup = new Map<string, string[]>();
+                    for (const entry of codebaseMap) {
+                        const existing = lookup.get(entry.chunkId) ?? [];
+                        existing.push(entry.codebaseName);
+                        lookup.set(entry.chunkId, existing);
+                    }
+                    const chunks = result.chunks.map(c => ({
+                        ...c,
+                        codebaseNames: lookup.get(c.id) ?? []
+                    }));
+                    return { ...result, chunks, limit, offset };
+                })
+            );
+        })
+    );
 }
 
 export function getChunkDetail(chunkId: string, userId?: string) {
