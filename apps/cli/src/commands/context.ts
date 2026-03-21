@@ -8,7 +8,8 @@ export const contextCommand = new Command("context")
     .option("--max-tokens <tokens>", "token budget", "4000")
     .option("--codebase <id>", "scope to a specific codebase ID")
     .option("--format <format>", "output format: markdown or json", "markdown")
-    .action(async (opts: { maxTokens: string; codebase?: string; format: string }, cmd: Command) => {
+    .option("--for <path>", "boost chunks relevant to this file path")
+    .action(async (opts: { maxTokens: string; codebase?: string; format: string; for?: string }, cmd: Command) => {
         const serverUrl = getServerUrl();
         if (!serverUrl) {
             console.error('No server URL configured. Run "fubbik init" first.');
@@ -20,6 +21,9 @@ export const contextCommand = new Command("context")
         params.set("format", opts.format);
         if (opts.codebase) {
             params.set("codebaseId", opts.codebase);
+        }
+        if (opts.for) {
+            params.set("forPath", opts.for);
         }
 
         const res = await fetch(`${serverUrl}/api/chunks/export/context?${params.toString()}`);

@@ -15,7 +15,8 @@ export const contextExportRoutes = new Elysia()
                         contextExportService.exportContext(session.user.id, {
                             codebaseId: ctx.query.codebaseId,
                             maxTokens: ctx.query.maxTokens ? Number(ctx.query.maxTokens) : undefined,
-                            format: ctx.query.format as "markdown" | "json" | undefined
+                            format: ctx.query.format as "markdown" | "json" | undefined,
+                            forPath: ctx.query.forPath
                         })
                     )
                 )
@@ -24,7 +25,8 @@ export const contextExportRoutes = new Elysia()
             query: t.Object({
                 codebaseId: t.Optional(t.String()),
                 maxTokens: t.Optional(t.String()),
-                format: t.Optional(t.Union([t.Literal("markdown"), t.Literal("json")]))
+                format: t.Optional(t.Union([t.Literal("markdown"), t.Literal("json")])),
+                forPath: t.Optional(t.String())
             })
         }
     )

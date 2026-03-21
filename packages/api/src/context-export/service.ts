@@ -3,12 +3,39 @@ import {
     getTagsForChunks,
     listChunks as listChunksRepo
 } from "@fubbik/db/repository";
+import { chunk as chunkTable } from "@fubbik/db/schema/chunk";
 import { Effect } from "effect";
+
+import { computeHealthScore } from "../chunks/health-score";
+import { getContextForFile } from "../context-for-file/service";
+
+type ChunkRow = typeof chunkTable.$inferSelect;
 
 interface ContextExportQuery {
     codebaseId?: string;
     maxTokens?: number;
     format?: "markdown" | "json";
+    forPath?: string;
+}
+
+function scoreChunk(c: ChunkRow, connectionCount: number): number {
+    const health = computeHealthScore({
+        content: c.content,
+        updatedAt: c.updatedAt,
+        summary: c.summary,
+        rationale: c.rationale,
+        alternatives: c.alternatives,
+        consequences: c.consequences,
+        connectionCount,
+        hasEmbedding: c.embedding != null,
+    });
+    const healthPoints = health.total / 10; // 0-10 (already includes freshness)
+    const typePoints = c.type === "document" ? 3 : c.type === "note" ? 1 : 2;
+    const rationalePoints = c.rationale ? 2 : 0;
+    const connectionPoints = Math.min(connectionCount * 2, 10);
+    const reviewPoints = c.reviewStatus === "approved" ? 2 : c.reviewStatus === "reviewed" ? 1 : 0;
+    // NO separate freshnessPoints — already in healthPoints from computeHealthScore
+    return healthPoints + typePoints + rationalePoints + connectionPoints + reviewPoints;
 }
 
 interface ScoredChunk {
@@ -62,7 +89,7 @@ export function exportContext(userId: string, query: ContextExportQuery) {
                 )
             });
         }),
-        Effect.map(({ chunks, tags, connections }) => {
+        Effect.flatMap(({ chunks, tags, connections }) => Effect.gen(function* () {
             // Build tag map
             const tagMap = new Map<string, string[]>();
             for (const t of tags) {
@@ -77,12 +104,10 @@ export function exportContext(userId: string, query: ContextExportQuery) {
                 connMap.set(c.chunkId, c.count);
             }
 
-            // Score chunks
+            // Score chunks using multi-factor scoring
             const scored: ScoredChunk[] = chunks.map(c => {
                 const connectionCount = connMap.get(c.id) ?? 0;
-                const typeScore = c.type === "document" ? 3 : c.type === "note" ? 1 : 2;
-                const hasRationale = c.rationale ? 2 : 0;
-                const score = connectionCount * 2 + typeScore + hasRationale;
+                const score = scoreChunk(c, connectionCount);
 
                 return {
                     id: c.id,
@@ -94,6 +119,17 @@ export function exportContext(userId: string, query: ContextExportQuery) {
                     score
                 };
             });
+
+            // File-path relevance boost
+            if (query.forPath) {
+                const fileContext = yield* getContextForFile(userId, query.forPath, query.codebaseId);
+                const fileContextIds = new Set(fileContext.map((c: { id: string }) => c.id));
+                for (const item of scored) {
+                    if (fileContextIds.has(item.id)) {
+                        item.score += 15;
+                    }
+                }
+            }
 
             // Sort by score descending
             scored.sort((a, b) => b.score - a.score);
@@ -136,7 +172,7 @@ export function exportContext(userId: string, query: ContextExportQuery) {
                 chunks: undefined as { title: string; content: string; type: string; tags: string[] }[] | undefined,
                 content: markdown
             };
-        })
+        }))
     );
 }
 
