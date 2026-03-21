@@ -5,12 +5,11 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { SkeletonList } from "@/components/ui/skeleton-list";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardPanel } from "@/components/ui/card";
-import { Empty, EmptyAction, EmptyDescription, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Input } from "@/components/ui/input";
+import { PageContainer, PageEmpty, PageHeader, PageLoading } from "@/components/ui/page";
 import { Separator } from "@/components/ui/separator";
 import { useActiveCodebase } from "@/features/codebases/use-active-codebase";
 import { getUser } from "@/functions/get-user";
@@ -279,52 +278,47 @@ function VocabularyPage() {
 
     if (!codebaseId) {
         return (
-            <div className="container mx-auto max-w-5xl px-4 py-8">
-                <div className="mb-6 flex items-center gap-2">
-                    <BookOpen className="size-5" />
-                    <h1 className="text-2xl font-bold tracking-tight">Vocabulary</h1>
-                </div>
+            <PageContainer maxWidth="5xl">
+                <PageHeader icon={BookOpen} title="Vocabulary" />
                 <Card>
                     <CardPanel className="p-6">
                         <p className="text-muted-foreground text-sm">Select a codebase to manage vocabulary</p>
                     </CardPanel>
                 </Card>
-            </div>
+            </PageContainer>
         );
     }
 
     return (
-        <div className="container mx-auto max-w-5xl px-4 py-8">
-            <div className="mb-6 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                    <BookOpen className="size-5" />
-                    <h1 className="text-2xl font-bold tracking-tight">Vocabulary</h1>
-                    <Badge variant="secondary" className="ml-2">
-                        {entries.length}
-                    </Badge>
-                </div>
-                <div className="flex gap-2">
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => suggestMutation.mutate()}
-                        disabled={suggestMutation.isPending}
-                    >
-                        {suggestMutation.isPending ? (
-                            <Loader2 className="mr-1 size-4 animate-spin" />
-                        ) : (
-                            <Sparkles className="mr-1 size-4" />
-                        )}
-                        {suggestMutation.isPending ? "Suggesting..." : "Suggest from chunks"}
-                    </Button>
-                    {!showForm && (
-                        <Button size="sm" onClick={() => setShowForm(true)}>
-                            <Plus className="mr-1 size-4" />
-                            Add Entry
+        <PageContainer maxWidth="5xl">
+            <PageHeader
+                icon={BookOpen}
+                title="Vocabulary"
+                count={entries.length}
+                actions={
+                    <div className="flex gap-2">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => suggestMutation.mutate()}
+                            disabled={suggestMutation.isPending}
+                        >
+                            {suggestMutation.isPending ? (
+                                <Loader2 className="mr-1 size-4 animate-spin" />
+                            ) : (
+                                <Sparkles className="mr-1 size-4" />
+                            )}
+                            {suggestMutation.isPending ? "Suggesting..." : "Suggest from chunks"}
                         </Button>
-                    )}
-                </div>
-            </div>
+                        {!showForm && (
+                            <Button size="sm" onClick={() => setShowForm(true)}>
+                                <Plus className="mr-1 size-4" />
+                                Add Entry
+                            </Button>
+                        )}
+                    </div>
+                }
+            />
 
             {/* Suggestions review panel */}
             {suggestions && suggestions.length > 0 && (
@@ -448,16 +442,14 @@ function VocabularyPage() {
             <Card>
                 <CardPanel className="p-6">
                     {vocabQuery.isLoading ? (
-                        <SkeletonList count={6} />
+                        <PageLoading count={6} />
                     ) : entries.length === 0 ? (
-                        <Empty>
-                            <EmptyMedia variant="icon"><BookOpen className="h-10 w-10" /></EmptyMedia>
-                            <EmptyTitle>No vocabulary</EmptyTitle>
-                            <EmptyDescription>Define domain terms to standardize your knowledge base.</EmptyDescription>
-                            <EmptyAction>
-                                <Button onClick={() => setShowForm(true)}>Add Term</Button>
-                            </EmptyAction>
-                        </Empty>
+                        <PageEmpty
+                            icon={BookOpen}
+                            title="No vocabulary"
+                            description="Define domain terms to standardize your knowledge base."
+                            action={<Button onClick={() => setShowForm(true)}>Add Term</Button>}
+                        />
                     ) : (
                         <div className="space-y-1">
                             {CATEGORIES.map(cat => {
@@ -557,6 +549,6 @@ function VocabularyPage() {
                 }}
                 loading={deleteMutation.isPending}
             />
-        </div>
+        </PageContainer>
     );
 }

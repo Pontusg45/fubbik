@@ -4,12 +4,10 @@ import { FolderGit2, GitBranch, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { SkeletonList } from "@/components/ui/skeleton-list";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardPanel } from "@/components/ui/card";
-import { Empty, EmptyAction, EmptyDescription, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Input } from "@/components/ui/input";
+import { PageContainer, PageEmpty, PageHeader, PageLoading } from "@/components/ui/page";
 import { getUser } from "@/functions/get-user";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
@@ -80,14 +78,12 @@ function CodebasesPage() {
     }
 
     return (
-        <div className="container mx-auto max-w-3xl px-4 py-8">
-            <div className="mb-6 flex items-center gap-2">
-                <FolderGit2 className="size-5" />
-                <h1 className="text-2xl font-bold tracking-tight">Codebases</h1>
-                <Badge variant="secondary" className="ml-2">
-                    {codebases.length}
-                </Badge>
-            </div>
+        <PageContainer>
+            <PageHeader
+                icon={FolderGit2}
+                title="Codebases"
+                count={codebases.length}
+            />
 
             <Card className="mb-6">
                 <CardPanel className="p-6">
@@ -119,16 +115,14 @@ function CodebasesPage() {
             <Card>
                 <CardPanel className="p-6">
                     {codebasesQuery.isLoading ? (
-                        <SkeletonList count={3} />
+                        <PageLoading count={3} />
                     ) : codebases.length === 0 ? (
-                        <Empty>
-                            <EmptyMedia variant="icon"><GitBranch className="h-10 w-10" /></EmptyMedia>
-                            <EmptyTitle>No codebases</EmptyTitle>
-                            <EmptyDescription>Add a codebase to scope chunks to specific projects.</EmptyDescription>
-                            <EmptyAction>
-                                <Button onClick={() => document.querySelector<HTMLInputElement>('input[placeholder="Name"]')?.focus()}>Add Codebase</Button>
-                            </EmptyAction>
-                        </Empty>
+                        <PageEmpty
+                            icon={GitBranch}
+                            title="No codebases"
+                            description="Add a codebase to scope chunks to specific projects."
+                            action={<Button onClick={() => document.querySelector<HTMLInputElement>('input[placeholder="Name"]')?.focus()}>Add Codebase</Button>}
+                        />
                     ) : (
                         <div className="divide-y">
                             {codebases.map(c => (
@@ -176,6 +170,6 @@ function CodebasesPage() {
                 }}
                 loading={deleteMutation.isPending}
             />
-        </div>
+        </PageContainer>
     );
 }

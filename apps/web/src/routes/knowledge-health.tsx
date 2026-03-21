@@ -3,9 +3,9 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { Activity, Lightbulb } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
-import { SkeletonList } from "@/components/ui/skeleton-list";
 import { Button } from "@/components/ui/button";
 import { Card, CardPanel } from "@/components/ui/card";
+import { PageContainer, PageHeader, PageLoading } from "@/components/ui/page";
 import { useActiveCodebase } from "@/features/codebases/use-active-codebase";
 import { getUser } from "@/functions/get-user";
 import { api } from "@/utils/api";
@@ -56,14 +56,11 @@ function KnowledgeHealthPage() {
     const data = healthQuery.data;
 
     return (
-        <div className="container mx-auto max-w-5xl px-4 py-8">
-            <div className="mb-6 flex items-center gap-2">
-                <Activity className="size-5" />
-                <h1 className="text-2xl font-bold tracking-tight">Knowledge Health</h1>
-            </div>
+        <PageContainer maxWidth="5xl">
+            <PageHeader icon={Activity} title="Knowledge Health" />
 
             {healthQuery.isLoading ? (
-                <SkeletonList count={4} />
+                <PageLoading count={4} />
             ) : healthQuery.isError ? (
                 <p className="text-muted-foreground text-sm">Failed to load health data.</p>
             ) : data ? (
@@ -245,6 +242,6 @@ function KnowledgeHealthPage() {
                     )}
                 </div>
             ) : null}
-        </div>
+        </PageContainer>
     );
 }

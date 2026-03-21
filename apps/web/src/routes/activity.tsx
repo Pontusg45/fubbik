@@ -6,6 +6,7 @@ import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardPanel } from "@/components/ui/card";
+import { PageContainer, PageHeader } from "@/components/ui/page";
 import { Separator } from "@/components/ui/separator";
 import { useActiveCodebase } from "@/features/codebases/use-active-codebase";
 import { getUser } from "@/functions/get-user";
@@ -111,11 +112,11 @@ function ActivityPage() {
     const displayed = filtered.slice(0, displayCount);
 
     return (
-        <div className="container mx-auto max-w-3xl px-4 py-8">
-            <div className="mb-6">
-                <h1 className="text-2xl font-bold tracking-tight">Activity</h1>
-                <p className="text-muted-foreground text-sm">Recent changes across your knowledge base.</p>
-            </div>
+        <PageContainer>
+            <PageHeader
+                title="Activity"
+                description="Recent changes across your knowledge base."
+            />
 
             <div className="mb-4 space-y-2">
                 <div className="flex flex-wrap gap-1">
@@ -188,6 +189,6 @@ function ActivityPage() {
                     </Button>
                 </div>
             )}
-        </div>
+        </PageContainer>
     );
 }
