@@ -18,14 +18,15 @@ import { Effect } from "effect";
 import { NotFoundError } from "../errors";
 import { generateReviewBrief } from "./brief-generator";
 
-export function createSession(userId: string, body: { title: string; codebaseId?: string }) {
+export function createSession(userId: string, body: { title: string; codebaseId?: string; planId?: string }) {
     return Effect.gen(function* () {
         const id = crypto.randomUUID();
         const session = yield* createSessionRepo({
             id,
             title: body.title,
             userId,
-            codebaseId: body.codebaseId
+            codebaseId: body.codebaseId,
+            planId: body.planId
         });
 
         // Fetch context bundle: conventions, requirements, architecture decisions

@@ -12,7 +12,7 @@ import {
 } from "../schema/implementation-session";
 import { requirement } from "../schema/requirement";
 
-export function createSession(params: { id: string; title: string; userId: string; codebaseId?: string }) {
+export function createSession(params: { id: string; title: string; userId: string; codebaseId?: string; planId?: string }) {
     return Effect.tryPromise({
         try: async () => {
             const [created] = await db.insert(implementationSession).values(params).returning();
@@ -226,6 +226,24 @@ export function getSessionsForRequirement(requirementId: string) {
                     eq(sessionRequirementRef.sessionId, implementationSession.id)
                 )
                 .where(eq(sessionRequirementRef.requirementId, requirementId)),
+        catch: cause => new DatabaseError({ cause })
+    });
+}
+
+export function getActiveSessionsWithPlan(userId: string) {
+    return Effect.tryPromise({
+        try: async () => {
+            return db
+                .select()
+                .from(implementationSession)
+                .where(
+                    and(
+                        eq(implementationSession.userId, userId),
+                        eq(implementationSession.status, "in_progress"),
+                        sql`${implementationSession.planId} IS NOT NULL`
+                    )
+                );
+        },
         catch: cause => new DatabaseError({ cause })
     });
 }

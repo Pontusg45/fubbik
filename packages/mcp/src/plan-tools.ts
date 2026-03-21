@@ -4,20 +4,52 @@ import { apiFetch } from "./api-client.js";
 
 export function registerPlanTools(server: McpServer): void {
     // 1. create_plan
+    // 0. list_plan_templates
+    server.tool(
+        "list_plan_templates",
+        "List available plan templates (feature-dev, bug-fix, migration)",
+        {},
+        async () => {
+            const data = (await apiFetch("/plans/templates")) as {
+                templates: Array<{
+                    key: string;
+                    title: string;
+                    description: string;
+                    stepCount: number;
+                }>;
+            };
+
+            return {
+                content: [
+                    {
+                        type: "text" as const,
+                        text: JSON.stringify(data.templates, null, 2)
+                    }
+                ]
+            };
+        }
+    );
+
+    // 1. create_plan
     server.tool(
         "create_plan",
-        "Create a new plan with title, description, and optional steps",
+        "Create a new plan with title, description, and optional steps. Use template param to start from a pre-built template.",
         {
             title: z.string().describe("Plan title"),
             description: z.string().optional().describe("Plan description"),
+            template: z
+                .string()
+                .optional()
+                .describe("Template name: feature-dev, bug-fix, or migration"),
             steps: z
                 .array(z.string())
                 .optional()
-                .describe("List of step descriptions to add")
+                .describe("List of step descriptions to add (overrides template steps)")
         },
-        async ({ title, description, steps }) => {
+        async ({ title, description, template, steps }) => {
             const body: Record<string, unknown> = { title };
             if (description) body.description = description;
+            if (template) body.template = template;
             if (steps) {
                 body.steps = steps.map((s, i) => ({
                     description: s,

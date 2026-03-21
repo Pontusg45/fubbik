@@ -6,14 +6,16 @@ export function registerSessionTools(server: McpServer): void {
     // 1. begin_implementation
     server.tool(
         "begin_implementation",
-        "Start an implementation session. Returns context bundle with conventions, requirements, and architecture decisions.",
+        "Start an implementation session. Returns context bundle with conventions, requirements, and architecture decisions. Link to a plan to auto-associate created chunks.",
         {
             title: z.string().describe("Brief description of what you're implementing"),
-            codebaseId: z.string().optional().describe("Codebase ID to scope context")
+            codebaseId: z.string().optional().describe("Codebase ID to scope context"),
+            planId: z.string().optional().describe("Plan ID to link this session to (enables auto-linking created chunks to the plan)")
         },
-        async ({ title, codebaseId }) => {
+        async ({ title, codebaseId, planId }) => {
             const body: Record<string, unknown> = { title };
             if (codebaseId) body.codebaseId = codebaseId;
+            if (planId) body.planId = planId;
 
             const data = await apiFetch("/sessions", {
                 method: "POST",

@@ -1,4 +1,5 @@
 import {
+    addPlanChunkRef,
     archiveChunk as archiveChunkRepo,
     createChunk as createChunkRepo,
     createVersion,
@@ -6,6 +7,7 @@ import {
     deleteMany as deleteManyRepo,
     exportAllChunks as exportAllChunksRepo,
     findOrCreateTag,
+    getActiveSessionsWithPlan,
     getAppliesToForChunk,
     getChunkById,
     getChunkConnections,
@@ -192,7 +194,23 @@ export function createChunk(
                 console.error(`[enrich] Failed to enrich new chunk ${id}:`, err);
             });
             return Effect.void;
-        })
+        }),
+        // Auto-link chunk to active plan session
+        Effect.tap(() =>
+            getActiveSessionsWithPlan(userId).pipe(
+                Effect.flatMap(sessions => {
+                    const session = sessions[0];
+                    if (!session?.planId) return Effect.void;
+                    return addPlanChunkRef({
+                        id: crypto.randomUUID(),
+                        planId: session.planId,
+                        chunkId: id,
+                        relation: "created"
+                    }).pipe(Effect.asVoid);
+                }),
+                Effect.catchAll(() => Effect.void)
+            )
+        )
     );
 }
 

@@ -43,6 +43,7 @@ export const planRoutes = new Elysia()
                 description: t.Optional(t.String({ maxLength: 5000 })),
                 status: t.Optional(t.String()),
                 codebaseId: t.Optional(t.String()),
+                template: t.Optional(t.String()),
                 steps: t.Optional(
                     t.Array(
                         t.Object({
@@ -57,6 +58,7 @@ export const planRoutes = new Elysia()
             })
         }
     )
+    .get("/plans/templates", () => ({ templates: planService.listPlanTemplates() }))
     .get("/plans/:id", ctx =>
         Effect.runPromise(
             requireSession(ctx).pipe(

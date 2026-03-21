@@ -20,6 +20,59 @@ const VALID_PLAN_STATUSES = ["draft", "active", "completed", "archived"];
 const VALID_STEP_STATUSES = ["pending", "in_progress", "done", "skipped", "blocked"];
 const VALID_REF_RELATIONS = ["context", "created", "modified"];
 
+export const PLAN_TEMPLATES: Record<string, { title: string; description: string; steps: string[] }> = {
+    "feature-dev": {
+        title: "Feature Development",
+        description: "Standard feature development workflow",
+        steps: [
+            "Understand requirements and acceptance criteria",
+            "Review related existing chunks and conventions",
+            "Design approach and identify affected files",
+            "Implement core functionality",
+            "Write tests",
+            "Update documentation and knowledge chunks",
+            "Self-review and refactor",
+            "Create PR and request review"
+        ]
+    },
+    "bug-fix": {
+        title: "Bug Investigation & Fix",
+        description: "Structured approach to debugging and fixing",
+        steps: [
+            "Reproduce the bug and document steps",
+            "Identify root cause",
+            "Check for related known issues in chunks",
+            "Implement fix",
+            "Write regression test",
+            "Update relevant chunks if behavior changed",
+            "Verify fix in context of related features"
+        ]
+    },
+    "migration": {
+        title: "Migration",
+        description: "Database or dependency migration workflow",
+        steps: [
+            "Document current state and target state",
+            "Identify all affected components",
+            "Create migration script",
+            "Test migration on staging/dev",
+            "Create rollback plan",
+            "Execute migration",
+            "Verify data integrity",
+            "Update knowledge chunks with new architecture"
+        ]
+    }
+};
+
+export function listPlanTemplates() {
+    return Object.entries(PLAN_TEMPLATES).map(([key, tmpl]) => ({
+        key,
+        title: tmpl.title,
+        description: tmpl.description,
+        stepCount: tmpl.steps.length
+    }));
+}
+
 export function listPlans(userId: string, codebaseId?: string, status?: string) {
     return Effect.gen(function* () {
         if (status && !VALID_PLAN_STATUSES.includes(status)) {
@@ -58,6 +111,7 @@ export function createPlan(
         description?: string;
         status?: string;
         codebaseId?: string;
+        template?: string;
         steps?: Array<{ description: string; order?: number; parentStepId?: string; note?: string; chunkId?: string }>;
     }
 ) {
@@ -68,20 +122,42 @@ export function createPlan(
             );
         }
 
+        // Apply template defaults if specified
+        let title = body.title;
+        let description = body.description;
+        let steps = body.steps;
+
+        if (body.template) {
+            const tmpl = PLAN_TEMPLATES[body.template];
+            if (!tmpl) {
+                return yield* Effect.fail(
+                    new ValidationError({
+                        message: `Unknown plan template: ${body.template}. Available: ${Object.keys(PLAN_TEMPLATES).join(", ")}`
+                    })
+                );
+            }
+            // Template values are defaults; explicit values override
+            if (!title || title === tmpl.title) title = tmpl.title;
+            if (!description) description = tmpl.description;
+            if (!steps || steps.length === 0) {
+                steps = tmpl.steps.map((s, i) => ({ description: s, order: i }));
+            }
+        }
+
         const planId = crypto.randomUUID();
         const created = yield* createPlanRepo({
             id: planId,
-            title: body.title,
-            description: body.description,
+            title,
+            description,
             status: body.status,
             userId,
             codebaseId: body.codebaseId
         });
 
-        const steps = [];
-        if (body.steps && body.steps.length > 0) {
-            for (let i = 0; i < body.steps.length; i++) {
-                const stepBody = body.steps[i]!;
+        const createdSteps = [];
+        if (steps && steps.length > 0) {
+            for (let i = 0; i < steps.length; i++) {
+                const stepBody = steps[i]!;
                 const step = yield* createStepRepo({
                     id: crypto.randomUUID(),
                     planId,
@@ -91,11 +167,11 @@ export function createPlan(
                     note: stepBody.note,
                     chunkId: stepBody.chunkId
                 });
-                steps.push(step);
+                createdSteps.push(step);
             }
         }
 
-        return { ...created, steps, chunkRefs: [], progress: { doneCount: 0, totalSteps: steps.length } };
+        return { ...created, steps: createdSteps, chunkRefs: [], progress: { doneCount: 0, totalSteps: createdSteps.length } };
     });
 }
 

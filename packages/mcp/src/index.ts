@@ -6,6 +6,7 @@ import { registerTools } from "./tools.js";
 import { registerSessionTools } from "./session-tools.js";
 import { registerSuggestionTools } from "./suggestion-tools.js";
 import { registerPlanTools } from "./plan-tools.js";
+import { registerContextTools } from "./context-tools.js";
 
 const server = new McpServer({
     name: "fubbik",
@@ -16,6 +17,7 @@ registerTools(server);
 registerSessionTools(server);
 registerSuggestionTools(server);
 registerPlanTools(server);
+registerContextTools(server);
 
 const transport = new StdioServerTransport();
 await server.connect(transport);

@@ -23,7 +23,7 @@ export const sessionRoutes = new Elysia()
                     return result;
                 })
             ),
-        { body: t.Object({ title: t.String(), codebaseId: t.Optional(t.String()) }) }
+        { body: t.Object({ title: t.String(), codebaseId: t.Optional(t.String()), planId: t.Optional(t.String()) }) }
     )
     // List sessions
     .get(
