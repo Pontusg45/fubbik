@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Archive, ArrowLeft, Bot, Calendar, Clock, Code, Download, Edit, FileCode, FileText, Hash, MessageSquare, Network, Pencil, Scale, Star, Trash2 } from "lucide-react";
+import { Archive, ArrowLeft, ArrowRight, Bot, Calendar, Clock, Code, Download, Edit, FileCode, FileText, Hash, History, Lightbulb, Link2, MessageSquare, Network, Pencil, Scale, Sparkles, Star, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -8,10 +8,11 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { MarkdownRenderer } from "@/components/markdown-renderer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardDescription, CardHeader, CardPanel, CardTitle } from "@/components/ui/card";
+import { Card, CardHeader, CardPanel, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AiSection } from "@/features/chunks/ai-section";
+import { CollapsibleSection } from "@/features/chunks/collapsible-section";
 import { ChunkHealthBadge } from "@/features/chunks/chunk-health-badge";
 import { ChunkLink } from "@/features/chunks/chunk-link";
 import { getChunkSize } from "@/features/chunks/chunk-size";
@@ -376,112 +377,91 @@ function ChunkDetail() {
                 <MarkdownRenderer>{chunk.content}</MarkdownRenderer>
             </div>
 
-            {appliesTo && appliesTo.length > 0 && (
-                <>
-                    <Separator className="my-6" />
-                    <div>
-                        <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold">
-                            <Code className="size-4" />
-                            Applies To
-                        </h2>
-                        <div className="flex flex-wrap gap-2">
-                            {appliesTo.map(item => (
-                                <Badge key={item.id} variant="outline" className="font-mono text-xs">
-                                    {item.pattern}
-                                    {item.note && (
-                                        <span className="text-muted-foreground ml-1 font-sans">({item.note})</span>
-                                    )}
-                                </Badge>
-                            ))}
-                        </div>
-                    </div>
-                </>
-            )}
-
-            {fileReferences && fileReferences.length > 0 && (
-                <>
-                    <Separator className="my-6" />
-                    <div>
-                        <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold">
-                            <FileCode className="size-4" />
-                            File References
-                        </h2>
-                        <div className="space-y-2">
-                            {fileReferences.map(ref => (
-                                <div key={ref.id} className="flex items-center gap-2 text-sm">
-                                    <code className="bg-muted rounded px-1.5 py-0.5 font-mono text-xs">{ref.path}</code>
-                                    {ref.anchor && (
-                                        <Badge variant="secondary" size="sm" className="text-[10px]">
-                                            {ref.anchor}
-                                        </Badge>
-                                    )}
-                                    <span className="text-muted-foreground text-xs">{ref.relation}</span>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </>
-            )}
-
             {hasDecisionContext && (
-                <>
-                    <Separator className="my-6" />
-                    <div className="bg-muted/50 rounded-lg border p-4">
-                        <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold">
-                            <Scale className="size-4" />
-                            Decision Context
-                        </h2>
-                        {rationale && (
-                            <div className="mb-3">
-                                <p className="text-muted-foreground mb-1 text-xs font-medium uppercase tracking-wide">Rationale</p>
-                                <p className="text-sm">{rationale}</p>
-                            </div>
-                        )}
-                        {alternatives && alternatives.length > 0 && (
-                            <div className="mb-3">
-                                <p className="text-muted-foreground mb-1 text-xs font-medium uppercase tracking-wide">
-                                    Alternatives Considered
-                                </p>
-                                <ul className="list-inside list-disc space-y-0.5 text-sm">
-                                    {alternatives.map((alt, i) => (
-                                        <li key={i}>{alt}</li>
-                                    ))}
-                                </ul>
-                            </div>
-                        )}
-                        {consequences && (
-                            <div>
-                                <p className="text-muted-foreground mb-1 text-xs font-medium uppercase tracking-wide">Consequences</p>
-                                <p className="text-sm">{consequences}</p>
-                            </div>
-                        )}
-                    </div>
-                </>
+                <div className="bg-muted/50 mt-6 rounded-lg border p-4">
+                    <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold">
+                        <Scale className="size-4" />
+                        Decision Context
+                    </h2>
+                    {rationale && (
+                        <div className="mb-3">
+                            <p className="text-muted-foreground mb-1 text-xs font-medium uppercase tracking-wide">Rationale</p>
+                            <p className="text-sm">{rationale}</p>
+                        </div>
+                    )}
+                    {alternatives && alternatives.length > 0 && (
+                        <div className="mb-3">
+                            <p className="text-muted-foreground mb-1 text-xs font-medium uppercase tracking-wide">
+                                Alternatives Considered
+                            </p>
+                            <ul className="list-inside list-disc space-y-0.5 text-sm">
+                                {alternatives.map((alt, i) => (
+                                    <li key={i}>{alt}</li>
+                                ))}
+                            </ul>
+                        </div>
+                    )}
+                    {consequences && (
+                        <div>
+                            <p className="text-muted-foreground mb-1 text-xs font-medium uppercase tracking-wide">Consequences</p>
+                            <p className="text-sm">{consequences}</p>
+                        </div>
+                    )}
+                </div>
             )}
 
-            <Separator className="my-6" />
-            <AiSection chunkId={chunkId} />
+            <CollapsibleSection title="Applies To" icon={Code} count={appliesTo?.length ?? 0} defaultOpen={(appliesTo?.length ?? 0) > 0}>
+                <div className="flex flex-wrap gap-2">
+                    {appliesTo?.map(item => (
+                        <Badge key={item.id} variant="outline" className="font-mono text-xs">
+                            {item.pattern}
+                            {item.note && (
+                                <span className="text-muted-foreground ml-1 font-sans">({item.note})</span>
+                            )}
+                        </Badge>
+                    ))}
+                    {(!appliesTo || appliesTo.length === 0) && (
+                        <p className="text-muted-foreground text-sm">No patterns defined</p>
+                    )}
+                </div>
+            </CollapsibleSection>
 
-            <Separator className="my-6" />
-            <ChunkComments chunkId={chunkId} />
-
-            <Separator className="my-6" />
-            <Card>
-                <CardHeader>
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <CardTitle className="flex items-center gap-2 text-sm">
-                                <Network className="size-4" />
-                                Connections
-                            </CardTitle>
-                            <CardDescription>{connections.length} linked chunks</CardDescription>
+            <CollapsibleSection title="File References" icon={FileCode} count={fileReferences?.length ?? 0} defaultOpen={(fileReferences?.length ?? 0) > 0}>
+                <div className="space-y-2">
+                    {fileReferences?.map(ref => (
+                        <div key={ref.id} className="flex items-center gap-2 text-sm">
+                            <code className="bg-muted rounded px-1.5 py-0.5 font-mono text-xs">{ref.path}</code>
+                            {ref.anchor && (
+                                <Badge variant="secondary" size="sm" className="text-[10px]">
+                                    {ref.anchor}
+                                </Badge>
+                            )}
+                            <span className="text-muted-foreground text-xs">{ref.relation}</span>
                         </div>
-                        <LinkChunkDialog chunkId={chunkId} />
-                    </div>
-                </CardHeader>
+                    ))}
+                    {(!fileReferences || fileReferences.length === 0) && (
+                        <p className="text-muted-foreground text-sm">No file references</p>
+                    )}
+                </div>
+            </CollapsibleSection>
+
+            <CollapsibleSection title="AI Enrichment" icon={Sparkles} defaultOpen={false}>
+                <AiSection chunkId={chunkId} />
+            </CollapsibleSection>
+
+            <CollapsibleSection title="Comments" icon={MessageSquare} defaultOpen={false}>
+                <ChunkComments chunkId={chunkId} />
+            </CollapsibleSection>
+
+            <CollapsibleSection title="Connections" icon={Network} count={connections.length} defaultOpen={true}>
+                <div className="flex items-center justify-end mb-3">
+                    <LinkChunkDialog chunkId={chunkId} />
+                </div>
                 {outgoing.length > 0 && (
-                    <CardPanel className="space-y-2 pt-0">
-                        <p className="text-muted-foreground text-xs font-medium">Links to</p>
+                    <div className="space-y-2">
+                        <h4 className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1">
+                            <ArrowRight className="size-3" /> Links to ({outgoing.length})
+                        </h4>
                         {outgoing.map(conn => (
                             <div
                                 key={conn.id}
@@ -508,11 +488,13 @@ function ChunkDetail() {
                                 </div>
                             </div>
                         ))}
-                    </CardPanel>
+                    </div>
                 )}
                 {incoming.length > 0 && (
-                    <CardPanel className="space-y-2 pt-0">
-                        <p className="text-muted-foreground text-xs font-medium">Linked from</p>
+                    <div className="space-y-2">
+                        <h4 className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1 mt-3">
+                            <ArrowLeft className="size-3" /> Linked from ({incoming.length})
+                        </h4>
                         {incoming.map(conn => (
                             <div
                                 key={conn.id}
@@ -539,23 +521,24 @@ function ChunkDetail() {
                                 </div>
                             </div>
                         ))}
-                    </CardPanel>
+                    </div>
                 )}
                 {connections.length === 0 && (
-                    <CardPanel className="pt-0">
-                        <p className="text-muted-foreground text-sm">No connections yet</p>
-                    </CardPanel>
+                    <p className="text-muted-foreground text-sm">No connections yet</p>
                 )}
-            </Card>
+            </CollapsibleSection>
 
-            <Separator className="my-6" />
-            <SuggestedConnections chunkId={chunkId} />
+            <CollapsibleSection title="Suggested Connections" icon={Lightbulb} defaultOpen={false}>
+                <SuggestedConnections chunkId={chunkId} />
+            </CollapsibleSection>
 
-            <Separator className="my-6" />
-            <RelatedChunks chunkId={chunkId} connections={connections} tags={tags} />
+            <CollapsibleSection title="Related Chunks" icon={Link2} defaultOpen={false}>
+                <RelatedChunks chunkId={chunkId} connections={connections} tags={tags} />
+            </CollapsibleSection>
 
-            <Separator className="my-6" />
-            <VersionHistory chunkId={chunkId} />
+            <CollapsibleSection title="Version History" icon={History} defaultOpen={false}>
+                <VersionHistory chunkId={chunkId} />
+            </CollapsibleSection>
         </div>
     );
 }
