@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { ChunkLinker } from "@/features/requirements/chunk-linker";
 import { DependencyGraph } from "@/features/requirements/dependency-graph";
 import { DependencySection } from "@/features/requirements/dependency-section";
+import { RequirementPlans } from "@/features/requirements/requirement-plans";
 import { StepBuilder } from "@/features/requirements/step-builder";
 import { validateSteps, type Keyword, type StepRow, type StepError } from "@/features/requirements/validation";
 import { useActiveCodebase } from "@/features/codebases/use-active-codebase";
@@ -478,6 +479,9 @@ function RequirementDetail() {
                             </div>
                         </div>
                     )}
+
+                    {/* Linked Plans */}
+                    <RequirementPlans requirementId={requirementId} />
 
                     {/* Export */}
                     <div className="mb-6">
