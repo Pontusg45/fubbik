@@ -455,6 +455,14 @@ function GraphViewInner() {
 
         const { chunks, connections, parentChildren, childIds, hiddenIds } = filteredGraph;
 
+        // Build chunk→codebaseId map for cross-codebase edge styling + node labels
+        const chunkCodebaseMap = new Map<string, string>();
+        for (const cc of data?.chunkCodebases ?? []) {
+            if (!chunkCodebaseMap.has(cc.chunkId)) {
+                chunkCodebaseMap.set(cc.chunkId, cc.codebaseId);
+            }
+        }
+
         // Connection counts for node sizing
         const connectionCounts = new Map<string, number>();
         for (const conn of connections) {
@@ -504,15 +512,6 @@ function GraphViewInner() {
                     };
                 })
         ];
-
-        // Build chunk→codebaseId map for cross-codebase edge styling
-        const chunkCodebaseMap = new Map<string, string>();
-        for (const cc of data?.chunkCodebases ?? []) {
-            // Use first codebase assignment per chunk
-            if (!chunkCodebaseMap.has(cc.chunkId)) {
-                chunkCodebaseMap.set(cc.chunkId, cc.codebaseId);
-            }
-        }
 
         const rawEdges: Edge[] = connections.map(conn => {
             const color = relationColor(conn.relation);
