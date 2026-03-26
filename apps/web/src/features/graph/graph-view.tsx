@@ -562,10 +562,17 @@ function GraphViewInner() {
                 if (ct.tagTypeColor) tagColorMap.set(ct.tagName, ct.tagTypeColor);
             }
 
+            // Build set of visible chunk IDs (nodes already in rawNodes)
+            const visibleChunkIds = new Set(rawNodes.map(n => n.id));
+
             for (const [tagName, chunkIds] of tagGroups) {
+                // Only include chunks that are actually visible (not filtered out)
+                const visibleInGroup = chunkIds.filter(cid => visibleChunkIds.has(cid));
+                if (visibleInGroup.length === 0) continue; // skip empty groups
+
                 const groupId = `tag-group-${tagName}`;
                 tagGroupNodeIds.add(groupId);
-                for (const cid of chunkIds) {
+                for (const cid of visibleInGroup) {
                     if (!chunkToGroupId.has(cid)) {
                         chunkToGroupId.set(cid, groupId);
                     }
