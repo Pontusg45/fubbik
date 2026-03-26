@@ -8,7 +8,6 @@
         "lint": "oxlint src"
     },
     "dependencies": {
-        "@better-auth/drizzle-adapter": "^1.5.1",
         "@fubbik/db": "workspace:*",
         "@fubbik/env": "workspace:*",
         "better-auth": "catalog:",
