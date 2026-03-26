@@ -1546,7 +1546,7 @@ function GraphViewInner() {
                 </div>
 
                 {/* Top-center: Legend */}
-                <GraphLegend activeTypes={activeTypes} activeRelations={activeRelations} />
+                <GraphLegend activeTypes={activeTypes} activeRelations={activeRelations} onToggleType={toggleType} onToggleRelation={toggleRelation} />
 
                 {/* Tooltip */}
                 {hoveredNode &&

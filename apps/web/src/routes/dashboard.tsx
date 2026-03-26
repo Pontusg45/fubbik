@@ -230,15 +230,16 @@ function DashboardPage() {
 
             {/* Stats row */}
             <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
-                <StatCard icon={Blocks} label="Chunks" value={statsQuery.data?.chunks} loading={statsQuery.isLoading} />
-                <StatCard icon={Network} label="Connections" value={statsQuery.data?.connections} loading={statsQuery.isLoading} />
-                <StatCard icon={Tags} label="Tags" value={statsQuery.data?.tags} loading={statsQuery.isLoading} />
+                <StatCard icon={Blocks} label="Chunks" value={statsQuery.data?.chunks} loading={statsQuery.isLoading} to="/chunks" />
+                <StatCard icon={Network} label="Connections" value={statsQuery.data?.connections} loading={statsQuery.isLoading} to="/graph" />
+                <StatCard icon={Tags} label="Tags" value={statsQuery.data?.tags} loading={statsQuery.isLoading} to="/tags" />
                 <StatCard
                     icon={FileText}
                     label="Requirements"
                     value={reqStats ? (reqStats as any).total : undefined}
                     loading={requirementsQuery.isLoading}
                     sub={reqStats ? `${(reqStats as any).passing ?? 0} passing` : undefined}
+                    to="/requirements"
                 />
             </div>
 
@@ -439,15 +440,16 @@ function DashboardPage() {
 
 /* ─── Components ─── */
 
-function StatCard({ icon: Icon, label, value, loading, sub }: {
+function StatCard({ icon: Icon, label, value, loading, sub, to }: {
     icon: typeof Blocks;
     label: string;
     value?: number;
     loading: boolean;
     sub?: string;
+    to?: string;
 }) {
-    return (
-        <div className="bg-card rounded-lg border p-4">
+    const content = (
+        <div className={`bg-card rounded-lg border p-4${to ? " hover:bg-muted/50 transition-colors cursor-pointer" : ""}`}>
             <div className="flex items-center gap-2">
                 <Icon className="text-muted-foreground size-4" />
                 <span className="text-muted-foreground text-xs font-medium uppercase tracking-wide">{label}</span>
@@ -458,6 +460,12 @@ function StatCard({ icon: Icon, label, value, loading, sub }: {
             {sub && <div className="text-muted-foreground mt-0.5 text-[11px]">{sub}</div>}
         </div>
     );
+
+    if (to) {
+        return <Link to={to as any}>{content}</Link>;
+    }
+
+    return content;
 }
 
 function DashboardSection({ icon: Icon, title, iconClass, action, children }: {

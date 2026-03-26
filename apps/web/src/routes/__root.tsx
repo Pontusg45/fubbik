@@ -3,7 +3,7 @@ import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { HeadContent, Link, Outlet, Scripts, createRootRouteWithContext, useLocation } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 
-import { Settings, SlidersHorizontal, Tags, FileText, BookOpen, Languages, Folder, BarChart3, ClipboardList, FileSearch } from "lucide-react";
+import { Settings, SlidersHorizontal, Tags, FileText, BookOpen, Languages, Folder, BarChart3, ClipboardList, FileSearch, Layers, Search } from "lucide-react";
 
 import { ErrorBoundary } from "@/components/error-boundary";
 import FubbikLogo from "@/components/fubbik-logo";
@@ -118,6 +118,16 @@ function RootDocument() {
                                         >
                                             Docs
                                         </Link>
+                                        <Link
+                                            to="/search"
+                                            search={{ q: undefined }}
+                                            className="text-muted-foreground hover:text-foreground [&.active]:text-foreground rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
+                                        >
+                                            <span className="flex items-center gap-1">
+                                                <Search className="size-3.5" />
+                                                Search
+                                            </span>
+                                        </Link>
                                         <DropdownMenu>
                                             <DropdownMenuTrigger className="text-muted-foreground hover:text-foreground rounded-md px-3 py-1.5 text-sm font-medium transition-colors">
                                                 <span className="flex items-center gap-1">
@@ -150,6 +160,10 @@ function RootDocument() {
                                                 <DropdownMenuItem render={<Link to="/codebases" />}>
                                                     <Folder className="size-4" />
                                                     Codebases
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem render={<Link to="/workspaces" />}>
+                                                    <Layers className="size-4" />
+                                                    Workspaces
                                                 </DropdownMenuItem>
                                                 <DropdownMenuItem render={<Link to="/coverage" />}>
                                                     <BarChart3 className="size-4" />

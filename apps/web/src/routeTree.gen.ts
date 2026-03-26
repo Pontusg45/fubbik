@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as WorkspacesRouteImport } from './routes/workspaces'
 import { Route as VocabularyRouteImport } from './routes/vocabulary'
 import { Route as TemplatesRouteImport } from './routes/templates'
 import { Route as TagsRouteImport } from './routes/tags'
@@ -39,6 +40,11 @@ import { Route as ChunksArchivedRouteImport } from './routes/chunks.archived'
 import { Route as ChunksChunkIdRouteImport } from './routes/chunks.$chunkId'
 import { Route as ChunksChunkIdEditRouteImport } from './routes/chunks.$chunkId_.edit'
 
+const WorkspacesRoute = WorkspacesRouteImport.update({
+  id: '/workspaces',
+  path: '/workspaces',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const VocabularyRoute = VocabularyRouteImport.update({
   id: '/vocabulary',
   path: '/vocabulary',
@@ -204,6 +210,7 @@ export interface FileRoutesByFullPath {
   '/tags': typeof TagsRoute
   '/templates': typeof TemplatesRoute
   '/vocabulary': typeof VocabularyRoute
+  '/workspaces': typeof WorkspacesRoute
   '/chunks/$chunkId': typeof ChunksChunkIdRoute
   '/chunks/archived': typeof ChunksArchivedRoute
   '/chunks/new': typeof ChunksNewRoute
@@ -235,6 +242,7 @@ export interface FileRoutesByTo {
   '/tags': typeof TagsRoute
   '/templates': typeof TemplatesRoute
   '/vocabulary': typeof VocabularyRoute
+  '/workspaces': typeof WorkspacesRoute
   '/chunks/$chunkId': typeof ChunksChunkIdRoute
   '/chunks/archived': typeof ChunksArchivedRoute
   '/chunks/new': typeof ChunksNewRoute
@@ -267,6 +275,7 @@ export interface FileRoutesById {
   '/tags': typeof TagsRoute
   '/templates': typeof TemplatesRoute
   '/vocabulary': typeof VocabularyRoute
+  '/workspaces': typeof WorkspacesRoute
   '/chunks/$chunkId': typeof ChunksChunkIdRoute
   '/chunks/archived': typeof ChunksArchivedRoute
   '/chunks/new': typeof ChunksNewRoute
@@ -300,6 +309,7 @@ export interface FileRouteTypes {
     | '/tags'
     | '/templates'
     | '/vocabulary'
+    | '/workspaces'
     | '/chunks/$chunkId'
     | '/chunks/archived'
     | '/chunks/new'
@@ -331,6 +341,7 @@ export interface FileRouteTypes {
     | '/tags'
     | '/templates'
     | '/vocabulary'
+    | '/workspaces'
     | '/chunks/$chunkId'
     | '/chunks/archived'
     | '/chunks/new'
@@ -362,6 +373,7 @@ export interface FileRouteTypes {
     | '/tags'
     | '/templates'
     | '/vocabulary'
+    | '/workspaces'
     | '/chunks/$chunkId'
     | '/chunks/archived'
     | '/chunks/new'
@@ -394,6 +406,7 @@ export interface RootRouteChildren {
   TagsRoute: typeof TagsRoute
   TemplatesRoute: typeof TemplatesRoute
   VocabularyRoute: typeof VocabularyRoute
+  WorkspacesRoute: typeof WorkspacesRoute
   ChunksChunkIdRoute: typeof ChunksChunkIdRoute
   ChunksArchivedRoute: typeof ChunksArchivedRoute
   ChunksNewRoute: typeof ChunksNewRoute
@@ -410,6 +423,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/workspaces': {
+      id: '/workspaces'
+      path: '/workspaces'
+      fullPath: '/workspaces'
+      preLoaderRoute: typeof WorkspacesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/vocabulary': {
       id: '/vocabulary'
       path: '/vocabulary'
@@ -634,6 +654,7 @@ const rootRouteChildren: RootRouteChildren = {
   TagsRoute: TagsRoute,
   TemplatesRoute: TemplatesRoute,
   VocabularyRoute: VocabularyRoute,
+  WorkspacesRoute: WorkspacesRoute,
   ChunksChunkIdRoute: ChunksChunkIdRoute,
   ChunksArchivedRoute: ChunksArchivedRoute,
   ChunksNewRoute: ChunksNewRoute,
