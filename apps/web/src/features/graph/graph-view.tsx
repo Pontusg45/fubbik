@@ -625,6 +625,19 @@ function GraphViewInner() {
             else groupToChunkIds.set(groupId, [chunkId]);
         }
 
+        // Remove group nodes that ended up with zero children
+        const emptyGroupIds = new Set<string>();
+        for (const groupId of tagGroupNodeIds) {
+            const children = groupToChunkIds.get(groupId);
+            if (!children || children.length === 0) {
+                emptyGroupIds.add(groupId);
+            }
+        }
+        if (emptyGroupIds.size > 0) {
+            rawNodes = rawNodes.filter(n => !emptyGroupIds.has(n.id));
+            for (const id of emptyGroupIds) tagGroupNodeIds.delete(id);
+        }
+
         // Pre-compute group bounding boxes from child layout positions
         const PADDING = 14;
         const PADDING_TOP = 40;
@@ -662,25 +675,26 @@ function GraphViewInner() {
         const layoutNodes = rawNodes.map(node => {
             const p = layoutPositions?.[node.id] ?? { x: 0, y: 0 };
 
-            // Group nodes: always compute size from bounds, use dragged position if available
+            // Group nodes: compute size from child bounds. Hide groups with no positioned children.
             if (tagGroupNodeIds.has(node.id)) {
                 const bounds = groupBounds.get(node.id);
-                if (bounds) {
-                    const dragged = draggedPositions.get(node.id);
-                    return {
-                        ...node,
-                        position: dragged ?? { x: bounds.minX - PADDING, y: bounds.minY - PADDING_TOP },
-                        style: {
-                            ...node.style,
-                            width: bounds.maxX - bounds.minX + PADDING * 2,
-                            height: bounds.maxY - bounds.minY + PADDING_BOTTOM + PADDING_TOP,
-                            background: "transparent",
-                            border: "none",
-                            padding: 0
-                        }
-                    };
+                if (!bounds) {
+                    // No children have positions yet — hide the group entirely
+                    return { ...node, position: { x: -9999, y: -9999 }, style: { ...node.style, display: "none" } };
                 }
-                return { ...node, position: { x: 0, y: 0 } };
+                const dragged = draggedPositions.get(node.id);
+                return {
+                    ...node,
+                    position: dragged ?? { x: bounds.minX - PADDING, y: bounds.minY - PADDING_TOP },
+                    style: {
+                        ...node.style,
+                        width: bounds.maxX - bounds.minX + PADDING * 2,
+                        height: bounds.maxY - bounds.minY + PADDING_BOTTOM + PADDING_TOP,
+                        background: "transparent",
+                        border: "none",
+                        padding: 0
+                    }
+                };
             }
 
             const dragged = draggedPositions.get(node.id);
