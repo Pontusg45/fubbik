@@ -55,25 +55,27 @@ export function getStaleChunks(userId: string, codebaseId?: string) {
             const thirtyDaysAgo = sql`NOW() - INTERVAL '30 days'`;
             const sevenDaysAgo = sql`NOW() - INTERVAL '7 days'`;
 
+            // NOTE: Must use "chunk"."id" (fully qualified) to avoid ambiguity
+            // with the "neighbor" alias which is also the chunk table.
             const neighborExists = sql`EXISTS (
-                SELECT 1 FROM ${chunkConnection} cc
-                INNER JOIN ${chunk} neighbor
+                SELECT 1 FROM "chunk_connection" cc
+                INNER JOIN "chunk" neighbor
                     ON neighbor.id = CASE
-                        WHEN cc.source_id = ${chunk.id} THEN cc.target_id
-                        WHEN cc.target_id = ${chunk.id} THEN cc.source_id
+                        WHEN cc.source_id = "chunk"."id" THEN cc.target_id
+                        WHEN cc.target_id = "chunk"."id" THEN cc.source_id
                     END
-                WHERE (cc.source_id = ${chunk.id} OR cc.target_id = ${chunk.id})
+                WHERE (cc.source_id = "chunk"."id" OR cc.target_id = "chunk"."id")
                     AND neighbor.updated_at > ${sevenDaysAgo}
             )`;
 
             const newestNeighborUpdate = sql<Date>`(
-                SELECT MAX(neighbor.updated_at) FROM ${chunkConnection} cc
-                INNER JOIN ${chunk} neighbor
+                SELECT MAX(neighbor.updated_at) FROM "chunk_connection" cc
+                INNER JOIN "chunk" neighbor
                     ON neighbor.id = CASE
-                        WHEN cc.source_id = ${chunk.id} THEN cc.target_id
-                        WHEN cc.target_id = ${chunk.id} THEN cc.source_id
+                        WHEN cc.source_id = "chunk"."id" THEN cc.target_id
+                        WHEN cc.target_id = "chunk"."id" THEN cc.source_id
                     END
-                WHERE (cc.source_id = ${chunk.id} OR cc.target_id = ${chunk.id})
+                WHERE (cc.source_id = "chunk"."id" OR cc.target_id = "chunk"."id")
             )`;
 
             const conditions = [
