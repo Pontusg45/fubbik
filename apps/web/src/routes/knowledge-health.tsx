@@ -38,8 +38,10 @@ function KnowledgeHealthPage() {
     const gapsQuery = useQuery({
         queryKey: ["knowledge-gaps"],
         queryFn: async () => {
-            return unwrapEden(await (api.api.sessions as any)["knowledge-gaps"].get()) as
-                Array<{ description: string; frequency: number; session_ids: string[] }>;
+            const result = unwrapEden(await (api.api.sessions as any)["knowledge-gaps"].get());
+            // db.execute() returns { rows: [...] } — extract the rows array
+            const rows = Array.isArray(result) ? result : (result as any)?.rows ?? [];
+            return rows as Array<{ description: string; frequency: number; session_ids: string[] }>;
         }
     });
 
