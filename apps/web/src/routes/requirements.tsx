@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { BarChart3, ClipboardCheck, Plus } from "lucide-react";
+import { ClipboardCheck, Plus } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
@@ -8,6 +8,8 @@ import { SkeletonList } from "@/components/ui/skeleton-list";
 import { Button } from "@/components/ui/button";
 import { Card, CardPanel } from "@/components/ui/card";
 import { useActiveCodebase } from "@/features/codebases/use-active-codebase";
+import { TraceabilityContent } from "@/features/coverage/traceability-content";
+import { PlansListContent } from "@/features/plans/plans-list-content";
 import { BulkActions } from "@/features/requirements/bulk-actions";
 import { SidebarFilters } from "@/features/requirements/sidebar-filters";
 import { SortableRequirementList } from "@/features/requirements/sortable-requirement-list";
@@ -36,8 +38,11 @@ interface UseCase {
     parentId: string | null;
 }
 
+type ActiveTab = "requirements" | "plans" | "traceability";
+
 function RequirementsPage() {
     const { codebaseId } = useActiveCodebase();
+    const [activeTab, setActiveTab] = useState<ActiveTab>("requirements");
 
     // Filter state
     const [search, setSearch] = useState("");
@@ -124,7 +129,8 @@ function RequirementsPage() {
                 query.useCaseId = activeUseCaseId!;
             }
             return unwrapEden(await api.api.requirements.get({ query }));
-        }
+        },
+        enabled: activeTab === "requirements"
     });
 
     const stats = statsQuery.data as { total: number; passing: number; failing: number; untested: number } | undefined;
@@ -153,6 +159,8 @@ function RequirementsPage() {
         );
     }
 
+    const showSidebar = activeTab === "requirements";
+
     return (
         <div className="container mx-auto max-w-6xl px-4 py-8">
             {/* Header */}
@@ -167,9 +175,9 @@ function RequirementsPage() {
                     )}
                 </div>
                 <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" render={<Link to="/coverage" />}>
-                        <BarChart3 className="mr-1 size-4" />
-                        Coverage
+                    <Button size="sm" variant="outline" render={<Link to="/plans/new" />}>
+                        <Plus className="mr-1 size-4" />
+                        New Plan
                     </Button>
                     <Button size="sm" render={<Link to="/requirements/new" />}>
                         <Plus className="mr-1 size-4" />
@@ -208,102 +216,128 @@ function RequirementsPage() {
                 </div>
             )}
 
-            {/* Main layout: sidebar + cards */}
+            {/* Tab switcher */}
+            <div className="flex gap-1 mb-4">
+                {(["requirements", "plans", "traceability"] as const).map(tab => (
+                    <Button
+                        key={tab}
+                        variant={activeTab === tab ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setActiveTab(tab)}
+                    >
+                        {tab === "requirements" ? "Requirements" : tab === "plans" ? "Plans" : "Traceability"}
+                    </Button>
+                ))}
+            </div>
+
+            {/* Main layout */}
             <div className="flex gap-6">
-                {/* Sidebar */}
-                <div className="w-64 shrink-0">
-                    <SidebarFilters
-                        search={search}
-                        onSearchChange={handleSearchChange}
-                        statusFilters={statusFilters}
-                        onStatusFiltersChange={handleStatusFiltersChange}
-                        priorityFilters={priorityFilters}
-                        onPriorityFiltersChange={handlePriorityFiltersChange}
-                        originFilter={originFilter}
-                        onOriginFilterChange={handleOriginFilterChange}
-                        useCases={useCases}
-                        activeUseCaseId={activeUseCaseId}
-                        onUseCaseClick={handleUseCaseClick}
-                        statusCounts={stats ? { passing: stats.passing, failing: stats.failing, untested: stats.untested } : undefined}
-                    />
-                </div>
+                {/* Sidebar - only show for requirements tab */}
+                {showSidebar && (
+                    <div className="w-64 shrink-0">
+                        <SidebarFilters
+                            search={search}
+                            onSearchChange={handleSearchChange}
+                            statusFilters={statusFilters}
+                            onStatusFiltersChange={handleStatusFiltersChange}
+                            priorityFilters={priorityFilters}
+                            onPriorityFiltersChange={handlePriorityFiltersChange}
+                            originFilter={originFilter}
+                            onOriginFilterChange={handleOriginFilterChange}
+                            useCases={useCases}
+                            activeUseCaseId={activeUseCaseId}
+                            onUseCaseClick={handleUseCaseClick}
+                            statusCounts={stats ? { passing: stats.passing, failing: stats.failing, untested: stats.untested } : undefined}
+                        />
+                    </div>
+                )}
 
                 {/* Main content */}
                 <div className="flex-1 space-y-3">
-                    {listQuery.isLoading ? (
-                        <Card>
-                            <CardPanel className="p-6">
-                                <SkeletonList count={5} />
-                            </CardPanel>
-                        </Card>
-                    ) : filteredRequirements.length === 0 ? (
-                        <Card>
-                            <CardPanel className="p-6">
-                                <div className="flex flex-col items-center gap-3 py-12">
-                                    <ClipboardCheck className="text-muted-foreground/20 size-10" />
-                                    <div className="text-center">
-                                        <p className="text-muted-foreground font-medium">No requirements found</p>
-                                        <p className="text-muted-foreground/70 mt-1 text-sm">
-                                            {statusFilters.length > 0 || priorityFilters.length > 0 || search || originFilter
-                                                ? "Try adjusting your filters."
-                                                : "Define requirements to track what your knowledge base should cover."}
-                                        </p>
-                                    </div>
-                                    {!search && statusFilters.length === 0 && (
-                                        <Button size="sm" render={<Link to="/requirements/new" />}>
-                                            <Plus className="size-3.5" />
-                                            Create your first requirement
-                                        </Button>
-                                    )}
-                                </div>
-                            </CardPanel>
-                        </Card>
-                    ) : (
+                    {activeTab === "requirements" && (
                         <>
-                            <SortableRequirementList
-                                requirements={filteredRequirements}
-                                selectedIds={selectedIds}
-                                onToggleSelection={toggleSelection}
-                                useCaseMap={useCaseMap}
-                            />
+                            {listQuery.isLoading ? (
+                                <Card>
+                                    <CardPanel className="p-6">
+                                        <SkeletonList count={5} />
+                                    </CardPanel>
+                                </Card>
+                            ) : filteredRequirements.length === 0 ? (
+                                <Card>
+                                    <CardPanel className="p-6">
+                                        <div className="flex flex-col items-center gap-3 py-12">
+                                            <ClipboardCheck className="text-muted-foreground/20 size-10" />
+                                            <div className="text-center">
+                                                <p className="text-muted-foreground font-medium">No requirements found</p>
+                                                <p className="text-muted-foreground/70 mt-1 text-sm">
+                                                    {statusFilters.length > 0 || priorityFilters.length > 0 || search || originFilter
+                                                        ? "Try adjusting your filters."
+                                                        : "Define requirements to track what your knowledge base should cover."}
+                                                </p>
+                                            </div>
+                                            {!search && statusFilters.length === 0 && (
+                                                <Button size="sm" render={<Link to="/requirements/new" />}>
+                                                    <Plus className="size-3.5" />
+                                                    Create your first requirement
+                                                </Button>
+                                            )}
+                                        </div>
+                                    </CardPanel>
+                                </Card>
+                            ) : (
+                                <>
+                                    <SortableRequirementList
+                                        requirements={filteredRequirements}
+                                        selectedIds={selectedIds}
+                                        onToggleSelection={toggleSelection}
+                                        useCaseMap={useCaseMap}
+                                    />
 
-                            {/* Pagination */}
-                            {data && data.total > pageSize && (
-                                <div className="mt-4 flex items-center justify-between text-sm text-muted-foreground">
-                                    <span>
-                                        Showing {page * pageSize + 1}-{Math.min((page + 1) * pageSize, data.total)} of {data.total}
-                                    </span>
-                                    <div className="flex gap-2">
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            disabled={page === 0}
-                                            onClick={() => setPage(p => p - 1)}
-                                        >
-                                            Previous
-                                        </Button>
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            disabled={(page + 1) * pageSize >= data.total}
-                                            onClick={() => setPage(p => p + 1)}
-                                        >
-                                            Next
-                                        </Button>
-                                    </div>
-                                </div>
+                                    {/* Pagination */}
+                                    {data && data.total > pageSize && (
+                                        <div className="mt-4 flex items-center justify-between text-sm text-muted-foreground">
+                                            <span>
+                                                Showing {page * pageSize + 1}-{Math.min((page + 1) * pageSize, data.total)} of {data.total}
+                                            </span>
+                                            <div className="flex gap-2">
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    disabled={page === 0}
+                                                    onClick={() => setPage(p => p - 1)}
+                                                >
+                                                    Previous
+                                                </Button>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    disabled={(page + 1) * pageSize >= data.total}
+                                                    onClick={() => setPage(p => p + 1)}
+                                                >
+                                                    Next
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    )}
+                                </>
                             )}
                         </>
                     )}
+
+                    {activeTab === "plans" && <PlansListContent />}
+
+                    {activeTab === "traceability" && <TraceabilityContent />}
                 </div>
             </div>
 
             {/* Bulk actions */}
-            <BulkActions
-                selectedIds={selectedIds}
-                onClearSelection={() => setSelectedIds([])}
-                useCases={useCases}
-            />
+            {activeTab === "requirements" && (
+                <BulkActions
+                    selectedIds={selectedIds}
+                    onClearSelection={() => setSelectedIds([])}
+                    useCases={useCases}
+                />
+            )}
         </div>
     );
 }

@@ -3,7 +3,7 @@ import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { HeadContent, Link, Outlet, Scripts, createRootRouteWithContext, useLocation } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 
-import { Settings, SlidersHorizontal, Tags, FileText, BookOpen, Languages, Folder, BarChart3, ClipboardList, FileSearch, Layers, Search } from "lucide-react";
+import { Settings, SlidersHorizontal, Tags, FileText, BookOpen, Languages, Folder, FileSearch, Layers, Search } from "lucide-react";
 
 import { ErrorBoundary } from "@/components/error-boundary";
 import FubbikLogo from "@/components/fubbik-logo";
@@ -106,12 +106,6 @@ function RootDocument() {
                                             Reviews
                                         </Link>
                                         <Link
-                                            to="/plans"
-                                            className="text-muted-foreground hover:text-foreground [&.active]:text-foreground rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
-                                        >
-                                            Plans
-                                        </Link>
-                                        <Link
                                             to="/docs"
                                             search={{}}
                                             className="text-muted-foreground hover:text-foreground [&.active]:text-foreground rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
@@ -148,10 +142,6 @@ function RootDocument() {
                                                     <Languages className="size-4" />
                                                     Vocabulary
                                                 </DropdownMenuItem>
-                                                <DropdownMenuItem render={<Link to="/reviews/queue" />}>
-                                                    <ClipboardList className="size-4" />
-                                                    Review Queue
-                                                </DropdownMenuItem>
                                                 <DropdownMenuSeparator />
                                                 <DropdownMenuItem render={<Link to="/context" />}>
                                                     <FileSearch className="size-4" />
@@ -164,10 +154,6 @@ function RootDocument() {
                                                 <DropdownMenuItem render={<Link to="/workspaces" />}>
                                                     <Layers className="size-4" />
                                                     Workspaces
-                                                </DropdownMenuItem>
-                                                <DropdownMenuItem render={<Link to="/coverage" />}>
-                                                    <BarChart3 className="size-4" />
-                                                    Coverage
                                                 </DropdownMenuItem>
                                                 <DropdownMenuItem render={<Link to="/knowledge-health" />}>
                                                     <BookOpen className="size-4" />

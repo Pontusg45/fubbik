@@ -6,6 +6,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardPanel } from "@/components/ui/card";
 import { useActiveCodebase } from "@/features/codebases/use-active-codebase";
+import { ReviewQueueContent } from "@/features/reviews/review-queue-content";
 import { SessionCard } from "@/features/reviews/session-card";
 import { getUser } from "@/functions/get-user";
 import { api } from "@/utils/api";
@@ -24,6 +25,7 @@ export const Route = createFileRoute("/reviews")({
     }
 });
 
+type ActiveTab = "sessions" | "queue";
 type StatusFilter = "all" | "in_progress" | "completed" | "reviewed";
 
 const statusOptions: { value: StatusFilter; label: string }[] = [
@@ -43,6 +45,7 @@ interface Session {
 
 function ReviewsPage() {
     const { codebaseId } = useActiveCodebase();
+    const [activeTab, setActiveTab] = useState<ActiveTab>("sessions");
     const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
     const [page, setPage] = useState(0);
     const pageSize = 20;
@@ -72,7 +75,8 @@ function ReviewsPage() {
             if (statusFilter !== "all") query.status = statusFilter;
             if (codebaseId) query.codebaseId = codebaseId;
             return unwrapEden(await api.api.sessions.get({ query }));
-        }
+        },
+        enabled: activeTab === "sessions"
     });
 
     const data = sessionsQuery.data as { sessions: Session[]; total: number } | undefined;
@@ -89,79 +93,99 @@ function ReviewsPage() {
                 </div>
             </div>
 
-            {/* Status filter */}
-            <div className="mb-6 flex gap-2">
-                {statusOptions.map(opt => (
+            {/* Tab switcher */}
+            <div className="flex gap-1 mb-4">
+                {(["sessions", "queue"] as const).map(tab => (
                     <Button
-                        key={opt.value}
-                        variant={statusFilter === opt.value ? "default" : "outline"}
+                        key={tab}
+                        variant={activeTab === tab ? "default" : "outline"}
                         size="sm"
-                        onClick={() => handleStatusChange(opt.value)}
+                        onClick={() => setActiveTab(tab)}
                     >
-                        {opt.label}
+                        {tab === "sessions" ? "Sessions" : "Review Queue"}
                     </Button>
                 ))}
             </div>
 
-            {/* Content */}
-            {sessionsQuery.isLoading ? (
-                <Card>
-                    <CardPanel className="p-6">
-                        <p className="text-muted-foreground text-sm">Loading...</p>
-                    </CardPanel>
-                </Card>
-            ) : sessions.length === 0 ? (
-                <Card>
-                    <CardPanel className="p-6">
-                        <div className="flex flex-col items-center gap-3 py-12">
-                            <ClipboardList className="text-muted-foreground/20 size-10" />
-                            <div className="text-center">
-                                <p className="text-muted-foreground font-medium">No implementation sessions yet</p>
-                                <p className="text-muted-foreground/70 mt-1 text-sm">
-                                    Sessions are created when you start an implementation review via the CLI or API.
-                                </p>
-                            </div>
-                        </div>
-                    </CardPanel>
-                </Card>
-            ) : (
+            {activeTab === "sessions" && (
                 <>
-                    <div className="space-y-3">
-                        {sessions.map(session => (
-                            <SessionCard
-                                key={session.id}
-                                id={session.id}
-                                title={session.title}
-                                status={session.status}
-                                codebaseName={session.codebaseId ? codebaseMap.get(session.codebaseId) : undefined}
-                                createdAt={session.createdAt}
-                            />
+                    {/* Status filter */}
+                    <div className="mb-6 flex gap-2">
+                        {statusOptions.map(opt => (
+                            <Button
+                                key={opt.value}
+                                variant={statusFilter === opt.value ? "default" : "outline"}
+                                size="sm"
+                                onClick={() => handleStatusChange(opt.value)}
+                            >
+                                {opt.label}
+                            </Button>
                         ))}
                     </div>
 
-                    {/* Pagination */}
-                    {total > pageSize && (
-                        <div className="text-muted-foreground mt-4 flex items-center justify-between text-sm">
-                            <span>
-                                Showing {page * pageSize + 1}-{Math.min((page + 1) * pageSize, total)} of {total}
-                            </span>
-                            <div className="flex gap-2">
-                                <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage(p => p - 1)}>
-                                    Previous
-                                </Button>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    disabled={(page + 1) * pageSize >= total}
-                                    onClick={() => setPage(p => p + 1)}
-                                >
-                                    Next
-                                </Button>
+                    {/* Content */}
+                    {sessionsQuery.isLoading ? (
+                        <Card>
+                            <CardPanel className="p-6">
+                                <p className="text-muted-foreground text-sm">Loading...</p>
+                            </CardPanel>
+                        </Card>
+                    ) : sessions.length === 0 ? (
+                        <Card>
+                            <CardPanel className="p-6">
+                                <div className="flex flex-col items-center gap-3 py-12">
+                                    <ClipboardList className="text-muted-foreground/20 size-10" />
+                                    <div className="text-center">
+                                        <p className="text-muted-foreground font-medium">No implementation sessions yet</p>
+                                        <p className="text-muted-foreground/70 mt-1 text-sm">
+                                            Sessions are created when you start an implementation review via the CLI or API.
+                                        </p>
+                                    </div>
+                                </div>
+                            </CardPanel>
+                        </Card>
+                    ) : (
+                        <>
+                            <div className="space-y-3">
+                                {sessions.map(session => (
+                                    <SessionCard
+                                        key={session.id}
+                                        id={session.id}
+                                        title={session.title}
+                                        status={session.status}
+                                        codebaseName={session.codebaseId ? codebaseMap.get(session.codebaseId) : undefined}
+                                        createdAt={session.createdAt}
+                                    />
+                                ))}
                             </div>
-                        </div>
+
+                            {/* Pagination */}
+                            {total > pageSize && (
+                                <div className="text-muted-foreground mt-4 flex items-center justify-between text-sm">
+                                    <span>
+                                        Showing {page * pageSize + 1}-{Math.min((page + 1) * pageSize, total)} of {total}
+                                    </span>
+                                    <div className="flex gap-2">
+                                        <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage(p => p - 1)}>
+                                            Previous
+                                        </Button>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            disabled={(page + 1) * pageSize >= total}
+                                            onClick={() => setPage(p => p + 1)}
+                                        >
+                                            Next
+                                        </Button>
+                                    </div>
+                                </div>
+                            )}
+                        </>
                     )}
                 </>
             )}
+
+            {activeTab === "queue" && <ReviewQueueContent />}
         </div>
     );
 }
