@@ -1,13 +1,18 @@
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, Plus, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardPanel } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { PageContainer } from "@/components/ui/page";
 import { Separator } from "@/components/ui/separator";
+import { Textarea } from "@/components/ui/textarea";
+import { DraftIndicator } from "@/features/chunks/draft-indicator";
+import { loadDraft, useAutosave } from "@/features/chunks/use-autosave";
+import { useActiveCodebase } from "@/features/codebases/use-active-codebase";
 import { getUser } from "@/functions/get-user";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
@@ -30,9 +35,35 @@ interface StepRow {
 
 function NewPlan() {
     const navigate = useNavigate();
+    const { codebaseId } = useActiveCodebase();
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
     const [steps, setSteps] = useState<StepRow[]>([{ description: "" }]);
+
+    // Autosave
+    const formState = useMemo(() => ({ title, description, steps }), [title, description, steps]);
+    const { clearDraft, lastSaved } = useAutosave("plan-draft-new", formState);
+
+    // Restore draft on mount
+    useEffect(() => {
+        const draft = loadDraft<{ title: string; description: string; steps: Array<{ description: string }> }>("plan-draft-new");
+        if (draft && (draft.title || draft.steps?.some(s => s.description))) {
+            setTitle(draft.title ?? "");
+            setDescription(draft.description ?? "");
+            if (draft.steps?.length) setSteps(draft.steps);
+            toast.info("Restored unsaved plan draft");
+        }
+    }, []);
+
+    // Templates
+    const templatesQuery = useQuery({
+        queryKey: ["plan-templates"],
+        queryFn: async () => {
+            const result = unwrapEden(await api.api.plans.templates.get());
+            return (result as any)?.templates ?? [];
+        },
+        staleTime: 60_000
+    });
 
     const createMutation = useMutation({
         mutationFn: async () => {
@@ -44,11 +75,13 @@ function NewPlan() {
                 await api.api.plans.post({
                     title: title.trim(),
                     ...(description.trim() ? { description: description.trim() } : {}),
-                    ...(validSteps.length > 0 ? { steps: validSteps } : {})
+                    ...(validSteps.length > 0 ? { steps: validSteps } : {}),
+                    ...(codebaseId ? { codebaseId } : {})
                 })
             );
         },
         onSuccess: (data) => {
+            clearDraft();
             toast.success("Plan created");
             const planId = (data as Record<string, unknown>)?.id as string | undefined;
             if (planId) {
@@ -97,26 +130,49 @@ function NewPlan() {
             <Card>
                 <CardPanel className="p-6">
                     <form onSubmit={handleSubmit} className="space-y-4">
+                        {(templatesQuery.data ?? []).length > 0 && (
+                            <div className="mb-4">
+                                <label className="mb-1.5 block text-sm font-medium">Start from template</label>
+                                <div className="flex flex-wrap gap-2">
+                                    {(templatesQuery.data ?? []).map((tmpl: any) => (
+                                        <Button
+                                            key={tmpl.key}
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => {
+                                                setTitle(tmpl.title);
+                                                setDescription(tmpl.description);
+                                                if (tmpl.steps?.length) {
+                                                    setSteps(tmpl.steps.map((s: string) => ({ description: s })));
+                                                }
+                                            }}
+                                        >
+                                            {tmpl.title}
+                                        </Button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
                         <div>
                             <label className="mb-1.5 block text-sm font-medium">Title</label>
-                            <input
+                            <Input
                                 type="text"
                                 value={title}
-                                onChange={e => setTitle(e.target.value)}
+                                onChange={e => setTitle((e.target as HTMLInputElement).value)}
                                 placeholder="Enter a plan title..."
                                 required
-                                className="bg-background focus:ring-ring w-full rounded-md border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
                             />
                         </div>
 
                         <div>
                             <label className="mb-1.5 block text-sm font-medium">Description</label>
-                            <textarea
+                            <Textarea
                                 value={description}
-                                onChange={e => setDescription(e.target.value)}
+                                onChange={e => setDescription((e.target as HTMLTextAreaElement).value)}
                                 placeholder="Describe what this plan covers (optional)..."
                                 rows={3}
-                                className="bg-background focus:ring-ring w-full rounded-md border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
                             />
                         </div>
 
@@ -130,12 +186,11 @@ function NewPlan() {
                                         <span className="text-muted-foreground w-6 text-right text-xs font-mono">
                                             {i + 1}.
                                         </span>
-                                        <input
+                                        <Input
                                             type="text"
                                             value={step.description}
-                                            onChange={e => updateStep(i, e.target.value)}
+                                            onChange={e => updateStep(i, (e.target as HTMLInputElement).value)}
                                             placeholder="Step description..."
-                                            className="bg-background focus:ring-ring flex-1 rounded-md border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
                                             onKeyDown={e => {
                                                 if (e.key === "Enter") {
                                                     e.preventDefault();
@@ -171,7 +226,8 @@ function NewPlan() {
 
                         <Separator />
 
-                        <div className="flex justify-end gap-2">
+                        <div className="flex items-center justify-end gap-2">
+                            <DraftIndicator lastSaved={lastSaved} />
                             <Button type="button" variant="outline" render={<Link to="/plans" />}>
                                 Cancel
                             </Button>

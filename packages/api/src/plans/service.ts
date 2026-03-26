@@ -70,7 +70,8 @@ export function listPlanTemplates() {
         key,
         title: tmpl.title,
         description: tmpl.description,
-        stepCount: tmpl.steps.length
+        stepCount: tmpl.steps.length,
+        steps: tmpl.steps
     }));
 }
 
