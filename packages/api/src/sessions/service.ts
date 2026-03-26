@@ -281,6 +281,13 @@ export function completeSession(sessionId: string, userId: string, prUrl?: strin
             reviewBrief
         });
 
+        // Auto-update requirement statuses for addressed requirements
+        if (detail.requirementRefs.length > 0) {
+            for (const ref of detail.requirementRefs) {
+                yield* updateRequirementStatus(ref.requirementId, userId, "passing");
+            }
+        }
+
         // Auto-complete plan if all steps are done
         if (session.planId) {
             const planDetail = yield* getPlanDetail(session.planId, userId);

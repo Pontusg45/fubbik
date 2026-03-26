@@ -6,6 +6,7 @@ import {
     deleteStep as deleteStepRepo,
     getChunkRefsForPlan,
     getPlanById,
+    getRequirementsByIds,
     getStepsForPlan,
     listPlans as listPlansRepo,
     removePlanChunkRef as removeChunkRefRepo,
@@ -92,12 +93,26 @@ export function getPlanDetail(id: string, userId: string) {
         const steps = yield* getStepsForPlan(id);
         const chunkRefs = yield* getChunkRefsForPlan(id);
 
+        // Batch-fetch requirement info for steps that have requirementId
+        const reqIds = [...new Set(steps.filter(s => s.requirementId).map(s => s.requirementId!))];
+        let reqMap = new Map<string, { title: string; status: string }>();
+        if (reqIds.length > 0) {
+            const reqs = yield* getRequirementsByIds(reqIds, userId);
+            reqMap = new Map(reqs.map(r => [r.id, { title: r.title, status: r.status }]));
+        }
+
+        const enrichedSteps = steps.map(s => ({
+            ...s,
+            requirementTitle: s.requirementId ? reqMap.get(s.requirementId)?.title ?? null : null,
+            requirementStatus: s.requirementId ? reqMap.get(s.requirementId)?.status ?? null : null
+        }));
+
         const totalSteps = steps.length;
         const doneCount = steps.filter(s => s.status === "done").length;
 
         return {
             ...found,
-            steps,
+            steps: enrichedSteps,
             chunkRefs,
             progress: { doneCount, totalSteps }
         };
@@ -112,7 +127,7 @@ export function createPlan(
         status?: string;
         codebaseId?: string;
         template?: string;
-        steps?: Array<{ description: string; order?: number; parentStepId?: string; note?: string; chunkId?: string }>;
+        steps?: Array<{ description: string; order?: number; parentStepId?: string; note?: string; chunkId?: string; requirementId?: string }>;
     }
 ) {
     return Effect.gen(function* () {
@@ -165,7 +180,8 @@ export function createPlan(
                     order: stepBody.order ?? i,
                     parentStepId: stepBody.parentStepId,
                     note: stepBody.note,
-                    chunkId: stepBody.chunkId
+                    chunkId: stepBody.chunkId,
+                    requirementId: stepBody.requirementId
                 });
                 createdSteps.push(step);
             }
@@ -220,6 +236,7 @@ export function addStep(
         parentStepId?: string;
         note?: string;
         chunkId?: string;
+        requirementId?: string;
     }
 ) {
     return Effect.gen(function* () {
@@ -240,7 +257,8 @@ export function addStep(
             order,
             parentStepId: body.parentStepId,
             note: body.note,
-            chunkId: body.chunkId
+            chunkId: body.chunkId,
+            requirementId: body.requirementId
         });
     });
 }
@@ -256,6 +274,7 @@ export function updateStep(
         parentStepId?: string | null;
         note?: string | null;
         chunkId?: string | null;
+        requirementId?: string | null;
     }
 ) {
     return Effect.gen(function* () {

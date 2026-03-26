@@ -3,6 +3,7 @@ import { index, integer, pgTable, text, timestamp, type AnyPgColumn } from "driz
 import { user } from "./auth";
 import { chunk } from "./chunk";
 import { codebase } from "./codebase";
+import { requirement } from "./requirement";
 
 export const plan = pgTable(
     "plan",
@@ -42,6 +43,7 @@ export const planStep = pgTable(
         }),
         note: text("note"),
         chunkId: text("chunk_id").references(() => chunk.id, { onDelete: "set null" }),
+        requirementId: text("requirement_id").references(() => requirement.id, { onDelete: "set null" }),
         createdAt: timestamp("created_at").defaultNow().notNull(),
         updatedAt: timestamp("updated_at")
             .defaultNow()
@@ -50,7 +52,8 @@ export const planStep = pgTable(
     },
     table => [
         index("planStep_planId_idx").on(table.planId),
-        index("planStep_parentStepId_idx").on(table.parentStepId)
+        index("planStep_parentStepId_idx").on(table.parentStepId),
+        index("plan_step_requirementId_idx").on(table.requirementId)
     ]
 );
 
@@ -88,7 +91,8 @@ export const planStepRelations = relations(planStep, ({ one, many }) => ({
         relationName: "children"
     }),
     children: many(planStep, { relationName: "children" }),
-    chunk: one(chunk, { fields: [planStep.chunkId], references: [chunk.id] })
+    chunk: one(chunk, { fields: [planStep.chunkId], references: [chunk.id] }),
+    requirement: one(requirement, { fields: [planStep.requirementId], references: [requirement.id] })
 }));
 
 export const planChunkRefRelations = relations(planChunkRef, ({ one }) => ({

@@ -51,7 +51,8 @@ export const planRoutes = new Elysia()
                             order: t.Optional(t.Number()),
                             parentStepId: t.Optional(t.String()),
                             note: t.Optional(t.String({ maxLength: 2000 })),
-                            chunkId: t.Optional(t.String())
+                            chunkId: t.Optional(t.String()),
+                            requirementId: t.Optional(t.String())
                         })
                     )
                 )
@@ -119,7 +120,8 @@ export const planRoutes = new Elysia()
                 order: t.Optional(t.Number()),
                 parentStepId: t.Optional(t.String()),
                 note: t.Optional(t.String({ maxLength: 2000 })),
-                chunkId: t.Optional(t.String())
+                chunkId: t.Optional(t.String()),
+                requirementId: t.Optional(t.String())
             })
         }
     )
@@ -145,7 +147,8 @@ export const planRoutes = new Elysia()
                 order: t.Optional(t.Number()),
                 parentStepId: t.Optional(t.Union([t.String(), t.Null()])),
                 note: t.Optional(t.Union([t.String({ maxLength: 2000 }), t.Null()])),
-                chunkId: t.Optional(t.Union([t.String(), t.Null()]))
+                chunkId: t.Optional(t.Union([t.String(), t.Null()])),
+                requirementId: t.Optional(t.Union([t.String(), t.Null()]))
             })
         }
     )

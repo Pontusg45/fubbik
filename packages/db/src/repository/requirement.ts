@@ -245,7 +245,7 @@ export function bulkDeleteRequirements(ids: string[], userId: string) {
 export function getRequirementsByIds(ids: string[], userId: string) {
     return Effect.tryPromise({
         try: () =>
-            db.select({ id: requirement.id, useCaseId: requirement.useCaseId })
+            db.select({ id: requirement.id, useCaseId: requirement.useCaseId, title: requirement.title, status: requirement.status })
                 .from(requirement)
                 .where(and(inArray(requirement.id, ids), eq(requirement.userId, userId))),
         catch: cause => new DatabaseError({ cause })

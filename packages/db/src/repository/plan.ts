@@ -134,6 +134,7 @@ export interface CreateStepParams {
     parentStepId?: string;
     note?: string;
     chunkId?: string;
+    requirementId?: string;
 }
 
 export function getStepsForPlan(planId: string) {
@@ -166,6 +167,7 @@ export interface UpdateStepParams {
     parentStepId?: string | null;
     note?: string | null;
     chunkId?: string | null;
+    requirementId?: string | null;
 }
 
 export function updateStep(stepId: string, planId: string, params: UpdateStepParams) {
@@ -178,6 +180,7 @@ export function updateStep(stepId: string, planId: string, params: UpdateStepPar
             if (params.parentStepId !== undefined) setClause.parentStepId = params.parentStepId;
             if (params.note !== undefined) setClause.note = params.note;
             if (params.chunkId !== undefined) setClause.chunkId = params.chunkId;
+            if (params.requirementId !== undefined) setClause.requirementId = params.requirementId;
 
             if (Object.keys(setClause).length === 0) {
                 const [found] = await db
