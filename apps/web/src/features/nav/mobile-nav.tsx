@@ -11,7 +11,6 @@ import {
     FolderGit2,
     Layers,
     LayoutDashboard,
-    ListChecks,
     Menu,
     Network,
     Search,
@@ -30,7 +29,6 @@ const primaryItems = [
     { label: "Graph", to: "/graph" as const, icon: Network },
     { label: "Requirements", to: "/requirements" as const, icon: ClipboardCheck },
     { label: "Reviews", to: "/reviews" as const, icon: ClipboardList },
-    { label: "Plans", to: "/plans" as const, icon: ListChecks },
     { label: "Docs", to: "/docs" as const, icon: FileText },
     { label: "Search", to: "/search" as const, icon: Search }
 ];
@@ -39,7 +37,6 @@ const manageItems = [
     { label: "Tags", to: "/tags" as const, icon: Tags },
     { label: "Templates", to: "/templates" as const, icon: FileText },
     { label: "Vocabulary", to: "/vocabulary" as const, icon: BookOpen },
-    { label: "Review Queue", to: "/reviews/queue" as const, icon: ClipboardCheck },
     { label: "Context", to: "/context" as const, icon: FileSearch },
     { label: "Codebases", to: "/codebases" as const, icon: FolderGit2 },
     { label: "Workspaces", to: "/workspaces" as const, icon: Layers },
