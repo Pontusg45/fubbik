@@ -6,6 +6,7 @@ import {
     deleteStep as deleteStepRepo,
     getChunkRefsForPlan,
     getPlanById,
+    getRequirementById,
     getRequirementsByIds,
     getStepsForPlan,
     listPlans as listPlansRepo,
@@ -16,6 +17,7 @@ import {
 import { Effect } from "effect";
 
 import { NotFoundError, ValidationError } from "../errors";
+import { generateStepsFromRequirements } from "./generate-from-requirements";
 
 const VALID_PLAN_STATUSES = ["draft", "active", "completed", "archived"];
 const VALID_STEP_STATUSES = ["pending", "in_progress", "done", "skipped", "blocked"];
@@ -62,6 +64,16 @@ export const PLAN_TEMPLATES: Record<string, { title: string; description: string
             "Verify data integrity",
             "Update knowledge chunks with new architecture"
         ]
+    },
+    "requirement-standard": {
+        title: "Requirement Implementation (Standard)",
+        description: "One implementation + verification step per requirement",
+        steps: []
+    },
+    "requirement-detailed": {
+        title: "Requirement Implementation (Detailed)",
+        description: "Verify \u2192 Implement \u2192 Test \u2192 Document per requirement",
+        steps: []
     }
 };
 
@@ -355,5 +367,64 @@ export function removePlanChunkRef(planId: string, refId: string, userId: string
         const deleted = yield* removeChunkRefRepo(refId, planId);
         if (!deleted) return yield* Effect.fail(new NotFoundError({ resource: "PlanChunkRef" }));
         return deleted;
+    });
+}
+
+// ── Generate from Requirements ────────────────────────────────────
+
+export function generatePlanFromRequirements(
+    userId: string,
+    body: {
+        title: string;
+        description?: string;
+        requirementIds: string[];
+        codebaseId?: string;
+        template?: "standard" | "detailed";
+    }
+) {
+    return Effect.gen(function* () {
+        if (body.requirementIds.length === 0) {
+            return yield* Effect.fail(
+                new ValidationError({ message: "At least one requirementId is required" })
+            );
+        }
+
+        // Fetch all requirements
+        const requirements = [];
+        for (const reqId of body.requirementIds) {
+            const req = yield* getRequirementById(reqId, userId);
+            if (!req) {
+                return yield* Effect.fail(
+                    new NotFoundError({ resource: `Requirement(${reqId})` })
+                );
+            }
+            requirements.push(req);
+        }
+
+        // Generate steps
+        const template = body.template ?? "standard";
+        const generatedSteps = generateStepsFromRequirements(
+            requirements as Array<{
+                id: string;
+                title: string;
+                description: string | null;
+                steps: Array<{ keyword: string; text: string; params?: Record<string, string> }>;
+                status: string;
+                priority: string | null;
+            }>,
+            template
+        );
+
+        // Create the plan via the existing createPlan function
+        return yield* createPlan(userId, {
+            title: body.title,
+            description: body.description,
+            codebaseId: body.codebaseId,
+            steps: generatedSteps.map(s => ({
+                description: s.description,
+                order: s.order,
+                requirementId: s.requirementId
+            }))
+        });
     });
 }

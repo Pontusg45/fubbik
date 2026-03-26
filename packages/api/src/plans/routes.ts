@@ -60,6 +60,31 @@ export const planRoutes = new Elysia()
         }
     )
     .get("/plans/templates", () => ({ templates: planService.listPlanTemplates() }))
+    .post(
+        "/plans/generate-from-requirements",
+        ctx =>
+            Effect.runPromise(
+                requireSession(ctx).pipe(
+                    Effect.flatMap(session =>
+                        planService.generatePlanFromRequirements(session.user.id, ctx.body)
+                    ),
+                    Effect.tap(() =>
+                        Effect.sync(() => {
+                            ctx.set.status = 201;
+                        })
+                    )
+                )
+            ),
+        {
+            body: t.Object({
+                title: t.String({ maxLength: 200 }),
+                description: t.Optional(t.String({ maxLength: 5000 })),
+                requirementIds: t.Array(t.String()),
+                codebaseId: t.Optional(t.String()),
+                template: t.Optional(t.Union([t.Literal("standard"), t.Literal("detailed")]))
+            })
+        }
+    )
     .get("/plans/:id", ctx =>
         Effect.runPromise(
             requireSession(ctx).pipe(

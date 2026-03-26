@@ -225,4 +225,38 @@ export function registerPlanTools(server: McpServer): void {
             };
         }
     );
+
+    // 7. create_plan_from_requirements
+    server.tool(
+        "create_plan_from_requirements",
+        "Generate a plan from selected requirements with implementation steps",
+        {
+            title: z.string().describe("Plan title"),
+            requirementIds: z.array(z.string()).describe("Requirement IDs to generate steps from"),
+            template: z
+                .enum(["standard", "detailed"])
+                .optional()
+                .describe("Template: standard (implement+verify) or detailed (verify+implement+test+document)"),
+            codebaseId: z.string().optional().describe("Codebase ID to associate with")
+        },
+        async ({ title, requirementIds, template, codebaseId }) => {
+            const body: Record<string, unknown> = { title, requirementIds };
+            if (template) body.template = template;
+            if (codebaseId) body.codebaseId = codebaseId;
+
+            const plan = (await apiFetch("/plans/generate-from-requirements", {
+                method: "POST",
+                body: JSON.stringify(body)
+            })) as { id: string; title: string; steps?: Array<unknown> };
+
+            return {
+                content: [
+                    {
+                        type: "text" as const,
+                        text: `Created plan "${plan.title}" with ${plan.steps?.length ?? 0} steps from ${requirementIds.length} requirement(s). Plan ID: ${plan.id}`
+                    }
+                ]
+            };
+        }
+    );
 }
