@@ -226,7 +226,37 @@ export function registerPlanTools(server: McpServer): void {
         }
     );
 
-    // 7. create_plan_from_requirements
+    // 7. import_plan_markdown
+    server.tool(
+        "import_plan_markdown",
+        "Import a plan from markdown content (the format used by superpowers plans with # Title, **Goal:**, ## Task N:, and - [ ] **Step N:** checkboxes)",
+        {
+            markdown: z.string().describe("Full markdown content of the plan file"),
+            title: z.string().optional().describe("Override plan title"),
+            codebaseId: z.string().optional().describe("Codebase ID to associate with")
+        },
+        async ({ markdown, title, codebaseId }) => {
+            const body: Record<string, unknown> = { markdown };
+            if (title) body.title = title;
+            if (codebaseId) body.codebaseId = codebaseId;
+
+            const plan = (await apiFetch("/plans/import-markdown", {
+                method: "POST",
+                body: JSON.stringify(body)
+            })) as { id: string; title: string; steps?: Array<unknown> };
+
+            return {
+                content: [
+                    {
+                        type: "text" as const,
+                        text: `Imported plan "${plan.title}" with ${plan.steps?.length ?? 0} steps. Plan ID: ${plan.id}`
+                    }
+                ]
+            };
+        }
+    );
+
+    // 8. create_plan_from_requirements
     server.tool(
         "create_plan_from_requirements",
         "Generate a plan from selected requirements with implementation steps",

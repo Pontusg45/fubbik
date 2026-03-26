@@ -2,6 +2,7 @@ import { Effect } from "effect";
 import { Elysia, t } from "elysia";
 
 import { requireSession } from "../require-session";
+import { parsePlanMarkdown } from "./parse-plan-markdown";
 import * as planService from "./service";
 
 export const planRoutes = new Elysia()
@@ -82,6 +83,41 @@ export const planRoutes = new Elysia()
                 requirementIds: t.Array(t.String()),
                 codebaseId: t.Optional(t.String()),
                 template: t.Optional(t.Union([t.Literal("standard"), t.Literal("detailed")]))
+            })
+        }
+    )
+    .post(
+        "/plans/import-markdown",
+        ctx =>
+            Effect.runPromise(
+                requireSession(ctx).pipe(
+                    Effect.flatMap(session => {
+                        const parsed = parsePlanMarkdown(ctx.body.markdown);
+                        return planService.createPlan(session.user.id, {
+                            title: ctx.body.title ?? parsed.title,
+                            description: ctx.body.description ?? parsed.description,
+                            codebaseId: ctx.body.codebaseId,
+                            steps: parsed.steps.map(s => ({
+                                description: s.taskGroup
+                                    ? `[${s.taskGroup}] ${s.description}`
+                                    : s.description,
+                                order: s.order
+                            }))
+                        });
+                    }),
+                    Effect.tap(() =>
+                        Effect.sync(() => {
+                            ctx.set.status = 201;
+                        })
+                    )
+                )
+            ),
+        {
+            body: t.Object({
+                markdown: t.String({ maxLength: 100000 }),
+                title: t.Optional(t.String({ maxLength: 200 })),
+                description: t.Optional(t.String({ maxLength: 5000 })),
+                codebaseId: t.Optional(t.String())
             })
         }
     )

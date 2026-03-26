@@ -292,6 +292,47 @@ const completePlan = new Command("complete")
         }
     });
 
+const importPlan = new Command("import")
+    .description("Import a plan from a markdown file")
+    .argument("<file>", "path to markdown plan file")
+    .option("--title <title>", "override plan title")
+    .option("--codebase <name>", "scope to codebase")
+    .action(async (file: string, opts: { title?: string; codebase?: string }, cmd: Command) => {
+        try {
+            const { readFileSync } = await import("fs");
+            const markdown = readFileSync(file, "utf-8");
+
+            const body: Record<string, unknown> = { markdown };
+            if (opts.title) body.title = opts.title;
+            if (opts.codebase) body.codebaseId = opts.codebase;
+
+            const res = await fetchApi("/plans/import-markdown", {
+                method: "POST",
+                body: JSON.stringify(body)
+            });
+
+            if (!res.ok) {
+                outputError(`Failed to import plan: ${res.status} ${await res.text()}`);
+                process.exit(1);
+            }
+
+            const plan = (await res.json()) as Plan;
+
+            if (isJson(cmd)) {
+                console.log(JSON.stringify(plan, null, 2));
+                return;
+            }
+
+            outputQuiet(cmd, plan.id);
+            console.error(formatSuccess(`Imported plan: ${formatBold(plan.title)}`));
+            console.error(formatDim(`  ID: ${plan.id}`));
+            console.error(formatDim(`  ${plan.steps?.length ?? 0} steps imported`));
+        } catch (err) {
+            outputError(String(err));
+            process.exit(1);
+        }
+    });
+
 // ── Export ───────────────────────────────────────────────────────────
 
 export const planCommand = new Command("plan")
@@ -302,4 +343,5 @@ export const planCommand = new Command("plan")
     .addCommand(stepDone)
     .addCommand(addStep)
     .addCommand(activatePlan)
-    .addCommand(completePlan);
+    .addCommand(completePlan)
+    .addCommand(importPlan);
