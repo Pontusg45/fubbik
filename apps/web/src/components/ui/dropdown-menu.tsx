@@ -54,11 +54,11 @@ function DropdownMenuLabel({
     className,
     inset,
     ...props
-}: MenuPrimitive.GroupLabel.Props & {
+}: React.ComponentProps<"div"> & {
     inset?: boolean;
 }) {
     return (
-        <MenuPrimitive.GroupLabel
+        <div
             data-slot="dropdown-menu-label"
             data-inset={inset}
             className={cn("text-muted-foreground px-2 py-2 text-xs data-[inset]:pl-8", className)}
@@ -193,8 +193,8 @@ function DropdownMenuRadioItem({ className, children, ...props }: MenuPrimitive.
     );
 }
 
-function DropdownMenuSeparator({ className, ...props }: MenuPrimitive.Separator.Props) {
-    return <MenuPrimitive.Separator data-slot="dropdown-menu-separator" className={cn("bg-border -mx-1 h-px", className)} {...props} />;
+function DropdownMenuSeparator({ className, ...props }: React.ComponentProps<"div">) {
+    return <div role="separator" data-slot="dropdown-menu-separator" className={cn("bg-border -mx-1 my-1 h-px", className)} {...props} />;
 }
 
 function DropdownMenuShortcut({ className, ...props }: React.ComponentProps<"span">) {
