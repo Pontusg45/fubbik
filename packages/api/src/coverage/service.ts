@@ -1,4 +1,4 @@
-import { getChunkCoverage, getChunkCoverageMatrix } from "@fubbik/db/repository";
+import { getChunkCoverage, getChunkCoverageMatrix, getTraceabilityMatrix as getTraceabilityRepo } from "@fubbik/db/repository";
 import { Effect } from "effect";
 
 export function getCoverageMatrix(userId: string, codebaseId?: string) {
@@ -11,6 +11,10 @@ export function getCoverageMatrix(userId: string, codebaseId?: string) {
             matrix
         }))
     );
+}
+
+export function getTraceability(userId: string, codebaseId?: string) {
+    return getTraceabilityRepo(userId, codebaseId);
 }
 
 export function getCoverage(userId: string, codebaseId?: string) {

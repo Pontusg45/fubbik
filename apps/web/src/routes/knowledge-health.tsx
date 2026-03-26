@@ -288,17 +288,7 @@ function KnowledgeHealthPage() {
                                 </p>
                                 <div className="divide-y">
                                     {gapsQuery.data.map((gap: any, i: number) => (
-                                        <div key={i} className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
-                                            <div className="min-w-0 flex-1">
-                                                <span className="text-sm">{gap.description}</span>
-                                                <span className="text-muted-foreground ml-2 text-xs">
-                                                    ({gap.frequency}x across {gap.session_ids?.length ?? 0} sessions)
-                                                </span>
-                                            </div>
-                                            <Button variant="outline" size="sm" render={<Link to="/chunks/new" />}>
-                                                Create chunk
-                                            </Button>
-                                        </div>
+                                        <GapRow key={i} gap={gap} codebaseId={codebaseId} />
                                     ))}
                                 </div>
                             </CardPanel>
@@ -307,6 +297,52 @@ function KnowledgeHealthPage() {
                 </div>
             ) : null}
         </PageContainer>
+    );
+}
+
+function GapRow({ gap, codebaseId }: { gap: { description: string; frequency: number; session_ids: string[] }; codebaseId: string | null }) {
+    const queryClient = useQueryClient();
+
+    const createReqMutation = useMutation({
+        mutationFn: async () => {
+            await unwrapEden(await api.api.requirements.post({
+                title: gap.description.slice(0, 100),
+                description: `Knowledge gap from ${gap.frequency} session(s).\n\n${gap.description}`,
+                priority: "should",
+                steps: [{ keyword: "given" as const, text: gap.description }],
+                codebaseId: codebaseId ?? undefined,
+            }));
+        },
+        onSuccess: () => {
+            toast.success("Requirement created");
+            queryClient.invalidateQueries({ queryKey: ["knowledge-gaps"] });
+            queryClient.invalidateQueries({ queryKey: ["requirements"] });
+        },
+        onError: () => toast.error("Failed to create requirement")
+    });
+
+    return (
+        <div className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
+            <div className="min-w-0 flex-1">
+                <span className="text-sm">{gap.description}</span>
+                <span className="text-muted-foreground ml-2 text-xs">
+                    ({gap.frequency}x across {gap.session_ids?.length ?? 0} sessions)
+                </span>
+            </div>
+            <div className="flex gap-1.5">
+                <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => createReqMutation.mutate()}
+                    disabled={createReqMutation.isPending}
+                >
+                    {createReqMutation.isPending ? "Creating..." : "Create Requirement"}
+                </Button>
+                <Button variant="outline" size="sm" render={<Link to="/chunks/new" />}>
+                    Create chunk
+                </Button>
+            </div>
+        </div>
     );
 }
 
