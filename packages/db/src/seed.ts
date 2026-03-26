@@ -7,6 +7,15 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { user } from "./schema/auth";
 import { chunk, chunkConnection } from "./schema/chunk";
 import { chunkTag, tag, tagType } from "./schema/tag";
+import { codebase, chunkCodebase } from "./schema/codebase";
+import { chunkAppliesTo } from "./schema/applies-to";
+import { chunkFileRef } from "./schema/file-ref";
+import { requirement, requirementChunk } from "./schema/requirement";
+import { useCase } from "./schema/use-case";
+import { plan, planStep, planChunkRef } from "./schema/plan";
+import { vocabularyEntry } from "./schema/vocabulary";
+import { collection } from "./schema/collection";
+import { workspace, workspaceCodebase } from "./schema/workspace";
 
 config({ path: resolve(import.meta.dirname, "../../../apps/server/.env") });
 
@@ -29,6 +38,22 @@ if (!existing) {
 }
 
 // Clear existing data for dev user (order matters for FK constraints)
+// New entity cleanup (must come before chunk/codebase deletion)
+await db.delete(workspaceCodebase).catch(() => {});
+await db.delete(workspace).where(eq(workspace.userId, DEV_USER_ID)).catch(() => {});
+await db.delete(collection).where(eq(collection.userId, DEV_USER_ID)).catch(() => {});
+await db.delete(vocabularyEntry).where(eq(vocabularyEntry.userId, DEV_USER_ID)).catch(() => {});
+await db.delete(planChunkRef).catch(() => {});
+await db.delete(planStep).catch(() => {});
+await db.delete(plan).where(eq(plan.userId, DEV_USER_ID)).catch(() => {});
+await db.delete(requirementChunk).catch(() => {});
+await db.delete(requirement).where(eq(requirement.userId, DEV_USER_ID)).catch(() => {});
+await db.delete(useCase).where(eq(useCase.userId, DEV_USER_ID)).catch(() => {});
+await db.delete(chunkFileRef).catch(() => {});
+await db.delete(chunkAppliesTo).catch(() => {});
+await db.delete(chunkCodebase).catch(() => {});
+await db.delete(codebase).where(eq(codebase.userId, DEV_USER_ID)).catch(() => {});
+// Original cleanup
 await db.delete(chunkTag);
 await db.delete(tag).where(eq(tag.userId, DEV_USER_ID));
 await db.delete(tagType).where(eq(tagType.userId, DEV_USER_ID));
@@ -1417,7 +1442,252 @@ for (const ct of chunkTagAssociations) {
 }
 console.log(`  \u2713 ${chunkTagAssociations.length} chunk-tag associations`);
 
-console.log(`\n\u2705 Database seeded: ${chunks.length} chunks, ${connections.length} connections, ${seedTagTypes.length} tag types, ${seedTags.length} tags`);
+// ─── 1. Codebase ───────────────────────────────────────────────────
+const CODEBASE_ID = "seed-codebase-fubbik";
+await db
+    .insert(codebase)
+    .values({
+        id: CODEBASE_ID,
+        name: "fubbik",
+        remoteUrl: "https://github.com/user/fubbik",
+        localPaths: ["/Users/pontus/projects/fubbik"],
+        userId: DEV_USER_ID
+    })
+    .catch(e => console.error("  \u2717 codebase:", e));
+console.log("  \u2713 1 codebase");
+
+// Associate all seed chunks with the codebase
+const chunkCodebaseAssociations = chunks.map(c => ({
+    chunkId: c.id,
+    codebaseId: CODEBASE_ID
+}));
+for (const cc of chunkCodebaseAssociations) {
+    await db.insert(chunkCodebase).values(cc).catch(e => console.error("  \u2717 chunk_codebase:", e));
+}
+console.log(`  \u2713 ${chunkCodebaseAssociations.length} chunk-codebase associations`);
+
+// ─── 2. Applies-to patterns ────────────────────────────────────────
+const appliesToPatterns = [
+    { id: "seed-at-arch", chunkId: ids.arch, pattern: "packages/**", note: "All packages" },
+    { id: "seed-at-schema", chunkId: ids.schemaChunks, pattern: "packages/db/src/schema/chunk.ts", note: "Chunk schema file" },
+    { id: "seed-at-effect", chunkId: ids.effect, pattern: "packages/api/src/**/*.ts", note: "All API source files" },
+    { id: "seed-at-api", chunkId: ids.apiChunks, pattern: "packages/api/src/chunks/**", note: "Chunks API routes" },
+    { id: "seed-at-routes", chunkId: ids.routes, pattern: "apps/web/src/routes/**", note: "Frontend routes" },
+    { id: "seed-at-graph", chunkId: ids.graph, pattern: "apps/web/src/features/graph/**", note: "Graph feature" },
+    { id: "seed-at-cli", chunkId: ids.cli, pattern: "apps/cli/src/**", note: "CLI source" },
+    { id: "seed-at-docker", chunkId: ids.docker, pattern: "Dockerfile*", note: "Docker configuration" },
+    { id: "seed-at-turbo", chunkId: ids.turbo, pattern: "turbo.json", note: "Turborepo config" }
+];
+for (const at of appliesToPatterns) {
+    await db.insert(chunkAppliesTo).values(at).catch(e => console.error("  \u2717 applies_to:", e));
+}
+console.log(`  \u2713 ${appliesToPatterns.length} applies-to patterns`);
+
+// ─── 3. File references ────────────────────────────────────────────
+const fileRefs = [
+    { id: "seed-fr-schema", chunkId: ids.schemaChunks, path: "packages/db/src/schema/chunk.ts", relation: "documents" },
+    { id: "seed-fr-effect", chunkId: ids.effect, path: "packages/api/src/errors.ts", relation: "documents" },
+    { id: "seed-fr-eden", chunkId: ids.eden, path: "apps/web/src/utils/api.ts", relation: "configures" },
+    { id: "seed-fr-auth", chunkId: ids.auth, path: "packages/auth/src/index.ts", relation: "documents" },
+    { id: "seed-fr-env", chunkId: ids.env, path: "packages/env/src/index.ts", relation: "documents" }
+];
+for (const fr of fileRefs) {
+    await db.insert(chunkFileRef).values(fr).catch(e => console.error("  \u2717 file_ref:", e));
+}
+console.log(`  \u2713 ${fileRefs.length} file references`);
+
+// ─── 4. Use cases (before requirements, since requirements reference them) ──
+const useCases = [
+    {
+        id: "seed-uc-knowledge",
+        name: "Knowledge Management",
+        description: "Creating, organizing, and navigating structured knowledge chunks and their relationships",
+        userId: DEV_USER_ID,
+        codebaseId: CODEBASE_ID,
+        order: 0
+    },
+    {
+        id: "seed-uc-ai-agent",
+        name: "AI Agent Integration",
+        description: "Enabling AI agents to consume, create, and enrich knowledge via CLI and API",
+        userId: DEV_USER_ID,
+        codebaseId: CODEBASE_ID,
+        order: 1
+    }
+];
+for (const uc of useCases) {
+    await db.insert(useCase).values(uc).catch(e => console.error("  \u2717 use_case:", e));
+}
+console.log(`  \u2713 ${useCases.length} use cases`);
+
+// ─── 5. Requirements ───────────────────────────────────────────────
+const requirements = [
+    {
+        id: "seed-req-crud",
+        title: "Chunk CRUD operations",
+        description: "Users can create, read, update, and delete knowledge chunks",
+        steps: [
+            { keyword: "given" as const, text: "a logged-in user" },
+            { keyword: "when" as const, text: "the user creates a chunk with title and content" },
+            { keyword: "then" as const, text: "the chunk is stored in the database" },
+            { keyword: "and" as const, text: "the chunk appears in the chunk list" },
+            { keyword: "when" as const, text: "the user updates the chunk content" },
+            { keyword: "then" as const, text: "the chunk version history is preserved" },
+            { keyword: "when" as const, text: "the user deletes the chunk" },
+            { keyword: "then" as const, text: "the chunk and its connections are removed" }
+        ],
+        status: "passing",
+        priority: "must",
+        userId: DEV_USER_ID,
+        codebaseId: CODEBASE_ID,
+        useCaseId: "seed-uc-knowledge",
+        order: 0
+    },
+    {
+        id: "seed-req-search",
+        title: "Semantic search returns relevant results",
+        description: "Embedding-based search surfaces contextually related chunks",
+        steps: [
+            { keyword: "given" as const, text: "chunks with embeddings exist in the database" },
+            { keyword: "when" as const, text: "the user performs a semantic search query" },
+            { keyword: "then" as const, text: "results are ranked by cosine similarity" },
+            { keyword: "and" as const, text: "the most relevant chunks appear first" }
+        ],
+        status: "passing",
+        priority: "should",
+        userId: DEV_USER_ID,
+        codebaseId: CODEBASE_ID,
+        useCaseId: "seed-uc-ai-agent",
+        order: 1
+    },
+    {
+        id: "seed-req-plan",
+        title: "Plan step tracking works end-to-end",
+        description: "Users can create plans with steps and track progress through statuses",
+        steps: [
+            { keyword: "given" as const, text: "a user creates a plan with multiple steps" },
+            { keyword: "when" as const, text: "the user marks a step as done" },
+            { keyword: "then" as const, text: "the plan progress is updated accordingly" },
+            { keyword: "and" as const, text: "linked chunks are accessible from the plan" }
+        ],
+        status: "untested",
+        priority: "should",
+        userId: DEV_USER_ID,
+        codebaseId: CODEBASE_ID,
+        useCaseId: "seed-uc-knowledge",
+        order: 2
+    }
+];
+for (const req of requirements) {
+    await db.insert(requirement).values(req).catch(e => console.error("  \u2717 requirement:", e));
+}
+console.log(`  \u2713 ${requirements.length} requirements`);
+
+// Link requirements to relevant chunks
+const reqChunkLinks = [
+    { requirementId: "seed-req-crud", chunkId: ids.apiChunks },
+    { requirementId: "seed-req-crud", chunkId: ids.schemaChunks },
+    { requirementId: "seed-req-search", chunkId: ids.semantic },
+    { requirementId: "seed-req-search", chunkId: ids.enrich },
+    { requirementId: "seed-req-plan", chunkId: ids.arch }
+];
+for (const rc of reqChunkLinks) {
+    await db.insert(requirementChunk).values(rc).catch(e => console.error("  \u2717 requirement_chunk:", e));
+}
+console.log(`  \u2713 ${reqChunkLinks.length} requirement-chunk links`);
+
+// ─── 6. Plan ───────────────────────────────────────────────────────
+const PLAN_ID = "seed-plan-docs";
+await db
+    .insert(plan)
+    .values({
+        id: PLAN_ID,
+        title: "Improve fubbik documentation",
+        description: "Comprehensive documentation improvement plan covering API docs, ADRs, onboarding, deployment, and automation",
+        status: "in_progress",
+        userId: DEV_USER_ID,
+        codebaseId: CODEBASE_ID
+    })
+    .catch(e => console.error("  \u2717 plan:", e));
+console.log("  \u2713 1 plan");
+
+const seedPlanSteps = [
+    { id: "seed-ps-api-docs", planId: PLAN_ID, description: "Document all API endpoints", status: "done", order: 0 },
+    { id: "seed-ps-adr", planId: PLAN_ID, description: "Add architecture decision records", status: "done", order: 1 },
+    { id: "seed-ps-onboarding", planId: PLAN_ID, description: "Create onboarding guide", status: "in_progress", order: 2 },
+    { id: "seed-ps-deploy", planId: PLAN_ID, description: "Document deployment process", status: "pending", order: 3 },
+    { id: "seed-ps-autogen", planId: PLAN_ID, description: "Set up automated doc generation", status: "pending", order: 4 }
+];
+for (const ps of seedPlanSteps) {
+    await db.insert(planStep).values(ps).catch(e => console.error("  \u2717 plan_step:", e));
+}
+console.log(`  \u2713 ${seedPlanSteps.length} plan steps`);
+
+// Link plan to relevant chunks
+const planChunkRefs = [
+    { id: "seed-pcr-arch", planId: PLAN_ID, chunkId: ids.arch, relation: "context" },
+    { id: "seed-pcr-api", planId: PLAN_ID, chunkId: ids.apiChunks, relation: "context" },
+    { id: "seed-pcr-docker", planId: PLAN_ID, chunkId: ids.docker, relation: "context" }
+];
+for (const pcr of planChunkRefs) {
+    await db.insert(planChunkRef).values(pcr).catch(e => console.error("  \u2717 plan_chunk_ref:", e));
+}
+console.log(`  \u2713 ${planChunkRefs.length} plan-chunk references`);
+
+// ─── 7. Vocabulary ─────────────────────────────────────────────────
+const vocabEntries = [
+    { id: "seed-vocab-chunk", word: "chunk", category: "actor", expects: ["target"], codebaseId: CODEBASE_ID, userId: DEV_USER_ID },
+    { id: "seed-vocab-connection", word: "connection", category: "target", expects: null, codebaseId: CODEBASE_ID, userId: DEV_USER_ID },
+    { id: "seed-vocab-codebase", word: "codebase", category: "target", expects: null, codebaseId: CODEBASE_ID, userId: DEV_USER_ID },
+    { id: "seed-vocab-plan", word: "plan", category: "actor", expects: ["target"], codebaseId: CODEBASE_ID, userId: DEV_USER_ID },
+    { id: "seed-vocab-requirement", word: "requirement", category: "target", expects: null, codebaseId: CODEBASE_ID, userId: DEV_USER_ID },
+    { id: "seed-vocab-create", word: "create", category: "action", expects: ["target"], codebaseId: CODEBASE_ID, userId: DEV_USER_ID },
+    { id: "seed-vocab-search", word: "search", category: "action", expects: ["target"], codebaseId: CODEBASE_ID, userId: DEV_USER_ID },
+    { id: "seed-vocab-enrich", word: "enrich", category: "action", expects: ["target"], codebaseId: CODEBASE_ID, userId: DEV_USER_ID },
+    { id: "seed-vocab-passing", word: "passing", category: "state", expects: null, codebaseId: CODEBASE_ID, userId: DEV_USER_ID },
+    { id: "seed-vocab-draft", word: "draft", category: "state", expects: null, codebaseId: CODEBASE_ID, userId: DEV_USER_ID }
+];
+for (const ve of vocabEntries) {
+    await db.insert(vocabularyEntry).values(ve).catch(e => console.error("  \u2717 vocabulary:", e));
+}
+console.log(`  \u2713 ${vocabEntries.length} vocabulary entries`);
+
+// ─── 8. Collection ─────────────────────────────────────────────────
+await db
+    .insert(collection)
+    .values({
+        id: "seed-collection-arch",
+        name: "Architecture Decisions",
+        description: "All architecture-related document chunks",
+        filter: { type: "document", tags: "architecture" },
+        userId: DEV_USER_ID,
+        codebaseId: CODEBASE_ID
+    })
+    .catch(e => console.error("  \u2717 collection:", e));
+console.log("  \u2713 1 collection");
+
+// ─── 9. Workspace ──────────────────────────────────────────────────
+const WORKSPACE_ID = "seed-workspace-fubbik";
+await db
+    .insert(workspace)
+    .values({
+        id: WORKSPACE_ID,
+        name: "Fubbik Platform",
+        description: "Main workspace for the fubbik knowledge framework",
+        userId: DEV_USER_ID
+    })
+    .catch(e => console.error("  \u2717 workspace:", e));
+
+await db
+    .insert(workspaceCodebase)
+    .values({
+        workspaceId: WORKSPACE_ID,
+        codebaseId: CODEBASE_ID
+    })
+    .catch(e => console.error("  \u2717 workspace_codebase:", e));
+console.log("  \u2713 1 workspace with codebase assignment");
+
+console.log(`\n\u2705 Database seeded: ${chunks.length} chunks, ${connections.length} connections, ${seedTagTypes.length} tag types, ${seedTags.length} tags, plus codebases, patterns, refs, requirements, use cases, plans, vocabulary, collections, workspaces`);
 
 // Build a lookup for enrichment prompts (replacing old tags property)
 const chunkTagNames = new Map<string, string[]>();
