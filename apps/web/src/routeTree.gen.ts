@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from "./routes/__root";
+import { Route as WorkspacesRouteImport } from "./routes/workspaces";
 import { Route as VocabularyRouteImport } from "./routes/vocabulary";
 import { Route as TemplatesRouteImport } from "./routes/templates";
 import { Route as TagsRouteImport } from "./routes/tags";
@@ -22,18 +23,28 @@ import { Route as GraphRouteImport } from "./routes/graph";
 import { Route as DocsRouteImport } from "./routes/docs";
 import { Route as DashboardRouteImport } from "./routes/dashboard";
 import { Route as CoverageRouteImport } from "./routes/coverage";
+import { Route as ContextRouteImport } from "./routes/context";
 import { Route as CodebasesRouteImport } from "./routes/codebases";
 import { Route as ActivityRouteImport } from "./routes/activity";
 import { Route as IndexRouteImport } from "./routes/index";
+import { Route as PlansIndexRouteImport } from "./routes/plans.index";
 import { Route as ChunksIndexRouteImport } from "./routes/chunks.index";
+import { Route as ReviewsQueueRouteImport } from "./routes/reviews_.queue";
 import { Route as ReviewsSessionIdRouteImport } from "./routes/reviews_.$sessionId";
 import { Route as RequirementsNewRouteImport } from "./routes/requirements_.new";
 import { Route as RequirementsRequirementIdRouteImport } from "./routes/requirements_.$requirementId";
+import { Route as PlansNewRouteImport } from "./routes/plans.new";
+import { Route as PlansPlanIdRouteImport } from "./routes/plans.$planId";
 import { Route as ChunksNewRouteImport } from "./routes/chunks.new";
 import { Route as ChunksArchivedRouteImport } from "./routes/chunks.archived";
 import { Route as ChunksChunkIdRouteImport } from "./routes/chunks.$chunkId";
 import { Route as ChunksChunkIdEditRouteImport } from "./routes/chunks.$chunkId_.edit";
 
+const WorkspacesRoute = WorkspacesRouteImport.update({
+  id: "/workspaces",
+  path: "/workspaces",
+  getParentRoute: () => rootRouteImport,
+} as any);
 const VocabularyRoute = VocabularyRouteImport.update({
   id: "/vocabulary",
   path: "/vocabulary",
@@ -99,6 +110,11 @@ const CoverageRoute = CoverageRouteImport.update({
   path: "/coverage",
   getParentRoute: () => rootRouteImport,
 } as any);
+const ContextRoute = ContextRouteImport.update({
+  id: "/context",
+  path: "/context",
+  getParentRoute: () => rootRouteImport,
+} as any);
 const CodebasesRoute = CodebasesRouteImport.update({
   id: "/codebases",
   path: "/codebases",
@@ -114,9 +130,19 @@ const IndexRoute = IndexRouteImport.update({
   path: "/",
   getParentRoute: () => rootRouteImport,
 } as any);
+const PlansIndexRoute = PlansIndexRouteImport.update({
+  id: "/plans/",
+  path: "/plans/",
+  getParentRoute: () => rootRouteImport,
+} as any);
 const ChunksIndexRoute = ChunksIndexRouteImport.update({
   id: "/chunks/",
   path: "/chunks/",
+  getParentRoute: () => rootRouteImport,
+} as any);
+const ReviewsQueueRoute = ReviewsQueueRouteImport.update({
+  id: "/reviews_/queue",
+  path: "/reviews/queue",
   getParentRoute: () => rootRouteImport,
 } as any);
 const ReviewsSessionIdRoute = ReviewsSessionIdRouteImport.update({
@@ -135,6 +161,16 @@ const RequirementsRequirementIdRoute =
     path: "/requirements/$requirementId",
     getParentRoute: () => rootRouteImport,
   } as any);
+const PlansNewRoute = PlansNewRouteImport.update({
+  id: "/plans/new",
+  path: "/plans/new",
+  getParentRoute: () => rootRouteImport,
+} as any);
+const PlansPlanIdRoute = PlansPlanIdRouteImport.update({
+  id: "/plans/$planId",
+  path: "/plans/$planId",
+  getParentRoute: () => rootRouteImport,
+} as any);
 const ChunksNewRoute = ChunksNewRouteImport.update({
   id: "/chunks/new",
   path: "/chunks/new",
@@ -160,6 +196,7 @@ export interface FileRoutesByFullPath {
   "/": typeof IndexRoute;
   "/activity": typeof ActivityRoute;
   "/codebases": typeof CodebasesRoute;
+  "/context": typeof ContextRoute;
   "/coverage": typeof CoverageRoute;
   "/dashboard": typeof DashboardRoute;
   "/docs": typeof DocsRoute;
@@ -173,19 +210,25 @@ export interface FileRoutesByFullPath {
   "/tags": typeof TagsRoute;
   "/templates": typeof TemplatesRoute;
   "/vocabulary": typeof VocabularyRoute;
+  "/workspaces": typeof WorkspacesRoute;
   "/chunks/$chunkId": typeof ChunksChunkIdRoute;
   "/chunks/archived": typeof ChunksArchivedRoute;
   "/chunks/new": typeof ChunksNewRoute;
+  "/plans/$planId": typeof PlansPlanIdRoute;
+  "/plans/new": typeof PlansNewRoute;
   "/requirements/$requirementId": typeof RequirementsRequirementIdRoute;
   "/requirements/new": typeof RequirementsNewRoute;
   "/reviews/$sessionId": typeof ReviewsSessionIdRoute;
+  "/reviews/queue": typeof ReviewsQueueRoute;
   "/chunks/": typeof ChunksIndexRoute;
+  "/plans/": typeof PlansIndexRoute;
   "/chunks/$chunkId/edit": typeof ChunksChunkIdEditRoute;
 }
 export interface FileRoutesByTo {
   "/": typeof IndexRoute;
   "/activity": typeof ActivityRoute;
   "/codebases": typeof CodebasesRoute;
+  "/context": typeof ContextRoute;
   "/coverage": typeof CoverageRoute;
   "/dashboard": typeof DashboardRoute;
   "/docs": typeof DocsRoute;
@@ -199,13 +242,18 @@ export interface FileRoutesByTo {
   "/tags": typeof TagsRoute;
   "/templates": typeof TemplatesRoute;
   "/vocabulary": typeof VocabularyRoute;
+  "/workspaces": typeof WorkspacesRoute;
   "/chunks/$chunkId": typeof ChunksChunkIdRoute;
   "/chunks/archived": typeof ChunksArchivedRoute;
   "/chunks/new": typeof ChunksNewRoute;
+  "/plans/$planId": typeof PlansPlanIdRoute;
+  "/plans/new": typeof PlansNewRoute;
   "/requirements/$requirementId": typeof RequirementsRequirementIdRoute;
   "/requirements/new": typeof RequirementsNewRoute;
   "/reviews/$sessionId": typeof ReviewsSessionIdRoute;
+  "/reviews/queue": typeof ReviewsQueueRoute;
   "/chunks": typeof ChunksIndexRoute;
+  "/plans": typeof PlansIndexRoute;
   "/chunks/$chunkId/edit": typeof ChunksChunkIdEditRoute;
 }
 export interface FileRoutesById {
@@ -213,6 +261,7 @@ export interface FileRoutesById {
   "/": typeof IndexRoute;
   "/activity": typeof ActivityRoute;
   "/codebases": typeof CodebasesRoute;
+  "/context": typeof ContextRoute;
   "/coverage": typeof CoverageRoute;
   "/dashboard": typeof DashboardRoute;
   "/docs": typeof DocsRoute;
@@ -226,13 +275,18 @@ export interface FileRoutesById {
   "/tags": typeof TagsRoute;
   "/templates": typeof TemplatesRoute;
   "/vocabulary": typeof VocabularyRoute;
+  "/workspaces": typeof WorkspacesRoute;
   "/chunks/$chunkId": typeof ChunksChunkIdRoute;
   "/chunks/archived": typeof ChunksArchivedRoute;
   "/chunks/new": typeof ChunksNewRoute;
+  "/plans/$planId": typeof PlansPlanIdRoute;
+  "/plans/new": typeof PlansNewRoute;
   "/requirements_/$requirementId": typeof RequirementsRequirementIdRoute;
   "/requirements_/new": typeof RequirementsNewRoute;
   "/reviews_/$sessionId": typeof ReviewsSessionIdRoute;
+  "/reviews_/queue": typeof ReviewsQueueRoute;
   "/chunks/": typeof ChunksIndexRoute;
+  "/plans/": typeof PlansIndexRoute;
   "/chunks/$chunkId_/edit": typeof ChunksChunkIdEditRoute;
 }
 export interface FileRouteTypes {
@@ -241,6 +295,7 @@ export interface FileRouteTypes {
     | "/"
     | "/activity"
     | "/codebases"
+    | "/context"
     | "/coverage"
     | "/dashboard"
     | "/docs"
@@ -254,19 +309,25 @@ export interface FileRouteTypes {
     | "/tags"
     | "/templates"
     | "/vocabulary"
+    | "/workspaces"
     | "/chunks/$chunkId"
     | "/chunks/archived"
     | "/chunks/new"
+    | "/plans/$planId"
+    | "/plans/new"
     | "/requirements/$requirementId"
     | "/requirements/new"
     | "/reviews/$sessionId"
+    | "/reviews/queue"
     | "/chunks/"
+    | "/plans/"
     | "/chunks/$chunkId/edit";
   fileRoutesByTo: FileRoutesByTo;
   to:
     | "/"
     | "/activity"
     | "/codebases"
+    | "/context"
     | "/coverage"
     | "/dashboard"
     | "/docs"
@@ -280,19 +341,25 @@ export interface FileRouteTypes {
     | "/tags"
     | "/templates"
     | "/vocabulary"
+    | "/workspaces"
     | "/chunks/$chunkId"
     | "/chunks/archived"
     | "/chunks/new"
+    | "/plans/$planId"
+    | "/plans/new"
     | "/requirements/$requirementId"
     | "/requirements/new"
     | "/reviews/$sessionId"
+    | "/reviews/queue"
     | "/chunks"
+    | "/plans"
     | "/chunks/$chunkId/edit";
   id:
     | "__root__"
     | "/"
     | "/activity"
     | "/codebases"
+    | "/context"
     | "/coverage"
     | "/dashboard"
     | "/docs"
@@ -306,13 +373,18 @@ export interface FileRouteTypes {
     | "/tags"
     | "/templates"
     | "/vocabulary"
+    | "/workspaces"
     | "/chunks/$chunkId"
     | "/chunks/archived"
     | "/chunks/new"
+    | "/plans/$planId"
+    | "/plans/new"
     | "/requirements_/$requirementId"
     | "/requirements_/new"
     | "/reviews_/$sessionId"
+    | "/reviews_/queue"
     | "/chunks/"
+    | "/plans/"
     | "/chunks/$chunkId_/edit";
   fileRoutesById: FileRoutesById;
 }
@@ -320,6 +392,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute;
   ActivityRoute: typeof ActivityRoute;
   CodebasesRoute: typeof CodebasesRoute;
+  ContextRoute: typeof ContextRoute;
   CoverageRoute: typeof CoverageRoute;
   DashboardRoute: typeof DashboardRoute;
   DocsRoute: typeof DocsRoute;
@@ -333,18 +406,30 @@ export interface RootRouteChildren {
   TagsRoute: typeof TagsRoute;
   TemplatesRoute: typeof TemplatesRoute;
   VocabularyRoute: typeof VocabularyRoute;
+  WorkspacesRoute: typeof WorkspacesRoute;
   ChunksChunkIdRoute: typeof ChunksChunkIdRoute;
   ChunksArchivedRoute: typeof ChunksArchivedRoute;
   ChunksNewRoute: typeof ChunksNewRoute;
+  PlansPlanIdRoute: typeof PlansPlanIdRoute;
+  PlansNewRoute: typeof PlansNewRoute;
   RequirementsRequirementIdRoute: typeof RequirementsRequirementIdRoute;
   RequirementsNewRoute: typeof RequirementsNewRoute;
   ReviewsSessionIdRoute: typeof ReviewsSessionIdRoute;
+  ReviewsQueueRoute: typeof ReviewsQueueRoute;
   ChunksIndexRoute: typeof ChunksIndexRoute;
+  PlansIndexRoute: typeof PlansIndexRoute;
   ChunksChunkIdEditRoute: typeof ChunksChunkIdEditRoute;
 }
 
 declare module "@tanstack/react-router" {
   interface FileRoutesByPath {
+    "/workspaces": {
+      id: "/workspaces";
+      path: "/workspaces";
+      fullPath: "/workspaces";
+      preLoaderRoute: typeof WorkspacesRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     "/vocabulary": {
       id: "/vocabulary";
       path: "/vocabulary";
@@ -436,6 +521,13 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof CoverageRouteImport;
       parentRoute: typeof rootRouteImport;
     };
+    "/context": {
+      id: "/context";
+      path: "/context";
+      fullPath: "/context";
+      preLoaderRoute: typeof ContextRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     "/codebases": {
       id: "/codebases";
       path: "/codebases";
@@ -457,11 +549,25 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof IndexRouteImport;
       parentRoute: typeof rootRouteImport;
     };
+    "/plans/": {
+      id: "/plans/";
+      path: "/plans";
+      fullPath: "/plans/";
+      preLoaderRoute: typeof PlansIndexRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     "/chunks/": {
       id: "/chunks/";
       path: "/chunks";
       fullPath: "/chunks/";
       preLoaderRoute: typeof ChunksIndexRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/reviews_/queue": {
+      id: "/reviews_/queue";
+      path: "/reviews/queue";
+      fullPath: "/reviews/queue";
+      preLoaderRoute: typeof ReviewsQueueRouteImport;
       parentRoute: typeof rootRouteImport;
     };
     "/reviews_/$sessionId": {
@@ -483,6 +589,20 @@ declare module "@tanstack/react-router" {
       path: "/requirements/$requirementId";
       fullPath: "/requirements/$requirementId";
       preLoaderRoute: typeof RequirementsRequirementIdRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/plans/new": {
+      id: "/plans/new";
+      path: "/plans/new";
+      fullPath: "/plans/new";
+      preLoaderRoute: typeof PlansNewRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/plans/$planId": {
+      id: "/plans/$planId";
+      path: "/plans/$planId";
+      fullPath: "/plans/$planId";
+      preLoaderRoute: typeof PlansPlanIdRouteImport;
       parentRoute: typeof rootRouteImport;
     };
     "/chunks/new": {
@@ -520,6 +640,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ActivityRoute: ActivityRoute,
   CodebasesRoute: CodebasesRoute,
+  ContextRoute: ContextRoute,
   CoverageRoute: CoverageRoute,
   DashboardRoute: DashboardRoute,
   DocsRoute: DocsRoute,
@@ -533,13 +654,18 @@ const rootRouteChildren: RootRouteChildren = {
   TagsRoute: TagsRoute,
   TemplatesRoute: TemplatesRoute,
   VocabularyRoute: VocabularyRoute,
+  WorkspacesRoute: WorkspacesRoute,
   ChunksChunkIdRoute: ChunksChunkIdRoute,
   ChunksArchivedRoute: ChunksArchivedRoute,
   ChunksNewRoute: ChunksNewRoute,
+  PlansPlanIdRoute: PlansPlanIdRoute,
+  PlansNewRoute: PlansNewRoute,
   RequirementsRequirementIdRoute: RequirementsRequirementIdRoute,
   RequirementsNewRoute: RequirementsNewRoute,
   ReviewsSessionIdRoute: ReviewsSessionIdRoute,
+  ReviewsQueueRoute: ReviewsQueueRoute,
   ChunksIndexRoute: ChunksIndexRoute,
+  PlansIndexRoute: PlansIndexRoute,
   ChunksChunkIdEditRoute: ChunksChunkIdEditRoute,
 };
 export const routeTree = rootRouteImport
