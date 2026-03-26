@@ -34,6 +34,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
 import { SkeletonList } from "@/components/ui/skeleton-list";
+import { Tooltip, TooltipTrigger, TooltipPopup } from "@/components/ui/tooltip";
 import { getChunkSize } from "@/features/chunks/chunk-size";
 import { ChunkRowActions } from "@/features/chunks/chunk-row-actions";
 import { KanbanView } from "@/features/chunks/kanban-view";
@@ -411,6 +412,19 @@ function ChunksList() {
         },
         onError: () => {
             toast.error("Failed to delete chunk");
+        }
+    });
+
+    const reviewMutation = useMutation({
+        mutationFn: async ({ id, status }: { id: string; status: string }) => {
+            const { error } = await api.api.chunks({ id }).patch({ reviewStatus: status as any });
+            if (error) throw new Error("Failed to update review status");
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["chunks-list"] });
+        },
+        onError: () => {
+            toast.error("Failed to update review status");
         }
     });
 
@@ -1134,7 +1148,16 @@ function ChunksList() {
                                                     className="flex flex-1 items-center justify-between gap-4"
                                                 >
                                                     <div className="min-w-0">
-                                                        <p className="truncate text-sm font-medium">{chunk.title}</p>
+                                                        <Tooltip>
+                                                            <TooltipTrigger render={<p className="truncate text-sm font-medium" />}>
+                                                                {chunk.title}
+                                                            </TooltipTrigger>
+                                                            {chunk.content && (
+                                                                <TooltipPopup className="max-w-xs p-2">
+                                                                    <p className="text-xs text-muted-foreground">{chunk.content.slice(0, 150)}{chunk.content.length > 150 ? "..." : ""}</p>
+                                                                </TooltipPopup>
+                                                            )}
+                                                        </Tooltip>
                                                         <div className="mt-1 flex items-center gap-2">
                                                             <Badge variant="secondary" size="sm" className="font-mono text-[10px]">
                                                                 {chunk.type}
@@ -1216,7 +1239,16 @@ function ChunksList() {
                                     className="flex flex-1 items-center justify-between gap-4"
                                 >
                                     <div className="min-w-0">
-                                        <p className="truncate text-sm font-medium">{chunk.title}</p>
+                                        <Tooltip>
+                                            <TooltipTrigger render={<p className="truncate text-sm font-medium" />}>
+                                                {chunk.title}
+                                            </TooltipTrigger>
+                                            {chunk.content && (
+                                                <TooltipPopup className="max-w-xs p-2">
+                                                    <p className="text-xs text-muted-foreground">{chunk.content.slice(0, 150)}{chunk.content.length > 150 ? "..." : ""}</p>
+                                                </TooltipPopup>
+                                            )}
+                                        </Tooltip>
                                         <div className="mt-1 flex items-center gap-2">
                                             <Badge variant="secondary" size="sm" className="font-mono text-[10px]">
                                                 {chunk.type}
@@ -1228,20 +1260,38 @@ function ChunksList() {
                                                 </Badge>
                                             )}
                                             {(chunk as Record<string, unknown>).origin === "ai" && (
-                                                <Badge
-                                                    variant="outline"
-                                                    size="sm"
-                                                    className={
-                                                        (chunk as Record<string, unknown>).reviewStatus === "draft"
-                                                            ? "border-yellow-500/30 bg-yellow-500/10 text-[10px] text-yellow-600"
-                                                            : (chunk as Record<string, unknown>).reviewStatus === "reviewed"
-                                                              ? "border-blue-500/30 bg-blue-500/10 text-[10px] text-blue-600"
-                                                              : "border-green-500/30 bg-green-500/10 text-[10px] text-green-600"
-                                                    }
-                                                >
-                                                    <Bot className="mr-0.5 size-2.5" />
-                                                    AI
-                                                </Badge>
+                                                <>
+                                                    <Badge
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className={
+                                                            (chunk as Record<string, unknown>).reviewStatus === "draft"
+                                                                ? "border-yellow-500/30 bg-yellow-500/10 text-[10px] text-yellow-600"
+                                                                : (chunk as Record<string, unknown>).reviewStatus === "reviewed"
+                                                                  ? "border-blue-500/30 bg-blue-500/10 text-[10px] text-blue-600"
+                                                                  : "border-green-500/30 bg-green-500/10 text-[10px] text-green-600"
+                                                        }
+                                                    >
+                                                        <Bot className="mr-0.5 size-2.5" />
+                                                        AI
+                                                    </Badge>
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.preventDefault();
+                                                            e.stopPropagation();
+                                                            const next = { draft: "reviewed", reviewed: "approved", approved: "draft" }[(chunk as Record<string, unknown>).reviewStatus as string] ?? "reviewed";
+                                                            reviewMutation.mutate({ id: chunk.id, status: next });
+                                                        }}
+                                                        className="size-2.5 rounded-full shrink-0"
+                                                        style={{
+                                                            backgroundColor:
+                                                                (chunk as Record<string, unknown>).reviewStatus === "approved" ? "#22c55e"
+                                                                : (chunk as Record<string, unknown>).reviewStatus === "reviewed" ? "#3b82f6"
+                                                                : "#f59e0b"
+                                                        }}
+                                                        title={`Review: ${(chunk as Record<string, unknown>).reviewStatus ?? "draft"} (click to change)`}
+                                                    />
+                                                </>
                                             )}
                                             {([] as string[]).map(tag => (
                                                 <Badge key={tag} variant="outline" size="sm" className="text-[10px]">

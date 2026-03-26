@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from "./routes/__root";
+import { Route as WorkspacesRouteImport } from "./routes/workspaces";
 import { Route as VocabularyRouteImport } from "./routes/vocabulary";
 import { Route as TemplatesRouteImport } from "./routes/templates";
 import { Route as TagsRouteImport } from "./routes/tags";
@@ -22,6 +23,7 @@ import { Route as GraphRouteImport } from "./routes/graph";
 import { Route as DocsRouteImport } from "./routes/docs";
 import { Route as DashboardRouteImport } from "./routes/dashboard";
 import { Route as CoverageRouteImport } from "./routes/coverage";
+import { Route as ContextRouteImport } from "./routes/context";
 import { Route as CodebasesRouteImport } from "./routes/codebases";
 import { Route as ActivityRouteImport } from "./routes/activity";
 import { Route as IndexRouteImport } from "./routes/index";
@@ -38,6 +40,11 @@ import { Route as ChunksArchivedRouteImport } from "./routes/chunks.archived";
 import { Route as ChunksChunkIdRouteImport } from "./routes/chunks.$chunkId";
 import { Route as ChunksChunkIdEditRouteImport } from "./routes/chunks.$chunkId_.edit";
 
+const WorkspacesRoute = WorkspacesRouteImport.update({
+  id: "/workspaces",
+  path: "/workspaces",
+  getParentRoute: () => rootRouteImport,
+} as any);
 const VocabularyRoute = VocabularyRouteImport.update({
   id: "/vocabulary",
   path: "/vocabulary",
@@ -101,6 +108,11 @@ const DashboardRoute = DashboardRouteImport.update({
 const CoverageRoute = CoverageRouteImport.update({
   id: "/coverage",
   path: "/coverage",
+  getParentRoute: () => rootRouteImport,
+} as any);
+const ContextRoute = ContextRouteImport.update({
+  id: "/context",
+  path: "/context",
   getParentRoute: () => rootRouteImport,
 } as any);
 const CodebasesRoute = CodebasesRouteImport.update({
@@ -184,6 +196,7 @@ export interface FileRoutesByFullPath {
   "/": typeof IndexRoute;
   "/activity": typeof ActivityRoute;
   "/codebases": typeof CodebasesRoute;
+  "/context": typeof ContextRoute;
   "/coverage": typeof CoverageRoute;
   "/dashboard": typeof DashboardRoute;
   "/docs": typeof DocsRoute;
@@ -197,6 +210,7 @@ export interface FileRoutesByFullPath {
   "/tags": typeof TagsRoute;
   "/templates": typeof TemplatesRoute;
   "/vocabulary": typeof VocabularyRoute;
+  "/workspaces": typeof WorkspacesRoute;
   "/chunks/$chunkId": typeof ChunksChunkIdRoute;
   "/chunks/archived": typeof ChunksArchivedRoute;
   "/chunks/new": typeof ChunksNewRoute;
@@ -214,6 +228,7 @@ export interface FileRoutesByTo {
   "/": typeof IndexRoute;
   "/activity": typeof ActivityRoute;
   "/codebases": typeof CodebasesRoute;
+  "/context": typeof ContextRoute;
   "/coverage": typeof CoverageRoute;
   "/dashboard": typeof DashboardRoute;
   "/docs": typeof DocsRoute;
@@ -227,6 +242,7 @@ export interface FileRoutesByTo {
   "/tags": typeof TagsRoute;
   "/templates": typeof TemplatesRoute;
   "/vocabulary": typeof VocabularyRoute;
+  "/workspaces": typeof WorkspacesRoute;
   "/chunks/$chunkId": typeof ChunksChunkIdRoute;
   "/chunks/archived": typeof ChunksArchivedRoute;
   "/chunks/new": typeof ChunksNewRoute;
@@ -245,6 +261,7 @@ export interface FileRoutesById {
   "/": typeof IndexRoute;
   "/activity": typeof ActivityRoute;
   "/codebases": typeof CodebasesRoute;
+  "/context": typeof ContextRoute;
   "/coverage": typeof CoverageRoute;
   "/dashboard": typeof DashboardRoute;
   "/docs": typeof DocsRoute;
@@ -258,6 +275,7 @@ export interface FileRoutesById {
   "/tags": typeof TagsRoute;
   "/templates": typeof TemplatesRoute;
   "/vocabulary": typeof VocabularyRoute;
+  "/workspaces": typeof WorkspacesRoute;
   "/chunks/$chunkId": typeof ChunksChunkIdRoute;
   "/chunks/archived": typeof ChunksArchivedRoute;
   "/chunks/new": typeof ChunksNewRoute;
@@ -277,6 +295,7 @@ export interface FileRouteTypes {
     | "/"
     | "/activity"
     | "/codebases"
+    | "/context"
     | "/coverage"
     | "/dashboard"
     | "/docs"
@@ -290,6 +309,7 @@ export interface FileRouteTypes {
     | "/tags"
     | "/templates"
     | "/vocabulary"
+    | "/workspaces"
     | "/chunks/$chunkId"
     | "/chunks/archived"
     | "/chunks/new"
@@ -307,6 +327,7 @@ export interface FileRouteTypes {
     | "/"
     | "/activity"
     | "/codebases"
+    | "/context"
     | "/coverage"
     | "/dashboard"
     | "/docs"
@@ -320,6 +341,7 @@ export interface FileRouteTypes {
     | "/tags"
     | "/templates"
     | "/vocabulary"
+    | "/workspaces"
     | "/chunks/$chunkId"
     | "/chunks/archived"
     | "/chunks/new"
@@ -337,6 +359,7 @@ export interface FileRouteTypes {
     | "/"
     | "/activity"
     | "/codebases"
+    | "/context"
     | "/coverage"
     | "/dashboard"
     | "/docs"
@@ -350,6 +373,7 @@ export interface FileRouteTypes {
     | "/tags"
     | "/templates"
     | "/vocabulary"
+    | "/workspaces"
     | "/chunks/$chunkId"
     | "/chunks/archived"
     | "/chunks/new"
@@ -368,6 +392,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute;
   ActivityRoute: typeof ActivityRoute;
   CodebasesRoute: typeof CodebasesRoute;
+  ContextRoute: typeof ContextRoute;
   CoverageRoute: typeof CoverageRoute;
   DashboardRoute: typeof DashboardRoute;
   DocsRoute: typeof DocsRoute;
@@ -381,6 +406,7 @@ export interface RootRouteChildren {
   TagsRoute: typeof TagsRoute;
   TemplatesRoute: typeof TemplatesRoute;
   VocabularyRoute: typeof VocabularyRoute;
+  WorkspacesRoute: typeof WorkspacesRoute;
   ChunksChunkIdRoute: typeof ChunksChunkIdRoute;
   ChunksArchivedRoute: typeof ChunksArchivedRoute;
   ChunksNewRoute: typeof ChunksNewRoute;
@@ -397,6 +423,13 @@ export interface RootRouteChildren {
 
 declare module "@tanstack/react-router" {
   interface FileRoutesByPath {
+    "/workspaces": {
+      id: "/workspaces";
+      path: "/workspaces";
+      fullPath: "/workspaces";
+      preLoaderRoute: typeof WorkspacesRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     "/vocabulary": {
       id: "/vocabulary";
       path: "/vocabulary";
@@ -486,6 +519,13 @@ declare module "@tanstack/react-router" {
       path: "/coverage";
       fullPath: "/coverage";
       preLoaderRoute: typeof CoverageRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/context": {
+      id: "/context";
+      path: "/context";
+      fullPath: "/context";
+      preLoaderRoute: typeof ContextRouteImport;
       parentRoute: typeof rootRouteImport;
     };
     "/codebases": {
@@ -600,6 +640,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ActivityRoute: ActivityRoute,
   CodebasesRoute: CodebasesRoute,
+  ContextRoute: ContextRoute,
   CoverageRoute: CoverageRoute,
   DashboardRoute: DashboardRoute,
   DocsRoute: DocsRoute,
@@ -613,6 +654,7 @@ const rootRouteChildren: RootRouteChildren = {
   TagsRoute: TagsRoute,
   TemplatesRoute: TemplatesRoute,
   VocabularyRoute: VocabularyRoute,
+  WorkspacesRoute: WorkspacesRoute,
   ChunksChunkIdRoute: ChunksChunkIdRoute,
   ChunksArchivedRoute: ChunksArchivedRoute,
   ChunksNewRoute: ChunksNewRoute,

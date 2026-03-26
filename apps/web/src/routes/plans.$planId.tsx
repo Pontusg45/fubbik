@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, ClipboardList, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, ClipboardList, MoreHorizontal, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -8,7 +8,14 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardPanel } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
+import { Input } from "@/components/ui/input";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger
+} from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PlanProgressBar } from "@/features/plans/plan-progress-bar";
 import { PlanStepItem } from "@/features/plans/plan-step-item";
@@ -223,7 +230,7 @@ function PlanDetail() {
 
                     {/* Add step */}
                     <div className="mt-3 flex gap-2">
-                        <input
+                        <Input
                             type="text"
                             value={newStepText}
                             onChange={e => setNewStepText(e.target.value)}
@@ -234,7 +241,7 @@ function PlanDetail() {
                                 }
                             }}
                             placeholder="Add a step..."
-                            className="bg-background focus:ring-ring flex-1 rounded-md border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
+                            className="flex-1"
                         />
                         <Button
                             variant="outline"
@@ -252,66 +259,72 @@ function PlanDetail() {
             </Card>
 
             {/* Actions */}
-            <Card>
-                <CardPanel className="p-4">
-                    <h2 className="mb-3 text-sm font-medium">Actions</h2>
-                    <div className="flex flex-wrap gap-2">
-                        {plan.status !== "active" && (
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => updateStatusMutation.mutate("active")}
-                                disabled={updateStatusMutation.isPending}
-                            >
-                                Activate
+            <div className="flex items-center gap-2">
+                {plan.status === "draft" && (
+                    <Button
+                        size="sm"
+                        onClick={() => updateStatusMutation.mutate("active")}
+                        disabled={updateStatusMutation.isPending}
+                    >
+                        Activate Plan
+                    </Button>
+                )}
+                {plan.status === "active" && (
+                    <Button
+                        size="sm"
+                        onClick={() => updateStatusMutation.mutate("completed")}
+                        disabled={updateStatusMutation.isPending}
+                    >
+                        Mark Complete
+                    </Button>
+                )}
+                {(plan.status === "completed" || plan.status === "archived") && (
+                    <Button
+                        size="sm"
+                        onClick={() => updateStatusMutation.mutate("active")}
+                        disabled={updateStatusMutation.isPending}
+                    >
+                        Reactivate
+                    </Button>
+                )}
+
+                <DropdownMenu>
+                    <DropdownMenuTrigger
+                        render={
+                            <Button variant="outline" size="sm" className="size-8 p-0">
+                                <MoreHorizontal className="size-4" />
                             </Button>
-                        )}
-                        {plan.status !== "completed" && (
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => updateStatusMutation.mutate("completed")}
-                                disabled={updateStatusMutation.isPending}
-                            >
-                                Complete
-                            </Button>
-                        )}
-                        {plan.status !== "archived" && (
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => updateStatusMutation.mutate("archived")}
-                                disabled={updateStatusMutation.isPending}
-                            >
-                                Archive
-                            </Button>
-                        )}
+                        }
+                    />
+                    <DropdownMenuContent align="end">
                         {plan.status !== "draft" && (
-                            <Button
-                                variant="outline"
-                                size="sm"
+                            <DropdownMenuItem
                                 onClick={() => updateStatusMutation.mutate("draft")}
                                 disabled={updateStatusMutation.isPending}
                             >
                                 Move to Draft
-                            </Button>
+                            </DropdownMenuItem>
                         )}
-
-                        <Separator orientation="vertical" className="h-8" />
-
-                        <Button
-                            variant="outline"
-                            size="sm"
+                        {plan.status !== "archived" && (
+                            <DropdownMenuItem
+                                onClick={() => updateStatusMutation.mutate("archived")}
+                                disabled={updateStatusMutation.isPending}
+                            >
+                                Archive
+                            </DropdownMenuItem>
+                        )}
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                            variant="destructive"
                             onClick={() => setShowDeleteDialog(true)}
                             disabled={deleteMutation.isPending}
-                            className="text-destructive hover:text-destructive"
                         >
-                            <Trash2 className="mr-1 size-3.5" />
+                            <Trash2 className="size-3.5" />
                             Delete
-                        </Button>
-                    </div>
-                </CardPanel>
-            </Card>
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            </div>
 
             <ConfirmDialog
                 open={showDeleteDialog}

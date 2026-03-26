@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardPanel } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { DraftIndicator } from "@/features/chunks/draft-indicator";
 import { loadDraft, useAutosave } from "@/features/chunks/use-autosave";
@@ -284,12 +285,11 @@ function EditChunk() {
                 <CardPanel className="space-y-4 p-6">
                     <div>
                         <label className="mb-1.5 block text-sm font-medium">Title</label>
-                        <input
+                        <Input
                             type="text"
                             value={title}
                             onChange={e => setTitle(e.target.value)}
                             placeholder="Enter a title..."
-                            className="bg-background focus:ring-ring w-full rounded-md border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
                         />
                         {errors.title && <p className="text-destructive mt-1 text-xs">{errors.title}</p>}
                     </div>
@@ -324,7 +324,7 @@ function EditChunk() {
                                 </Badge>
                             ))}
                         </div>
-                        <input
+                        <Input
                             type="text"
                             value={tagInput}
                             onChange={e => setTagInput(e.target.value)}
@@ -335,7 +335,6 @@ function EditChunk() {
                                 }
                             }}
                             placeholder="Add a tag and press Enter..."
-                            className="bg-background focus:ring-ring w-full rounded-md border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
                         />
                     </div>
 
@@ -365,23 +364,23 @@ function EditChunk() {
                         {appliesTo.map((row, i) => (
                             <div key={i} className="mb-2">
                                 <div className="flex gap-2">
-                                    <input
+                                    <Input
                                         type="text"
                                         value={row.pattern}
                                         onChange={e => {
                                             setAppliesTo(appliesTo.map((a, j) => (j === i ? { ...a, pattern: e.target.value } : a)));
                                         }}
                                         placeholder="Pattern (e.g. src/**/*.ts)"
-                                        className="bg-background focus:ring-ring flex-1 rounded-md border px-3 py-2 font-mono text-sm focus:ring-2 focus:outline-none"
+                                        className="flex-1 font-mono"
                                     />
-                                    <input
+                                    <Input
                                         type="text"
                                         value={row.note}
                                         onChange={e => {
                                             setAppliesTo(appliesTo.map((a, j) => (j === i ? { ...a, note: e.target.value } : a)));
                                         }}
                                         placeholder="Note (optional)"
-                                        className="bg-background focus:ring-ring w-40 rounded-md border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
+                                        className="w-40"
                                     />
                                     <Button
                                         variant="ghost"
@@ -413,23 +412,23 @@ function EditChunk() {
                         </div>
                         {fileRefs.map((row, i) => (
                             <div key={i} className="mb-2 flex gap-2">
-                                <input
+                                <Input
                                     type="text"
                                     value={row.path}
                                     onChange={e => {
                                         setFileRefs(fileRefs.map((f, j) => (j === i ? { ...f, path: e.target.value } : f)));
                                     }}
                                     placeholder="File path"
-                                    className="bg-background focus:ring-ring flex-1 rounded-md border px-3 py-2 font-mono text-sm focus:ring-2 focus:outline-none"
+                                    className="flex-1 font-mono"
                                 />
-                                <input
+                                <Input
                                     type="text"
                                     value={row.anchor}
                                     onChange={e => {
                                         setFileRefs(fileRefs.map((f, j) => (j === i ? { ...f, anchor: e.target.value } : f)));
                                     }}
                                     placeholder="Anchor (optional)"
-                                    className="bg-background focus:ring-ring w-32 rounded-md border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
+                                    className="w-32"
                                 />
                                 <select
                                     value={row.relation}
@@ -484,12 +483,11 @@ function EditChunk() {
                                 </div>
                                 <div>
                                     <label className="mb-1.5 block text-sm font-medium">Alternatives Considered</label>
-                                    <input
+                                    <Input
                                         type="text"
                                         value={alternativesInput}
                                         onChange={e => setAlternativesInput(e.target.value)}
                                         placeholder="Comma-separated alternatives"
-                                        className="bg-background focus:ring-ring w-full rounded-md border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
                                     />
                                 </div>
                                 <div>

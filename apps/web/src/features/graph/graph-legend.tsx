@@ -29,7 +29,12 @@ const RELATION_COLORS: Record<string, { color: string; label: string }> = {
     alternative_to: { color: "#ec4899", label: "Alternative to" }
 };
 
-export function GraphLegend({ activeTypes, activeRelations }: { activeTypes: Set<string>; activeRelations: Set<string> }) {
+export function GraphLegend({ activeTypes, activeRelations, onToggleType, onToggleRelation }: {
+    activeTypes: Set<string>;
+    activeRelations: Set<string>;
+    onToggleType?: (type: string) => void;
+    onToggleRelation?: (rel: string) => void;
+}) {
     const { resolvedTheme } = useTheme();
     const TYPE_COLORS = resolvedTheme === "light" ? TYPE_COLORS_LIGHT : TYPE_COLORS_DARK;
     const usedTypes = Object.entries(TYPE_COLORS).filter(([key]) => activeTypes.has(key));
@@ -38,18 +43,26 @@ export function GraphLegend({ activeTypes, activeRelations }: { activeTypes: Set
     return (
         <div className="bg-background/80 absolute top-4 left-1/2 z-10 -translate-x-1/2 rounded-lg border px-4 py-2 backdrop-blur-sm">
             <div className="flex items-center gap-4">
-                {usedTypes.map(([, value]) => (
-                    <div key={value.label} className="flex items-center gap-1.5">
+                {usedTypes.map(([key, value]) => (
+                    <button
+                        key={value.label}
+                        className="flex items-center gap-1.5 cursor-pointer hover:opacity-80"
+                        onClick={() => onToggleType?.(key)}
+                    >
                         <div className="size-2.5 rounded-sm border" style={{ background: value.bg, borderColor: value.border }} />
                         <span className="text-muted-foreground text-[10px]">{value.label}</span>
-                    </div>
+                    </button>
                 ))}
                 {usedRelations.length > 0 && usedTypes.length > 0 && <div className="bg-border h-3 w-px" />}
-                {usedRelations.map(([, value]) => (
-                    <div key={value.label} className="flex items-center gap-1.5">
+                {usedRelations.map(([key, value]) => (
+                    <button
+                        key={value.label}
+                        className="flex items-center gap-1.5 cursor-pointer hover:opacity-80"
+                        onClick={() => onToggleRelation?.(key)}
+                    >
                         <div className="h-0.5 w-2.5 rounded" style={{ background: value.color }} />
                         <span className="text-muted-foreground text-[10px]">{value.label}</span>
-                    </div>
+                    </button>
                 ))}
             </div>
         </div>

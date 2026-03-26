@@ -9,10 +9,12 @@ import {
     FileSearch,
     FileText,
     FolderGit2,
+    Layers,
     LayoutDashboard,
     ListChecks,
     Menu,
     Network,
+    Search,
     Settings,
     Tags
 } from "lucide-react";
@@ -29,7 +31,8 @@ const primaryItems = [
     { label: "Requirements", to: "/requirements" as const, icon: ClipboardCheck },
     { label: "Reviews", to: "/reviews" as const, icon: ClipboardList },
     { label: "Plans", to: "/plans" as const, icon: ListChecks },
-    { label: "Docs", to: "/docs" as const, icon: FileText }
+    { label: "Docs", to: "/docs" as const, icon: FileText },
+    { label: "Search", to: "/search" as const, icon: Search }
 ];
 
 const manageItems = [
@@ -39,6 +42,7 @@ const manageItems = [
     { label: "Review Queue", to: "/reviews/queue" as const, icon: ClipboardCheck },
     { label: "Context", to: "/context" as const, icon: FileSearch },
     { label: "Codebases", to: "/codebases" as const, icon: FolderGit2 },
+    { label: "Workspaces", to: "/workspaces" as const, icon: Layers },
     { label: "Health", to: "/knowledge-health" as const, icon: Activity },
     { label: "Activity", to: "/activity" as const, icon: Clock },
     { label: "Settings", to: "/settings" as const, icon: Settings }
