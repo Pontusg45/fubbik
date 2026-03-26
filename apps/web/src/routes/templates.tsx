@@ -8,6 +8,7 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardPanel } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { PageContainer, PageEmpty, PageHeader, PageLoading } from "@/components/ui/page";
 import { getUser } from "@/functions/get-user";
 import { api } from "@/utils/api";
@@ -184,13 +185,13 @@ function TemplatesPage() {
                         <form onSubmit={handleSubmit} className="space-y-3">
                             <h2 className="text-sm font-medium">{editingId ? "Edit Template" : "Create Template"}</h2>
                             <div className="flex flex-col gap-2 sm:flex-row">
-                                <input
+                                <Input
                                     type="text"
                                     placeholder="Name"
                                     value={name}
                                     onChange={e => setName(e.target.value)}
                                     required
-                                    className="bg-background focus:ring-ring flex-1 rounded-md border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
+                                    className="flex-1"
                                 />
                                 <select
                                     value={formType}
@@ -204,12 +205,11 @@ function TemplatesPage() {
                                     <option value="checklist">Checklist</option>
                                 </select>
                             </div>
-                            <input
+                            <Input
                                 type="text"
                                 placeholder="Description (optional)"
                                 value={description}
                                 onChange={e => setDescription(e.target.value)}
-                                className="bg-background focus:ring-ring w-full rounded-md border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
                             />
                             <textarea
                                 placeholder="Template content..."
@@ -345,7 +345,7 @@ function TemplatesPage() {
 
             {previewTemplate && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center">
-                    <div className="bg-black/50 absolute inset-0 backdrop-blur-sm" onClick={() => setPreviewTemplate(null)} />
+                    <div className="bg-background/80 absolute inset-0 backdrop-blur-sm" onClick={() => setPreviewTemplate(null)} />
                     <div className="bg-card relative mx-4 w-full max-w-2xl max-h-[80vh] overflow-hidden rounded-xl border shadow-2xl">
                         <div className="flex items-center justify-between border-b px-6 py-4">
                             <div className="flex items-center gap-3">

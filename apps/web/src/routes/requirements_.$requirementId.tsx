@@ -347,9 +347,9 @@ function RequirementDetail() {
                                     className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${
                                         status === s
                                             ? s === "passing"
-                                                ? "bg-emerald-500 text-white"
+                                                ? "bg-emerald-500/90 text-white dark:bg-emerald-600"
                                                 : s === "failing"
-                                                  ? "bg-red-500 text-white"
+                                                  ? "bg-red-500/90 text-white dark:bg-red-600"
                                                   : "bg-muted text-foreground"
                                             : "text-muted-foreground hover:bg-muted/50"
                                     }`}

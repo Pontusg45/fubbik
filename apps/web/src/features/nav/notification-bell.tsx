@@ -144,7 +144,7 @@ export function NotificationBell() {
                                             e.stopPropagation();
                                             deleteMutation.mutate(n.id);
                                         }}
-                                        className="shrink-0 opacity-0 transition-opacity group-hover:opacity-100 hover:opacity-100 focus:opacity-100"
+                                        className="shrink-0 text-muted-foreground/50 hover:text-destructive transition-colors"
                                     >
                                         <Trash2 className="size-3" />
                                     </Button>

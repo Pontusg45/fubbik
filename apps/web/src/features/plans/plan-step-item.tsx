@@ -85,8 +85,22 @@ export function PlanStepItem({ step, planId, isFirst, isLast, onMoveUp, onMoveDo
         updateMutation.mutate({ note: note.trim() || null });
     }
 
+    const borderStyle = {
+        done: "border-l-2 border-l-green-500/50 bg-green-500/5",
+        in_progress: "border-l-2 border-l-blue-500/50 bg-blue-500/5",
+        blocked: "border-l-2 border-l-red-500/50 bg-red-500/5",
+        skipped: "border-l-2 border-l-muted bg-muted/20",
+        pending: "border-l-2 border-l-transparent",
+    }[step.status] ?? "border-l-2 border-l-transparent";
+
+    const descriptionStyle = step.status === "done"
+        ? "text-muted-foreground line-through"
+        : step.status === "blocked"
+          ? "text-red-600 dark:text-red-400"
+          : "";
+
     return (
-        <div className="border-b last:border-b-0">
+        <div className={`border-b last:border-b-0 ${borderStyle}`}>
             <div className="flex items-center gap-3 py-2 px-1">
                 <input
                     type="checkbox"
@@ -95,7 +109,7 @@ export function PlanStepItem({ step, planId, isFirst, isLast, onMoveUp, onMoveDo
                     disabled={updateMutation.isPending}
                     className="size-4 shrink-0 rounded border"
                 />
-                <span className={`flex-1 text-sm ${isDone ? "text-muted-foreground line-through" : ""}`}>
+                <span className={`flex-1 text-sm ${descriptionStyle}`}>
                     {step.description}
                 </span>
                 {step.status !== "pending" && step.status !== "done" && (
