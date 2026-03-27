@@ -1,3 +1,6 @@
+import * as fs from "fs";
+import * as path from "path";
+
 import * as vscode from "vscode";
 
 import { FubbikApi } from "./api";
@@ -7,12 +10,31 @@ import { getChunksForFile } from "./file-chunks";
 import { SidebarProvider } from "./sidebar-provider";
 import { FubbikStatusBar } from "./status-bar";
 
+function loadProjectConfig(): { serverUrl?: string; webAppUrl?: string; codebase?: string } {
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+    if (!workspaceFolder) return {};
+
+    const configFiles = ["fubbik.config.json", ".fubbikrc.json"];
+    for (const name of configFiles) {
+        const configPath = path.join(workspaceFolder.uri.fsPath, name);
+        if (fs.existsSync(configPath)) {
+            try {
+                return JSON.parse(fs.readFileSync(configPath, "utf-8"));
+            } catch {
+                /* ignore parse errors */
+            }
+        }
+    }
+    return {};
+}
+
 let codebaseId: string | null = null;
 
 export async function activate(context: vscode.ExtensionContext) {
-    const config = vscode.workspace.getConfiguration("fubbik");
-    const serverUrl = config.get<string>("serverUrl", "http://localhost:3000");
-    const webAppUrl = config.get<string>("webAppUrl", "http://localhost:3001");
+    const vsCodeConfig = vscode.workspace.getConfiguration("fubbik");
+    const projectConfig = loadProjectConfig();
+    const serverUrl = vsCodeConfig.get<string>("serverUrl") || projectConfig.serverUrl || "http://localhost:3000";
+    const webAppUrl = vsCodeConfig.get<string>("webAppUrl") || projectConfig.webAppUrl || "http://localhost:3001";
     const api = new FubbikApi(serverUrl);
     const sidebarProvider = new SidebarProvider(context.extensionUri);
     sidebarProvider.setApi(api);

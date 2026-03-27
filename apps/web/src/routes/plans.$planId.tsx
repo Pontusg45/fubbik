@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, ClipboardList, MoreHorizontal, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, BarChart3, ClipboardList, List, MoreHorizontal, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -19,6 +19,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { PlanProgressBar } from "@/features/plans/plan-progress-bar";
 import { PlanStepItem } from "@/features/plans/plan-step-item";
+import { PlanTimeline } from "@/features/plans/plan-timeline";
 import { getUser } from "@/functions/get-user";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
@@ -72,6 +73,7 @@ function PlanDetail() {
     const queryClient = useQueryClient();
     const [newStepText, setNewStepText] = useState("");
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+    const [viewMode, setViewMode] = useState<"list" | "timeline">("list");
 
     const { data: plan, isLoading, error } = useQuery({
         queryKey: ["plan", planId],
@@ -209,9 +211,35 @@ function PlanDetail() {
             {/* Steps */}
             <Card className="mb-6">
                 <CardPanel className="p-4">
-                    <h2 className="mb-3 text-sm font-medium">Steps</h2>
+                    <div className="mb-3 flex items-center justify-between">
+                        <h2 className="text-sm font-medium">Steps</h2>
+                        {plan.steps.length > 0 && (
+                            <div className="flex items-center rounded-md border p-0.5">
+                                <Button
+                                    variant={viewMode === "list" ? "default" : "ghost"}
+                                    size="sm"
+                                    onClick={() => setViewMode("list")}
+                                    className="h-6 px-2 text-xs"
+                                >
+                                    <List className="mr-1 size-3" />
+                                    List
+                                </Button>
+                                <Button
+                                    variant={viewMode === "timeline" ? "default" : "ghost"}
+                                    size="sm"
+                                    onClick={() => setViewMode("timeline")}
+                                    className="h-6 px-2 text-xs"
+                                >
+                                    <BarChart3 className="mr-1 size-3" />
+                                    Timeline
+                                </Button>
+                            </div>
+                        )}
+                    </div>
                     {plan.steps.length === 0 ? (
                         <p className="text-muted-foreground text-sm py-2">No steps yet.</p>
+                    ) : viewMode === "timeline" ? (
+                        <PlanTimeline steps={plan.steps} />
                     ) : (
                         <div className="border rounded-md">
                             {plan.steps.map((step, index) => (
