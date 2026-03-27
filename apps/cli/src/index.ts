@@ -25,6 +25,7 @@ import { listCommand } from "./commands/list";
 import { removeCommand } from "./commands/remove";
 import { searchCommand } from "./commands/search";
 import { statsCommand } from "./commands/stats";
+import { suggestCommand } from "./commands/suggest";
 import { syncCommand } from "./commands/sync";
 import { syncClaudeMdCommand } from "./commands/sync-claude-md";
 import { tagsCommand } from "./commands/tags";
@@ -71,6 +72,7 @@ program.addCommand(requirementsCommand);
 program.addCommand(checkFilesCommand);
 program.addCommand(hooksCommand);
 program.addCommand(planCommand);
+program.addCommand(suggestCommand);
 
 program.command("completions")
     .description("Generate shell completions")
