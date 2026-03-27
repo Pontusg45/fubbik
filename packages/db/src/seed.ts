@@ -84,7 +84,11 @@ const ids = {
     cliScanner: "seed-cli-scanner",
     env: "seed-env",
     docker: "seed-docker",
-    turbo: "seed-turbo"
+    turbo: "seed-turbo",
+    // Docs codebase chunks
+    docsArch: "seed-docs-arch",
+    docsContent: "seed-docs-content",
+    docsDeploy: "seed-docs-deploy"
 };
 
 const chunks = [
@@ -1186,6 +1190,25 @@ packages/api  \u2192 @fubbik/db, @fubbik/auth, @fubbik/env
 packages/auth \u2192 @fubbik/db, @fubbik/env
 packages/db   \u2192 @fubbik/env
 \`\`\``
+    },
+    // ── Docs codebase chunks ────────────────────────────────────────
+    {
+        id: ids.docsArch,
+        title: "Documentation Site Architecture",
+        type: "document",
+        content: `The fubbik-docs site is a static documentation site built with Astro and deployed to Vercel. It pulls content from markdown files co-located in the docs/ directory and auto-generates API reference pages from the OpenAPI spec exported by the Elysia server. The site uses a custom Astro integration to resolve cross-references between pages and inject frontmatter metadata from the knowledge base. Search is powered by Pagefind, which indexes the static output at build time for instant client-side full-text search.`
+    },
+    {
+        id: ids.docsContent,
+        title: "Content Guidelines",
+        type: "guide",
+        content: `All documentation pages follow a consistent structure: a title, a one-sentence summary, a "Prerequisites" section listing required knowledge, and the main body. Code examples must be runnable — every snippet is extracted and executed in CI via a custom test harness. Tone should be concise and direct, avoiding marketing language. Diagrams use Mermaid syntax embedded in fenced code blocks. Each page must declare its audience (beginner, intermediate, advanced) in frontmatter so the site can surface appropriate content based on reader context.`
+    },
+    {
+        id: ids.docsDeploy,
+        title: "Deployment Process",
+        type: "guide",
+        content: `The docs site deploys automatically on every push to the main branch via a Vercel project linked to the fubbik-docs repository. Preview deployments are created for every pull request, allowing reviewers to check rendered output before merging. The build step runs Astro's static build, then Pagefind indexing, and finally a link-checker that fails the build if any internal links are broken. Environment variables for the Vercel project include FUBBIK_API_URL (pointing to the production API for live OpenAPI spec fetching) and SITE_URL for canonical URL generation.`
     }
 ];
 
@@ -1256,7 +1279,10 @@ const connections = [
     // Infrastructure
     { id: "conn-34", sourceId: ids.docker, targetId: ids.env, relation: "references" },
     { id: "conn-35", sourceId: ids.turbo, targetId: ids.docker, relation: "related_to" },
-    { id: "conn-36", sourceId: ids.env, targetId: ids.auth, relation: "references" }
+    { id: "conn-36", sourceId: ids.env, targetId: ids.auth, relation: "references" },
+
+    // Cross-codebase: docs deployment references fubbik's docker setup
+    { id: "conn-37", sourceId: ids.docsDeploy, targetId: ids.docker, relation: "references" }
 ];
 
 await db.delete(chunkConnection);
@@ -1434,7 +1460,15 @@ const chunkTagAssociations: { chunkId: string; tagId: string }[] = [
     { chunkId: ids.docker, tagId: "seed-tag-ci" },
     // Turborepo Build
     { chunkId: ids.turbo, tagId: "seed-tag-turborepo" },
-    { chunkId: ids.turbo, tagId: "seed-tag-monorepo" }
+    { chunkId: ids.turbo, tagId: "seed-tag-monorepo" },
+    // Docs: Architecture
+    { chunkId: ids.docsArch, tagId: "seed-tag-overview" },
+    { chunkId: ids.docsArch, tagId: "seed-tag-frontend" },
+    // Docs: Content Guidelines
+    { chunkId: ids.docsContent, tagId: "seed-tag-guide" },
+    // Docs: Deployment
+    { chunkId: ids.docsDeploy, tagId: "seed-tag-deployment" },
+    { chunkId: ids.docsDeploy, tagId: "seed-tag-ci" }
 ];
 
 for (const ct of chunkTagAssociations) {
@@ -1457,10 +1491,13 @@ await db
 console.log("  \u2713 1 codebase");
 
 // Associate all seed chunks with the codebase
-const chunkCodebaseAssociations = chunks.map(c => ({
-    chunkId: c.id,
-    codebaseId: CODEBASE_ID
-}));
+const docsChunkIdSet = new Set([ids.docsArch, ids.docsContent, ids.docsDeploy]);
+const chunkCodebaseAssociations = chunks
+    .filter(c => !docsChunkIdSet.has(c.id))
+    .map(c => ({
+        chunkId: c.id,
+        codebaseId: CODEBASE_ID
+    }));
 for (const cc of chunkCodebaseAssociations) {
     await db.insert(chunkCodebase).values(cc).catch(e => console.error("  \u2717 chunk_codebase:", e));
 }
@@ -1686,6 +1723,227 @@ await db
     })
     .catch(e => console.error("  \u2717 workspace_codebase:", e));
 console.log("  \u2713 1 workspace with codebase assignment");
+
+// ─── 10. Second codebase (fubbik-docs) ─────────────────────────────
+const CODEBASE_DOCS_ID = "seed-codebase-docs";
+await db
+    .insert(codebase)
+    .values({
+        id: CODEBASE_DOCS_ID,
+        name: "fubbik-docs",
+        remoteUrl: "https://github.com/user/fubbik-docs",
+        localPaths: ["/Users/pontus/projects/fubbik-docs"],
+        userId: DEV_USER_ID
+    })
+    .catch(e => console.error("  \u2717 docs codebase:", e));
+console.log("  \u2713 1 docs codebase");
+
+// Associate docs chunks with the docs codebase
+const docsChunkIds = [ids.docsArch, ids.docsContent, ids.docsDeploy];
+for (const chunkId of docsChunkIds) {
+    await db.insert(chunkCodebase).values({ chunkId, codebaseId: CODEBASE_DOCS_ID }).catch(e => console.error("  \u2717 docs chunk_codebase:", e));
+}
+console.log(`  \u2713 ${docsChunkIds.length} docs chunk-codebase associations`);
+
+// Add docs codebase to the workspace
+await db
+    .insert(workspaceCodebase)
+    .values({ workspaceId: WORKSPACE_ID, codebaseId: CODEBASE_DOCS_ID })
+    .catch(e => console.error("  \u2717 workspace_codebase (docs):", e));
+console.log("  \u2713 docs codebase added to workspace");
+
+// ─── 11. More requirements ─────────────────────────────────────────
+const moreRequirements = [
+    {
+        id: "seed-req-graph-layouts",
+        title: "Graph visualization supports multiple layouts",
+        description: "The graph view provides force-directed, hierarchical, and radial layout algorithms",
+        steps: [
+            { keyword: "given" as const, text: "a knowledge graph with at least 10 nodes" },
+            { keyword: "when" as const, text: "the user selects the hierarchical layout" },
+            { keyword: "then" as const, text: "nodes are arranged in a tree structure based on part_of edges" },
+            { keyword: "when" as const, text: "the user selects the radial layout" },
+            { keyword: "then" as const, text: "nodes are arranged in concentric rings from the most-connected node" }
+        ],
+        status: "passing",
+        priority: "must",
+        userId: DEV_USER_ID,
+        codebaseId: CODEBASE_ID,
+        useCaseId: "seed-uc-knowledge",
+        order: 3
+    },
+    {
+        id: "seed-req-cli-color",
+        title: "CLI supports colored output",
+        description: "CLI commands use ANSI colors for improved readability in terminal environments",
+        steps: [
+            { keyword: "given" as const, text: "a terminal that supports ANSI colors" },
+            { keyword: "when" as const, text: "the user runs fubbik list" },
+            { keyword: "then" as const, text: "chunk types are color-coded" },
+            { keyword: "and" as const, text: "tags are displayed in a distinct color" }
+        ],
+        status: "passing",
+        priority: "should",
+        userId: DEV_USER_ID,
+        codebaseId: CODEBASE_ID,
+        useCaseId: "seed-uc-ai-agent",
+        order: 4
+    },
+    {
+        id: "seed-req-health-stale",
+        title: "Knowledge health detects stale chunks",
+        description: "The health endpoint identifies chunks that have not been updated in a configurable time window",
+        steps: [
+            { keyword: "given" as const, text: "chunks exist that were last updated more than 90 days ago" },
+            { keyword: "when" as const, text: "the user visits the knowledge health page" },
+            { keyword: "then" as const, text: "stale chunks are listed with their last-updated date" },
+            { keyword: "and" as const, text: "the user can click through to edit each stale chunk" }
+        ],
+        status: "failing",
+        priority: "should",
+        userId: DEV_USER_ID,
+        codebaseId: CODEBASE_ID,
+        useCaseId: "seed-uc-knowledge",
+        order: 5
+    },
+    {
+        id: "seed-req-workspace-queries",
+        title: "Workspace-aware chunk queries",
+        description: "Chunk list and search endpoints can be scoped to a workspace, returning chunks from all codebases in that workspace",
+        steps: [
+            { keyword: "given" as const, text: "a workspace containing two codebases" },
+            { keyword: "when" as const, text: "the user queries chunks scoped to the workspace" },
+            { keyword: "then" as const, text: "chunks from both codebases are returned" },
+            { keyword: "and" as const, text: "results indicate which codebase each chunk belongs to" }
+        ],
+        status: "untested",
+        priority: "could",
+        userId: DEV_USER_ID,
+        codebaseId: CODEBASE_ID,
+        useCaseId: "seed-uc-knowledge",
+        order: 6
+    }
+];
+for (const req of moreRequirements) {
+    await db.insert(requirement).values(req).catch(e => console.error("  \u2717 requirement:", e));
+}
+console.log(`  \u2713 ${moreRequirements.length} more requirements`);
+
+// Link new requirements to chunks
+const moreReqChunkLinks = [
+    { requirementId: "seed-req-graph-layouts", chunkId: ids.graph },
+    { requirementId: "seed-req-graph-layouts", chunkId: ids.graphLayout },
+    { requirementId: "seed-req-cli-color", chunkId: ids.cli },
+    { requirementId: "seed-req-health-stale", chunkId: ids.arch },
+    { requirementId: "seed-req-workspace-queries", chunkId: ids.arch }
+];
+for (const rc of moreReqChunkLinks) {
+    await db.insert(requirementChunk).values(rc).catch(e => console.error("  \u2717 requirement_chunk:", e));
+}
+console.log(`  \u2713 ${moreReqChunkLinks.length} more requirement-chunk links`);
+
+// ─── 12. Second plan (Frontend polish) ─────────────────────────────
+const PLAN_POLISH_ID = "seed-plan-polish";
+await db
+    .insert(plan)
+    .values({
+        id: PLAN_POLISH_ID,
+        title: "Frontend polish",
+        description: "UI improvements to the web application covering graph, chunk list, workspace management, plans, and traceability",
+        status: "active",
+        userId: DEV_USER_ID,
+        codebaseId: CODEBASE_ID
+    })
+    .catch(e => console.error("  \u2717 polish plan:", e));
+console.log("  \u2713 1 frontend polish plan");
+
+const polishPlanSteps = [
+    { id: "seed-ps-graph-tag", planId: PLAN_POLISH_ID, description: "Fix graph tag grouping", status: "done", order: 0, requirementId: "seed-req-graph-layouts" },
+    { id: "seed-ps-collapsible", planId: PLAN_POLISH_ID, description: "Add collapsible sections to chunk detail", status: "done", order: 1 },
+    { id: "seed-ps-infinite", planId: PLAN_POLISH_ID, description: "Implement infinite scroll on chunk list", status: "done", order: 2 },
+    { id: "seed-ps-workspace", planId: PLAN_POLISH_ID, description: "Add workspace management page", status: "in_progress", order: 3, requirementId: "seed-req-workspace-queries" },
+    { id: "seed-ps-plan-form", planId: PLAN_POLISH_ID, description: "Polish plan creation form", status: "pending", order: 4 },
+    { id: "seed-ps-traceability", planId: PLAN_POLISH_ID, description: "Add traceability dashboard", status: "pending", order: 5 }
+];
+for (const ps of polishPlanSteps) {
+    await db.insert(planStep).values(ps).catch(e => console.error("  \u2717 polish plan_step:", e));
+}
+console.log(`  \u2713 ${polishPlanSteps.length} frontend polish plan steps`);
+
+// Link polish plan to relevant chunks
+const polishPlanChunkRefs = [
+    { id: "seed-pcr-graph", planId: PLAN_POLISH_ID, chunkId: ids.graph, relation: "context" },
+    { id: "seed-pcr-routes", planId: PLAN_POLISH_ID, chunkId: ids.routes, relation: "context" }
+];
+for (const pcr of polishPlanChunkRefs) {
+    await db.insert(planChunkRef).values(pcr).catch(e => console.error("  \u2717 polish plan_chunk_ref:", e));
+}
+console.log(`  \u2713 ${polishPlanChunkRefs.length} polish plan-chunk references`);
+
+// ─── 13. More vocabulary ────────────────────────────────────────────
+const moreVocabEntries = [
+    { id: "seed-vocab-tag", word: "tag", category: "target", expects: null, codebaseId: CODEBASE_ID, userId: DEV_USER_ID },
+    { id: "seed-vocab-workspace", word: "workspace", category: "target", expects: null, codebaseId: CODEBASE_ID, userId: DEV_USER_ID },
+    { id: "seed-vocab-template", word: "template", category: "target", expects: null, codebaseId: CODEBASE_ID, userId: DEV_USER_ID },
+    { id: "seed-vocab-link", word: "link", category: "action", expects: ["target"], codebaseId: CODEBASE_ID, userId: DEV_USER_ID },
+    { id: "seed-vocab-update", word: "update", category: "action", expects: ["target"], codebaseId: CODEBASE_ID, userId: DEV_USER_ID },
+    { id: "seed-vocab-delete", word: "delete", category: "action", expects: ["target"], codebaseId: CODEBASE_ID, userId: DEV_USER_ID },
+    { id: "seed-vocab-failing", word: "failing", category: "state", expects: null, codebaseId: CODEBASE_ID, userId: DEV_USER_ID },
+    { id: "seed-vocab-active", word: "active", category: "state", expects: null, codebaseId: CODEBASE_ID, userId: DEV_USER_ID }
+];
+for (const ve of moreVocabEntries) {
+    await db.insert(vocabularyEntry).values(ve).catch(e => console.error("  \u2717 vocabulary:", e));
+}
+console.log(`  \u2713 ${moreVocabEntries.length} more vocabulary entries`);
+
+// ─── 14. More collections ───────────────────────────────────────────
+const moreCollections = [
+    {
+        id: "seed-collection-api-refs",
+        name: "API References",
+        description: "All API reference chunks",
+        filter: { type: "reference" },
+        userId: DEV_USER_ID,
+        codebaseId: CODEBASE_ID
+    },
+    {
+        id: "seed-collection-recent",
+        name: "Recent Changes",
+        description: "Chunks updated in the last 7 days",
+        filter: { sort: "updated", after: "7" },
+        userId: DEV_USER_ID,
+        codebaseId: CODEBASE_ID
+    }
+];
+for (const col of moreCollections) {
+    await db.insert(collection).values(col).catch(e => console.error("  \u2717 collection:", e));
+}
+console.log(`  \u2713 ${moreCollections.length} more collections`);
+
+// ─── 15. More applies-to patterns ───────────────────────────────────
+const moreAppliesToPatterns = [
+    { id: "seed-at-auth", chunkId: ids.auth, pattern: "packages/auth/**", note: "Auth package" },
+    { id: "seed-at-service", chunkId: ids.service, pattern: "packages/api/src/*/service.ts", note: "Service layer files" },
+    { id: "seed-at-repo", chunkId: ids.repo, pattern: "packages/db/src/repository/**", note: "Repository layer" },
+    { id: "seed-at-eden", chunkId: ids.eden, pattern: "apps/web/src/utils/**", note: "Frontend utility files" }
+];
+for (const at of moreAppliesToPatterns) {
+    await db.insert(chunkAppliesTo).values(at).catch(e => console.error("  \u2717 applies_to:", e));
+}
+console.log(`  \u2713 ${moreAppliesToPatterns.length} more applies-to patterns`);
+
+// ─── 16. More file references ───────────────────────────────────────
+const moreFileRefs = [
+    { id: "seed-fr-repo", chunkId: ids.repo, path: "packages/db/src/repository/chunk.ts", relation: "documents" },
+    { id: "seed-fr-service", chunkId: ids.service, path: "packages/api/src/chunks/service.ts", relation: "documents" },
+    { id: "seed-fr-routes", chunkId: ids.routes, path: "apps/web/src/routes/__root.tsx", relation: "documents" },
+    { id: "seed-fr-graph", chunkId: ids.graph, path: "apps/web/src/features/graph/graph-view.tsx", relation: "documents" },
+    { id: "seed-fr-turbo", chunkId: ids.turbo, path: "turbo.json", relation: "configures" }
+];
+for (const fr of moreFileRefs) {
+    await db.insert(chunkFileRef).values(fr).catch(e => console.error("  \u2717 file_ref:", e));
+}
+console.log(`  \u2713 ${moreFileRefs.length} more file references`);
 
 console.log(`\n\u2705 Database seeded: ${chunks.length} chunks, ${connections.length} connections, ${seedTagTypes.length} tag types, ${seedTags.length} tags, plus codebases, patterns, refs, requirements, use cases, plans, vocabulary, collections, workspaces`);
 
