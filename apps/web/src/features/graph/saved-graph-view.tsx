@@ -14,7 +14,7 @@ import {
     type Edge,
     type Node
 } from "@xyflow/react";
-import { ArrowLeft, Edit2, Trash2 } from "lucide-react";
+import { ArrowLeft, Edit2, Pencil, Plus, Search, Trash2, X } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -29,6 +29,30 @@ import { unwrapEden } from "@/utils/eden";
 
 const EDGE_TYPES = { floating: FloatingEdge };
 const NODE_TYPES = { chunk: GraphNode };
+
+// Editable node wraps GraphNode with a remove button
+function EditableGraphNode(props: import("@xyflow/react").NodeProps) {
+    const onRemove = (props.data as { onRemove?: () => void }).onRemove;
+    return (
+        <div className="relative">
+            {onRemove && (
+                <button
+                    onClick={e => {
+                        e.stopPropagation();
+                        onRemove();
+                    }}
+                    className="absolute -top-2 -right-2 z-10 flex size-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-md hover:bg-red-600"
+                    title="Remove from graph"
+                >
+                    &times;
+                </button>
+            )}
+            <GraphNode {...props} />
+        </div>
+    );
+}
+
+const EDIT_NODE_TYPES = { chunk: EditableGraphNode };
 
 const TYPE_COLORS_DARK: Record<string, { bg: string; border: string }> = {
     note: { bg: "#1e293b", border: "#475569" },
@@ -55,12 +79,51 @@ function SavedGraphViewInner() {
     const { graphId } = useParams({ strict: false }) as { graphId: string };
     const navigate = useNavigate();
     const queryClient = useQueryClient();
-    const { fitView } = useReactFlow();
+    const { fitView, getViewport } = useReactFlow();
     const initialFitDoneRef = useRef(false);
 
     const [selectedChunkId, setSelectedChunkId] = useState<string | null>(null);
     const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
     const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
+
+    // Edit mode state
+    const [editMode, setEditMode] = useState(false);
+    const [editChunkIds, setEditChunkIds] = useState<string[]>([]);
+    const [editPositions, setEditPositions] = useState<Record<string, { x: number; y: number }>>({});
+    const [searchQuery, setSearchQuery] = useState("");
+    const [debouncedSearch, setDebouncedSearch] = useState("");
+    const [showSearchResults, setShowSearchResults] = useState(false);
+    const searchRef = useRef<HTMLDivElement>(null);
+
+    // Debounce search
+    useEffect(() => {
+        const timer = setTimeout(() => setDebouncedSearch(searchQuery), 300);
+        return () => clearTimeout(timer);
+    }, [searchQuery]);
+
+    // Search chunks query
+    const { data: searchResults } = useQuery({
+        queryKey: ["chunks", "graph-edit-search", debouncedSearch],
+        queryFn: async () => {
+            if (!debouncedSearch.trim()) return null;
+            const result = unwrapEden(
+                await api.api.chunks.get({ query: { search: debouncedSearch, limit: "10" } })
+            ) as { chunks?: Array<{ id: string; title: string; type: string }> } | null;
+            return result?.chunks ?? [];
+        },
+        enabled: !!debouncedSearch.trim() && editMode
+    });
+
+    // Close search results on click outside
+    useEffect(() => {
+        const handleClick = (e: MouseEvent) => {
+            if (searchRef.current && !searchRef.current.contains(e.target as HTMLElement)) {
+                setShowSearchResults(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClick);
+        return () => document.removeEventListener("mousedown", handleClick);
+    }, []);
 
     // Fetch saved graph
     const { data: savedGraph, isLoading: isLoadingSavedGraph } = useQuery({
@@ -97,6 +160,75 @@ function SavedGraphViewInner() {
         }
     });
 
+    // Save edit changes mutation
+    const saveEditMutation = useMutation({
+        mutationFn: async (payload: { chunkIds: string[]; positions: Record<string, { x: number; y: number }> }) => {
+            return unwrapEden(
+                await api.api["saved-graphs"]({ id: graphId }).patch(payload)
+            );
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["saved-graphs", graphId] });
+            queryClient.invalidateQueries({ queryKey: ["graph"] });
+            setEditMode(false);
+            toast.success("Graph updated");
+        }
+    });
+
+    // Enter edit mode
+    const enterEditMode = useCallback(() => {
+        if (!savedGraph) return;
+        const sg = savedGraph as { chunkIds: string[]; positions: Record<string, { x: number; y: number }> };
+        setEditChunkIds([...sg.chunkIds]);
+        setEditPositions({ ...sg.positions });
+        setEditMode(true);
+    }, [savedGraph]);
+
+    // Cancel edit mode
+    const cancelEditMode = useCallback(() => {
+        setEditMode(false);
+        setEditChunkIds([]);
+        setEditPositions({});
+        setSearchQuery("");
+        setDebouncedSearch("");
+        setShowSearchResults(false);
+    }, []);
+
+    // Add chunk to edit
+    const addChunkToEdit = useCallback((chunkId: string) => {
+        if (editChunkIds.includes(chunkId)) return;
+        const viewport = getViewport();
+        // Place new node at the center of the current viewport
+        const centerX = (-viewport.x + window.innerWidth / 2) / viewport.zoom;
+        const centerY = (-viewport.y + window.innerHeight / 2) / viewport.zoom;
+        setEditChunkIds(prev => [...prev, chunkId]);
+        setEditPositions(prev => ({ ...prev, [chunkId]: { x: centerX, y: centerY } }));
+        setSearchQuery("");
+        setShowSearchResults(false);
+    }, [editChunkIds, getViewport]);
+
+    // Remove chunk from edit
+    const removeChunkFromEdit = useCallback((chunkId: string) => {
+        setEditChunkIds(prev => prev.filter(id => id !== chunkId));
+        setEditPositions(prev => {
+            const next = { ...prev };
+            delete next[chunkId];
+            return next;
+        });
+    }, []);
+
+    // Save edit changes
+    const handleSaveEdit = useCallback(() => {
+        // Grab current node positions from the React Flow state
+        const currentPositions: Record<string, { x: number; y: number }> = {};
+        for (const node of nodes) {
+            if (editChunkIds.includes(node.id)) {
+                currentPositions[node.id] = node.position;
+            }
+        }
+        saveEditMutation.mutate({ chunkIds: editChunkIds, positions: currentPositions });
+    }, [nodes, editChunkIds, saveEditMutation]);
+
     // Build nodes and edges from saved graph + graph data
     const { graphNodes, graphEdges } = useMemo(() => {
         if (!savedGraph || !graphData) return { graphNodes: [] as Node[], graphEdges: [] as Edge[] };
@@ -105,8 +237,10 @@ function SavedGraphViewInner() {
             chunkIds: string[];
             positions: Record<string, { x: number; y: number }>;
         };
-        const savedChunkIds = new Set(sg.chunkIds);
-        const positions = sg.positions;
+        const activeChunkIds = editMode ? editChunkIds : sg.chunkIds;
+        const activePositions = editMode ? editPositions : sg.positions;
+        const savedChunkIds = new Set(activeChunkIds);
+        const positions = activePositions;
 
         // Filter chunks to only those in the saved graph
         const chunks = (graphData as { chunks: Array<{ id: string; title: string; type: string }> }).chunks
@@ -126,7 +260,8 @@ function SavedGraphViewInner() {
                     label: c.title,
                     type: c.type,
                     connectionCount: 0,
-                    tags: [] as string[]
+                    tags: [] as string[],
+                    ...(editMode ? { onRemove: () => removeChunkFromEdit(c.id) } : {})
                 },
                 position: pos,
                 style: {
@@ -162,15 +297,15 @@ function SavedGraphViewInner() {
         }));
 
         return { graphNodes, graphEdges };
-    }, [savedGraph, graphData, isDark, TYPE_COLORS]);
+    }, [savedGraph, graphData, isDark, TYPE_COLORS, editMode, editChunkIds, editPositions, removeChunkFromEdit]);
 
     // Set nodes and edges when data is ready
     useEffect(() => {
-        if (graphNodes.length > 0) {
+        if (graphNodes.length > 0 || editMode) {
             setNodes(graphNodes);
             setEdges(graphEdges);
         }
-    }, [graphNodes, graphEdges, setNodes, setEdges]);
+    }, [graphNodes, graphEdges, setNodes, setEdges, editMode]);
 
     // Fit view on first load
     useEffect(() => {
@@ -230,12 +365,66 @@ function SavedGraphViewInner() {
 
             {/* Main area */}
             <div className="relative flex-1">
+                {/* Edit mode: chunk search bar */}
+                {editMode && (
+                    <div ref={searchRef} className="absolute top-16 left-1/2 z-20 w-96 -translate-x-1/2">
+                        <div className="bg-background/95 relative rounded-lg border shadow-lg backdrop-blur-sm">
+                            <div className="flex items-center gap-2 px-3 py-2">
+                                <Search className="text-muted-foreground size-4 shrink-0" />
+                                <input
+                                    type="text"
+                                    placeholder="Search chunks to add..."
+                                    value={searchQuery}
+                                    onChange={e => {
+                                        setSearchQuery(e.target.value);
+                                        setShowSearchResults(true);
+                                    }}
+                                    onFocus={() => setShowSearchResults(true)}
+                                    className="bg-transparent text-sm outline-none placeholder:text-muted-foreground w-full"
+                                />
+                                {searchQuery && (
+                                    <button onClick={() => { setSearchQuery(""); setShowSearchResults(false); }} className="text-muted-foreground hover:text-foreground">
+                                        <X className="size-3.5" />
+                                    </button>
+                                )}
+                            </div>
+                            {showSearchResults && searchResults && searchResults.length > 0 && (
+                                <div className="border-t max-h-64 overflow-y-auto">
+                                    {searchResults
+                                        .filter(c => !editChunkIds.includes(c.id))
+                                        .map(chunk => (
+                                            <button
+                                                key={chunk.id}
+                                                onClick={() => addChunkToEdit(chunk.id)}
+                                                className="hover:bg-accent flex w-full items-center gap-2 px-3 py-2 text-left text-sm"
+                                            >
+                                                <Plus className="text-muted-foreground size-3.5 shrink-0" />
+                                                <span className="truncate">{chunk.title}</span>
+                                                <span className="bg-muted text-muted-foreground ml-auto shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium uppercase">
+                                                    {chunk.type}
+                                                </span>
+                                            </button>
+                                        ))}
+                                    {searchResults.filter(c => !editChunkIds.includes(c.id)).length === 0 && (
+                                        <p className="text-muted-foreground px-3 py-2 text-xs">All results already added</p>
+                                    )}
+                                </div>
+                            )}
+                            {showSearchResults && debouncedSearch && (!searchResults || searchResults.length === 0) && (
+                                <div className="border-t px-3 py-2">
+                                    <p className="text-muted-foreground text-xs">No results found</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+
                 <ReactFlow
                     nodes={nodes}
                     edges={edges}
                     onNodesChange={onNodesChange}
                     onEdgesChange={onEdgesChange}
-                    nodeTypes={NODE_TYPES}
+                    nodeTypes={editMode ? EDIT_NODE_TYPES : NODE_TYPES}
                     edgeTypes={EDGE_TYPES}
                     onNodeClick={onNodeClick}
                     onPaneClick={() => setSelectedChunkId(null)}
@@ -280,25 +469,55 @@ function SavedGraphViewInner() {
                         </div>
                     </div>
                     <div className="pointer-events-auto flex items-center gap-2">
-                        <button
-                            onClick={handleSavePositions}
-                            disabled={updatePositionsMutation.isPending}
-                            className="bg-background/80 text-muted-foreground hover:text-foreground flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs backdrop-blur-sm"
-                        >
-                            <Edit2 className="size-3" />
-                            {updatePositionsMutation.isPending ? "Saving..." : "Save positions"}
-                        </button>
-                        <button
-                            onClick={() => deleteMutation.mutate()}
-                            disabled={deleteMutation.isPending}
-                            className="bg-background/80 text-destructive hover:bg-destructive/10 flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs backdrop-blur-sm"
-                        >
-                            <Trash2 className="size-3" />
-                            Delete
-                        </button>
-                        <span className="text-muted-foreground bg-background/80 rounded-lg border px-3 py-1.5 text-xs backdrop-blur-sm">
-                            {graphNodes.length} chunks
-                        </span>
+                        {editMode ? (
+                            <>
+                                <button
+                                    onClick={handleSaveEdit}
+                                    disabled={saveEditMutation.isPending}
+                                    className="bg-primary text-primary-foreground flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium shadow-sm hover:opacity-90"
+                                >
+                                    {saveEditMutation.isPending ? "Saving..." : "Save changes"}
+                                </button>
+                                <button
+                                    onClick={cancelEditMode}
+                                    className="bg-background/80 text-muted-foreground hover:text-foreground flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs backdrop-blur-sm"
+                                >
+                                    Cancel
+                                </button>
+                                <span className="text-muted-foreground bg-background/80 rounded-lg border px-3 py-1.5 text-xs backdrop-blur-sm">
+                                    {editChunkIds.length} chunks
+                                </span>
+                            </>
+                        ) : (
+                            <>
+                                <button
+                                    onClick={enterEditMode}
+                                    className="bg-background/80 text-muted-foreground hover:text-foreground flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs backdrop-blur-sm"
+                                >
+                                    <Pencil className="size-3" />
+                                    Edit chunks
+                                </button>
+                                <button
+                                    onClick={handleSavePositions}
+                                    disabled={updatePositionsMutation.isPending}
+                                    className="bg-background/80 text-muted-foreground hover:text-foreground flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs backdrop-blur-sm"
+                                >
+                                    <Edit2 className="size-3" />
+                                    {updatePositionsMutation.isPending ? "Saving..." : "Save positions"}
+                                </button>
+                                <button
+                                    onClick={() => deleteMutation.mutate()}
+                                    disabled={deleteMutation.isPending}
+                                    className="bg-background/80 text-destructive hover:bg-destructive/10 flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs backdrop-blur-sm"
+                                >
+                                    <Trash2 className="size-3" />
+                                    Delete
+                                </button>
+                                <span className="text-muted-foreground bg-background/80 rounded-lg border px-3 py-1.5 text-xs backdrop-blur-sm">
+                                    {graphNodes.length} chunks
+                                </span>
+                            </>
+                        )}
                     </div>
                 </div>
             </div>
