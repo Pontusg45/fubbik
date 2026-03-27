@@ -2,6 +2,10 @@ import { auth } from "@fubbik/auth";
 import { Cause, Effect, Option } from "effect";
 import { Elysia } from "elysia";
 
+import { registerEventHandlers } from "./events";
+
+registerEventHandlers();
+
 import { aiRoutes } from "./ai/routes";
 import { appliesToRoutes } from "./applies-to/routes";
 import { chunkRoutes } from "./chunks/routes";

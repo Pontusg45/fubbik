@@ -1,6 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { apiFetch } from "./api-client.js";
+import type { McpPlugin } from "./plugin.js";
 
 export function registerPlanTools(server: McpServer): void {
     // 1. create_plan
@@ -226,3 +227,9 @@ export function registerPlanTools(server: McpServer): void {
         }
     );
 }
+
+export const planPlugin: McpPlugin = {
+    name: "plans",
+    description: "Implementation plan management tools",
+    register: registerPlanTools,
+};
