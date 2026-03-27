@@ -54,7 +54,8 @@ function WorkspacesPage() {
             } catch {
                 return [];
             }
-        }
+        },
+        staleTime: 60_000
     });
 
     const createMutation = useMutation({

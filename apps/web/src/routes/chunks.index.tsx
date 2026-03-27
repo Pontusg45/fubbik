@@ -181,7 +181,8 @@ function ChunksList() {
             } catch {
                 return [];
             }
-        }
+        },
+        staleTime: 60_000
     });
 
     const activeTags = tags ? tags.split(",") : [];

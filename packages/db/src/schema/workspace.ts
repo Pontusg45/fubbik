@@ -37,7 +37,8 @@ export const workspaceCodebase = pgTable(
     },
     table => [
         primaryKey({ columns: [table.workspaceId, table.codebaseId] }),
-        index("workspace_codebase_workspaceId_idx").on(table.workspaceId)
+        index("workspace_codebase_workspaceId_idx").on(table.workspaceId),
+        index("workspace_codebase_codebaseId_idx").on(table.codebaseId)
     ]
 );
 

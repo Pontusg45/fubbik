@@ -56,7 +56,8 @@ function TemplatesPage() {
             } catch {
                 return [];
             }
-        }
+        },
+        staleTime: 60_000
     });
 
     const templates = Array.isArray(templatesQuery.data) ? templatesQuery.data : [];

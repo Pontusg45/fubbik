@@ -117,7 +117,8 @@ function NewChunk() {
             } catch {
                 return [];
             }
-        }
+        },
+        staleTime: 60_000
     });
 
     const serverTemplates = Array.isArray(templatesQuery.data) ? templatesQuery.data : [];

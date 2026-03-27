@@ -28,6 +28,7 @@ import { useRecentChunks } from "@/features/chunks/use-recent-chunks";
 import { VersionHistory } from "@/features/chunks/version-history";
 import { getUser } from "@/functions/get-user";
 import { api } from "@/utils/api";
+import { archiveChunk } from "@/utils/api-helpers";
 
 export const Route = createFileRoute("/chunks/$chunkId")({
     component: ChunkDetail,
@@ -79,10 +80,7 @@ function ChunkDetail() {
     });
 
     const archiveMutation = useMutation({
-        mutationFn: async () => {
-            const { error } = await (api.api.chunks as any)[chunkId].archive.post();
-            if (error) throw new Error("Failed to archive chunk");
-        },
+        mutationFn: () => archiveChunk(chunkId),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["chunks"] });
             queryClient.invalidateQueries({ queryKey: ["chunks-list"] });

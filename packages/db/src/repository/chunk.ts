@@ -5,6 +5,7 @@ import { DatabaseError } from "../errors";
 import { db } from "../index";
 import { chunk, chunkConnection } from "../schema/chunk";
 import { codebase, chunkCodebase } from "../schema/codebase";
+import { tag, chunkTag } from "../schema/tag";
 import { workspaceCodebase } from "../schema/workspace";
 
 export interface ListChunksParams {
@@ -60,7 +61,14 @@ export function listChunks(params: ListChunksParams) {
             if (params.alias) {
                 conditions.push(sql`${chunk.aliases} @> ${JSON.stringify([params.alias])}::jsonb`);
             }
-            // tags filtering now handled via normalized chunk_tag table (join-based) if needed
+            if (params.tags && params.tags.length > 0) {
+                const tagSubquery = db
+                    .select({ chunkId: chunkTag.chunkId })
+                    .from(chunkTag)
+                    .innerJoin(tag, eq(chunkTag.tagId, tag.id))
+                    .where(inArray(tag.name, params.tags));
+                conditions.push(sql`${chunk.id} IN (${tagSubquery})`);
+            }
             if (params.after) {
                 conditions.push(gte(chunk.updatedAt, params.after));
             }
