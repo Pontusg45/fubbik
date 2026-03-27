@@ -38,6 +38,7 @@ import { activityRoutes } from "./activity/routes";
 import { notificationRoutes } from "./notifications/routes";
 import { settingsRoutes } from "./settings/routes";
 import { planRoutes } from "./plans/routes";
+import { taskQueueRoutes } from "./tasks/routes";
 import { vocabularyRoutes } from "./vocabulary/routes";
 import { workspaceRoutes } from "./workspaces/routes";
 
@@ -153,6 +154,7 @@ export const api = new Elysia({ prefix: "/api" })
     .use(sessionRoutes)
     .use(diagramRoutes)
     .use(planRoutes)
+    .use(taskQueueRoutes)
     .use(workspaceRoutes);
 
 export type Api = typeof api;
