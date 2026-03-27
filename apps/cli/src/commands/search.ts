@@ -1,5 +1,6 @@
 import { Command } from "commander";
 
+import { loadConfig } from "../lib/config";
 import { resolveCodebaseId } from "../lib/detect-codebase";
 import { output, outputError, outputQuiet } from "../lib/output";
 import { readStore, searchChunks } from "../lib/store";
@@ -15,6 +16,9 @@ export const searchCommand = new Command("search")
     .option("--global", "skip codebase scoping (search all chunks)")
     .option("--codebase <name>", "scope to a specific codebase by name")
     .action(async (query: string, opts: { limit?: string; offset?: string; fields?: string; semantic?: boolean; global?: boolean; codebase?: string }, cmd: Command) => {
+        const config = loadConfig();
+        const codebaseName = opts.codebase ?? config.codebase;
+
         if (opts.semantic) {
             const store = readStore();
             if (!store.serverUrl) {
@@ -26,7 +30,7 @@ export const searchCommand = new Command("search")
 
             const codebaseId = await resolveCodebaseId(store.serverUrl, {
                 global: opts.global,
-                codebase: opts.codebase
+                codebase: codebaseName
             });
             if (codebaseId) params.set("codebaseId", codebaseId);
 

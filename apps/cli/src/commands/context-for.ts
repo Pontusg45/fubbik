@@ -3,6 +3,7 @@ import { dirname, join, resolve } from "node:path";
 
 import { Command } from "commander";
 
+import { loadConfig } from "../lib/config";
 import { output, outputError, outputQuiet } from "../lib/output";
 import { getServerUrl } from "../lib/store";
 
@@ -94,6 +95,8 @@ export const contextForCommand = new Command("context-for")
     .option("--format <format>", "output format: markdown or json", "markdown")
     .option("--include-deps", "include chunks from dependency codebases")
     .action(async (filePath: string, opts: { codebase?: string; format: string; includeDeps?: boolean }, cmd: Command) => {
+        const config = loadConfig();
+
         let serverUrl: string | undefined;
         try {
             serverUrl = getServerUrl();
@@ -107,12 +110,15 @@ export const contextForCommand = new Command("context-for")
             process.exit(1);
         }
 
+        const codebaseName = opts.codebase ?? config.codebase;
+        const includeDeps = opts.includeDeps ?? config.context?.includeDeps ?? false;
+
         const params = new URLSearchParams();
         params.set("path", filePath);
-        if (opts.codebase) {
-            params.set("codebaseId", opts.codebase);
+        if (codebaseName) {
+            params.set("codebaseId", codebaseName);
         }
-        if (opts.includeDeps) {
+        if (includeDeps) {
             const depFile = findNearestDepFile(filePath);
             if (depFile) {
                 const deps = parseDepsFromFile(depFile.filename, depFile.content);

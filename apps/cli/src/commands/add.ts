@@ -1,6 +1,7 @@
 import { Command } from "commander";
 
 import { formatId, formatSuccess, formatTag, formatType } from "../lib/colors";
+import { loadConfig } from "../lib/config";
 import { output, outputError, outputQuiet } from "../lib/output";
 import { openEditor, promptInput } from "../lib/prompt";
 import { addChunk, getServerUrl } from "../lib/store";
@@ -27,6 +28,8 @@ export const addCommand = new Command("add")
         global?: boolean;
         codebase?: string;
     }, cmd: Command) => {
+        const config = loadConfig();
+
         // Template support: fetch and merge template defaults
         let templateDefaults: { title?: string; content?: string; type?: string; tags?: string[] } = {};
         if (opts.template) {
@@ -65,7 +68,7 @@ export const addCommand = new Command("add")
                 outputError("Title is required.");
                 return;
             }
-            const type = await promptInput("Type", opts.type !== "note" ? opts.type : (templateDefaults.type || "note"));
+            const type = await promptInput("Type", opts.type !== "note" ? opts.type : (templateDefaults.type || config.defaultType || "note"));
             const tagsInput = await promptInput("Tags (comma-separated)", opts.tags || (templateDefaults.tags || []).join(", "));
             const tags = tagsInput ? tagsInput.split(",").map(t => t.trim()).filter(Boolean) : [];
 
@@ -104,7 +107,7 @@ export const addCommand = new Command("add")
             }
         }
 
-        const type = opts.type !== "note" ? opts.type : (templateDefaults.type || opts.type);
+        const type = opts.type !== "note" ? opts.type : (templateDefaults.type || config.defaultType || opts.type);
         const explicitTags = opts.tags ? opts.tags.split(",").map(t => t.trim()) : [];
         const tags = explicitTags.length > 0 ? explicitTags : (templateDefaults.tags || []);
 

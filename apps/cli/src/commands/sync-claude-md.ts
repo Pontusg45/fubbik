@@ -4,6 +4,7 @@ import { dirname, resolve } from "node:path";
 import { Command } from "commander";
 
 import { formatSuccess } from "../lib/colors";
+import { loadConfig } from "../lib/config";
 import { resolveCodebaseId } from "../lib/detect-codebase";
 import { output, outputError, outputQuiet } from "../lib/output";
 import { getServerUrl } from "../lib/store";
@@ -28,6 +29,8 @@ export const syncClaudeMdCommand = new Command("sync-claude-md")
             },
             cmd: Command
         ) => {
+            const config = loadConfig();
+
             let serverUrl: string | undefined;
             try {
                 serverUrl = getServerUrl();
@@ -41,14 +44,23 @@ export const syncClaudeMdCommand = new Command("sync-claude-md")
                 process.exit(1);
             }
 
+            // Apply config fallbacks for tag and output
+            const tag = cmd.getOptionValueSource("tag") === "default"
+                ? (config.claudeMd?.tag ?? opts.tag)
+                : opts.tag;
+            const outputPath = cmd.getOptionValueSource("output") === "default"
+                ? (config.claudeMd?.output ?? opts.output)
+                : opts.output;
+            const codebaseName = opts.codebase ?? config.codebase;
+
             const codebaseId = await resolveCodebaseId(serverUrl, {
                 global: opts.global,
-                codebase: opts.codebase
+                codebase: codebaseName
             });
 
             const generate = async () => {
                 const params = new URLSearchParams();
-                params.set("tag", opts.tag);
+                params.set("tag", tag);
                 if (codebaseId) {
                     params.set("codebaseId", codebaseId);
                 }
@@ -62,15 +74,15 @@ export const syncClaudeMdCommand = new Command("sync-claude-md")
 
                 const data = (await res.json()) as { content: string; chunks: number };
 
-                const outputPath = resolve(opts.output);
-                mkdirSync(dirname(outputPath), { recursive: true });
-                writeFileSync(outputPath, data.content, "utf-8");
+                const resolvedOutputPath = resolve(outputPath);
+                mkdirSync(dirname(resolvedOutputPath), { recursive: true });
+                writeFileSync(resolvedOutputPath, data.content, "utf-8");
 
-                outputQuiet(cmd, outputPath);
+                outputQuiet(cmd, resolvedOutputPath);
                 output(
                     cmd,
-                    { path: outputPath, chunks: data.chunks },
-                    formatSuccess(`Wrote ${data.chunks} chunk(s) to ${outputPath}`)
+                    { path: resolvedOutputPath, chunks: data.chunks },
+                    formatSuccess(`Wrote ${data.chunks} chunk(s) to ${resolvedOutputPath}`)
                 );
                 return true;
             };

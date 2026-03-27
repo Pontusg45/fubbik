@@ -1,5 +1,9 @@
+import { writeFileSync } from "node:fs";
+
 import { Command } from "commander";
 
+import { formatSuccess } from "../lib/colors";
+import { findConfigFile } from "../lib/config";
 import { output, outputError, outputQuiet } from "../lib/output";
 import { scanProject } from "../lib/scanner";
 import { addChunk, createStore, getServerUrl, readStore, storeDir, storeExists } from "../lib/store";
@@ -24,6 +28,26 @@ export const initCommand = new Command("init")
                 console.log(`Initialized knowledge base: ${name}`);
                 console.log(`  Location: ${storeDir()}`);
             }
+        }
+
+        // Generate config file if one doesn't already exist
+        if (!opts.dryRun && !findConfigFile()) {
+            let serverUrl: string | undefined;
+            try {
+                serverUrl = getServerUrl();
+            } catch {
+                // store may not have a server URL yet
+            }
+            const configContent: Record<string, unknown> = {
+                serverUrl: serverUrl ?? undefined,
+                defaultType: "note",
+                claudeMd: { tag: "claude-context", output: ".claude/CLAUDE.md" },
+                context: { maxTokens: 4000 },
+            };
+            // Remove undefined values
+            const clean = JSON.parse(JSON.stringify(configContent));
+            writeFileSync("fubbik.config.json", JSON.stringify(clean, null, 2) + "\n");
+            console.log(formatSuccess("Created fubbik.config.json"));
         }
 
         if (!opts.scan && !opts.dryRun) {

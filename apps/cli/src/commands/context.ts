@@ -1,5 +1,6 @@
 import { Command } from "commander";
 
+import { loadConfig } from "../lib/config";
 import { output, outputQuiet } from "../lib/output";
 import { getServerUrl } from "../lib/store";
 
@@ -10,14 +11,19 @@ export const contextCommand = new Command("context")
     .option("--format <format>", "output format: markdown or json", "markdown")
     .option("--for <path>", "boost chunks relevant to this file path")
     .action(async (opts: { maxTokens: string; codebase?: string; format: string; for?: string }, cmd: Command) => {
+        const config = loadConfig();
         const serverUrl = getServerUrl();
         if (!serverUrl) {
             console.error('No server URL configured. Run "fubbik init" first.');
             process.exit(1);
         }
 
+        const maxTokens = cmd.getOptionValueSource("maxTokens") === "default"
+            ? String(config.context?.maxTokens ?? opts.maxTokens)
+            : opts.maxTokens;
+
         const params = new URLSearchParams();
-        params.set("maxTokens", opts.maxTokens);
+        params.set("maxTokens", maxTokens);
         params.set("format", opts.format);
         if (opts.codebase) {
             params.set("codebaseId", opts.codebase);
