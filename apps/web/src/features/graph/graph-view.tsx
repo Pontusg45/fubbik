@@ -18,7 +18,7 @@ import {
     type Viewport
 } from "@xyflow/react";
 import { toPng } from "html-to-image";
-import { Download, Route, Settings2 } from "lucide-react";
+import { Download, ExternalLink, Route, Save, Settings2 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -187,6 +187,45 @@ function GraphViewInner() {
             }
         );
     }, [createConnectionMutation, dispatch]);
+
+    // Saved custom graphs (server-side)
+    const savedGraphsQuery = useQuery({
+        queryKey: ["saved-graphs"],
+        queryFn: async () => unwrapEden(await api.api["saved-graphs"].get({}))
+    });
+
+    const saveCustomGraphMutation = useMutation({
+        mutationFn: async (body: {
+            name: string;
+            chunkIds: string[];
+            positions: Record<string, { x: number; y: number }>;
+            layoutAlgorithm: string;
+            codebaseId?: string | null;
+        }) => {
+            return unwrapEden(await api.api["saved-graphs"].post(body));
+        },
+        onSuccess: (data) => {
+            queryClient.invalidateQueries({ queryKey: ["saved-graphs"] });
+            toast.success("Custom graph saved", {
+                action: {
+                    label: "Open",
+                    onClick: () => navigate({ to: "/graph/$graphId", params: { graphId: (data as { id: string }).id } })
+                }
+            });
+        }
+    });
+
+    const deleteCustomGraphMutation = useMutation({
+        mutationFn: async (id: string) => {
+            return unwrapEden(await api.api["saved-graphs"]({ id }).delete());
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["saved-graphs"] });
+        }
+    });
+
+    const [showSaveCustomDialog, setShowSaveCustomDialog] = useState(false);
+    const [customGraphName, setCustomGraphName] = useState("");
 
     const [isMobile, setIsMobile] = useState(false);
 
@@ -1548,6 +1587,33 @@ function GraphViewInner() {
                                         </div>
                                     ))}
                                 </div>
+                                <div className="flex flex-col gap-2">
+                                    <label className="text-muted-foreground text-[10px] font-medium tracking-wider uppercase">Custom Graphs</label>
+                                    <button
+                                        onClick={() => setShowSaveCustomDialog(true)}
+                                        className="text-muted-foreground hover:text-foreground flex w-full items-center gap-2 rounded-md border px-2.5 py-1.5 text-left text-xs"
+                                    >
+                                        <Save className="size-3" />
+                                        Save as custom graph...
+                                    </button>
+                                    {(savedGraphsQuery.data ?? []).map((sg: { id: string; name: string }) => (
+                                        <div key={sg.id} className="flex items-center justify-between gap-1">
+                                            <button
+                                                className="text-muted-foreground hover:text-foreground flex flex-1 items-center gap-1.5 truncate rounded-md border px-2.5 py-1.5 text-left text-xs"
+                                                onClick={() => navigate({ to: "/graph/$graphId", params: { graphId: sg.id } })}
+                                            >
+                                                <ExternalLink className="size-3 shrink-0" />
+                                                {sg.name}
+                                            </button>
+                                            <button
+                                                className="text-muted-foreground hover:text-destructive shrink-0 rounded p-1"
+                                                onClick={() => deleteCustomGraphMutation.mutate(sg.id)}
+                                            >
+                                                <span className="text-[10px]">✕</span>
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
                                 <div className="border-t pt-3">
                                     <button
                                         onClick={handleExportImage}
@@ -1741,6 +1807,79 @@ function GraphViewInner() {
                                     Save
                                 </button>
                                 <button onClick={() => dispatch({ type: "SET_SHOW_SAVE_DIALOG", show: false })} className="rounded-md border px-3 py-1.5 text-xs">
+                                    Cancel
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+                {/* Save custom graph dialog */}
+                {showSaveCustomDialog && (
+                    <div
+                        className="bg-background/50 absolute inset-0 z-30 flex items-center justify-center backdrop-blur-sm"
+                        onClick={() => setShowSaveCustomDialog(false)}
+                    >
+                        <div className="bg-background w-80 rounded-lg border p-4 shadow-lg" onClick={e => e.stopPropagation()}>
+                            <h3 className="mb-2 text-sm font-semibold">Save as Custom Graph</h3>
+                            <p className="text-muted-foreground mb-3 text-xs">
+                                Saves {filteredGraph?.chunks.length ?? 0} visible chunks with their current positions.
+                            </p>
+                            <input
+                                value={customGraphName}
+                                onChange={e => setCustomGraphName(e.target.value)}
+                                placeholder="Graph name"
+                                className="w-full rounded-md border px-3 py-2 text-sm"
+                                autoFocus
+                                onKeyDown={e => {
+                                    if (e.key === "Enter" && customGraphName.trim() && filteredGraph) {
+                                        const chunkIds = filteredGraph.chunks.map(c => c.id);
+                                        const positions: Record<string, { x: number; y: number }> = {};
+                                        for (const id of chunkIds) {
+                                            const dragged = draggedPositions.get(id);
+                                            const lp = layoutPositions?.[id];
+                                            if (dragged) positions[id] = dragged;
+                                            else if (lp) positions[id] = lp;
+                                        }
+                                        saveCustomGraphMutation.mutate({
+                                            name: customGraphName.trim(),
+                                            chunkIds,
+                                            positions,
+                                            layoutAlgorithm,
+                                            codebaseId: codebaseId && codebaseId !== "global" ? codebaseId : undefined
+                                        });
+                                        setShowSaveCustomDialog(false);
+                                        setCustomGraphName("");
+                                    }
+                                }}
+                            />
+                            <div className="mt-3 flex gap-2">
+                                <button
+                                    onClick={() => {
+                                        if (!customGraphName.trim() || !filteredGraph) return;
+                                        const chunkIds = filteredGraph.chunks.map(c => c.id);
+                                        const positions: Record<string, { x: number; y: number }> = {};
+                                        for (const id of chunkIds) {
+                                            const dragged = draggedPositions.get(id);
+                                            const lp = layoutPositions?.[id];
+                                            if (dragged) positions[id] = dragged;
+                                            else if (lp) positions[id] = lp;
+                                        }
+                                        saveCustomGraphMutation.mutate({
+                                            name: customGraphName.trim(),
+                                            chunkIds,
+                                            positions,
+                                            layoutAlgorithm,
+                                            codebaseId: codebaseId && codebaseId !== "global" ? codebaseId : undefined
+                                        });
+                                        setShowSaveCustomDialog(false);
+                                        setCustomGraphName("");
+                                    }}
+                                    disabled={saveCustomGraphMutation.isPending}
+                                    className="bg-primary text-primary-foreground flex-1 rounded-md px-3 py-1.5 text-xs"
+                                >
+                                    {saveCustomGraphMutation.isPending ? "Saving..." : "Save"}
+                                </button>
+                                <button onClick={() => setShowSaveCustomDialog(false)} className="rounded-md border px-3 py-1.5 text-xs">
                                     Cancel
                                 </button>
                             </div>

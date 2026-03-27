@@ -35,6 +35,7 @@ import { Route as RequirementsNewRouteImport } from "./routes/requirements_.new"
 import { Route as RequirementsRequirementIdRouteImport } from "./routes/requirements_.$requirementId";
 import { Route as PlansNewRouteImport } from "./routes/plans.new";
 import { Route as PlansPlanIdRouteImport } from "./routes/plans.$planId";
+import { Route as GraphGraphIdRouteImport } from "./routes/graph_.$graphId";
 import { Route as ChunksNewRouteImport } from "./routes/chunks.new";
 import { Route as ChunksArchivedRouteImport } from "./routes/chunks.archived";
 import { Route as ChunksChunkIdRouteImport } from "./routes/chunks.$chunkId";
@@ -171,6 +172,11 @@ const PlansPlanIdRoute = PlansPlanIdRouteImport.update({
   path: "/plans/$planId",
   getParentRoute: () => rootRouteImport,
 } as any);
+const GraphGraphIdRoute = GraphGraphIdRouteImport.update({
+  id: "/graph_/$graphId",
+  path: "/graph/$graphId",
+  getParentRoute: () => rootRouteImport,
+} as any);
 const ChunksNewRoute = ChunksNewRouteImport.update({
   id: "/chunks/new",
   path: "/chunks/new",
@@ -214,6 +220,7 @@ export interface FileRoutesByFullPath {
   "/chunks/$chunkId": typeof ChunksChunkIdRoute;
   "/chunks/archived": typeof ChunksArchivedRoute;
   "/chunks/new": typeof ChunksNewRoute;
+  "/graph/$graphId": typeof GraphGraphIdRoute;
   "/plans/$planId": typeof PlansPlanIdRoute;
   "/plans/new": typeof PlansNewRoute;
   "/requirements/$requirementId": typeof RequirementsRequirementIdRoute;
@@ -246,6 +253,7 @@ export interface FileRoutesByTo {
   "/chunks/$chunkId": typeof ChunksChunkIdRoute;
   "/chunks/archived": typeof ChunksArchivedRoute;
   "/chunks/new": typeof ChunksNewRoute;
+  "/graph/$graphId": typeof GraphGraphIdRoute;
   "/plans/$planId": typeof PlansPlanIdRoute;
   "/plans/new": typeof PlansNewRoute;
   "/requirements/$requirementId": typeof RequirementsRequirementIdRoute;
@@ -279,6 +287,7 @@ export interface FileRoutesById {
   "/chunks/$chunkId": typeof ChunksChunkIdRoute;
   "/chunks/archived": typeof ChunksArchivedRoute;
   "/chunks/new": typeof ChunksNewRoute;
+  "/graph_/$graphId": typeof GraphGraphIdRoute;
   "/plans/$planId": typeof PlansPlanIdRoute;
   "/plans/new": typeof PlansNewRoute;
   "/requirements_/$requirementId": typeof RequirementsRequirementIdRoute;
@@ -313,6 +322,7 @@ export interface FileRouteTypes {
     | "/chunks/$chunkId"
     | "/chunks/archived"
     | "/chunks/new"
+    | "/graph/$graphId"
     | "/plans/$planId"
     | "/plans/new"
     | "/requirements/$requirementId"
@@ -345,6 +355,7 @@ export interface FileRouteTypes {
     | "/chunks/$chunkId"
     | "/chunks/archived"
     | "/chunks/new"
+    | "/graph/$graphId"
     | "/plans/$planId"
     | "/plans/new"
     | "/requirements/$requirementId"
@@ -377,6 +388,7 @@ export interface FileRouteTypes {
     | "/chunks/$chunkId"
     | "/chunks/archived"
     | "/chunks/new"
+    | "/graph_/$graphId"
     | "/plans/$planId"
     | "/plans/new"
     | "/requirements_/$requirementId"
@@ -410,6 +422,7 @@ export interface RootRouteChildren {
   ChunksChunkIdRoute: typeof ChunksChunkIdRoute;
   ChunksArchivedRoute: typeof ChunksArchivedRoute;
   ChunksNewRoute: typeof ChunksNewRoute;
+  GraphGraphIdRoute: typeof GraphGraphIdRoute;
   PlansPlanIdRoute: typeof PlansPlanIdRoute;
   PlansNewRoute: typeof PlansNewRoute;
   RequirementsRequirementIdRoute: typeof RequirementsRequirementIdRoute;
@@ -605,6 +618,13 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof PlansPlanIdRouteImport;
       parentRoute: typeof rootRouteImport;
     };
+    "/graph_/$graphId": {
+      id: "/graph_/$graphId";
+      path: "/graph/$graphId";
+      fullPath: "/graph/$graphId";
+      preLoaderRoute: typeof GraphGraphIdRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     "/chunks/new": {
       id: "/chunks/new";
       path: "/chunks/new";
@@ -658,6 +678,7 @@ const rootRouteChildren: RootRouteChildren = {
   ChunksChunkIdRoute: ChunksChunkIdRoute,
   ChunksArchivedRoute: ChunksArchivedRoute,
   ChunksNewRoute: ChunksNewRoute,
+  GraphGraphIdRoute: GraphGraphIdRoute,
   PlansPlanIdRoute: PlansPlanIdRoute,
   PlansNewRoute: PlansNewRoute,
   RequirementsRequirementIdRoute: RequirementsRequirementIdRoute,
