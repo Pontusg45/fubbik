@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ClipboardCheck, Plus } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { SkeletonList } from "@/components/ui/skeleton-list";
@@ -42,7 +42,9 @@ type ActiveTab = "requirements" | "plans" | "traceability";
 
 function RequirementsPage() {
     const { codebaseId } = useActiveCodebase();
+    const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState<ActiveTab>("requirements");
+    const [selectedIndex, setSelectedIndex] = useState(-1);
 
     // Filter state
     const [search, setSearch] = useState("");
@@ -152,6 +154,41 @@ function RequirementsPage() {
         }
         return reqs;
     }, [data, statusFilters, priorityFilters, activeUseCaseIds]);
+
+    // Reset selected index when data changes
+    const filteredReqsRef = useRef(filteredRequirements);
+    filteredReqsRef.current = filteredRequirements;
+
+    useEffect(() => {
+        setSelectedIndex(-1);
+    }, [listQuery.dataUpdatedAt]);
+
+    // Keyboard shortcuts (j/k/Enter/n)
+    useEffect(() => {
+        if (activeTab !== "requirements") return;
+        function handleKeyDown(e: KeyboardEvent) {
+            if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+            const list = filteredReqsRef.current;
+            switch (e.key) {
+                case "j":
+                    setSelectedIndex(i => Math.min(i + 1, list.length - 1));
+                    break;
+                case "k":
+                    setSelectedIndex(i => Math.max(i - 1, 0));
+                    break;
+                case "Enter":
+                    if (selectedIndex >= 0 && selectedIndex < list.length) {
+                        navigate({ to: "/requirements/$requirementId", params: { requirementId: list[selectedIndex]!.id as string } });
+                    }
+                    break;
+                case "n":
+                    navigate({ to: "/requirements/new" });
+                    break;
+            }
+        }
+        window.addEventListener("keydown", handleKeyDown);
+        return () => window.removeEventListener("keydown", handleKeyDown);
+    }, [activeTab, selectedIndex, navigate]);
 
     function toggleSelection(id: string, selected: boolean) {
         setSelectedIds(prev =>
@@ -291,6 +328,7 @@ function RequirementsPage() {
                                         selectedIds={selectedIds}
                                         onToggleSelection={toggleSelection}
                                         useCaseMap={useCaseMap}
+                                        highlightIndex={selectedIndex}
                                     />
 
                                     {/* Pagination */}

@@ -28,6 +28,7 @@ interface SortableRequirementListProps {
     selectedIds: string[];
     onToggleSelection: (id: string, selected: boolean) => void;
     useCaseMap: Map<string, { name: string }>;
+    highlightIndex?: number;
 }
 
 function SortableItem({
@@ -57,7 +58,8 @@ export function SortableRequirementList({
     requirements,
     selectedIds,
     onToggleSelection,
-    useCaseMap
+    useCaseMap,
+    highlightIndex
 }: SortableRequirementListProps) {
     const queryClient = useQueryClient();
     const [localOrder, setLocalOrder] = useState(requirements);
@@ -149,6 +151,7 @@ export function SortableRequirementList({
                                         onToggleSelection(id, selected)
                                     }
                                     dragHandleProps={dragHandleProps}
+                                    highlighted={highlightIndex !== undefined && highlightIndex === localOrder.indexOf(req)}
                                 />
                             )}
                         </SortableItem>

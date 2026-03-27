@@ -18,6 +18,7 @@ interface RequirementCardProps {
     selected: boolean;
     onSelectChange: (selected: boolean) => void;
     dragHandleProps?: React.HTMLAttributes<HTMLDivElement>;
+    highlighted?: boolean;
 }
 
 function statusColor(status: string) {
@@ -83,15 +84,17 @@ export function RequirementCard({
     chunkCount,
     selected,
     onSelectChange,
-    dragHandleProps
+    dragHandleProps,
+    highlighted
 }: RequirementCardProps) {
     const isFailing = status === "failing";
 
     return (
         <Card
-            className={
-                isFailing ? "border-red-500/30 bg-red-500/5" : undefined
-            }
+            className={[
+                isFailing ? "border-red-500/30 bg-red-500/5" : "",
+                highlighted ? "ring-2 ring-inset ring-primary/50 bg-muted/50" : ""
+            ].filter(Boolean).join(" ") || undefined}
         >
             <CardPanel className="p-4">
                 <div className="flex items-start gap-3">
