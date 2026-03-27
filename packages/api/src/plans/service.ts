@@ -128,7 +128,7 @@ export function createPlan(
         status?: string;
         codebaseId?: string;
         template?: string;
-        steps?: Array<{ description: string; order?: number; parentStepId?: string; note?: string; chunkId?: string; requirementId?: string }>;
+        steps?: Array<{ description: string; order?: number; parentStepId?: string; note?: string; chunkId?: string; requirementId?: string; dependsOnStepId?: string }>;
     }
 ) {
     return Effect.gen(function* () {
@@ -182,7 +182,8 @@ export function createPlan(
                     parentStepId: stepBody.parentStepId,
                     note: stepBody.note,
                     chunkId: stepBody.chunkId,
-                    requirementId: stepBody.requirementId
+                    requirementId: stepBody.requirementId,
+                    dependsOnStepId: stepBody.dependsOnStepId
                 });
                 createdSteps.push(step);
             }
@@ -238,6 +239,7 @@ export function addStep(
         note?: string;
         chunkId?: string;
         requirementId?: string;
+        dependsOnStepId?: string;
     }
 ) {
     return Effect.gen(function* () {
@@ -259,7 +261,8 @@ export function addStep(
             parentStepId: body.parentStepId,
             note: body.note,
             chunkId: body.chunkId,
-            requirementId: body.requirementId
+            requirementId: body.requirementId,
+            dependsOnStepId: body.dependsOnStepId
         });
     });
 }
@@ -276,6 +279,7 @@ export function updateStep(
         note?: string | null;
         chunkId?: string | null;
         requirementId?: string | null;
+        dependsOnStepId?: string | null;
     }
 ) {
     return Effect.gen(function* () {
@@ -290,6 +294,17 @@ export function updateStep(
 
         const updated = yield* updateStepRepo(stepId, planId, body);
         if (!updated) return yield* Effect.fail(new NotFoundError({ resource: "PlanStep" }));
+
+        // Auto-unblock: when a step is marked "done", unblock dependent steps
+        if (body.status === "done") {
+            const allSteps = yield* getStepsForPlan(planId);
+            for (const s of allSteps) {
+                if (s.dependsOnStepId === stepId && s.status === "blocked") {
+                    yield* updateStepRepo(s.id, planId, { status: "pending" });
+                }
+            }
+        }
+
         return updated;
     });
 }
