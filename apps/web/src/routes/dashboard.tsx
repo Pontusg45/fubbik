@@ -25,6 +25,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Skeleton } from "@/components/ui/skeleton";
 import { SkeletonList } from "@/components/ui/skeleton-list";
 import { useFavorites } from "@/features/chunks/use-favorites";
+import { WelcomeWizard } from "@/features/onboarding/welcome-wizard";
 import { useRecentChunks } from "@/features/chunks/use-recent-chunks";
 import { useActiveCodebase } from "@/features/codebases/use-active-codebase";
 import { getUser } from "@/functions/get-user";
@@ -187,6 +188,15 @@ function DashboardPage() {
     const healthTotal = (healthData?.orphans?.count ?? 0) + (healthData?.stale?.count ?? 0) + (healthData?.thin?.count ?? 0);
     const reqStats = requirementsQuery.data;
     const activities = (activityQuery.data as any)?.activities ?? activityQuery.data ?? [];
+
+    // Show onboarding wizard when the knowledge base is empty
+    if (!statsQuery.isLoading && statsQuery.data?.chunks === 0) {
+        return (
+            <div className="container mx-auto max-w-6xl px-4 py-8">
+                <WelcomeWizard />
+            </div>
+        );
+    }
 
     return (
         <div className="container mx-auto max-w-6xl px-4 py-8">

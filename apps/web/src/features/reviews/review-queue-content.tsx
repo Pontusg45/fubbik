@@ -10,6 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { PageEmpty, PageLoading } from "@/components/ui/page";
 import { useActiveCodebase } from "@/features/codebases/use-active-codebase";
 import { api } from "@/utils/api";
+import { archiveChunk } from "@/utils/api-helpers";
 import { unwrapEden } from "@/utils/eden";
 
 const TYPE_COLORS: Record<string, string> = {
@@ -80,12 +81,7 @@ export function ReviewQueueContent() {
 
     const rejectMutation = useMutation({
         mutationFn: async (ids: string[]) => {
-            await Promise.all(
-                ids.map(async id => {
-                    const { error } = await (api.api.chunks as any)[id].archive.post();
-                    if (error) throw new Error(`Failed to reject chunk ${id}`);
-                })
-            );
+            await Promise.all(ids.map(archiveChunk));
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["review-queue"] });

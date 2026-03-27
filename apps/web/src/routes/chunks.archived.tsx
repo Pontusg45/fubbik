@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardPanel } from "@/components/ui/card";
 import { getUser } from "@/functions/get-user";
 import { api } from "@/utils/api";
-import { unwrapEden } from "@/utils/eden";
+import { getArchivedChunks, restoreChunk } from "@/utils/api-helpers";
 
 export const Route = createFileRoute("/chunks/archived")({
     component: ArchivedChunks,
@@ -29,14 +29,11 @@ function ArchivedChunks() {
 
     const archivedQuery = useQuery({
         queryKey: ["chunks-archived"],
-        queryFn: async () => unwrapEden(await (api.api.chunks as any).archived.get())
+        queryFn: getArchivedChunks
     });
 
     const restoreMutation = useMutation({
-        mutationFn: async (id: string) => {
-            const { error } = await (api.api.chunks as any)[id].restore.post();
-            if (error) throw new Error("Failed to restore chunk");
-        },
+        mutationFn: restoreChunk,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["chunks-archived"] });
             queryClient.invalidateQueries({ queryKey: ["chunks-list"] });

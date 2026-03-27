@@ -105,6 +105,7 @@ function SearchPage() {
             }
         },
         enabled: !!searchActive,
+        staleTime: 60_000,
     });
 
     // Vocabulary

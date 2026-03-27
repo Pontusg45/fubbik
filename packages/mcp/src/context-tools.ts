@@ -1,6 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { apiFetch } from "./api-client.js";
+import type { McpPlugin } from "./plugin.js";
 
 export function registerContextTools(server: McpServer): void {
     server.tool(
@@ -64,3 +65,9 @@ export function registerContextTools(server: McpServer): void {
         }
     );
 }
+
+export const contextPlugin: McpPlugin = {
+    name: "context",
+    description: "Context export and CLAUDE.md sync tools",
+    register: registerContextTools,
+};

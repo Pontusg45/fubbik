@@ -1,6 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { apiFetch } from "./api-client.js";
+import type { McpPlugin } from "./plugin.js";
 
 export function registerSuggestionTools(server: McpServer): void {
     // 1. suggest_requirements
@@ -119,3 +120,9 @@ export function registerSuggestionTools(server: McpServer): void {
         }
     );
 }
+
+export const suggestionPlugin: McpPlugin = {
+    name: "suggestions",
+    description: "Requirement and chunk suggestion tools",
+    register: registerSuggestionTools,
+};

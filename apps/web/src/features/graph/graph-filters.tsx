@@ -37,7 +37,7 @@ export function GraphFilters({
     onToggleUngrouped?: () => void;
 }) {
     return (
-        <div className="bg-background/80 absolute top-4 left-4 z-10 max-w-[200px] space-y-3 rounded-lg border p-3 backdrop-blur-sm">
+        <div className="bg-background/80 absolute top-4 left-4 z-10 max-w-[200px] space-y-3 rounded-lg border p-3 backdrop-blur-sm md:max-w-[200px] max-md:max-w-[160px]">
             <div>
                 <p className="text-muted-foreground mb-1.5 text-[10px] font-medium uppercase">Types</p>
                 <div className="flex flex-wrap gap-1">
@@ -46,7 +46,7 @@ export function GraphFilters({
                             key={t}
                             variant={activeTypes.has(t) ? "default" : "outline"}
                             size="sm"
-                            className="cursor-pointer text-[10px]"
+                            className="cursor-pointer text-[10px] min-h-[28px] md:min-h-0"
                             onClick={() => onToggleType(t)}
                         >
                             {t}
@@ -63,7 +63,7 @@ export function GraphFilters({
                                 key={r}
                                 variant={activeRelations.has(r) ? "default" : "outline"}
                                 size="sm"
-                                className="cursor-pointer text-[10px]"
+                                className="cursor-pointer text-[10px] min-h-[28px] md:min-h-0"
                                 onClick={() => onToggleRelation(r)}
                             >
                                 {r}
@@ -81,7 +81,7 @@ export function GraphFilters({
                                 key={tt.id}
                                 variant={activeTagTypeIds.has(tt.id) ? "default" : "outline"}
                                 size="sm"
-                                className="cursor-pointer text-[10px]"
+                                className="cursor-pointer text-[10px] min-h-[28px] md:min-h-0"
                                 style={
                                     activeTagTypeIds.has(tt.id)
                                         ? { backgroundColor: tt.color, borderColor: tt.color, color: "#fff" }

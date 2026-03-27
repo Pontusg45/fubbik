@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, BarChart3, ClipboardList, List, MoreHorizontal, Plus, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -74,6 +74,8 @@ function PlanDetail() {
     const [newStepText, setNewStepText] = useState("");
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [viewMode, setViewMode] = useState<"list" | "timeline">("list");
+    const [selectedStepIndex, setSelectedStepIndex] = useState(-1);
+    const addStepInputRef = useRef<HTMLDivElement>(null);
 
     const { data: plan, isLoading, error } = useQuery({
         queryKey: ["plan", planId],
@@ -128,6 +130,20 @@ function PlanDetail() {
         }
     });
 
+    const toggleStepMutation = useMutation({
+        mutationFn: async ({ stepId, status }: { stepId: string; status: string }) => {
+            return unwrapEden(
+                await api.api.plans({ id: planId }).steps({ stepId }).patch({ status })
+            );
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["plan", planId] });
+        },
+        onError: () => {
+            toast.error("Failed to update step");
+        }
+    });
+
     const moveStep = (index: number, direction: "up" | "down") => {
         if (!plan) return;
         const steps = [...plan.steps];
@@ -150,6 +166,41 @@ function PlanDetail() {
             toast.error("Failed to delete plan");
         }
     });
+
+    // Keyboard shortcuts (j/k/Space/n)
+    const stepsRef = useRef(plan?.steps ?? []);
+    stepsRef.current = plan?.steps ?? [];
+
+    useEffect(() => {
+        if (viewMode !== "list") return;
+        function handleKeyDown(e: KeyboardEvent) {
+            if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+            const steps = stepsRef.current;
+            switch (e.key) {
+                case "j":
+                    setSelectedStepIndex(i => Math.min(i + 1, steps.length - 1));
+                    break;
+                case "k":
+                    setSelectedStepIndex(i => Math.max(i - 1, 0));
+                    break;
+                case " ":
+                    if (selectedStepIndex >= 0 && selectedStepIndex < steps.length) {
+                        e.preventDefault();
+                        const step = steps[selectedStepIndex]!;
+                        const newStatus = step.status === "done" ? "pending" : "done";
+                        toggleStepMutation.mutate({ stepId: step.id, status: newStatus });
+                    }
+                    break;
+                case "n": {
+                    const input = addStepInputRef.current?.querySelector("input");
+                    input?.focus();
+                    break;
+                }
+            }
+        }
+        window.addEventListener("keydown", handleKeyDown);
+        return () => window.removeEventListener("keydown", handleKeyDown);
+    }, [viewMode, selectedStepIndex]);
 
     if (isLoading) {
         return (
@@ -243,21 +294,22 @@ function PlanDetail() {
                     ) : (
                         <div className="border rounded-md">
                             {plan.steps.map((step, index) => (
-                                <PlanStepItem
-                                    key={step.id}
-                                    step={step}
-                                    planId={planId}
-                                    isFirst={index === 0}
-                                    isLast={index === plan.steps.length - 1}
-                                    onMoveUp={() => moveStep(index, "up")}
-                                    onMoveDown={() => moveStep(index, "down")}
-                                />
+                                <div key={step.id} className={selectedStepIndex === index ? "ring-2 ring-inset ring-primary/50 bg-muted/50" : ""}>
+                                    <PlanStepItem
+                                        step={step}
+                                        planId={planId}
+                                        isFirst={index === 0}
+                                        isLast={index === plan.steps.length - 1}
+                                        onMoveUp={() => moveStep(index, "up")}
+                                        onMoveDown={() => moveStep(index, "down")}
+                                    />
+                                </div>
                             ))}
                         </div>
                     )}
 
                     {/* Add step */}
-                    <div className="mt-3 flex gap-2">
+                    <div ref={addStepInputRef} className="mt-3 flex gap-2">
                         <Input
                             type="text"
                             value={newStepText}

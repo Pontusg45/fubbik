@@ -19,6 +19,7 @@ export const activityLog = pgTable(
     },
     table => [
         index("activity_userId_idx").on(table.userId),
-        index("activity_createdAt_idx").on(table.createdAt)
+        index("activity_createdAt_idx").on(table.createdAt),
+        index("activity_codebaseId_idx").on(table.codebaseId)
     ]
 );

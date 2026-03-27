@@ -59,7 +59,8 @@ function ReviewsPage() {
     // Fetch codebases for name lookup
     const codebasesQuery = useQuery({
         queryKey: ["codebases"],
-        queryFn: async () => unwrapEden(await api.api.codebases.get())
+        queryFn: async () => unwrapEden(await api.api.codebases.get()),
+        staleTime: 60_000
     });
     const codebaseMap = new Map(
         ((codebasesQuery.data as Array<{ id: string; name: string }>) ?? []).map(c => [c.id, c.name])

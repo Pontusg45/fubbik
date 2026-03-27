@@ -1,6 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { apiFetch, truncate } from "./api-client.js";
+import type { McpPlugin } from "./plugin.js";
 
 export function registerSessionTools(server: McpServer): void {
     // 1. begin_implementation
@@ -274,3 +275,9 @@ export function registerSessionTools(server: McpServer): void {
         }
     );
 }
+
+export const sessionPlugin: McpPlugin = {
+    name: "sessions",
+    description: "Implementation session tracking tools",
+    register: registerSessionTools,
+};

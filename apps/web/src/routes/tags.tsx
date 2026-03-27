@@ -54,7 +54,8 @@ function TagsPage() {
             } catch {
                 return [];
             }
-        }
+        },
+        staleTime: 60_000
     });
 
     const tagTypesQuery = useQuery({
@@ -65,7 +66,8 @@ function TagsPage() {
             } catch {
                 return [];
             }
-        }
+        },
+        staleTime: 60_000
     });
 
     const deleteTagMutation = useMutation({

@@ -27,8 +27,9 @@ import {
 } from "@fubbik/db/repository";
 import { Effect } from "effect";
 
-import { enrichChunk, enrichChunkIfEmpty } from "../enrich/service";
+import { enrichChunk } from "../enrich/service";
 import { NotFoundError } from "../errors";
+import { events, EVENTS } from "../events/bus";
 import { generateQueryEmbedding } from "../ollama/client";
 import { computeHealthScore } from "./health-score";
 
@@ -190,9 +191,7 @@ export function createChunk(
             return Effect.void;
         }),
         Effect.tap(() => {
-            Effect.runPromise(enrichChunkIfEmpty(id)).catch((err) => {
-                console.error(`[enrich] Failed to enrich new chunk ${id}:`, err);
-            });
+            events.emit(EVENTS.CHUNK_CREATED, { chunkId: id, userId });
             return Effect.void;
         }),
         // Auto-link chunk to active plan session
@@ -274,10 +273,11 @@ export function updateChunk(
         }),
         Effect.tap(() => {
             if (body.title !== undefined || body.content !== undefined) {
-                Effect.runPromise(enrichChunk(chunkId)).catch((err) => {
+                Effect.runPromise(enrichChunk(chunkId)).catch(err => {
                     console.error(`[enrich] Failed to re-enrich chunk ${chunkId}:`, err);
                 });
             }
+            events.emit(EVENTS.CHUNK_UPDATED, { chunkId, userId });
             return Effect.void;
         })
     );

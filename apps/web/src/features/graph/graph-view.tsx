@@ -1217,7 +1217,7 @@ function GraphViewInner() {
                     </SheetContent>
                 </Sheet>
             )}
-            <div className="relative flex-1 [&_.react-flow__handle]:invisible [&_.react-flow__node]:transition-[transform] [&_.react-flow__node]:duration-500 [&_.react-flow__node]:ease-out [&_.react-flow__node:hover_.react-flow__handle]:!visible">
+            <div className="relative flex-1 touch-manipulation [&_.react-flow__handle]:invisible [&_.react-flow__node]:transition-[transform] [&_.react-flow__node]:duration-500 [&_.react-flow__node]:ease-out [&_.react-flow__node:hover_.react-flow__handle]:!visible">
                 {showLayoutSpinner && (
                     <div className="bg-background/60 absolute inset-0 z-50 flex items-center justify-center backdrop-blur-sm">
                         <div className="text-muted-foreground flex items-center gap-2">
