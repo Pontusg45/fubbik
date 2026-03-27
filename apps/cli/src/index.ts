@@ -15,6 +15,9 @@ import { exportCommand } from "./commands/export";
 import { generateCommand } from "./commands/generate";
 import { requirementsCommand } from "./commands/requirements";
 import { getCommand } from "./commands/get";
+import { importRequirementsCommand } from "./commands/import-requirements";
+import { kbDiffCommand } from "./commands/kb-diff";
+import { watchCommand } from "./commands/watch";
 import { healthCommand } from "./commands/health";
 import { hooksCommand } from "./commands/hooks";
 import { importCommand } from "./commands/import";
@@ -83,6 +86,9 @@ program.addCommand(suggestCommand);
 program.addCommand(taskCommand);
 program.addCommand(doctorCommand);
 program.addCommand(mcpToolsCommand);
+program.addCommand(importRequirementsCommand);
+program.addCommand(kbDiffCommand);
+program.addCommand(watchCommand);
 
 program.command("completions")
     .description("Generate shell completions")
