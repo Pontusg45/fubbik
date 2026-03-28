@@ -44,6 +44,9 @@ export const planStep = pgTable(
         note: text("note"),
         chunkId: text("chunk_id").references(() => chunk.id, { onDelete: "set null" }),
         requirementId: text("requirement_id").references(() => requirement.id, { onDelete: "set null" }),
+        dependsOnStepId: text("depends_on_step_id").references((): AnyPgColumn => planStep.id, {
+            onDelete: "set null"
+        }),
         createdAt: timestamp("created_at").defaultNow().notNull(),
         updatedAt: timestamp("updated_at")
             .defaultNow()
@@ -53,7 +56,8 @@ export const planStep = pgTable(
     table => [
         index("planStep_planId_idx").on(table.planId),
         index("planStep_parentStepId_idx").on(table.parentStepId),
-        index("plan_step_requirementId_idx").on(table.requirementId)
+        index("plan_step_requirementId_idx").on(table.requirementId),
+        index("planStep_dependsOnStepId_idx").on(table.dependsOnStepId)
     ]
 );
 
@@ -92,7 +96,13 @@ export const planStepRelations = relations(planStep, ({ one, many }) => ({
     }),
     children: many(planStep, { relationName: "children" }),
     chunk: one(chunk, { fields: [planStep.chunkId], references: [chunk.id] }),
-    requirement: one(requirement, { fields: [planStep.requirementId], references: [requirement.id] })
+    requirement: one(requirement, { fields: [planStep.requirementId], references: [requirement.id] }),
+    dependsOnStep: one(planStep, {
+        fields: [planStep.dependsOnStepId],
+        references: [planStep.id],
+        relationName: "dependents"
+    }),
+    dependents: many(planStep, { relationName: "dependents" })
 }));
 
 export const planChunkRefRelations = relations(planChunkRef, ({ one }) => ({

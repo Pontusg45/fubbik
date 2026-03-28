@@ -292,41 +292,62 @@ const completePlan = new Command("complete")
         }
     });
 
-const importPlan = new Command("import")
-    .description("Import a plan from a markdown file")
-    .argument("<file>", "path to markdown plan file")
-    .option("--title <title>", "override plan title")
-    .option("--codebase <name>", "scope to codebase")
-    .action(async (file: string, opts: { title?: string; codebase?: string }, cmd: Command) => {
+const exportPlan = new Command("export")
+    .description("Export a plan as markdown")
+    .argument("<id>", "plan ID")
+    .action(async (id: string, _opts: Record<string, unknown>, cmd: Command) => {
         try {
-            const { readFileSync } = await import("fs");
-            const markdown = readFileSync(file, "utf-8");
-
-            const body: Record<string, unknown> = { markdown };
-            if (opts.title) body.title = opts.title;
-            if (opts.codebase) body.codebaseId = opts.codebase;
-
-            const res = await fetchApi("/plans/import-markdown", {
-                method: "POST",
-                body: JSON.stringify(body)
-            });
-
+            const res = await fetchApi(`/plans/${id}`);
             if (!res.ok) {
-                outputError(`Failed to import plan: ${res.status} ${await res.text()}`);
+                outputError(`Failed to get plan: ${res.status}`);
                 process.exit(1);
             }
 
             const plan = (await res.json()) as Plan;
+            const steps = plan.steps ?? [];
 
-            if (isJson(cmd)) {
-                console.log(JSON.stringify(plan, null, 2));
-                return;
+            // Generate superpowers plan markdown format
+            const lines: string[] = [];
+            lines.push(`# ${plan.title}`);
+            lines.push("");
+            lines.push("> **For agentic workers:** Use this plan to track implementation progress.");
+            lines.push("");
+            if (plan.description) {
+                lines.push(`**Goal:** ${plan.description}`);
+                lines.push("");
+            }
+            lines.push(`**Status:** ${plan.status}`);
+            lines.push("");
+            lines.push("---");
+            lines.push("");
+
+            // Group steps by task group (if bracketed) or flat
+            let currentGroup = "";
+            let taskNum = 0;
+
+            for (const step of steps.sort((a, b) => a.order - b.order)) {
+                const groupMatch = step.description.match(/^\[([^\]]+)\]\s*(.*)/);
+                const group = groupMatch?.[1] ?? "";
+                const desc = groupMatch?.[2] ?? step.description;
+
+                if (group && group !== currentGroup) {
+                    currentGroup = group;
+                    taskNum++;
+                    lines.push(`## Task ${taskNum}: ${group}`);
+                    lines.push("");
+                }
+
+                const checkbox = step.status === "done" ? "[x]" : "[ ]";
+                lines.push(`- ${checkbox} **${desc}**`);
+                if (step.note) lines.push(`  ${step.note}`);
+                lines.push("");
             }
 
-            outputQuiet(cmd, plan.id);
-            console.error(formatSuccess(`Imported plan: ${formatBold(plan.title)}`));
-            console.error(formatDim(`  ID: ${plan.id}`));
-            console.error(formatDim(`  ${plan.steps?.length ?? 0} steps imported`));
+            if (isJson(cmd)) {
+                console.log(JSON.stringify({ markdown: lines.join("\n") }, null, 2));
+            } else {
+                console.log(lines.join("\n"));
+            }
         } catch (err) {
             outputError(String(err));
             process.exit(1);
@@ -344,4 +365,4 @@ export const planCommand = new Command("plan")
     .addCommand(addStep)
     .addCommand(activatePlan)
     .addCommand(completePlan)
-    .addCommand(importPlan);
+    .addCommand(exportPlan);

@@ -24,7 +24,7 @@ function requireServer(): string {
 export const lintCommand = new Command("lint")
     .description("Check all chunks for quality issues")
     .option("--codebase <name>", "scope to codebase")
-    .option("--fix", "suggest fixes (not auto-fix)")
+    .option("--fix", "auto-fix safe issues (e.g. enrich unenriched chunks)")
     .action(async (opts, cmd) => {
         const serverUrl = requireServer();
 
@@ -189,6 +189,30 @@ export const lintCommand = new Command("lint")
             }
 
             console.error(`\n${formatError(`${errors.length} error(s)`)} ${formatDim(`${warnings.length} warning(s)`)}`);
+
+            // Auto-fix safe issues when --fix is set
+            if (opts.fix) {
+                console.error(formatBold("\nAttempting fixes...\n"));
+                let fixed = 0;
+
+                for (const issue of issues) {
+                    if (issue.rule === "not-enriched") {
+                        try {
+                            await fetch(`${serverUrl}/api/chunks/${issue.chunkId}/enrich`, {
+                                method: "POST",
+                            });
+                            console.error(formatSuccess(`  Enriched: ${issue.chunkTitle}`));
+                            fixed++;
+                        } catch {
+                            console.error(
+                                formatDim(`  Failed to enrich: ${issue.chunkTitle}`)
+                            );
+                        }
+                    }
+                }
+
+                console.error(`\n${formatSuccess(`${fixed} issue(s) auto-fixed`)}`);
+            }
 
             // Exit with non-zero for CI
             if (errors.length > 0) process.exit(1);
