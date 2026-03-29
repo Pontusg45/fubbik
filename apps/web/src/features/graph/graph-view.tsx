@@ -48,6 +48,7 @@ import { unwrapEden } from "@/utils/eden";
 import { findShortestPath, getMostConnected } from "./graph-utils";
 import { GraphTimeline } from "./graph-timeline";
 import { PathPanel } from "./path-panel";
+import { useGraphKeyboard } from "./use-graph-keyboard";
 import { useGraphState } from "./use-graph-state";
 import { useSavedGraphViews } from "./use-saved-views";
 
@@ -1050,52 +1051,15 @@ function GraphViewInner() {
         setCenter(x, y, { duration: 400, zoom: getZoom() });
     }, [selectedChunkId, nodes, getZoom, setCenter]);
 
-    useEffect(() => {
-        function handleKeyDown(e: KeyboardEvent) {
-            if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-
-            if (e.key === "?") {
-                dispatch({ type: "TOGGLE_HELP" });
-                return;
-            }
-
-            if (e.key === "Escape") {
-                if (multiSelectedIds.size > 0) {
-                    dispatch({ type: "CLEAR_MULTI_SELECT" });
-                    return;
-                }
-                if (pathStartId || pathEndId) {
-                    dispatch({ type: "CLEAR_PATH" });
-                    return;
-                }
-                if (selectedChunkId) {
-                    dispatch({ type: "SET_SELECTED_CHUNK", id: null });
-                } else if (focusedNodeId) {
-                    dispatch({ type: "SET_FOCUSED_NODE", id: null });
-                }
-                return;
-            }
-
-            if (e.key === "Tab" && selectedChunkId) {
-                e.preventDefault();
-                const connectedIds: string[] = [];
-                for (const edge of layoutEdges) {
-                    if (edge.source === selectedChunkId) connectedIds.push(edge.target);
-                    if (edge.target === selectedChunkId) connectedIds.push(edge.source);
-                }
-                if (connectedIds.length === 0) return;
-                const currentIdx = connectedIds.indexOf(selectedChunkId);
-                const nextIdx = e.shiftKey
-                    ? (currentIdx - 1 + connectedIds.length) % connectedIds.length
-                    : (currentIdx + 1) % connectedIds.length;
-                const nextId = connectedIds[nextIdx]!;
-                dispatch({ type: "SELECT_AND_FOCUS_NODE", id: nextId });
-            }
-        }
-
-        document.addEventListener("keydown", handleKeyDown);
-        return () => document.removeEventListener("keydown", handleKeyDown);
-    }, [selectedChunkId, focusedNodeId, layoutEdges, pathStartId, pathEndId, multiSelectedIds]);
+    useGraphKeyboard({
+        selectedChunkId,
+        focusedNodeId,
+        pathStartId,
+        pathEndId,
+        multiSelectedIds,
+        layoutEdges,
+        dispatch,
+    });
 
     function handleExportImage() {
         const viewport = document.querySelector(".react-flow__viewport") as HTMLElement | null;
