@@ -1,4 +1,4 @@
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
     Archive,
@@ -18,8 +18,6 @@ import {
     X
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { toast } from "sonner";
-
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { PromptDialog } from "@/components/prompt-dialog";
 import { Badge } from "@/components/ui/badge";
@@ -34,6 +32,8 @@ import { ChunkFiltersPopover } from "@/features/chunks/chunk-filters-popover";
 import { getChunkSize } from "@/features/chunks/chunk-size";
 import { ChunkBulkActionBar } from "@/features/chunks/chunk-bulk-action-bar";
 import { ChunkRowActions } from "@/features/chunks/chunk-row-actions";
+import { useBulkChunkOperations } from "@/features/chunks/use-bulk-chunk-operations";
+import { useChunkFilters } from "@/features/chunks/use-chunk-filters";
 import { KanbanView } from "@/features/chunks/kanban-view";
 import { useCollections } from "@/features/chunks/use-collections";
 import { usePinnedChunks } from "@/features/chunks/use-pinned-chunks";
@@ -91,20 +91,26 @@ export const Route = createFileRoute("/chunks/")({
 });
 
 function ChunksList() {
-    const navigate = useNavigate({ from: "/chunks/" });
     const navTo = useNavigate();
-    const { type, q, sort, tags, size, after, enrichment, minConnections, group, collection, view, origin, reviewStatus, allCodebases } = Route.useSearch();
-    const queryClient = useQueryClient();
+    const {
+        type, q, sort, tags, size, after, enrichment, minConnections,
+        group, view, origin, reviewStatus,
+        activeTags, activeFilterCount, hasActiveFilters, isFederated,
+        updateSearch, clearAllFilters, toggleTag,
+    } = useChunkFilters();
+    const {
+        selectedIds, setSelectedIds,
+        bulkUpdateMutation, singleDeleteMutation, reviewMutation,
+        toggleSelection, toggleAll,
+    } = useBulkChunkOperations();
     const [searchInput, setSearchInput] = useState(q ?? "");
-    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    const handleClearAllFilters = () => {
+        clearAllFilters();
+        setSearchInput("");
+    };
     const { filters: savedFilters, saveFilter, deleteFilter } = useSavedFilters();
     const { codebaseId } = useActiveCodebase();
     const limit = 20;
-
-    const activeFilterCount = [tags, size, after, enrichment, minConnections, origin, reviewStatus].filter(Boolean).length;
-    const hasActiveFilters = !!(type || q || sort || tags || size || after || enrichment || minConnections || origin || reviewStatus);
-
-    const isFederated = allCodebases === "true";
 
     const chunksQuery = useInfiniteQuery({
         queryKey: ["chunks-list", type, q, sort, tags, after, enrichment, minConnections, codebaseId, origin, reviewStatus],
@@ -182,14 +188,6 @@ function ChunksList() {
         },
         staleTime: 60_000
     });
-
-    const activeTags = tags ? tags.split(",") : [];
-
-    function toggleTag(tag: string) {
-        const current = activeTags;
-        const next = current.includes(tag) ? current.filter(t => t !== tag) : [...current, tag];
-        updateSearch({ tags: next.length > 0 ? next.join(",") : undefined });
-    }
 
     const allChunks = activeQuery.data?.pages.flatMap(p => p?.chunks ?? []) ?? [];
     const chunks = allChunks;
@@ -303,126 +301,6 @@ function ChunksList() {
         !!activeQuery.hasNextPage && !activeQuery.isFetchingNextPage
     );
 
-    function updateSearch(
-        params: Partial<{
-            type: string;
-            q: string;
-            sort: string;
-            tags: string;
-            size: string;
-            after: string;
-            enrichment: string;
-            minConnections: string;
-            group: string;
-            collection: string;
-            view: string;
-            origin: string;
-            reviewStatus: string;
-            allCodebases: string;
-        }>
-    ) {
-        navigate({
-            search: {
-                type: params.type !== undefined ? params.type : type,
-                q: params.q !== undefined ? params.q : q,
-                sort: params.sort !== undefined ? params.sort : sort,
-                tags: params.tags !== undefined ? params.tags : tags,
-                size: params.size !== undefined ? params.size : size,
-                after: params.after !== undefined ? params.after : after,
-                enrichment: params.enrichment !== undefined ? params.enrichment : enrichment,
-                minConnections: params.minConnections !== undefined ? params.minConnections : minConnections,
-                group: params.group !== undefined ? params.group : group,
-                collection: params.collection !== undefined ? params.collection : collection,
-                view: params.view !== undefined ? params.view : view,
-                origin: params.origin !== undefined ? params.origin : origin,
-                reviewStatus: params.reviewStatus !== undefined ? params.reviewStatus : reviewStatus,
-                allCodebases: params.allCodebases !== undefined ? params.allCodebases : allCodebases
-            }
-        });
-    }
-
-    function clearAllFilters() {
-        navigate({
-            search: {
-                type: undefined,
-                q: undefined,
-                sort: undefined,
-                tags: undefined,
-                size: undefined,
-                after: undefined,
-                enrichment: undefined,
-                minConnections: undefined,
-                group,
-                collection,
-                view,
-                origin: undefined,
-                reviewStatus: undefined,
-                allCodebases: undefined
-            }
-        });
-        setSearchInput("");
-    }
-
-    function toggleSelection(id: string) {
-        setSelectedIds(prev => {
-            const next = new Set(prev);
-            if (next.has(id)) next.delete(id);
-            else next.add(id);
-            return next;
-        });
-    }
-
-    function toggleAll() {
-        if (selectedIds.size === chunks.length) {
-            setSelectedIds(new Set());
-        } else {
-            setSelectedIds(new Set(chunks.map(c => c.id)));
-        }
-    }
-
-
-
-    const bulkUpdateMutation = useMutation({
-        mutationFn: async (body: { ids: string[]; action: string; value?: string | null }) => {
-            const { error } = await (api.api.chunks as any)["bulk-update"].post(body);
-            if (error) throw new Error("Bulk update failed");
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["chunks-list"] });
-            queryClient.invalidateQueries({ queryKey: ["stats"] });
-            queryClient.invalidateQueries({ queryKey: ["tags"] });
-            setSelectedIds(new Set());
-        }
-    });
-
-    const singleDeleteMutation = useMutation({
-        mutationFn: async (id: string) => {
-            const { error } = await api.api.chunks({ id }).delete();
-            if (error) throw new Error("Failed to delete chunk");
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["chunks-list"] });
-            queryClient.invalidateQueries({ queryKey: ["stats"] });
-            toast.success("Chunk deleted");
-        },
-        onError: () => {
-            toast.error("Failed to delete chunk");
-        }
-    });
-
-    const reviewMutation = useMutation({
-        mutationFn: async ({ id, status }: { id: string; status: string }) => {
-            const { error } = await api.api.chunks({ id }).patch({ reviewStatus: status as any });
-            if (error) throw new Error("Failed to update review status");
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["chunks-list"] });
-        },
-        onError: () => {
-            toast.error("Failed to update review status");
-        }
-    });
-
     const [confirmAction, setConfirmAction] = useState<{ title: string; description: string; action: () => void } | null>(null);
     const [showSaveFilter, setShowSaveFilter] = useState(false);
 
@@ -435,7 +313,7 @@ function ChunksList() {
                         <Checkbox
                             checked={selectedIds.size === chunks.length && chunks.length > 0}
                             indeterminate={selectedIds.size > 0 && selectedIds.size < chunks.length}
-                            onCheckedChange={toggleAll}
+                            onCheckedChange={() => toggleAll(chunks.map(c => c.id))}
                         />
                     )}
                     <div>
@@ -500,7 +378,7 @@ function ChunksList() {
                     codebaseId={codebaseId}
                     onUpdateSearch={updateSearch}
                     onToggleTag={toggleTag}
-                    onClearAllFilters={clearAllFilters}
+                    onClearAllFilters={handleClearAllFilters}
                     onShowSaveFilter={() => setShowSaveFilter(true)}
                     onCreateCollection={createCollection}
                 />
@@ -530,7 +408,7 @@ function ChunksList() {
                                             className="hover:text-foreground text-muted-foreground flex-1 truncate text-left"
                                             onClick={() => {
                                                 const f = c.filter as Record<string, string | undefined>;
-                                                navigate({
+                                                navTo({ from: "/chunks/",
                                                     search: {
                                                         type: f.type,
                                                         q: f.search,
@@ -665,7 +543,7 @@ function ChunksList() {
                             </button>
                         </Badge>
                     )}
-                    <button onClick={clearAllFilters} className="text-muted-foreground hover:text-foreground ml-1 text-xs underline">
+                    <button onClick={handleClearAllFilters} className="text-muted-foreground hover:text-foreground ml-1 text-xs underline">
                         Clear all
                     </button>
                 </div>
@@ -680,7 +558,7 @@ function ChunksList() {
                             key={f.name}
                             variant="outline"
                             className="cursor-pointer gap-1"
-                            onClick={() => navigate({ search: { ...f.params } })}
+                            onClick={() => navTo({ from: "/chunks/", search: { ...f.params } })}
                         >
                             {f.name}
                             <button
