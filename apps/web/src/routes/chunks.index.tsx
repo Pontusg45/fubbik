@@ -10,6 +10,7 @@ import {
     FileText,
     Filter,
     FolderPlus,
+    FolderUp,
     Globe,
     Link2,
     List,
@@ -42,6 +43,7 @@ import { useCollections } from "@/features/chunks/use-collections";
 import { usePinnedChunks } from "@/features/chunks/use-pinned-chunks";
 import { useSavedFilters } from "@/features/chunks/use-saved-filters";
 import { useActiveCodebase } from "@/features/codebases/use-active-codebase";
+import { ImportDocsDialog } from "@/features/import/import-dialog";
 import { ShortcutHint } from "@/features/nav/shortcut-hint";
 import { useIntersectionObserver } from "@/hooks/use-intersection-observer";
 import { getUser } from "@/functions/get-user";
@@ -528,6 +530,14 @@ function ChunksList() {
                         <Archive className="size-3.5" />
                         View archived
                     </Link>
+                    <ImportDocsDialog
+                        trigger={
+                            <Button variant="outline" size="sm">
+                                <FolderUp className="mr-1 size-3.5" />
+                                Import Docs
+                            </Button>
+                        }
+                    />
                     <Button render={<Link to="/chunks/new" />}>
                         <Plus className="size-4" />
                         New Chunk
