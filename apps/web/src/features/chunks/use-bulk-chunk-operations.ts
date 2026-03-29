@@ -40,11 +40,36 @@ export function useBulkChunkOperations() {
             const { error } = await api.api.chunks({ id }).patch({ reviewStatus: status as any });
             if (error) throw new Error("Failed to update review status");
         },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["chunks-list"] });
+        onMutate: async ({ id, status }) => {
+            await queryClient.cancelQueries({ queryKey: ["chunks-list"] });
+            const previousQueries = queryClient.getQueriesData({ queryKey: ["chunks-list"] });
+            queryClient.setQueriesData({ queryKey: ["chunks-list"] }, (old: any) => {
+                if (!old?.pages) return old;
+                return {
+                    ...old,
+                    pages: old.pages.map((page: any) => {
+                        if (!page?.chunks) return page;
+                        return {
+                            ...page,
+                            chunks: page.chunks.map((chunk: any) =>
+                                chunk.id === id ? { ...chunk, reviewStatus: status } : chunk
+                            ),
+                        };
+                    }),
+                };
+            });
+            return { previousQueries };
         },
-        onError: () => {
+        onError: (_err, _vars, context) => {
+            if (context?.previousQueries) {
+                for (const [key, data] of context.previousQueries) {
+                    queryClient.setQueryData(key, data);
+                }
+            }
             toast.error("Failed to update review status");
+        },
+        onSettled: () => {
+            queryClient.invalidateQueries({ queryKey: ["chunks-list"] });
         }
     });
 

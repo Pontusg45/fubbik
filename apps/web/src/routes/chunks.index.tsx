@@ -1,4 +1,4 @@
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
     Archive,
@@ -104,10 +104,42 @@ function ChunksList() {
         bulkUpdateMutation, singleDeleteMutation, reviewMutation,
         toggleSelection, toggleAll,
     } = useBulkChunkOperations();
+    const queryClient = useQueryClient();
     const [searchInput, setSearchInput] = useState(q ?? "");
     const handleClearAllFilters = () => {
         clearAllFilters();
         setSearchInput("");
+    };
+
+    // Inline title editing (Item 9)
+    const [editingChunkId, setEditingChunkId] = useState<string | null>(null);
+    const [editTitle, setEditTitle] = useState("");
+    const editMutation = useMutation({
+        mutationFn: async ({ id, title }: { id: string; title: string }) =>
+            unwrapEden(await api.api.chunks({ id }).patch({ title })),
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ["chunks-list"] })
+    });
+    const startEditing = (chunkId: string, currentTitle: string) => {
+        setEditingChunkId(chunkId);
+        setEditTitle(currentTitle);
+    };
+    const commitEdit = () => {
+        if (editingChunkId && editTitle.trim() && editTitle.trim() !== "") {
+            editMutation.mutate({ id: editingChunkId, title: editTitle.trim() });
+        }
+        setEditingChunkId(null);
+    };
+    const cancelEdit = () => {
+        setEditingChunkId(null);
+    };
+
+    // Prefetch chunk detail on hover (Item 10)
+    const handleChunkHover = (chunkId: string) => {
+        queryClient.prefetchQuery({
+            queryKey: ["chunk", chunkId],
+            queryFn: async () => unwrapEden(await api.api.chunks({ id: chunkId }).get()),
+            staleTime: 30_000
+        });
     };
     const { filters: savedFilters, saveFilter, deleteFilter } = useSavedFilters();
     const { codebaseId } = useActiveCodebase();
@@ -631,7 +663,7 @@ function ChunksList() {
                                     {items.map((chunk, i) => (
                                         <div key={chunk.id}>
                                             {i > 0 && <Separator />}
-                                            <CardPanel className="hover:bg-muted/50 flex items-center gap-3 p-4 transition-colors">
+                                            <CardPanel className="hover:bg-muted/50 flex items-center gap-3 p-4 transition-colors" onMouseEnter={() => handleChunkHover(chunk.id)}>
                                                 <Checkbox
                                                     checked={selectedIds.has(chunk.id)}
                                                     onCheckedChange={() => toggleSelection(chunk.id)}
@@ -653,8 +685,29 @@ function ChunksList() {
                                                     className="flex flex-1 items-center justify-between gap-4"
                                                 >
                                                     <div className="min-w-0">
+                                                        {editingChunkId === chunk.id ? (
+                                                            <input
+                                                                autoFocus
+                                                                className="bg-background w-full rounded border px-1 py-0.5 text-sm font-medium focus:ring-2 focus:ring-ring focus:outline-none"
+                                                                value={editTitle}
+                                                                onChange={e => setEditTitle(e.target.value)}
+                                                                onKeyDown={e => {
+                                                                    if (e.key === "Enter") { e.preventDefault(); commitEdit(); }
+                                                                    if (e.key === "Escape") { e.preventDefault(); cancelEdit(); }
+                                                                }}
+                                                                onBlur={commitEdit}
+                                                                onClick={e => { e.preventDefault(); e.stopPropagation(); }}
+                                                            />
+                                                        ) : (
                                                         <Tooltip>
-                                                            <TooltipTrigger render={<p className="truncate text-sm font-medium" />}>
+                                                            <TooltipTrigger
+                                                                render={<p className="truncate text-sm font-medium" />}
+                                                                onDoubleClick={e => {
+                                                                    e.preventDefault();
+                                                                    e.stopPropagation();
+                                                                    startEditing(chunk.id, chunk.title);
+                                                                }}
+                                                            >
                                                                 {chunk.title}
                                                             </TooltipTrigger>
                                                             {chunk.content && (
@@ -663,6 +716,7 @@ function ChunksList() {
                                                                 </TooltipPopup>
                                                             )}
                                                         </Tooltip>
+                                                        )}
                                                         <div className="mt-1 flex items-center gap-2">
                                                             <Badge variant="secondary" size="sm" className="font-mono text-[10px]">
                                                                 {chunk.type}
@@ -722,6 +776,7 @@ function ChunksList() {
                             {i > 0 && <Separator />}
                             <CardPanel
                                 className={`flex items-center gap-3 p-4 transition-colors ${selectedIndex === i ? "bg-muted/50 ring-primary/50 ring-2 ring-inset" : "hover:bg-muted/50"}`}
+                                onMouseEnter={() => handleChunkHover(chunk.id)}
                             >
                                 <Checkbox
                                     checked={selectedIds.has(chunk.id)}
@@ -744,8 +799,29 @@ function ChunksList() {
                                     className="flex flex-1 items-center justify-between gap-4"
                                 >
                                     <div className="min-w-0">
+                                        {editingChunkId === chunk.id ? (
+                                            <input
+                                                autoFocus
+                                                className="bg-background w-full rounded border px-1 py-0.5 text-sm font-medium focus:ring-2 focus:ring-ring focus:outline-none"
+                                                value={editTitle}
+                                                onChange={e => setEditTitle(e.target.value)}
+                                                onKeyDown={e => {
+                                                    if (e.key === "Enter") { e.preventDefault(); commitEdit(); }
+                                                    if (e.key === "Escape") { e.preventDefault(); cancelEdit(); }
+                                                }}
+                                                onBlur={commitEdit}
+                                                onClick={e => { e.preventDefault(); e.stopPropagation(); }}
+                                            />
+                                        ) : (
                                         <Tooltip>
-                                            <TooltipTrigger render={<p className="truncate text-sm font-medium" />}>
+                                            <TooltipTrigger
+                                                render={<p className="truncate text-sm font-medium" />}
+                                                onDoubleClick={e => {
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    startEditing(chunk.id, chunk.title);
+                                                }}
+                                            >
                                                 {chunk.title}
                                             </TooltipTrigger>
                                             {chunk.content && (
@@ -754,6 +830,7 @@ function ChunksList() {
                                                 </TooltipPopup>
                                             )}
                                         </Tooltip>
+                                        )}
                                         <div className="mt-1 flex items-center gap-2">
                                             <Badge variant="secondary" size="sm" className="font-mono text-[10px]">
                                                 {chunk.type}
