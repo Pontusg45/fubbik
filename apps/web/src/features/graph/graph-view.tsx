@@ -24,7 +24,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { Dialog, DialogPopup, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Popover, PopoverTrigger, PopoverPopup } from "@/components/ui/popover";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Spinner } from "@/components/ui/spinner";
@@ -46,6 +45,7 @@ import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
+import { ChangeConnectionDialog, SaveViewDialog, SaveCustomGraphDialog } from "./graph-dialogs";
 import { findShortestPath, getMostConnected } from "./graph-utils";
 import { GraphTimeline } from "./graph-timeline";
 import { PathPanel } from "./path-panel";
@@ -98,17 +98,6 @@ function GraphViewInner() {
         filterTypes, filterRelations, searchQuery, activeTagTypeIds, showUngrouped,
         layoutAlgorithm, bundleEdges, useMainThread, timelineCutoff, panelWidth, edgeAnimated,
     } = gs;
-
-    const RELATION_TYPES = [
-        "related_to",
-        "part_of",
-        "depends_on",
-        "extends",
-        "references",
-        "supports",
-        "contradicts",
-        "alternative_to"
-    ] as const;
 
     const createConnectionMutation = useMutation({
         mutationFn: async ({ sourceId, targetId, relation }: { sourceId: string; targetId: string; relation: string }) => {
@@ -1474,49 +1463,13 @@ function GraphViewInner() {
                             </div>
                         );
                     })()}
-                {/* Edge creation dialog */}
                 {/* Change type dialog (opened from quick-connect toast) */}
-                <Dialog
-                    open={!!pendingConnection}
-                    onOpenChange={open => {
-                        if (!open) dispatch({ type: "SET_PENDING_CONNECTION", connection: null });
-                    }}
-                >
-                    <DialogPopup className="max-w-sm">
-                        <DialogHeader>
-                            <DialogTitle>Change Connection Type</DialogTitle>
-                            <p className="text-muted-foreground text-sm">
-                                <span className="text-foreground font-medium">
-                                    {pendingConnection ? (chunkMap.get(pendingConnection.source)?.title ?? pendingConnection.source) : ""}
-                                </span>
-                                {" \u2192 "}
-                                <span className="text-foreground font-medium">
-                                    {pendingConnection ? (chunkMap.get(pendingConnection.target)?.title ?? pendingConnection.target) : ""}
-                                </span>
-                            </p>
-                        </DialogHeader>
-                        <div className="grid grid-cols-2 gap-2 px-6 pb-6">
-                            {RELATION_TYPES.map(rel => (
-                                <button
-                                    key={rel}
-                                    disabled={createConnectionMutation.isPending}
-                                    onClick={() => {
-                                        if (!pendingConnection) return;
-                                        createConnectionMutation.mutate({
-                                            sourceId: pendingConnection.source,
-                                            targetId: pendingConnection.target,
-                                            relation: rel
-                                        });
-                                    }}
-                                    className="hover:bg-muted rounded-md border-2 px-3 py-2 text-sm font-medium transition-colors disabled:opacity-50"
-                                    style={{ borderColor: relationColor(rel) }}
-                                >
-                                    {rel.replace(/_/g, " ")}
-                                </button>
-                            ))}
-                        </div>
-                    </DialogPopup>
-                </Dialog>
+                <ChangeConnectionDialog
+                    pendingConnection={pendingConnection}
+                    chunkMap={chunkMap}
+                    createConnectionMutation={createConnectionMutation}
+                    dispatch={dispatch}
+                />
 
                 {/* Bottom-center: Timeline */}
                 <GraphTimeline chunks={data?.chunks ?? []} onCutoffChange={handleTimelineCutoff} />
@@ -1574,133 +1527,31 @@ function GraphViewInner() {
                     </div>
                 )}
                 {/* Save view dialog */}
-                {showSaveDialog && (
-                    <div
-                        className="bg-background/50 absolute inset-0 z-30 flex items-center justify-center backdrop-blur-sm"
-                        onClick={() => dispatch({ type: "SET_SHOW_SAVE_DIALOG", show: false })}
-                    >
-                        <div className="bg-background rounded-lg border p-4 shadow-lg" onClick={e => e.stopPropagation()}>
-                            <h3 className="mb-2 text-sm font-semibold">Save View</h3>
-                            <input
-                                value={viewName}
-                                onChange={e => dispatch({ type: "SET_VIEW_NAME", name: e.target.value })}
-                                placeholder="View name"
-                                className="w-full rounded-md border px-3 py-2 text-sm"
-                                autoFocus
-                                onKeyDown={e => {
-                                    if (e.key === "Enter" && viewName.trim()) {
-                                        saveView({
-                                            name: viewName.trim(),
-                                            filterTypes: [...filterTypes],
-                                            filterRelations: [...filterRelations],
-                                            collapsedParents: [...collapsedParents],
-                                            layoutAlgorithm,
-                                            focusNodeId: focusedNodeId ?? undefined
-                                        });
-                                        dispatch({ type: "SET_SHOW_SAVE_DIALOG", show: false });
-                                        dispatch({ type: "SET_VIEW_NAME", name: "" });
-                                    }
-                                }}
-                            />
-                            <div className="mt-3 flex gap-2">
-                                <button
-                                    onClick={() => {
-                                        if (!viewName.trim()) return;
-                                        saveView({
-                                            name: viewName.trim(),
-                                            filterTypes: [...filterTypes],
-                                            filterRelations: [...filterRelations],
-                                            collapsedParents: [...collapsedParents],
-                                            layoutAlgorithm,
-                                            focusNodeId: focusedNodeId ?? undefined
-                                        });
-                                        dispatch({ type: "SET_SHOW_SAVE_DIALOG", show: false });
-                                        dispatch({ type: "SET_VIEW_NAME", name: "" });
-                                    }}
-                                    className="bg-primary text-primary-foreground flex-1 rounded-md px-3 py-1.5 text-xs"
-                                >
-                                    Save
-                                </button>
-                                <button onClick={() => dispatch({ type: "SET_SHOW_SAVE_DIALOG", show: false })} className="rounded-md border px-3 py-1.5 text-xs">
-                                    Cancel
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )}
+                <SaveViewDialog
+                    show={showSaveDialog}
+                    viewName={viewName}
+                    filterTypes={filterTypes}
+                    filterRelations={filterRelations}
+                    collapsedParents={collapsedParents}
+                    layoutAlgorithm={layoutAlgorithm}
+                    focusedNodeId={focusedNodeId}
+                    saveView={saveView}
+                    dispatch={dispatch}
+                />
                 {/* Save custom graph dialog */}
-                {showSaveCustomDialog && (
-                    <div
-                        className="bg-background/50 absolute inset-0 z-30 flex items-center justify-center backdrop-blur-sm"
-                        onClick={() => setShowSaveCustomDialog(false)}
-                    >
-                        <div className="bg-background w-80 rounded-lg border p-4 shadow-lg" onClick={e => e.stopPropagation()}>
-                            <h3 className="mb-2 text-sm font-semibold">Save as Custom Graph</h3>
-                            <p className="text-muted-foreground mb-3 text-xs">
-                                Saves {filteredGraph?.chunks.length ?? 0} visible chunks with their current positions.
-                            </p>
-                            <input
-                                value={customGraphName}
-                                onChange={e => setCustomGraphName(e.target.value)}
-                                placeholder="Graph name"
-                                className="w-full rounded-md border px-3 py-2 text-sm"
-                                autoFocus
-                                onKeyDown={e => {
-                                    if (e.key === "Enter" && customGraphName.trim() && filteredGraph) {
-                                        const chunkIds = filteredGraph.chunks.map(c => c.id);
-                                        const positions: Record<string, { x: number; y: number }> = {};
-                                        for (const id of chunkIds) {
-                                            const dragged = draggedPositions.get(id);
-                                            const lp = layoutPositions?.[id];
-                                            if (dragged) positions[id] = dragged;
-                                            else if (lp) positions[id] = lp;
-                                        }
-                                        saveCustomGraphMutation.mutate({
-                                            name: customGraphName.trim(),
-                                            chunkIds,
-                                            positions,
-                                            layoutAlgorithm,
-                                            codebaseId: codebaseId && codebaseId !== "global" ? codebaseId : undefined
-                                        });
-                                        setShowSaveCustomDialog(false);
-                                        setCustomGraphName("");
-                                    }
-                                }}
-                            />
-                            <div className="mt-3 flex gap-2">
-                                <button
-                                    onClick={() => {
-                                        if (!customGraphName.trim() || !filteredGraph) return;
-                                        const chunkIds = filteredGraph.chunks.map(c => c.id);
-                                        const positions: Record<string, { x: number; y: number }> = {};
-                                        for (const id of chunkIds) {
-                                            const dragged = draggedPositions.get(id);
-                                            const lp = layoutPositions?.[id];
-                                            if (dragged) positions[id] = dragged;
-                                            else if (lp) positions[id] = lp;
-                                        }
-                                        saveCustomGraphMutation.mutate({
-                                            name: customGraphName.trim(),
-                                            chunkIds,
-                                            positions,
-                                            layoutAlgorithm,
-                                            codebaseId: codebaseId && codebaseId !== "global" ? codebaseId : undefined
-                                        });
-                                        setShowSaveCustomDialog(false);
-                                        setCustomGraphName("");
-                                    }}
-                                    disabled={saveCustomGraphMutation.isPending}
-                                    className="bg-primary text-primary-foreground flex-1 rounded-md px-3 py-1.5 text-xs"
-                                >
-                                    {saveCustomGraphMutation.isPending ? "Saving..." : "Save"}
-                                </button>
-                                <button onClick={() => setShowSaveCustomDialog(false)} className="rounded-md border px-3 py-1.5 text-xs">
-                                    Cancel
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )}
+                <SaveCustomGraphDialog
+                    show={showSaveCustomDialog}
+                    onClose={() => setShowSaveCustomDialog(false)}
+                    customGraphName={customGraphName}
+                    onNameChange={setCustomGraphName}
+                    visibleChunkCount={filteredGraph?.chunks.length ?? 0}
+                    filteredChunkIds={filteredGraph?.chunks.map(c => c.id) ?? []}
+                    draggedPositions={draggedPositions}
+                    layoutPositions={layoutPositions}
+                    layoutAlgorithm={layoutAlgorithm}
+                    codebaseId={codebaseId}
+                    saveCustomGraphMutation={saveCustomGraphMutation}
+                />
             </div>
 
             <ConfirmDialog
