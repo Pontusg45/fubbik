@@ -168,6 +168,12 @@ Exposed via chunk detail API response and shown as a badge on the detail page.
 - Status bar showing chunk count
 - Commands: search, quick-add note, open graph/dashboard in browser
 
+### Context Modules (context-export vs context-for-file)
+
+Two distinct context services exist in `packages/api/src/`:
+- **context-for-file** (`GET /api/context/for-file`): Given a file path, finds relevant chunks via three strategies: direct file-ref matches, appliesTo glob patterns, and dependency-based codebase matching. Returns a flat list of chunks with `matchReason`.
+- **context-export** (`GET /api/chunks/export/context`): Token-budgeted export for AI consumption. Scores all chunks by health, type, connections, and review status, optionally boosting file-relevant chunks (delegates to context-for-file internally), then greedily fills a token budget. Also powers CLAUDE.md generation (`GET /api/chunks/export/claude-md`).
+
 ### MCP Server
 
 - Located at `packages/mcp/`
@@ -195,6 +201,7 @@ Exposed via chunk detail API response and shown as a badge on the detail page.
 - `POST /api/chunks/check-similar` — duplicate detection (requires Ollama)
 - `GET /api/chunks/export/context` — token-budgeted context export (supports `forPath` relevance boost)
 - `GET /api/chunks/export/claude-md` — CLAUDE.md generation from tagged chunks
+- `POST /api/chunks/import-docs` — bulk import from markdown files with frontmatter parsing
 
 ### Chunk Sub-resources
 - `GET/PUT /api/chunks/:id/applies-to` — glob pattern metadata
@@ -295,6 +302,7 @@ The server exposes Swagger/OpenAPI at `/docs` (e.g., `http://localhost:3000/docs
 - `/plans` — standalone plans list (also embedded as tab in requirements)
 - `/plans/new` — create plan (templates, markdown paste, bulk entry, requirement linking, keyboard shortcuts)
 - `/plans/:id` — plan detail with interactive checklist, step reorder, status actions
+- `/import` — dedicated markdown docs import with folder upload, preview table, codebase selection
 - `/login` — authentication
 - `/settings` — user/codebase/instance settings
 - `/activity` — activity log with action type + entity type filters
@@ -321,6 +329,7 @@ The server exposes Swagger/OpenAPI at `/docs` (e.g., `http://localhost:3000/docs
 - `fubbik context-for <path>` — generate context document for a file (with `--include-deps`)
 - `fubbik context-dir <dir>` — generate CLAUDE.md-style context for a directory
 - `fubbik sync-claude-md` — generate/watch .claude/CLAUDE.md from tagged chunks
+- `fubbik import-docs <path> --codebase <name>` — import folder of markdown docs as chunks
 - `fubbik completions <shell>` — generate shell completions (zsh)
 - List/add/search support `--global` and `--codebase <name>` flags for scoping
 
