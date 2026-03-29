@@ -9,6 +9,7 @@ import {
     FileSearch,
     FileText,
     FolderGit2,
+    FolderUp,
     Layers,
     LayoutDashboard,
     Menu,
@@ -40,6 +41,7 @@ const manageItems = [
     { label: "Context", to: "/context" as const, icon: FileSearch },
     { label: "Codebases", to: "/codebases" as const, icon: FolderGit2 },
     { label: "Workspaces", to: "/workspaces" as const, icon: Layers },
+    { label: "Import Docs", to: "/import" as const, icon: FolderUp },
     { label: "Health", to: "/knowledge-health" as const, icon: Activity },
     { label: "Activity", to: "/activity" as const, icon: Clock },
     { label: "Settings", to: "/settings" as const, icon: Settings }
