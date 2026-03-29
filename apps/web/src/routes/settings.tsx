@@ -4,6 +4,7 @@ import { Settings as SettingsIcon } from "lucide-react";
 import { useCallback, useRef } from "react";
 import { toast } from "sonner";
 
+import { RouteErrorBoundary } from "@/components/route-error-boundary";
 import { Card, CardPanel } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -427,6 +428,7 @@ function InstanceSettingsTab() {
 
 function SettingsPage() {
     return (
+        <RouteErrorBoundary>
         <PageContainer>
             <PageHeader icon={SettingsIcon} title="Settings" />
 
@@ -450,5 +452,6 @@ function SettingsPage() {
                 </TabsContent>
             </Tabs>
         </PageContainer>
+        </RouteErrorBoundary>
     );
 }
