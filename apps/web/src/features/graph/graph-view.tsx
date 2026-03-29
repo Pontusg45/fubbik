@@ -739,6 +739,28 @@ function GraphViewInner() {
         return { layoutNodes, layoutEdges: rawEdges, groupToChunkIds };
     }, [filteredGraph, layoutPositions, draggedPositions, isDark, TYPE_COLORS, collapsedParents, bundleEdges, tagGroups, data, edgeAnimated, measuredSizesVersion, showUngrouped]);
 
+    // Search match IDs — shared between styling effect, auto-center, and match count display
+    const searchMatchIds = useMemo(() => {
+        const q = debouncedSearchQuery.trim().toLowerCase();
+        if (!q) return new Set<string>();
+        const ids = new Set<string>();
+        for (const node of layoutNodes) {
+            const label = typeof node.data.label === "string" ? node.data.label : "";
+            if (label.toLowerCase().includes(q)) ids.add(node.id);
+        }
+        return ids;
+    }, [debouncedSearchQuery, layoutNodes]);
+
+    // Auto-center on first search match
+    useEffect(() => {
+        if (searchMatchIds.size === 0) return;
+        const firstMatchId = [...searchMatchIds][0];
+        const matchNode = layoutNodes.find(n => n.id === firstMatchId);
+        if (matchNode?.position) {
+            setCenter(matchNode.position.x, matchNode.position.y, { zoom: getZoom(), duration: 400 });
+        }
+    }, [searchMatchIds, layoutNodes, setCenter, getZoom]);
+
     const focusNeighbors = useMemo(() => {
         if (!focusedNodeId) return null;
         const neighbors = new Set<string>([focusedNodeId]);
@@ -1363,13 +1385,30 @@ function GraphViewInner() {
 
                 {/* Top-right: Search + Stats */}
                 <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
-                    <input
-                        type="text"
-                        value={searchQuery}
-                        onChange={e => dispatch({ type: "SET_SEARCH_QUERY", query: e.target.value })}
-                        placeholder="Search nodes..."
-                        className="bg-background/80 focus:ring-ring w-36 rounded-md border px-2.5 py-1.5 text-xs backdrop-blur-sm focus:ring-2 focus:outline-none"
-                    />
+                    <div className="relative flex items-center">
+                        <input
+                            type="text"
+                            value={searchQuery}
+                            onChange={e => dispatch({ type: "SET_SEARCH_QUERY", query: e.target.value })}
+                            placeholder="Search nodes..."
+                            className="bg-background/80 focus:ring-ring w-48 rounded-md border px-2.5 py-1.5 pr-7 text-xs backdrop-blur-sm focus:ring-2 focus:outline-none"
+                        />
+                        {searchQuery && (
+                            <button
+                                type="button"
+                                onClick={() => dispatch({ type: "SET_SEARCH_QUERY", query: "" })}
+                                className="text-muted-foreground hover:text-foreground absolute right-1.5 text-xs"
+                                aria-label="Clear search"
+                            >
+                                &times;
+                            </button>
+                        )}
+                    </div>
+                    {debouncedSearchQuery.trim() && (
+                        <span className="bg-background/80 text-muted-foreground whitespace-nowrap rounded-md border px-2 py-1.5 text-[10px] backdrop-blur-sm">
+                            {searchMatchIds.size} of {layoutNodes.filter(n => !n.id.startsWith("tag-group-")).length}
+                        </span>
+                    )}
                     <Popover open={showPathPanel} onOpenChange={(v) => dispatch({ type: "SET_SHOW_PATH_PANEL", show: v })}>
                         <PopoverTrigger
                             className={`rounded-md border p-1.5 backdrop-blur-sm ${
