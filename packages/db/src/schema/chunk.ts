@@ -45,7 +45,12 @@ export const chunk = pgTable(
         reviewedAt: timestamp("reviewed_at"),
         archivedAt: timestamp("archived_at")
     },
-    table => [index("chunk_userId_idx").on(table.userId), index("chunk_type_idx").on(table.type)]
+    table => [
+        index("chunk_userId_idx").on(table.userId),
+        index("chunk_type_idx").on(table.type),
+        index("chunk_archivedAt_idx").on(table.archivedAt),
+        index("chunk_updatedAt_idx").on(table.updatedAt)
+    ]
 );
 
 export const chunkConnection = pgTable(

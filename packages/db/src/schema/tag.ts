@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm";
-import { pgTable, primaryKey, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import { index, pgTable, primaryKey, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 
 import { user } from "./auth";
 import { chunk } from "./chunk";
@@ -46,7 +46,10 @@ export const chunkTag = pgTable(
             .notNull()
             .references(() => tag.id, { onDelete: "cascade" })
     },
-    table => [primaryKey({ columns: [table.chunkId, table.tagId] })]
+    table => [
+        primaryKey({ columns: [table.chunkId, table.tagId] }),
+        index("chunk_tag_tagId_idx").on(table.tagId)
+    ]
 );
 
 export const tagTypeRelations = relations(tagType, ({ one, many }) => ({
