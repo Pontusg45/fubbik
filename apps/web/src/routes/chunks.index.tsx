@@ -26,6 +26,7 @@ import { Card, CardPanel } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
+import { PageEmpty } from "@/components/ui/page";
 import { SkeletonList } from "@/components/ui/skeleton-list";
 import { Tooltip, TooltipTrigger, TooltipPopup } from "@/components/ui/tooltip";
 import { ChunkFiltersPopover } from "@/features/chunks/chunk-filters-popover";
@@ -352,8 +353,13 @@ function ChunksList() {
                             if (e.key === "Enter") updateSearch({ q: searchInput || undefined });
                         }}
                         placeholder="Search chunks..."
-                        className="bg-background focus:ring-ring w-full rounded-md border py-2 pr-3 pl-9 text-sm focus:ring-2 focus:outline-none"
+                        className="bg-background focus:ring-ring w-full rounded-md border py-2 pr-24 pl-9 text-sm focus:ring-2 focus:outline-none"
                     />
+                    {total > 0 && (
+                        <span className="text-muted-foreground absolute top-1/2 right-3 -translate-y-1/2 text-xs tabular-nums">
+                            {total} {total === 1 ? "chunk" : "chunks"}
+                        </span>
+                    )}
                 </div>
 
                 {/* All codebases toggle */}
@@ -600,11 +606,17 @@ function ChunksList() {
             ) : activeQuery.isLoading ? (
                 <SkeletonList count={10} />
             ) : collectionFilteredChunks.length === 0 ? (
-                <Card>
-                    <CardPanel className="p-8 text-center">
-                        <p className="text-muted-foreground text-sm">No chunks found.</p>
-                    </CardPanel>
-                </Card>
+                <PageEmpty
+                    icon={FileText}
+                    title="No chunks yet"
+                    description="Create your first chunk to start building your knowledge base"
+                    action={
+                        <Button size="sm" render={<Link to="/chunks/new" />}>
+                            <Plus className="mr-1 size-4" />
+                            New Chunk
+                        </Button>
+                    }
+                />
             ) : groupedChunks ? (
                 <div className="space-y-4">
                     {[...groupedChunks.entries()].map(([groupName, items]) => (
@@ -847,6 +859,10 @@ function ChunksList() {
                     Showing {allChunks.length} of {total} chunks
                 </p>
             )}
+
+            <p className="text-muted-foreground mt-4 text-center text-xs">
+                Press <kbd className="bg-muted rounded px-1 py-0.5 font-mono text-[10px]">?</kbd> for keyboard shortcuts
+            </p>
 
             <ChunkBulkActionBar
                 selectedIds={selectedIds}

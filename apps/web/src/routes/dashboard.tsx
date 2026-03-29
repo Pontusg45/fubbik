@@ -16,7 +16,7 @@ import {
     Tags,
     Upload
 } from "lucide-react";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
@@ -50,6 +50,14 @@ function DashboardPage() {
     const { favoriteIds, isLoading: favoritesLoading } = useFavorites();
     const { recentIds } = useRecentChunks();
     const { codebaseId } = useActiveCodebase();
+    const [showWelcome, setShowWelcome] = useState(() => {
+        return !localStorage.getItem("fubbik-welcome-shown");
+    });
+
+    const dismissWelcome = () => {
+        setShowWelcome(false);
+        localStorage.setItem("fubbik-welcome-shown", "true");
+    };
 
     const codebaseQuery = codebaseId
         ? { codebaseId }
@@ -189,11 +197,18 @@ function DashboardPage() {
     const reqStats = requirementsQuery.data;
     const activities = (activityQuery.data as any)?.activities ?? activityQuery.data ?? [];
 
-    // Show onboarding wizard when the knowledge base is empty
-    if (!statsQuery.isLoading && statsQuery.data?.chunks === 0) {
+    // Show onboarding wizard on first visit or when the knowledge base is empty
+    if (!statsQuery.isLoading && (showWelcome || statsQuery.data?.chunks === 0)) {
         return (
             <div className="container mx-auto max-w-6xl px-4 py-8">
                 <WelcomeWizard />
+                {showWelcome && (
+                    <div className="mt-4 text-center">
+                        <Button variant="ghost" size="sm" onClick={dismissWelcome}>
+                            Skip setup and go to dashboard
+                        </Button>
+                    </div>
+                )}
             </div>
         );
     }

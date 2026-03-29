@@ -4,7 +4,7 @@ export function undoableAction({
     action,
     undoAction,
     message,
-    duration = 5000
+    duration = 10000
 }: {
     action: () => Promise<void>;
     undoAction: () => Promise<void>;

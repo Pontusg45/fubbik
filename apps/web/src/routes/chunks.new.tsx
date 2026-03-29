@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, ChevronDown, FileText, Loader2, Plus, Sparkles, Trash2 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
@@ -168,6 +168,22 @@ function NewChunk() {
         setErrors(e);
         return Object.keys(e).length === 0;
     }
+
+    const handleSubmit = useCallback(() => {
+        if (validate()) createMutation.mutate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [title, content, type, tags, appliesTo, fileRefs, rationale, alternativesInput, consequences]);
+
+    useEffect(() => {
+        const handler = (e: KeyboardEvent) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+                e.preventDefault();
+                handleSubmit();
+            }
+        };
+        window.addEventListener("keydown", handler);
+        return () => window.removeEventListener("keydown", handler);
+    }, [handleSubmit]);
 
     const createMutation = useMutation({
         mutationFn: async () => {
@@ -449,7 +465,7 @@ function NewChunk() {
 
                     {/* Applies-to repeatable field */}
                     <div>
-                        <div className="mb-2 flex items-center justify-between">
+                        <div className="mb-1 flex items-center justify-between">
                             <label className="text-sm font-medium">Applies To</label>
                             <Button
                                 variant="ghost"
@@ -460,6 +476,7 @@ function NewChunk() {
                                 Add
                             </Button>
                         </div>
+                        <p className="text-muted-foreground mb-2 text-xs">Glob patterns matching file paths, e.g. <code className="bg-muted rounded px-1">src/api/**/*.ts</code></p>
                         {appliesTo.map((row, i) => (
                             <div key={i} className="mb-2">
                                 <div className="flex gap-2">
@@ -611,12 +628,12 @@ function NewChunk() {
                             Cancel
                         </Button>
                         <Button
-                            onClick={() => {
-                                if (validate()) createMutation.mutate();
-                            }}
+                            onClick={handleSubmit}
                             disabled={createMutation.isPending}
+                            title="⌘Enter"
                         >
-                            {createMutation.isPending ? "Creating..." : "Create Chunk"}
+                            {createMutation.isPending ? "Creating..." : "Create Chunk"}{" "}
+                            <kbd className="text-muted-foreground ml-1 text-[10px] font-normal opacity-60">⌘↵</kbd>
                         </Button>
                     </div>
                 </CardPanel>
