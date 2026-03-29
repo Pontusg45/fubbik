@@ -45,6 +45,7 @@ import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
+import { findShortestPath, getMostConnected } from "./graph-utils";
 import { GraphTimeline } from "./graph-timeline";
 import { PathPanel } from "./path-panel";
 import { useGraphState } from "./use-graph-state";
@@ -73,46 +74,6 @@ const TYPE_COLORS_LIGHT: Record<string, { bg: string; border: string }> = {
     schema: { bg: "#fefce8", border: "#f59e0b" },
     checklist: { bg: "#f7fee7", border: "#84cc16" }
 };
-
-function findShortestPath(startId: string, endId: string, edges: Edge[]): string[] | null {
-    const adjacency = new Map<string, string[]>();
-    for (const edge of edges) {
-        if (!adjacency.has(edge.source)) adjacency.set(edge.source, []);
-        if (!adjacency.has(edge.target)) adjacency.set(edge.target, []);
-        adjacency.get(edge.source)!.push(edge.target);
-        adjacency.get(edge.target)!.push(edge.source);
-    }
-    const visited = new Set<string>([startId]);
-    const queue: { nodeId: string; path: string[] }[] = [{ nodeId: startId, path: [startId] }];
-    while (queue.length > 0) {
-        const { nodeId, path } = queue.shift()!;
-        if (nodeId === endId) return path;
-        for (const neighbor of adjacency.get(nodeId) ?? []) {
-            if (!visited.has(neighbor)) {
-                visited.add(neighbor);
-                queue.push({ nodeId: neighbor, path: [...path, neighbor] });
-            }
-        }
-    }
-    return null;
-}
-
-function getMostConnected(nodes: { id: string }[], edges: { source: string; target: string }[]): string | null {
-    const counts = new Map<string, number>();
-    for (const e of edges) {
-        counts.set(e.source, (counts.get(e.source) ?? 0) + 1);
-        counts.set(e.target, (counts.get(e.target) ?? 0) + 1);
-    }
-    let maxId: string | null = null;
-    let maxCount = 0;
-    for (const [id, count] of counts) {
-        if (count > maxCount && nodes.some(n => n.id === id)) {
-            maxCount = count;
-            maxId = id;
-        }
-    }
-    return maxId;
-}
 
 function GraphViewInner() {
     const { resolvedTheme } = useTheme();
