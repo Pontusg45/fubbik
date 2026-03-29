@@ -1,7 +1,9 @@
 import { Effect } from "effect";
 import { Elysia, t } from "elysia";
 
+import { checkRateLimit } from "../middleware/rate-limit";
 import { requireSession } from "../require-session";
+import { aliasesSchema, alternativesSchema, scopeSchema } from "../validation/jsonb-schemas";
 import * as bulkService from "./bulk-service";
 import { federatedSearch } from "./federated-search";
 import * as chunkService from "./service";
@@ -66,9 +68,17 @@ export const chunkRoutes = new Elysia()
         ctx =>
             Effect.runPromise(
                 requireSession(ctx).pipe(
-                    Effect.flatMap(session =>
-                        chunkService.importDocs(session.user.id, ctx.body.files, ctx.body.codebaseId)
-                    )
+                    Effect.flatMap(session => {
+                        const rl = checkRateLimit(`import-docs:${session.user.id}`, 5, 60_000);
+                        if (!rl.allowed) {
+                            ctx.set.status = 429;
+                            return Effect.succeed({
+                                error: "Rate limit exceeded",
+                                retryAfter: Math.ceil((rl.resetAt - Date.now()) / 1000)
+                            } as any);
+                        }
+                        return chunkService.importDocs(session.user.id, ctx.body.files, ctx.body.codebaseId);
+                    })
                 )
             ),
         {
@@ -125,7 +135,21 @@ export const chunkRoutes = new Elysia()
     .get(
         "/chunks/search/semantic",
         ctx =>
-            Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(session => chunkService.semanticSearch(session.user.id, ctx.query)))),
+            Effect.runPromise(
+                requireSession(ctx).pipe(
+                    Effect.flatMap(session => {
+                        const rl = checkRateLimit(`semantic-search:${session.user.id}`, 30, 60_000);
+                        if (!rl.allowed) {
+                            ctx.set.status = 429;
+                            return Effect.succeed({
+                                error: "Rate limit exceeded",
+                                retryAfter: Math.ceil((rl.resetAt - Date.now()) / 1000)
+                            } as any);
+                        }
+                        return chunkService.semanticSearch(session.user.id, ctx.query);
+                    })
+                )
+            ),
         {
             query: t.Object({
                 q: t.String(),
@@ -220,8 +244,9 @@ export const chunkRoutes = new Elysia()
                 type: t.Optional(t.String({ maxLength: 20 })),
                 tags: t.Optional(t.Array(t.String({ maxLength: 50 }), { maxItems: 20 })),
                 codebaseIds: t.Optional(t.Array(t.String(), { maxItems: 20 })),
+                scope: scopeSchema,
                 rationale: t.Optional(t.String({ maxLength: 5000 })),
-                alternatives: t.Optional(t.Array(t.String({ maxLength: 500 }), { maxItems: 10 })),
+                alternatives: alternativesSchema,
                 consequences: t.Optional(t.String({ maxLength: 5000 })),
                 origin: t.Optional(t.Union([t.Literal("human"), t.Literal("ai")]))
             })
@@ -241,11 +266,11 @@ export const chunkRoutes = new Elysia()
                 tags: t.Optional(t.Array(t.String({ maxLength: 50 }), { maxItems: 20 })),
                 codebaseIds: t.Optional(t.Array(t.String(), { maxItems: 20 })),
                 summary: t.Optional(t.Union([t.String({ maxLength: 500 }), t.Null()])),
-                aliases: t.Optional(t.Array(t.String({ maxLength: 100 }), { maxItems: 20 })),
+                aliases: aliasesSchema,
                 notAbout: t.Optional(t.Array(t.String({ maxLength: 100 }), { maxItems: 20 })),
-                scope: t.Optional(t.Record(t.String(), t.String())),
+                scope: scopeSchema,
                 rationale: t.Optional(t.String({ maxLength: 5000 })),
-                alternatives: t.Optional(t.Array(t.String({ maxLength: 500 }), { maxItems: 10 })),
+                alternatives: alternativesSchema,
                 consequences: t.Optional(t.String({ maxLength: 5000 })),
                 origin: t.Optional(t.Union([t.Literal("human"), t.Literal("ai")])),
                 reviewStatus: t.Optional(t.Union([t.Literal("draft"), t.Literal("reviewed"), t.Literal("approved")]))
