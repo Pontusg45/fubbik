@@ -10,14 +10,11 @@ import {
     Filter,
     FolderPlus,
     Globe,
-    Link2,
     List,
     Pin,
     Plus,
     Search,
     Server,
-    Tags,
-    Trash2,
     X
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -35,6 +32,7 @@ import { SkeletonList } from "@/components/ui/skeleton-list";
 import { Tooltip, TooltipTrigger, TooltipPopup } from "@/components/ui/tooltip";
 import { ChunkFiltersPopover } from "@/features/chunks/chunk-filters-popover";
 import { getChunkSize } from "@/features/chunks/chunk-size";
+import { ChunkBulkActionBar } from "@/features/chunks/chunk-bulk-action-bar";
 import { ChunkRowActions } from "@/features/chunks/chunk-row-actions";
 import { KanbanView } from "@/features/chunks/kanban-view";
 import { useCollections } from "@/features/chunks/use-collections";
@@ -425,78 +423,9 @@ function ChunksList() {
         }
     });
 
-    const [showBulkTagInput, setShowBulkTagInput] = useState(false);
-    const [bulkTagInput, setBulkTagInput] = useState("");
-    const [bulkTagAction, setBulkTagAction] = useState<"add_tags" | "remove_tags">("add_tags");
     const [confirmAction, setConfirmAction] = useState<{ title: string; description: string; action: () => void } | null>(null);
     const [showSaveFilter, setShowSaveFilter] = useState(false);
 
-    // Bulk connect state
-    const [showBulkConnect, setShowBulkConnect] = useState(false);
-    const [connectSearch, setConnectSearch] = useState("");
-    const [connectRelation, setConnectRelation] = useState("related_to");
-    const connectSearchQuery = useQuery({
-        queryKey: ["chunks", "bulk-connect-search", connectSearch],
-        queryFn: async () => {
-            if (!connectSearch.trim()) return { chunks: [] };
-            const { data, error } = await api.api.chunks.get({ query: { search: connectSearch, limit: "10" } });
-            if (error) throw new Error("Failed to search chunks");
-            return data;
-        },
-        enabled: showBulkConnect && connectSearch.trim().length > 0
-    });
-    const bulkConnectMutation = useMutation({
-        mutationFn: async (targetId: string) => {
-            const ids = [...selectedIds];
-            for (const sourceId of ids) {
-                const { error } = await api.api.connections.post({
-                    sourceId,
-                    targetId,
-                    relation: connectRelation
-                });
-                if (error) throw new Error("Failed to create connection");
-            }
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["chunks-list"] });
-            toast.success(`Connected ${selectedIds.size} chunks`);
-            setShowBulkConnect(false);
-            setConnectSearch("");
-            setConnectRelation("related_to");
-            setSelectedIds(new Set());
-        },
-        onError: () => {
-            toast.error("Failed to create connections");
-        }
-    });
-    const connectResults = (connectSearchQuery.data?.chunks ?? []).filter(c => !selectedIds.has(c.id));
-
-    function handleBulkDelete() {
-        setConfirmAction({
-            title: "Delete chunks",
-            description: `Delete ${selectedIds.size} chunks permanently?`,
-            action: () => bulkUpdateMutation.mutate({ ids: [...selectedIds], action: "delete" }),
-        });
-    }
-
-    function handleBulkArchive() {
-        setConfirmAction({
-            title: "Archive chunks",
-            description: `Archive ${selectedIds.size} chunks?`,
-            action: () => bulkUpdateMutation.mutate({ ids: [...selectedIds], action: "archive" }),
-        });
-    }
-
-    function handleBulkTagSubmit() {
-        if (!bulkTagInput.trim()) return;
-        bulkUpdateMutation.mutate({
-            ids: [...selectedIds],
-            action: bulkTagAction,
-            value: bulkTagInput.trim()
-        });
-        setBulkTagInput("");
-        setShowBulkTagInput(false);
-    }
 
     return (
         <div className="container mx-auto max-w-5xl px-4 py-8">
@@ -1041,163 +970,12 @@ function ChunksList() {
                 </p>
             )}
 
-            {selectedIds.size > 0 && (
-                <div className="bg-background fixed bottom-6 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-lg border px-4 py-2.5 shadow-lg">
-                    <span className="text-sm font-medium">{selectedIds.size} selected</span>
-                    <Separator orientation="vertical" className="h-5" />
-                    {showBulkTagInput ? (
-                        <div className="flex items-center gap-1.5">
-                            <input
-                                type="text"
-                                value={bulkTagInput}
-                                onChange={e => setBulkTagInput(e.target.value)}
-                                onKeyDown={e => e.key === "Enter" && handleBulkTagSubmit()}
-                                placeholder="tag1, tag2, ..."
-                                className="bg-background w-36 rounded border px-2 py-1 text-xs"
-                                autoFocus
-                            />
-                            <Button size="sm" variant="outline" onClick={handleBulkTagSubmit} disabled={bulkUpdateMutation.isPending}>
-                                {bulkTagAction === "add_tags" ? "Add" : "Remove"}
-                            </Button>
-                            <Button size="sm" variant="ghost" onClick={() => setShowBulkTagInput(false)}>
-                                <X className="size-3" />
-                            </Button>
-                        </div>
-                    ) : (
-                        <>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                    setBulkTagAction("add_tags");
-                                    setShowBulkTagInput(true);
-                                }}
-                            >
-                                <Tags className="size-3.5" />
-                                Add Tags
-                            </Button>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                    setBulkTagAction("remove_tags");
-                                    setShowBulkTagInput(true);
-                                }}
-                            >
-                                <Tags className="size-3.5" />
-                                Remove Tags
-                            </Button>
-                        </>
-                    )}
-                    <Popover open={showBulkConnect} onOpenChange={setShowBulkConnect}>
-                        <PopoverTrigger render={<Button variant="outline" size="sm" />}>
-                            <Link2 className="size-3.5" />
-                            Connect to...
-                        </PopoverTrigger>
-                        <PopoverContent side="top" align="center" className="w-80">
-                            <div className="space-y-3">
-                                <div>
-                                    <label className="text-muted-foreground mb-1.5 block text-xs font-medium">Relation</label>
-                                    <select
-                                        value={connectRelation}
-                                        onChange={e => setConnectRelation(e.target.value)}
-                                        className="bg-background w-full rounded-md border px-2.5 py-1.5 text-sm"
-                                    >
-                                        {["related_to", "part_of", "depends_on", "extends", "references", "supports", "contradicts", "alternative_to"].map(r => (
-                                            <option key={r} value={r}>{r.replace(/_/g, " ")}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="text-muted-foreground mb-1.5 block text-xs font-medium">Target chunk</label>
-                                    <div className="relative">
-                                        <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2" />
-                                        <input
-                                            type="text"
-                                            value={connectSearch}
-                                            onChange={e => setConnectSearch(e.target.value)}
-                                            placeholder="Search chunks..."
-                                            className="bg-background w-full rounded-md border py-1.5 pl-8 pr-3 text-sm"
-                                            autoFocus
-                                        />
-                                    </div>
-                                </div>
-                                {connectResults.length > 0 && (
-                                    <div className="max-h-48 space-y-0.5 overflow-y-auto rounded-md border p-1">
-                                        {connectResults.map(result => (
-                                            <button
-                                                key={result.id}
-                                                type="button"
-                                                onClick={() => bulkConnectMutation.mutate(result.id)}
-                                                disabled={bulkConnectMutation.isPending}
-                                                className="hover:bg-muted flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-left text-sm transition-colors"
-                                            >
-                                                <span className="truncate font-medium">{result.title}</span>
-                                                <Badge variant="secondary" size="sm" className="ml-2 shrink-0 text-[10px]">
-                                                    {result.type}
-                                                </Badge>
-                                            </button>
-                                        ))}
-                                    </div>
-                                )}
-                                {connectSearch.trim().length > 0 && connectResults.length === 0 && !connectSearchQuery.isLoading && (
-                                    <p className="text-muted-foreground py-2 text-center text-xs">No chunks found</p>
-                                )}
-                            </div>
-                        </PopoverContent>
-                    </Popover>
-                    <select
-                        onChange={e => {
-                            if (e.target.value) {
-                                bulkUpdateMutation.mutate({ ids: [...selectedIds], action: "set_type", value: e.target.value });
-                            }
-                        }}
-                        className="bg-background rounded-md border px-2 py-1 text-xs"
-                        defaultValue=""
-                    >
-                        <option value="" disabled>
-                            Set Type...
-                        </option>
-                        {["note", "decision", "pattern", "convention", "rule", "reference"].map(t => (
-                            <option key={t} value={t}>
-                                {t}
-                            </option>
-                        ))}
-                    </select>
-                    <select
-                        onChange={e => {
-                            if (e.target.value) {
-                                bulkUpdateMutation.mutate({
-                                    ids: [...selectedIds],
-                                    action: "set_review_status",
-                                    value: e.target.value
-                                });
-                            }
-                        }}
-                        className="bg-background rounded-md border px-2 py-1 text-xs"
-                        defaultValue=""
-                    >
-                        <option value="" disabled>
-                            Set Status...
-                        </option>
-                        <option value="draft">Draft</option>
-                        <option value="reviewed">Reviewed</option>
-                        <option value="approved">Approved</option>
-                    </select>
-                    <Separator orientation="vertical" className="h-5" />
-                    <Button variant="outline" size="sm" onClick={handleBulkArchive} disabled={bulkUpdateMutation.isPending}>
-                        <Archive className="size-3.5" />
-                        Archive
-                    </Button>
-                    <Button variant="destructive" size="sm" onClick={handleBulkDelete} disabled={bulkUpdateMutation.isPending}>
-                        <Trash2 className="size-3.5" />
-                        Delete
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={() => setSelectedIds(new Set())}>
-                        Cancel
-                    </Button>
-                </div>
-            )}
+            <ChunkBulkActionBar
+                selectedIds={selectedIds}
+                setSelectedIds={setSelectedIds}
+                bulkUpdateMutation={bulkUpdateMutation}
+                setConfirmAction={setConfirmAction}
+            />
 
             <ConfirmDialog
                 open={confirmAction !== null}
