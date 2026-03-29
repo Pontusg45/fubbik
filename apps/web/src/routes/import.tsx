@@ -65,13 +65,13 @@ function previewFile(path: string, content: string): Omit<PreviewEntry, "selecte
     // Extract frontmatter
     const fmMatch = content.match(/^---\n([\s\S]*?)\n---/);
     if (fmMatch) {
-        const fm = fmMatch[1];
+        const fm = fmMatch[1] ?? "";
         const titleMatch = fm.match(/^title:\s*(.+)$/m);
-        if (titleMatch) title = titleMatch[1].replace(/^["']|["']$/g, "");
+        if (titleMatch?.[1]) title = titleMatch[1].replace(/^["']|["']$/g, "");
         const typeMatch = fm.match(/^type:\s*(.+)$/m);
-        if (typeMatch) type = typeMatch[1].trim();
+        if (typeMatch?.[1]) type = typeMatch[1].trim();
         const tagsMatch = fm.match(/^tags:\s*\[(.+)\]$/m);
-        if (tagsMatch) {
+        if (tagsMatch?.[1]) {
             tags.push(...tagsMatch[1].split(",").map(t => t.trim().replace(/^["']|["']$/g, "")));
         }
     }
@@ -79,7 +79,7 @@ function previewFile(path: string, content: string): Omit<PreviewEntry, "selecte
     // Fallback to H1 heading
     if (!fmMatch) {
         const h1Match = content.match(/^#\s+(.+)$/m);
-        if (h1Match) title = h1Match[1];
+        if (h1Match?.[1]) title = h1Match[1];
     }
 
     // Derive tags from folder structure

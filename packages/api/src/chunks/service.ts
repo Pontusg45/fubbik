@@ -329,9 +329,8 @@ export function importDocs(
                         tags: parsed.tags,
                         codebaseIds: [codebaseId]
                     }).pipe(
-                        Effect.tap(() => {
+                        Effect.map(() => {
                             results.created++;
-                            return Effect.void;
                         })
                     );
                 }),

@@ -10,7 +10,7 @@ import {
     FileText,
     Filter,
     FolderPlus,
-    FolderUp,
+
     Globe,
     Link2,
     List,
@@ -530,14 +530,7 @@ function ChunksList() {
                         <Archive className="size-3.5" />
                         View archived
                     </Link>
-                    <ImportDocsDialog
-                        trigger={
-                            <Button variant="outline" size="sm">
-                                <FolderUp className="mr-1 size-3.5" />
-                                Import Docs
-                            </Button>
-                        }
-                    />
+                    <ImportDocsDialog />
                     <Button render={<Link to="/chunks/new" />}>
                         <Plus className="size-4" />
                         New Chunk

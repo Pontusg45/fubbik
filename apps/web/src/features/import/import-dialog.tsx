@@ -40,7 +40,7 @@ function readFilesFromInput(fileList: FileList): Promise<FileEntry[]> {
     );
 }
 
-export function ImportDocsDialog({ trigger }: { trigger: React.ReactNode }) {
+export function ImportDocsDialog() {
     const queryClient = useQueryClient();
     const folderInputRef = useRef<HTMLInputElement>(null);
     const [files, setFiles] = useState<FileEntry[]>([]);
@@ -106,7 +106,10 @@ export function ImportDocsDialog({ trigger }: { trigger: React.ReactNode }) {
                 }
             }}
         >
-            <DialogTrigger render={trigger} />
+            <DialogTrigger render={<Button variant="outline" size="sm" />}>
+                <FolderUp className="mr-1 size-3.5" />
+                Import Docs
+            </DialogTrigger>
             <DialogPopup>
                 <DialogHeader>
                     <DialogTitle>Import Markdown Docs</DialogTitle>

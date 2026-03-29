@@ -19,6 +19,7 @@ import { Route as ReviewsRouteImport } from "./routes/reviews";
 import { Route as RequirementsRouteImport } from "./routes/requirements";
 import { Route as LoginRouteImport } from "./routes/login";
 import { Route as KnowledgeHealthRouteImport } from "./routes/knowledge-health";
+import { Route as ImportRouteImport } from "./routes/import";
 import { Route as GraphRouteImport } from "./routes/graph";
 import { Route as DocsRouteImport } from "./routes/docs";
 import { Route as DashboardRouteImport } from "./routes/dashboard";
@@ -89,6 +90,11 @@ const LoginRoute = LoginRouteImport.update({
 const KnowledgeHealthRoute = KnowledgeHealthRouteImport.update({
   id: "/knowledge-health",
   path: "/knowledge-health",
+  getParentRoute: () => rootRouteImport,
+} as any);
+const ImportRoute = ImportRouteImport.update({
+  id: "/import",
+  path: "/import",
   getParentRoute: () => rootRouteImport,
 } as any);
 const GraphRoute = GraphRouteImport.update({
@@ -207,6 +213,7 @@ export interface FileRoutesByFullPath {
   "/dashboard": typeof DashboardRoute;
   "/docs": typeof DocsRoute;
   "/graph": typeof GraphRoute;
+  "/import": typeof ImportRoute;
   "/knowledge-health": typeof KnowledgeHealthRoute;
   "/login": typeof LoginRoute;
   "/requirements": typeof RequirementsRoute;
@@ -240,6 +247,7 @@ export interface FileRoutesByTo {
   "/dashboard": typeof DashboardRoute;
   "/docs": typeof DocsRoute;
   "/graph": typeof GraphRoute;
+  "/import": typeof ImportRoute;
   "/knowledge-health": typeof KnowledgeHealthRoute;
   "/login": typeof LoginRoute;
   "/requirements": typeof RequirementsRoute;
@@ -274,6 +282,7 @@ export interface FileRoutesById {
   "/dashboard": typeof DashboardRoute;
   "/docs": typeof DocsRoute;
   "/graph": typeof GraphRoute;
+  "/import": typeof ImportRoute;
   "/knowledge-health": typeof KnowledgeHealthRoute;
   "/login": typeof LoginRoute;
   "/requirements": typeof RequirementsRoute;
@@ -309,6 +318,7 @@ export interface FileRouteTypes {
     | "/dashboard"
     | "/docs"
     | "/graph"
+    | "/import"
     | "/knowledge-health"
     | "/login"
     | "/requirements"
@@ -342,6 +352,7 @@ export interface FileRouteTypes {
     | "/dashboard"
     | "/docs"
     | "/graph"
+    | "/import"
     | "/knowledge-health"
     | "/login"
     | "/requirements"
@@ -375,6 +386,7 @@ export interface FileRouteTypes {
     | "/dashboard"
     | "/docs"
     | "/graph"
+    | "/import"
     | "/knowledge-health"
     | "/login"
     | "/requirements"
@@ -409,6 +421,7 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRoute;
   DocsRoute: typeof DocsRoute;
   GraphRoute: typeof GraphRoute;
+  ImportRoute: typeof ImportRoute;
   KnowledgeHealthRoute: typeof KnowledgeHealthRoute;
   LoginRoute: typeof LoginRoute;
   RequirementsRoute: typeof RequirementsRoute;
@@ -504,6 +517,13 @@ declare module "@tanstack/react-router" {
       path: "/knowledge-health";
       fullPath: "/knowledge-health";
       preLoaderRoute: typeof KnowledgeHealthRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/import": {
+      id: "/import";
+      path: "/import";
+      fullPath: "/import";
+      preLoaderRoute: typeof ImportRouteImport;
       parentRoute: typeof rootRouteImport;
     };
     "/graph": {
@@ -665,6 +685,7 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRoute,
   DocsRoute: DocsRoute,
   GraphRoute: GraphRoute,
+  ImportRoute: ImportRoute,
   KnowledgeHealthRoute: KnowledgeHealthRoute,
   LoginRoute: LoginRoute,
   RequirementsRoute: RequirementsRoute,

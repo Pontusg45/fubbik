@@ -4,7 +4,7 @@ import { join, relative } from "node:path";
 import { Command } from "commander";
 
 import { resolveCodebaseId } from "../lib/detect-codebase";
-import { formatSuccess, output, outputError, outputQuiet } from "../lib/output";
+import { output, outputError, outputQuiet } from "../lib/output";
 import { getServerUrl } from "../lib/store";
 
 function collectMarkdownFiles(dir: string): string[] {
@@ -89,9 +89,7 @@ export const importDocsCommand = new Command("import-docs")
             output(
                 cmd,
                 data,
-                formatSuccess(
-                    `Created: ${data.created} | Skipped: ${data.skipped} | Errors: ${data.errors.length}`
-                )
+                `Created: ${data.created} | Skipped: ${data.skipped} | Errors: ${data.errors.length}`
             );
         } catch (err) {
             outputError(`Failed to connect to server: ${err}`);
