@@ -157,6 +157,64 @@ function CopyBtn({ text }: { text: string }) {
     );
 }
 
+/* ─── Scroll-triggered fade-up ─── */
+
+function useInView(threshold = 0.15) {
+    const ref = useRef<HTMLElement>(null);
+    const [visible, setVisible] = useState(false);
+    useEffect(() => {
+        const el = ref.current;
+        if (!el) return;
+        const obs = new IntersectionObserver(
+            ([entry]) => {
+                if (entry?.isIntersecting) {
+                    setVisible(true);
+                    obs.disconnect();
+                }
+            },
+            { threshold }
+        );
+        obs.observe(el);
+        return () => obs.disconnect();
+    }, [threshold]);
+    return { ref, visible };
+}
+
+function FadeInSection({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+    const { ref, visible } = useInView(0.1);
+    return (
+        <div
+            ref={ref as React.RefObject<HTMLDivElement>}
+            className={`transition-all duration-700 ease-out ${visible ? "translate-y-0 opacity-100" : "translate-y-6 opacity-0"} ${className}`}
+        >
+            {children}
+        </div>
+    );
+}
+
+/* ─── Animated counter ─── */
+
+function AnimatedNumber({ value, duration = 1200 }: { value: number; duration?: number }) {
+    const [display, setDisplay] = useState(0);
+    const { ref, visible } = useInView(0.3);
+
+    useEffect(() => {
+        if (!visible) return;
+        const start = performance.now();
+        const tick = (now: number) => {
+            const elapsed = now - start;
+            const progress = Math.min(elapsed / duration, 1);
+            // ease-out cubic
+            const eased = 1 - Math.pow(1 - progress, 3);
+            setDisplay(Math.round(eased * value));
+            if (progress < 1) requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+    }, [visible, value, duration]);
+
+    return <span ref={ref as React.RefObject<HTMLSpanElement>}>{display}</span>;
+}
+
 /* ─── Feature pill ─── */
 
 const features = [
@@ -208,7 +266,9 @@ function LiveStats() {
         <div className="flex gap-6">
             {items.map(s => (
                 <div key={s.label} className="text-center">
-                    <div className="text-foreground text-2xl font-bold tabular-nums tracking-tight">{s.value}</div>
+                    <div className="text-foreground text-2xl font-bold tabular-nums tracking-tight">
+                        <AnimatedNumber value={s.value} />
+                    </div>
                     <div className="text-muted-foreground text-[10px] font-medium uppercase tracking-widest">{s.label}</div>
                 </div>
             ))}
@@ -251,18 +311,20 @@ function LandingPage() {
                         interconnected chunks — each with its own metadata, history, and relationships.
                     </p>
 
-                    <div className="mb-8 flex items-center justify-center gap-3">
-                        <Button size="lg" render={<Link to="/dashboard" />}>
+                    <div className="mb-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+                        <Button size="lg" className="w-full sm:w-auto" render={<Link to="/dashboard" />}>
                             Open Dashboard
                             <ArrowRight className="size-4" />
                         </Button>
-                        <Button variant="outline" size="lg" render={<Link to="/graph" />}>
-                            <Network className="size-4" />
-                            Explore Graph
-                        </Button>
-                        <Button variant="outline" size="lg" render={<Link to="/docs" search={{}} />}>
-                            Docs
-                        </Button>
+                        <div className="flex w-full gap-3 sm:w-auto">
+                            <Button variant="outline" size="lg" className="flex-1 sm:flex-initial" render={<Link to="/graph" />}>
+                                <Network className="size-4" />
+                                Explore Graph
+                            </Button>
+                            <Button variant="outline" size="lg" className="flex-1 sm:flex-initial" render={<Link to="/docs" search={{}} />}>
+                                Docs
+                            </Button>
+                        </div>
                     </div>
 
                     {/* Install snippet */}
@@ -280,39 +342,50 @@ function LandingPage() {
                 </section>
 
                 {/* Features */}
-                <section className="container mx-auto max-w-2xl px-4 py-16">
-                    <div className="mb-8 text-center">
-                        <h2 className="text-foreground mb-2 text-2xl font-bold tracking-tight">Built for knowledge work</h2>
-                        <p className="text-muted-foreground text-sm">Everything you need to capture, connect, and evolve what you know.</p>
+                <FadeInSection className="relative">
+                    {/* Gradient mesh behind features */}
+                    <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+                        <div className="absolute top-1/2 left-1/4 size-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-blue-500/[0.03] blur-[100px]" />
+                        <div className="absolute top-1/3 right-1/4 size-[400px] -translate-y-1/2 translate-x-1/2 rounded-full bg-emerald-500/[0.03] blur-[100px]" />
+                        <div className="absolute bottom-0 left-1/2 size-[350px] -translate-x-1/2 rounded-full bg-cyan-500/[0.02] blur-[80px]" />
                     </div>
 
-                    <div className="border-border/50 rounded-xl border">
-                        {features.map((f, i) => (
-                            <FeatureRow key={f.title} {...f} index={i} />
-                        ))}
-                    </div>
-                </section>
+                    <section className="container mx-auto max-w-2xl px-4 py-16">
+                        <div className="mb-8 text-center">
+                            <h2 className="text-foreground mb-2 text-2xl font-bold tracking-tight">Built for knowledge work</h2>
+                            <p className="text-muted-foreground text-sm">Everything you need to capture, connect, and evolve what you know.</p>
+                        </div>
+
+                        <div className="border-border/50 rounded-xl border">
+                            {features.map((f, i) => (
+                                <FeatureRow key={f.title} {...f} index={i} />
+                            ))}
+                        </div>
+                    </section>
+                </FadeInSection>
 
                 {/* Capabilities grid */}
-                <section className="container mx-auto max-w-3xl px-4 pb-16">
-                    <div className="grid gap-3 sm:grid-cols-3">
-                        {[
-                            { label: "VS Code Extension", detail: "Browse and create chunks from your editor", section: "cli" },
-                            { label: "MCP Server", detail: "AI agents query your knowledge base directly", section: "cli" },
-                            { label: "CLI", detail: "fubbik context | fubbik generate claude.md", section: "cli" }
-                        ].map(cap => (
-                            <Link
-                                key={cap.label}
-                                to="/docs"
-                                search={{ section: cap.section }}
-                                className="bg-muted/20 hover:bg-muted/40 rounded-lg border p-4 transition-colors"
-                            >
-                                <div className="text-foreground mb-1 text-sm font-semibold">{cap.label}</div>
-                                <div className="text-muted-foreground text-xs leading-relaxed">{cap.detail}</div>
-                            </Link>
-                        ))}
-                    </div>
-                </section>
+                <FadeInSection>
+                    <section className="container mx-auto max-w-3xl px-4 pb-16">
+                        <div className="grid gap-3 sm:grid-cols-3">
+                            {[
+                                { label: "VS Code Extension", detail: "Browse and create chunks from your editor", section: "cli" },
+                                { label: "MCP Server", detail: "AI agents query your knowledge base directly", section: "cli" },
+                                { label: "CLI", detail: "fubbik context | fubbik generate claude.md", section: "cli" }
+                            ].map(cap => (
+                                <Link
+                                    key={cap.label}
+                                    to="/docs"
+                                    search={{ section: cap.section }}
+                                    className="bg-muted/20 hover:bg-muted/40 rounded-lg border p-4 transition-colors"
+                                >
+                                    <div className="text-foreground mb-1 text-sm font-semibold">{cap.label}</div>
+                                    <div className="text-muted-foreground text-xs leading-relaxed">{cap.detail}</div>
+                                </Link>
+                            ))}
+                        </div>
+                    </section>
+                </FadeInSection>
 
                 {/* Footer */}
                 <footer className="border-border/40 border-t">
