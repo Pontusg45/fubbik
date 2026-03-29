@@ -77,16 +77,16 @@ export function ChunkBulkActionBar({
 
     function handleBulkDelete() {
         setConfirmAction({
-            title: "Delete chunks",
-            description: `Delete ${selectedIds.size} chunks permanently?`,
+            title: `Delete ${selectedIds.size} chunk${selectedIds.size !== 1 ? "s" : ""}?`,
+            description: "This action cannot be undone. All selected chunks will be permanently deleted.",
             action: () => bulkUpdateMutation.mutate({ ids: [...selectedIds], action: "delete" }),
         });
     }
 
     function handleBulkArchive() {
         setConfirmAction({
-            title: "Archive chunks",
-            description: `Archive ${selectedIds.size} chunks?`,
+            title: `Archive ${selectedIds.size} chunk${selectedIds.size !== 1 ? "s" : ""}?`,
+            description: "Archived chunks can be restored later from the archive view.",
             action: () => bulkUpdateMutation.mutate({ ids: [...selectedIds], action: "archive" }),
         });
     }

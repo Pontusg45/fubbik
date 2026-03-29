@@ -3,6 +3,7 @@ import {
     Activity,
     Blocks,
     BookOpen,
+    ChevronDown,
     ClipboardCheck,
     ClipboardList,
     Clock,
@@ -49,6 +50,7 @@ const manageItems = [
 
 export function MobileNav() {
     const [open, setOpen] = useState(false);
+    const [manageOpen, setManageOpen] = useState(false);
 
     return (
         <Sheet open={open} onOpenChange={setOpen}>
@@ -75,22 +77,29 @@ export function MobileNav() {
                     ))}
                 </nav>
                 <Separator />
-                <div className="px-5 pt-3 pb-1">
+                <button
+                    type="button"
+                    onClick={() => setManageOpen(!manageOpen)}
+                    className="flex w-full items-center justify-between px-5 pt-3 pb-1"
+                >
                     <span className="text-muted-foreground text-xs font-medium uppercase tracking-wide">Manage</span>
-                </div>
-                <nav className="space-y-1 p-2">
-                    {manageItems.map(item => (
-                        <Link
-                            key={item.to}
-                            to={item.to}
-                            onClick={() => setOpen(false)}
-                            className="hover:bg-muted flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors"
-                        >
-                            <item.icon className="size-4" />
-                            {item.label}
-                        </Link>
-                    ))}
-                </nav>
+                    <ChevronDown className={`text-muted-foreground size-3.5 transition-transform ${manageOpen ? "rotate-180" : ""}`} />
+                </button>
+                {manageOpen && (
+                    <nav className="space-y-1 p-2">
+                        {manageItems.map(item => (
+                            <Link
+                                key={item.to}
+                                to={item.to}
+                                onClick={() => setOpen(false)}
+                                className="hover:bg-muted flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors"
+                            >
+                                <item.icon className="size-4" />
+                                {item.label}
+                            </Link>
+                        ))}
+                    </nav>
+                )}
             </SheetContent>
         </Sheet>
     );
