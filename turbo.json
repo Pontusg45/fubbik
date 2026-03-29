@@ -15,7 +15,8 @@
         },
         "test": {
             "dependsOn": ["^build"],
-            "cache": false
+            "inputs": ["src/**", "tests/**", "**/*.test.*", "*.config.*", "package.json"],
+            "outputs": []
         },
         "dev": {
             "cache": false,

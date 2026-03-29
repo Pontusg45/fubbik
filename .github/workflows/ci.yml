@@ -5,9 +5,13 @@ on:
         branches: [main]
     pull_request:
         branches: [main]
+        paths-ignore:
+            - "docs/**"
+            - "*.md"
+            - ".claude/**"
 
 jobs:
-    check:
+    lint-and-format:
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v4
@@ -27,11 +31,34 @@ jobs:
             - name: Format check
               run: bun fmt:check
 
+    typecheck-and-test:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+
+            - uses: oven-sh/setup-bun@v2
+              with:
+                  bun-version: "1.3.9"
+
+            - run: bun install --frozen-lockfile
+
             - name: Type check
               run: bun check-types
 
             - name: Test
               run: bun test
+
+    build:
+        needs: [lint-and-format, typecheck-and-test]
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+
+            - uses: oven-sh/setup-bun@v2
+              with:
+                  bun-version: "1.3.9"
+
+            - run: bun install --frozen-lockfile
 
             - name: Build
               run: bun run build
