@@ -102,7 +102,7 @@ function ChunksList() {
     const {
         selectedIds, setSelectedIds,
         bulkUpdateMutation, singleDeleteMutation, reviewMutation,
-        toggleSelection, toggleAll,
+        handleSelectionClick, toggleAll,
     } = useBulkChunkOperations();
     const queryClient = useQueryClient();
     const [searchInput, setSearchInput] = useState(q ?? "");
@@ -240,6 +240,7 @@ function ChunksList() {
     }, [activeQuery.data, size, pinnedIds]);
 
     const collectionFilteredChunks = processedChunks;
+    const allChunkIds = useMemo(() => collectionFilteredChunks.map(c => c.id), [collectionFilteredChunks]);
 
     const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
     function toggleCollapsed(key: string) {
@@ -356,6 +357,7 @@ function ChunksList() {
                             <kbd className="bg-muted rounded px-1 py-0.5 font-mono text-[10px]">k</kbd> navigate
                             <kbd className="bg-muted ml-2 rounded px-1 py-0.5 font-mono text-[10px]">Enter</kbd> open
                             <kbd className="bg-muted ml-2 rounded px-1 py-0.5 font-mono text-[10px]">n</kbd> new
+                            <kbd className="bg-muted ml-2 rounded px-1 py-0.5 font-mono text-[10px]">Shift</kbd>+click range select
                         </p>
                     </div>
                 </div>
@@ -660,14 +662,19 @@ function ChunksList() {
                             </button>
                             {!collapsed.has(groupName) && (
                                 <Card>
-                                    {items.map((chunk, i) => (
+                                    {items.map((chunk, i) => {
+                                        const globalIndex = collectionFilteredChunks.findIndex(c => c.id === chunk.id);
+                                        return (
                                         <div key={chunk.id}>
                                             {i > 0 && <Separator />}
                                             <CardPanel className="hover:bg-muted/50 flex items-center gap-3 p-4 transition-colors" onMouseEnter={() => handleChunkHover(chunk.id)}>
                                                 <Checkbox
                                                     checked={selectedIds.has(chunk.id)}
-                                                    onCheckedChange={() => toggleSelection(chunk.id)}
-                                                    onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                                                    onCheckedChange={() => { /* handled in onClick */ }}
+                                                    onClick={(e: React.MouseEvent) => {
+                                                        e.stopPropagation();
+                                                        handleSelectionClick(chunk.id, globalIndex, allChunkIds, e);
+                                                    }}
                                                 />
                                                 <button
                                                     onClick={e => {
@@ -763,7 +770,8 @@ function ChunksList() {
                                                 </div>
                                             </CardPanel>
                                         </div>
-                                    ))}
+                                        );
+                                    })}
                                 </Card>
                             )}
                         </div>
@@ -780,8 +788,11 @@ function ChunksList() {
                             >
                                 <Checkbox
                                     checked={selectedIds.has(chunk.id)}
-                                    onCheckedChange={() => toggleSelection(chunk.id)}
-                                    onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                                    onCheckedChange={() => { /* handled in onClick */ }}
+                                    onClick={(e: React.MouseEvent) => {
+                                        e.stopPropagation();
+                                        handleSelectionClick(chunk.id, i, allChunkIds, e);
+                                    }}
                                 />
                                 <button
                                     onClick={e => {

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { api } from "@/utils/api";
@@ -6,6 +6,7 @@ import { api } from "@/utils/api";
 export function useBulkChunkOperations() {
     const queryClient = useQueryClient();
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    const lastSelectedIndex = useRef<number | null>(null);
 
     const bulkUpdateMutation = useMutation({
         mutationFn: async (body: { ids: string[]; action: string; value?: string | null }) => {
@@ -82,12 +83,40 @@ export function useBulkChunkOperations() {
         });
     }
 
+    /**
+     * Handle checkbox click with Shift+click range selection.
+     * Pass the chunk id, its index in the displayed list, the full ordered chunk id list,
+     * and the click event. If Shift is held and there is a previous selection, selects
+     * all chunks in the range.
+     */
+    const handleSelectionClick = useCallback(
+        (id: string, index: number, allIds: string[], event: React.MouseEvent) => {
+            if (event.shiftKey && lastSelectedIndex.current !== null) {
+                const start = Math.min(lastSelectedIndex.current, index);
+                const end = Math.max(lastSelectedIndex.current, index);
+                const rangeIds = allIds.slice(start, end + 1);
+                setSelectedIds(prev => {
+                    const next = new Set(prev);
+                    for (const rid of rangeIds) {
+                        next.add(rid);
+                    }
+                    return next;
+                });
+            } else {
+                toggleSelection(id);
+                lastSelectedIndex.current = index;
+            }
+        },
+        []
+    );
+
     function toggleAll(chunkIds: string[]) {
         if (selectedIds.size === chunkIds.length) {
             setSelectedIds(new Set());
         } else {
             setSelectedIds(new Set(chunkIds));
         }
+        lastSelectedIndex.current = null;
     }
 
     return {
@@ -97,6 +126,7 @@ export function useBulkChunkOperations() {
         singleDeleteMutation,
         reviewMutation,
         toggleSelection,
+        handleSelectionClick,
         toggleAll,
     };
 }

@@ -26,6 +26,7 @@ import { SuggestedConnections } from "@/features/chunks/suggested-connections";
 import { useFavorites } from "@/features/chunks/use-favorites";
 import { useRecentChunks } from "@/features/chunks/use-recent-chunks";
 import { VersionHistory } from "@/features/chunks/version-history";
+import { useRecentlyViewed } from "@/hooks/use-recently-viewed";
 import { getUser } from "@/functions/get-user";
 import { api } from "@/utils/api";
 import { archiveChunk } from "@/utils/api-helpers";
@@ -48,6 +49,7 @@ function ChunkDetail() {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
     const { trackView } = useRecentChunks();
+    const { addItem: addRecentlyViewed } = useRecentlyViewed();
     const { toggleFavorite, isFavorite } = useFavorites();
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
@@ -63,6 +65,13 @@ function ChunkDetail() {
             return data;
         }
     });
+
+    // Track in recently viewed (with title/type) once data loads
+    useEffect(() => {
+        if (data?.chunk) {
+            addRecentlyViewed({ id: data.chunk.id, title: data.chunk.title, type: data.chunk.type });
+        }
+    }, [data?.chunk?.id, data?.chunk?.title, data?.chunk?.type, addRecentlyViewed]);
 
     const reviewMutation = useMutation({
         mutationFn: async (reviewStatus: "reviewed" | "approved") => {
