@@ -18,7 +18,7 @@ import {
     type Viewport
 } from "@xyflow/react";
 import { toPng } from "html-to-image";
-import { Download, ExternalLink, Route, Save, Settings2 } from "lucide-react";
+import { Route } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -33,6 +33,7 @@ import { FloatingEdge } from "@/features/graph/floating-edge";
 import { runForceLayout } from "@/features/graph/force-layout";
 import { GraphDetailPanel } from "@/features/graph/graph-detail-panel";
 import { GraphFilters } from "@/features/graph/graph-filters";
+import { GraphSettingsPanel } from "@/features/graph/graph-settings-panel";
 import { GraphLegend } from "@/features/graph/graph-legend";
 import { GraphMetrics } from "@/features/graph/graph-metrics";
 import { GraphNode } from "@/features/graph/graph-node";
@@ -1403,154 +1404,43 @@ function GraphViewInner() {
                             />
                         </PopoverPopup>
                     </Popover>
-                    <Popover>
-                        <PopoverTrigger className="bg-background/80 text-muted-foreground hover:text-foreground rounded-md border p-1.5 backdrop-blur-sm">
-                            <Settings2 className="size-4" />
-                        </PopoverTrigger>
-                        <PopoverPopup side="bottom" align="end" sideOffset={8} className="w-56">
-                            <div className="flex flex-col gap-3">
-                                <div>
-                                    <label className="text-muted-foreground mb-1 block text-[10px] font-medium tracking-wider uppercase">
-                                        Layout
-                                    </label>
-                                    <select
-                                        value={layoutAlgorithm}
-                                        onChange={e => dispatch({ type: "SET_LAYOUT_ALGORITHM", algorithm: e.target.value as LayoutAlgorithm })}
-                                        className="bg-background w-full rounded-md border px-2 py-1.5 text-xs"
-                                    >
-                                        <option value="force">Force-directed</option>
-                                        <option value="hierarchical">Tree</option>
-                                        <option value="radial">Radial</option>
-                                    </select>
-                                </div>
-                                {draggedPositions.size > 0 && (
-                                    <button
-                                        onClick={() => setDraggedPositions(new Map())}
-                                        className="text-muted-foreground hover:text-foreground w-full rounded-md border px-2.5 py-1.5 text-left text-xs"
-                                    >
-                                        Reset layout
-                                    </button>
-                                )}
-                                <div className="flex flex-col gap-2">
-                                    <label className="text-muted-foreground text-[10px] font-medium tracking-wider uppercase">Tools</label>
-                                    <button
-                                        onClick={() => {
-                                            if (!exploreMode) {
-                                                dispatch({ type: "SET_EXPLORE_MODE", enabled: true });
-                                                dispatch({ type: "SET_EXPLORED_NODE_IDS", ids: selectedChunkId ? new Set([selectedChunkId]) : new Set() });
-                                            } else {
-                                                dispatch({ type: "SET_EXPLORE_MODE", enabled: false });
-                                            }
-                                        }}
-                                        className={`w-full rounded-md border px-2.5 py-1.5 text-left text-xs ${
-                                            exploreMode
-                                                ? "bg-primary text-primary-foreground"
-                                                : "text-muted-foreground hover:text-foreground"
-                                        }`}
-                                    >
-                                        Explore mode
-                                        {exploreMode && <span className="ml-1 opacity-70">({exploredNodeIds.size})</span>}
-                                    </button>
-                                    {exploreMode && (
-                                        <button
-                                            onClick={() => dispatch({ type: "SET_EXPLORED_NODE_IDS", ids: new Set() })}
-                                            className="text-muted-foreground hover:text-foreground w-full rounded-md border px-2.5 py-1.5 text-left text-xs"
-                                        >
-                                            Reset explored
-                                        </button>
-                                    )}
-                                    <button
-                                        onClick={() => dispatch({ type: "TOGGLE_BUNDLE_EDGES" })}
-                                        className={`w-full rounded-md border px-2.5 py-1.5 text-left text-xs ${
-                                            bundleEdges
-                                                ? "bg-primary text-primary-foreground"
-                                                : "text-muted-foreground hover:text-foreground"
-                                        }`}
-                                    >
-                                        Bundle edges
-                                    </button>
-                                    <button
-                                        onClick={() => dispatch({ type: "TOGGLE_USE_MAIN_THREAD" })}
-                                        className={`w-full rounded-md border px-2.5 py-1.5 text-left text-xs ${
-                                            useMainThread
-                                                ? "bg-primary text-primary-foreground"
-                                                : "text-muted-foreground hover:text-foreground"
-                                        }`}
-                                    >
-                                        Main-thread layout
-                                    </button>
-                                </div>
-                                <div className="flex flex-col gap-2">
-                                    <label className="text-muted-foreground text-[10px] font-medium tracking-wider uppercase">Views</label>
-                                    <button
-                                        onClick={() => dispatch({ type: "SET_SHOW_SAVE_DIALOG", show: true })}
-                                        className="text-muted-foreground hover:text-foreground w-full rounded-md border px-2.5 py-1.5 text-left text-xs"
-                                    >
-                                        Save current view...
-                                    </button>
-                                    {savedViews.map(view => (
-                                        <div key={view.name} className="flex items-center justify-between gap-1">
-                                            <button
-                                                className="text-muted-foreground hover:text-foreground flex-1 truncate rounded-md border px-2.5 py-1.5 text-left text-xs"
-                                                onClick={() => dispatch({
-                                                    type: "RESTORE_VIEW",
-                                                    filterTypes: view.filterTypes,
-                                                    filterRelations: view.filterRelations,
-                                                    collapsedParents: view.collapsedParents,
-                                                    layoutAlgorithm: view.layoutAlgorithm as LayoutAlgorithm,
-                                                    focusNodeId: view.focusNodeId,
-                                                })}
-                                            >
-                                                {view.name}
-                                            </button>
-                                            <button
-                                                className="text-muted-foreground hover:text-destructive shrink-0 rounded p-1"
-                                                onClick={() => deleteSavedView(view.name)}
-                                            >
-                                                <span className="text-[10px]">✕</span>
-                                            </button>
-                                        </div>
-                                    ))}
-                                </div>
-                                <div className="flex flex-col gap-2">
-                                    <label className="text-muted-foreground text-[10px] font-medium tracking-wider uppercase">Custom Graphs</label>
-                                    <button
-                                        onClick={() => setShowSaveCustomDialog(true)}
-                                        className="text-muted-foreground hover:text-foreground flex w-full items-center gap-2 rounded-md border px-2.5 py-1.5 text-left text-xs"
-                                    >
-                                        <Save className="size-3" />
-                                        Save as custom graph...
-                                    </button>
-                                    {(savedGraphsQuery.data ?? []).map((sg: { id: string; name: string }) => (
-                                        <div key={sg.id} className="flex items-center justify-between gap-1">
-                                            <button
-                                                className="text-muted-foreground hover:text-foreground flex flex-1 items-center gap-1.5 truncate rounded-md border px-2.5 py-1.5 text-left text-xs"
-                                                onClick={() => navigate({ to: "/graph/$graphId", params: { graphId: sg.id } })}
-                                            >
-                                                <ExternalLink className="size-3 shrink-0" />
-                                                {sg.name}
-                                            </button>
-                                            <button
-                                                className="text-muted-foreground hover:text-destructive shrink-0 rounded p-1"
-                                                onClick={() => deleteCustomGraphMutation.mutate(sg.id)}
-                                            >
-                                                <span className="text-[10px]">✕</span>
-                                            </button>
-                                        </div>
-                                    ))}
-                                </div>
-                                <div className="border-t pt-3">
-                                    <button
-                                        onClick={handleExportImage}
-                                        className="text-muted-foreground hover:text-foreground flex w-full items-center gap-2 rounded-md border px-2.5 py-1.5 text-xs"
-                                    >
-                                        <Download className="size-3.5" />
-                                        Export as PNG
-                                    </button>
-                                </div>
-                            </div>
-                        </PopoverPopup>
-                    </Popover>
+                    <GraphSettingsPanel
+                        layoutAlgorithm={layoutAlgorithm}
+                        onLayoutChange={(algorithm) => dispatch({ type: "SET_LAYOUT_ALGORITHM", algorithm })}
+                        hasDraggedPositions={draggedPositions.size > 0}
+                        onResetLayout={() => setDraggedPositions(new Map())}
+                        exploreMode={exploreMode}
+                        exploredNodeIds={exploredNodeIds}
+                        onToggleExploreMode={() => {
+                            if (!exploreMode) {
+                                dispatch({ type: "SET_EXPLORE_MODE", enabled: true });
+                                dispatch({ type: "SET_EXPLORED_NODE_IDS", ids: selectedChunkId ? new Set([selectedChunkId]) : new Set() });
+                            } else {
+                                dispatch({ type: "SET_EXPLORE_MODE", enabled: false });
+                            }
+                        }}
+                        onResetExplored={() => dispatch({ type: "SET_EXPLORED_NODE_IDS", ids: new Set() })}
+                        bundleEdges={bundleEdges}
+                        onToggleBundleEdges={() => dispatch({ type: "TOGGLE_BUNDLE_EDGES" })}
+                        useMainThread={useMainThread}
+                        onToggleMainThread={() => dispatch({ type: "TOGGLE_USE_MAIN_THREAD" })}
+                        onSaveView={() => dispatch({ type: "SET_SHOW_SAVE_DIALOG", show: true })}
+                        savedViews={savedViews}
+                        onRestoreView={(view) => dispatch({
+                            type: "RESTORE_VIEW",
+                            filterTypes: view.filterTypes,
+                            filterRelations: view.filterRelations,
+                            collapsedParents: view.collapsedParents,
+                            layoutAlgorithm: view.layoutAlgorithm as LayoutAlgorithm,
+                            focusNodeId: view.focusNodeId,
+                        })}
+                        onDeleteView={deleteSavedView}
+                        onSaveCustomGraph={() => setShowSaveCustomDialog(true)}
+                        savedGraphs={Array.isArray(savedGraphsQuery.data) ? savedGraphsQuery.data : []}
+                        onOpenGraph={(id) => navigate({ to: "/graph/$graphId", params: { graphId: id } })}
+                        onDeleteGraph={(id) => deleteCustomGraphMutation.mutate(id)}
+                        onExportImage={handleExportImage}
+                    />
                     <span className="text-muted-foreground bg-background/80 rounded-lg border px-3 py-1.5 text-xs backdrop-blur-sm">
                         {nodes.length - 1} · {edges.length}
                     </span>
