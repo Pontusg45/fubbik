@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { Effect } from "effect";
 
 import { DatabaseError } from "../errors";
@@ -18,6 +18,17 @@ export function getFileRefsForChunk(chunkId: string) {
                 })
                 .from(chunkFileRef)
                 .where(eq(chunkFileRef.chunkId, chunkId)),
+        catch: cause => new DatabaseError({ cause })
+    });
+}
+
+export function getFileRefsForChunks(chunkIds: string[]) {
+    return Effect.tryPromise({
+        try: () =>
+            db
+                .select()
+                .from(chunkFileRef)
+                .where(inArray(chunkFileRef.chunkId, chunkIds)),
         catch: cause => new DatabaseError({ cause })
     });
 }

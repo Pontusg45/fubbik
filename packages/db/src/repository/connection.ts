@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, inArray, or } from "drizzle-orm";
 import { Effect } from "effect";
 
 import { DatabaseError } from "../errors";
@@ -11,6 +11,19 @@ export function createConnection(params: { id: string; sourceId: string; targetI
             const [created] = await db.insert(chunkConnection).values(params).returning();
             return created;
         },
+        catch: cause => new DatabaseError({ cause })
+    });
+}
+
+export function getConnectionsForChunks(chunkIds: string[]) {
+    return Effect.tryPromise({
+        try: () =>
+            db
+                .select()
+                .from(chunkConnection)
+                .where(
+                    or(inArray(chunkConnection.sourceId, chunkIds), inArray(chunkConnection.targetId, chunkIds))
+                ),
         catch: cause => new DatabaseError({ cause })
     });
 }
