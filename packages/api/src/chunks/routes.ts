@@ -62,6 +62,29 @@ export const chunkRoutes = new Elysia()
         }
     )
     .post(
+        "/chunks/import-docs",
+        ctx =>
+            Effect.runPromise(
+                requireSession(ctx).pipe(
+                    Effect.flatMap(session =>
+                        chunkService.importDocs(session.user.id, ctx.body.files, ctx.body.codebaseId)
+                    )
+                )
+            ),
+        {
+            body: t.Object({
+                files: t.Array(
+                    t.Object({
+                        path: t.String({ maxLength: 500 }),
+                        content: t.String({ maxLength: 100000 })
+                    }),
+                    { maxItems: 500 }
+                ),
+                codebaseId: t.String()
+            })
+        }
+    )
+    .post(
         "/chunks/bulk-update",
         ctx =>
             Effect.runPromise(

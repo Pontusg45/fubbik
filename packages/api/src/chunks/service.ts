@@ -28,6 +28,7 @@ import {
 import { Effect } from "effect";
 
 import { enrichChunk } from "../enrich/service";
+import { parseDocFile } from "./parse-docs";
 import { NotFoundError } from "../errors";
 import { events, EVENTS } from "../events/bus";
 import { generateQueryEmbedding } from "../ollama/client";
@@ -299,6 +300,48 @@ export function importChunks(userId: string, chunks: { title: string; content?: 
         chunks.map(c => createChunk(userId, c)),
         { concurrency: 10 }
     );
+}
+
+export function importDocs(
+    userId: string,
+    files: { path: string; content: string }[],
+    codebaseId: string
+) {
+    const results: { created: number; skipped: number; errors: { path: string; error: string }[] } = {
+        created: 0,
+        skipped: 0,
+        errors: []
+    };
+
+    return Effect.forEach(
+        files,
+        file =>
+            Effect.try(() => parseDocFile(file.path, file.content)).pipe(
+                Effect.flatMap(parsed => {
+                    if (!parsed.content && !parsed.title) {
+                        results.skipped++;
+                        return Effect.void;
+                    }
+                    return createChunk(userId, {
+                        title: parsed.title,
+                        content: parsed.content,
+                        type: parsed.type,
+                        tags: parsed.tags,
+                        codebaseIds: [codebaseId]
+                    }).pipe(
+                        Effect.tap(() => {
+                            results.created++;
+                            return Effect.void;
+                        })
+                    );
+                }),
+                Effect.catchAll(err => {
+                    results.errors.push({ path: file.path, error: String(err) });
+                    return Effect.void;
+                })
+            ),
+        { concurrency: 10 }
+    ).pipe(Effect.map(() => results));
 }
 
 export function deleteChunk(chunkId: string, userId: string) {
