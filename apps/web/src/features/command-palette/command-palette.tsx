@@ -4,34 +4,75 @@ import {
     Activity,
     Blocks,
     BookOpen,
+    ClipboardCheck,
     Clock,
     FileCode,
     FileText,
     Globe,
     Hash,
     LayoutDashboard,
+    ListChecks,
     Network,
     Plus,
     Search,
     Server,
+    Settings,
     Tags,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Kbd } from "@/components/ui/kbd";
+import { useActiveCodebase } from "@/features/codebases/use-active-codebase";
 import { useRecentChunks } from "@/features/chunks/use-recent-chunks";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { useLocalStorage } from "@/hooks/use-local-storage";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
+
+type CommandGroup =
+    | "Recent"
+    | "Pages"
+    | "Tags"
+    | "Chunks"
+    | "Requirements"
+    | "Plans"
+    | "Codebases"
+    | "Actions"
+    | "All Codebases";
 
 interface CommandItem {
     id: string;
     title: string;
-    group: "Recent" | "Pages" | "Tags" | "Chunks" | "Actions" | "All Codebases";
+    group: CommandGroup;
     icon: React.ReactNode;
     badge?: string;
     onSelect: () => void;
+}
+
+// --- Recent pages tracking ---
+interface RecentPage {
+    path: string;
+    title: string;
+    timestamp: number;
+}
+
+const MAX_RECENT_PAGES = 5;
+
+export function useRecentPages() {
+    const [pages, setPages] = useLocalStorage<RecentPage[]>("fubbik:recent-pages", []);
+
+    const trackPage = useCallback(
+        (path: string, title: string) => {
+            setPages((prev) => {
+                const filtered = prev.filter((p) => p.path !== path);
+                return [{ path, title, timestamp: Date.now() }, ...filtered].slice(0, MAX_RECENT_PAGES);
+            });
+        },
+        [setPages]
+    );
+
+    return { recentPages: pages, trackPage };
 }
 
 const PAGE_ITEMS: Array<{ id: string; title: string; path: string; icon: React.ReactNode }> = [
@@ -52,17 +93,22 @@ const ACTION_ITEMS: Array<{
     path: string;
     search?: Record<string, string>;
     icon: React.ReactNode;
+    /** If set, this action triggers a sub-mode instead of navigating */
+    subMode?: string;
 }> = [
     { id: "action-new-chunk", title: "New Chunk", path: "/chunks/new", icon: <Plus className="size-4" /> },
     { id: "action-new-note", title: "New Note", path: "/chunks/new", search: { type: "note" }, icon: <FileText className="size-4" /> },
     { id: "action-new-document", title: "New Document", path: "/chunks/new", search: { type: "document" }, icon: <FileText className="size-4" /> },
     { id: "action-new-requirement", title: "New Requirement", path: "/requirements/new", icon: <Plus className="size-4" /> },
+    { id: "action-new-plan", title: "New Plan", path: "/plans/new", icon: <Plus className="size-4" /> },
+    { id: "action-switch-codebase", title: "Switch Codebase", path: "", icon: <Settings className="size-4" />, subMode: "codebase" },
     { id: "action-view-health", title: "View Health", path: "/knowledge-health", icon: <Activity className="size-4" /> },
 ];
 
 export function CommandPalette() {
     const [open, setOpen] = useState(false);
     const [query, setQuery] = useState("");
+    const [subMode, setSubMode] = useState<string | null>(null);
     const [selectedIndex, setSelectedIndex] = useState(0);
     const inputRef = useRef<HTMLInputElement>(null);
     const listRef = useRef<HTMLDivElement>(null);
@@ -70,6 +116,8 @@ export function CommandPalette() {
 
     const debouncedQuery = useDebouncedValue(query, 200);
     const { recentIds } = useRecentChunks();
+    const { recentPages } = useRecentPages();
+    const { setCodebaseId } = useActiveCodebase();
 
     const isTagSearch = query.startsWith("#");
     const tagQuery = isTagSearch ? query.slice(1).toLowerCase() : "";
@@ -92,6 +140,7 @@ export function CommandPalette() {
     const close = useCallback(() => {
         setOpen(false);
         setQuery("");
+        setSubMode(null);
         setSelectedIndex(0);
     }, []);
 
@@ -151,6 +200,58 @@ export function CommandPalette() {
         enabled: open && isTagSearch,
     });
 
+    // Search requirements via API
+    const requirementsSearch = useQuery({
+        queryKey: ["command-palette-requirements", debouncedQuery],
+        queryFn: async () => {
+            if (!debouncedQuery.trim()) return null;
+            try {
+                return unwrapEden(
+                    await api.api.requirements.get({
+                        query: { search: debouncedQuery, limit: "5" },
+                    })
+                ) as { requirements: Array<{ id: string; title: string; status: string; priority: string }>; total: number };
+            } catch {
+                return null;
+            }
+        },
+        enabled: open && debouncedQuery.length > 1 && !isTagSearch && !isFederatedSearch && subMode === null,
+    });
+
+    // Search plans via API (fetch all and filter client-side since API doesn't support search param)
+    const plansSearch = useQuery({
+        queryKey: ["command-palette-plans"],
+        queryFn: async () => {
+            try {
+                return unwrapEden(
+                    await api.api.plans.get({ query: {} })
+                ) as Array<{ id: string; title: string; status: string }>;
+            } catch {
+                return [];
+            }
+        },
+        enabled: open && debouncedQuery.length > 1 && !isTagSearch && !isFederatedSearch && subMode === null,
+        staleTime: 30_000,
+    });
+
+    // Fetch codebases for Switch Codebase sub-mode
+    const codebasesQuery = useQuery({
+        queryKey: ["command-palette-codebases"],
+        queryFn: async () => {
+            try {
+                return unwrapEden(await api.api.codebases.get()) as Array<{
+                    id: string;
+                    name: string;
+                    remoteUrl: string | null;
+                }>;
+            } catch {
+                return [];
+            }
+        },
+        enabled: open && subMode === "codebase",
+        staleTime: 60_000,
+    });
+
     // Fetch recent chunk details
     const recentChunksQuery = useQuery({
         queryKey: ["command-palette-recent", recentIds],
@@ -181,6 +282,28 @@ export function CommandPalette() {
     const items = useMemo(() => {
         const lowerQuery = query.toLowerCase();
         const result: CommandItem[] = [];
+
+        // Sub-mode: codebase switcher
+        if (subMode === "codebase") {
+            const codebases = codebasesQuery.data ?? [];
+            const filtered = codebases.filter(
+                (c) => !lowerQuery || c.name.toLowerCase().includes(lowerQuery)
+            );
+            for (const cb of filtered) {
+                result.push({
+                    id: `cb-${cb.id}`,
+                    title: cb.name,
+                    group: "Codebases",
+                    icon: <Server className="size-4" />,
+                    badge: cb.remoteUrl ? "git" : undefined,
+                    onSelect: () => {
+                        setCodebaseId(cb.id);
+                        close();
+                    },
+                });
+            }
+            return result;
+        }
 
         // Federated search mode: when query starts with *
         if (isFederatedSearch) {
@@ -225,6 +348,22 @@ export function CommandPalette() {
 
         // Recent items (shown when query is empty)
         if (!query.trim()) {
+            // Recent pages first
+            for (const page of recentPages) {
+                result.push({
+                    id: `recent-page-${page.path}`,
+                    title: page.title,
+                    group: "Recent",
+                    icon: <Clock className="size-4" />,
+                    badge: "Page",
+                    onSelect: () => {
+                        navigate({ to: page.path });
+                        close();
+                    },
+                });
+            }
+
+            // Recent chunks
             const recentChunks = recentChunksQuery.data ?? [];
             for (const item of recentChunks) {
                 if (!item) continue;
@@ -274,6 +413,43 @@ export function CommandPalette() {
             });
         }
 
+        // Requirements from API search
+        if (debouncedQuery.length > 1) {
+            const requirements = requirementsSearch.data?.requirements ?? [];
+            for (const req of requirements.slice(0, 5)) {
+                result.push({
+                    id: `req-${req.id}`,
+                    title: req.title,
+                    group: "Requirements",
+                    icon: <ClipboardCheck className="size-4" />,
+                    badge: req.status,
+                    onSelect: () => {
+                        navigate({ to: "/requirements/$requirementId", params: { requirementId: req.id } });
+                        close();
+                    },
+                });
+            }
+
+            // Plans (client-side filtered)
+            const allPlans = Array.isArray(plansSearch.data) ? plansSearch.data : [];
+            const filteredPlans = allPlans
+                .filter((p) => p.title.toLowerCase().includes(lowerQuery))
+                .slice(0, 5);
+            for (const plan of filteredPlans) {
+                result.push({
+                    id: `plan-${plan.id}`,
+                    title: plan.title,
+                    group: "Plans",
+                    icon: <ListChecks className="size-4" />,
+                    badge: plan.status,
+                    onSelect: () => {
+                        navigate({ to: "/plans/$planId", params: { planId: plan.id } });
+                        close();
+                    },
+                });
+            }
+        }
+
         // Actions (filtered by query)
         const filteredActions = ACTION_ITEMS.filter(
             (a) => !lowerQuery || a.title.toLowerCase().includes(lowerQuery)
@@ -285,14 +461,20 @@ export function CommandPalette() {
                 group: "Actions",
                 icon: action.icon,
                 onSelect: () => {
-                    navigate({ to: action.path, search: action.search ?? {} });
-                    close();
+                    if (action.subMode) {
+                        setSubMode(action.subMode);
+                        setQuery("");
+                        setSelectedIndex(0);
+                    } else {
+                        navigate({ to: action.path, search: action.search ?? {} });
+                        close();
+                    }
                 },
             });
         }
 
         return result;
-    }, [query, isTagSearch, isFederatedSearch, tagQuery, tagSearch.data, federatedSearch.data, recentChunksQuery.data, chunkSearch.data, navigate, close]);
+    }, [query, debouncedQuery, subMode, isTagSearch, isFederatedSearch, tagQuery, tagSearch.data, federatedSearch.data, recentPages, recentChunksQuery.data, chunkSearch.data, requirementsSearch.data, plansSearch.data, codebasesQuery.data, navigate, close, setCodebaseId]);
 
     // Clamp selected index when items change
     useEffect(() => {
@@ -320,10 +502,19 @@ export function CommandPalette() {
                 items[selectedIndex]?.onSelect();
             } else if (e.key === "Escape") {
                 e.preventDefault();
-                close();
+                if (subMode) {
+                    setSubMode(null);
+                    setQuery("");
+                    setSelectedIndex(0);
+                } else {
+                    close();
+                }
+            } else if (e.key === "Backspace" && query === "" && subMode) {
+                e.preventDefault();
+                setSubMode(null);
             }
         },
-        [items, selectedIndex, close]
+        [items, selectedIndex, close, subMode, query]
     );
 
     if (!open) return null;
@@ -359,6 +550,11 @@ export function CommandPalette() {
                     {/* Search input */}
                     <div className="flex items-center gap-2 border-b px-4 py-3">
                         <Search className="text-muted-foreground size-4 shrink-0" />
+                        {subMode && (
+                            <Badge variant="secondary" size="sm" className="shrink-0">
+                                {subMode === "codebase" ? "Switch Codebase" : subMode}
+                            </Badge>
+                        )}
                         <input
                             ref={inputRef}
                             type="text"
@@ -367,7 +563,11 @@ export function CommandPalette() {
                                 setQuery(e.target.value);
                                 setSelectedIndex(0);
                             }}
-                            placeholder="Type a command or search... (# tags, * all codebases)"
+                            placeholder={
+                                subMode === "codebase"
+                                    ? "Filter codebases..."
+                                    : "Type a command or search... (# tags, * all codebases)"
+                            }
                             autoFocus
                             className="placeholder:text-muted-foreground flex-1 bg-transparent text-sm outline-none"
                         />
@@ -414,15 +614,13 @@ export function CommandPalette() {
                                                 </Badge>
                                             ) : (
                                                 <Badge variant="secondary" size="sm">
-                                                    {item.group === "Recent"
-                                                        ? "Recent"
-                                                        : item.group === "Pages"
-                                                          ? "Page"
-                                                          : item.group === "Tags"
-                                                            ? "Tag"
-                                                            : item.group === "Chunks"
-                                                              ? "Chunk"
-                                                              : "Action"}
+                                                    {item.group === "All Codebases"
+                                                        ? "Global"
+                                                        : item.group === "Codebases"
+                                                          ? "Codebase"
+                                                          : item.group === "Actions"
+                                                            ? "Action"
+                                                            : item.group}
                                                 </Badge>
                                             )}
                                         </button>

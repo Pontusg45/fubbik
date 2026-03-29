@@ -20,6 +20,7 @@ import { MobileNav } from "@/features/nav/mobile-nav";
 import { CodebaseSwitcher } from "@/features/codebases/codebase-switcher";
 import { CommandPalette } from "@/features/command-palette/command-palette";
 import { NotificationBell } from "@/features/nav/notification-bell";
+import { RecentlyViewed } from "@/features/nav/recently-viewed";
 
 import appCss from "../index.css?url";
 
@@ -64,6 +65,12 @@ function RootDocument() {
             </head>
             <body>
                 <ThemeProvider>
+                    <a
+                        href="#main-content"
+                        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded-md focus:bg-background focus:px-4 focus:py-2 focus:text-sm focus:shadow-lg"
+                    >
+                        Skip to main content
+                    </a>
                     <div className={isLanding ? "min-h-svh" : ""}>
                         {!isLanding && (
                             <header className="border-b">
@@ -73,7 +80,7 @@ function RootDocument() {
                                         <span className="font-bold">fubbik</span>
                                     </Link>
                                     <CodebaseSwitcher />
-                                    <nav className="hidden items-center gap-1 md:flex">
+                                    <nav aria-label="Main navigation" className="hidden items-center gap-1 md:flex">
                                         <Link
                                             to="/dashboard"
                                             className="text-muted-foreground hover:text-foreground [&.active]:text-foreground rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
@@ -177,6 +184,7 @@ function RootDocument() {
                                     </nav>
                                     <div className="flex items-center gap-2">
                                         <MobileNav />
+                                        <RecentlyViewed />
                                         <NotificationBell />
                                         <ThemeToggle />
                                         <UserMenu />
@@ -186,7 +194,7 @@ function RootDocument() {
                         )}
                         {!isLanding && <ConnectionStatus />}
                         {!isLanding && <Breadcrumbs />}
-                        <main>
+                        <main id="main-content">
                             <ErrorBoundary>
                                 <Outlet />
                             </ErrorBoundary>

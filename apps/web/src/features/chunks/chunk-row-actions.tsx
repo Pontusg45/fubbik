@@ -22,7 +22,7 @@ export function ChunkRowActions({ chunkId, isPinned, onTogglePin, onDelete }: Ch
         <DropdownMenu>
             <DropdownMenuTrigger
                 render={
-                    <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground size-7 p-0">
+                    <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground size-7 p-0" aria-label="Chunk actions">
                         <MoreHorizontal className="size-4" />
                     </Button>
                 }
