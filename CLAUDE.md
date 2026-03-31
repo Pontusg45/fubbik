@@ -329,7 +329,7 @@ The server exposes Swagger/OpenAPI at `/docs` (e.g., `http://localhost:3000/docs
 - `fubbik context-for <path>` — generate context document for a file (with `--include-deps`)
 - `fubbik context-dir <dir>` — generate CLAUDE.md-style context for a directory
 - `fubbik sync-claude-md` — generate/watch .claude/CLAUDE.md from tagged chunks
-- `fubbik import-docs <path> --codebase <name>` — import folder of markdown docs as chunks
+- `fubbik import <path>` — import chunks from JSON file, .md file, or directory (use `--server`/`--codebase` for server mode)
 - `fubbik completions <shell>` — generate shell completions (zsh)
 - List/add/search support `--global` and `--codebase <name>` flags for scoping
 
