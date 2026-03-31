@@ -21,10 +21,58 @@ function requireServer(): string {
     return serverUrl;
 }
 
+const GENERIC_TAGS = new Set([
+    "docs",
+    "documentation",
+    "document",
+    "plans",
+    "plan",
+    "notes",
+    "note",
+    "general",
+    "misc",
+    "other",
+]);
+
+function computeQualityScore(chunk: any): number {
+    let score = 0;
+
+    // Content > 100 chars: +20
+    if (chunk.content && chunk.content.length > 100) score += 20;
+
+    // Has rationale: +20
+    if (chunk.rationale) score += 20;
+
+    // Has connections (> 0): +15
+    const connections = chunk.connections ?? chunk.sourceConnections ?? [];
+    const targetConnections = chunk.targetConnections ?? [];
+    if (connections.length > 0 || targetConnections.length > 0) score += 15;
+
+    // Has appliesTo patterns: +15
+    const appliesTo = chunk.appliesTo ?? [];
+    if (appliesTo.length > 0) score += 15;
+
+    // Has meaningful tags: +15
+    const tags: string[] = Array.isArray(chunk.tags)
+        ? chunk.tags.map((t: any) => (typeof t === "string" ? t : t.name ?? ""))
+        : [];
+    const meaningfulTags = tags.filter((t: string) => !GENERIC_TAGS.has(t.toLowerCase()));
+    if (meaningfulTags.length > 0) score += 15;
+
+    // Has type other than "note" or "guide": +5
+    if (chunk.type && chunk.type !== "note" && chunk.type !== "guide") score += 5;
+
+    // Has AI summary: +10
+    if (chunk.summary) score += 10;
+
+    return score;
+}
+
 export const lintCommand = new Command("lint")
     .description("Check all chunks for quality issues")
     .option("--codebase <name>", "scope to codebase")
     .option("--fix", "auto-fix safe issues (e.g. enrich unenriched chunks)")
+    .option("--score", "compute and display quality scores per chunk")
     .action(async (opts, cmd) => {
         const serverUrl = requireServer();
 
@@ -136,6 +184,85 @@ export const lintCommand = new Command("lint")
                         message: "Chunk not updated in 30+ days but neighbors have been"
                     });
                 }
+            }
+
+            // Score mode
+            if (opts.score) {
+                // Fetch detailed chunk data for connections/appliesTo
+                // Use concurrency control to avoid rate limits
+                const scored: { title: string; type: string; score: number; id: string }[] = [];
+                const CONCURRENCY = 5;
+
+                for (let i = 0; i < chunks.length; i += CONCURRENCY) {
+                    const batch = chunks.slice(i, i + CONCURRENCY);
+                    const results = await Promise.allSettled(
+                        batch.map(async (chunk: any) => {
+                            let detail = chunk;
+                            try {
+                                const detailRes = await fetch(`${serverUrl}/api/chunks/${chunk.id}`);
+                                if (detailRes.ok) {
+                                    detail = await detailRes.json();
+                                }
+                            } catch {
+                                // Use basic chunk data if detail fetch fails
+                            }
+                            return {
+                                id: chunk.id,
+                                title: chunk.title,
+                                type: chunk.type,
+                                score: computeQualityScore(detail),
+                            };
+                        })
+                    );
+                    for (const result of results) {
+                        if (result.status === "fulfilled") {
+                            scored.push(result.value);
+                        }
+                    }
+                }
+
+                scored.sort((a, b) => a.score - b.score);
+
+                if (isJson(cmd)) {
+                    const avg = scored.length > 0
+                        ? Math.round(scored.reduce((s, c) => s + c.score, 0) / scored.length)
+                        : 0;
+                    console.log(
+                        JSON.stringify(
+                            {
+                                scores: scored,
+                                summary: {
+                                    average: avg,
+                                    below50: scored.filter((s) => s.score < 50).length,
+                                    above80: scored.filter((s) => s.score >= 80).length,
+                                    total: scored.length,
+                                },
+                            },
+                            null,
+                            2
+                        )
+                    );
+                    return;
+                }
+
+                console.error(formatBold("Quality scores (lowest first):"));
+                for (const item of scored) {
+                    const scoreStr = String(item.score).padStart(3);
+                    console.error(
+                        `  ${scoreStr}  [${item.type}] ${item.title}`
+                    );
+                }
+
+                const avg = scored.length > 0
+                    ? Math.round(scored.reduce((s, c) => s + c.score, 0) / scored.length)
+                    : 0;
+                const below50 = scored.filter((s) => s.score < 50).length;
+                const above80 = scored.filter((s) => s.score >= 80).length;
+
+                console.error(
+                    `\nAverage: ${avg} | Below 50: ${below50} chunks | Above 80: ${above80} chunks`
+                );
+                return;
             }
 
             // Output

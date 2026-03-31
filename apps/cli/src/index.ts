@@ -4,6 +4,7 @@ import { addCommand } from "./commands/add";
 import { bulkAddCommand } from "./commands/bulk-add";
 import { catCommand } from "./commands/cat";
 import { checkFilesCommand } from "./commands/check-files";
+import { cleanupCommand } from "./commands/cleanup";
 import { codebaseCommand } from "./commands/codebase";
 import { contextCommand } from "./commands/context";
 import { contextDirCommand } from "./commands/context-dir";
@@ -40,6 +41,7 @@ import { statusCommand } from "./commands/status";
 import { suggestCommand } from "./commands/suggest";
 import { syncCommand } from "./commands/sync";
 import { syncClaudeMdCommand } from "./commands/sync-claude-md";
+import { tagNormalizeCommand } from "./commands/tag-normalize";
 import { tagsCommand } from "./commands/tags";
 import { taskCommand } from "./commands/task";
 import { unlinkCommand } from "./commands/unlink";
@@ -85,6 +87,7 @@ program.addCommand(contextForCommand);
 program.addCommand(generateCommand);
 program.addCommand(requirementsCommand);
 program.addCommand(checkFilesCommand);
+program.addCommand(cleanupCommand);
 program.addCommand(hooksCommand);
 program.addCommand(lintCommand);
 program.addCommand(planCommand);
@@ -101,6 +104,7 @@ program.addCommand(watchCommand);
 program.addCommand(whyCommand);
 program.addCommand(gapsCommand);
 program.addCommand(seedConventionsCommand);
+program.addCommand(tagNormalizeCommand);
 
 program.command("completions")
     .description("Generate shell completions")
