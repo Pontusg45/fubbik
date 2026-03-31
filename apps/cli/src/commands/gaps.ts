@@ -1,6 +1,7 @@
 import { readdirSync, statSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 import { Command } from "commander";
+import pc from "picocolors";
 import { output, outputError } from "../lib/output";
 import { getServerUrl } from "../lib/store";
 import { resolveCodebaseId } from "../lib/detect-codebase";
@@ -92,11 +93,13 @@ export const gapsCommand = new Command("gaps")
 
         const coverage = allFiles.length > 0 ? Math.round((coveredFiles.length / allFiles.length) * 100) : 0;
 
+        const coverageColor = coverage >= 75 ? pc.green : coverage >= 50 ? pc.yellow : pc.red;
+
         const lines: string[] = [];
         lines.push(`Knowledge gaps in ${directory === "." ? "current directory" : directory}:`);
-        lines.push(`  ${allFiles.length} source files scanned`);
-        lines.push(`  ${coveredFiles.length} covered (${coverage}%)`);
-        lines.push(`  ${uncoveredFiles.length} with no knowledge`);
+        lines.push(`  ${pc.bold(String(allFiles.length))} source files scanned`);
+        lines.push(`  ${pc.bold(String(coveredFiles.length))} covered (${coverageColor(`${coverage}%`)})`);
+        lines.push(`  ${pc.bold(String(uncoveredFiles.length))} with no knowledge`);
         lines.push("");
 
         if (sortedDirs.length > 0) {
@@ -104,9 +107,9 @@ export const gapsCommand = new Command("gaps")
             let shown = 0;
             for (const [dir, files] of sortedDirs) {
                 if (shown >= limit) break;
-                lines.push(`  ${dir}/ (${files.length} uncovered)`);
+                lines.push(`  ${pc.bold(dir)}/ (${files.length} uncovered)`);
                 for (const f of files.slice(0, 5)) {
-                    lines.push(`    - ${f}`);
+                    lines.push(`    - ${pc.dim(f)}`);
                     shown++;
                     if (shown >= limit) break;
                 }

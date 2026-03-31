@@ -1,4 +1,5 @@
 import { Command } from "commander";
+import pc from "picocolors";
 import { output, outputError } from "../lib/output";
 import { getServerUrl } from "../lib/store";
 
@@ -67,28 +68,28 @@ export const recapCommand = new Command("recap")
         lines.push("");
 
         if (newChunks.length > 0) {
-            lines.push("New:");
+            lines.push(pc.bold("New:"));
             for (const c of newChunks.slice(0, 20)) {
                 const tags = c.tags?.map((t: any) => typeof t === "string" ? t : t.name).join(", ") ?? "";
-                lines.push(`  + [${c.type}] ${c.title}${tags ? ` (${tags})` : ""}`);
+                lines.push(`  + [${pc.cyan(c.type)}] ${c.title}${tags ? ` (${pc.yellow(tags)})` : ""}`);
             }
             if (newChunks.length > 20) lines.push(`  ... and ${newChunks.length - 20} more`);
             lines.push("");
         }
 
         if (updatedChunks.length > 0) {
-            lines.push("Updated:");
+            lines.push(pc.bold("Updated:"));
             for (const c of updatedChunks.slice(0, 10)) {
-                lines.push(`  ~ [${c.type}] ${c.title}`);
+                lines.push(`  ~ [${pc.cyan(c.type)}] ${c.title}`);
             }
             if (updatedChunks.length > 10) lines.push(`  ... and ${updatedChunks.length - 10} more`);
             lines.push("");
         }
 
         if (byType.size > 0) {
-            lines.push("By type:");
+            lines.push(pc.bold("By type:"));
             for (const [type, items] of byType) {
-                lines.push(`  ${type}: ${items.length}`);
+                lines.push(`  ${type}: ${pc.bold(String(items.length))}`);
             }
         }
 

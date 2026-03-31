@@ -1,4 +1,5 @@
 import { Command } from "commander";
+import pc from "picocolors";
 import { output, outputError } from "../lib/output";
 import { getServerUrl } from "../lib/store";
 import { resolveCodebaseId } from "../lib/detect-codebase";
@@ -46,7 +47,7 @@ export const whyCommand = new Command("why")
         const contextChunks = allChunks.filter((c: any) => !reasoningChunks.includes(c));
 
         const lines: string[] = [];
-        lines.push(`Why: ${filePath}`);
+        lines.push(`Why: ${pc.bold(filePath)}`);
         lines.push("");
 
         if (reasoningChunks.length === 0 && contextChunks.length === 0) {
@@ -57,14 +58,14 @@ export const whyCommand = new Command("why")
         }
 
         if (reasoningChunks.length > 0) {
-            lines.push(`Decisions & Conventions (${reasoningChunks.length}):`);
+            lines.push(pc.bold(`Decisions & Conventions (${reasoningChunks.length}):`));
             lines.push("");
             for (const c of reasoningChunks) {
-                lines.push(`  [${c.type}] ${c.title}`);
-                if (c.matchReason) lines.push(`    Match: ${c.matchReason}`);
+                lines.push(`  [${pc.cyan(c.type)}] ${c.title}`);
+                if (c.matchReason) lines.push(`    Match: ${pc.dim(c.matchReason)}`);
                 if (c.rationale) {
                     const rationale = c.rationale.length > 120 ? c.rationale.slice(0, 120) + "..." : c.rationale;
-                    lines.push(`    Rationale: ${rationale}`);
+                    lines.push(`    Rationale: ${pc.dim(rationale)}`);
                 }
                 if (c.alternatives?.length) {
                     lines.push(`    Alternatives considered: ${c.alternatives.join(", ")}`);
@@ -78,9 +79,9 @@ export const whyCommand = new Command("why")
         }
 
         if (contextChunks.length > 0) {
-            lines.push(`Related context (${contextChunks.length}):`);
+            lines.push(pc.bold(`Related context (${contextChunks.length}):`));
             for (const c of contextChunks) {
-                lines.push(`  [${c.type}] ${c.title} (${c.matchReason ?? "related"})`);
+                lines.push(`  [${pc.cyan(c.type)}] ${c.title} (${pc.dim(c.matchReason ?? "related")})`);
             }
         }
 

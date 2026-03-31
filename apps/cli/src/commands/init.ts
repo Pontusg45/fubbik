@@ -15,7 +15,8 @@ export const initCommand = new Command("init")
     .option("--scan", "scan the current project and auto-generate chunks")
     .option("--push", "push scanned chunks to the server (requires --scan and a configured server URL)")
     .option("--dry-run", "show what --scan would generate without writing anything")
-    .action(async (name: string, opts: { force?: boolean; scan?: boolean; push?: boolean; dryRun?: boolean }, cmd: Command) => {
+    .option("--server <url>", "configure server URL during init")
+    .action(async (name: string, opts: { force?: boolean; scan?: boolean; push?: boolean; dryRun?: boolean; server?: string }, cmd: Command) => {
         // Initialize store if needed
         if (!opts.dryRun) {
             if (storeExists() && !opts.force && !opts.scan) {
@@ -27,6 +28,11 @@ export const initCommand = new Command("init")
                 createStore(name);
                 console.log(`Initialized knowledge base: ${name}`);
                 console.log(`  Location: ${storeDir()}`);
+            }
+
+            if (opts.server) {
+                setServerUrl(opts.server);
+                console.log(`  Server: ${opts.server}`);
             }
         }
 
