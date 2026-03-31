@@ -114,8 +114,12 @@ export function deleteChunk(id: string, dir?: string): boolean {
 }
 
 export function getServerUrl(dir?: string): string | undefined {
-    const store = readStore(dir);
-    return store.serverUrl;
+    try {
+        const store = readStore(dir);
+        return store.serverUrl;
+    } catch {
+        return undefined;
+    }
 }
 
 export function setServerUrl(url: string, dir?: string): void {

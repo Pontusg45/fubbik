@@ -12,7 +12,7 @@ export const statsCommand = new Command("stats").description("Show knowledge bas
 
     for (const chunk of chunks) {
         typeCounts.set(chunk.type, (typeCounts.get(chunk.type) ?? 0) + 1);
-        for (const tag of chunk.tags) {
+        for (const tag of chunk.tags ?? []) {
             tagCounts.set(tag, (tagCounts.get(tag) ?? 0) + 1);
         }
     }

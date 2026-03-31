@@ -1,5 +1,5 @@
 import { readdirSync, statSync } from "node:fs";
-import { join, relative } from "node:path";
+import { join, relative, resolve } from "node:path";
 import { Command } from "commander";
 import { output, outputError } from "../lib/output";
 import { getServerUrl } from "../lib/store";
@@ -47,8 +47,8 @@ export const gapsCommand = new Command("gaps")
         const limit = parseInt(opts.limit, 10) || 30;
 
         // Collect all source files
-        const absDir = join(process.cwd(), directory);
-        const allFiles = collectSourceFiles(absDir, process.cwd());
+        const absDir = resolve(directory);
+        const allFiles = collectSourceFiles(absDir, absDir);
 
         if (allFiles.length === 0) {
             outputError("No source files found in " + directory);
