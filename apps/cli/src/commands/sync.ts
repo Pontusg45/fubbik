@@ -8,8 +8,9 @@ export const syncCommand = new Command("sync")
     .option("-u, --url <url>", "Server URL (e.g., http://localhost:3000)")
     .option("--push", "Only push local chunks to server")
     .option("--pull", "Only pull server chunks to local")
+    .option("--dry-run", "Show what would happen without syncing")
     .option("--token <token>", "Auth token for the server")
-    .action(async (options: { url?: string; push?: boolean; pull?: boolean; token?: string }, cmd: Command) => {
+    .action(async (options: { url?: string; push?: boolean; pull?: boolean; dryRun?: boolean; token?: string }, cmd: Command) => {
         try {
             const store = readStore();
 
@@ -57,6 +58,49 @@ export const syncCommand = new Command("sync")
             // Build maps by title for comparison
             const localByTitle = new Map(store.chunks.map(c => [c.title, c]));
             const serverByTitle = new Map(serverChunks.map(c => [c.title, c]));
+
+            // Dry run: show preview and exit
+            if (options.dryRun) {
+                const localOnly = store.chunks.filter(c => !serverByTitle.has(c.title));
+                const serverOnly = serverChunks.filter(c => !localByTitle.has(c.title));
+                const modified = store.chunks.filter(c => {
+                    const sc = serverByTitle.get(c.title);
+                    return sc && sc.updatedAt !== c.updatedAt;
+                });
+                let localNewer = 0;
+                let serverNewer = 0;
+                for (const c of modified) {
+                    const sc = serverByTitle.get(c.title);
+                    if (sc) {
+                        const localDate = new Date(c.updatedAt).getTime();
+                        const serverDate = new Date(sc.updatedAt).getTime();
+                        if (localDate > serverDate) localNewer++;
+                        else serverNewer++;
+                    }
+                }
+
+                const lines = ["", "Sync preview (dry run):"];
+                lines.push(`  → Push: ${localOnly.length} local-only chunks`);
+                lines.push(`  ← Pull: ${serverOnly.length} server-only chunks`);
+                if (modified.length > 0) {
+                    lines.push(`  ~ Modified: ${modified.length} chunks (local newer: ${localNewer}, server newer: ${serverNewer})`);
+                } else {
+                    lines.push(`  ~ Modified: 0 chunks`);
+                }
+                lines.push("");
+                lines.push("Run 'fubbik sync' to execute.");
+
+                const data = {
+                    dryRun: true,
+                    push: localOnly.length,
+                    pull: serverOnly.length,
+                    modified: modified.length,
+                    localNewer,
+                    serverNewer
+                };
+                output(cmd, data, lines.join("\n"));
+                return;
+            }
 
             let pushed = 0;
             let pulled = 0;
