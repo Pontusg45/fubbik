@@ -1,5 +1,6 @@
 import { Command } from "commander";
 import pc from "picocolors";
+import { apiFetch } from "../lib/api-fetch";
 import { output, outputError } from "../lib/output";
 import { getServerUrl } from "../lib/store";
 import { resolveCodebaseId } from "../lib/detect-codebase";
@@ -21,7 +22,7 @@ export const whyCommand = new Command("why")
         const params = new URLSearchParams({ path: filePath });
         if (codebaseId) params.set("codebaseId", codebaseId);
 
-        const res = await fetch(`${serverUrl}/api/context/for-file?${params}`);
+        const res = await apiFetch(`${serverUrl}/api/context/for-file?${params}`);
         if (!res.ok) {
             outputError(`Failed to fetch context: ${res.status}`);
             process.exit(1);

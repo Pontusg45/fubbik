@@ -1,5 +1,6 @@
 import { Command } from "commander";
 import pc from "picocolors";
+import { apiFetch } from "../lib/api-fetch";
 import { output, outputError } from "../lib/output";
 import { getServerUrl } from "../lib/store";
 
@@ -33,13 +34,13 @@ export const recapCommand = new Command("recap")
         const params = new URLSearchParams({ after: String(days), sort: "updated", limit: "200" });
         if (opts.codebase) {
             // resolve codebase name to id
-            const cbRes = await fetch(`${serverUrl}/api/codebases`);
+            const cbRes = await apiFetch(`${serverUrl}/api/codebases`);
             const codebases = (await cbRes.json()) as { id: string; name: string }[];
             const match = codebases.find(c => c.name === opts.codebase);
             if (match) params.set("codebaseId", match.id);
         }
 
-        const res = await fetch(`${serverUrl}/api/chunks?${params}`);
+        const res = await apiFetch(`${serverUrl}/api/chunks?${params}`);
         if (!res.ok) {
             outputError(`Failed to fetch chunks: ${res.status}`);
             process.exit(1);

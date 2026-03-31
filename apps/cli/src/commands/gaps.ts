@@ -2,6 +2,7 @@ import { readdirSync, statSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 import { Command } from "commander";
 import pc from "picocolors";
+import { apiFetch } from "../lib/api-fetch";
 import { output, outputError } from "../lib/output";
 import { getServerUrl } from "../lib/store";
 import { resolveCodebaseId } from "../lib/detect-codebase";
@@ -64,7 +65,7 @@ export const gapsCommand = new Command("gaps")
             try {
                 const params = new URLSearchParams({ path: file });
                 if (codebaseId) params.set("codebaseId", codebaseId);
-                const ctxRes = await fetch(`${serverUrl}/api/context/for-file?${params}`);
+                const ctxRes = await apiFetch(`${serverUrl}/api/context/for-file?${params}`);
                 if (ctxRes.ok) {
                     const ctx = (await ctxRes.json()) as any[];
                     if (ctx.length > 0) {
