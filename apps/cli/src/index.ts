@@ -34,6 +34,7 @@ import { recapCommand } from "./commands/recap";
 import { listCommand } from "./commands/list";
 import { removeCommand } from "./commands/remove";
 import { searchCommand } from "./commands/search";
+import { seedConventionsCommand } from "./commands/seed-conventions";
 import { statsCommand } from "./commands/stats";
 import { statusCommand } from "./commands/status";
 import { suggestCommand } from "./commands/suggest";
@@ -99,6 +100,7 @@ program.addCommand(kbDiffCommand);
 program.addCommand(watchCommand);
 program.addCommand(whyCommand);
 program.addCommand(gapsCommand);
+program.addCommand(seedConventionsCommand);
 
 program.command("completions")
     .description("Generate shell completions")
