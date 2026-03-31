@@ -7,7 +7,8 @@ export function getGitRemoteUrl(): string | null {
         return (
             execSync("git remote get-url origin", {
                 encoding: "utf-8",
-                stdio: ["pipe", "pipe", "pipe"]
+                stdio: ["pipe", "pipe", "pipe"],
+                cwd: process.cwd()
             }).trim() || null
         );
     } catch {

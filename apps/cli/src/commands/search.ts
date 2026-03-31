@@ -13,9 +13,10 @@ export const searchCommand = new Command("search")
     .option("--offset <n>", "skip first n results")
     .option("--fields <fields>", "comma-separated fields to include")
     .option("--semantic", "use semantic (AI embedding) search via server")
+    .option("--server", "use server text search via API")
     .option("--global", "skip codebase scoping (search all chunks)")
     .option("--codebase <name>", "scope to a specific codebase by name")
-    .action(async (query: string, opts: { limit?: string; offset?: string; fields?: string; semantic?: boolean; global?: boolean; codebase?: string }, cmd: Command) => {
+    .action(async (query: string, opts: { limit?: string; offset?: string; fields?: string; semantic?: boolean; server?: boolean; global?: boolean; codebase?: string }, cmd: Command) => {
         const config = loadConfig();
         const codebaseName = opts.codebase ?? config.codebase;
 
@@ -45,6 +46,38 @@ export const searchCommand = new Command("search")
                 output(cmd, results, `No semantic matches for "${query}".`);
             } else {
                 output(cmd, results, `${results.length} semantic result(s) for "${query}":\n\n${formatSemanticTable(results)}`);
+            }
+            return;
+        }
+
+        if (opts.server) {
+            const store = readStore();
+            if (!store.serverUrl) {
+                outputError("No server URL configured. Run 'fubbik init' first.");
+                process.exit(1);
+            }
+            const params = new URLSearchParams({ search: query });
+            if (opts.limit) params.set("limit", opts.limit);
+            if (opts.offset) params.set("offset", opts.offset);
+
+            const codebaseId = await resolveCodebaseId(store.serverUrl, {
+                global: opts.global,
+                codebase: codebaseName
+            });
+            if (codebaseId) params.set("codebaseId", codebaseId);
+
+            const res = await fetch(`${store.serverUrl}/api/chunks?${params}`);
+            if (!res.ok) {
+                outputError(`Server search failed: ${res.status}`);
+                process.exit(1);
+            }
+            const data = (await res.json()) as { chunks: { id: string; title: string; type: string; tags: string[]; updatedAt?: string }[] };
+            const chunks = data.chunks;
+            outputQuiet(cmd, chunks.map(c => c.id).join("\n"));
+            if (chunks.length === 0) {
+                output(cmd, chunks, `No chunks matching "${query}". (from server)`);
+            } else {
+                output(cmd, chunks, `${chunks.length} result(s) for "${query}" (from server):\n\n${formatChunkTable(chunks)}`);
             }
             return;
         }

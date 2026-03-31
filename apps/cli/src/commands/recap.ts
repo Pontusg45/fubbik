@@ -2,7 +2,7 @@ import { Command } from "commander";
 import pc from "picocolors";
 import { apiFetch } from "../lib/api-fetch";
 import { output, outputError } from "../lib/output";
-import { getServerUrl } from "../lib/store";
+import { getServerUrl, listChunks } from "../lib/store";
 
 function requireServer() {
     const serverUrl = getServerUrl();
@@ -25,29 +25,46 @@ function parseToDays(since: string): number {
 export const recapCommand = new Command("recap")
     .description("Summarize knowledge base changes since a date")
     .option("--since <date>", "date or relative (e.g., 7d, 2w, 1m)", "7d")
+    .option("--local", "use local store instead of server")
     .option("--codebase <name>", "filter by codebase")
-    .action(async (opts: { since: string; codebase?: string }, cmd: Command) => {
-        const serverUrl = requireServer();
+    .action(async (opts: { since: string; local?: boolean; codebase?: string }, cmd: Command) => {
         const days = parseToDays(opts.since);
+        const sinceDate = new Date(Date.now() - days * 86400000);
 
-        // Fetch chunks updated since the date (API expects days as number)
-        const params = new URLSearchParams({ after: String(days), sort: "updated", limit: "200" });
-        if (opts.codebase) {
-            // resolve codebase name to id
-            const cbRes = await apiFetch(`${serverUrl}/api/codebases`);
-            const codebases = (await cbRes.json()) as { id: string; name: string }[];
-            const match = codebases.find(c => c.name === opts.codebase);
-            if (match) params.set("codebaseId", match.id);
+        let chunks: any[];
+        let source: string;
+
+        if (opts.local) {
+            // Use local store, filter by updatedAt within date range
+            const allChunks = listChunks({});
+            chunks = allChunks.filter((c: any) => {
+                const updatedAt = c.updatedAt ? new Date(c.updatedAt) : null;
+                return updatedAt && updatedAt >= sinceDate;
+            });
+            source = "local store";
+        } else {
+            const serverUrl = requireServer();
+
+            // Fetch chunks updated since the date (API expects days as number)
+            const params = new URLSearchParams({ after: String(days), sort: "updated", limit: "200" });
+            if (opts.codebase) {
+                // resolve codebase name to id
+                const cbRes = await apiFetch(`${serverUrl}/api/codebases`);
+                const codebases = (await cbRes.json()) as { id: string; name: string }[];
+                const match = codebases.find(c => c.name === opts.codebase);
+                if (match) params.set("codebaseId", match.id);
+            }
+
+            const res = await apiFetch(`${serverUrl}/api/chunks?${params}`);
+            if (!res.ok) {
+                outputError(`Failed to fetch chunks: ${res.status}`);
+                process.exit(1);
+            }
+
+            const data = (await res.json()) as { chunks: any[]; total: number };
+            chunks = data.chunks ?? data;
+            source = "server";
         }
-
-        const res = await apiFetch(`${serverUrl}/api/chunks?${params}`);
-        if (!res.ok) {
-            outputError(`Failed to fetch chunks: ${res.status}`);
-            process.exit(1);
-        }
-
-        const data = (await res.json()) as { chunks: any[]; total: number };
-        const chunks = data.chunks ?? data;
 
         // Separate new vs updated (heuristic: created == updated means new)
         const newChunks = chunks.filter((c: any) => c.createdAt === c.updatedAt);
@@ -63,8 +80,8 @@ export const recapCommand = new Command("recap")
 
         // Build human-readable summary
         const lines: string[] = [];
-        lines.push(`Knowledge base recap (last ${days} day${days !== 1 ? "s" : ""}):`);
-        const since = new Date(Date.now() - days * 86400000).toISOString();
+        lines.push(`Knowledge base recap (last ${days} day${days !== 1 ? "s" : ""}, from ${source}):`);
+        const since = sinceDate.toISOString();
         lines.push(`  ${newChunks.length} new chunk${newChunks.length !== 1 ? "s" : ""}, ${updatedChunks.length} updated`);
         lines.push("");
 

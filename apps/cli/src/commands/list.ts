@@ -15,6 +15,7 @@ export const listCommand = new Command("list")
     .option("--sort <field>", "sort by field (title, createdAt, updatedAt)", "updatedAt")
     .option("--sort-dir <dir>", "sort direction (asc, desc)", "desc")
     .option("--fields <fields>", "comma-separated fields to include (e.g. id,title)")
+    .option("--server", "fetch from server API instead of local store")
     .option("--scope <pairs>", "filter by scope (key:value,key:value) — requires server")
     .option("--exclude <terms>", "exclude chunks about these terms (comma-separated) — requires server")
     .option("--global", "skip codebase scoping (show all chunks)")
@@ -29,6 +30,7 @@ export const listCommand = new Command("list")
                 sort?: string;
                 sortDir?: string;
                 fields?: string;
+                server?: boolean;
                 scope?: string;
                 exclude?: string;
                 global?: boolean;
@@ -39,7 +41,7 @@ export const listCommand = new Command("list")
             const config = loadConfig();
             const codebaseName = opts.codebase ?? config.codebase;
 
-            if (opts.scope || opts.exclude) {
+            if (opts.server || opts.scope || opts.exclude) {
                 const store = readStore();
                 if (!store.serverUrl) {
                     outputError("No server URL configured. Run 'fubbik init' first.");
@@ -47,6 +49,17 @@ export const listCommand = new Command("list")
                 }
                 const params = new URLSearchParams();
                 if (opts.type) params.set("type", opts.type);
+                if (opts.tag) params.set("tags", opts.tag);
+                // Map CLI sort fields to API sort values (newest, oldest, alpha, updated)
+                if (opts.sort) {
+                    const sortMap: Record<string, string> = {
+                        updatedAt: opts.sortDir === "asc" ? "oldest" : "updated",
+                        createdAt: opts.sortDir === "asc" ? "oldest" : "newest",
+                        title: "alpha"
+                    };
+                    const apiSort = sortMap[opts.sort] ?? "updated";
+                    params.set("sort", apiSort);
+                }
                 if (opts.scope) params.set("scope", opts.scope);
                 if (opts.exclude) params.set("exclude", opts.exclude);
                 if (opts.limit) params.set("limit", opts.limit);
@@ -67,9 +80,9 @@ export const listCommand = new Command("list")
                 const chunks = data.chunks;
                 outputQuiet(cmd, chunks.map(c => c.id).join("\n"));
                 if (chunks.length === 0) {
-                    output(cmd, chunks, "No chunks found.");
+                    output(cmd, chunks, "No chunks found. (from server)");
                 } else {
-                    output(cmd, chunks, `${chunks.length} chunk(s):\n\n${formatChunkTable(chunks)}`);
+                    output(cmd, chunks, `${chunks.length} chunk(s) (from server):\n\n${formatChunkTable(chunks)}`);
                 }
                 return;
             }
@@ -107,9 +120,9 @@ export const listCommand = new Command("list")
 
             outputQuiet(cmd, chunks.map(c => c.id).join("\n"));
             if (chunks.length === 0) {
-                output(cmd, data, "No chunks found.");
+                output(cmd, data, "No chunks found. (from local store)");
             } else {
-                output(cmd, data, `${chunks.length} chunk(s):\n\n${formatChunkTable(chunks)}`);
+                output(cmd, data, `${chunks.length} chunk(s) (from local store):\n\n${formatChunkTable(chunks)}`);
             }
         }
     );
