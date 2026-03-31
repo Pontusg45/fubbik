@@ -5,6 +5,7 @@ import { loadConfig } from "../lib/config";
 import { output, outputError, outputQuiet } from "../lib/output";
 import { openEditor, promptInput } from "../lib/prompt";
 import { addChunk, getServerUrl } from "../lib/store";
+import { getBuiltinTemplate, listBuiltinTemplateNames } from "../lib/templates";
 
 export const addCommand = new Command("add")
     .description("Add a new chunk to the knowledge base")
@@ -14,7 +15,8 @@ export const addCommand = new Command("add")
     .option("--tags <tags>", "comma-separated tags", "")
     .option("--content-file <path>", "read content from file (use - for stdin)")
     .option("-i, --interactive", "interactive mode — prompt for each field")
-    .option("--template <name>", "use a template (fetched from server)")
+    .option("--template <name>", "use a template (built-in or from server)")
+    .option("--list-templates", "list available templates")
     .option("--global", "skip codebase scoping")
     .option("--codebase <name>", "scope to a specific codebase by name")
     .action(async (opts: {
@@ -25,40 +27,68 @@ export const addCommand = new Command("add")
         contentFile?: string;
         interactive?: boolean;
         template?: string;
+        listTemplates?: boolean;
         global?: boolean;
         codebase?: string;
     }, cmd: Command) => {
         const config = loadConfig();
 
-        // Template support: fetch and merge template defaults
+        // List templates and exit
+        if (opts.listTemplates) {
+            const builtinNames = listBuiltinTemplateNames();
+            console.log("Built-in templates:");
+            for (const name of builtinNames) console.log(`  ${name}`);
+            try {
+                const serverUrl = getServerUrl();
+                if (serverUrl) {
+                    const res = await fetch(`${serverUrl}/api/templates`);
+                    if (res.ok) {
+                        const templates = (await res.json()) as { name: string }[];
+                        if (templates.length > 0) {
+                            console.log("\nServer templates:");
+                            for (const t of templates) console.log(`  ${t.name}`);
+                        }
+                    }
+                }
+            } catch {}
+            return;
+        }
+
+        // Template support: check built-in first, then fall back to server
         let templateDefaults: { title?: string; content?: string; type?: string; tags?: string[] } = {};
         if (opts.template) {
-            let serverUrl: string | undefined;
-            try {
-                serverUrl = getServerUrl();
-            } catch {
-                // store doesn't exist
+            const builtin = getBuiltinTemplate(opts.template);
+            if (builtin) {
+                templateDefaults = {
+                    type: builtin.type,
+                    content: builtin.content,
+                    tags: builtin.tags,
+                };
+            } else {
+                // Fall back to server templates
+                let serverUrl: string | undefined;
+                try {
+                    serverUrl = getServerUrl();
+                } catch {}
+                if (!serverUrl) {
+                    const available = listBuiltinTemplateNames().join(", ");
+                    outputError(`Template "${opts.template}" not found. Built-in templates: ${available}`);
+                    return;
+                }
+                const res = await fetch(`${serverUrl}/api/templates`);
+                if (!res.ok) {
+                    outputError(`Failed to fetch templates: ${res.status}`);
+                    return;
+                }
+                const templates = (await res.json()) as { name: string; type?: string; content?: string; tags?: string[] }[];
+                const template = templates.find((t) => t.name.toLowerCase() === opts.template!.toLowerCase());
+                if (!template) {
+                    const available = [...listBuiltinTemplateNames(), ...templates.map(t => t.name)].join(", ");
+                    outputError(`Template "${opts.template}" not found. Available: ${available}`);
+                    return;
+                }
+                templateDefaults = { type: template.type, content: template.content, tags: template.tags };
             }
-            if (!serverUrl) {
-                outputError("Server URL required for templates. Run 'fubbik init'.");
-                return;
-            }
-            const res = await fetch(`${serverUrl}/api/templates`);
-            if (!res.ok) {
-                outputError(`Failed to fetch templates: ${res.status}`);
-                return;
-            }
-            const templates = (await res.json()) as { name: string; type?: string; content?: string; tags?: string[] }[];
-            const template = templates.find((t) => t.name.toLowerCase() === opts.template!.toLowerCase());
-            if (!template) {
-                outputError(`Template "${opts.template}" not found. Available: ${templates.map(t => t.name).join(", ")}`);
-                return;
-            }
-            templateDefaults = {
-                type: template.type,
-                content: template.content,
-                tags: template.tags,
-            };
         }
 
         // Interactive mode
