@@ -110,6 +110,46 @@ fubbik plan step-done <plan-id> <step-id>
 fubbik plan add-step <plan-id> --description "..."
 ```
 
+### Understanding why code exists
+
+When you need to understand the reasoning behind a file or module:
+
+```bash
+# Show decisions, conventions, and rationale related to a file
+fubbik why <file-path>
+fubbik why <file-path> --json
+```
+
+This goes beyond `context-for` (which shows what's relevant) to focus on *why* — architecture decisions, rationale, conventions, and alternatives considered.
+
+### Finding knowledge gaps
+
+When you want to identify blind spots in the knowledge base:
+
+```bash
+# Scan a directory for files with no associated knowledge
+fubbik gaps <directory>
+fubbik gaps packages/api/src --limit 20 --json
+
+# Scan current directory
+fubbik gaps
+```
+
+### Getting a recap of recent changes
+
+When you need to understand what's changed in the knowledge base:
+
+```bash
+# Last 7 days (default)
+fubbik recap
+
+# Last 30 days
+fubbik recap --since 30d
+
+# Specific codebase
+fubbik recap --since 2w --codebase fubbik
+```
+
 ### Checking file coverage
 
 When you want to know if files have associated knowledge:
