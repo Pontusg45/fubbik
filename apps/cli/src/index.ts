@@ -12,6 +12,7 @@ import { diffCommand } from "./commands/diff";
 import { doctorCommand } from "./commands/doctor";
 import { enrichCommand } from "./commands/enrich";
 import { exportCommand } from "./commands/export";
+import { gapsCommand } from "./commands/gaps";
 import { generateCommand } from "./commands/generate";
 import { requirementsCommand } from "./commands/requirements";
 import { getCommand } from "./commands/get";
@@ -29,6 +30,7 @@ import { linkCommand } from "./commands/link";
 import { mcpToolsCommand } from "./commands/mcp-tools";
 import { planCommand } from "./commands/plan";
 import { promptCommand } from "./commands/prompt";
+import { recapCommand } from "./commands/recap";
 import { listCommand } from "./commands/list";
 import { removeCommand } from "./commands/remove";
 import { searchCommand } from "./commands/search";
@@ -40,6 +42,7 @@ import { tagsCommand } from "./commands/tags";
 import { taskCommand } from "./commands/task";
 import { unlinkCommand } from "./commands/unlink";
 import { updateCommand } from "./commands/update";
+import { whyCommand } from "./commands/why";
 import { generateZshCompletions } from "./lib/completions";
 
 const program = new Command();
@@ -84,6 +87,7 @@ program.addCommand(hooksCommand);
 program.addCommand(lintCommand);
 program.addCommand(planCommand);
 program.addCommand(promptCommand);
+program.addCommand(recapCommand);
 program.addCommand(suggestCommand);
 program.addCommand(taskCommand);
 program.addCommand(doctorCommand);
@@ -91,6 +95,8 @@ program.addCommand(mcpToolsCommand);
 program.addCommand(importRequirementsCommand);
 program.addCommand(kbDiffCommand);
 program.addCommand(watchCommand);
+program.addCommand(whyCommand);
+program.addCommand(gapsCommand);
 
 program.command("completions")
     .description("Generate shell completions")
