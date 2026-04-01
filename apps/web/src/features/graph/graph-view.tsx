@@ -37,6 +37,7 @@ import { GraphLegend } from "@/features/graph/graph-legend";
 import { GraphMetrics } from "@/features/graph/graph-metrics";
 import { GraphNode } from "@/features/graph/graph-node";
 import { GraphGroupNode } from "@/features/graph/graph-group-node";
+import { GraphContextMenu } from "@/features/graph/graph-context-menu";
 import { GraphWelcome } from "@/features/graph/graph-welcome";
 import type { LayoutWorkerInput, LayoutWorkerOutput } from "@/features/graph/layout.worker";
 import { type LayoutAlgorithm, hierarchicalLayout, radialLayout } from "@/features/graph/layouts";
@@ -840,6 +841,7 @@ function GraphViewInner() {
         });
     }
     const [hoveredNode, setHoveredNode] = useState<{ id: string; x: number; y: number } | null>(null);
+    const [contextMenu, setContextMenu] = useState<{ x: number; y: number; nodeId?: string } | null>(null);
 
     const onMoveEnd = useCallback((_: unknown, viewport: Viewport) => {
         zoomRef.current = viewport.zoom;
@@ -1209,6 +1211,7 @@ function GraphViewInner() {
                         }}
                         onPaneClick={() => {
                             dispatch({ type: "DESELECT_ALL" });
+                            setContextMenu(null);
                         }}
                         onNodeDoubleClick={(_, node) => {
                             if (selectedChunkId === node.id) {
@@ -1276,6 +1279,15 @@ function GraphViewInner() {
                             });
                         }}
                         onNodeMouseLeave={() => setHoveredNode(null)}
+                        onNodeContextMenu={(event, node) => {
+                            event.preventDefault();
+                            if (node.id.startsWith("tag-group-")) return;
+                            setContextMenu({ x: event.clientX, y: event.clientY, nodeId: node.id });
+                        }}
+                        onPaneContextMenu={(event) => {
+                            event.preventDefault();
+                            setContextMenu({ x: event.clientX, y: event.clientY });
+                        }}
                         onMoveEnd={onMoveEnd}
                         onEdgeMouseEnter={(_, edge) => {
                             setEdges(es =>
@@ -1325,6 +1337,24 @@ function GraphViewInner() {
                         />
                     </ReactFlow>
 
+
+                {/* Context menu */}
+                {contextMenu && (
+                    <GraphContextMenu
+                        x={contextMenu.x}
+                        y={contextMenu.y}
+                        nodeId={contextMenu.nodeId}
+                        onClose={() => setContextMenu(null)}
+                        onFitView={() => fitView()}
+                        onResetLayout={() => {
+                            setDraggedPositions(new Map());
+                        }}
+                        onDelete={(nodeId) => {
+                            dispatch({ type: "TOGGLE_MULTI_SELECT", id: nodeId });
+                            dispatch({ type: "SET_SHOW_DELETE_CONFIRM", show: true });
+                        }}
+                    />
+                )}
 
                 {/* Welcome overlay for first-time visitors */}
                 {showWelcome && <GraphWelcome onDismiss={dismissWelcome} />}

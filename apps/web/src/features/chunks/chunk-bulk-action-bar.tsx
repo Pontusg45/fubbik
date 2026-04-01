@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Archive, Link2, Search, Tags, Trash2, X } from "lucide-react";
+import { Archive, Edit, Link2, Search, Tags, Trash2, X } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
+import { BulkTagEditor } from "@/features/chunks/bulk-tag-editor";
 import { api } from "@/utils/api";
 
 interface ChunkBulkActionBarProps {
@@ -26,6 +27,9 @@ export function ChunkBulkActionBar({
     setConfirmAction,
 }: ChunkBulkActionBarProps) {
     const queryClient = useQueryClient();
+
+    // Bulk tag editor dialog
+    const [showBulkTagEditor, setShowBulkTagEditor] = useState(false);
 
     // Tag input state
     const [showBulkTagInput, setShowBulkTagInput] = useState(false);
@@ -150,6 +154,14 @@ export function ChunkBulkActionBar({
                         <Tags className="size-3.5" />
                         Remove Tags
                     </Button>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowBulkTagEditor(true)}
+                    >
+                        <Edit className="size-3.5" />
+                        Edit Tags
+                    </Button>
                 </>
             )}
             <Popover open={showBulkConnect} onOpenChange={setShowBulkConnect}>
@@ -259,6 +271,11 @@ export function ChunkBulkActionBar({
             <Button variant="ghost" size="sm" onClick={() => setSelectedIds(new Set())}>
                 Cancel
             </Button>
+            <BulkTagEditor
+                chunkIds={[...selectedIds]}
+                open={showBulkTagEditor}
+                onOpenChange={setShowBulkTagEditor}
+            />
         </div>
     );
 }
