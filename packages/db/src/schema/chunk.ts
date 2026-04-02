@@ -1,7 +1,8 @@
-import { relations } from "drizzle-orm";
-import { pgTable, text, timestamp, jsonb, index, uniqueIndex, customType } from "drizzle-orm/pg-core";
+import { relations, sql } from "drizzle-orm";
+import { pgTable, text, timestamp, jsonb, index, uniqueIndex, customType, integer } from "drizzle-orm/pg-core";
 
 import { user } from "./auth";
+import { document } from "./document";
 
 const vector = customType<{ data: number[]; driverParam: string }>({
     dataType() {
@@ -43,13 +44,16 @@ export const chunk = pgTable(
         reviewStatus: text("review_status").notNull().default("approved"),
         reviewedBy: text("reviewed_by").references(() => user.id, { onDelete: "set null" }),
         reviewedAt: timestamp("reviewed_at"),
-        archivedAt: timestamp("archived_at")
+        archivedAt: timestamp("archived_at"),
+        documentId: text("document_id").references(() => document.id, { onDelete: "set null" }),
+        documentOrder: integer("document_order")
     },
     table => [
         index("chunk_userId_idx").on(table.userId),
         index("chunk_type_idx").on(table.type),
         index("chunk_archivedAt_idx").on(table.archivedAt),
-        index("chunk_updatedAt_idx").on(table.updatedAt)
+        index("chunk_updatedAt_idx").on(table.updatedAt),
+        uniqueIndex("chunk_document_order_idx").on(table.documentId, table.documentOrder).where(sql`${table.documentId} IS NOT NULL`)
     ]
 );
 
@@ -79,6 +83,7 @@ export const chunkConnection = pgTable(
 
 export const chunkRelations = relations(chunk, ({ one, many }) => ({
     user: one(user, { fields: [chunk.userId], references: [user.id] }),
+    document: one(document, { fields: [chunk.documentId], references: [document.id] }),
     outgoingConnections: many(chunkConnection, { relationName: "source" }),
     incomingConnections: many(chunkConnection, { relationName: "target" })
 }));
