@@ -161,6 +161,8 @@ export function createChunk(
         alternatives?: string[];
         consequences?: string;
         origin?: string;
+        documentId?: string;
+        documentOrder?: number;
     }
 ) {
     const id = crypto.randomUUID();
@@ -175,7 +177,9 @@ export function createChunk(
         alternatives: body.alternatives,
         consequences: body.consequences,
         origin,
-        reviewStatus: origin === "ai" ? "draft" : "approved"
+        reviewStatus: origin === "ai" ? "draft" : "approved",
+        documentId: body.documentId,
+        documentOrder: body.documentOrder
     }).pipe(
         Effect.tap(() => {
             if (body.tags && body.tags.length > 0) {

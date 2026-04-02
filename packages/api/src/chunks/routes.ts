@@ -248,7 +248,9 @@ export const chunkRoutes = new Elysia()
                 rationale: t.Optional(t.String({ maxLength: 5000 })),
                 alternatives: alternativesSchema,
                 consequences: t.Optional(t.String({ maxLength: 5000 })),
-                origin: t.Optional(t.Union([t.Literal("human"), t.Literal("ai")]))
+                origin: t.Optional(t.Union([t.Literal("human"), t.Literal("ai")])),
+                documentId: t.Optional(t.String()),
+                documentOrder: t.Optional(t.Number())
             })
         }
     )

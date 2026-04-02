@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { Check, ChevronLeft, ChevronRight, FileText, FolderOpen, Link2, Menu, Pencil, Search, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { Check, ChevronLeft, ChevronRight, FileText, FolderOpen, Link2, Menu, Pencil, Plus, Search, X } from "lucide-react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 
 import { MarkdownRenderer } from "@/components/markdown-renderer";
 import { Badge } from "@/components/ui/badge";
@@ -109,6 +109,9 @@ export function DocumentBrowser({ initialDocId, initialSection }: DocumentBrowse
     const [highlightQuery, setHighlightQuery] = useState<string | null>(null);
     const [editingChunkId, setEditingChunkId] = useState<string | null>(null);
     const [editContent, setEditContent] = useState("");
+    const [addingAfter, setAddingAfter] = useState<number | null>(null);
+    const [newSectionTitle, setNewSectionTitle] = useState("");
+    const [newSectionContent, setNewSectionContent] = useState("");
     const queryClient = useQueryClient();
 
     const saveMutation = useMutation({
@@ -119,6 +122,25 @@ export function DocumentBrowser({ initialDocId, initialSection }: DocumentBrowse
             queryClient.invalidateQueries({ queryKey: ["documents", selectedId] });
             setEditingChunkId(null);
             setEditContent("");
+        }
+    });
+
+    const addSectionMutation = useMutation({
+        mutationFn: async ({ title, content, afterOrder }: { title: string; content: string; afterOrder: number }) => {
+            if (!detail) throw new Error("No document");
+            return unwrapEden(await api.api.chunks.post({
+                title,
+                content,
+                type: "document",
+                documentId: detail.id,
+                documentOrder: afterOrder + 1
+            }));
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["documents", selectedId] });
+            setAddingAfter(null);
+            setNewSectionTitle("");
+            setNewSectionContent("");
         }
     });
 
@@ -709,71 +731,123 @@ export function DocumentBrowser({ initialDocId, initialSection }: DocumentBrowse
 
                         {/* Sections */}
                         <div className="space-y-8" data-doc-content onClick={handleContentClick}>
-                            {detail.chunks.map(chunk => (
-                                <section key={chunk.id} id={`section-${chunk.id}`} className="scroll-mt-24">
-                                    <div className="group mb-3 flex items-center gap-2">
-                                        <h3 className="text-lg font-semibold">{chunk.title}</h3>
-                                        <button
-                                            onClick={() => {
-                                                const url = `${window.location.origin}/docs?id=${detail.id}&section=${chunk.id}`;
-                                                navigator.clipboard.writeText(url);
-                                                setCopiedId(chunk.id);
-                                                setTimeout(() => setCopiedId(null), 1500);
-                                            }}
-                                            className="text-muted-foreground hover:text-foreground opacity-0 transition-opacity group-hover:opacity-100"
-                                            title="Copy link to section"
-                                        >
-                                            {copiedId === chunk.id ? (
-                                                <Check className="size-3.5 text-green-500" />
-                                            ) : (
-                                                <Link2 className="size-3.5" />
-                                            )}
-                                        </button>
-                                        <button
-                                            onClick={() => {
-                                                if (editingChunkId === chunk.id) {
-                                                    setEditingChunkId(null);
-                                                } else {
-                                                    setEditingChunkId(chunk.id);
-                                                    setEditContent(chunk.content);
-                                                }
-                                            }}
-                                            className={`text-muted-foreground hover:text-foreground opacity-0 transition-opacity group-hover:opacity-100 ${editingChunkId === chunk.id ? "!opacity-100 text-foreground" : ""}`}
-                                            title={editingChunkId === chunk.id ? "Cancel editing" : "Edit this section"}
-                                        >
-                                            <Pencil className="size-3.5" />
-                                        </button>
-                                    </div>
-                                    {editingChunkId === chunk.id ? (
-                                        <div className="space-y-3">
-                                            <textarea
-                                                value={editContent}
-                                                onChange={e => setEditContent(e.target.value)}
-                                                className="border-input bg-background w-full min-h-[200px] rounded-md border p-3 font-mono text-sm leading-relaxed focus:ring-2 focus:ring-ring outline-none resize-y"
-                                                autoFocus
-                                            />
-                                            <div className="flex items-center gap-2">
-                                                <button
-                                                    onClick={() => saveMutation.mutate({ id: chunk.id, content: editContent })}
-                                                    disabled={saveMutation.isPending || editContent === chunk.content}
-                                                    className="bg-foreground text-background hover:bg-foreground/90 rounded-md px-3 py-1.5 text-sm font-medium disabled:opacity-50"
-                                                >
-                                                    {saveMutation.isPending ? "Saving..." : "Save"}
-                                                </button>
-                                                <button
-                                                    onClick={() => { setEditingChunkId(null); setEditContent(""); }}
-                                                    className="text-muted-foreground hover:text-foreground text-sm"
-                                                >
-                                                    Cancel
-                                                </button>
+                            {detail.chunks.map((chunk, idx) => (
+                                <Fragment key={chunk.id}>
+                                    <section id={`section-${chunk.id}`} className="scroll-mt-24">
+                                        <div className="group mb-3 flex items-center gap-2">
+                                            <h3 className="text-lg font-semibold">{chunk.title}</h3>
+                                            <button
+                                                onClick={() => {
+                                                    const url = `${window.location.origin}/docs?id=${detail.id}&section=${chunk.id}`;
+                                                    navigator.clipboard.writeText(url);
+                                                    setCopiedId(chunk.id);
+                                                    setTimeout(() => setCopiedId(null), 1500);
+                                                }}
+                                                className="text-muted-foreground hover:text-foreground opacity-0 transition-opacity group-hover:opacity-100"
+                                                title="Copy link to section"
+                                            >
+                                                {copiedId === chunk.id ? (
+                                                    <Check className="size-3.5 text-green-500" />
+                                                ) : (
+                                                    <Link2 className="size-3.5" />
+                                                )}
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    if (editingChunkId === chunk.id) {
+                                                        setEditingChunkId(null);
+                                                    } else {
+                                                        setEditingChunkId(chunk.id);
+                                                        setEditContent(chunk.content);
+                                                    }
+                                                }}
+                                                className={`text-muted-foreground hover:text-foreground opacity-0 transition-opacity group-hover:opacity-100 ${editingChunkId === chunk.id ? "!opacity-100 text-foreground" : ""}`}
+                                                title={editingChunkId === chunk.id ? "Cancel editing" : "Edit this section"}
+                                            >
+                                                <Pencil className="size-3.5" />
+                                            </button>
+                                        </div>
+                                        {editingChunkId === chunk.id ? (
+                                            <div className="space-y-3">
+                                                <textarea
+                                                    value={editContent}
+                                                    onChange={e => setEditContent(e.target.value)}
+                                                    className="border-input bg-background w-full min-h-[200px] rounded-md border p-3 font-mono text-sm leading-relaxed focus:ring-2 focus:ring-ring outline-none resize-y"
+                                                    autoFocus
+                                                />
+                                                <div className="flex items-center gap-2">
+                                                    <button
+                                                        onClick={() => saveMutation.mutate({ id: chunk.id, content: editContent })}
+                                                        disabled={saveMutation.isPending || editContent === chunk.content}
+                                                        className="bg-foreground text-background hover:bg-foreground/90 rounded-md px-3 py-1.5 text-sm font-medium disabled:opacity-50"
+                                                    >
+                                                        {saveMutation.isPending ? "Saving..." : "Save"}
+                                                    </button>
+                                                    <button
+                                                        onClick={() => { setEditingChunkId(null); setEditContent(""); }}
+                                                        className="text-muted-foreground hover:text-foreground text-sm"
+                                                    >
+                                                        Cancel
+                                                    </button>
+                                                </div>
                                             </div>
-                                        </div>
-                                    ) : (
-                                        <div className="prose prose-sm dark:prose-invert max-w-none">
-                                            <MarkdownRenderer>{chunk.content}</MarkdownRenderer>
-                                        </div>
-                                    )}
-                                </section>
+                                        ) : (
+                                            <div className="prose prose-sm dark:prose-invert max-w-none">
+                                                <MarkdownRenderer>{chunk.content}</MarkdownRenderer>
+                                            </div>
+                                        )}
+                                    </section>
+
+                                    {/* Add section button */}
+                                    <div className="flex justify-center py-2">
+                                        {addingAfter === (chunk.documentOrder ?? idx) ? (
+                                            <div className="border-border w-full rounded-lg border p-4 space-y-3">
+                                                <input
+                                                    type="text"
+                                                    placeholder="Section title"
+                                                    value={newSectionTitle}
+                                                    onChange={e => setNewSectionTitle(e.target.value)}
+                                                    className="border-input bg-background w-full rounded-md border px-3 py-2 text-sm"
+                                                    autoFocus
+                                                />
+                                                <textarea
+                                                    placeholder="Section content (markdown)"
+                                                    value={newSectionContent}
+                                                    onChange={e => setNewSectionContent(e.target.value)}
+                                                    className="border-input bg-background w-full min-h-[100px] rounded-md border p-3 font-mono text-sm resize-y"
+                                                />
+                                                <div className="flex gap-2">
+                                                    <button
+                                                        onClick={() => addSectionMutation.mutate({
+                                                            title: newSectionTitle,
+                                                            content: newSectionContent,
+                                                            afterOrder: chunk.documentOrder ?? idx
+                                                        })}
+                                                        disabled={!newSectionTitle.trim() || addSectionMutation.isPending}
+                                                        className="bg-foreground text-background rounded-md px-3 py-1.5 text-sm font-medium disabled:opacity-50"
+                                                    >
+                                                        {addSectionMutation.isPending ? "Adding..." : "Add Section"}
+                                                    </button>
+                                                    <button
+                                                        onClick={() => { setAddingAfter(null); setNewSectionTitle(""); setNewSectionContent(""); }}
+                                                        className="text-muted-foreground hover:text-foreground text-sm"
+                                                    >
+                                                        Cancel
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <button
+                                                onClick={() => setAddingAfter(chunk.documentOrder ?? idx)}
+                                                className="text-muted-foreground/0 hover:text-muted-foreground group flex items-center gap-1 w-full transition-colors"
+                                            >
+                                                <div className="bg-border/0 group-hover:bg-border h-px flex-1 transition-colors" />
+                                                <Plus className="size-4" />
+                                                <div className="bg-border/0 group-hover:bg-border h-px flex-1 transition-colors" />
+                                            </button>
+                                        )}
+                                    </div>
+                                </Fragment>
                             ))}
                         </div>
 
