@@ -8,6 +8,7 @@ import {
     getDocumentChunks,
     getTagsForChunk,
     listDocuments as listDocumentsRepo,
+    searchDocumentChunks,
     setChunkCodebases,
     setChunkTags,
     updateChunk as updateChunkRepo,
@@ -207,6 +208,10 @@ export function getDocument(documentId: string, userId: string) {
         const chunks = yield* getDocumentChunks(documentId);
         return { ...doc, chunks };
     });
+}
+
+export function searchDocuments(userId: string, query: string) {
+    return searchDocumentChunks(userId, query);
 }
 
 export function removeDocument(documentId: string, userId: string) {

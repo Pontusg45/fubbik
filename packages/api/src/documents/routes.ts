@@ -22,6 +22,22 @@ export const documentRoutes = new Elysia()
         }
     )
     .get(
+        "/documents/search",
+        ctx =>
+            Effect.runPromise(
+                requireSession(ctx).pipe(
+                    Effect.flatMap(session =>
+                        documentService.searchDocuments(session.user.id, ctx.query.q)
+                    )
+                )
+            ),
+        {
+            query: t.Object({
+                q: t.String({ minLength: 2 })
+            })
+        }
+    )
+    .get(
         "/documents/:id",
         ctx =>
             Effect.runPromise(
