@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { FileText, FolderOpen, Pencil, Search, X } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { MarkdownRenderer } from "@/components/markdown-renderer";
 import { Badge } from "@/components/ui/badge";
@@ -86,11 +86,26 @@ function highlightMatches(text: string, query: string): React.ReactNode[] {
 
 /* ─── Document Browser ─── */
 
-export function DocumentBrowser() {
+interface DocumentBrowserProps {
+    initialDocId?: string;
+    initialSection?: string;
+}
+
+export function DocumentBrowser({ initialDocId, initialSection }: DocumentBrowserProps) {
     const { codebaseId } = useActiveCodebase();
-    const [selectedId, setSelectedId] = useState<string | null>(null);
+    const navigate = useNavigate();
+    const [selectedId, setSelectedIdState] = useState<string | null>(initialDocId ?? null);
     const [searchQuery, setSearchQuery] = useState("");
     const [isSearching, setIsSearching] = useState(false);
+
+    const setSelectedId = (id: string | null) => {
+        setSelectedIdState(id);
+        navigate({
+            to: "/docs",
+            search: (prev: Record<string, unknown>) => ({ ...prev, id: id ?? undefined, section: undefined }),
+            replace: true
+        });
+    };
 
     // Fetch document list
     const listQuery = useQuery({
@@ -145,6 +160,28 @@ export function DocumentBrowser() {
     });
 
     const documents = listQuery.data ?? [];
+    const detail = detailQuery.data;
+
+    // Auto-select first document when none is selected
+    useEffect(() => {
+        if (!selectedId && documents.length > 0 && !isSearching) {
+            const firstId = initialDocId && documents.some(d => d.id === initialDocId) ? initialDocId : documents[0]!.id;
+            setSelectedIdState(firstId);
+            navigate({
+                to: "/docs",
+                search: (prev: Record<string, unknown>) => ({ ...prev, id: firstId }),
+                replace: true
+            });
+        }
+    }, [documents]);
+
+    // Scroll to section from URL on detail load
+    useEffect(() => {
+        if (initialSection && detail) {
+            const el = document.getElementById(`section-${initialSection}`);
+            el?.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+    }, [initialSection, detail]);
 
     // Full-text search across all documents
     const searchResults = useMemo((): SearchResult[] => {
@@ -206,8 +243,6 @@ export function DocumentBrowser() {
         }
         return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b));
     }, [sidebarFiltered]);
-
-    const detail = detailQuery.data;
 
     const handleSearch = (value: string) => {
         setSearchQuery(value);
@@ -336,13 +371,6 @@ export function DocumentBrowser() {
 
             {/* ─── Main content ─── */}
             <div className="min-w-0">
-                {!selectedId && (
-                    <div className="flex flex-col items-center gap-3 py-16">
-                        <FileText className="text-muted-foreground/30 size-10" />
-                        <p className="text-muted-foreground text-sm">Select a document from the sidebar to view it.</p>
-                    </div>
-                )}
-
                 {selectedId && detailQuery.isLoading && (
                     <p className="text-muted-foreground py-8 text-center text-sm">Loading document...</p>
                 )}

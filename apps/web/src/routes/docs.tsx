@@ -7,8 +7,10 @@ import { getUser } from "@/functions/get-user";
 
 export const Route = createFileRoute("/docs")({
     component: DocsPage,
-    validateSearch: (search: Record<string, unknown>): { tab?: string } => ({
-        tab: (search.tab as string) ?? undefined
+    validateSearch: (search: Record<string, unknown>): { tab?: string; id?: string; section?: string } => ({
+        tab: (search.tab as string) ?? undefined,
+        id: (search.id as string) ?? undefined,
+        section: (search.section as string) ?? undefined
     }),
     beforeLoad: async () => {
         let session = null;
@@ -68,7 +70,7 @@ function DocsPage() {
                 </button>
             </div>
 
-            {tab === "docs" && <DocumentBrowser />}
+            {tab === "docs" && <DocumentBrowser initialDocId={search.id} initialSection={search.section} />}
 
             {tab === "api" && (
                 <div className="space-y-3">
