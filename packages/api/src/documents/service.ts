@@ -100,7 +100,7 @@ export function syncDocument(
 ) {
     return Effect.gen(function* () {
         const doc = yield* getDocumentById(documentId);
-        if (!doc) return yield* Effect.fail(new NotFoundError({ resource: "document" }));
+        if (!doc || doc.userId !== userId) return yield* Effect.fail(new NotFoundError({ resource: "document" }));
 
         const contentHash = hashContent(rawContent);
         if (doc.contentHash === contentHash) {
@@ -156,6 +156,7 @@ export function syncDocument(
         // Flag deleted sections as stale (don't delete)
         for (const existing of existingChunks) {
             if (!matchedIds.has(existing.id)) {
+                yield* updateChunkRepo(existing.id, { documentOrder: null });
                 const currentTags = yield* getTagsForChunk(existing.id);
                 const tagNames = currentTags.map((t: { name: string }) => t.name);
                 if (!tagNames.includes("stale")) {
@@ -175,10 +176,10 @@ export function syncDocument(
     });
 }
 
-export function renderDocument(documentId: string) {
+export function renderDocument(documentId: string, userId: string) {
     return Effect.gen(function* () {
         const doc = yield* getDocumentById(documentId);
-        if (!doc) return yield* Effect.fail(new NotFoundError({ resource: "document" }));
+        if (!doc || doc.userId !== userId) return yield* Effect.fail(new NotFoundError({ resource: "document" }));
 
         const chunks = yield* getDocumentChunks(documentId);
 
@@ -199,15 +200,19 @@ export function listDocuments(userId: string, codebaseId?: string) {
     return listDocumentsRepo(userId, codebaseId);
 }
 
-export function getDocument(documentId: string) {
+export function getDocument(documentId: string, userId: string) {
     return Effect.gen(function* () {
         const doc = yield* getDocumentById(documentId);
-        if (!doc) return yield* Effect.fail(new NotFoundError({ resource: "document" }));
+        if (!doc || doc.userId !== userId) return yield* Effect.fail(new NotFoundError({ resource: "document" }));
         const chunks = yield* getDocumentChunks(documentId);
         return { ...doc, chunks };
     });
 }
 
-export function removeDocument(documentId: string) {
-    return deleteDocumentRepo(documentId);
+export function removeDocument(documentId: string, userId: string) {
+    return Effect.gen(function* () {
+        const doc = yield* getDocumentById(documentId);
+        if (!doc || doc.userId !== userId) return yield* Effect.fail(new NotFoundError({ resource: "document" }));
+        return yield* deleteDocumentRepo(documentId);
+    });
 }

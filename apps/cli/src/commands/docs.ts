@@ -83,9 +83,9 @@ const importDoc = new Command("import")
                 process.exit(1);
             }
 
-            const doc = (await res.json()) as Document;
-            outputQuiet(cmd, doc.id);
-            output(cmd, doc, formatSuccess(`Imported "${doc.title}" (${doc.id})`));
+            const result = (await res.json()) as { document: Document; created: number; updated: number; status: string };
+            outputQuiet(cmd, result.document.id);
+            output(cmd, result, formatSuccess(`Imported "${result.document.title}" (${result.document.id}) — ${result.status}, ${result.created} created, ${result.updated} updated`));
         } catch (err) {
             outputError(String(err));
             process.exit(1);
@@ -132,17 +132,17 @@ const importDir = new Command("import-dir")
                 process.exit(1);
             }
 
-            const docs = (await res.json()) as Document[];
+            const results = (await res.json()) as { document: Document; created: number; updated: number; status: string }[];
             if (isJson(cmd)) {
-                console.log(JSON.stringify(docs, null, 2));
+                console.log(JSON.stringify(results, null, 2));
                 return;
             }
 
-            outputQuiet(cmd, docs.map(d => d.id).join("\n"));
+            outputQuiet(cmd, results.map(r => r.document.id).join("\n"));
             output(
                 cmd,
-                docs,
-                formatSuccess(`Imported ${docs.length} document(s) from ${absDir}`)
+                results,
+                formatSuccess(`Imported ${results.length} document(s) from ${absDir}`)
             );
         } catch (err) {
             outputError(String(err));
@@ -275,8 +275,8 @@ const syncDoc = new Command("sync")
                 process.exit(1);
             }
 
-            const synced = (await res.json()) as Document;
-            output(cmd, synced, formatSuccess(`Synced "${synced.title}" from ${doc.sourcePath}`));
+            const result = (await res.json()) as { document: Document; created: number; updated: number; status: string };
+            output(cmd, result, formatSuccess(`Synced "${result.document.title}" from ${doc.sourcePath} — ${result.created} created, ${result.updated} updated`));
         } catch (err) {
             outputError(String(err));
             process.exit(1);

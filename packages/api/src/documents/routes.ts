@@ -26,7 +26,7 @@ export const documentRoutes = new Elysia()
         ctx =>
             Effect.runPromise(
                 requireSession(ctx).pipe(
-                    Effect.flatMap(() => documentService.getDocument(ctx.params.id))
+                    Effect.flatMap(session => documentService.getDocument(ctx.params.id, session.user.id))
                 )
             ),
         {
@@ -114,7 +114,7 @@ export const documentRoutes = new Elysia()
         ctx =>
             Effect.runPromise(
                 requireSession(ctx).pipe(
-                    Effect.flatMap(() => documentService.renderDocument(ctx.params.id))
+                    Effect.flatMap(session => documentService.renderDocument(ctx.params.id, session.user.id))
                 )
             ),
         {
@@ -126,7 +126,7 @@ export const documentRoutes = new Elysia()
         ctx =>
             Effect.runPromise(
                 requireSession(ctx).pipe(
-                    Effect.flatMap(() => documentService.removeDocument(ctx.params.id))
+                    Effect.flatMap(session => documentService.removeDocument(ctx.params.id, session.user.id))
                 )
             ),
         {
