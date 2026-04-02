@@ -1,8 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { ChevronRight, FileText, FolderOpen, Pencil, Search } from "lucide-react";
+import { FileText, FolderOpen, Pencil, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 
+import { MarkdownRenderer } from "@/components/markdown-renderer";
 import { Badge } from "@/components/ui/badge";
 import { PageEmpty } from "@/components/ui/page";
 import { useActiveCodebase } from "@/features/codebases/use-active-codebase";
@@ -33,47 +34,6 @@ interface DocumentDetail {
     sourcePath: string;
     description: string | null;
     chunks: DocumentChunk[];
-}
-
-/* ─── Simple markdown renderer (matches docs.tsx MarkdownBlock) ─── */
-
-function MarkdownContent({ content }: { content: string }) {
-    const html = content
-        .replace(/^### (.+)$/gm, '<h3 class="text-base font-semibold mt-6 mb-2">$1</h3>')
-        .replace(/^## (.+)$/gm, '<h2 class="text-xl font-bold mt-8 mb-3">$1</h2>')
-        .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-        .replace(/`([^`]+)`/g, '<code class="bg-muted px-1.5 py-0.5 rounded text-[13px] font-mono">$1</code>')
-        .replace(/^```(\w*)\n([\s\S]*?)```$/gm, (_m, _lang, code) =>
-            `<pre class="bg-muted/50 border rounded-lg p-4 text-[13px] font-mono overflow-x-auto my-3 leading-relaxed"><code>${code.trim()}</code></pre>`
-        )
-        .replace(/^\| (.+) \|$/gm, (row) => {
-            const cells = row.split("|").filter(c => c.trim()).map(c => c.trim());
-            const isHeader = cells.every(c => /^-+$/.test(c));
-            if (isHeader) return "";
-            const tag = row.includes("---") ? "th" : "td";
-            return `<tr>${cells.map(c => `<${tag} class="border px-3 py-1.5 text-sm text-left">${c}</${tag}>`).join("")}</tr>`;
-        })
-        .replace(/(<tr>[\s\S]*?<\/tr>)/g, (match, _p1, offset, str) => {
-            const before = str.substring(0, offset);
-            if (!before.includes("<table>") || before.lastIndexOf("</table>") > before.lastIndexOf("<table>")) {
-                return `<table class="border-collapse border rounded my-3 w-full">${match}`;
-            }
-            const after = str.substring(offset + match.length);
-            if (!after.match(/^\s*<tr>/)) {
-                return `${match}</table>`;
-            }
-            return match;
-        })
-        .replace(/^- (.+)$/gm, '<li class="text-sm ml-4 list-disc mb-1">$1</li>')
-        .replace(/^\d+\. (.+)$/gm, '<li class="text-sm ml-4 list-decimal mb-1">$1</li>')
-        .replace(/\n{2,}/g, '<div class="h-3"></div>');
-
-    return (
-        <div
-            className="text-foreground/90 text-sm leading-relaxed"
-            dangerouslySetInnerHTML={{ __html: html }}
-        />
-    );
 }
 
 /* ─── Helpers ─── */
@@ -269,7 +229,9 @@ export function DocumentBrowser() {
                                             <Pencil className="size-3.5" />
                                         </Link>
                                     </div>
-                                    <MarkdownContent content={chunk.content} />
+                                    <div className="prose prose-sm dark:prose-invert max-w-none">
+                                        <MarkdownRenderer>{chunk.content}</MarkdownRenderer>
+                                    </div>
                                 </section>
                             ))}
                         </div>
