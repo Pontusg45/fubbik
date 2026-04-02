@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { FileText, FolderOpen, Pencil, Search, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, FileText, FolderOpen, Pencil, Search, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { MarkdownRenderer } from "@/components/markdown-renderer";
@@ -105,6 +105,7 @@ export function DocumentBrowser({ initialDocId, initialSection }: DocumentBrowse
             search: (prev: Record<string, unknown>) => ({ ...prev, id: id ?? undefined, section: undefined }),
             replace: true
         });
+        window.scrollTo({ top: 0, behavior: "smooth" });
     };
 
     // Fetch document list
@@ -161,6 +162,10 @@ export function DocumentBrowser({ initialDocId, initialSection }: DocumentBrowse
 
     const documents = listQuery.data ?? [];
     const detail = detailQuery.data;
+
+    const currentIndex = documents.findIndex(d => d.id === selectedId);
+    const prevDoc = currentIndex > 0 ? documents[currentIndex - 1] : null;
+    const nextDoc = currentIndex < documents.length - 1 ? documents[currentIndex + 1] : null;
 
     // Auto-select first document when none is selected
     useEffect(() => {
@@ -426,6 +431,35 @@ export function DocumentBrowser({ initialDocId, initialSection }: DocumentBrowse
                                 </section>
                             ))}
                         </div>
+
+                        {(prevDoc || nextDoc) && (
+                            <div className="border-border mt-10 flex items-center justify-between border-t pt-6">
+                                {prevDoc ? (
+                                    <button
+                                        onClick={() => setSelectedId(prevDoc.id)}
+                                        className="text-muted-foreground hover:text-foreground group flex items-center gap-2 text-sm transition-colors"
+                                    >
+                                        <ChevronLeft className="size-4 transition-transform group-hover:-translate-x-0.5" />
+                                        <div className="text-left">
+                                            <p className="text-xs text-muted-foreground">Previous</p>
+                                            <p className="font-medium">{prevDoc.title}</p>
+                                        </div>
+                                    </button>
+                                ) : <div />}
+                                {nextDoc ? (
+                                    <button
+                                        onClick={() => setSelectedId(nextDoc.id)}
+                                        className="text-muted-foreground hover:text-foreground group flex items-center gap-2 text-sm transition-colors"
+                                    >
+                                        <div className="text-right">
+                                            <p className="text-xs text-muted-foreground">Next</p>
+                                            <p className="font-medium">{nextDoc.title}</p>
+                                        </div>
+                                        <ChevronRight className="size-4 transition-transform group-hover:translate-x-0.5" />
+                                    </button>
+                                ) : <div />}
+                            </div>
+                        )}
                     </div>
                 )}
             </div>
