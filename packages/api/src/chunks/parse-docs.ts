@@ -51,7 +51,7 @@ function tagsFromPath(path: string): string[] {
     return parts.filter(Boolean);
 }
 
-function extractFrontmatter(raw: string): { frontmatter: Record<string, unknown>; body: string } {
+export function extractFrontmatter(raw: string): { frontmatter: Record<string, unknown>; body: string } {
     const fmRegex = /^---\n([\s\S]*?)\n---\n?([\s\S]*)$/;
     const match = raw.match(fmRegex);
     if (!match) return { frontmatter: {}, body: raw };
