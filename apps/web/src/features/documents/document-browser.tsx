@@ -148,7 +148,7 @@ export function DocumentBrowser({ initialDocId, initialSection }: DocumentBrowse
         enabled: !!selectedId
     });
 
-    // Fetch all document details for search (only when searching)
+    // Fetch all document details for search and inter-document linking
     const allDocsQuery = useQuery({
         queryKey: ["documents-all-details"],
         queryFn: async () => {
@@ -166,9 +166,40 @@ export function DocumentBrowser({ initialDocId, initialSection }: DocumentBrowse
             }
             return details;
         },
-        enabled: isSearching && (listQuery.data?.length ?? 0) > 0,
+        enabled: (listQuery.data?.length ?? 0) > 0,
         staleTime: 60_000
     });
+
+    // Build title-to-ID map for inter-document link navigation
+    const docTitleMap = useMemo(() => {
+        const map = new Map<string, { docId: string; chunkId?: string }>();
+        const allDocs = allDocsQuery.data ?? [];
+        for (const doc of allDocs) {
+            map.set(doc.title.toLowerCase(), { docId: doc.id });
+            for (const chunk of doc.chunks) {
+                map.set(chunk.title.toLowerCase(), { docId: doc.id, chunkId: chunk.id });
+            }
+        }
+        return map;
+    }, [allDocsQuery.data]);
+
+    const handleContentClick = (e: React.MouseEvent) => {
+        const target = e.target as HTMLElement;
+        const link = target.closest("a");
+        if (!link) return;
+
+        const text = link.textContent?.toLowerCase() ?? "";
+        const match = docTitleMap.get(text);
+        if (match) {
+            e.preventDefault();
+            setSelectedId(match.docId);
+            if (match.chunkId) {
+                setTimeout(() => {
+                    document.getElementById(`section-${match.chunkId}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+                }, 300);
+            }
+        }
+    };
 
     const documents = listQuery.data ?? [];
     const detail = detailQuery.data;
@@ -663,7 +694,7 @@ export function DocumentBrowser({ initialDocId, initialSection }: DocumentBrowse
                         )}
 
                         {/* Sections */}
-                        <div className="space-y-8" data-doc-content>
+                        <div className="space-y-8" data-doc-content onClick={handleContentClick}>
                             {detail.chunks.map(chunk => (
                                 <section key={chunk.id} id={`section-${chunk.id}`} className="scroll-mt-24">
                                     <div className="group mb-3 flex items-center gap-2">
