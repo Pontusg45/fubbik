@@ -95,13 +95,13 @@ export function DocumentBrowser() {
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [searchFilter, setSearchFilter] = useState("");
 
-    // Fetch document list
+    // Fetch document list (show all documents, not filtered by codebase)
     const listQuery = useQuery({
-        queryKey: ["documents", codebaseId],
+        queryKey: ["documents"],
         queryFn: async () => {
             try {
                 return unwrapEden(
-                    await api.api.documents.get({ query: { codebaseId: codebaseId ?? undefined } })
+                    await api.api.documents.get({ query: {} })
                 ) as DocumentListItem[];
             } catch {
                 return [];
