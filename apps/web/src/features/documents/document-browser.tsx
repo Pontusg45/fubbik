@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { ChevronLeft, ChevronRight, FileText, FolderOpen, Menu, Pencil, Search, X } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, FileText, FolderOpen, Link2, Menu, Pencil, Search, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { MarkdownRenderer } from "@/components/markdown-renderer";
@@ -99,6 +99,7 @@ export function DocumentBrowser({ initialDocId, initialSection }: DocumentBrowse
     const [searchQuery, setSearchQuery] = useState("");
     const [isSearching, setIsSearching] = useState(false);
     const [mobileOpen, setMobileOpen] = useState(false);
+    const [copiedId, setCopiedId] = useState<string | null>(null);
 
     const setSelectedId = (id: string | null) => {
         setSelectedIdState(id);
@@ -524,6 +525,22 @@ export function DocumentBrowser({ initialDocId, initialSection }: DocumentBrowse
                                 <section key={chunk.id} id={`section-${chunk.id}`} className="scroll-mt-24">
                                     <div className="group mb-3 flex items-center gap-2">
                                         <h3 className="text-lg font-semibold">{chunk.title}</h3>
+                                        <button
+                                            onClick={() => {
+                                                const url = `${window.location.origin}/docs?id=${detail.id}&section=${chunk.id}`;
+                                                navigator.clipboard.writeText(url);
+                                                setCopiedId(chunk.id);
+                                                setTimeout(() => setCopiedId(null), 1500);
+                                            }}
+                                            className="text-muted-foreground hover:text-foreground opacity-0 transition-opacity group-hover:opacity-100"
+                                            title="Copy link to section"
+                                        >
+                                            {copiedId === chunk.id ? (
+                                                <Check className="size-3.5 text-green-500" />
+                                            ) : (
+                                                <Link2 className="size-3.5" />
+                                            )}
+                                        </button>
                                         <Link
                                             to="/chunks/$chunkId/edit"
                                             params={{ chunkId: chunk.id }}
