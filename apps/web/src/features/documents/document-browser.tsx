@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { Check, ChevronLeft, ChevronRight, FileText, FolderOpen, Link2, Menu, Pencil, Plus, Search, X } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, FileText, FolderOpen, Link2, Menu, Pencil, Plus, Printer, Search, X } from "lucide-react";
 import { Fragment, useEffect, useMemo, useState } from "react";
 
 import { MarkdownRenderer } from "@/components/markdown-renderer";
@@ -83,6 +83,23 @@ function highlightMatches(text: string, query: string): React.ReactNode[] {
             part
         )
     );
+}
+
+function mdToHtml(md: string): string {
+    return md
+        .replace(/^```(\w*)\n([\s\S]*?)```$/gm, "<pre><code>$2</code></pre>")
+        .replace(/^### (.+)$/gm, "<h3>$1</h3>")
+        .replace(/^## (.+)$/gm, "<h2>$1</h2>")
+        .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+        .replace(/`([^`]+)`/g, "<code>$1</code>")
+        .replace(/^\| (.+) \|$/gm, row => {
+            const cells = row.split("|").filter(c => c.trim()).map(c => c.trim());
+            if (cells.every(c => /^-+$/.test(c))) return "";
+            return `<tr>${cells.map(c => `<td>${c}</td>`).join("")}</tr>`;
+        })
+        .replace(/^- (.+)$/gm, "<li>$1</li>")
+        .replace(/^\d+\. (.+)$/gm, "<li>$1</li>")
+        .replace(/\n{2,}/g, "<br><br>");
 }
 
 function estimateReadingTime(chunks: DocumentChunk[]): number {
@@ -704,7 +721,53 @@ export function DocumentBrowser({ initialDocId, initialSection }: DocumentBrowse
                                 <ChevronRight className="size-3" />
                                 <span className="text-foreground font-medium">{detail.title}</span>
                             </div>
-                            <h2 className="text-xl font-bold">{detail.title}</h2>
+                            <div className="flex items-center gap-3">
+                                <h2 className="text-xl font-bold">{detail.title}</h2>
+                                <button
+                                    onClick={() => {
+                                        const printWindow = window.open("", "_blank");
+                                        if (!printWindow) return;
+                                        const chunks = detail.chunks;
+                                        const html = `<!DOCTYPE html>
+<html>
+<head>
+    <title>${detail.title}</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 700px; margin: 40px auto; padding: 0 20px; line-height: 1.6; color: #1a1a1a; }
+        h1 { font-size: 28px; margin-bottom: 8px; }
+        h2 { font-size: 20px; margin-top: 32px; border-bottom: 1px solid #e5e7eb; padding-bottom: 8px; }
+        h3 { font-size: 16px; margin-top: 24px; }
+        code { background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-size: 14px; }
+        pre { background: #f3f4f6; padding: 16px; border-radius: 8px; overflow-x: auto; }
+        pre code { background: none; padding: 0; }
+        table { border-collapse: collapse; width: 100%; margin: 16px 0; }
+        th, td { border: 1px solid #e5e7eb; padding: 8px 12px; text-align: left; font-size: 14px; }
+        th { background: #f9fafb; }
+        li { margin: 4px 0; }
+        .meta { color: #6b7280; font-size: 14px; margin-bottom: 32px; }
+        @media print { body { margin: 0; } }
+    </style>
+</head>
+<body>
+    <h1>${detail.title}</h1>
+    <p class="meta">${detail.sourcePath}</p>
+    ${chunks.map(c => {
+                                            const isIntro = c.title.includes("-- Introduction") || c.title.endsWith(" Introduction");
+                                            const contentHtml = mdToHtml(c.content);
+                                            return isIntro ? contentHtml : `<h2>${c.title}</h2>\n${contentHtml}`;
+                                        }).join("\n\n")}
+</body>
+</html>`;
+                                        printWindow.document.write(html);
+                                        printWindow.document.close();
+                                        printWindow.print();
+                                    }}
+                                    className="text-muted-foreground hover:text-foreground transition-colors"
+                                    title="Print document"
+                                >
+                                    <Printer className="size-4" />
+                                </button>
+                            </div>
                             {detail.description && (
                                 <p className="text-muted-foreground mt-1 text-sm">{detail.description}</p>
                             )}
