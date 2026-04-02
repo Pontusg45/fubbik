@@ -1,5 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
 import { Check, ChevronLeft, ChevronRight, FileText, FolderOpen, Link2, Menu, Pencil, Search, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
@@ -107,6 +107,20 @@ export function DocumentBrowser({ initialDocId, initialSection }: DocumentBrowse
     const [copiedId, setCopiedId] = useState<string | null>(null);
     const [readProgress, setReadProgress] = useState(0);
     const [highlightQuery, setHighlightQuery] = useState<string | null>(null);
+    const [editingChunkId, setEditingChunkId] = useState<string | null>(null);
+    const [editContent, setEditContent] = useState("");
+    const queryClient = useQueryClient();
+
+    const saveMutation = useMutation({
+        mutationFn: async ({ id, content }: { id: string; content: string }) => {
+            return unwrapEden(await api.api.chunks({ id }).patch({ content }));
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["documents", selectedId] });
+            setEditingChunkId(null);
+            setEditContent("");
+        }
+    });
 
     const setSelectedId = (id: string | null) => {
         setSelectedIdState(id);
@@ -715,18 +729,50 @@ export function DocumentBrowser({ initialDocId, initialSection }: DocumentBrowse
                                                 <Link2 className="size-3.5" />
                                             )}
                                         </button>
-                                        <Link
-                                            to="/chunks/$chunkId/edit"
-                                            params={{ chunkId: chunk.id }}
-                                            className="text-muted-foreground hover:text-foreground opacity-0 transition-opacity group-hover:opacity-100"
-                                            title="Edit this section"
+                                        <button
+                                            onClick={() => {
+                                                if (editingChunkId === chunk.id) {
+                                                    setEditingChunkId(null);
+                                                } else {
+                                                    setEditingChunkId(chunk.id);
+                                                    setEditContent(chunk.content);
+                                                }
+                                            }}
+                                            className={`text-muted-foreground hover:text-foreground opacity-0 transition-opacity group-hover:opacity-100 ${editingChunkId === chunk.id ? "!opacity-100 text-foreground" : ""}`}
+                                            title={editingChunkId === chunk.id ? "Cancel editing" : "Edit this section"}
                                         >
                                             <Pencil className="size-3.5" />
-                                        </Link>
+                                        </button>
                                     </div>
-                                    <div className="prose prose-sm dark:prose-invert max-w-none">
-                                        <MarkdownRenderer>{chunk.content}</MarkdownRenderer>
-                                    </div>
+                                    {editingChunkId === chunk.id ? (
+                                        <div className="space-y-3">
+                                            <textarea
+                                                value={editContent}
+                                                onChange={e => setEditContent(e.target.value)}
+                                                className="border-input bg-background w-full min-h-[200px] rounded-md border p-3 font-mono text-sm leading-relaxed focus:ring-2 focus:ring-ring outline-none resize-y"
+                                                autoFocus
+                                            />
+                                            <div className="flex items-center gap-2">
+                                                <button
+                                                    onClick={() => saveMutation.mutate({ id: chunk.id, content: editContent })}
+                                                    disabled={saveMutation.isPending || editContent === chunk.content}
+                                                    className="bg-foreground text-background hover:bg-foreground/90 rounded-md px-3 py-1.5 text-sm font-medium disabled:opacity-50"
+                                                >
+                                                    {saveMutation.isPending ? "Saving..." : "Save"}
+                                                </button>
+                                                <button
+                                                    onClick={() => { setEditingChunkId(null); setEditContent(""); }}
+                                                    className="text-muted-foreground hover:text-foreground text-sm"
+                                                >
+                                                    Cancel
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="prose prose-sm dark:prose-invert max-w-none">
+                                            <MarkdownRenderer>{chunk.content}</MarkdownRenderer>
+                                        </div>
+                                    )}
                                 </section>
                             ))}
                         </div>
