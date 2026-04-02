@@ -289,6 +289,22 @@ export function DocumentBrowser({ initialDocId, initialSection }: DocumentBrowse
         return results;
     }, [searchQuery, allDocsQuery.data]);
 
+    const groupedSearchResults = useMemo(() => {
+        const map = new Map<string, { doc: { id: string; title: string }; results: SearchResult[] }>();
+        for (const result of searchResults) {
+            const existing = map.get(result.documentId);
+            if (existing) {
+                existing.results.push(result);
+            } else {
+                map.set(result.documentId, {
+                    doc: { id: result.documentId, title: result.documentTitle },
+                    results: [result]
+                });
+            }
+        }
+        return Array.from(map.values());
+    }, [searchResults]);
+
     // Sidebar filtering (by document title/path when not in full search mode)
     const sidebarFiltered = useMemo(() => {
         if (!searchQuery || isSearching) return documents;
@@ -385,24 +401,31 @@ export function DocumentBrowser({ initialDocId, initialSection }: DocumentBrowse
                         {!allDocsQuery.isLoading && searchResults.length === 0 && searchQuery.length >= 2 && (
                             <p className="text-muted-foreground px-2 py-4 text-center text-xs">No results for "{searchQuery}"</p>
                         )}
-                        {searchResults.map((result, i) => (
-                            <button
-                                key={`${result.chunk.id}-${i}`}
-                                onClick={() => {
-                                    navigateToResult(result);
-                                    onDocSelect?.();
-                                }}
-                                className="hover:bg-muted/50 w-full rounded-md px-3 py-2.5 text-left transition-colors"
-                            >
-                                <div className="flex items-center gap-1.5">
-                                    <FileText className="text-muted-foreground size-3.5 shrink-0" />
-                                    <span className="text-xs font-medium">{result.documentTitle}</span>
+                        {groupedSearchResults.map(group => (
+                            <div key={group.doc.id} className="mb-3">
+                                <div className="flex items-center gap-1.5 px-2 py-1">
+                                    <FileText className="text-muted-foreground size-3.5" />
+                                    <span className="text-xs font-semibold">{group.doc.title}</span>
+                                    <Badge variant="secondary" size="sm" className="ml-auto text-[9px]">
+                                        {group.results.length}
+                                    </Badge>
                                 </div>
-                                <p className="mt-0.5 text-sm font-medium">{highlightMatches(result.chunk.title, searchQuery)}</p>
-                                <p className="text-muted-foreground mt-0.5 line-clamp-2 text-xs">
-                                    {highlightMatches(result.snippet, searchQuery)}
-                                </p>
-                            </button>
+                                {group.results.map((result, i) => (
+                                    <button
+                                        key={`${result.chunk.id}-${i}`}
+                                        onClick={() => {
+                                            navigateToResult(result);
+                                            onDocSelect?.();
+                                        }}
+                                        className="hover:bg-muted/50 w-full rounded-md px-3 py-2 text-left transition-colors"
+                                    >
+                                        <p className="text-sm font-medium">{highlightMatches(result.chunk.title, searchQuery)}</p>
+                                        <p className="text-muted-foreground mt-0.5 line-clamp-2 text-xs">
+                                            {highlightMatches(result.snippet, searchQuery)}
+                                        </p>
+                                    </button>
+                                ))}
+                            </div>
                         ))}
                     </div>
                 )}
