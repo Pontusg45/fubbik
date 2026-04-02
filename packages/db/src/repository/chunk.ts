@@ -296,6 +296,8 @@ export interface CreateChunkParams {
     consequences?: string;
     origin?: string;
     reviewStatus?: string;
+    documentId?: string;
+    documentOrder?: number;
 }
 
 export function createChunk(params: CreateChunkParams) {
@@ -323,6 +325,7 @@ export interface UpdateChunkParams {
     reviewStatus?: string;
     reviewedBy?: string | null;
     reviewedAt?: Date | null;
+    documentOrder?: number;
 }
 
 export function updateChunk(chunkId: string, params: UpdateChunkParams) {
@@ -344,7 +347,8 @@ export function updateChunk(chunkId: string, params: UpdateChunkParams) {
                     ...(params.origin !== undefined && { origin: params.origin }),
                     ...(params.reviewStatus !== undefined && { reviewStatus: params.reviewStatus }),
                     ...(params.reviewedBy !== undefined && { reviewedBy: params.reviewedBy }),
-                    ...(params.reviewedAt !== undefined && { reviewedAt: params.reviewedAt })
+                    ...(params.reviewedAt !== undefined && { reviewedAt: params.reviewedAt }),
+                    ...(params.documentOrder !== undefined && { documentOrder: params.documentOrder })
                 })
                 .where(eq(chunk.id, chunkId))
                 .returning();
