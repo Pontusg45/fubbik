@@ -166,6 +166,7 @@ export function DocumentBrowser({ initialDocId, initialSection }: DocumentBrowse
 
     const documents = listQuery.data ?? [];
     const detail = detailQuery.data;
+    const selectedListItem = documents.find(d => d.id === selectedId);
 
     const currentIndex = documents.findIndex(d => d.id === selectedId);
     const prevDoc = currentIndex > 0 ? documents[currentIndex - 1] : null;
@@ -541,6 +542,11 @@ export function DocumentBrowser({ initialDocId, initialSection }: DocumentBrowse
                                 <p className="text-muted-foreground mt-1 text-sm">{detail.description}</p>
                             )}
                             <p className="text-muted-foreground mt-1 font-mono text-xs">{detail.sourcePath}</p>
+                            {selectedListItem?.updatedAt && (
+                                <p className="text-muted-foreground mt-1 text-xs">
+                                    Last updated {new Date(selectedListItem.updatedAt).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}
+                                </p>
+                            )}
                         </div>
 
                         {/* Sections */}
