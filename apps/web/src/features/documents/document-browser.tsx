@@ -102,6 +102,13 @@ function mdToHtml(md: string): string {
         .replace(/\n{2,}/g, "<br><br>");
 }
 
+function getStaleness(updatedAt: string): { label: string; color: string } {
+    const days = Math.floor((Date.now() - new Date(updatedAt).getTime()) / (1000 * 60 * 60 * 24));
+    if (days <= 7) return { label: "Fresh", color: "text-green-600 dark:text-green-400" };
+    if (days <= 30) return { label: "Recent", color: "text-yellow-600 dark:text-yellow-400" };
+    return { label: "May be outdated", color: "text-orange-600 dark:text-orange-400" };
+}
+
 function estimateReadingTime(chunks: DocumentChunk[]): number {
     const words = chunks.reduce((sum, c) => sum + c.content.split(/\s+/).length, 0);
     return Math.max(1, Math.ceil(words / 200));
@@ -772,11 +779,15 @@ export function DocumentBrowser({ initialDocId, initialSection }: DocumentBrowse
                                 <p className="text-muted-foreground mt-1 text-sm">{detail.description}</p>
                             )}
                             <p className="text-muted-foreground mt-1 font-mono text-xs">{detail.sourcePath}</p>
-                            {selectedListItem?.updatedAt && (
-                                <p className="text-muted-foreground mt-1 text-xs">
-                                    Last updated {new Date(selectedListItem.updatedAt).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}
-                                </p>
-                            )}
+                            {selectedListItem?.updatedAt && (() => {
+                                const staleness = getStaleness(selectedListItem.updatedAt);
+                                return (
+                                    <p className="text-muted-foreground mt-1 flex items-center gap-2 text-xs">
+                                        Last updated {new Date(selectedListItem.updatedAt).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}
+                                        <span className={`font-medium ${staleness.color}`}>{staleness.label}</span>
+                                    </p>
+                                );
+                            })()}
                             <p className="text-muted-foreground mt-1 text-xs">
                                 ~{estimateReadingTime(detail.chunks)} min read
                             </p>
