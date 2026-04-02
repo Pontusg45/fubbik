@@ -198,16 +198,17 @@ export function DocumentBrowser({ initialDocId, initialSection }: DocumentBrowse
         return () => observer.disconnect();
     }, [detail]);
 
-    // Auto-select first document when none is selected
+    // Auto-select document from URL param (but don't auto-select first doc — show index instead)
     useEffect(() => {
-        if (!selectedId && documents.length > 0 && !isSearching) {
-            const firstId = initialDocId && documents.some(d => d.id === initialDocId) ? initialDocId : documents[0]!.id;
-            setSelectedIdState(firstId);
-            navigate({
-                to: "/docs",
-                search: (prev: Record<string, unknown>) => ({ ...prev, id: firstId }),
-                replace: true
-            });
+        if (!selectedId && documents.length > 0 && !isSearching && initialDocId) {
+            if (documents.some(d => d.id === initialDocId)) {
+                setSelectedIdState(initialDocId);
+                navigate({
+                    to: "/docs",
+                    search: (prev: Record<string, unknown>) => ({ ...prev, id: initialDocId }),
+                    replace: true
+                });
+            }
         }
     }, [documents]);
 
@@ -458,6 +459,19 @@ export function DocumentBrowser({ initialDocId, initialSection }: DocumentBrowse
                 {/* Folder-grouped list (hidden during search) */}
                 {!isSearching && (
                     <nav className="max-h-[calc(100vh-280px)] space-y-4 overflow-y-auto">
+                        <button
+                            onClick={() => {
+                                setSelectedIdState(null);
+                                navigate({ to: "/docs", search: (prev: Record<string, unknown>) => ({ ...prev, id: undefined }), replace: true });
+                                onDocSelect?.();
+                            }}
+                            className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors mb-2 ${
+                                !selectedId ? "bg-muted text-foreground font-medium" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                            }`}
+                        >
+                            <FolderOpen className="size-4" />
+                            <span>All Documents</span>
+                        </button>
                         {grouped.map(([folder, docs]) => (
                             <div key={folder}>
                                 <div className="text-muted-foreground mb-1 flex items-center gap-1.5 px-2 text-xs font-medium">
@@ -523,6 +537,35 @@ export function DocumentBrowser({ initialDocId, initialSection }: DocumentBrowse
                             className="bg-foreground/30 h-full transition-all duration-150"
                             style={{ width: `${readProgress}%` }}
                         />
+                    </div>
+                )}
+
+                {!selectedId && (
+                    <div>
+                        <h2 className="text-xl font-bold mb-6">All Documents</h2>
+                        {grouped.map(([folder, docs]) => (
+                            <div key={folder} className="mb-6">
+                                <h3 className="text-sm font-semibold text-muted-foreground mb-2 flex items-center gap-1.5">
+                                    <FolderOpen className="size-3.5" />
+                                    {folder || "/"}
+                                </h3>
+                                <div className="space-y-1 pl-5">
+                                    {docs.map(doc => (
+                                        <button
+                                            key={doc.id}
+                                            onClick={() => setSelectedId(doc.id)}
+                                            className="text-foreground hover:text-foreground/80 flex items-center gap-2 text-sm"
+                                        >
+                                            <FileText className="size-3.5 text-muted-foreground" />
+                                            <span>{doc.title}</span>
+                                            {doc.description && (
+                                                <span className="text-muted-foreground text-xs">— {doc.description}</span>
+                                            )}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
                     </div>
                 )}
 
