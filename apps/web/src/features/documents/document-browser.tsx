@@ -100,6 +100,7 @@ export function DocumentBrowser({ initialDocId, initialSection }: DocumentBrowse
     const [isSearching, setIsSearching] = useState(false);
     const [mobileOpen, setMobileOpen] = useState(false);
     const [copiedId, setCopiedId] = useState<string | null>(null);
+    const [readProgress, setReadProgress] = useState(0);
 
     const setSelectedId = (id: string | null) => {
         setSelectedIdState(id);
@@ -248,6 +249,20 @@ export function DocumentBrowser({ initialDocId, initialSection }: DocumentBrowse
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
     }, [prevDoc, nextDoc, isSearching]);
+
+    // Reading progress
+    useEffect(() => {
+        if (!detail) return;
+        const handleScroll = () => {
+            const scrollTop = window.scrollY;
+            const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+            if (docHeight <= 0) { setReadProgress(100); return; }
+            setReadProgress(Math.min(100, Math.round((scrollTop / docHeight) * 100)));
+        };
+        window.addEventListener("scroll", handleScroll, { passive: true });
+        handleScroll();
+        return () => window.removeEventListener("scroll", handleScroll);
+    }, [detail]);
 
     // Full-text search across all documents
     const searchResults = useMemo((): SearchResult[] => {
@@ -493,6 +508,15 @@ export function DocumentBrowser({ initialDocId, initialSection }: DocumentBrowse
 
             {/* ─── Main content ─── */}
             <div className="min-w-0">
+                {selectedId && detail && (
+                    <div className="bg-muted mb-4 h-0.5 w-full overflow-hidden rounded-full">
+                        <div
+                            className="bg-foreground/30 h-full transition-all duration-150"
+                            style={{ width: `${readProgress}%` }}
+                        />
+                    </div>
+                )}
+
                 {selectedId && detailQuery.isLoading && (
                     <p className="text-muted-foreground py-8 text-center text-sm">Loading document...</p>
                 )}
