@@ -106,6 +106,7 @@ export function DocumentBrowser({ initialDocId, initialSection }: DocumentBrowse
     const [mobileOpen, setMobileOpen] = useState(false);
     const [copiedId, setCopiedId] = useState<string | null>(null);
     const [readProgress, setReadProgress] = useState(0);
+    const [highlightQuery, setHighlightQuery] = useState<string | null>(null);
 
     const setSelectedId = (id: string | null) => {
         setSelectedIdState(id);
@@ -271,6 +272,53 @@ export function DocumentBrowser({ initialDocId, initialSection }: DocumentBrowse
         return () => window.removeEventListener("scroll", handleScroll);
     }, [detail]);
 
+    // Highlight search matches in document content
+    useEffect(() => {
+        const content = document.querySelector("[data-doc-content]");
+        if (content) {
+            // Clean previous highlights
+            content.querySelectorAll("mark.search-highlight").forEach(m => {
+                const parent = m.parentNode;
+                if (parent) {
+                    parent.replaceChild(document.createTextNode(m.textContent ?? ""), m);
+                    parent.normalize();
+                }
+            });
+        }
+
+        if (!highlightQuery || !detail) return;
+        const timer = setTimeout(() => {
+            const el = document.querySelector("[data-doc-content]");
+            if (!el) return;
+
+            const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+            const matches: { node: Text; index: number }[] = [];
+            const query = highlightQuery.toLowerCase();
+
+            let node: Text | null;
+            while ((node = walker.nextNode() as Text | null)) {
+                const text = node.textContent?.toLowerCase() ?? "";
+                let idx = text.indexOf(query);
+                while (idx !== -1) {
+                    matches.push({ node, index: idx });
+                    idx = text.indexOf(query, idx + 1);
+                }
+            }
+
+            // Apply highlights in reverse to preserve indices
+            for (const match of matches.reverse()) {
+                const range = document.createRange();
+                range.setStart(match.node, match.index);
+                range.setEnd(match.node, match.index + highlightQuery.length);
+                const mark = document.createElement("mark");
+                mark.className = "search-highlight bg-yellow-200 dark:bg-yellow-800 rounded px-0.5";
+                range.surroundContents(mark);
+            }
+        }, 500);
+
+        return () => clearTimeout(timer);
+    }, [highlightQuery, detail]);
+
     // Full-text search across all documents
     const searchResults = useMemo((): SearchResult[] => {
         if (!searchQuery.trim() || !allDocsQuery.data) return [];
@@ -366,6 +414,7 @@ export function DocumentBrowser({ initialDocId, initialSection }: DocumentBrowse
     };
 
     const navigateToResult = (result: SearchResult) => {
+        setHighlightQuery(searchQuery);
         setSelectedId(result.documentId);
         setIsSearching(false);
         setSearchQuery("");
@@ -603,8 +652,18 @@ export function DocumentBrowser({ initialDocId, initialSection }: DocumentBrowse
                             </p>
                         </div>
 
+                        {/* Search highlight banner */}
+                        {highlightQuery && (
+                            <div className="bg-muted mb-4 flex items-center justify-between rounded-md px-3 py-2 text-sm">
+                                <span className="text-muted-foreground">Showing results for "<strong>{highlightQuery}</strong>"</span>
+                                <button onClick={() => setHighlightQuery(null)} className="text-muted-foreground hover:text-foreground">
+                                    <X className="size-4" />
+                                </button>
+                            </div>
+                        )}
+
                         {/* Sections */}
-                        <div className="space-y-8">
+                        <div className="space-y-8" data-doc-content>
                             {detail.chunks.map(chunk => (
                                 <section key={chunk.id} id={`section-${chunk.id}`} className="scroll-mt-24">
                                     <div className="group mb-3 flex items-center gap-2">
