@@ -339,6 +339,9 @@ export function DocumentBrowser({ initialDocId, initialSection }: DocumentBrowse
             list.push(doc);
             map.set(folder, list);
         }
+        for (const [, docs] of map) {
+            docs.sort((a, b) => a.title.localeCompare(b.title));
+        }
         return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b));
     }, [sidebarFiltered]);
 
