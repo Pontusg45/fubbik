@@ -1,11 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { ChevronLeft, ChevronRight, FileText, FolderOpen, Pencil, Search, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, FileText, FolderOpen, Menu, Pencil, Search, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { MarkdownRenderer } from "@/components/markdown-renderer";
 import { Badge } from "@/components/ui/badge";
 import { PageEmpty } from "@/components/ui/page";
+import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useActiveCodebase } from "@/features/codebases/use-active-codebase";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
@@ -97,6 +98,7 @@ export function DocumentBrowser({ initialDocId, initialSection }: DocumentBrowse
     const [selectedId, setSelectedIdState] = useState<string | null>(initialDocId ?? null);
     const [searchQuery, setSearchQuery] = useState("");
     const [isSearching, setIsSearching] = useState(false);
+    const [mobileOpen, setMobileOpen] = useState(false);
 
     const setSelectedId = (id: string | null) => {
         setSelectedIdState(id);
@@ -346,9 +348,12 @@ export function DocumentBrowser({ initialDocId, initialSection }: DocumentBrowse
         );
     }
 
-    return (
-        <div className={`grid gap-6 ${showToc ? "lg:grid-cols-[280px_1fr_200px]" : "lg:grid-cols-[280px_1fr]"}`}>
-            {/* ─── Sidebar ─── */}
+    const renderSidebar = (onDocSelect?: () => void) => {
+        const handleDocClick = (id: string) => {
+            setSelectedId(id);
+            onDocSelect?.();
+        };
+        return (
             <div className="space-y-3">
                 {/* Search */}
                 <div className="relative">
@@ -383,7 +388,10 @@ export function DocumentBrowser({ initialDocId, initialSection }: DocumentBrowse
                         {searchResults.map((result, i) => (
                             <button
                                 key={`${result.chunk.id}-${i}`}
-                                onClick={() => navigateToResult(result)}
+                                onClick={() => {
+                                    navigateToResult(result);
+                                    onDocSelect?.();
+                                }}
                                 className="hover:bg-muted/50 w-full rounded-md px-3 py-2.5 text-left transition-colors"
                             >
                                 <div className="flex items-center gap-1.5">
@@ -412,7 +420,7 @@ export function DocumentBrowser({ initialDocId, initialSection }: DocumentBrowse
                                     {docs.map(doc => (
                                         <button
                                             key={doc.id}
-                                            onClick={() => setSelectedId(doc.id)}
+                                            onClick={() => handleDocClick(doc.id)}
                                             className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors ${
                                                 selectedId === doc.id
                                                     ? "bg-muted text-foreground font-medium"
@@ -431,6 +439,32 @@ export function DocumentBrowser({ initialDocId, initialSection }: DocumentBrowse
                         ))}
                     </nav>
                 )}
+            </div>
+        );
+    };
+
+    return (
+        <div className={`grid gap-6 ${showToc ? "lg:grid-cols-[280px_1fr_200px]" : "lg:grid-cols-[280px_1fr]"}`}>
+            {/* ─── Sidebar ─── */}
+            {/* Desktop sidebar */}
+            <div className="hidden lg:block">{renderSidebar()}</div>
+
+            {/* Mobile trigger + sheet */}
+            <div className="lg:hidden">
+                <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+                    <SheetTrigger
+                        render={
+                            <button className="border-input bg-background flex w-full items-center gap-2 rounded-md border px-3 py-2 text-sm">
+                                <Menu className="size-4" />
+                                <span className="text-muted-foreground truncate">{detail?.title ?? "Select document..."}</span>
+                            </button>
+                        }
+                    />
+                    <SheetContent side="left" className="w-80 p-4">
+                        <SheetTitle className="mb-4 text-sm font-semibold">Documents</SheetTitle>
+                        {renderSidebar(() => setMobileOpen(false))}
+                    </SheetContent>
+                </Sheet>
             </div>
 
             {/* ─── Main content ─── */}
