@@ -1,10 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link, useSearch } from "@tanstack/react-router";
-import { Book, ChevronRight, Code, ExternalLink, Globe, Layers, Network, Terminal, Zap } from "lucide-react";
+import { Book, ChevronRight, Code, ExternalLink, FileText, Globe, Layers, Network, Terminal, Zap } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { useActiveCodebase } from "@/features/codebases/use-active-codebase";
+import { DocumentBrowser } from "@/features/documents/document-browser";
 import { getUser } from "@/functions/get-user";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
@@ -357,7 +358,7 @@ function MarkdownBlock({ content }: { content: string }) {
 
 function DocsPage() {
     const search = useSearch({ from: "/docs" });
-    const [tab, setTab] = useState<"guide" | "dev" | "api">(search.tab === "dev" ? "dev" : search.tab === "api" ? "api" : "guide");
+    const [tab, setTab] = useState<"guide" | "dev" | "documents" | "api">(search.tab === "dev" ? "dev" : search.tab === "documents" ? "documents" : search.tab === "api" ? "api" : "guide");
     const [diagramSource, setDiagramSource] = useState<string | null>(null);
     const [diagramLoading, setDiagramLoading] = useState(false);
     const { codebaseId } = useActiveCodebase();
@@ -375,6 +376,9 @@ function DocsPage() {
         }
         if (search.tab === "dev") {
             setTab("dev");
+        }
+        if (search.tab === "documents") {
+            setTab("documents");
         }
         if (search.tab === "api") {
             setTab("api");
@@ -417,6 +421,19 @@ function DocsPage() {
                     <span className="flex items-center gap-2">
                         <Code className="size-4" />
                         Developer Docs
+                    </span>
+                </button>
+                <button
+                    onClick={() => setTab("documents")}
+                    className={`-mb-px border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
+                        tab === "documents"
+                            ? "border-foreground text-foreground"
+                            : "text-muted-foreground hover:text-foreground border-transparent"
+                    }`}
+                >
+                    <span className="flex items-center gap-2">
+                        <FileText className="size-4" />
+                        Documents
                     </span>
                 </button>
                 <button
@@ -521,6 +538,8 @@ function DocsPage() {
                     <DeveloperDocs />
                 </div>
             )}
+
+            {tab === "documents" && <DocumentBrowser />}
 
             {tab === "api" && (
                 <div className="space-y-3">
