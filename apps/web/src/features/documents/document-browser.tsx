@@ -85,6 +85,11 @@ function highlightMatches(text: string, query: string): React.ReactNode[] {
     );
 }
 
+function estimateReadingTime(chunks: DocumentChunk[]): number {
+    const words = chunks.reduce((sum, c) => sum + c.content.split(/\s+/).length, 0);
+    return Math.max(1, Math.ceil(words / 200));
+}
+
 /* ─── Document Browser ─── */
 
 interface DocumentBrowserProps {
@@ -550,6 +555,9 @@ export function DocumentBrowser({ initialDocId, initialSection }: DocumentBrowse
                                     Last updated {new Date(selectedListItem.updatedAt).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}
                                 </p>
                             )}
+                            <p className="text-muted-foreground mt-1 text-xs">
+                                ~{estimateReadingTime(detail.chunks)} min read
+                            </p>
                         </div>
 
                         {/* Sections */}
