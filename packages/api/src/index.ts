@@ -12,6 +12,7 @@ import { chunkRoutes } from "./chunks/routes";
 import { commentRoutes } from "./comments/routes";
 import { coverageRoutes } from "./coverage/routes";
 import { diagramRoutes } from "./diagram/routes";
+import { documentRoutes } from "./documents/routes";
 import { sessionRoutes } from "./sessions/routes";
 import { codebaseRoutes } from "./codebases/routes";
 import { collectionRoutes } from "./collections/routes";
@@ -153,6 +154,7 @@ export const api = new Elysia({ prefix: "/api" })
     .use(coverageRoutes)
     .use(sessionRoutes)
     .use(diagramRoutes)
+    .use(documentRoutes)
     .use(planRoutes)
     .use(taskQueueRoutes)
     .use(workspaceRoutes);
