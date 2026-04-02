@@ -167,6 +167,27 @@ export function DocumentBrowser({ initialDocId, initialSection }: DocumentBrowse
     const prevDoc = currentIndex > 0 ? documents[currentIndex - 1] : null;
     const nextDoc = currentIndex < documents.length - 1 ? documents[currentIndex + 1] : null;
 
+    const showToc = !!detail && detail.chunks.length >= 3;
+
+    const [activeSection, setActiveSection] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (!detail) return;
+        const observer = new IntersectionObserver(
+            entries => {
+                for (const entry of entries) {
+                    if (entry.isIntersecting) {
+                        setActiveSection(entry.target.id);
+                    }
+                }
+            },
+            { rootMargin: "-80px 0px -70% 0px", threshold: 0 }
+        );
+        const sections = document.querySelectorAll("[id^='section-']");
+        sections.forEach(s => observer.observe(s));
+        return () => observer.disconnect();
+    }, [detail]);
+
     // Auto-select first document when none is selected
     useEffect(() => {
         if (!selectedId && documents.length > 0 && !isSearching) {
@@ -289,7 +310,7 @@ export function DocumentBrowser({ initialDocId, initialSection }: DocumentBrowse
     }
 
     return (
-        <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
+        <div className={`grid gap-6 ${showToc ? "lg:grid-cols-[280px_1fr_200px]" : "lg:grid-cols-[280px_1fr]"}`}>
             {/* ─── Sidebar ─── */}
             <div className="space-y-3">
                 {/* Search */}
@@ -391,25 +412,6 @@ export function DocumentBrowser({ initialDocId, initialSection }: DocumentBrowse
                             <p className="text-muted-foreground mt-1 font-mono text-xs">{detail.sourcePath}</p>
                         </div>
 
-                        {/* On this page nav (for 3+ sections) */}
-                        {detail.chunks.length >= 3 && (
-                            <div className="border-border mb-6 rounded-lg border p-4">
-                                <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">On this page</p>
-                                <ul className="space-y-1">
-                                    {detail.chunks.map(chunk => (
-                                        <li key={chunk.id}>
-                                            <a
-                                                href={`#section-${chunk.id}`}
-                                                className="text-muted-foreground hover:text-foreground text-sm transition-colors"
-                                            >
-                                                {chunk.title}
-                                            </a>
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
-                        )}
-
                         {/* Sections */}
                         <div className="space-y-8">
                             {detail.chunks.map(chunk => (
@@ -463,6 +465,30 @@ export function DocumentBrowser({ initialDocId, initialSection }: DocumentBrowse
                     </div>
                 )}
             </div>
+
+            {showToc && (
+                <nav className="hidden lg:block">
+                    <div className="sticky top-24 space-y-2">
+                        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">On this page</p>
+                        <ul className="space-y-1 border-l border-border pl-3">
+                            {detail.chunks.map(chunk => (
+                                <li key={chunk.id}>
+                                    <a
+                                        href={`#section-${chunk.id}`}
+                                        className={`block text-xs leading-relaxed transition-colors ${
+                                            activeSection === `section-${chunk.id}`
+                                                ? "text-foreground font-medium"
+                                                : "text-muted-foreground hover:text-foreground"
+                                        }`}
+                                    >
+                                        {chunk.title}
+                                    </a>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                </nav>
+            )}
         </div>
     );
 }
