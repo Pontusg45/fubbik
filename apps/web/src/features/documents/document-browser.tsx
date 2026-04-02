@@ -443,6 +443,17 @@ export function DocumentBrowser({ initialDocId, initialSection }: DocumentBrowse
                     <div>
                         {/* Document header */}
                         <div className="mb-6">
+                            <div className="text-muted-foreground mb-2 flex items-center gap-1 text-xs">
+                                <span>Docs</span>
+                                {folderFromPath(detail.sourcePath) !== "/" && (
+                                    <>
+                                        <ChevronRight className="size-3" />
+                                        <span>{folderFromPath(detail.sourcePath)}</span>
+                                    </>
+                                )}
+                                <ChevronRight className="size-3" />
+                                <span className="text-foreground font-medium">{detail.title}</span>
+                            </div>
                             <h2 className="text-xl font-bold">{detail.title}</h2>
                             {detail.description && (
                                 <p className="text-muted-foreground mt-1 text-sm">{detail.description}</p>
