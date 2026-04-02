@@ -209,6 +209,43 @@ export function DocumentBrowser({ initialDocId, initialSection }: DocumentBrowse
         }
     }, [initialSection, detail]);
 
+    // Keyboard navigation
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            const target = e.target as HTMLElement;
+            if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable) return;
+
+            if (e.key === "/" && !e.metaKey && !e.ctrlKey) {
+                e.preventDefault();
+                const input = document.querySelector<HTMLInputElement>("[data-docs-search]");
+                input?.focus();
+                return;
+            }
+
+            if (e.key === "Escape") {
+                if (isSearching) { clearSearch(); return; }
+                const input = document.querySelector<HTMLInputElement>("[data-docs-search]");
+                input?.blur();
+                return;
+            }
+
+            if (e.key === "ArrowUp" || e.key === "k") {
+                e.preventDefault();
+                if (prevDoc) setSelectedId(prevDoc.id);
+                return;
+            }
+
+            if (e.key === "ArrowDown" || e.key === "j") {
+                e.preventDefault();
+                if (nextDoc) setSelectedId(nextDoc.id);
+                return;
+            }
+        };
+
+        window.addEventListener("keydown", handleKeyDown);
+        return () => window.removeEventListener("keydown", handleKeyDown);
+    }, [prevDoc, nextDoc, isSearching]);
+
     // Full-text search across all documents
     const searchResults = useMemo((): SearchResult[] => {
         if (!searchQuery.trim() || !allDocsQuery.data) return [];
@@ -318,6 +355,7 @@ export function DocumentBrowser({ initialDocId, initialSection }: DocumentBrowse
                     <Search className="text-muted-foreground absolute left-2.5 top-2.5 size-4" />
                     <input
                         type="text"
+                        data-docs-search
                         placeholder="Search across all docs..."
                         value={searchQuery}
                         onChange={e => handleSearch(e.target.value)}
