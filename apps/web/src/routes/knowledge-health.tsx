@@ -9,6 +9,7 @@ import { Card, CardPanel } from "@/components/ui/card";
 import { PageContainer, PageHeader, PageLoading } from "@/components/ui/page";
 import { useActiveCodebase } from "@/features/codebases/use-active-codebase";
 import { getUser } from "@/functions/get-user";
+import { BrokenLinkChecker } from "@/features/health/broken-link-checker";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
@@ -273,6 +274,9 @@ function KnowledgeHealthPage() {
                             </CardPanel>
                         </Card>
                     )}
+
+                    {/* Broken Links */}
+                    <BrokenLinkChecker />
 
                     {/* Knowledge Gaps from AI Sessions */}
                     {gapsQuery.data && gapsQuery.data.length > 0 && (
