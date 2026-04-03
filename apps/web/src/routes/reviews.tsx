@@ -80,6 +80,24 @@ function ReviewsPage() {
         enabled: activeTab === "sessions"
     });
 
+    // Fetch all sessions (unfiltered) for counts
+    const allSessionsQuery = useQuery({
+        queryKey: ["sessions-counts", codebaseId],
+        queryFn: async () => {
+            const query: { codebaseId?: string; limit?: string } = { limit: "500" };
+            if (codebaseId) query.codebaseId = codebaseId;
+            return unwrapEden(await api.api.sessions.get({ query }));
+        },
+        enabled: activeTab === "sessions",
+        staleTime: 30_000
+    });
+
+    const allSessions = (allSessionsQuery.data as { sessions: Session[]; total: number } | undefined)?.sessions ?? [];
+    const statusCounts: Record<string, number> = {};
+    for (const s of allSessions) {
+        statusCounts[s.status] = (statusCounts[s.status] ?? 0) + 1;
+    }
+
     const data = sessionsQuery.data as { sessions: Session[]; total: number } | undefined;
     const sessions = data?.sessions ?? [];
     const total = data?.total ?? 0;
@@ -112,16 +130,21 @@ function ReviewsPage() {
                 <>
                     {/* Status filter */}
                     <div className="mb-6 flex gap-2">
-                        {statusOptions.map(opt => (
-                            <Button
-                                key={opt.value}
-                                variant={statusFilter === opt.value ? "default" : "outline"}
-                                size="sm"
-                                onClick={() => handleStatusChange(opt.value)}
-                            >
-                                {opt.label}
-                            </Button>
-                        ))}
+                        {statusOptions.map(opt => {
+                            const count = opt.value === "all"
+                                ? allSessions.length
+                                : statusCounts[opt.value] ?? 0;
+                            return (
+                                <Button
+                                    key={opt.value}
+                                    variant={statusFilter === opt.value ? "default" : "outline"}
+                                    size="sm"
+                                    onClick={() => handleStatusChange(opt.value)}
+                                >
+                                    {opt.label}{count > 0 ? ` (${count})` : ""}
+                                </Button>
+                            );
+                        })}
                     </div>
 
                     {/* Content */}
