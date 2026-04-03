@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowRight, Book, Check, Copy, GitBranch, Github, Layers, Map, Network, Scan, Sparkles, Terminal } from "lucide-react";
+import { ArrowRight, Book, Bot, Check, Code2, Copy, FileText, GitBranch, Github, Layers, Map, Network, Scan, Search, Sparkles, Terminal, Workflow } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import FubbikLogo from "@/components/fubbik-logo";
@@ -369,24 +369,73 @@ function LandingPage() {
                     </section>
                 </FadeInSection>
 
+                {/* How it works */}
+                <FadeInSection>
+                    <section className="container mx-auto max-w-3xl px-4 py-16">
+                        <div className="mb-10 text-center">
+                            <h2 className="text-foreground mb-2 text-2xl font-bold tracking-tight">How it works</h2>
+                            <p className="text-muted-foreground text-sm">Three concepts, infinite possibilities.</p>
+                        </div>
+
+                        <div className="grid gap-8 sm:grid-cols-3">
+                            <div className="text-center">
+                                <div className="bg-muted/50 mx-auto mb-4 flex size-12 items-center justify-center rounded-xl">
+                                    <Layers className="text-muted-foreground size-5" />
+                                </div>
+                                <h3 className="text-foreground mb-2 text-sm font-semibold">Chunks</h3>
+                                <p className="text-muted-foreground text-xs leading-relaxed">
+                                    Break knowledge into atomic units — conventions, decisions, runbooks, API docs. Each chunk has a type, tags, file references, and optional decision context (rationale, alternatives, consequences).
+                                </p>
+                            </div>
+                            <div className="text-center">
+                                <div className="bg-muted/50 mx-auto mb-4 flex size-12 items-center justify-center rounded-xl">
+                                    <Network className="text-muted-foreground size-5" />
+                                </div>
+                                <h3 className="text-foreground mb-2 text-sm font-semibold">Connections</h3>
+                                <p className="text-muted-foreground text-xs leading-relaxed">
+                                    Link chunks with typed edges — depends_on, part_of, extends, contradicts, and more. Connections form a navigable knowledge graph that reveals how ideas relate across projects.
+                                </p>
+                            </div>
+                            <div className="text-center">
+                                <div className="bg-muted/50 mx-auto mb-4 flex size-12 items-center justify-center rounded-xl">
+                                    <Sparkles className="text-muted-foreground size-5" />
+                                </div>
+                                <h3 className="text-foreground mb-2 text-sm font-semibold">Context</h3>
+                                <p className="text-muted-foreground text-xs leading-relaxed">
+                                    Serve the right knowledge to the right tool. Token-budgeted exports, file-aware relevance scoring, and CLAUDE.md generation ensure AI agents get what they need.
+                                </p>
+                            </div>
+                        </div>
+                    </section>
+                </FadeInSection>
+
                 {/* Capabilities grid */}
                 <FadeInSection>
                     <section className="container mx-auto max-w-3xl px-4 pb-16">
+                        <div className="mb-8 text-center">
+                            <h2 className="text-foreground mb-2 text-2xl font-bold tracking-tight">Works where you work</h2>
+                            <p className="text-muted-foreground text-sm">Integrate with your existing tools and workflows.</p>
+                        </div>
+
                         <div className="grid gap-3 sm:grid-cols-3">
                             {[
-                                { label: "VS Code Extension", detail: "Browse and create chunks from your editor", section: "cli" },
-                                { label: "MCP Server", detail: "AI agents query your knowledge base directly", section: "cli" },
-                                { label: "CLI", detail: "fubbik context | fubbik generate claude.md", section: "cli" }
+                                { icon: Code2, label: "VS Code Extension", detail: "Browse, search, and create chunks without leaving your editor. File-aware surfacing shows relevant knowledge for the file you're editing." },
+                                { icon: Bot, label: "MCP Server", detail: "AI agents query your knowledge base directly. Claude Code, Cursor, and other MCP tools get conventions, requirements, and context automatically." },
+                                { icon: Terminal, label: "CLI", detail: "Full-featured command line: fubbik add, search, context, sync-claude-md, docs import. Auto-detects your codebase from git." },
+                                { icon: FileText, label: "Docs Import", detail: "Import markdown documentation as browsable pages. Split on headings, track changes, re-sync from disk. Your docs become searchable chunks." },
+                                { icon: Search, label: "Semantic Search", detail: "Find knowledge by meaning, not just keywords. Local embeddings via Ollama power concept-level search across all your chunks." },
+                                { icon: Workflow, label: "Plans & Sessions", detail: "Track implementation work with ordered plans, BDD requirements, and AI session logging. Full traceability from requirement to code." }
                             ].map(cap => (
-                                <Link
+                                <div
                                     key={cap.label}
-                                    to="/docs"
-                                    search={{ section: cap.section }}
                                     className="bg-muted/20 hover:bg-muted/40 rounded-lg border p-4 transition-colors"
                                 >
-                                    <div className="text-foreground mb-1 text-sm font-semibold">{cap.label}</div>
+                                    <div className="mb-2 flex items-center gap-2">
+                                        <cap.icon className="text-muted-foreground size-4" />
+                                        <span className="text-foreground text-sm font-semibold">{cap.label}</span>
+                                    </div>
                                     <div className="text-muted-foreground text-xs leading-relaxed">{cap.detail}</div>
-                                </Link>
+                                </div>
                             ))}
                         </div>
                     </section>
