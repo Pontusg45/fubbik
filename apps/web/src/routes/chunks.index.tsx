@@ -28,7 +28,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Separator } from "@/components/ui/separator";
 import { PageEmpty } from "@/components/ui/page";
 import { SkeletonList } from "@/components/ui/skeleton-list";
-import { Tooltip, TooltipTrigger, TooltipPopup } from "@/components/ui/tooltip";
+import { Tooltip, TooltipProvider, TooltipTrigger, TooltipPopup } from "@/components/ui/tooltip";
 import { ChunkFiltersPopover } from "@/features/chunks/chunk-filters-popover";
 import { getChunkSize } from "@/features/chunks/chunk-size";
 import { ChunkBulkActionBar } from "@/features/chunks/chunk-bulk-action-bar";
@@ -46,6 +46,37 @@ import { useIntersectionObserver } from "@/hooks/use-intersection-observer";
 import { getUser } from "@/functions/get-user";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
+
+function ChunkPreviewPopup({ chunk, queryClient }: { chunk: { id: string; content?: string | null; type: string; summary?: string | null }; queryClient: ReturnType<typeof useQueryClient> }) {
+    const cached = queryClient.getQueryData<{ tags?: { name: string }[]; summary?: string | null }>(["chunk", chunk.id]);
+    const summary = cached?.summary ?? chunk.summary;
+    const tags = cached?.tags?.slice(0, 3);
+    const content = chunk.content;
+
+    if (!content && !summary) return null;
+
+    return (
+        <TooltipPopup side="bottom" align="start" className="max-w-[300px] p-2.5">
+            {summary && (
+                <p className="text-xs font-medium text-foreground">{summary}</p>
+            )}
+            {content && (
+                <p className={`text-xs text-muted-foreground ${summary ? "mt-1.5" : ""}`}>
+                    {content.slice(0, 150)}{content.length > 150 ? "..." : ""}
+                </p>
+            )}
+            {(tags && tags.length > 0) && (
+                <div className="mt-2 flex flex-wrap gap-1">
+                    {tags.map(tag => (
+                        <span key={tag.name} className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                            {tag.name}
+                        </span>
+                    ))}
+                </div>
+            )}
+        </TooltipPopup>
+    );
+}
 
 export const Route = createFileRoute("/chunks/")({
     component: ChunksList,
@@ -706,7 +737,7 @@ function ChunksList() {
                                                                 onClick={e => { e.preventDefault(); e.stopPropagation(); }}
                                                             />
                                                         ) : (
-                                                        <Tooltip>
+                                                        <TooltipProvider delay={300}><Tooltip>
                                                             <TooltipTrigger
                                                                 render={<p className="truncate text-sm font-medium" />}
                                                                 onDoubleClick={e => {
@@ -717,22 +748,13 @@ function ChunksList() {
                                                             >
                                                                 {chunk.title}
                                                             </TooltipTrigger>
-                                                            {chunk.content && (
-                                                                <TooltipPopup className="max-w-xs p-2">
-                                                                    <p className="text-xs text-muted-foreground">{chunk.content.slice(0, 150)}{chunk.content.length > 150 ? "..." : ""}</p>
-                                                                </TooltipPopup>
-                                                            )}
-                                                        </Tooltip>
+                                                            <ChunkPreviewPopup chunk={chunk} queryClient={queryClient} />
+                                                        </Tooltip></TooltipProvider>
                                                         )}
                                                         <div className="mt-1 flex items-center gap-2">
                                                             <Badge variant="secondary" size="sm" className="font-mono text-[10px]">
                                                                 {chunk.type}
                                                             </Badge>
-                                                            {([] as string[]).map(tag => (
-                                                                <Badge key={tag} variant="outline" size="sm" className="text-[10px]">
-                                                                    {tag}
-                                                                </Badge>
-                                                            ))}
                                                         </div>
                                                     </div>
                                                     <div className="flex shrink-0 items-center gap-3">
@@ -824,7 +846,7 @@ function ChunksList() {
                                                 onClick={e => { e.preventDefault(); e.stopPropagation(); }}
                                             />
                                         ) : (
-                                        <Tooltip>
+                                        <TooltipProvider delay={300}><Tooltip>
                                             <TooltipTrigger
                                                 render={<p className="truncate text-sm font-medium" />}
                                                 onDoubleClick={e => {
@@ -835,12 +857,8 @@ function ChunksList() {
                                             >
                                                 {chunk.title}
                                             </TooltipTrigger>
-                                            {chunk.content && (
-                                                <TooltipPopup className="max-w-xs p-2">
-                                                    <p className="text-xs text-muted-foreground">{chunk.content.slice(0, 150)}{chunk.content.length > 150 ? "..." : ""}</p>
-                                                </TooltipPopup>
-                                            )}
-                                        </Tooltip>
+                                            <ChunkPreviewPopup chunk={chunk} queryClient={queryClient} />
+                                        </Tooltip></TooltipProvider>
                                         )}
                                         <div className="mt-1 flex items-center gap-2">
                                             <Badge variant="secondary" size="sm" className="font-mono text-[10px]">
