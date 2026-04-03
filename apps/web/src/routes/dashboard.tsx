@@ -16,8 +16,10 @@ import {
     Plus,
     Star,
     Tags,
+    Activity,
     Upload,
-    Workflow
+    Workflow,
+    Zap
 } from "lucide-react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
@@ -379,6 +381,32 @@ function DashboardPage() {
 
                 {/* Right column — 1/3 */}
                 <div className="space-y-6">
+                    {/* Quick Actions */}
+                    <div className="mb-0">
+                        <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                            <Zap className="size-4" />
+                            Quick Actions
+                        </h3>
+                        <div className="grid grid-cols-2 gap-2">
+                            <Button variant="outline" size="sm" className="justify-start" render={<Link to="/chunks/new" />}>
+                                <Plus className="size-3.5" />
+                                New Chunk
+                            </Button>
+                            <Button variant="outline" size="sm" className="justify-start" render={<Link to="/import" />}>
+                                <FileText className="size-3.5" />
+                                Import Docs
+                            </Button>
+                            <Button variant="outline" size="sm" className="justify-start" render={<Link to="/graph" />}>
+                                <Network className="size-3.5" />
+                                View Graph
+                            </Button>
+                            <Button variant="outline" size="sm" className="justify-start" render={<Link to="/knowledge-health" />}>
+                                <Activity className="size-3.5" />
+                                Health Check
+                            </Button>
+                        </div>
+                    </div>
+
                     {/* Health summary */}
                     <DashboardSection
                         icon={AlertTriangle}
