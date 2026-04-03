@@ -5,7 +5,9 @@ import {
     ArrowRight,
     Blocks,
     ChevronDown,
+    ClipboardList,
     Clock,
+    Code,
     Download,
     Eye,
     FileCode,
@@ -14,7 +16,8 @@ import {
     Plus,
     Star,
     Tags,
-    Upload
+    Upload,
+    Workflow
 } from "lucide-react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
@@ -88,7 +91,7 @@ function DashboardPage() {
 
     const activityQuery = useQuery({
         queryKey: ["dashboard-activity"],
-        queryFn: async () => unwrapEden(await api.api.activity.get({ query: { limit: "5" } as any }))
+        queryFn: async () => unwrapEden(await api.api.activity.get({ query: { limit: "15" } as any }))
     });
 
     const favoritesChunksQuery = useQuery({
@@ -449,17 +452,7 @@ function DashboardPage() {
                         }
                     >
                         {Array.isArray(activities) && activities.length > 0 ? (
-                            <div className="space-y-2">
-                                {activities.slice(0, 5).map((a: any) => (
-                                    <div key={a.id} className="flex items-center gap-2 text-xs">
-                                        <span className="text-muted-foreground shrink-0">{timeAgo(a.createdAt)}</span>
-                                        <span className="truncate">
-                                            <span className="font-medium capitalize">{a.action}</span>{" "}
-                                            <span className="text-muted-foreground">{a.entityTitle ?? a.entityType}</span>
-                                        </span>
-                                    </div>
-                                ))}
-                            </div>
+                            <ActivityFeed activities={activities} />
                         ) : (
                             <p className="text-muted-foreground py-2 text-center text-sm">No activity yet</p>
                         )}
@@ -526,6 +519,92 @@ function HealthRow({ label, count, color }: { label: string; count: number; colo
         <div className="flex items-center justify-between text-sm">
             <span>{label}</span>
             <span className={`font-mono font-bold ${color}`}>{count}</span>
+        </div>
+    );
+}
+
+const ACTIVITY_ENTITY_ICONS: Record<string, typeof Blocks> = {
+    chunk: FileText,
+    requirement: Code,
+    plan: ClipboardList,
+    session: Workflow,
+};
+
+const ACTIVITY_ACTION_COLORS: Record<string, string> = {
+    created: "text-emerald-500",
+    updated: "text-blue-500",
+    deleted: "text-red-500",
+    archived: "text-yellow-500",
+};
+
+function getActivityLink(entityType: string, entityId: string): string | null {
+    switch (entityType) {
+        case "chunk": return `/chunks/${entityId}`;
+        case "requirement": return `/requirements/${entityId}`;
+        case "plan": return `/plans/${entityId}`;
+        case "session": return `/reviews/${entityId}`;
+        default: return null;
+    }
+}
+
+function groupActivitiesByDate(activities: any[]): { label: string; items: any[] }[] {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterday = new Date(today.getTime() - 86400000);
+
+    const groups: { label: string; items: any[] }[] = [];
+    const buckets: Record<string, any[]> = { Today: [], Yesterday: [], Earlier: [] };
+
+    for (const a of activities) {
+        const d = new Date(a.createdAt);
+        if (d >= today) buckets.Today.push(a);
+        else if (d >= yesterday) buckets.Yesterday.push(a);
+        else buckets.Earlier.push(a);
+    }
+
+    for (const label of ["Today", "Yesterday", "Earlier"] as const) {
+        if (buckets[label].length > 0) {
+            groups.push({ label, items: buckets[label] });
+        }
+    }
+    return groups;
+}
+
+function ActivityFeed({ activities }: { activities: any[] }) {
+    const groups = groupActivitiesByDate(activities);
+
+    return (
+        <div className="space-y-3">
+            {groups.map(group => (
+                <div key={group.label}>
+                    <div className="text-muted-foreground mb-1.5 text-[10px] font-semibold uppercase tracking-wider">{group.label}</div>
+                    <div className="space-y-1">
+                        {group.items.map((a: any) => {
+                            const Icon = ACTIVITY_ENTITY_ICONS[a.entityType] ?? Blocks;
+                            const actionColor = ACTIVITY_ACTION_COLORS[a.action] ?? "text-muted-foreground";
+                            const link = getActivityLink(a.entityType, a.entityId);
+                            const content = (
+                                <div className="hover:bg-muted/50 flex items-center gap-2 rounded-md px-2 py-1.5 text-xs transition-colors">
+                                    <Icon className={`size-3.5 shrink-0 ${actionColor}`} />
+                                    <span className="min-w-0 flex-1 truncate">
+                                        <span className={`font-medium capitalize ${actionColor}`}>{a.action}</span>{" "}
+                                        <span className="text-foreground">{a.entityTitle ?? a.entityType}</span>
+                                    </span>
+                                    <span className="text-muted-foreground shrink-0 text-[10px]">{timeAgo(a.createdAt)}</span>
+                                </div>
+                            );
+
+                            return link ? (
+                                <Link key={a.id} to={link as any}>
+                                    {content}
+                                </Link>
+                            ) : (
+                                <div key={a.id}>{content}</div>
+                            );
+                        })}
+                    </div>
+                </div>
+            ))}
         </div>
     );
 }
