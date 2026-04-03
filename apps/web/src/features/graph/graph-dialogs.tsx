@@ -45,7 +45,7 @@ export function ChangeConnectionDialog({
         >
             <DialogPopup className="max-w-sm">
                 <DialogHeader>
-                    <DialogTitle>Change Connection Type</DialogTitle>
+                    <DialogTitle>Choose Connection Type</DialogTitle>
                     <p className="text-muted-foreground text-sm">
                         <span className="text-foreground font-medium">
                             {pendingConnection ? (chunkMap.get(pendingConnection.source)?.title ?? pendingConnection.source) : ""}

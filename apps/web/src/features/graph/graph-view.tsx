@@ -123,23 +123,9 @@ function GraphViewInner() {
 
     const onConnect = useCallback((connection: Connection) => {
         if (!connection.source || !connection.target) return;
-        // Quick-connect: create with "related_to" immediately, offer to change type via toast
-        createConnectionMutation.mutate(
-            { sourceId: connection.source, targetId: connection.target, relation: "related_to" },
-            {
-                onSuccess: () => {
-                    const src = connection.source!;
-                    const tgt = connection.target!;
-                    toast.success("Connected", {
-                        action: {
-                            label: "Change type",
-                            onClick: () => dispatch({ type: "SET_PENDING_CONNECTION", connection: { source: src, target: tgt } }),
-                        },
-                    });
-                },
-            }
-        );
-    }, [createConnectionMutation, dispatch]);
+        // Show relation picker dialog before creating the connection
+        dispatch({ type: "SET_PENDING_CONNECTION", connection: { source: connection.source, target: connection.target } });
+    }, [dispatch]);
 
     // Saved custom graphs (server-side)
     const savedGraphsQuery = useQuery({
@@ -1156,7 +1142,7 @@ function GraphViewInner() {
                     </SheetContent>
                 </Sheet>
             )}
-            <div className="relative flex-1 touch-manipulation [&_.react-flow__handle]:invisible [&_.react-flow__node]:transition-[transform] [&_.react-flow__node]:duration-500 [&_.react-flow__node]:ease-out [&_.react-flow__node:hover_.react-flow__handle]:!visible">
+            <div className="relative flex-1 touch-manipulation [&_.react-flow__handle]:invisible [&_.react-flow__handle]:transition-all [&_.react-flow__handle]:duration-150 [&_.react-flow__node]:transition-[transform] [&_.react-flow__node]:duration-500 [&_.react-flow__node]:ease-out [&_.react-flow__node:hover_.react-flow__handle]:!visible">
                 {showLayoutSpinner && (
                     <div className="bg-background/60 absolute inset-0 z-50 flex items-center justify-center backdrop-blur-sm">
                         <div className="text-muted-foreground flex items-center gap-2">

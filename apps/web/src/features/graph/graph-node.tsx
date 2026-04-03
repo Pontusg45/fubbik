@@ -19,17 +19,17 @@ export function GraphNode({ data }: NodeProps) {
 
     return (
         <>
-            <Handle type="target" position={Position.Top} className="!bg-muted-foreground/50 !border-muted-foreground/50 !size-2" />
+            <Handle type="target" position={Position.Top} className="!size-3 !bg-muted-foreground/50 hover:!bg-primary hover:!scale-125 !border-background !border-2 transition-all duration-150" />
             <Handle
                 type="target"
                 position={Position.Left}
-                className="!bg-muted-foreground/50 !border-muted-foreground/50 !size-2"
+                className="!size-3 !bg-muted-foreground/50 hover:!bg-primary hover:!scale-125 !border-background !border-2 transition-all duration-150"
                 id="left-target"
             />
             <Handle
                 type="source"
                 position={Position.Right}
-                className="!bg-muted-foreground/50 !border-muted-foreground/50 !size-2"
+                className="!size-3 !bg-muted-foreground/50 hover:!bg-primary hover:!scale-125 !border-background !border-2 transition-all duration-150"
                 id="right-source"
             />
             <div className="flex flex-col gap-0.5">
@@ -57,7 +57,7 @@ export function GraphNode({ data }: NodeProps) {
                     </div>
                 )}
             </div>
-            <Handle type="source" position={Position.Bottom} className="!bg-muted-foreground/50 !border-muted-foreground/50 !size-2" />
+            <Handle type="source" position={Position.Bottom} className="!size-3 !bg-muted-foreground/50 hover:!bg-primary hover:!scale-125 !border-background !border-2 transition-all duration-150" />
         </>
     );
 }
