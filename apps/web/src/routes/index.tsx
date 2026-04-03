@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowRight, Check, Copy, GitBranch, Layers, Map, Network, Scan, Sparkles, Terminal } from "lucide-react";
+import { ArrowRight, Book, Check, Copy, GitBranch, Github, Layers, Map, Network, Scan, Sparkles, Terminal } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import FubbikLogo from "@/components/fubbik-logo";
@@ -322,7 +322,12 @@ function LandingPage() {
                                 Explore Graph
                             </Button>
                             <Button variant="outline" size="lg" className="flex-1 sm:flex-initial" render={<Link to="/docs" search={{}} />}>
+                                <Book className="size-4" />
                                 Docs
+                            </Button>
+                            <Button variant="outline" size="lg" className="flex-1 sm:flex-initial" render={<a href="https://github.com/Pontusg45/fubbik" target="_blank" rel="noopener noreferrer" />}>
+                                <Github className="size-4" />
+                                GitHub
                             </Button>
                         </div>
                     </div>
