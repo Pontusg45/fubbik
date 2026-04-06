@@ -1429,6 +1429,11 @@ function GraphViewInner() {
                         onToggleEdgeAnimated={() => dispatch({ type: "TOGGLE_EDGE_ANIMATED" })}
                         showUngrouped={showUngrouped}
                         onToggleUngrouped={() => dispatch({ type: "TOGGLE_UNGROUPED" })}
+                        onApplyPreset={(filters) => {
+                            dispatch({ type: "SET_FILTER_TYPES", types: new Set(filters.activeTypes) });
+                            dispatch({ type: "SET_FILTER_RELATIONS", relations: new Set(filters.activeRelations) });
+                            dispatch({ type: "SET_ACTIVE_TAG_TYPE_IDS", ids: new Set(filters.activeTagTypeIds) });
+                        }}
                     />
                 </div>
 

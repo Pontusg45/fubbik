@@ -1,4 +1,5 @@
 import { Badge } from "@/components/ui/badge";
+import { FilterPresets, type FilterPresetFilters } from "@/features/graph/filter-presets";
 
 interface TagTypeInfo {
     id: string;
@@ -20,7 +21,8 @@ export function GraphFilters({
     edgeAnimated,
     onToggleEdgeAnimated,
     showUngrouped,
-    onToggleUngrouped
+    onToggleUngrouped,
+    onApplyPreset,
 }: {
     types: string[];
     relations: string[];
@@ -35,6 +37,7 @@ export function GraphFilters({
     onToggleEdgeAnimated?: () => void;
     showUngrouped?: boolean;
     onToggleUngrouped?: () => void;
+    onApplyPreset?: (filters: FilterPresetFilters) => void;
 }) {
     return (
         <div className="bg-background/80 absolute top-4 left-4 z-10 max-w-[200px] space-y-3 rounded-lg border p-3 backdrop-blur-sm md:max-w-[200px] max-md:max-w-[160px]">
@@ -120,6 +123,16 @@ export function GraphFilters({
                         <span className="text-muted-foreground font-medium uppercase">Animate edges</span>
                     </label>
                 </div>
+            )}
+            {onApplyPreset && (
+                <FilterPresets
+                    currentFilters={{
+                        activeTypes: [...activeTypes],
+                        activeRelations: [...activeRelations],
+                        activeTagTypeIds: [...(activeTagTypeIds ?? [])],
+                    }}
+                    onApplyPreset={onApplyPreset}
+                />
             )}
         </div>
     );
