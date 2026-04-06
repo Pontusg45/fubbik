@@ -15,6 +15,7 @@ import UserMenu from "@/features/auth/user-menu";
 
 import { Breadcrumbs } from "@/features/nav/breadcrumbs";
 import { ConnectionStatus } from "@/features/nav/connection-status";
+import { useStaleCount } from "@/features/staleness/use-stale-count";
 import { KeyboardShortcutsHelp, useGlobalShortcuts } from "@/features/nav/keyboard-shortcuts";
 import { MobileNav } from "@/features/nav/mobile-nav";
 import { CodebaseSwitcher } from "@/features/codebases/codebase-switcher";
@@ -57,6 +58,7 @@ function RootDocument() {
     const { helpOpen, setHelpOpen } = useGlobalShortcuts();
     const location = useLocation();
     const isLanding = location.pathname === "/";
+    const staleCount = useStaleCount();
 
     return (
         <html lang="en" suppressHydrationWarning>
@@ -83,9 +85,14 @@ function RootDocument() {
                                     <nav aria-label="Main navigation" className="hidden items-center gap-1 md:flex">
                                         <Link
                                             to="/dashboard"
-                                            className="text-muted-foreground hover:text-foreground [&.active]:text-foreground rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
+                                            className="text-muted-foreground hover:text-foreground [&.active]:text-foreground relative rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
                                         >
                                             Dashboard
+                                            {staleCount > 0 && (
+                                                <span className="absolute -top-1 -right-1 flex size-4 items-center justify-center rounded-full bg-amber-500 text-[10px] font-bold text-white">
+                                                    {staleCount > 9 ? "9+" : staleCount}
+                                                </span>
+                                            )}
                                         </Link>
                                         <Link
                                             to="/chunks"
