@@ -17,6 +17,7 @@ import {
     Network,
     Search,
     Settings,
+    Sparkles,
     Tags
 } from "lucide-react";
 import { useState } from "react";
@@ -27,6 +28,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
 const primaryItems = [
     { label: "Dashboard", to: "/dashboard" as const, icon: LayoutDashboard },
+    { label: "Features", to: "/features" as const, icon: Sparkles },
     { label: "Chunks", to: "/chunks" as const, icon: Blocks },
     { label: "Graph", to: "/graph" as const, icon: Network },
     { label: "Requirements", to: "/requirements" as const, icon: ClipboardCheck },
