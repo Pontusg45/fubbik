@@ -2,6 +2,7 @@ import { Effect } from "effect";
 import { Elysia, t } from "elysia";
 
 import { requireSession } from "../require-session";
+import { detectAgeStaleChunks } from "./detect-age";
 import * as stalenessService from "./service";
 
 export const stalenessRoutes = new Elysia()
@@ -73,6 +74,27 @@ export const stalenessRoutes = new Elysia()
             body: t.Object({
                 chunkIdA: t.String(),
                 chunkIdB: t.String()
+            })
+        }
+    )
+    .post(
+        "/chunks/stale/scan-age",
+        ctx =>
+            Effect.runPromise(
+                requireSession(ctx).pipe(
+                    Effect.flatMap(session =>
+                        detectAgeStaleChunks(
+                            session.user.id,
+                            ctx.body.codebaseId,
+                            ctx.body.thresholdDays
+                        )
+                    )
+                )
+            ),
+        {
+            body: t.Object({
+                codebaseId: t.Optional(t.String()),
+                thresholdDays: t.Optional(t.Number())
             })
         }
     );

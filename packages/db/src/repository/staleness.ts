@@ -145,6 +145,57 @@ export function suppressDuplicatePair(chunkIdA: string, chunkIdB: string) {
     });
 }
 
+export function detectAgeStaleChunks(userId: string, codebaseId?: string, thresholdDays = 90) {
+    return Effect.tryPromise({
+        try: async () => {
+            const threshold = sql`NOW() - INTERVAL '${sql.raw(String(thresholdDays))} days'`;
+
+            // Find chunks already flagged for "age" (undismissed)
+            const alreadyFlagged = db
+                .select({ chunkId: chunkStaleness.chunkId })
+                .from(chunkStaleness)
+                .where(
+                    and(
+                        eq(chunkStaleness.reason, "age"),
+                        isNull(chunkStaleness.dismissedAt)
+                    )
+                );
+
+            const conditions = [
+                eq(chunk.userId, userId),
+                sql`${chunk.updatedAt} < ${threshold}`,
+                isNull(chunk.archivedAt),
+                sql`${chunk.id} NOT IN (${alreadyFlagged})`,
+                ...codebaseConditions(codebaseId)
+            ];
+
+            const staleChunks = await db
+                .select({
+                    id: chunk.id,
+                    updatedAt: chunk.updatedAt
+                })
+                .from(chunk)
+                .where(and(...conditions));
+
+            if (staleChunks.length === 0) {
+                return { flagged: 0 };
+            }
+
+            const flags = staleChunks.map(c => ({
+                id: crypto.randomUUID(),
+                chunkId: c.id,
+                reason: "age" as const,
+                detail: `Last updated ${c.updatedAt?.toISOString().split("T")[0] ?? "unknown"}`
+            }));
+
+            await db.insert(chunkStaleness).values(flags).onConflictDoNothing();
+
+            return { flagged: flags.length };
+        },
+        catch: cause => new DatabaseError({ cause })
+    });
+}
+
 export function getLastScan(codebaseId: string) {
     return Effect.tryPromise({
         try: async () => {
