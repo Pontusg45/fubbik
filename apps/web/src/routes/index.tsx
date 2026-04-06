@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { ArrowRight, Bot, Code2, Github, Heart, Layers, LayoutDashboard, Network, Search, Sparkles, Terminal } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
@@ -160,7 +160,7 @@ function LandingPage() {
                             Get Started
                             <ArrowRight className="size-4" />
                         </Button>
-                        <Button variant="outline" size="lg" className="w-full sm:w-auto" render={<Link to="/features" />}>
+                        <Button variant="outline" size="lg" className="w-full sm:w-auto" render={<a href="/features" />}>
                             How it works
                         </Button>
                         <Button variant="outline" size="lg" className="w-full sm:w-auto" render={<a href="https://github.com/Pontusg45/fubbik" target="_blank" rel="noopener noreferrer" />}>
@@ -212,12 +212,11 @@ function LandingPage() {
                     <section className="container mx-auto max-w-2xl px-4 pb-16">
                         <div className="border-border/50 divide-border/50 rounded-xl border divide-y">
                             {featureTeasers.map((item, i) => (
-                                <Link
+                                <a
                                     key={item.title}
-                                    to="/features"
+                                    href={`/features${item.hash}`}
                                     className="group flex items-start gap-4 px-5 py-5 transition-all duration-300 hover:bg-muted/30"
                                     style={{ animationDelay: `${i * 80}ms` }}
-                                    onClick={() => { setTimeout(() => document.getElementById(item.hash.slice(1))?.scrollIntoView({ behavior: "smooth" }), 100); }}
                                 >
                                     <div className="bg-muted/50 group-hover:bg-muted mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg transition-colors">
                                         <item.icon className="text-muted-foreground group-hover:text-foreground size-4 transition-colors" />
@@ -227,7 +226,7 @@ function LandingPage() {
                                         <div className="text-muted-foreground text-[13px] leading-relaxed">{item.desc}</div>
                                     </div>
                                     <ArrowRight className="text-muted-foreground/0 group-hover:text-muted-foreground mt-1 ml-auto size-4 shrink-0 transition-all duration-300 group-hover:translate-x-0.5" />
-                                </Link>
+                                </a>
                             ))}
                         </div>
                     </section>
