@@ -32,6 +32,7 @@ import { SkeletonList } from "@/components/ui/skeleton-list";
 import { useFavorites } from "@/features/chunks/use-favorites";
 import { MilestoneCards } from "@/features/onboarding/milestone-cards";
 import { WelcomeWizard } from "@/features/onboarding/welcome-wizard";
+import { AttentionNeeded } from "@/features/staleness/attention-needed";
 import { useRecentChunks } from "@/features/chunks/use-recent-chunks";
 import { useActiveCodebase } from "@/features/codebases/use-active-codebase";
 import { getUser } from "@/functions/get-user";
@@ -279,6 +280,9 @@ function DashboardPage() {
                 chunks: statsQuery.data.chunks,
                 connections: statsQuery.data.connections,
             } : null} />
+
+            {/* Stale chunk alerts */}
+            <AttentionNeeded />
 
             {/* Main grid */}
             <div className="grid gap-6 lg:grid-cols-3">
