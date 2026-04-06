@@ -21,10 +21,12 @@ import { Route as LoginRouteImport } from "./routes/login";
 import { Route as KnowledgeHealthRouteImport } from "./routes/knowledge-health";
 import { Route as ImportRouteImport } from "./routes/import";
 import { Route as GraphRouteImport } from "./routes/graph";
+import { Route as FeaturesRouteImport } from "./routes/features";
 import { Route as DocsRouteImport } from "./routes/docs";
 import { Route as DashboardRouteImport } from "./routes/dashboard";
 import { Route as CoverageRouteImport } from "./routes/coverage";
 import { Route as ContextRouteImport } from "./routes/context";
+import { Route as CompareRouteImport } from "./routes/compare";
 import { Route as CodebasesRouteImport } from "./routes/codebases";
 import { Route as ActivityRouteImport } from "./routes/activity";
 import { Route as IndexRouteImport } from "./routes/index";
@@ -102,6 +104,11 @@ const GraphRoute = GraphRouteImport.update({
   path: "/graph",
   getParentRoute: () => rootRouteImport,
 } as any);
+const FeaturesRoute = FeaturesRouteImport.update({
+  id: "/features",
+  path: "/features",
+  getParentRoute: () => rootRouteImport,
+} as any);
 const DocsRoute = DocsRouteImport.update({
   id: "/docs",
   path: "/docs",
@@ -120,6 +127,11 @@ const CoverageRoute = CoverageRouteImport.update({
 const ContextRoute = ContextRouteImport.update({
   id: "/context",
   path: "/context",
+  getParentRoute: () => rootRouteImport,
+} as any);
+const CompareRoute = CompareRouteImport.update({
+  id: "/compare",
+  path: "/compare",
   getParentRoute: () => rootRouteImport,
 } as any);
 const CodebasesRoute = CodebasesRouteImport.update({
@@ -208,10 +220,12 @@ export interface FileRoutesByFullPath {
   "/": typeof IndexRoute;
   "/activity": typeof ActivityRoute;
   "/codebases": typeof CodebasesRoute;
+  "/compare": typeof CompareRoute;
   "/context": typeof ContextRoute;
   "/coverage": typeof CoverageRoute;
   "/dashboard": typeof DashboardRoute;
   "/docs": typeof DocsRoute;
+  "/features": typeof FeaturesRoute;
   "/graph": typeof GraphRoute;
   "/import": typeof ImportRoute;
   "/knowledge-health": typeof KnowledgeHealthRoute;
@@ -242,10 +256,12 @@ export interface FileRoutesByTo {
   "/": typeof IndexRoute;
   "/activity": typeof ActivityRoute;
   "/codebases": typeof CodebasesRoute;
+  "/compare": typeof CompareRoute;
   "/context": typeof ContextRoute;
   "/coverage": typeof CoverageRoute;
   "/dashboard": typeof DashboardRoute;
   "/docs": typeof DocsRoute;
+  "/features": typeof FeaturesRoute;
   "/graph": typeof GraphRoute;
   "/import": typeof ImportRoute;
   "/knowledge-health": typeof KnowledgeHealthRoute;
@@ -277,10 +293,12 @@ export interface FileRoutesById {
   "/": typeof IndexRoute;
   "/activity": typeof ActivityRoute;
   "/codebases": typeof CodebasesRoute;
+  "/compare": typeof CompareRoute;
   "/context": typeof ContextRoute;
   "/coverage": typeof CoverageRoute;
   "/dashboard": typeof DashboardRoute;
   "/docs": typeof DocsRoute;
+  "/features": typeof FeaturesRoute;
   "/graph": typeof GraphRoute;
   "/import": typeof ImportRoute;
   "/knowledge-health": typeof KnowledgeHealthRoute;
@@ -313,10 +331,12 @@ export interface FileRouteTypes {
     | "/"
     | "/activity"
     | "/codebases"
+    | "/compare"
     | "/context"
     | "/coverage"
     | "/dashboard"
     | "/docs"
+    | "/features"
     | "/graph"
     | "/import"
     | "/knowledge-health"
@@ -347,10 +367,12 @@ export interface FileRouteTypes {
     | "/"
     | "/activity"
     | "/codebases"
+    | "/compare"
     | "/context"
     | "/coverage"
     | "/dashboard"
     | "/docs"
+    | "/features"
     | "/graph"
     | "/import"
     | "/knowledge-health"
@@ -381,10 +403,12 @@ export interface FileRouteTypes {
     | "/"
     | "/activity"
     | "/codebases"
+    | "/compare"
     | "/context"
     | "/coverage"
     | "/dashboard"
     | "/docs"
+    | "/features"
     | "/graph"
     | "/import"
     | "/knowledge-health"
@@ -416,10 +440,12 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute;
   ActivityRoute: typeof ActivityRoute;
   CodebasesRoute: typeof CodebasesRoute;
+  CompareRoute: typeof CompareRoute;
   ContextRoute: typeof ContextRoute;
   CoverageRoute: typeof CoverageRoute;
   DashboardRoute: typeof DashboardRoute;
   DocsRoute: typeof DocsRoute;
+  FeaturesRoute: typeof FeaturesRoute;
   GraphRoute: typeof GraphRoute;
   ImportRoute: typeof ImportRoute;
   KnowledgeHealthRoute: typeof KnowledgeHealthRoute;
@@ -533,6 +559,13 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof GraphRouteImport;
       parentRoute: typeof rootRouteImport;
     };
+    "/features": {
+      id: "/features";
+      path: "/features";
+      fullPath: "/features";
+      preLoaderRoute: typeof FeaturesRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     "/docs": {
       id: "/docs";
       path: "/docs";
@@ -559,6 +592,13 @@ declare module "@tanstack/react-router" {
       path: "/context";
       fullPath: "/context";
       preLoaderRoute: typeof ContextRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/compare": {
+      id: "/compare";
+      path: "/compare";
+      fullPath: "/compare";
+      preLoaderRoute: typeof CompareRouteImport;
       parentRoute: typeof rootRouteImport;
     };
     "/codebases": {
@@ -680,10 +720,12 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ActivityRoute: ActivityRoute,
   CodebasesRoute: CodebasesRoute,
+  CompareRoute: CompareRoute,
   ContextRoute: ContextRoute,
   CoverageRoute: CoverageRoute,
   DashboardRoute: DashboardRoute,
   DocsRoute: DocsRoute,
+  FeaturesRoute: FeaturesRoute,
   GraphRoute: GraphRoute,
   ImportRoute: ImportRoute,
   KnowledgeHealthRoute: KnowledgeHealthRoute,
