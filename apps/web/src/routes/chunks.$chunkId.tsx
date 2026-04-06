@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Archive, ArrowLeft, ArrowRight, Bot, Calendar, Clock, Code, Download, Edit, FileCode, FileText, Hash, History, Lightbulb, Link2, MessageSquare, Network, Pencil, Scale, Sparkles, Star, Trash2 } from "lucide-react";
+import { Archive, ArrowLeft, ArrowRight, Bot, Calendar, Clock, Code, Download, Edit, FileCode, FileText, GitFork, Hash, History, Lightbulb, Link2, MessageSquare, Network, Pencil, Scale, Sparkles, Star, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -17,6 +17,7 @@ import { ChunkHealthBadge } from "@/features/chunks/chunk-health-badge";
 import { ChunkLink } from "@/features/chunks/chunk-link";
 import { getChunkSize } from "@/features/chunks/chunk-size";
 import { DeleteConnectionButton } from "@/features/chunks/delete-connection-button";
+import { DependencyTree } from "@/features/chunks/dependency-tree";
 import { InlineTagEditor } from "@/features/chunks/inline-tag-editor";
 import { LinkChunkDialog } from "@/features/chunks/link-chunk-dialog";
 import { RelatedChunks } from "@/features/chunks/related-chunks";
@@ -533,6 +534,10 @@ function ChunkDetail() {
                 {connections.length === 0 && (
                     <p className="text-muted-foreground text-sm">No connections yet</p>
                 )}
+            </CollapsibleSection>
+
+            <CollapsibleSection title="Dependency Tree" icon={GitFork} count={connections.length} defaultOpen={connections.length > 0}>
+                <DependencyTree chunkId={chunkId} connections={connections} />
             </CollapsibleSection>
 
             <CollapsibleSection title="Suggested Connections" icon={Lightbulb} defaultOpen={false}>
