@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import {
     Activity,
@@ -20,6 +20,7 @@ import {
     Tags,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Kbd } from "@/components/ui/kbd";
@@ -118,6 +119,31 @@ export function CommandPalette() {
     const { recentIds } = useRecentChunks();
     const { recentPages } = useRecentPages();
     const { setCodebaseId } = useActiveCodebase();
+
+    const quickNoteMutation = useMutation({
+        mutationFn: async (title: string) => {
+            const result = unwrapEden(
+                await api.api.chunks.post({
+                    title,
+                    content: "",
+                    type: "note",
+                })
+            );
+            return result;
+        },
+        onSuccess: (data) => {
+            toast.success(`Created "${query.trim()}"`, {
+                action: {
+                    label: "Edit",
+                    onClick: () => navigate({ to: "/chunks/$chunkId/edit", params: { chunkId: data.id } }),
+                },
+            });
+            close();
+        },
+        onError: () => {
+            toast.error("Failed to create note");
+        },
+    });
 
     const isTagSearch = query.startsWith("#");
     const tagQuery = isTagSearch ? query.slice(1).toLowerCase() : "";
@@ -473,8 +499,19 @@ export function CommandPalette() {
             });
         }
 
+        if (query.trim().length > 0 && !isTagSearch && !isFederatedSearch && !subMode) {
+            result.push({
+                id: "quick-note",
+                title: `Quick note: "${query.trim()}"`,
+                group: "Actions",
+                icon: <Plus className="size-4" />,
+                badge: "Create",
+                onSelect: () => quickNoteMutation.mutate(query.trim()),
+            });
+        }
+
         return result;
-    }, [query, debouncedQuery, subMode, isTagSearch, isFederatedSearch, tagQuery, tagSearch.data, federatedSearch.data, recentPages, recentChunksQuery.data, chunkSearch.data, requirementsSearch.data, plansSearch.data, codebasesQuery.data, navigate, close, setCodebaseId]);
+    }, [query, debouncedQuery, subMode, isTagSearch, isFederatedSearch, tagQuery, tagSearch.data, federatedSearch.data, recentPages, recentChunksQuery.data, chunkSearch.data, requirementsSearch.data, plansSearch.data, codebasesQuery.data, navigate, close, setCodebaseId, quickNoteMutation]);
 
     // Clamp selected index when items change
     useEffect(() => {
