@@ -35,9 +35,9 @@ export function AttentionNeeded() {
     });
 
     const dismissMutation = useMutation({
-        mutationFn: async (flagChunkId: string) =>
+        mutationFn: async (flagId: string) =>
             unwrapEden(
-                await api.api.chunks({ id: flagChunkId })["dismiss-staleness"].post()
+                await api.api.chunks({ id: flagId })["dismiss-staleness"].post()
             ),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["stale-flags"] });
@@ -106,7 +106,7 @@ export function AttentionNeeded() {
                                             variant="ghost"
                                             size="sm"
                                             className="size-6 shrink-0 p-0"
-                                            onClick={() => dismissMutation.mutate(flag.chunkId)}
+                                            onClick={() => dismissMutation.mutate(flag.id)}
                                             disabled={dismissMutation.isPending}
                                         >
                                             <Check className="size-3.5" />
