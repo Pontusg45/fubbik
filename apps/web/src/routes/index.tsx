@@ -1,161 +1,19 @@
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowRight, Book, Bot, Check, Code2, Copy, FileText, GitBranch, Github, Layers, Map, Network, Scan, Search, Sparkles, Terminal, Workflow } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { createFileRoute } from "@tanstack/react-router";
+import { ArrowRight, Bot, Code2, Github, Heart, Layers, LayoutDashboard, Network, Search, Sparkles, Terminal } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 
 import FubbikLogo from "@/components/fubbik-logo";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { InstallTabs } from "@/features/landing/install-tabs";
+import { KnowledgeGraphCanvas } from "@/features/landing/knowledge-graph-canvas";
+import { TerminalDemo } from "@/features/landing/terminal-demo";
 import { api } from "@/utils/api";
 
 export const Route = createFileRoute("/")({
     component: LandingPage
 });
-
-/* ─── Animated constellation background ─── */
-
-interface Star {
-    x: number;
-    y: number;
-    vx: number;
-    vy: number;
-    r: number;
-    pulse: number;
-    pulseSpeed: number;
-}
-
-function ConstellationCanvas() {
-    const canvasRef = useRef<HTMLCanvasElement>(null);
-    const starsRef = useRef<Star[]>([]);
-    const mouseRef = useRef({ x: -1000, y: -1000 });
-    const frameRef = useRef(0);
-
-    const init = useCallback((canvas: HTMLCanvasElement) => {
-        const count = Math.floor((canvas.width * canvas.height) / 18000);
-        starsRef.current = Array.from({ length: count }, () => ({
-            x: Math.random() * canvas.width,
-            y: Math.random() * canvas.height,
-            vx: (Math.random() - 0.5) * 0.3,
-            vy: (Math.random() - 0.5) * 0.3,
-            r: Math.random() * 1.5 + 0.5,
-            pulse: Math.random() * Math.PI * 2,
-            pulseSpeed: Math.random() * 0.02 + 0.005
-        }));
-    }, []);
-
-    useEffect(() => {
-        const canvas = canvasRef.current;
-        if (!canvas) return;
-        const ctx = canvas.getContext("2d");
-        if (!ctx) return;
-
-        const resize = () => {
-            canvas.width = canvas.offsetWidth * window.devicePixelRatio;
-            canvas.height = canvas.offsetHeight * window.devicePixelRatio;
-            ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
-            init(canvas);
-        };
-        resize();
-        window.addEventListener("resize", resize);
-
-        const onMouse = (e: MouseEvent) => {
-            const rect = canvas.getBoundingClientRect();
-            mouseRef.current = { x: e.clientX - rect.left, y: e.clientY - rect.top };
-        };
-        canvas.addEventListener("mousemove", onMouse);
-
-        let running = true;
-        const draw = () => {
-            if (!running) return;
-            const w = canvas.offsetWidth;
-            const h = canvas.offsetHeight;
-            ctx.clearRect(0, 0, w, h);
-
-            const stars = starsRef.current;
-            const mouse = mouseRef.current;
-
-            for (const s of stars) {
-                s.x += s.vx;
-                s.y += s.vy;
-                s.pulse += s.pulseSpeed;
-                if (s.x < 0) s.x = w;
-                if (s.x > w) s.x = 0;
-                if (s.y < 0) s.y = h;
-                if (s.y > h) s.y = 0;
-            }
-
-            // Draw connections
-            const connectionDist = 120;
-            for (let i = 0; i < stars.length; i++) {
-                for (let j = i + 1; j < stars.length; j++) {
-                    const dx = stars[i]!.x - stars[j]!.x;
-                    const dy = stars[i]!.y - stars[j]!.y;
-                    const d = Math.sqrt(dx * dx + dy * dy);
-                    if (d < connectionDist) {
-                        const alpha = (1 - d / connectionDist) * 0.15;
-                        ctx.strokeStyle = `rgba(160, 180, 200, ${alpha})`;
-                        ctx.lineWidth = 0.5;
-                        ctx.beginPath();
-                        ctx.moveTo(stars[i]!.x, stars[i]!.y);
-                        ctx.lineTo(stars[j]!.x, stars[j]!.y);
-                        ctx.stroke();
-                    }
-                }
-            }
-
-            // Draw stars
-            for (const s of stars) {
-                const dist = Math.sqrt((s.x - mouse.x) ** 2 + (s.y - mouse.y) ** 2);
-                const glow = dist < 150 ? (1 - dist / 150) * 0.6 : 0;
-                const pulseAlpha = 0.3 + Math.sin(s.pulse) * 0.15;
-                const alpha = pulseAlpha + glow;
-                ctx.fillStyle = `rgba(180, 200, 220, ${alpha})`;
-                ctx.beginPath();
-                ctx.arc(s.x, s.y, s.r + glow * 2, 0, Math.PI * 2);
-                ctx.fill();
-            }
-
-            // Mouse glow
-            if (mouse.x > 0) {
-                const gradient = ctx.createRadialGradient(mouse.x, mouse.y, 0, mouse.x, mouse.y, 180);
-                gradient.addColorStop(0, "rgba(140, 180, 255, 0.04)");
-                gradient.addColorStop(1, "rgba(140, 180, 255, 0)");
-                ctx.fillStyle = gradient;
-                ctx.fillRect(0, 0, w, h);
-            }
-
-            frameRef.current = requestAnimationFrame(draw);
-        };
-        draw();
-
-        return () => {
-            running = false;
-            cancelAnimationFrame(frameRef.current);
-            window.removeEventListener("resize", resize);
-            canvas.removeEventListener("mousemove", onMouse);
-        };
-    }, [init]);
-
-    return <canvas ref={canvasRef} className="pointer-events-auto absolute inset-0 size-full" />;
-}
-
-/* ─── Copy button ─── */
-
-function CopyBtn({ text }: { text: string }) {
-    const [ok, setOk] = useState(false);
-    return (
-        <button
-            onClick={() => {
-                navigator.clipboard.writeText(text);
-                setOk(true);
-                setTimeout(() => setOk(false), 1500);
-            }}
-            className="text-muted-foreground hover:text-foreground shrink-0 transition-colors"
-        >
-            {ok ? <Check className="size-3.5 text-emerald-400" /> : <Copy className="size-3.5" />}
-        </button>
-    );
-}
 
 /* ─── Scroll-triggered fade-up ─── */
 
@@ -215,37 +73,6 @@ function AnimatedNumber({ value, duration = 1200 }: { value: number; duration?: 
     return <span ref={ref as React.RefObject<HTMLSpanElement>}>{display}</span>;
 }
 
-/* ─── Feature pill ─── */
-
-const features = [
-    { icon: Layers, title: "Chunk-Based", desc: "Self-contained knowledge units with metadata, history, and typed relationships", docsSection: "chunks" },
-    { icon: Network, title: "Knowledge Graphs", desc: "Visualize connections between chunks as an interactive force-directed graph", docsSection: "graph" },
-    { icon: GitBranch, title: "Multi-Codebase", desc: "Organize knowledge per-project with auto-detection from git remotes", docsSection: "getting-started" },
-    { icon: Sparkles, title: "AI-Native", desc: "MCP server, vocabulary parser, requirement generation, and semantic search", docsSection: "cli" },
-    { icon: Scan, title: "Requirements", desc: "Given/When/Then specs with controlled vocabulary and multi-format export", docsSection: "requirements" },
-    { icon: Map, title: "Health Dashboard", desc: "Detect orphans, stale content, and thin chunks across your knowledge base", docsSection: "chunks" }
-];
-
-function FeatureRow({ icon: Icon, title, desc, index, docsSection }: { icon: typeof Layers; title: string; desc: string; index: number; docsSection: string }) {
-    return (
-        <Link
-            to="/docs"
-            search={{ section: docsSection }}
-            className="group border-border/50 hover:border-border hover:bg-muted/30 flex items-start gap-4 border-b py-5 transition-all duration-300 last:border-0"
-            style={{ animationDelay: `${index * 80}ms` }}
-        >
-            <div className="bg-muted/50 group-hover:bg-muted mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg transition-colors">
-                <Icon className="text-muted-foreground group-hover:text-foreground size-4 transition-colors" />
-            </div>
-            <div className="min-w-0">
-                <div className="text-foreground mb-0.5 text-sm font-semibold tracking-tight">{title}</div>
-                <div className="text-muted-foreground text-[13px] leading-relaxed">{desc}</div>
-            </div>
-            <ArrowRight className="text-muted-foreground/0 group-hover:text-muted-foreground mt-1 ml-auto size-4 shrink-0 transition-all duration-300 group-hover:translate-x-0.5" />
-        </Link>
-    );
-}
-
 /* ─── Stats ─── */
 
 function LiveStats() {
@@ -276,6 +103,26 @@ function LiveStats() {
     );
 }
 
+/* ─── Integration grid data ─── */
+
+const integrations = [
+    { icon: Terminal, label: "CLI", desc: "Full-featured command line for chunk management, context export, and docs import." },
+    { icon: LayoutDashboard, label: "Web UI", desc: "Dashboard, graph visualization, health monitoring, and knowledge management." },
+    { icon: Code2, label: "VS Code", desc: "Browse, search, and create chunks without leaving your editor." },
+    { icon: Bot, label: "MCP Server", desc: "AI agents query your knowledge base directly via Model Context Protocol." },
+    { icon: Network, label: "API", desc: "RESTful API with OpenAPI docs for custom integrations and automation." },
+    { icon: Search, label: "Semantic Search", desc: "Find knowledge by meaning with local embeddings via Ollama." }
+];
+
+/* ─── Feature teasers data ─── */
+
+const featureTeasers = [
+    { icon: Layers, hash: "#chunks", title: "Knowledge Graph", desc: "Typed chunks with metadata, history, and directed relationships." },
+    { icon: Heart, hash: "#health", title: "Health Monitoring", desc: "Freshness, completeness, richness, and connectivity scores." },
+    { icon: Sparkles, hash: "#context", title: "AI-Native Context", desc: "Token-budgeted exports and CLAUDE.md generation for AI agents." },
+    { icon: Terminal, hash: "#connections", title: "Capture & Create", desc: "CLI, web UI, VS Code, and MCP -- create knowledge from anywhere." }
+];
+
 /* ─── Main ─── */
 
 function LandingPage() {
@@ -283,7 +130,7 @@ function LandingPage() {
         <div className="relative min-h-[calc(100vh-4rem)] overflow-hidden">
             {/* Background */}
             <div className="pointer-events-none absolute inset-0 -top-16">
-                <ConstellationCanvas />
+                <KnowledgeGraphCanvas />
                 <div className="from-background via-background/70 absolute right-0 bottom-0 left-0 h-[60%] bg-gradient-to-t to-transparent" />
             </div>
 
@@ -299,46 +146,28 @@ function LandingPage() {
                     </div>
 
                     <h1 className="text-foreground mb-4 text-5xl leading-[1.1] font-bold tracking-tight sm:text-6xl">
-                        Map your
+                        Structured knowledge
                         <br />
-                        <span className="bg-gradient-to-r from-blue-400 via-cyan-300 to-emerald-400 bg-clip-text text-transparent">
-                            knowledge terrain
-                        </span>
+                        for your codebase
                     </h1>
 
                     <p className="text-muted-foreground mx-auto mb-8 max-w-lg text-base leading-relaxed">
-                        A local-first knowledge framework for humans and machines. Store, navigate, and evolve structured knowledge as
-                        interconnected chunks — each with its own metadata, history, and relationships.
+                        Store, connect, and evolve what your team knows — where your code lives.
                     </p>
 
                     <div className="mb-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
-                        <Button size="lg" className="w-full sm:w-auto" render={<Link to="/dashboard" />}>
-                            Open Dashboard
+                        <Button size="lg" className="w-full sm:w-auto" render={<a href="#install" />}>
+                            Get Started
                             <ArrowRight className="size-4" />
                         </Button>
-                        <div className="flex w-full gap-3 sm:w-auto">
-                            <Button variant="outline" size="lg" className="flex-1 sm:flex-initial" render={<Link to="/graph" />}>
-                                <Network className="size-4" />
-                                Explore Graph
-                            </Button>
-                            <Button variant="outline" size="lg" className="flex-1 sm:flex-initial" render={<Link to="/docs" search={{}} />}>
-                                <Book className="size-4" />
-                                Docs
-                            </Button>
-                            <Button variant="outline" size="lg" className="flex-1 sm:flex-initial" render={<a href="https://github.com/Pontusg45/fubbik" target="_blank" rel="noopener noreferrer" />}>
-                                <Github className="size-4" />
-                                GitHub
-                            </Button>
-                        </div>
+                        <Button variant="outline" size="lg" className="w-full sm:w-auto" render={<a href="/features" />}>
+                            How it works
+                        </Button>
+                        <Button variant="outline" size="lg" className="w-full sm:w-auto" render={<a href="https://github.com/Pontusg45/fubbik" target="_blank" rel="noopener noreferrer" />}>
+                            <Github className="size-4" />
+                            GitHub
+                        </Button>
                     </div>
-
-                    {/* Install snippet */}
-                    <div className="bg-muted/40 mx-auto flex max-w-sm items-center gap-3 rounded-lg border px-4 py-2.5 backdrop-blur-sm">
-                        <Terminal className="text-muted-foreground size-4 shrink-0" />
-                        <code className="text-muted-foreground flex-1 text-left font-mono text-sm">pnpm dev</code>
-                        <CopyBtn text="pnpm dev" />
-                    </div>
-
                 </section>
 
                 {/* Stats bar */}
@@ -346,70 +175,14 @@ function LandingPage() {
                     <LiveStats />
                 </section>
 
-                {/* Features */}
-                <FadeInSection className="relative">
-                    {/* Gradient mesh behind features */}
-                    <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
-                        <div className="absolute top-1/2 left-1/4 size-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-blue-500/[0.03] blur-[100px]" />
-                        <div className="absolute top-1/3 right-1/4 size-[400px] -translate-y-1/2 translate-x-1/2 rounded-full bg-emerald-500/[0.03] blur-[100px]" />
-                        <div className="absolute bottom-0 left-1/2 size-[350px] -translate-x-1/2 rounded-full bg-cyan-500/[0.02] blur-[80px]" />
-                    </div>
-
-                    <section className="container mx-auto max-w-2xl px-4 py-16">
-                        <div className="mb-8 text-center">
-                            <h2 className="text-foreground mb-2 text-2xl font-bold tracking-tight">Built for knowledge work</h2>
-                            <p className="text-muted-foreground text-sm">Everything you need to capture, connect, and evolve what you know.</p>
-                        </div>
-
-                        <div className="border-border/50 rounded-xl border">
-                            {features.map((f, i) => (
-                                <FeatureRow key={f.title} {...f} index={i} />
-                            ))}
-                        </div>
-                    </section>
-                </FadeInSection>
-
-                {/* How it works */}
+                {/* Terminal demo */}
                 <FadeInSection>
                     <section className="container mx-auto max-w-3xl px-4 py-16">
-                        <div className="mb-10 text-center">
-                            <h2 className="text-foreground mb-2 text-2xl font-bold tracking-tight">How it works</h2>
-                            <p className="text-muted-foreground text-sm">Three concepts, infinite possibilities.</p>
-                        </div>
-
-                        <div className="grid gap-8 sm:grid-cols-3">
-                            <div className="text-center">
-                                <div className="bg-muted/50 mx-auto mb-4 flex size-12 items-center justify-center rounded-xl">
-                                    <Layers className="text-muted-foreground size-5" />
-                                </div>
-                                <h3 className="text-foreground mb-2 text-sm font-semibold">Chunks</h3>
-                                <p className="text-muted-foreground text-xs leading-relaxed">
-                                    Break knowledge into atomic units — conventions, decisions, runbooks, API docs. Each chunk has a type, tags, file references, and optional decision context (rationale, alternatives, consequences).
-                                </p>
-                            </div>
-                            <div className="text-center">
-                                <div className="bg-muted/50 mx-auto mb-4 flex size-12 items-center justify-center rounded-xl">
-                                    <Network className="text-muted-foreground size-5" />
-                                </div>
-                                <h3 className="text-foreground mb-2 text-sm font-semibold">Connections</h3>
-                                <p className="text-muted-foreground text-xs leading-relaxed">
-                                    Link chunks with typed edges — depends_on, part_of, extends, contradicts, and more. Connections form a navigable knowledge graph that reveals how ideas relate across projects.
-                                </p>
-                            </div>
-                            <div className="text-center">
-                                <div className="bg-muted/50 mx-auto mb-4 flex size-12 items-center justify-center rounded-xl">
-                                    <Sparkles className="text-muted-foreground size-5" />
-                                </div>
-                                <h3 className="text-foreground mb-2 text-sm font-semibold">Context</h3>
-                                <p className="text-muted-foreground text-xs leading-relaxed">
-                                    Serve the right knowledge to the right tool. Token-budgeted exports, file-aware relevance scoring, and CLAUDE.md generation ensure AI agents get what they need.
-                                </p>
-                            </div>
-                        </div>
+                        <TerminalDemo />
                     </section>
                 </FadeInSection>
 
-                {/* Capabilities grid */}
+                {/* Integration grid */}
                 <FadeInSection>
                     <section className="container mx-auto max-w-3xl px-4 pb-16">
                         <div className="mb-8 text-center">
@@ -418,26 +191,56 @@ function LandingPage() {
                         </div>
 
                         <div className="grid gap-3 sm:grid-cols-3">
-                            {[
-                                { icon: Code2, label: "VS Code Extension", detail: "Browse, search, and create chunks without leaving your editor. File-aware surfacing shows relevant knowledge for the file you're editing." },
-                                { icon: Bot, label: "MCP Server", detail: "AI agents query your knowledge base directly. Claude Code, Cursor, and other MCP tools get conventions, requirements, and context automatically." },
-                                { icon: Terminal, label: "CLI", detail: "Full-featured command line: fubbik add, search, context, sync-claude-md, docs import. Auto-detects your codebase from git." },
-                                { icon: FileText, label: "Docs Import", detail: "Import markdown documentation as browsable pages. Split on headings, track changes, re-sync from disk. Your docs become searchable chunks." },
-                                { icon: Search, label: "Semantic Search", detail: "Find knowledge by meaning, not just keywords. Local embeddings via Ollama power concept-level search across all your chunks." },
-                                { icon: Workflow, label: "Plans & Sessions", detail: "Track implementation work with ordered plans, BDD requirements, and AI session logging. Full traceability from requirement to code." }
-                            ].map(cap => (
+                            {integrations.map(item => (
                                 <div
-                                    key={cap.label}
+                                    key={item.label}
                                     className="bg-muted/20 hover:bg-muted/40 rounded-lg border p-4 transition-colors"
                                 >
                                     <div className="mb-2 flex items-center gap-2">
-                                        <cap.icon className="text-muted-foreground size-4" />
-                                        <span className="text-foreground text-sm font-semibold">{cap.label}</span>
+                                        <item.icon className="text-muted-foreground size-4" />
+                                        <span className="text-foreground text-sm font-semibold">{item.label}</span>
                                     </div>
-                                    <div className="text-muted-foreground text-xs leading-relaxed">{cap.detail}</div>
+                                    <div className="text-muted-foreground text-xs leading-relaxed">{item.desc}</div>
                                 </div>
                             ))}
                         </div>
+                    </section>
+                </FadeInSection>
+
+                {/* Feature teasers */}
+                <FadeInSection>
+                    <section className="container mx-auto max-w-2xl px-4 pb-16">
+                        <div className="border-border/50 divide-border/50 rounded-xl border divide-y">
+                            {featureTeasers.map((item, i) => (
+                                <a
+                                    key={item.title}
+                                    href={`/features${item.hash}`}
+                                    className="group flex items-start gap-4 px-5 py-5 transition-all duration-300 hover:bg-muted/30"
+                                    style={{ animationDelay: `${i * 80}ms` }}
+                                >
+                                    <div className="bg-muted/50 group-hover:bg-muted mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg transition-colors">
+                                        <item.icon className="text-muted-foreground group-hover:text-foreground size-4 transition-colors" />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <div className="text-foreground mb-0.5 text-sm font-semibold tracking-tight">{item.title}</div>
+                                        <div className="text-muted-foreground text-[13px] leading-relaxed">{item.desc}</div>
+                                    </div>
+                                    <ArrowRight className="text-muted-foreground/0 group-hover:text-muted-foreground mt-1 ml-auto size-4 shrink-0 transition-all duration-300 group-hover:translate-x-0.5" />
+                                </a>
+                            ))}
+                        </div>
+                    </section>
+                </FadeInSection>
+
+                {/* Get Started */}
+                <FadeInSection>
+                    <section id="install" className="container mx-auto max-w-3xl px-4 pb-16">
+                        <div className="mb-8 text-center">
+                            <h2 className="text-foreground mb-2 text-2xl font-bold tracking-tight">Get Started</h2>
+                            <p className="text-muted-foreground text-sm">Up and running in under a minute.</p>
+                        </div>
+
+                        <InstallTabs />
                     </section>
                 </FadeInSection>
 
@@ -454,6 +257,14 @@ function LandingPage() {
                             <span>Drizzle</span>
                             <span>Effect</span>
                         </div>
+                        <a
+                            href="https://github.com/Pontusg45/fubbik"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                            <Github className="size-4" />
+                        </a>
                     </div>
                 </footer>
             </div>
