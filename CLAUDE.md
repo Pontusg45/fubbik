@@ -140,6 +140,15 @@ Per-chunk health scores (0-100) computed on-demand from:
 - **Connectivity** (0-25): number of connections
 Exposed via chunk detail API response and shown as a badge on the detail page.
 
+### Staleness Detection
+
+Proactive detection of chunks that may need attention:
+- `chunk_staleness` table tracks flags with `reason` (file_changed, age, diverged_duplicate), `detail`, and dismiss/suppress state
+- `staleness_scan` table tracks per-codebase last scanned git commit SHA for incremental scans
+- Age-based detection: flags chunks not updated in 90+ days (configurable threshold)
+- Flags are dismissable (soft-delete with timestamp) or permanently suppressible (for duplicate pairs)
+- Surfaced across the UI: dashboard "Attention Needed" widget, nav badge on Dashboard link, amber banners on chunk detail pages
+
 ## Architecture Patterns
 
 ### Backend: Repository -> Service -> Route
@@ -269,6 +278,13 @@ Two distinct context services exist in `packages/api/src/`:
 ### Context
 - `GET /api/context/for-file?path=<path>&deps=<deps>` — chunks relevant to a file (file-refs + appliesTo + dependency matching)
 
+### Staleness
+- `GET /api/chunks/stale` — list undismissed staleness flags (supports `reason`, `codebaseId`, `limit`)
+- `GET /api/chunks/stale/count` — count of undismissed flags (supports `codebaseId`)
+- `POST /api/chunks/:id/dismiss-staleness` — dismiss a staleness flag (`:id` is the flag ID)
+- `POST /api/chunks/suppress-duplicate` — permanently suppress a duplicate pair
+- `POST /api/chunks/stale/scan-age` — trigger age-based staleness scan (body: `codebaseId?`, `thresholdDays?`)
+
 ### Other
 - `GET /api/graph` — graph data (nodes + edges + tags, supports `codebaseId`, `workspaceId`)
 - `POST/DELETE /api/connections` — manage chunk connections
@@ -281,12 +297,12 @@ The server exposes Swagger/OpenAPI at `/docs` (e.g., `http://localhost:3000/docs
 ## Web Pages
 
 - `/` — landing page with animated constellation background
-- `/dashboard` — overview with clickable stats, recent chunks, favorites, recently viewed, health summary
+- `/dashboard` — overview with clickable stats, recent chunks, favorites, recently viewed, health summary, "Attention Needed" staleness widget
 - `/chunks` — chunk list with infinite scroll, filters, grouping, search, kanban view, inline row actions, quick review status toggle
 - `/chunks/new` — create chunk (with template selector, duplicate detection, autosave)
-- `/chunks/:id` — chunk detail with collapsible sections, inline tag editor, health badge, connection arrows
+- `/chunks/:id` — chunk detail with collapsible sections, inline tag editor, health badge, connection arrows, dependency tree (grouped by relation type), related chunk suggestions (embedding-based), staleness banners
 - `/chunks/:id/edit` — edit chunk (with autosave, glob validation)
-- `/graph` — knowledge graph visualization (force-directed, hierarchical, radial layouts; tag grouping with clickable legend filters; path finding; workspace view with cross-codebase edge styling)
+- `/graph` — knowledge graph visualization (force-directed, hierarchical, radial layouts; tag grouping with clickable legend filters; path finding; workspace view with cross-codebase edge styling; focus mode via double-click; saveable filter presets)
 - `/requirements` — tabbed page: Requirements list | Plans list | Traceability dashboard
 - `/requirements/:id` — requirement detail with plan coverage, session links, BDD steps, export
 - `/reviews` — tabbed page: Implementation sessions | Review queue (AI draft approval)
@@ -323,6 +339,7 @@ The server exposes Swagger/OpenAPI at `/docs` (e.g., `http://localhost:3000/docs
 - `fubbik health/stats` — system info
 - `fubbik plan create/list/show/step-done/add-step/activate/complete` — plan management
 - `fubbik plan import <file.md>` — import plan from markdown
+- `fubbik quick "title"` — one-liner chunk creation (auto-detects codebase, supports `--type`, `--tags`, pipe stdin for content)
 - `fubbik check-files [files...] [--staged]` — check files against chunk knowledge
 - `fubbik hooks install/uninstall` — git pre-commit hook management
 - `fubbik context` — token-budgeted context export (with `--for <path>` file relevance boost)
