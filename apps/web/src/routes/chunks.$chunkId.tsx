@@ -21,12 +21,14 @@ import { DependencyTree } from "@/features/chunks/dependency-tree";
 import { InlineTagEditor } from "@/features/chunks/inline-tag-editor";
 import { LinkChunkDialog } from "@/features/chunks/link-chunk-dialog";
 import { RelatedChunks } from "@/features/chunks/related-chunks";
+import { RelatedSuggestions } from "@/features/chunks/related-suggestions";
 import { relationColor } from "@/features/chunks/relation-colors";
 import { SplitChunkDialog } from "@/features/chunks/split-chunk-dialog";
 import { SuggestedConnections } from "@/features/chunks/suggested-connections";
 import { useFavorites } from "@/features/chunks/use-favorites";
 import { useRecentChunks } from "@/features/chunks/use-recent-chunks";
 import { VersionHistory } from "@/features/chunks/version-history";
+import { StalenessBanner } from "@/features/staleness/staleness-banner";
 import { useRecentlyViewed } from "@/hooks/use-recently-viewed";
 import { getUser } from "@/functions/get-user";
 import { api } from "@/utils/api";
@@ -381,6 +383,8 @@ function ChunkDetail() {
 
             <Separator className="my-6" />
 
+            <StalenessBanner chunkId={chunkId} />
+
             <div className="prose dark:prose-invert prose-sm max-w-none">
                 <MarkdownRenderer>{chunk.content}</MarkdownRenderer>
             </div>
@@ -547,6 +551,12 @@ function ChunkDetail() {
             <CollapsibleSection title="Related Chunks" icon={Link2} defaultOpen={false}>
                 <RelatedChunks chunkId={chunkId} connections={connections} tags={tags} />
             </CollapsibleSection>
+
+            <RelatedSuggestions
+                chunkId={chunkId}
+                chunkTitle={chunk.title}
+                connectedIds={connections.map(c => c.sourceId === chunkId ? c.targetId : c.sourceId)}
+            />
 
             <CollapsibleSection title="Version History" icon={History} defaultOpen={false}>
                 <VersionHistory chunkId={chunkId} />
