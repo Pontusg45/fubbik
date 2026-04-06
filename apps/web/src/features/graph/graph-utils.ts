@@ -28,6 +28,33 @@ export function findShortestPath(startId: string, endId: string, edges: Edge[]):
 }
 
 /**
+ * BFS from a starting node, collecting all nodes within maxHops hops.
+ * Treats edges as undirected.
+ */
+export function getNodesWithinHops(nodeId: string, edges: Edge[], maxHops: number): Set<string> {
+    const adjacency = new Map<string, string[]>();
+    for (const edge of edges) {
+        if (!adjacency.has(edge.source)) adjacency.set(edge.source, []);
+        if (!adjacency.has(edge.target)) adjacency.set(edge.target, []);
+        adjacency.get(edge.source)!.push(edge.target);
+        adjacency.get(edge.target)!.push(edge.source);
+    }
+    const visited = new Set<string>([nodeId]);
+    const queue: { id: string; depth: number }[] = [{ id: nodeId, depth: 0 }];
+    while (queue.length > 0) {
+        const { id, depth } = queue.shift()!;
+        if (depth >= maxHops) continue;
+        for (const neighbor of adjacency.get(id) ?? []) {
+            if (!visited.has(neighbor)) {
+                visited.add(neighbor);
+                queue.push({ id: neighbor, depth: depth + 1 });
+            }
+        }
+    }
+    return visited;
+}
+
+/**
  * Returns the ID of the node with the most connections (edges), or null if empty.
  */
 export function getMostConnected(nodes: { id: string }[], edges: { source: string; target: string }[]): string | null {

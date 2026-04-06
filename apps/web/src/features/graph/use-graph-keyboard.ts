@@ -6,6 +6,8 @@ import type { GraphAction } from "./use-graph-state";
 export interface UseGraphKeyboardOptions {
     selectedChunkId: string | null;
     focusedNodeId: string | null;
+    focusModeNodeId: string | null;
+    onExitFocusMode: () => void;
     pathStartId: string | null;
     pathEndId: string | null;
     multiSelectedIds: Set<string>;
@@ -22,6 +24,8 @@ export interface UseGraphKeyboardOptions {
 export function useGraphKeyboard({
     selectedChunkId,
     focusedNodeId,
+    focusModeNodeId,
+    onExitFocusMode,
     pathStartId,
     pathEndId,
     multiSelectedIds,
@@ -38,6 +42,10 @@ export function useGraphKeyboard({
             }
 
             if (e.key === "Escape") {
+                if (focusModeNodeId) {
+                    onExitFocusMode();
+                    return;
+                }
                 if (multiSelectedIds.size > 0) {
                     dispatch({ type: "CLEAR_MULTI_SELECT" });
                     return;
@@ -73,5 +81,5 @@ export function useGraphKeyboard({
 
         document.addEventListener("keydown", handleKeyDown);
         return () => document.removeEventListener("keydown", handleKeyDown);
-    }, [selectedChunkId, focusedNodeId, layoutEdges, pathStartId, pathEndId, multiSelectedIds, dispatch]);
+    }, [selectedChunkId, focusedNodeId, focusModeNodeId, onExitFocusMode, layoutEdges, pathStartId, pathEndId, multiSelectedIds, dispatch]);
 }

@@ -47,7 +47,7 @@ import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 import { ChangeConnectionDialog, SaveViewDialog, SaveCustomGraphDialog } from "./graph-dialogs";
-import { findShortestPath, getMostConnected } from "./graph-utils";
+import { findShortestPath, getNodesWithinHops, getMostConnected } from "./graph-utils";
 import { GraphTimeline } from "./graph-timeline";
 import { PathPanel } from "./path-panel";
 import { useGraphKeyboard } from "./use-graph-keyboard";
@@ -165,6 +165,9 @@ function GraphViewInner() {
 
     const [showSaveCustomDialog, setShowSaveCustomDialog] = useState(false);
     const [customGraphName, setCustomGraphName] = useState("");
+
+    // Focus mode: double-click a node to dim everything beyond 2 hops
+    const [focusModeNodeId, setFocusModeNodeId] = useState<string | null>(null);
 
     const [isMobile, setIsMobile] = useState(false);
 
@@ -758,6 +761,12 @@ function GraphViewInner() {
         return neighbors;
     }, [focusedNodeId, layoutEdges]);
 
+    // Focus mode: nodes within 2 hops of the focus mode node
+    const focusModeNeighbors = useMemo(() => {
+        if (!focusModeNodeId) return null;
+        return getNodesWithinHops(focusModeNodeId, layoutEdges, 2);
+    }, [focusModeNodeId, layoutEdges]);
+
     const selectedEdgeIds = useMemo(() => {
         if (!selectedChunkId) return null;
         const ids = new Set<string>();
@@ -881,6 +890,15 @@ function GraphViewInner() {
                     }
                 };
             });
+        } else if (focusModeNeighbors) {
+            styledNodes = layoutNodes.map(node => ({
+                ...node,
+                style: {
+                    ...(node.style as Record<string, unknown>),
+                    opacity: focusModeNeighbors.has(node.id) ? 1 : 0.15,
+                    transition: "opacity 0.3s ease"
+                }
+            }));
         } else if (focusNeighbors) {
             styledNodes = layoutNodes.map(node => ({
                 ...node,
@@ -957,6 +975,15 @@ function GraphViewInner() {
                     opacity: matchIds.has(edge.source) || matchIds.has(edge.target) ? 1 : 0.1
                 }
             }));
+        } else if (focusModeNeighbors) {
+            styledEdges = layoutEdges.map(edge => ({
+                ...edge,
+                style: {
+                    ...(edge.style as Record<string, unknown>),
+                    opacity: focusModeNeighbors.has(edge.source) && focusModeNeighbors.has(edge.target) ? 1 : 0.08,
+                    transition: "opacity 0.3s ease"
+                }
+            }));
         } else if (focusNeighbors) {
             styledEdges = layoutEdges.map(edge => ({
                 ...edge,
@@ -1020,6 +1047,7 @@ function GraphViewInner() {
         layoutNodes,
         layoutEdges,
         debouncedSearchQuery,
+        focusModeNeighbors,
         focusNeighbors,
         selectedNeighborNodes,
         selectedEdgeIds,
@@ -1054,6 +1082,8 @@ function GraphViewInner() {
     useGraphKeyboard({
         selectedChunkId,
         focusedNodeId,
+        focusModeNodeId,
+        onExitFocusMode: () => setFocusModeNodeId(null),
         pathStartId,
         pathEndId,
         multiSelectedIds,
@@ -1197,13 +1227,16 @@ function GraphViewInner() {
                         }}
                         onPaneClick={() => {
                             dispatch({ type: "DESELECT_ALL" });
+                            setFocusModeNodeId(null);
                             setContextMenu(null);
                         }}
                         onNodeDoubleClick={(_, node) => {
-                            if (selectedChunkId === node.id) {
-                                navigate({ to: "/chunks/$chunkId", params: { chunkId: node.id } });
+                            if (node.id.startsWith("tag-group-")) return;
+                            // Toggle focus mode: dims everything beyond 2 hops
+                            if (focusModeNodeId === node.id) {
+                                setFocusModeNodeId(null);
                             } else {
-                                dispatch({ type: "TOGGLE_COLLAPSED_PARENT", id: node.id });
+                                setFocusModeNodeId(node.id);
                             }
                         }}
                         onNodeMouseEnter={(event, node) => {
@@ -1356,7 +1389,7 @@ function GraphViewInner() {
                             <div className="space-y-2 text-xs">
                                 {[
                                     ["Click", "Select node & show details"],
-                                    ["Double-click", "Open chunk / toggle collapse"],
+                                    ["Double-click", "Focus mode (dim beyond 2 hops)"],
                                     ["Shift+Click", "Multi-select nodes"],
                                     ["Alt+Click", "Path finding mode"],
                                     ["Tab / Shift+Tab", "Cycle connections"],
@@ -1535,6 +1568,13 @@ function GraphViewInner() {
                     edges={edges}
                     onNodeClick={id => dispatch({ type: "SELECT_AND_FOCUS_NODE", id })}
                 />
+
+                {/* Focus mode indicator */}
+                {focusModeNodeId && (
+                    <div className="absolute bottom-16 left-1/2 z-10 -translate-x-1/2 rounded-full border bg-background/90 px-4 py-1.5 text-xs shadow-sm backdrop-blur-sm">
+                        Focus mode — click node again or press <kbd className="mx-1 rounded border px-1.5 py-0.5 font-mono">Esc</kbd> to exit
+                    </div>
+                )}
 
                 {/* Bulk action bar */}
                 {multiSelectedIds.size > 0 && (
