@@ -38,6 +38,7 @@ import { useCaseRoutes } from "./use-cases/routes";
 import { activityRoutes } from "./activity/routes";
 import { notificationRoutes } from "./notifications/routes";
 import { settingsRoutes } from "./settings/routes";
+import { stalenessRoutes } from "./staleness/routes";
 import { planRoutes } from "./plans/routes";
 import { taskQueueRoutes } from "./tasks/routes";
 import { vocabularyRoutes } from "./vocabulary/routes";
@@ -157,6 +158,7 @@ export const api = new Elysia({ prefix: "/api" })
     .use(documentRoutes)
     .use(planRoutes)
     .use(taskQueueRoutes)
-    .use(workspaceRoutes);
+    .use(workspaceRoutes)
+    .use(stalenessRoutes);
 
 export type Api = typeof api;
