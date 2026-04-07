@@ -83,10 +83,20 @@ export const stalenessRoutes = new Elysia()
             Effect.runPromise(
                 requireSession(ctx).pipe(
                     Effect.flatMap(session =>
-                        detectAgeStaleChunks(
-                            session.user.id,
-                            ctx.body.codebaseId,
-                            ctx.body.thresholdDays
+                        Effect.all([
+                            detectAgeStaleChunks(
+                                session.user.id,
+                                ctx.body.codebaseId,
+                                ctx.body.thresholdDays
+                            ),
+                            stalenessService.detectUncoveredChunks(
+                                session.user.id,
+                                ctx.body.codebaseId
+                            )
+                        ]).pipe(
+                            Effect.map(([ageResult, uncoveredResult]) => ({
+                                flagged: ageResult.flagged + uncoveredResult.flagged
+                            }))
                         )
                     )
                 )

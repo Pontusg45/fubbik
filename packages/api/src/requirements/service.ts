@@ -18,6 +18,7 @@ import {
 import { Effect } from "effect";
 
 import { NotFoundError, StepValidationError, ValidationError } from "../errors";
+import { flagRequirementFailing } from "../staleness/service";
 import { parseStepText, type VocabEntry, type VocabularyWarning } from "../vocabulary/parser";
 import { validateSteps } from "./validator";
 import { crossReferenceSteps, type CrossRefWarning } from "./cross-ref";
@@ -148,6 +149,7 @@ export function updateRequirement(
         useCaseId?: string | null;
         origin?: string;
         reviewStatus?: string;
+        status?: string;
     }
 ) {
     return Effect.gen(function* () {
@@ -169,6 +171,12 @@ export function updateRequirement(
 
         const requirement = yield* updateRequirementRepo(id, userId, repoBody as Parameters<typeof updateRequirementRepo>[2]);
         if (!requirement) return yield* Effect.fail(new NotFoundError({ resource: "Requirement" }));
+
+        if (body.status === "failing") {
+            const chunks = yield* getChunksForRequirement(id);
+            const chunkIds = chunks.map((c: { id: string }) => c.id);
+            yield* flagRequirementFailing(id, requirement.title, chunkIds);
+        }
 
         const warnings = body.steps
             ? yield* crossReferenceSteps(body.steps, userId)
@@ -198,6 +206,17 @@ export function updateStatus(id: string, userId: string, status: string) {
         Effect.filterOrFail(
             (updated): updated is NonNullable<typeof updated> => updated !== null,
             () => new NotFoundError({ resource: "Requirement" })
+        ),
+        Effect.flatMap(updated =>
+            status === "failing"
+                ? getChunksForRequirement(id).pipe(
+                    Effect.flatMap(chunks => {
+                        const chunkIds = chunks.map((c: { id: string }) => c.id);
+                        return flagRequirementFailing(id, updated.title, chunkIds);
+                    }),
+                    Effect.map(() => updated)
+                )
+                : Effect.succeed(updated)
         )
     );
 }

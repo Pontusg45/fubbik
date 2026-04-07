@@ -1,10 +1,11 @@
-import { and, desc, eq, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { Effect } from "effect";
 
 import { DatabaseError } from "../errors";
 import { db } from "../index";
 import { chunk } from "../schema/chunk";
 import { chunkCodebase } from "../schema/codebase";
+import { requirementChunk } from "../schema/requirement";
 import { chunkStaleness, stalenessScan } from "../schema/staleness";
 
 function codebaseConditions(codebaseId?: string) {
@@ -228,6 +229,108 @@ export function upsertScan(data: { id: string; codebaseId: string; lastCommitSha
                         scannedAt: new Date()
                     }
                 }),
+        catch: cause => new DatabaseError({ cause })
+    });
+}
+
+export function detectUncoveredChunks(userId: string, codebaseId?: string, thresholdDays = 30) {
+    return Effect.tryPromise({
+        try: async () => {
+            const threshold = sql`NOW() - INTERVAL '${sql.raw(String(thresholdDays))} days'`;
+
+            // Find chunks already flagged for "requirement_uncovered" (undismissed)
+            const alreadyFlagged = db
+                .select({ chunkId: chunkStaleness.chunkId })
+                .from(chunkStaleness)
+                .where(
+                    and(
+                        eq(chunkStaleness.reason, "requirement_uncovered"),
+                        isNull(chunkStaleness.dismissedAt)
+                    )
+                );
+
+            // Find chunks that have at least one requirement linked
+            const covered = db
+                .select({ chunkId: requirementChunk.chunkId })
+                .from(requirementChunk);
+
+            const conditions = [
+                eq(chunk.userId, userId),
+                sql`${chunk.updatedAt} < ${threshold}`,
+                isNull(chunk.archivedAt),
+                sql`${chunk.id} NOT IN (${alreadyFlagged})`,
+                sql`${chunk.id} NOT IN (${covered})`,
+                ...codebaseConditions(codebaseId)
+            ];
+
+            const uncoveredChunks = await db
+                .select({ id: chunk.id })
+                .from(chunk)
+                .where(and(...conditions));
+
+            if (uncoveredChunks.length === 0) {
+                return { flagged: 0 };
+            }
+
+            const flags = uncoveredChunks.map(c => ({
+                id: crypto.randomUUID(),
+                chunkId: c.id,
+                reason: "requirement_uncovered" as const,
+                detail: "No requirements linked — consider adding requirement coverage"
+            }));
+
+            await db.insert(chunkStaleness).values(flags).onConflictDoNothing();
+
+            return { flagged: flags.length };
+        },
+        catch: cause => new DatabaseError({ cause })
+    });
+}
+
+export function flagRequirementFailing(
+    requirementId: string,
+    requirementTitle: string,
+    chunkIds: string[]
+) {
+    if (chunkIds.length === 0) {
+        return Effect.succeed({ flagged: 0 });
+    }
+
+    const detail = `Requirement "${requirementTitle}" (${requirementId}) is failing`;
+
+    return Effect.tryPromise({
+        try: async () => {
+            // Find chunks already flagged for this specific requirement (undismissed)
+            const alreadyFlagged = await db
+                .select({ chunkId: chunkStaleness.chunkId })
+                .from(chunkStaleness)
+                .where(
+                    and(
+                        eq(chunkStaleness.reason, "requirement_failing"),
+                        eq(chunkStaleness.detail, detail),
+                        isNull(chunkStaleness.dismissedAt),
+                        inArray(chunkStaleness.chunkId, chunkIds)
+                    )
+                );
+
+            const alreadyFlaggedIds = new Set(alreadyFlagged.map(r => r.chunkId));
+            const toFlag = chunkIds.filter(id => !alreadyFlaggedIds.has(id));
+
+            if (toFlag.length === 0) {
+                return { flagged: 0 };
+            }
+
+            const flags = toFlag.map(chunkId => ({
+                id: crypto.randomUUID(),
+                chunkId,
+                reason: "requirement_failing" as const,
+                detail
+            }));
+
+            await db.insert(chunkStaleness).values(flags).onConflictDoNothing();
+
+            return { flagged: flags.length };
+        },
         catch: cause => new DatabaseError({ cause })
     });
 }
