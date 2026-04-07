@@ -123,7 +123,7 @@ export function exportContext(userId: string, query: ContextExportQuery) {
             // File-path relevance boost
             if (query.forPath) {
                 const fileContext = yield* getContextForFile(userId, query.forPath, query.codebaseId);
-                const fileContextIds = new Set(fileContext.map((c: { id: string }) => c.id));
+                const fileContextIds = new Set(fileContext.chunks.map((c: { id: string }) => c.id));
                 for (const item of scored) {
                     if (fileContextIds.has(item.id)) {
                         item.score += 15;

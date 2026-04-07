@@ -267,6 +267,34 @@ export function setRequirementOrder(requirementIds: string[]) {
     });
 }
 
+export interface RequirementForChunk {
+    chunkId: string;
+    id: string;
+    title: string;
+    status: string;
+    priority: string | null;
+    steps: Array<{ keyword: string; text: string; params?: Record<string, string> }>;
+}
+
+export function getRequirementsForChunks(chunkIds: string[]) {
+    return Effect.tryPromise({
+        try: () =>
+            db
+                .select({
+                    chunkId: requirementChunk.chunkId,
+                    id: requirement.id,
+                    title: requirement.title,
+                    status: requirement.status,
+                    priority: requirement.priority,
+                    steps: requirement.steps
+                })
+                .from(requirementChunk)
+                .innerJoin(requirement, eq(requirementChunk.requirementId, requirement.id))
+                .where(inArray(requirementChunk.chunkId, chunkIds)),
+        catch: cause => new DatabaseError({ cause })
+    });
+}
+
 export function getRequirementStats(userId: string, codebaseId?: string) {
     return Effect.tryPromise({
         try: async () => {

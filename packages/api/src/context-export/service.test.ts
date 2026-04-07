@@ -158,7 +158,7 @@ describe("exportContext", () => {
         setupMocks([otherChunk, fileContextChunk]);
 
         const getContextMock = getContextForFile as ReturnType<typeof vi.fn>;
-        getContextMock.mockReturnValue(Effect.succeed([{ id: "c2" }]));
+        getContextMock.mockReturnValue(Effect.succeed({ chunks: [{ id: "c2" }], requirements: [] }));
 
         const result = await Effect.runPromise(
             exportContext("user-1", { forPath: "src/index.ts", format: "json", maxTokens: 5000 })

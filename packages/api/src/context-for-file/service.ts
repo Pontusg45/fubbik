@@ -1,4 +1,4 @@
-import { getAppliesToForChunk, getChunkById, listChunks, listCodebases, lookupChunksByFilePath } from "@fubbik/db/repository";
+import { getAppliesToForChunk, getChunkById, getRequirementsForChunks, listChunks, listCodebases, lookupChunksByFilePath } from "@fubbik/db/repository";
 import { Effect } from "effect";
 
 import { globMatch } from "./glob-match";
@@ -10,6 +10,20 @@ export interface ContextChunk {
     content: string;
     summary: string | null;
     matchReason: "file-ref" | "applies-to" | "dependency";
+}
+
+export interface ContextRequirement {
+    id: string;
+    title: string;
+    status: string;
+    priority: string | null;
+    steps: Array<{ keyword: string; text: string }>;
+    matchedChunkIds: string[];
+}
+
+export interface FileContext {
+    chunks: ContextChunk[];
+    requirements: ContextRequirement[];
 }
 
 /**
@@ -108,6 +122,34 @@ export function getContextForFile(
             }
         }
 
-        return Array.from(results.values());
+        const matchedChunks = Array.from(results.values());
+
+        // 4. Find requirements linked to matched chunks
+        const matchedChunkIds = matchedChunks.map(c => c.id);
+        const requirements: ContextRequirement[] = [];
+
+        if (matchedChunkIds.length > 0) {
+            const rows = yield* getRequirementsForChunks(matchedChunkIds);
+
+            const reqMap = new Map<string, ContextRequirement>();
+            for (const row of rows) {
+                const existing = reqMap.get(row.id);
+                if (existing) {
+                    existing.matchedChunkIds.push(row.chunkId);
+                } else {
+                    reqMap.set(row.id, {
+                        id: row.id,
+                        title: row.title,
+                        status: row.status,
+                        priority: row.priority,
+                        steps: (row.steps ?? []).map(s => ({ keyword: s.keyword, text: s.text })),
+                        matchedChunkIds: [row.chunkId]
+                    });
+                }
+            }
+            requirements.push(...reqMap.values());
+        }
+
+        return { chunks: matchedChunks, requirements };
     });
 }
