@@ -97,6 +97,16 @@ function DashboardPage() {
         queryFn: async () => unwrapEden(await api.api.activity.get({ query: { limit: "15" } as any }))
     });
 
+    const plansQuery = useQuery({
+        queryKey: ["dashboard-plans", codebaseId],
+        queryFn: async () => unwrapEden(await api.api.plans.get({ query: { ...codebaseQuery, status: "active" } as any }))
+    });
+
+    const sessionsQuery = useQuery({
+        queryKey: ["dashboard-sessions"],
+        queryFn: async () => unwrapEden(await api.api.sessions.get({ query: { status: "completed", limit: "3" } as any }))
+    });
+
     const favoritesChunksQuery = useQuery({
         queryKey: ["chunks-favorites", favoriteIds],
         queryFn: async () => {
@@ -265,14 +275,24 @@ function DashboardPage() {
                 <StatCard icon={Blocks} label="Chunks" value={statsQuery.data?.chunks} loading={statsQuery.isLoading} to="/chunks" />
                 <StatCard icon={Network} label="Connections" value={statsQuery.data?.connections} loading={statsQuery.isLoading} to="/graph" />
                 <StatCard icon={Tags} label="Tags" value={statsQuery.data?.tags} loading={statsQuery.isLoading} to="/tags" />
-                <StatCard
-                    icon={FileText}
-                    label="Requirements"
-                    value={reqStats ? (reqStats as any).total : undefined}
-                    loading={requirementsQuery.isLoading}
-                    sub={reqStats ? `${(reqStats as any).passing ?? 0} passing` : undefined}
-                    to="/requirements"
-                />
+                <Link to="/requirements">
+                    <div className="bg-card hover:bg-muted/50 cursor-pointer rounded-lg border p-4 transition-colors">
+                        <div className="flex items-center gap-2">
+                            <ClipboardList className="text-muted-foreground size-4" />
+                            <span className="text-muted-foreground text-xs font-medium uppercase tracking-wide">Requirements</span>
+                        </div>
+                        <div className="mt-2 text-2xl font-bold tabular-nums tracking-tight">
+                            {requirementsQuery.isLoading ? <Skeleton className="h-8 w-16" /> : (reqStats as any)?.total ?? 0}
+                        </div>
+                        {reqStats && (
+                            <div className="mt-1 flex gap-2 text-[11px]">
+                                <span className="text-emerald-500">{(reqStats as any).passing ?? 0} passing</span>
+                                <span className="text-red-500">{(reqStats as any).failing ?? 0} failing</span>
+                                <span className="text-muted-foreground">{(reqStats as any).untested ?? 0} untested</span>
+                            </div>
+                        )}
+                    </div>
+                </Link>
             </div>
 
             {/* Onboarding milestones */}
@@ -472,6 +492,101 @@ function DashboardPage() {
                             </div>
                         </DashboardSection>
                     )}
+
+                    {/* Active Plans */}
+                    <DashboardSection
+                        icon={ClipboardList}
+                        title="Active Plans"
+                        action={
+                            <Link to="/plans" className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-xs transition-colors">
+                                View all <ArrowRight className="size-3" />
+                            </Link>
+                        }
+                    >
+                        {plansQuery.isLoading ? (
+                            <SkeletonList count={3} />
+                        ) : (() => {
+                            const plans = (plansQuery.data as any)?.plans ?? (Array.isArray(plansQuery.data) ? plansQuery.data : []);
+                            if (plans.length === 0) {
+                                return <p className="text-muted-foreground py-2 text-center text-sm">No active plans</p>;
+                            }
+                            return (
+                                <div className="space-y-2">
+                                    {plans.slice(0, 5).map((plan: any) => {
+                                        const steps: any[] = plan.steps ?? [];
+                                        const total = steps.length > 0 ? steps.length : (plan.stepCount ?? 0);
+                                        const done = steps.length > 0
+                                            ? steps.filter((s: any) => s.status === "done").length
+                                            : (plan.completedStepCount ?? 0);
+                                        const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+                                        return (
+                                            <Link
+                                                key={plan.id}
+                                                to="/plans/$planId"
+                                                params={{ planId: plan.id }}
+                                                className="hover:bg-muted/50 block rounded-md px-2 py-1.5 transition-colors"
+                                            >
+                                                <p className="truncate text-sm font-medium">{plan.title}</p>
+                                                {total > 0 && (
+                                                    <div className="mt-1 flex items-center gap-2">
+                                                        <div className="bg-muted h-1.5 flex-1 rounded-full overflow-hidden">
+                                                            <div
+                                                                className="bg-emerald-500 h-full rounded-full transition-all"
+                                                                style={{ width: `${pct}%` }}
+                                                            />
+                                                        </div>
+                                                        <span className="text-muted-foreground shrink-0 text-[10px]">{done}/{total}</span>
+                                                    </div>
+                                                )}
+                                            </Link>
+                                        );
+                                    })}
+                                </div>
+                            );
+                        })()}
+                    </DashboardSection>
+
+                    {/* Recent Sessions */}
+                    <DashboardSection
+                        icon={Workflow}
+                        title="Recent Sessions"
+                        action={
+                            <Link to="/reviews" className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-xs transition-colors">
+                                View all <ArrowRight className="size-3" />
+                            </Link>
+                        }
+                    >
+                        {sessionsQuery.isLoading ? (
+                            <SkeletonList count={3} />
+                        ) : (() => {
+                            const sessions = (sessionsQuery.data as any)?.sessions ?? (Array.isArray(sessionsQuery.data) ? sessionsQuery.data : []);
+                            if (sessions.length === 0) {
+                                return <p className="text-muted-foreground py-2 text-center text-sm">No recent sessions</p>;
+                            }
+                            return (
+                                <div className="space-y-1">
+                                    {sessions.slice(0, 3).map((session: any) => (
+                                        <Link
+                                            key={session.id}
+                                            to="/reviews/$sessionId"
+                                            params={{ sessionId: session.id }}
+                                            className="hover:bg-muted/50 flex items-center gap-2 rounded-md px-2 py-1.5 transition-colors"
+                                        >
+                                            <div className="min-w-0 flex-1">
+                                                <p className="truncate text-sm">{session.title}</p>
+                                                {session.completedAt && (
+                                                    <p className="text-muted-foreground text-[10px]">{timeAgo(session.completedAt)}</p>
+                                                )}
+                                            </div>
+                                            <Badge variant="secondary" size="sm" className="shrink-0 font-mono text-[9px]">
+                                                {session.status}
+                                            </Badge>
+                                        </Link>
+                                    ))}
+                                </div>
+                            );
+                        })()}
+                    </DashboardSection>
 
                     {/* Activity */}
                     <DashboardSection
