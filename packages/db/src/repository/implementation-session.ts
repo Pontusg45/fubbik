@@ -248,6 +248,20 @@ export function getActiveSessionsWithPlan(userId: string) {
     });
 }
 
+export function isChunkReferencedInSession(chunkId: string) {
+    return Effect.tryPromise({
+        try: async () => {
+            const rows = await db
+                .select({ chunkId: sessionChunkRef.chunkId })
+                .from(sessionChunkRef)
+                .where(eq(sessionChunkRef.chunkId, chunkId))
+                .limit(1);
+            return rows.length > 0;
+        },
+        catch: cause => new DatabaseError({ cause })
+    });
+}
+
 export function getUnresolvedAssumptionsSummary(userId: string) {
     return Effect.tryPromise({
         try: () =>

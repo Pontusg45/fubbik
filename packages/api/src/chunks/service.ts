@@ -15,8 +15,10 @@ import {
     getCodebasesForChunks,
     getFileRefsForChunk,
     getNextVersionNumber,
+    getRequirementsForChunks,
     getTagsForChunk,
     getVersionsByChunkId,
+    isChunkReferencedInSession,
     listArchivedChunks as listArchivedChunksRepo,
     listChunks as listChunksRepo,
     restoreChunk as restoreChunkRepo,
@@ -130,10 +132,16 @@ export function getChunkDetail(chunkId: string, userId?: string) {
                 codebases: getCodebasesForChunk(chunkId),
                 appliesTo: getAppliesToForChunk(chunkId),
                 fileReferences: getFileRefsForChunk(chunkId),
-                tags: getTagsForChunk(chunkId)
+                tags: getTagsForChunk(chunkId),
+                requirements: getRequirementsForChunks([chunkId]),
+                referencedInSession: isChunkReferencedInSession(chunkId)
             })
         ),
         Effect.map(result => {
+            const chunkRequirements = result.requirements.filter(r => r.chunkId === chunkId);
+            const requirementCount = chunkRequirements.length;
+            const allRequirementsPassing = requirementCount > 0 && chunkRequirements.every(r => r.status === "passing");
+            const referencedInSession = result.referencedInSession;
             const healthScore = computeHealthScore({
                 content: result.chunk.content,
                 updatedAt: result.chunk.updatedAt,
@@ -142,7 +150,10 @@ export function getChunkDetail(chunkId: string, userId?: string) {
                 alternatives: result.chunk.alternatives,
                 consequences: result.chunk.consequences,
                 connectionCount: result.connections.length,
-                hasEmbedding: result.chunk.embedding != null
+                hasEmbedding: result.chunk.embedding != null,
+                requirementCount,
+                allRequirementsPassing,
+                referencedInSession
             });
             return { ...result, healthScore };
         })

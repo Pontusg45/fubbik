@@ -28,6 +28,9 @@ function scoreChunk(c: ChunkRow, connectionCount: number): number {
         consequences: c.consequences,
         connectionCount,
         hasEmbedding: c.embedding != null,
+        requirementCount: 0,
+        allRequirementsPassing: false,
+        referencedInSession: false
     });
     const healthPoints = health.total / 10; // 0-10 (already includes freshness)
     const typePoints = c.type === "document" ? 3 : c.type === "note" ? 1 : 2;
