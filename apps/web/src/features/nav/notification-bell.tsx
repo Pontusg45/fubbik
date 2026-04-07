@@ -91,7 +91,7 @@ export function NotificationBell() {
     return (
         <Popover>
             <PopoverTrigger>
-                <Button variant="ghost" size="icon" className="relative" aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ""}`}>
+                <Button variant="ghost" size="icon" className="relative" aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ""}`} render={<span />}>
                     <Bell className="size-4" />
                     {unreadCount > 0 && (
                         <Badge
