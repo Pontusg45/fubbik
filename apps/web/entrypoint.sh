@@ -8,4 +8,4 @@ if [ -n "$RUNTIME_SERVER_URL" ]; then
     find /app/apps/web/dist -name '*.js' -exec sed -i "s|http://localhost:3000|${RUNTIME_SERVER_URL}|g" {} +
 fi
 
-exec bun run dist/server/entry-server.js
+exec node dist/server/entry-server.js
