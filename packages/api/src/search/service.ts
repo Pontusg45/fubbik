@@ -5,6 +5,7 @@ import {
     getTagsForUser,
     findShortestPath,
     getNeighborhood,
+    getHopDistances,
     getChunksAffectedByRequirement
 } from "@fubbik/db/repository";
 import { db } from "@fubbik/db";
@@ -13,6 +14,7 @@ import { requirement } from "@fubbik/db/schema/requirement";
 import { Effect } from "effect";
 import { ilike } from "drizzle-orm";
 
+import { computeHealthScore } from "../chunks/health-score";
 import type { QueryClause, SearchQuery, SearchResult, SearchResultChunk, GraphContext } from "./types";
 
 const GRAPH_FIELDS = new Set(["near", "path", "affected-by"]);
@@ -186,16 +188,33 @@ export function executeSearch(userId: string | undefined, searchQuery: SearchQue
             }
         }
 
-        const chunks: SearchResultChunk[] = filteredChunks.map(c => ({
-            id: c.id,
-            title: c.title,
-            type: c.type,
-            summary: c.summary ?? null,
-            tags: tagsByChunk.get(c.id) ?? [],
-            connectionCount: connectionCounts.get(c.id) ?? 0,
-            updatedAt: c.updatedAt,
-            graphContext: graphContextMap.get(c.id)
-        }));
+        const chunks: SearchResultChunk[] = filteredChunks.map(c => {
+            const connectionCount = connectionCounts.get(c.id) ?? 0;
+            const healthScore = computeHealthScore({
+                content: c.content ?? "",
+                updatedAt: new Date(c.updatedAt),
+                summary: c.summary ?? null,
+                rationale: null,
+                alternatives: null,
+                consequences: null,
+                connectionCount,
+                hasEmbedding: false,
+                requirementCount: 0,
+                allRequirementsPassing: false,
+                referencedInSession: false,
+            });
+            return {
+                id: c.id,
+                title: c.title,
+                type: c.type,
+                summary: c.summary ?? null,
+                tags: tagsByChunk.get(c.id) ?? [],
+                connectionCount,
+                updatedAt: c.updatedAt,
+                graphContext: graphContextMap.get(c.id),
+                healthScore: healthScore.total,
+            };
+        });
 
         const total = graphIds !== undefined ? chunks.length : result.total;
 

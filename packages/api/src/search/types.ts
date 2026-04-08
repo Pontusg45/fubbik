@@ -30,6 +30,7 @@ export interface SearchResultChunk {
     connectionCount: number;
     updatedAt: Date;
     graphContext?: GraphContext;
+    healthScore: number;
 }
 
 export interface SearchResult {

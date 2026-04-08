@@ -12,6 +12,7 @@ interface ChunkResult {
     connectionCount?: number;
     updatedAt?: string | null;
     graphContext?: string;
+    healthScore?: number;
 }
 
 interface GraphMeta {
@@ -113,6 +114,15 @@ export function SearchResults({ chunks, total, graphMeta, isLoading }: SearchRes
                                     <span className={`shrink-0 rounded border px-1.5 py-0.5 text-[10px] font-medium ${typeColor}`}>
                                         {chunk.type}
                                     </span>
+                                    {typeof chunk.healthScore === "number" && (
+                                        <span className={`shrink-0 text-[10px] font-mono font-bold ${
+                                            chunk.healthScore >= 70 ? "text-emerald-500" :
+                                            chunk.healthScore >= 40 ? "text-amber-500" :
+                                            "text-red-500"
+                                        }`}>
+                                            {chunk.healthScore}
+                                        </span>
+                                    )}
                                     {chunk.graphContext && (
                                         <span className="shrink-0 rounded border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-400">
                                             {chunk.graphContext}
