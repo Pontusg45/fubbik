@@ -29,6 +29,7 @@ import { Separator } from "@/components/ui/separator";
 import { PageEmpty } from "@/components/ui/page";
 import { SkeletonList } from "@/components/ui/skeleton-list";
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipPopup } from "@/components/ui/tooltip";
+import { ChunkFilterPills } from "@/features/chunks/chunk-filter-pills";
 import { ChunkFiltersPopover } from "@/features/chunks/chunk-filters-popover";
 import { getChunkSize } from "@/features/chunks/chunk-size";
 import { ChunkBulkActionBar } from "@/features/chunks/chunk-bulk-action-bar";
@@ -126,7 +127,7 @@ function ChunksList() {
     const navTo = useNavigate();
     const {
         type, q, sort, tags, size, after, enrichment, minConnections,
-        group, view, origin, reviewStatus,
+        group, view, origin, reviewStatus, allCodebases,
         activeTags, activeFilterCount, hasActiveFilters, isFederated,
         updateSearch, clearAllFilters, toggleTag,
     } = useChunkFilters();
@@ -526,99 +527,32 @@ function ChunksList() {
                 </div>
             </div>
 
-            {/* Active filter pills + clear all (shown below search when filters active) */}
-            {hasActiveFilters && (
-                <div className="mb-4 flex flex-wrap items-center gap-1.5">
-                    {type && (
-                        <Badge variant="secondary" size="sm" className="gap-1">
-                            Type: {type}
-                            <button onClick={() => updateSearch({ type: undefined })}>
-                                <X className="size-2.5" />
-                            </button>
-                        </Badge>
-                    )}
-                    {q && (
-                        <Badge variant="secondary" size="sm" className="gap-1">
-                            Search: {q}
-                            <button
-                                onClick={() => {
-                                    setSearchInput("");
-                                    updateSearch({ q: undefined });
-                                }}
-                            >
-                                <X className="size-2.5" />
-                            </button>
-                        </Badge>
-                    )}
-                    {sort && (
-                        <Badge variant="secondary" size="sm" className="gap-1">
-                            Sort: {sort}
-                            <button onClick={() => updateSearch({ sort: undefined })}>
-                                <X className="size-2.5" />
-                            </button>
-                        </Badge>
-                    )}
-                    {activeTags.map(tag => (
-                        <Badge key={tag} variant="secondary" size="sm" className="gap-1">
-                            {tag}
-                            <button onClick={() => toggleTag(tag)}>
-                                <X className="size-2.5" />
-                            </button>
-                        </Badge>
-                    ))}
-                    {size && (
-                        <Badge variant="secondary" size="sm" className="gap-1">
-                            Size: {size}
-                            <button onClick={() => updateSearch({ size: undefined })}>
-                                <X className="size-2.5" />
-                            </button>
-                        </Badge>
-                    )}
-                    {after && (
-                        <Badge variant="secondary" size="sm" className="gap-1">
-                            Last {after}d
-                            <button onClick={() => updateSearch({ after: undefined })}>
-                                <X className="size-2.5" />
-                            </button>
-                        </Badge>
-                    )}
-                    {enrichment && (
-                        <Badge variant="secondary" size="sm" className="gap-1">
-                            {enrichment === "missing" ? "Needs enrichment" : "Enriched"}
-                            <button onClick={() => updateSearch({ enrichment: undefined })}>
-                                <X className="size-2.5" />
-                            </button>
-                        </Badge>
-                    )}
-                    {minConnections && (
-                        <Badge variant="secondary" size="sm" className="gap-1">
-                            {minConnections}+ connections
-                            <button onClick={() => updateSearch({ minConnections: undefined })}>
-                                <X className="size-2.5" />
-                            </button>
-                        </Badge>
-                    )}
-                    {origin && (
-                        <Badge variant="secondary" size="sm" className="gap-1">
-                            Origin: {origin}
-                            <button onClick={() => updateSearch({ origin: undefined })}>
-                                <X className="size-2.5" />
-                            </button>
-                        </Badge>
-                    )}
-                    {reviewStatus && (
-                        <Badge variant="secondary" size="sm" className="gap-1">
-                            Review: {reviewStatus}
-                            <button onClick={() => updateSearch({ reviewStatus: undefined })}>
-                                <X className="size-2.5" />
-                            </button>
-                        </Badge>
-                    )}
-                    <button onClick={handleClearAllFilters} className="text-muted-foreground hover:text-foreground ml-1 text-xs underline">
-                        Clear all
-                    </button>
-                </div>
-            )}
+            {/* Active filter pills + clear all (shown below toolbar when filters active) */}
+            <ChunkFilterPills
+                type={type}
+                q={q}
+                tags={tags}
+                after={after}
+                enrichment={enrichment}
+                minConnections={minConnections}
+                origin={origin}
+                reviewStatus={reviewStatus}
+                allCodebases={allCodebases}
+                activeTags={activeTags}
+                onRemoveFilter={(key) => {
+                    if (key.startsWith("tag:")) {
+                        const tagToRemove = key.slice(4);
+                        const remaining = activeTags.filter(t => t !== tagToRemove);
+                        updateSearch({ tags: remaining.length > 0 ? remaining.join(",") : undefined });
+                    } else if (key === "q") {
+                        setSearchInput("");
+                        updateSearch({ q: undefined });
+                    } else {
+                        updateSearch({ [key]: undefined });
+                    }
+                }}
+                onClearAll={handleClearAllFilters}
+            />
 
             {/* Saved filter presets */}
             {savedFilters.length > 0 && (
