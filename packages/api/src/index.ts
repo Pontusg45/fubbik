@@ -38,6 +38,7 @@ import { useCaseRoutes } from "./use-cases/routes";
 import { activityRoutes } from "./activity/routes";
 import { notificationRoutes } from "./notifications/routes";
 import { settingsRoutes } from "./settings/routes";
+import { savedGraphRoutes } from "./saved-graphs/routes";
 import { stalenessRoutes } from "./staleness/routes";
 import { searchRoutes } from "./search/routes";
 import { planRoutes } from "./plans/routes";
@@ -161,6 +162,7 @@ export const api = new Elysia({ prefix: "/api" })
     .use(taskQueueRoutes)
     .use(workspaceRoutes)
     .use(stalenessRoutes)
+    .use(savedGraphRoutes)
     .use(searchRoutes);
 
 export type Api = typeof api;
