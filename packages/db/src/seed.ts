@@ -1671,7 +1671,334 @@ for (const pcr of planChunkRefs) {
 }
 console.log(`  \u2713 ${planChunkRefs.length} plan-chunk references`);
 
-// ─── 7. Vocabulary ─────────────────────────────────────────────────
+// ─── 7. Implementation Sessions (Reviews) ─────────────────────────
+import { implementationSession, sessionChunkRef, sessionAssumption, sessionRequirementRef } from "./schema/implementation-session";
+
+// Clean up existing sessions
+await db.delete(sessionRequirementRef).catch(() => {});
+await db.delete(sessionAssumption).catch(() => {});
+await db.delete(sessionChunkRef).catch(() => {});
+await db.delete(implementationSession).where(eq(implementationSession.userId, DEV_USER_ID)).catch(() => {});
+
+const sessions = [
+    {
+        id: "seed-session-api-docs",
+        title: "Document API endpoints",
+        status: "completed",
+        userId: DEV_USER_ID,
+        codebaseId: CODEBASE_ID,
+        planId: PLAN_ID,
+        reviewBrief: `## Review Brief
+
+Documented all core API endpoints including chunks CRUD, connections, tags, codebases, and workspaces. Added request/response examples and error codes.
+
+### Coverage
+- 5 chunks referenced during implementation
+- 2 requirements addressed (CRUD operations, search functionality)
+- All BDD steps verified against implementation
+
+### Notes
+- Swagger/OpenAPI spec at \`/docs\` is auto-generated and stays in sync
+- Added rate limiting docs for production deployment`,
+        completedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), // 5 days ago
+        reviewedAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000),
+    },
+    {
+        id: "seed-session-search",
+        title: "Implement semantic search",
+        status: "completed",
+        userId: DEV_USER_ID,
+        codebaseId: CODEBASE_ID,
+        planId: PLAN_ID,
+        reviewBrief: `## Review Brief
+
+Added embedding-based semantic search using Ollama nomic-embed-text model. Chunks are embedded on creation/update and searchable via cosine similarity.
+
+### Coverage
+- 3 chunks referenced
+- 1 requirement addressed (search functionality)
+
+### Assumptions
+- Ollama availability is optional — search degrades to text-only
+- 768-dimension vectors sufficient for codebase-scale knowledge`,
+        completedAt: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000), // 12 days ago
+        reviewedAt: new Date(Date.now() - 11 * 24 * 60 * 60 * 1000),
+    },
+    {
+        id: "seed-session-health",
+        title: "Build health scoring system",
+        status: "completed",
+        userId: DEV_USER_ID,
+        codebaseId: CODEBASE_ID,
+        reviewBrief: `## Review Brief
+
+Implemented per-chunk health scores (0-100) computed from freshness, completeness, richness, connectivity, and coverage. Exposed via chunk detail API and displayed as badge on detail page.
+
+### Coverage
+- 4 chunks referenced
+- 1 requirement addressed (staleness detection)
+
+### Open questions
+- Should health scores be cached or always computed on-demand?`,
+        completedAt: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000), // 20 days ago
+    },
+    {
+        id: "seed-session-active",
+        title: "Add workspace support",
+        status: "in_progress",
+        userId: DEV_USER_ID,
+        codebaseId: CODEBASE_ID,
+    }
+];
+
+for (const s of sessions) {
+    await db.insert(implementationSession).values(s).catch(e => console.error(`  ✗ session ${s.title}:`, e));
+}
+console.log(`  ✓ ${sessions.length} implementation sessions`);
+
+// Session chunk references
+const sessionChunkRefs = [
+    { sessionId: "seed-session-api-docs", chunkId: ids.apiChunks, reason: "Primary documentation target" },
+    { sessionId: "seed-session-api-docs", chunkId: ids.routes, reason: "Route implementation reference" },
+    { sessionId: "seed-session-api-docs", chunkId: ids.eden, reason: "Client SDK reference" },
+    { sessionId: "seed-session-api-docs", chunkId: ids.schemaChunks, reason: "Schema documentation" },
+    { sessionId: "seed-session-api-docs", chunkId: ids.auth, reason: "Auth endpoint reference" },
+    { sessionId: "seed-session-search", chunkId: ids.semantic, reason: "Search implementation" },
+    { sessionId: "seed-session-search", chunkId: ids.enrich, reason: "Embedding pipeline" },
+    { sessionId: "seed-session-search", chunkId: ids.repo, reason: "Repository pattern reference" },
+    { sessionId: "seed-session-health", chunkId: ids.arch, reason: "Architecture context" },
+    { sessionId: "seed-session-health", chunkId: ids.service, reason: "Service layer reference" },
+    { sessionId: "seed-session-health", chunkId: ids.schemaChunks, reason: "Schema reference" },
+    { sessionId: "seed-session-health", chunkId: ids.apiChunks, reason: "API endpoint reference" },
+];
+for (const scr of sessionChunkRefs) {
+    await db.insert(sessionChunkRef).values(scr).catch(e => console.error(`  ✗ session_chunk_ref:`, e));
+}
+console.log(`  ✓ ${sessionChunkRefs.length} session-chunk references`);
+
+// Session requirement references
+const sessionReqRefs = [
+    { sessionId: "seed-session-api-docs", requirementId: "seed-req-crud", stepsAddressed: [0, 1, 2] },
+    { sessionId: "seed-session-api-docs", requirementId: "seed-req-search", stepsAddressed: [0] },
+    { sessionId: "seed-session-search", requirementId: "seed-req-search", stepsAddressed: [0, 1, 2] },
+    { sessionId: "seed-session-health", requirementId: "seed-req-health-stale", stepsAddressed: [0, 1] },
+];
+for (const srr of sessionReqRefs) {
+    await db.insert(sessionRequirementRef).values(srr).catch(e => console.error(`  ✗ session_req_ref:`, e));
+}
+console.log(`  ✓ ${sessionReqRefs.length} session-requirement references`);
+
+// Session assumptions
+const sessionAssumptions = [
+    { id: "seed-assumption-ollama", sessionId: "seed-session-search", description: "Ollama will be available in most dev environments", resolved: true, resolution: "Made Ollama optional — features degrade gracefully" },
+    { id: "seed-assumption-vectors", sessionId: "seed-session-search", description: "768-dim vectors are sufficient for codebase knowledge", resolved: true, resolution: "Validated with nomic-embed-text — good quality for technical docs" },
+    { id: "seed-assumption-cache", sessionId: "seed-session-health", description: "Health scores should be computed on-demand vs cached", resolved: false },
+];
+for (const sa of sessionAssumptions) {
+    await db.insert(sessionAssumption).values(sa).catch(e => console.error(`  ✗ session_assumption:`, e));
+}
+console.log(`  ✓ ${sessionAssumptions.length} session assumptions`);
+
+// ─── 8. Document Chunks ───────────────────────────────────────────
+import { document } from "./schema/document";
+
+await db.delete(document).where(eq(document.userId, DEV_USER_ID)).catch(() => {});
+
+const seedDocs = [
+    {
+        id: "seed-doc-getting-started",
+        title: "Getting Started Guide",
+        sourcePath: "docs/guide/getting-started.md",
+        contentHash: "abc123",
+        description: "Step-by-step guide for setting up fubbik locally",
+        codebaseId: CODEBASE_ID,
+        userId: DEV_USER_ID,
+    },
+    {
+        id: "seed-doc-architecture",
+        title: "Architecture Reference",
+        sourcePath: "docs/guide/architecture.md",
+        contentHash: "def456",
+        description: "System architecture, data flow, and design decisions",
+        codebaseId: CODEBASE_ID,
+        userId: DEV_USER_ID,
+    },
+    {
+        id: "seed-doc-api-reference",
+        title: "API Reference",
+        sourcePath: "docs/guide/api-reference.md",
+        contentHash: "ghi789",
+        description: "Complete REST API documentation with examples",
+        codebaseId: CODEBASE_ID,
+        userId: DEV_USER_ID,
+    },
+];
+
+for (const doc of seedDocs) {
+    await db.insert(document).values(doc).catch(e => console.error(`  ✗ doc ${doc.title}:`, e));
+}
+console.log(`  ✓ ${seedDocs.length} documents`);
+
+// Document-linked chunks (content sections from imported docs)
+const docChunks = [
+    {
+        id: "seed-doc-chunk-setup",
+        title: "Local Development Setup",
+        type: "document",
+        content: `## Prerequisites
+
+- **Node.js** 18+ and **bun** runtime
+- **pnpm** package manager
+- **PostgreSQL** 14+ with pgvector and pg_trgm extensions
+- **Ollama** (optional, for AI enrichment and semantic search)
+
+## Quick Start
+
+\`\`\`bash
+# Clone and install
+git clone https://github.com/Pontusg45/fubbik.git
+cd fubbik && pnpm install
+
+# Set up database
+createdb fubbik
+psql -d fubbik -c "CREATE EXTENSION vector; CREATE EXTENSION pg_trgm;"
+
+# Configure environment
+cp apps/server/.env.example apps/server/.env
+# Edit DATABASE_URL in .env
+
+# Push schema and seed
+pnpm db:push && pnpm seed
+
+# Start development
+pnpm dev
+\`\`\`
+
+The web UI runs at \`http://localhost:3001\` and the API at \`http://localhost:3000/docs\`.`,
+        documentId: "seed-doc-getting-started",
+        documentOrder: 0,
+    },
+    {
+        id: "seed-doc-chunk-concepts",
+        title: "Core Concepts: Chunks, Connections, and Codebases",
+        type: "document",
+        content: `## Chunks
+
+The central entity in fubbik. A chunk is a discrete unit of knowledge — a convention, architecture decision, runbook, API reference, or any structured insight about your codebase.
+
+Each chunk has:
+- **Title and content** (markdown)
+- **Type** — note, document, reference, schema, checklist
+- **Tags** — categorization via normalized tag types
+- **Scope** — key-value metadata for filtering
+- **Health score** — computed from freshness, completeness, richness, connectivity, and coverage
+
+## Connections
+
+Directed, typed edges between chunks. Relation types: \`related_to\`, \`part_of\`, \`depends_on\`, \`extends\`, \`references\`, \`supports\`, \`contradicts\`, \`alternative_to\`.
+
+Connections are global — they work across codebases, enabling cross-project knowledge linking.
+
+## Codebases & Workspaces
+
+Chunks can belong to codebases (identified by git remote URL). Workspaces group related codebases (e.g., frontend + backend + infra). The CLI auto-detects your codebase via git remote.`,
+        documentId: "seed-doc-getting-started",
+        documentOrder: 1,
+    },
+    {
+        id: "seed-doc-chunk-arch-layers",
+        title: "Architecture: Repository → Service → Route Pattern",
+        type: "document",
+        content: `## Backend Architecture
+
+Fubbik follows a strict three-layer architecture:
+
+### Repository Layer (\`packages/db/src/repository/\`)
+- Pure data access, no business logic
+- Returns \`Effect<T, DatabaseError>\`
+- Uses Drizzle ORM for type-safe queries
+
+### Service Layer (\`packages/api/src/*/service.ts\`)
+- Composes repository Effects
+- Adds business logic, validation
+- Introduces \`NotFoundError\`, \`AuthError\`, \`ValidationError\`
+
+### Route Layer (\`packages/api/src/*/routes.ts\`)
+- Elysia route handlers
+- Calls \`Effect.runPromise(requireSession(ctx).pipe(...))\`
+- Schema validation via Elysia \`t\` schemas
+
+### Error Handling
+
+Errors propagate through Effect to a global \`.onError\` handler that maps \`_tag\` to HTTP status codes:
+- \`ValidationError\` → 400
+- \`AuthError\` → 401
+- \`NotFoundError\` → 404
+- \`DatabaseError\` → 500`,
+        documentId: "seed-doc-architecture",
+        documentOrder: 0,
+    },
+    {
+        id: "seed-doc-chunk-api-overview",
+        title: "API Overview: Authentication and Endpoints",
+        type: "reference",
+        content: `## Authentication
+
+Fubbik uses Better Auth for session-based authentication. All API endpoints (except \`/api/health\`) require an authenticated session.
+
+## Key Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| \`/api/chunks\` | GET | List chunks (supports filtering, search, pagination) |
+| \`/api/chunks\` | POST | Create chunk |
+| \`/api/chunks/:id\` | GET | Chunk detail with connections, health score |
+| \`/api/chunks/search/semantic\` | GET | Embedding-based search |
+| \`/api/graph\` | GET | Knowledge graph data (nodes + edges) |
+| \`/api/plans\` | GET/POST | Plan management |
+| \`/api/requirements\` | GET/POST | Requirements with BDD steps |
+| \`/api/sessions\` | GET/POST | Implementation session tracking |
+| \`/api/context/for-file\` | GET | File-relevant chunks + requirements |
+| \`/api/chunks/export/claude-md\` | GET | AI-optimized context export |
+
+## OpenAPI
+
+Full interactive documentation at \`/docs\` (Swagger UI).`,
+        documentId: "seed-doc-api-reference",
+        documentOrder: 0,
+    },
+];
+
+for (const dc of docChunks) {
+    await db.insert(chunk).values({ ...dc, userId: DEV_USER_ID }).catch(e => console.error(`  ✗ doc chunk ${dc.title}:`, e));
+}
+console.log(`  ✓ ${docChunks.length} document chunks`);
+
+// Connect doc chunks to codebase
+for (const dc of docChunks) {
+    await db.insert(chunkCodebase).values({ chunkId: dc.id, codebaseId: CODEBASE_ID }).catch(() => {});
+}
+console.log(`  ✓ ${docChunks.length} doc chunk-codebase links`);
+
+// Connect doc chunks to existing chunks
+const docConnections = [
+    { id: "seed-conn-setup-env", sourceId: "seed-doc-chunk-setup", targetId: ids.env, relation: "references" },
+    { id: "seed-conn-setup-docker", sourceId: "seed-doc-chunk-setup", targetId: ids.docker, relation: "references" },
+    { id: "seed-conn-concepts-schema", sourceId: "seed-doc-chunk-concepts", targetId: ids.schemaChunks, relation: "references" },
+    { id: "seed-conn-concepts-graph", sourceId: "seed-doc-chunk-concepts", targetId: ids.graph, relation: "references" },
+    { id: "seed-conn-arch-repo", sourceId: "seed-doc-chunk-arch-layers", targetId: ids.repo, relation: "part_of" },
+    { id: "seed-conn-arch-service", sourceId: "seed-doc-chunk-arch-layers", targetId: ids.service, relation: "part_of" },
+    { id: "seed-conn-arch-routes", sourceId: "seed-doc-chunk-arch-layers", targetId: ids.routes, relation: "part_of" },
+    { id: "seed-conn-arch-effect", sourceId: "seed-doc-chunk-arch-layers", targetId: ids.effect, relation: "depends_on" },
+    { id: "seed-conn-api-eden", sourceId: "seed-doc-chunk-api-overview", targetId: ids.eden, relation: "references" },
+    { id: "seed-conn-api-auth", sourceId: "seed-doc-chunk-api-overview", targetId: ids.auth, relation: "references" },
+];
+for (const conn of docConnections) {
+    await db.insert(chunkConnection).values({ ...conn, userId: DEV_USER_ID }).catch(e => console.error(`  ✗ doc connection:`, e));
+}
+console.log(`  ✓ ${docConnections.length} doc chunk connections`);
+
+// ─── 9. Vocabulary ─────────────────────────────────────────────────
 const vocabEntries = [
     { id: "seed-vocab-chunk", word: "chunk", category: "actor", expects: ["target"], codebaseId: CODEBASE_ID, userId: DEV_USER_ID },
     { id: "seed-vocab-connection", word: "connection", category: "target", expects: null, codebaseId: CODEBASE_ID, userId: DEV_USER_ID },
