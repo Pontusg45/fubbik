@@ -21,4 +21,5 @@ export * from "./implementation-session";
 export * from "./plan";
 export * from "./workspace";
 export * from "./saved-graph";
+export * from "./saved-query";
 export * from "./staleness";
