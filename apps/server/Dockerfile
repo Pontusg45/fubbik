@@ -19,7 +19,7 @@ COPY packages/config/package.json ./packages/config/
 COPY packages/db/package.json ./packages/db/
 COPY packages/env/package.json ./packages/env/
 
-RUN PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 pnpm install --frozen-lockfile
+RUN PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 pnpm install --frozen-lockfile --shamefully-hoist
 
 # 2. Copy only source needed for the server build
 COPY packages/config/ ./packages/config/
@@ -33,9 +33,6 @@ COPY turbo.json ./
 # 3. Build the server (tsdown bundles workspace deps)
 RUN pnpm run build --filter=server
 
-# 4. Deploy: creates flat node_modules with only server's deps (757MB vs 3.4GB)
-RUN pnpm --filter=server deploy --legacy /app/deploy
-
 # Production stage
 FROM oven/bun:1.3.10-slim AS runner
 
@@ -44,13 +41,18 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3000
 
-# Copy the deployed flat node_modules (no pnpm symlinks)
-COPY --from=builder /app/deploy/node_modules ./node_modules
+# Copy full node_modules (pnpm symlinks resolved by bun)
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package.json ./package.json
 
 # Copy built application
 COPY --from=builder /app/apps/server/dist ./dist
-COPY --from=builder /app/apps/server/package.json ./package.json
+COPY --from=builder /app/apps/server/package.json ./apps/server/package.json
 COPY --from=builder /app/apps/server/entrypoint.sh ./entrypoint.sh
+
+# Copy workspace packages needed at runtime
+COPY --from=builder /app/packages/api/package.json ./packages/api/package.json
+COPY --from=builder /app/packages/auth/package.json ./packages/auth/package.json
 
 # Copy db package for migrations and seeding
 COPY --from=builder /app/packages/db/src ./packages/db/src
