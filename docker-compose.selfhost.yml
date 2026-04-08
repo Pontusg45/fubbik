@@ -32,6 +32,7 @@ services:
       BETTER_AUTH_URL: http://localhost:3000
       CORS_ORIGIN: http://localhost:3001
       OLLAMA_URL: ${OLLAMA_URL:-http://host.docker.internal:11434}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ""
       PORT: "3000"
       SEED_DATABASE: ${SEED_DATABASE:-false}
     depends_on:
