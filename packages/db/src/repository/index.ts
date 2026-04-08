@@ -31,3 +31,4 @@ export * from "./workspace";
 export * from "./saved-graph";
 export * from "./document";
 export * from "./staleness";
+export * from "../age/query";

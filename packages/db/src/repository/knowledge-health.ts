@@ -1,6 +1,7 @@
 import { and, eq, isNotNull, sql } from "drizzle-orm";
 import { Effect } from "effect";
 
+import { getOrphanChunkIds } from "../age/query";
 import { DatabaseError } from "../errors";
 import { db } from "../index";
 import { chunk, chunkConnection } from "../schema/chunk";
@@ -170,6 +171,10 @@ export function getStaleEmbeddings(userId: string, codebaseId?: string) {
         },
         catch: cause => new DatabaseError({ cause })
     });
+}
+
+export function getOrphanChunkIdsViaAge() {
+    return getOrphanChunkIds();
 }
 
 export function getFileRefsForHealth(userId: string, codebaseId?: string) {
