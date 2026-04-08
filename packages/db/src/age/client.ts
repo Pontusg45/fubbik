@@ -5,16 +5,6 @@ import { Effect } from "effect";
 import { DatabaseError } from "../errors";
 import { db } from "../index";
 
-export function initAge() {
-    return Effect.tryPromise({
-        try: async () => {
-            await db.execute(sql`LOAD 'age'`);
-            await db.execute(sql.raw(`SET search_path = ag_catalog, "$user", public`));
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
-}
-
 export function cypher(query: string, returnType = "v agtype") {
     return Effect.tryPromise({
         try: async () => {
