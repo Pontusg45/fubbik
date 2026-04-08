@@ -8,16 +8,22 @@ function parseAgtypeId(val: unknown): string {
 }
 
 export function findShortestPath(chunkIdA: string, chunkIdB: string) {
+    // AGE 1.x does not support shortestPath() or list comprehensions.
+    // We simulate a shortest-path check by attempting a variable-hop traversal
+    // with a generous upper bound and returning the target id when reachable.
+    // Callers receive null when no path exists; a truthy path array otherwise.
     return cypher(
-        `MATCH p = shortestPath((a:chunk {id: '${chunkIdA}'})-[*]-(b:chunk {id: '${chunkIdB}'}))
-         RETURN [n IN nodes(p) | n.id] AS path`,
+        `MATCH (a:chunk {id: '${chunkIdA}'})-[*1..10]-(b:chunk {id: '${chunkIdB}'})
+         RETURN b.id AS path LIMIT 1`,
         "path agtype"
     ).pipe(
         Effect.map(rows => {
             if (rows.length === 0) return null;
             const raw = (rows[0] as any)?.path;
             if (!raw) return null;
-            return (typeof raw === "string" ? JSON.parse(raw) : raw) as string[];
+            // Return a two-element array [start, end] to indicate connectivity
+            const target = typeof raw === "string" ? raw.replace(/^"|"$/g, "") : String(raw);
+            return [chunkIdA, target] as string[];
         })
     );
 }
@@ -66,8 +72,9 @@ export function getTransitiveDeps(requirementId: string) {
 }
 
 export function checkCircular(requirementId: string, dependsOnId: string) {
+    // "end" is a reserved keyword in AGE Cypher — use "dest" instead.
     return cypher(
-        `MATCH (start:requirement {id: '${dependsOnId}'})-[:depends_on*]->(end:requirement {id: '${requirementId}'})
+        `MATCH (start:requirement {id: '${dependsOnId}'})-[:depends_on*]->(dest:requirement {id: '${requirementId}'})
          RETURN 1 AS found LIMIT 1`,
         "found agtype"
     ).pipe(
@@ -125,8 +132,10 @@ export function getHopDistances(referenceId: string, targetIds: string[]) {
 }
 
 export function getOrphanChunkIds() {
+    // AGE 1.x does not support the anonymous pattern `NOT (c)-[]-()`.
+    // Use the EXISTS subquery form instead.
     return cypher(
-        `MATCH (c:chunk) WHERE NOT (c)-[]-() RETURN c.id AS id`,
+        `MATCH (c:chunk) WHERE NOT EXISTS { MATCH (c)-[]-() } RETURN c.id AS id`,
         "id agtype"
     ).pipe(
         Effect.map(rows => rows.map((r: any) => parseAgtypeId(r.id)))
