@@ -20,13 +20,14 @@ export const FILTER_COLORS: Record<string, string> = {
     near: "bg-amber-500/15 border-amber-500/30 text-amber-400",
     path: "bg-amber-500/15 border-amber-500/30 text-amber-400",
     "affected-by": "bg-amber-500/15 border-amber-500/30 text-amber-400",
+    "similar-to": "bg-purple-500/15 border-purple-500/30 text-purple-400",
     text: "bg-slate-500/15 border-slate-500/30 text-slate-400",
     connections: "bg-slate-500/15 border-slate-500/30 text-slate-400",
     updated: "bg-slate-500/15 border-slate-500/30 text-slate-400",
     codebase: "bg-slate-500/15 border-slate-500/30 text-slate-400",
 };
 
-export const GRAPH_FIELDS = ["near", "path", "affected-by"];
+export const GRAPH_FIELDS = ["near", "path", "affected-by", "similar-to"];
 
 export const FILTER_CATEGORIES = [
     {
@@ -47,6 +48,7 @@ export const FILTER_CATEGORIES = [
             { field: "near", label: "Neighborhood", description: "Chunks within N hops" },
             { field: "path", label: "Path finding", description: "Path between two chunks" },
             { field: "affected-by", label: "Affected by requirement", description: "Requirement reach" },
+            { field: "similar-to", label: "Similar to", description: "Find chunks with similar content" },
         ],
     },
 ];

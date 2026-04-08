@@ -6,7 +6,8 @@ import {
     findShortestPath,
     getNeighborhood,
     getHopDistances,
-    getChunksAffectedByRequirement
+    getChunksAffectedByRequirement,
+    semanticSearch as semanticSearchRepo
 } from "@fubbik/db/repository";
 import { db } from "@fubbik/db";
 import { chunk } from "@fubbik/db/schema/chunk";
@@ -14,10 +15,12 @@ import { requirement } from "@fubbik/db/schema/requirement";
 import { Effect } from "effect";
 import { ilike } from "drizzle-orm";
 
+import { generateQueryEmbedding } from "../ollama/client";
+
 import { computeHealthScore } from "../chunks/health-score";
 import type { QueryClause, SearchQuery, SearchResult, SearchResultChunk, GraphContext } from "./types";
 
-const GRAPH_FIELDS = new Set(["near", "path", "affected-by"]);
+const GRAPH_FIELDS = new Set(["near", "path", "affected-by", "similar-to"]);
 
 function isGraphClause(clause: QueryClause): boolean {
     return GRAPH_FIELDS.has(clause.field);
@@ -79,6 +82,8 @@ export function executeSearch(userId: string | undefined, searchQuery: SearchQue
         let graphIds: string[] | undefined;
         let graphMeta: SearchResult["graphMeta"] | undefined;
         let neighborhoodRef: { referenceId: string; maxHops: number } | undefined;
+        let similarToIds: string[] | undefined;
+        let similarToQuery: string | undefined;
 
         // Execute graph clauses
         for (const clause of graphClauses) {
@@ -107,6 +112,18 @@ export function executeSearch(userId: string | undefined, searchQuery: SearchQue
                 );
                 graphIds = graphIds ? graphIds.filter(id => ids.includes(id)) : ids;
                 graphMeta = { type: "requirement-reach" };
+            } else if (clause.field === "similar-to") {
+                const ids = yield* generateQueryEmbedding(clause.value).pipe(
+                    Effect.flatMap(embedding =>
+                        semanticSearchRepo({ embedding, userId, limit: 20 })
+                    ),
+                    Effect.map(results => results.map(r => r.id)),
+                    Effect.orElse(() => Effect.succeed([] as string[]))
+                );
+                graphIds = graphIds ? graphIds.filter(id => ids.includes(id)) : ids;
+                graphMeta = { type: "semantic" as any, referenceChunk: clause.value };
+                similarToIds = ids;
+                similarToQuery = clause.value;
             }
         }
 
@@ -189,6 +206,10 @@ export function executeSearch(userId: string | undefined, searchQuery: SearchQue
             } else if (graphMeta.type === "requirement-reach") {
                 for (const id of graphIds) {
                     graphContextMap.set(id, {});
+                }
+            } else if ((graphMeta.type as string) === "semantic" && similarToIds && similarToQuery) {
+                for (const id of similarToIds) {
+                    graphContextMap.set(id, { matchedRequirement: `similar to "${similarToQuery}"` });
                 }
             }
         }

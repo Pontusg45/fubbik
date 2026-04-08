@@ -437,6 +437,7 @@ function getPlaceholder(field: string, pathStep: PathStep): string {
         text: "Search text…",
         near: "Chunk name or ID…",
         "affected-by": "Requirement name or ID…",
+        "similar-to": "Describe what you're looking for…",
     };
     return map[field] ?? `Value for ${field}…`;
 }
