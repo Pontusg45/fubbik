@@ -1,0 +1,59 @@
+# Fubbik Self-Hosting — docker compose -f docker-compose.selfhost.yml up
+#
+# Usage:
+#   docker compose -f docker-compose.selfhost.yml up -d
+#   Open http://localhost:8080
+#
+# Optional:
+#   SEED_DATABASE=true  — seed with sample data on first start
+#   OLLAMA_URL          — point to your Ollama instance for AI features
+
+services:
+  db:
+    image: pgvector/pgvector:0.8.0-pg16
+    environment:
+      POSTGRES_DB: fubbik
+      POSTGRES_USER: fubbik
+      POSTGRES_PASSWORD: fubbik
+    volumes:
+      - fubbik_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fubbik"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  server:
+    image: pontusg45/fubbik-server:latest
+    environment:
+      DATABASE_URL: postgresql://fubbik:fubbik@db:5432/fubbik
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-change-me-to-a-random-string-at-least-32-chars}
+      BETTER_AUTH_URL: http://localhost:8080
+      CORS_ORIGIN: http://localhost:8080
+      OLLAMA_URL: ${OLLAMA_URL:-http://host.docker.internal:11434}
+      PORT: "3000"
+      SEED_DATABASE: ${SEED_DATABASE:-false}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    image: pontusg45/fubbik-web:latest
+    environment:
+      PORT: "3001"
+      RUNTIME_SERVER_URL: http://localhost:${FUBBIK_PORT:-8080}
+    depends_on:
+      - server
+
+  proxy:
+    image: nginx:alpine
+    ports:
+      - "${FUBBIK_PORT:-8080}:80"
+    volumes:
+      - ./nginx.selfhost.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - server
+      - web
+
+volumes:
+  fubbik_data:

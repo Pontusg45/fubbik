@@ -55,6 +55,9 @@ COPY --from=builder /app/apps/web/dist ./apps/web/dist
 
 EXPOSE 3000
 
+COPY --from=builder /app/apps/web/entrypoint.sh ./apps/web/entrypoint.sh
+RUN chmod +x ./apps/web/entrypoint.sh
+
 WORKDIR /app/apps/web
 
-CMD ["bun", "run", "dist/server/entry-server.js"]
+ENTRYPOINT ["sh", "entrypoint.sh"]
