@@ -33,3 +33,4 @@ export * from "./saved-query";
 export * from "./document";
 export * from "./staleness";
 export * from "../age/query";
+export { isAgeAvailable } from "../age/client";

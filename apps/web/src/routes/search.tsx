@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Network, Save, Search as SearchIcon, Trash2, X } from "lucide-react";
+import { AlertTriangle, Network, Save, Search as SearchIcon, Trash2, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -127,6 +127,17 @@ function SearchPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [builder.clauses, builder.join, builder.sort, codebaseId]);
 
+    // Health (AGE availability) — checked once per session with a long stale time
+    const healthQuery = useQuery({
+        queryKey: ["health"],
+        queryFn: async () => {
+            const res = await api.api.health.get();
+            return (res as any)?.data ?? null;
+        },
+        staleTime: 5 * 60 * 1000, // 5 minutes
+    });
+    const ageAvailable = healthQuery.data?.ageAvailable !== false;
+
     // Saved queries
     const savedQueriesQuery = useQuery({
         queryKey: ["search-saved", codebaseId],
@@ -206,6 +217,7 @@ function SearchPage() {
     const chunks = Array.isArray(results?.chunks) ? results.chunks : [];
     const total = typeof results?.total === "number" ? results.total : chunks.length;
     const graphMeta = results?.graphMeta;
+    const duplicateHints = Array.isArray(results?.duplicateHints) ? results.duplicateHints : undefined;
 
     const hasSearched = searchMutation.isSuccess || searchMutation.isPending;
 
@@ -308,6 +320,14 @@ function SearchPage() {
                 </div>
             )}
 
+            {/* AGE unavailable warning */}
+            {builder.hasGraphClauses && !ageAvailable && (
+                <div className="mb-4 flex items-center gap-2 rounded-lg border border-amber-500/20 bg-amber-500/5 px-4 py-2 text-xs text-amber-500">
+                    <AlertTriangle className="size-3.5 shrink-0" />
+                    Graph queries require the Apache AGE extension. Results may be empty. Standard filters still work.
+                </div>
+            )}
+
             {/* Empty state (before any search) */}
             {!hasSearched && builder.clauses.length === 0 && (
                 <div className="py-8">
@@ -342,6 +362,7 @@ function SearchPage() {
                     chunks={chunks}
                     total={total}
                     graphMeta={graphMeta}
+                    duplicateHints={duplicateHints}
                     isLoading={searchMutation.isPending}
                 />
             )}
