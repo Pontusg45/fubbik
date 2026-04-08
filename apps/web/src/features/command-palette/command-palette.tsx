@@ -132,10 +132,11 @@ export function CommandPalette() {
             return result;
         },
         onSuccess: (data) => {
+            const chunk = data as { id: string };
             toast.success(`Created "${query.trim()}"`, {
                 action: {
                     label: "Edit",
-                    onClick: () => navigate({ to: "/chunks/$chunkId/edit", params: { chunkId: data.id } }),
+                    onClick: () => navigate({ to: "/chunks/$chunkId/edit", params: { chunkId: chunk.id } }),
                 },
             });
             close();
