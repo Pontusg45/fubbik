@@ -1,7 +1,8 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
-import { HeadContent, Link, Outlet, Scripts, createRootRouteWithContext, useLocation } from "@tanstack/react-router";
+import { HeadContent, Link, Outlet, Scripts, createRootRouteWithContext, useLocation, useNavigate } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
+import { useEffect, useRef, useState } from "react";
 
 import { Settings, SlidersHorizontal, Tags, FileText, BookOpen, Languages, Folder, FileSearch, FolderUp, Layers, Search } from "lucide-react";
 
@@ -59,6 +60,24 @@ function RootDocument() {
     const location = useLocation();
     const isLanding = location.pathname === "/";
     const staleCount = useStaleCount();
+    const navigate = useNavigate();
+    const [navSearch, setNavSearch] = useState("");
+    const searchInputRef = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+        function isInputFocused() {
+            const tag = document.activeElement?.tagName;
+            return tag === "INPUT" || tag === "TEXTAREA" || (document.activeElement as HTMLElement)?.isContentEditable;
+        }
+        function handleKeyDown(e: KeyboardEvent) {
+            if (e.key === "/" && !isInputFocused()) {
+                e.preventDefault();
+                searchInputRef.current?.focus();
+            }
+        }
+        document.addEventListener("keydown", handleKeyDown);
+        return () => document.removeEventListener("keydown", handleKeyDown);
+    }, []);
 
     return (
         <html lang="en" suppressHydrationWarning>
@@ -132,16 +151,28 @@ function RootDocument() {
                                         >
                                             Docs
                                         </Link>
-                                        <Link
-                                            to="/search"
-                                            search={{ q: undefined }}
-                                            className="text-muted-foreground hover:text-foreground [&.active]:text-foreground rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
-                                        >
-                                            <span className="flex items-center gap-1">
-                                                <Search className="size-3.5" />
-                                                Search
-                                            </span>
-                                        </Link>
+                                        <div className="relative hidden md:block">
+                                            <Search className="text-muted-foreground pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2" />
+                                            <input
+                                                ref={searchInputRef}
+                                                type="text"
+                                                placeholder="Search... (press /)"
+                                                value={navSearch}
+                                                onChange={e => setNavSearch(e.target.value)}
+                                                onKeyDown={e => {
+                                                    if (e.key === "Enter" && navSearch.trim()) {
+                                                        navigate({ to: "/search", search: { q: navSearch.trim() } });
+                                                        setNavSearch("");
+                                                        e.currentTarget.blur();
+                                                    }
+                                                    if (e.key === "Escape") {
+                                                        setNavSearch("");
+                                                        e.currentTarget.blur();
+                                                    }
+                                                }}
+                                                className="bg-muted/50 border-border/50 text-foreground placeholder:text-muted-foreground h-8 w-40 rounded-md border pl-8 pr-3 text-xs transition-all focus:w-56 focus:outline-none focus:ring-1 focus:ring-ring"
+                                            />
+                                        </div>
                                         <DropdownMenu>
                                             <DropdownMenuTrigger className="text-muted-foreground hover:text-foreground rounded-md px-3 py-1.5 text-sm font-medium transition-colors">
                                                 <span className="flex items-center gap-1">
