@@ -101,6 +101,29 @@ export function getSubgraph(chunkIds: string[]) {
     );
 }
 
+export function getHopDistances(referenceId: string, targetIds: string[]) {
+    if (targetIds.length === 0) return Effect.succeed(new Map<string, number>());
+
+    const idList = targetIds.map(id => `'${id}'`).join(",");
+    return cypher(
+        `MATCH (ref:chunk {id: '${referenceId}'}), (target:chunk)
+         WHERE target.id IN [${idList}]
+         MATCH p = shortestPath((ref)-[*]-(target))
+         RETURN target.id AS id, length(p) AS hops`,
+        "id agtype, hops agtype"
+    ).pipe(
+        Effect.map(rows => {
+            const map = new Map<string, number>();
+            for (const row of rows) {
+                const id = parseAgtypeId((row as any).id);
+                const hops = Number((row as any).hops);
+                map.set(id, hops);
+            }
+            return map;
+        })
+    );
+}
+
 export function getOrphanChunkIds() {
     return cypher(
         `MATCH (c:chunk) WHERE NOT (c)-[]-() RETURN c.id AS id`,

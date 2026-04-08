@@ -3,6 +3,12 @@ import { Cable, Clock, Search } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { SkeletonList } from "@/components/ui/skeleton-list";
 
+interface GraphContext {
+    hopDistance?: number;
+    pathPosition?: number;
+    matchedRequirement?: string;
+}
+
 interface ChunkResult {
     id: string;
     title: string;
@@ -11,7 +17,7 @@ interface ChunkResult {
     tags?: Array<{ name: string }>;
     connectionCount?: number;
     updatedAt?: string | null;
-    graphContext?: string;
+    graphContext?: GraphContext;
     healthScore?: number;
 }
 
@@ -125,7 +131,11 @@ export function SearchResults({ chunks, total, graphMeta, isLoading }: SearchRes
                                     )}
                                     {chunk.graphContext && (
                                         <span className="shrink-0 rounded border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-400">
-                                            {chunk.graphContext}
+                                            {typeof chunk.graphContext.hopDistance === "number"
+                                                ? `${chunk.graphContext.hopDistance} hop${chunk.graphContext.hopDistance !== 1 ? "s" : ""} away`
+                                                : typeof chunk.graphContext.pathPosition === "number"
+                                                ? `path pos ${chunk.graphContext.pathPosition}`
+                                                : "in neighborhood"}
                                         </span>
                                     )}
                                 </div>

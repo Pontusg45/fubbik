@@ -78,6 +78,7 @@ export function executeSearch(userId: string | undefined, searchQuery: SearchQue
     return Effect.gen(function* () {
         let graphIds: string[] | undefined;
         let graphMeta: SearchResult["graphMeta"] | undefined;
+        let neighborhoodRef: { referenceId: string; maxHops: number } | undefined;
 
         // Execute graph clauses
         for (const clause of graphClauses) {
@@ -88,6 +89,7 @@ export function executeSearch(userId: string | undefined, searchQuery: SearchQue
                 );
                 graphIds = graphIds ? graphIds.filter(id => ids.includes(id)) : ids;
                 graphMeta = { type: "neighborhood", referenceChunk: clause.value };
+                neighborhoodRef = { referenceId: clause.value, maxHops: hops };
             } else if (clause.field === "path") {
                 const [chunkA, chunkB] = clause.value.split(",").map(s => s.trim());
                 if (chunkA && chunkB) {
@@ -177,9 +179,12 @@ export function executeSearch(userId: string | undefined, searchQuery: SearchQue
                 graphMeta.pathChunks.forEach((id, idx) => {
                     graphContextMap.set(id, { pathPosition: idx });
                 });
-            } else if (graphMeta.type === "neighborhood") {
+            } else if (graphMeta.type === "neighborhood" && neighborhoodRef) {
+                const hopMap = yield* getHopDistances(neighborhoodRef.referenceId, graphIds).pipe(
+                    Effect.orElse(() => Effect.succeed(new Map<string, number>()))
+                );
                 for (const id of graphIds) {
-                    graphContextMap.set(id, { hopDistance: 1 });
+                    graphContextMap.set(id, { hopDistance: hopMap.get(id) ?? neighborhoodRef.maxHops });
                 }
             } else if (graphMeta.type === "requirement-reach") {
                 for (const id of graphIds) {
