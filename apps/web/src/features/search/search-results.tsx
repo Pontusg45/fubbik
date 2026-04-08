@@ -1,7 +1,11 @@
 import { Link } from "@tanstack/react-router";
-import { Cable, Clock, Search } from "lucide-react";
+import { Cable, Clock, Network, Search } from "lucide-react";
+import { useState } from "react";
+
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { SkeletonList } from "@/components/ui/skeleton-list";
+import { SearchGraph } from "@/features/search/search-graph";
 
 interface GraphContext {
     hopDistance?: number;
@@ -55,6 +59,8 @@ function formatRelativeTime(dateStr: string): string {
 }
 
 export function SearchResults({ chunks, total, graphMeta, isLoading }: SearchResultsProps) {
+    const [showGraph, setShowGraph] = useState(false);
+
     if (isLoading) {
         return <SkeletonList count={6} />;
     }
@@ -73,7 +79,7 @@ export function SearchResults({ chunks, total, graphMeta, isLoading }: SearchRes
 
     return (
         <div className="space-y-1">
-            {/* Result count + graph badge */}
+            {/* Result count + graph badge + toggle */}
             <div className="mb-3 flex items-center gap-2">
                 <span className="text-xs text-muted-foreground">
                     {total} result{total !== 1 ? "s" : ""}
@@ -89,7 +95,27 @@ export function SearchResults({ chunks, total, graphMeta, isLoading }: SearchRes
                             : null}
                     </Badge>
                 )}
+                <Button
+                    variant={showGraph ? "secondary" : "ghost"}
+                    size="sm"
+                    onClick={() => setShowGraph(g => !g)}
+                    className="ml-auto gap-1.5"
+                    title={showGraph ? "Hide graph" : "Show graph"}
+                >
+                    <Network className="size-3.5" />
+                    {showGraph ? "Hide graph" : "Show graph"}
+                </Button>
             </div>
+
+            {/* Minimap graph */}
+            {showGraph && (
+                <div className="mb-4">
+                    <SearchGraph
+                        chunkIds={chunks.map(c => c.id)}
+                        chunks={chunks.map(c => ({ id: c.id, title: c.title, type: c.type }))}
+                    />
+                </div>
+            )}
 
             {/* Chunk rows */}
             <div className="divide-y divide-border rounded-md border">
