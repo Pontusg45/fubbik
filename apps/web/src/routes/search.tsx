@@ -43,6 +43,14 @@ function clausesToQueryString(clauses: Array<{ field: string; operator: string; 
         .join(" ");
 }
 
+const EXAMPLE_QUERIES = [
+    { label: "All reference docs", clauses: [{ field: "type", operator: "is", value: "reference" }] },
+    { label: "AI-generated chunks", clauses: [{ field: "origin", operator: "is", value: "ai" }] },
+    { label: "Chunks needing review", clauses: [{ field: "review", operator: "is", value: "draft" }] },
+    { label: "Updated in last 7 days", clauses: [{ field: "updated", operator: "within", value: "7" }] },
+    { label: "Well-connected chunks", clauses: [{ field: "connections", operator: "gte", value: "3" }] },
+];
+
 function SearchPage() {
     const { q } = Route.useSearch();
     const navigate = useNavigate();
@@ -302,11 +310,29 @@ function SearchPage() {
 
             {/* Empty state (before any search) */}
             {!hasSearched && builder.clauses.length === 0 && (
-                <div className="flex flex-col items-center gap-3 py-16 text-center">
-                    <SearchIcon className="size-12 text-muted-foreground/30" />
-                    <p className="text-sm text-muted-foreground">
-                        Add filters above or type a query and press Enter
-                    </p>
+                <div className="py-8">
+                    <div className="mb-8 flex flex-col items-center gap-3 text-center">
+                        <SearchIcon className="size-10 text-muted-foreground/30" />
+                        <p className="text-sm text-muted-foreground">
+                            Add filters above or type a query and press Enter
+                        </p>
+                    </div>
+                    <p className="mb-4 text-center text-sm text-muted-foreground">Try an example query</p>
+                    <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                        {EXAMPLE_QUERIES.map(example => (
+                            <button
+                                key={example.label}
+                                type="button"
+                                onClick={() => builder.loadClauses(example.clauses)}
+                                className="rounded-lg border p-3 text-left transition-colors hover:bg-muted/50"
+                            >
+                                <div className="text-sm font-medium">{example.label}</div>
+                                <div className="mt-1 font-mono text-xs text-muted-foreground">
+                                    {example.clauses.map(c => `${c.field}:${c.value}`).join(" ")}
+                                </div>
+                            </button>
+                        ))}
+                    </div>
                 </div>
             )}
 
