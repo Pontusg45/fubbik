@@ -1,7 +1,7 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { Effect } from "effect";
 
-import { cypherVoid } from "../age/client";
+import { cypherVoid, isAgeAvailable } from "../age/client";
 import { getTransitiveDeps as ageGetTransitiveDeps, checkCircular as ageCheckCircular } from "../age/query";
 import { ensureVertex, createEdge } from "../age/sync";
 import { DatabaseError } from "../errors";
@@ -80,36 +80,95 @@ export function getDependencies(requirementId: string) {
 }
 
 export function getTransitiveDependencies(requirementId: string) {
-    return ageGetTransitiveDeps(requirementId).pipe(
-        Effect.flatMap(({ ancestors: ancestorIds, descendants: descendantIds, edges }) =>
-            Effect.tryPromise({
-                try: async () => {
-                    const fetchById = async (ids: string[]) => {
-                        if (ids.length === 0) return [];
-                        return db
-                            .select({
-                                id: requirement.id,
-                                title: requirement.title,
-                                status: requirement.status,
-                                priority: requirement.priority
-                            })
-                            .from(requirement)
-                            .where(inArray(requirement.id, ids));
-                    };
+    return Effect.tryPromise({
+        try: async () => {
+            const fetchById = async (ids: string[]) => {
+                if (ids.length === 0) return [];
+                return db
+                    .select({
+                        id: requirement.id,
+                        title: requirement.title,
+                        status: requirement.status,
+                        priority: requirement.priority
+                    })
+                    .from(requirement)
+                    .where(inArray(requirement.id, ids));
+            };
 
-                    const [ancestors, descendants] = await Promise.all([
-                        fetchById(ancestorIds),
-                        fetchById(descendantIds)
-                    ]);
+            if (await isAgeAvailable()) {
+                const { ancestors: ancestorIds, descendants: descendantIds, edges } =
+                    await Effect.runPromise(ageGetTransitiveDeps(requirementId));
+                const [ancestors, descendants] = await Promise.all([
+                    fetchById(ancestorIds),
+                    fetchById(descendantIds)
+                ]);
+                return { ancestors, descendants, edges };
+            }
 
-                    return { ancestors, descendants, edges };
-                },
-                catch: cause => new DatabaseError({ cause })
-            })
-        )
-    );
+            // CTE fallback when AGE is unavailable
+            const ancestorResult = await db.execute(sql`
+                WITH RECURSIVE chain AS (
+                    SELECT depends_on_id AS id FROM requirement_dependency WHERE requirement_id = ${requirementId}
+                    UNION
+                    SELECT rd.depends_on_id FROM requirement_dependency rd
+                    INNER JOIN chain c ON rd.requirement_id = c.id
+                )
+                SELECT id FROM chain
+            `);
+            const ancestorIds = ancestorResult.rows.map((r: any) => r.id as string);
+
+            const descendantResult = await db.execute(sql`
+                WITH RECURSIVE chain AS (
+                    SELECT requirement_id AS id FROM requirement_dependency WHERE depends_on_id = ${requirementId}
+                    UNION
+                    SELECT rd.requirement_id FROM requirement_dependency rd
+                    INNER JOIN chain c ON rd.depends_on_id = c.id
+                )
+                SELECT id FROM chain
+            `);
+            const descendantIds = descendantResult.rows.map((r: any) => r.id as string);
+
+            const edgeResult = await db
+                .select({
+                    source: requirementDependency.requirementId,
+                    target: requirementDependency.dependsOnId
+                })
+                .from(requirementDependency)
+                .where(
+                    inArray(requirementDependency.requirementId, [requirementId, ...ancestorIds, ...descendantIds].length > 0
+                        ? [requirementId, ...ancestorIds, ...descendantIds]
+                        : [requirementId])
+                );
+
+            const [ancestors, descendants] = await Promise.all([
+                fetchById(ancestorIds),
+                fetchById(descendantIds)
+            ]);
+
+            return { ancestors, descendants, edges: edgeResult };
+        },
+        catch: cause => new DatabaseError({ cause })
+    });
 }
 
 export function checkCircularDependency(requirementId: string, dependsOnId: string) {
-    return ageCheckCircular(requirementId, dependsOnId);
+    return Effect.tryPromise({
+        try: async () => {
+            if (await isAgeAvailable()) {
+                return Effect.runPromise(ageCheckCircular(requirementId, dependsOnId));
+            }
+            // CTE fallback when AGE is unavailable
+            const result = await db.execute(sql`
+                WITH RECURSIVE chain AS (
+                    SELECT depends_on_id AS id FROM requirement_dependency WHERE requirement_id = ${dependsOnId}
+                    UNION
+                    SELECT rd.depends_on_id FROM requirement_dependency rd
+                    INNER JOIN chain c ON rd.requirement_id = c.id
+                )
+                SELECT 1 FROM chain WHERE id = ${requirementId} LIMIT 1
+            `);
+            return result.rows.length > 0;
+        },
+        catch: cause => new DatabaseError({ cause })
+    });
 }
