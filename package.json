@@ -54,7 +54,18 @@
         "service:restart": "pnpm run service:stop; pnpm run service:start",
         "service:status": "launchctl list com.fubbik.server 2>/dev/null && echo '--- Logs (last 10 lines) ---' && tail -10 ~/.fubbik/logs/server.log || echo 'Not running'",
         "service:logs": "tail -f ~/.fubbik/logs/server.log",
-        "service:errors": "tail -f ~/.fubbik/logs/server.err"
+        "service:errors": "tail -f ~/.fubbik/logs/server.err",
+        "docker:build": "docker build -t pontusg45/fubbik-server:latest -f apps/server/Dockerfile . && docker build -t pontusg45/fubbik-web:latest --build-arg VITE_SERVER_URL=http://localhost:3000 -f apps/web/Dockerfile .",
+        "docker:build:server": "docker build -t pontusg45/fubbik-server:latest -f apps/server/Dockerfile .",
+        "docker:build:web": "docker build -t pontusg45/fubbik-web:latest --build-arg VITE_SERVER_URL=http://localhost:3000 -f apps/web/Dockerfile .",
+        "docker:push": "docker push pontusg45/fubbik-server:latest && docker push pontusg45/fubbik-web:latest",
+        "docker:up": "docker compose -f docker-compose.selfhost.yml up -d",
+        "docker:up:seed": "SEED_DATABASE=true docker compose -f docker-compose.selfhost.yml up -d",
+        "docker:down": "docker compose -f docker-compose.selfhost.yml down",
+        "docker:logs": "docker compose -f docker-compose.selfhost.yml logs -f",
+        "docker:logs:server": "docker compose -f docker-compose.selfhost.yml logs -f server",
+        "docker:clean": "docker compose -f docker-compose.selfhost.yml down -v",
+        "age:setup": "turbo run age:setup --filter=@fubbik/db"
     },
     "devDependencies": {
         "@fubbik/config": "workspace:*",
