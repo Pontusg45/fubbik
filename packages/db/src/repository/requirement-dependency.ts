@@ -1,6 +1,8 @@
 import { and, eq, sql } from "drizzle-orm";
 import { Effect } from "effect";
 
+import { cypherVoid } from "../age/client";
+import { ensureVertex, createEdge } from "../age/sync";
 import { DatabaseError } from "../errors";
 import { db } from "../index";
 import { requirement } from "../schema/requirement";
@@ -8,23 +10,39 @@ import { requirementDependency } from "../schema/requirement-dependency";
 
 export function addDependency(requirementId: string, dependsOnId: string) {
     return Effect.tryPromise({
-        try: () =>
-            db.insert(requirementDependency)
+        try: async () => {
+            const result = await db.insert(requirementDependency)
                 .values({ requirementId, dependsOnId })
                 .onConflictDoNothing()
-                .returning(),
+                .returning();
+            await Effect.runPromise(
+                ensureVertex("requirement", requirementId).pipe(
+                    Effect.flatMap(() => ensureVertex("requirement", dependsOnId)),
+                    Effect.flatMap(() => createEdge("depends_on", "requirement", requirementId, "requirement", dependsOnId)),
+                    Effect.catchAll(() => Effect.succeed(undefined))
+                )
+            );
+            return result;
+        },
         catch: cause => new DatabaseError({ cause })
     });
 }
 
 export function removeDependency(requirementId: string, dependsOnId: string) {
     return Effect.tryPromise({
-        try: () =>
-            db.delete(requirementDependency)
+        try: async () => {
+            const result = await db.delete(requirementDependency)
                 .where(and(
                     eq(requirementDependency.requirementId, requirementId),
                     eq(requirementDependency.dependsOnId, dependsOnId)
-                )),
+                ));
+            await Effect.runPromise(
+                cypherVoid(
+                    `MATCH (a:requirement {id: '${requirementId}'})-[e:depends_on]->(b:requirement {id: '${dependsOnId}'}) DELETE e`
+                ).pipe(Effect.catchAll(() => Effect.succeed(undefined)))
+            );
+            return result;
+        },
         catch: cause => new DatabaseError({ cause })
     });
 }

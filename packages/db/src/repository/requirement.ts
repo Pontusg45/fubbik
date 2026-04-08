@@ -1,6 +1,7 @@
 import { and, asc, eq, ilike, inArray, or, sql } from "drizzle-orm";
 import { Effect } from "effect";
 
+import { ensureVertex, deleteVertex, createEdge, deleteEdgesFrom } from "../age/sync";
 import { DatabaseError } from "../errors";
 import { db } from "../index";
 import { chunk } from "../schema/chunk";
@@ -25,6 +26,11 @@ export function createRequirement(params: CreateRequirementParams) {
     return Effect.tryPromise({
         try: async () => {
             const [created] = await db.insert(requirement).values(params).returning();
+            await Effect.runPromise(
+                ensureVertex("requirement", created!.id).pipe(
+                    Effect.catchAll(() => Effect.succeed(undefined))
+                )
+            );
             return created!;
         },
         catch: cause => new DatabaseError({ cause })
@@ -155,6 +161,11 @@ export function deleteRequirement(id: string, userId: string) {
                 .delete(requirement)
                 .where(and(eq(requirement.id, id), eq(requirement.userId, userId)))
                 .returning();
+            await Effect.runPromise(
+                deleteVertex("requirement", id).pipe(
+                    Effect.catchAll(() => Effect.succeed(undefined))
+                )
+            );
             return deleted ?? null;
         },
         catch: cause => new DatabaseError({ cause })
@@ -180,11 +191,25 @@ export function setRequirementChunks(requirementId: string, chunkIds: string[]) 
         try: async () => {
             await db.delete(requirementChunk).where(eq(requirementChunk.requirementId, requirementId));
             if (chunkIds.length === 0) return [];
-            return db
+            const result = await db
                 .insert(requirementChunk)
                 .values(chunkIds.map(chunkId => ({ requirementId, chunkId })))
                 .onConflictDoNothing()
                 .returning();
+            await Effect.runPromise(
+                deleteEdgesFrom("covers", "requirement", requirementId).pipe(
+                    Effect.flatMap(() =>
+                        Effect.all(
+                            chunkIds.map(chunkId =>
+                                createEdge("covers", "requirement", requirementId, "chunk", chunkId)
+                            ),
+                            { concurrency: 1 }
+                        )
+                    ),
+                    Effect.catchAll(() => Effect.succeed(undefined))
+                )
+            );
+            return result;
         },
         catch: cause => new DatabaseError({ cause })
     });

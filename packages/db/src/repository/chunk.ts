@@ -1,6 +1,7 @@
 import { and, asc, desc, eq, getTableColumns, gte, ilike, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
 import { Effect } from "effect";
 
+import { ensureVertex, deleteVertex } from "../age/sync";
 import { DatabaseError } from "../errors";
 import { db } from "../index";
 import { chunk, chunkConnection } from "../schema/chunk";
@@ -304,6 +305,11 @@ export function createChunk(params: CreateChunkParams) {
     return Effect.tryPromise({
         try: async () => {
             const [created] = await db.insert(chunk).values({ ...params, title: params.title.trim() }).returning();
+            await Effect.runPromise(
+                ensureVertex("chunk", created!.id).pipe(
+                    Effect.catchAll(() => Effect.succeed(undefined))
+                )
+            );
             return created;
         },
         catch: cause => new DatabaseError({ cause })
@@ -404,6 +410,13 @@ export function deleteChunk(chunkId: string, userId: string) {
                 .delete(chunk)
                 .where(and(eq(chunk.id, chunkId), eq(chunk.userId, userId)))
                 .returning();
+            if (deleted) {
+                await Effect.runPromise(
+                    deleteVertex("chunk", chunkId).pipe(
+                        Effect.catchAll(() => Effect.succeed(undefined))
+                    )
+                );
+            }
             return deleted ?? null;
         },
         catch: cause => new DatabaseError({ cause })
@@ -412,11 +425,17 @@ export function deleteChunk(chunkId: string, userId: string) {
 
 export function deleteMany(ids: string[], userId: string) {
     return Effect.tryPromise({
-        try: () =>
-            db
-                .delete(chunk)
-                .where(and(inArray(chunk.id, ids), eq(chunk.userId, userId)))
-                .returning({ id: chunk.id }),
+        try: async () => {
+            const result = await db.delete(chunk).where(and(inArray(chunk.id, ids), eq(chunk.userId, userId))).returning({ id: chunk.id });
+            for (const row of result) {
+                await Effect.runPromise(
+                    deleteVertex("chunk", row.id).pipe(
+                        Effect.catchAll(() => Effect.succeed(undefined))
+                    )
+                );
+            }
+            return result;
+        },
         catch: cause => new DatabaseError({ cause })
     });
 }
