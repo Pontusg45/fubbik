@@ -1,12 +1,22 @@
-import { useQuery } from "@tanstack/react-query";
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Blocks, BookOpen, ClipboardCheck, FileText, Search as SearchIcon } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { Network, Save, Search as SearchIcon, Trash2, X } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
-import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useActiveCodebase } from "@/features/codebases/use-active-codebase";
+import { AddFilterDropdown } from "@/features/search/add-filter-dropdown";
+import { FilterPills } from "@/features/search/filter-pills";
+import { QueryInput } from "@/features/search/query-input";
+import { SearchResults } from "@/features/search/search-results";
+import { useQueryBuilder } from "@/features/search/use-query-builder";
 import { getUser } from "@/functions/get-user";
-import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
@@ -26,334 +36,288 @@ export const Route = createFileRoute("/search")({
     },
 });
 
-function timeAgo(dateStr: string): string {
-    const diff = Date.now() - new Date(dateStr).getTime();
-    const minutes = Math.floor(diff / 60000);
-    if (minutes < 1) return "just now";
-    if (minutes < 60) return `${minutes}m ago`;
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours}h ago`;
-    const days = Math.floor(hours / 24);
-    if (days < 30) return `${days}d ago`;
-    const months = Math.floor(days / 30);
-    return `${months}mo ago`;
+/** Build a simple query string representation from clauses. */
+function clausesToQueryString(clauses: Array<{ field: string; operator: string; value: string; negate?: boolean }>): string {
+    return clauses
+        .map(c => `${c.negate ? "NOT " : ""}${c.field}:${c.value}`)
+        .join(" ");
 }
 
 function SearchPage() {
     const { q } = Route.useSearch();
     const navigate = useNavigate();
-    const inputRef = useRef<HTMLInputElement>(null);
+    const queryClient = useQueryClient();
     const { codebaseId } = useActiveCodebase();
 
-    const localQuery = q ?? "";
-    const debouncedQuery = useDebouncedValue(localQuery, 300);
-    const searchActive = debouncedQuery && debouncedQuery.length >= 2;
+    const builder = useQueryBuilder();
+    const [rawInput, setRawInput] = useState(q ?? "");
+    const initialLoadDone = useRef(false);
+    const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    // Auto-focus input on mount
+    // On mount: if `q` param exists, parse it into clauses
     useEffect(() => {
-        inputRef.current?.focus();
+        if (initialLoadDone.current) return;
+        initialLoadDone.current = true;
+        if (!q) return;
+
+        void (async () => {
+            try {
+                const result = unwrapEden(
+                    await api.api.search.parse.get({ query: { q } })
+                );
+                if (result && Array.isArray((result as any).clauses)) {
+                    builder.loadClauses((result as any).clauses);
+                }
+            } catch {
+                // ignore parse errors — leave clauses empty
+            }
+        })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    function handleInputChange(value: string) {
-        void navigate({
-            to: "/search",
-            search: value ? { q: value } : { q: undefined },
-            replace: true,
-        } as any);
+    // Search mutation
+    const searchMutation = useMutation({
+        mutationFn: async (params: {
+            clauses: typeof builder.clauses;
+            join: "and" | "or";
+            sort: typeof builder.sort;
+        }) => {
+            return unwrapEden(
+                await api.api.search.query.post({
+                    clauses: params.clauses,
+                    join: params.join,
+                    sort: params.sort,
+                    limit: 20,
+                    offset: 0,
+                    codebaseId: codebaseId ?? undefined,
+                })
+            );
+        },
+    });
+
+    // Trigger search whenever clauses change (debounced)
+    useEffect(() => {
+        if (debounceRef.current) clearTimeout(debounceRef.current);
+        debounceRef.current = setTimeout(() => {
+            if (builder.clauses.length === 0) return;
+            searchMutation.mutate({
+                clauses: builder.clauses,
+                join: builder.join,
+                sort: builder.sort,
+            });
+            // Sync URL
+            const qs = clausesToQueryString(builder.clauses);
+            void navigate({
+                to: "/search",
+                search: qs ? { q: qs } : { q: undefined },
+                replace: true,
+            } as any);
+        }, 300);
+        return () => {
+            if (debounceRef.current) clearTimeout(debounceRef.current);
+        };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [builder.clauses, builder.join, builder.sort, codebaseId]);
+
+    // Saved queries
+    const savedQueriesQuery = useQuery({
+        queryKey: ["search-saved", codebaseId],
+        queryFn: async () => {
+            return unwrapEden(
+                await api.api.search.saved.get({
+                    query: { codebaseId: codebaseId ?? undefined },
+                })
+            );
+        },
+    });
+
+    const savedQueries = Array.isArray(savedQueriesQuery.data) ? savedQueriesQuery.data : [];
+
+    // Handle raw query input submit (parse & load clauses)
+    const handleQuerySubmit = useCallback(
+        async (value: string) => {
+            if (!value.trim()) return;
+            try {
+                const result = unwrapEden(
+                    await api.api.search.parse.get({ query: { q: value } })
+                );
+                if (result && Array.isArray((result as any).clauses) && (result as any).clauses.length > 0) {
+                    builder.loadClauses((result as any).clauses);
+                }
+            } catch {
+                // ignore
+            }
+        },
+        [builder]
+    );
+
+    // Load a saved query
+    function handleLoadSavedQuery(saved: any) {
+        if (saved?.query?.clauses) {
+            builder.loadClauses(saved.query.clauses);
+            if (saved.query.join) builder.setJoin(saved.query.join);
+            if (saved.query.sort) builder.setSort(saved.query.sort);
+        }
     }
 
-    // Chunks search
-    const chunksQuery = useQuery({
-        queryKey: ["search-chunks", debouncedQuery, codebaseId],
-        queryFn: async () => {
-            const query: { search: string; limit: string; codebaseId?: string } = {
-                search: debouncedQuery!,
-                limit: "10",
-            };
-            if (codebaseId) query.codebaseId = codebaseId;
-            return unwrapEden(await api.api.chunks.get({ query }));
-        },
-        enabled: !!searchActive,
-    });
+    // Save current query
+    async function handleSaveQuery() {
+        const name = window.prompt("Save query as:");
+        if (!name || !name.trim()) return;
+        try {
+            await unwrapEden(
+                await api.api.search.saved.post({
+                    name: name.trim(),
+                    query: {
+                        clauses: builder.clauses,
+                        join: builder.join,
+                        sort: builder.sort,
+                    },
+                    codebaseId: codebaseId ?? undefined,
+                })
+            );
+            void queryClient.invalidateQueries({ queryKey: ["search-saved"] });
+        } catch {
+            // ignore
+        }
+    }
 
-    // Requirements
-    const requirementsQuery = useQuery({
-        queryKey: ["search-requirements"],
-        queryFn: async () => {
-            try {
-                return unwrapEden(await api.api.requirements.get({ query: { limit: "50" } }));
-            } catch {
-                return { requirements: [], total: 0 };
-            }
-        },
-        enabled: !!searchActive,
-    });
+    // Delete a saved query
+    async function handleDeleteSavedQuery(id: string) {
+        try {
+            await unwrapEden(
+                await (api.api.search.saved as any)[id].delete()
+            );
+            void queryClient.invalidateQueries({ queryKey: ["search-saved"] });
+        } catch {
+            // ignore
+        }
+    }
 
-    // Templates
-    const templatesQuery = useQuery({
-        queryKey: ["search-templates"],
-        queryFn: async () => {
-            try {
-                return unwrapEden(await api.api.templates.get()) as Array<{
-                    id: string;
-                    name: string;
-                    description: string | null;
-                    type: string;
-                }>;
-            } catch {
-                return [];
-            }
-        },
-        enabled: !!searchActive,
-        staleTime: 60_000,
-    });
+    const results = searchMutation.data as any;
+    const chunks = Array.isArray(results?.chunks) ? results.chunks : [];
+    const total = typeof results?.total === "number" ? results.total : chunks.length;
+    const graphMeta = results?.graphMeta;
 
-    // Vocabulary
-    const vocabularyQuery = useQuery({
-        queryKey: ["search-vocabulary", codebaseId],
-        queryFn: async () => {
-            if (!codebaseId) return [];
-            try {
-                return unwrapEden(
-                    await api.api.vocabulary.get({ query: { codebaseId } })
-                ) as Array<{ id: string; word: string; category: string }>;
-            } catch {
-                return [];
-            }
-        },
-        enabled: !!searchActive && !!codebaseId,
-    });
-
-    // Filter results client-side
-    const lowerQ = (debouncedQuery ?? "").toLowerCase();
-
-    const chunks = (chunksQuery.data as { chunks: Array<Record<string, unknown>> } | undefined)?.chunks ?? [];
-
-    const allRequirements = (
-        requirementsQuery.data as { requirements: Array<Record<string, unknown>> } | undefined
-    )?.requirements ?? [];
-    const requirements = searchActive
-        ? allRequirements.filter((r) =>
-              ((r.title as string) ?? "").toLowerCase().includes(lowerQ)
-          )
-        : [];
-
-    const allTemplates = Array.isArray(templatesQuery.data) ? templatesQuery.data : [];
-    const templates = searchActive
-        ? allTemplates.filter(
-              (t) =>
-                  t.name.toLowerCase().includes(lowerQ) ||
-                  (t.description ?? "").toLowerCase().includes(lowerQ)
-          )
-        : [];
-
-    const allVocabulary = Array.isArray(vocabularyQuery.data) ? vocabularyQuery.data : [];
-    const vocabulary = searchActive
-        ? allVocabulary.filter((v) => v.word.toLowerCase().includes(lowerQ))
-        : [];
-
-    const isLoading =
-        searchActive &&
-        (chunksQuery.isLoading ||
-            requirementsQuery.isLoading ||
-            templatesQuery.isLoading ||
-            (codebaseId && vocabularyQuery.isLoading));
-
-    const totalResults = chunks.length + requirements.length + templates.length + vocabulary.length;
-    const hasResults = totalResults > 0;
+    const hasSearched = searchMutation.isSuccess || searchMutation.isPending;
 
     return (
-        <div className="container mx-auto max-w-3xl px-4 py-8">
-            {/* Search input */}
-            <div className="relative mb-8">
-                <SearchIcon className="text-muted-foreground absolute top-1/2 left-4 size-5 -translate-y-1/2" />
-                <input
-                    ref={inputRef}
-                    type="text"
-                    value={localQuery}
-                    onChange={(e) => handleInputChange(e.target.value)}
-                    placeholder="Search across chunks, requirements, templates, and vocabulary..."
-                    className="bg-background focus:ring-ring w-full rounded-xl border py-3 pl-12 pr-4 text-base focus:ring-2 focus:outline-none"
+        <div className="container mx-auto max-w-4xl px-4 py-8">
+            {/* Page Header */}
+            <div className="mb-6 flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                    <h1 className="text-xl font-semibold">Search</h1>
+
+                    {/* Saved queries dropdown */}
+                    {savedQueries.length > 0 && (
+                        <DropdownMenu>
+                            <DropdownMenuTrigger>
+                                <Button variant="outline" size="sm" className="gap-1.5 text-xs">
+                                    Saved queries
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="start" className="w-56">
+                                {savedQueries.map((saved: any) => (
+                                    <DropdownMenuItem
+                                        key={saved.id}
+                                        onClick={() => handleLoadSavedQuery(saved)}
+                                        className="flex items-center justify-between"
+                                    >
+                                        <span className="truncate">{saved.name}</span>
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                void handleDeleteSavedQuery(saved.id);
+                                            }}
+                                            className="ml-2 shrink-0 opacity-40 hover:opacity-100"
+                                            aria-label="Delete saved query"
+                                        >
+                                            <Trash2 className="size-3.5" />
+                                        </button>
+                                    </DropdownMenuItem>
+                                ))}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    )}
+                </div>
+
+                <div className="flex items-center gap-2">
+                    {/* Save query button */}
+                    {builder.clauses.length > 0 && (
+                        <Button variant="outline" size="sm" onClick={() => void handleSaveQuery()} className="gap-1.5">
+                            <Save className="size-3.5" />
+                            Save
+                        </Button>
+                    )}
+                    {/* Clear button */}
+                    {builder.clauses.length > 0 && (
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                                builder.clearAll();
+                                setRawInput("");
+                                void navigate({
+                                    to: "/search",
+                                    search: { q: undefined },
+                                    replace: true,
+                                } as any);
+                            }}
+                            className="gap-1.5"
+                        >
+                            <X className="size-3.5" />
+                            Clear
+                        </Button>
+                    )}
+                </div>
+            </div>
+
+            {/* Query Input */}
+            <div className="mb-3">
+                <QueryInput
+                    value={rawInput}
+                    onChange={setRawInput}
+                    onSubmit={(val) => void handleQuerySubmit(val)}
                 />
             </div>
 
-            {/* Empty state (before searching) */}
-            {!searchActive && (
+            {/* Filter pills + AND/OR + Add filter */}
+            <div className="mb-4 flex flex-wrap items-center gap-2">
+                <FilterPills
+                    clauses={builder.clauses}
+                    join={builder.join}
+                    onRemove={builder.removeClause}
+                    onSetJoin={builder.setJoin}
+                />
+                <AddFilterDropdown onAddClause={builder.addClause} />
+            </div>
+
+            {/* Graph indicator */}
+            {builder.hasGraphClauses && (
+                <div className="mb-4 flex items-center gap-2 rounded-lg border border-indigo-500/10 bg-indigo-500/5 px-4 py-2 text-xs text-muted-foreground">
+                    <Network className="size-3.5" />
+                    <span className="font-semibold uppercase tracking-wider">Graph query active</span>
+                </div>
+            )}
+
+            {/* Empty state (before any search) */}
+            {!hasSearched && builder.clauses.length === 0 && (
                 <div className="flex flex-col items-center gap-3 py-16 text-center">
-                    <SearchIcon className="text-muted-foreground/30 size-12" />
-                    <p className="text-muted-foreground text-sm">
-                        Search across chunks, requirements, templates, and vocabulary
+                    <SearchIcon className="size-12 text-muted-foreground/30" />
+                    <p className="text-sm text-muted-foreground">
+                        Add filters above or type a query and press Enter
                     </p>
                 </div>
             )}
 
-            {/* Loading */}
-            {isLoading && (
-                <p className="text-muted-foreground py-8 text-center text-sm">Searching...</p>
-            )}
-
-            {/* No results */}
-            {searchActive && !isLoading && !hasResults && (
-                <p className="text-muted-foreground py-8 text-center text-sm">
-                    No results for &ldquo;{debouncedQuery}&rdquo;
-                </p>
-            )}
-
-            {/* Results */}
-            {searchActive && !isLoading && hasResults && (
-                <div className="space-y-8">
-                    {/* Chunks */}
-                    {chunks.length > 0 && (
-                        <section>
-                            <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold">
-                                <Blocks className="size-4" />
-                                Chunks ({chunks.length})
-                            </h2>
-                            <div className="space-y-2">
-                                {chunks.map((chunk) => {
-                                    const id = chunk.id as string;
-                                    const title = (chunk.title as string) ?? `Chunk ${id.slice(0, 8)}`;
-                                    const type = chunk.type as string;
-                                    const content = chunk.content as string;
-                                    const updatedAt = chunk.updatedAt as string;
-                                    const firstLine = content?.split("\n")[0]?.slice(0, 120) ?? "";
-
-                                    return (
-                                        <Link
-                                            key={id}
-                                            to="/chunks/$chunkId"
-                                            params={{ chunkId: id }}
-                                            className="hover:bg-muted/50 block rounded-lg border px-4 py-3 transition-colors"
-                                        >
-                                            <div className="flex items-center gap-2">
-                                                <span className="font-medium">{title}</span>
-                                                <Badge variant="secondary" size="sm" className="font-mono text-[10px]">
-                                                    {type}
-                                                </Badge>
-                                            </div>
-                                            {firstLine && (
-                                                <p className="text-muted-foreground mt-1 truncate text-sm">
-                                                    {firstLine}
-                                                </p>
-                                            )}
-                                            {updatedAt && (
-                                                <p className="text-muted-foreground mt-1 text-xs">
-                                                    {timeAgo(updatedAt)}
-                                                </p>
-                                            )}
-                                        </Link>
-                                    );
-                                })}
-                            </div>
-                        </section>
-                    )}
-
-                    {/* Requirements */}
-                    {requirements.length > 0 && (
-                        <section>
-                            <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold">
-                                <ClipboardCheck className="size-4" />
-                                Requirements ({requirements.length})
-                            </h2>
-                            <div className="space-y-2">
-                                {requirements.map((req) => {
-                                    const id = req.id as string;
-                                    const title = (req.title as string) ?? "Untitled";
-                                    const status = (req.status as string) ?? "untested";
-                                    const priority = req.priority as string | null;
-                                    const steps = req.steps as Array<unknown> | undefined;
-
-                                    return (
-                                        <Link
-                                            key={id}
-                                            to="/requirements/$requirementId"
-                                            params={{ requirementId: id }}
-                                            className="hover:bg-muted/50 block rounded-lg border px-4 py-3 transition-colors"
-                                        >
-                                            <div className="flex items-center gap-2">
-                                                <span className="font-medium">{title}</span>
-                                                <Badge
-                                                    variant="outline"
-                                                    size="sm"
-                                                    className={
-                                                        status === "passing"
-                                                            ? "text-green-600 bg-green-500/10 border-green-500/30"
-                                                            : status === "failing"
-                                                              ? "text-red-600 bg-red-500/10 border-red-500/30"
-                                                              : "text-muted-foreground bg-muted"
-                                                    }
-                                                >
-                                                    {status}
-                                                </Badge>
-                                                {priority && (
-                                                    <Badge variant="secondary" size="sm">
-                                                        {priority}
-                                                    </Badge>
-                                                )}
-                                            </div>
-                                            <p className="text-muted-foreground mt-1 text-xs">
-                                                {steps?.length ?? 0} steps
-                                            </p>
-                                        </Link>
-                                    );
-                                })}
-                            </div>
-                        </section>
-                    )}
-
-                    {/* Templates */}
-                    {templates.length > 0 && (
-                        <section>
-                            <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold">
-                                <FileText className="size-4" />
-                                Templates ({templates.length})
-                            </h2>
-                            <div className="space-y-2">
-                                {templates.map((t) => (
-                                    <div
-                                        key={t.id}
-                                        className="rounded-lg border px-4 py-3"
-                                    >
-                                        <div className="flex items-center gap-2">
-                                            <span className="font-medium">{t.name}</span>
-                                            <Badge variant="secondary" size="sm" className="text-[10px]">
-                                                {t.type}
-                                            </Badge>
-                                        </div>
-                                        {t.description && (
-                                            <p className="text-muted-foreground mt-1 text-sm">
-                                                {t.description}
-                                            </p>
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
-                        </section>
-                    )}
-
-                    {/* Vocabulary */}
-                    {vocabulary.length > 0 && (
-                        <section>
-                            <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold">
-                                <BookOpen className="size-4" />
-                                Vocabulary ({vocabulary.length})
-                            </h2>
-                            <div className="flex flex-wrap gap-2">
-                                {vocabulary.map((v) => (
-                                    <div
-                                        key={v.id}
-                                        className="flex items-center gap-2 rounded-lg border px-3 py-1.5"
-                                    >
-                                        <span className="text-sm font-medium">{v.word}</span>
-                                        <Badge variant="outline" size="sm" className="text-[10px]">
-                                            {v.category}
-                                        </Badge>
-                                    </div>
-                                ))}
-                            </div>
-                        </section>
-                    )}
-                </div>
+            {/* Search results */}
+            {(hasSearched || builder.clauses.length > 0) && (
+                <SearchResults
+                    chunks={chunks}
+                    total={total}
+                    graphMeta={graphMeta}
+                    isLoading={searchMutation.isPending}
+                />
             )}
         </div>
     );
