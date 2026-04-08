@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { Cable, Clock, Network, Search, Tags, X } from "lucide-react";
+import { AlertTriangle, Cable, Clock, Network, Search, Tags, X } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -38,10 +38,17 @@ interface GraphMeta {
     pathChunks?: string[];
 }
 
+interface DuplicateHint {
+    chunkIdA: string;
+    chunkIdB: string;
+    similarity: number;
+}
+
 interface SearchResultsProps {
     chunks: ChunkResult[];
     total: number;
     graphMeta?: GraphMeta;
+    duplicateHints?: DuplicateHint[];
     isLoading: boolean;
 }
 
@@ -330,7 +337,7 @@ function SearchBulkActionBar({ selectedIds, onClear }: BulkActionBarProps) {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export function SearchResults({ chunks, total, graphMeta, isLoading }: SearchResultsProps) {
+export function SearchResults({ chunks, total, graphMeta, duplicateHints, isLoading }: SearchResultsProps) {
     const [showGraph, setShowGraph] = useState(false);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
@@ -434,6 +441,27 @@ export function SearchResults({ chunks, total, graphMeta, isLoading }: SearchRes
                     </div>
                 ) : null;
             })()}
+
+            {/* Duplicate hints */}
+            {duplicateHints && duplicateHints.length > 0 && (
+                <div className="mb-4 rounded-lg border border-amber-500/20 bg-amber-500/5 p-3">
+                    <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-amber-500">
+                        <AlertTriangle className="size-3.5" />
+                        Possible duplicates detected
+                    </div>
+                    <div className="space-y-1">
+                        {duplicateHints.map((hint, i) => {
+                            const chunkA = chunks.find(c => c.id === hint.chunkIdA);
+                            const chunkB = chunks.find(c => c.id === hint.chunkIdB);
+                            return (
+                                <div key={i} className="text-xs text-muted-foreground">
+                                    "{chunkA?.title}" and "{chunkB?.title}" — {Math.round(hint.similarity * 100)}% similar
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
 
             {/* Chunk rows */}
             <div className="divide-y divide-border rounded-md border">

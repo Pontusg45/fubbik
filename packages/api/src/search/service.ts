@@ -7,7 +7,8 @@ import {
     getNeighborhood,
     getHopDistances,
     getChunksAffectedByRequirement,
-    semanticSearch as semanticSearchRepo
+    semanticSearch as semanticSearchRepo,
+    findDuplicatePairs
 } from "@fubbik/db/repository";
 import { db } from "@fubbik/db";
 import { chunk } from "@fubbik/db/schema/chunk";
@@ -18,7 +19,7 @@ import { ilike } from "drizzle-orm";
 import { generateQueryEmbedding } from "../ollama/client";
 
 import { computeHealthScore } from "../chunks/health-score";
-import type { QueryClause, SearchQuery, SearchResult, SearchResultChunk, GraphContext } from "./types";
+import type { QueryClause, SearchQuery, SearchResult, SearchResultChunk, GraphContext, DuplicateHint } from "./types";
 
 const GRAPH_FIELDS = new Set(["near", "path", "affected-by", "similar-to"]);
 
@@ -73,6 +74,7 @@ function buildListChunksParams(
 
     return params;
 }
+
 
 export function executeSearch(userId: string | undefined, searchQuery: SearchQuery): Effect.Effect<SearchResult, never> {
     const graphClauses = searchQuery.clauses.filter(isGraphClause);
@@ -244,7 +246,16 @@ export function executeSearch(userId: string | undefined, searchQuery: SearchQue
 
         const total = graphIds !== undefined ? chunks.length : result.total;
 
-        return { chunks, total, graphMeta } satisfies SearchResult;
+        const pairs = yield* findDuplicatePairs({ chunkIds }).pipe(
+            Effect.orElse(() => Effect.succeed([] as Array<{ idA: string; idB: string; similarity: number }>))
+        );
+        const duplicateHints: DuplicateHint[] = pairs.map(p => ({
+            chunkIdA: p.idA,
+            chunkIdB: p.idB,
+            similarity: p.similarity,
+        }));
+
+        return { chunks, total, graphMeta, duplicateHints: duplicateHints.length > 0 ? duplicateHints : undefined } satisfies SearchResult;
     }).pipe(
         Effect.orElse(() => Effect.succeed({ chunks: [], total: 0 } as SearchResult))
     );

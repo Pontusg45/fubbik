@@ -33,6 +33,12 @@ export interface SearchResultChunk {
     healthScore: number;
 }
 
+export interface DuplicateHint {
+    chunkIdA: string;
+    chunkIdB: string;
+    similarity: number; // 0-1
+}
+
 export interface SearchResult {
     chunks: SearchResultChunk[];
     total: number;
@@ -41,4 +47,5 @@ export interface SearchResult {
         referenceChunk?: string;
         pathChunks?: string[];
     };
+    duplicateHints?: DuplicateHint[];
 }
