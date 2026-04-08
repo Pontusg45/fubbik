@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
 import { SkeletonList } from "@/components/ui/skeleton-list";
+import { PathView } from "@/features/search/path-view";
 import { SearchGraph } from "@/features/search/search-graph";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
@@ -416,6 +417,23 @@ export function SearchResults({ chunks, total, graphMeta, isLoading }: SearchRes
                     />
                 </div>
             )}
+
+            {/* Path visualization — shown when a path query is active */}
+            {graphMeta?.type === "path" && graphMeta.pathChunks && graphMeta.pathChunks.length > 0 && (() => {
+                const chunkMap = new Map(chunks.map(c => [c.id, c]));
+                const pathNodes = graphMeta.pathChunks
+                    .map(id => chunkMap.get(id))
+                    .filter((c): c is ChunkResult => c !== undefined)
+                    .map(c => ({ id: c.id, title: c.title, type: c.type }));
+                return pathNodes.length > 0 ? (
+                    <div className="mb-4">
+                        <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                            Path
+                        </p>
+                        <PathView nodes={pathNodes} />
+                    </div>
+                ) : null;
+            })()}
 
             {/* Chunk rows */}
             <div className="divide-y divide-border rounded-md border">
