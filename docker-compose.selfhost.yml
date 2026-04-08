@@ -2,10 +2,13 @@
 #
 # Usage:
 #   docker compose -f docker-compose.selfhost.yml up -d
-#   Open http://localhost:3001
+#   Open http://localhost:4718
 #
 # First run with sample data:
 #   SEED_DATABASE=true docker compose -f docker-compose.selfhost.yml up -d
+#
+# No external network calls. All data stays local.
+# Ollama (optional, local): set OLLAMA_URL to your local Ollama instance.
 
 services:
   db:
@@ -25,15 +28,17 @@ services:
   server:
     image: pontusg45/fubbik-server:latest
     ports:
-      - "3000:3000"
+      - "4717:4717"
     environment:
       DATABASE_URL: postgresql://fubbik:fubbik@db:5432/fubbik
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-change-this-to-a-random-string-32ch}
-      BETTER_AUTH_URL: http://localhost:3000
-      CORS_ORIGIN: http://localhost:3001
+      BETTER_AUTH_URL: http://localhost:4717
+      CORS_ORIGIN: http://localhost:4718
       OLLAMA_URL: ${OLLAMA_URL:-http://host.docker.internal:11434}
+      # Explicitly disable external services
+      OPENAI_API_KEY: ""
       OTEL_EXPORTER_OTLP_ENDPOINT: ""
-      PORT: "3000"
+      PORT: "4717"
       SEED_DATABASE: ${SEED_DATABASE:-false}
     depends_on:
       db:
@@ -42,9 +47,10 @@ services:
   web:
     image: pontusg45/fubbik-web:latest
     ports:
-      - "3001:3001"
+      - "4718:4718"
     environment:
-      PORT: "3001"
+      PORT: "4718"
+      RUNTIME_SERVER_URL: http://localhost:4717
     depends_on:
       - server
 
