@@ -23,6 +23,7 @@ import { CodebaseSwitcher } from "@/features/codebases/codebase-switcher";
 import { CommandPalette } from "@/features/command-palette/command-palette";
 import { NotificationBell } from "@/features/nav/notification-bell";
 import { RecentlyViewed } from "@/features/nav/recently-viewed";
+import { ReadingTrailSidebar } from "@/features/nav/reading-trail-sidebar";
 
 import appCss from "../index.css?url";
 
@@ -245,6 +246,7 @@ function RootDocument() {
                         </main>
                     </div>
                     <CommandPalette />
+                    {!isLanding && <ReadingTrailSidebar />}
                     <KeyboardShortcutsHelp open={helpOpen} onOpenChange={setHelpOpen} />
                     <Toaster richColors />
                 </ThemeProvider>
