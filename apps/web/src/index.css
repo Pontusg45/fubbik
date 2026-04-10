@@ -162,6 +162,18 @@
     padding: 0 !important;
 }
 
+/* Focus mode: hide nav/sidebar widgets and widen main content */
+html.focus-mode [data-focus-hide="true"] {
+    display: none !important;
+}
+
+html.focus-mode [data-focus-main="true"] {
+    max-width: 48rem !important;
+    margin: 0 auto !important;
+    font-size: 1.05rem;
+    line-height: 1.7;
+}
+
 @layer base {
     * {
         @apply border-border outline-ring/50;

@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Archive, ArrowLeft, ArrowRight, Bot, Calendar, Clock, Code, Download, Edit, FileCode, FileText, GitFork, Hash, History, Lightbulb, Link2, MessageSquare, Network, Pencil, Scale, Sparkles, Star, Trash2 } from "lucide-react";
+import { Archive, ArrowLeft, ArrowRight, Bot, Calendar, Clock, Code, Download, Edit, FileCode, FileText, Focus, GitFork, Hash, History, Lightbulb, Link2, MessageSquare, Network, Pencil, Scale, Sparkles, Star, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -29,6 +29,7 @@ import { useFavorites } from "@/features/chunks/use-favorites";
 import { useRecentChunks } from "@/features/chunks/use-recent-chunks";
 import { VersionHistory } from "@/features/chunks/version-history";
 import { StalenessBanner } from "@/features/staleness/staleness-banner";
+import { useFocusMode } from "@/hooks/use-focus-mode";
 import { useRecentlyViewed } from "@/hooks/use-recently-viewed";
 import { useReadingTrail } from "@/hooks/use-reading-trail";
 import { getUser } from "@/functions/get-user";
@@ -56,6 +57,7 @@ function ChunkDetail() {
     const { addItem: addRecentlyViewed } = useRecentlyViewed();
     const { addVisit } = useReadingTrail();
     const { toggleFavorite, isFavorite } = useFavorites();
+    const { enabled: focusMode, toggle: toggleFocus } = useFocusMode();
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
     useEffect(() => {
@@ -258,6 +260,10 @@ function ChunkDetail() {
                         <Download className="size-3.5" />
                         Export MD
                     </Button>
+                    <Button variant="ghost" size="sm" onClick={toggleFocus} className="gap-1.5" title="Focus mode">
+                        <Focus className="size-3.5" />
+                        {focusMode ? "Exit focus" : "Focus"}
+                    </Button>
                     <Button variant="outline" size="sm" render={<Link to="/chunks/$chunkId/edit" params={{ chunkId }} />}>
                         <Edit className="size-3.5" />
                         Edit
@@ -297,7 +303,7 @@ function ChunkDetail() {
                 </div>
             </div>
 
-            <div className="mb-6">
+            <div className="mb-6" data-focus-main="true">
                 <div className="mb-2 flex items-center gap-2">
                     <Badge variant="secondary" className="font-mono text-xs">
                         {chunk.type}
@@ -468,6 +474,7 @@ function ChunkDetail() {
                 <ChunkComments chunkId={chunkId} />
             </CollapsibleSection>
 
+            <div data-focus-hide="true">
             <CollapsibleSection title="Connections" icon={Network} count={connections.length} defaultOpen={true}>
                 <div className="flex items-center justify-end mb-3">
                     <LinkChunkDialog chunkId={chunkId} />
@@ -564,6 +571,7 @@ function ChunkDetail() {
             <CollapsibleSection title="Version History" icon={History} defaultOpen={false}>
                 <VersionHistory chunkId={chunkId} />
             </CollapsibleSection>
+            </div>
         </div>
     );
 }
