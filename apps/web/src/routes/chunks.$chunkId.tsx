@@ -5,7 +5,6 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { MarkdownRenderer } from "@/components/markdown-renderer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardPanel, CardTitle } from "@/components/ui/card";
@@ -14,6 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { AiSection } from "@/features/chunks/ai-section";
 import { CollapsibleSection } from "@/features/chunks/collapsible-section";
 import { ChunkHealthBadge } from "@/features/chunks/chunk-health-badge";
+import { ChunkLinkRenderer } from "@/features/chunks/chunk-link-renderer";
 import { ChunkLink } from "@/features/chunks/chunk-link";
 import { getChunkSize } from "@/features/chunks/chunk-size";
 import { DeleteConnectionButton } from "@/features/chunks/delete-connection-button";
@@ -386,7 +386,7 @@ function ChunkDetail() {
             <StalenessBanner chunkId={chunkId} />
 
             <div className="prose dark:prose-invert prose-sm max-w-none">
-                <MarkdownRenderer>{chunk.content}</MarkdownRenderer>
+                <ChunkLinkRenderer content={chunk.content} currentChunkId={chunk.id} />
             </div>
 
             {hasDecisionContext && (
