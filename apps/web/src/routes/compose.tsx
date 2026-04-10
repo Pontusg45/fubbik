@@ -163,6 +163,44 @@ function ComposePage() {
         window.print();
     }
 
+    useEffect(() => {
+        function handleKey(e: KeyboardEvent) {
+            // Skip if user is typing in an input
+            const tag = document.activeElement?.tagName;
+            if (tag === "INPUT" || tag === "TEXTAREA" || (document.activeElement as HTMLElement)?.isContentEditable) {
+                return;
+            }
+
+            if (e.key !== "j" && e.key !== "k") return;
+            if (chunks.length === 0) return;
+
+            const articles = chunks
+                .map(c => document.getElementById(`chunk-${c.id}`))
+                .filter((el): el is HTMLElement => el !== null);
+            if (articles.length === 0) return;
+
+            const viewportTop = window.scrollY + 100;
+            let currentIdx = 0;
+            for (let i = 0; i < articles.length; i++) {
+                if (articles[i]!.offsetTop <= viewportTop) {
+                    currentIdx = i;
+                }
+            }
+
+            let targetIdx = currentIdx;
+            if (e.key === "j") targetIdx = Math.min(chunks.length - 1, currentIdx + 1);
+            if (e.key === "k") targetIdx = Math.max(0, currentIdx - 1);
+
+            const target = articles[targetIdx];
+            if (target) {
+                target.scrollIntoView({ behavior: "smooth", block: "start" });
+            }
+        }
+
+        window.addEventListener("keydown", handleKey);
+        return () => window.removeEventListener("keydown", handleKey);
+    }, [chunks]);
+
     return (
         <div className="container mx-auto max-w-6xl px-4 py-8 print:py-4">
             {/* Header */}
@@ -177,6 +215,9 @@ function ComposePage() {
                     Back to search
                 </Button>
                 <div className="flex items-center gap-2">
+                    <span className="hidden lg:inline text-[10px] text-muted-foreground/60 font-mono mr-2">
+                        press <kbd className="rounded border bg-muted px-1 py-0.5">j</kbd> / <kbd className="rounded border bg-muted px-1 py-0.5">k</kbd> to navigate
+                    </span>
                     <Button variant="outline" size="sm" onClick={handleCopy} className="gap-1.5">
                         {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
                         {copied ? "Copied" : "Copy all"}
