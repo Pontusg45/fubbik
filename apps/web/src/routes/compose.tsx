@@ -277,7 +277,7 @@ function ComposePage() {
             <article
                 key={chunk.id}
                 id={`chunk-${chunk.id}`}
-                className={withBorder && i > 0 ? "border-t pt-12" : ""}
+                className={`${withBorder && i > 0 ? "border-t pt-12" : ""} ${i > 0 ? "print:break-before-page" : ""} print:pt-0 print:border-0`.trim()}
             >
                 <div className="mb-4">
                     <Link
@@ -339,6 +339,15 @@ function ComposePage() {
             />
         </div>
         <div className="container mx-auto max-w-6xl px-4 py-8 print:py-4">
+            <style>{`
+                @media print {
+                    body { font-family: Georgia, 'Times New Roman', serif; }
+                    .prose { max-width: none !important; }
+                    a { color: inherit; text-decoration: none; }
+                    h1, h2, h3 { page-break-after: avoid; }
+                    article { page-break-inside: avoid; }
+                }
+            `}</style>
             {/* Header */}
             <div className="mb-6 flex items-center justify-between print:hidden">
                 <Button
