@@ -1,7 +1,7 @@
 import { useMutation } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, Check, Copy, FileText, Printer } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { MarkdownRenderer } from "@/components/markdown-renderer";
 import { Badge } from "@/components/ui/badge";
@@ -15,7 +15,8 @@ export const Route = createFileRoute("/compose")({
     component: ComposePage,
     validateSearch: (search: Record<string, unknown>) => ({
         q: (search.q as string) || undefined,
-        sort: (search.sort as string) || undefined,
+        sort: (search.sort as string) || "updated",
+        group: (search.group as string) || "none",
     }),
     beforeLoad: async () => {
         let session = null;
@@ -63,7 +64,7 @@ function parseSimpleQuery(q: string): Array<{ field: string; operator: string; v
 }
 
 function ComposePage() {
-    const { q, sort } = Route.useSearch();
+    const { q, sort, group } = Route.useSearch();
     const navigate = useNavigate();
     const { codebaseId } = useActiveCodebase();
     const [chunks, setChunks] = useState<ComposedChunk[]>([]);
@@ -71,6 +72,14 @@ function ComposePage() {
     const [error, setError] = useState<string | null>(null);
     const [copied, setCopied] = useState(false);
     const [scrollProgress, setScrollProgress] = useState(0);
+
+    function updateParam(key: string, value: string) {
+        void navigate({
+            to: "/compose",
+            search: { q, sort, group, [key]: value } as any,
+            replace: true,
+        });
+    }
 
     useEffect(() => {
         document.documentElement.classList.add("scroll-smooth");
@@ -145,8 +154,41 @@ function ComposePage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [q, codebaseId]);
 
+    const sortedChunks = useMemo(() => {
+        const copy = [...chunks];
+        switch (sort) {
+            case "title":
+                return copy.sort((a, b) => a.title.localeCompare(b.title));
+            case "type":
+                return copy.sort((a, b) => a.type.localeCompare(b.type));
+            case "connections":
+                return copy.sort((a, b) => (b.connectionCount ?? 0) - (a.connectionCount ?? 0));
+            default:
+                return copy;
+        }
+    }, [chunks, sort]);
+
+    const groupedChunks = useMemo(() => {
+        if (group === "none") return null;
+        const groups = new Map<string, ComposedChunk[]>();
+        for (const chunk of sortedChunks) {
+            let key: string;
+            if (group === "type") {
+                key = chunk.type;
+            } else if (group === "tag") {
+                key = chunk.tags && chunk.tags.length > 0 ? (chunk.tags[0] ?? "untagged") : "untagged";
+            } else {
+                key = "all";
+            }
+            const existing = groups.get(key) ?? [];
+            existing.push(chunk);
+            groups.set(key, existing);
+        }
+        return Array.from(groups.entries()).sort(([a], [b]) => a.localeCompare(b));
+    }, [sortedChunks, group]);
+
     function handleCopy() {
-        const md = chunks
+        const md = sortedChunks
             .map(c => {
                 const parts = [`## ${c.title}`];
                 if (c.summary) parts.push(`*${c.summary}*`);
@@ -168,14 +210,14 @@ function ComposePage() {
         function handleKey(e: KeyboardEvent) {
             // Skip if user is typing in an input
             const tag = document.activeElement?.tagName;
-            if (tag === "INPUT" || tag === "TEXTAREA" || (document.activeElement as HTMLElement)?.isContentEditable) {
+            if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || (document.activeElement as HTMLElement)?.isContentEditable) {
                 return;
             }
 
             if (e.key !== "j" && e.key !== "k") return;
-            if (chunks.length === 0) return;
+            if (sortedChunks.length === 0) return;
 
-            const articles = chunks
+            const articles = sortedChunks
                 .map(c => document.getElementById(`chunk-${c.id}`))
                 .filter((el): el is HTMLElement => el !== null);
             if (articles.length === 0) return;
@@ -189,7 +231,7 @@ function ComposePage() {
             }
 
             let targetIdx = currentIdx;
-            if (e.key === "j") targetIdx = Math.min(chunks.length - 1, currentIdx + 1);
+            if (e.key === "j") targetIdx = Math.min(sortedChunks.length - 1, currentIdx + 1);
             if (e.key === "k") targetIdx = Math.max(0, currentIdx - 1);
 
             const target = articles[targetIdx];
@@ -200,7 +242,7 @@ function ComposePage() {
 
         window.addEventListener("keydown", handleKey);
         return () => window.removeEventListener("keydown", handleKey);
-    }, [chunks]);
+    }, [sortedChunks]);
 
     useEffect(() => {
         function handleScroll() {
@@ -213,6 +255,64 @@ function ComposePage() {
         handleScroll();
         return () => window.removeEventListener("scroll", handleScroll);
     }, [chunks]);
+
+    function renderChunk(chunk: ComposedChunk, i: number, withBorder: boolean) {
+        return (
+            <article
+                key={chunk.id}
+                id={`chunk-${chunk.id}`}
+                className={withBorder && i > 0 ? "border-t pt-12" : ""}
+            >
+                <div className="mb-4">
+                    <Link
+                        to="/chunks/$chunkId"
+                        params={{ chunkId: chunk.id }}
+                        className="group inline-flex items-baseline gap-3 hover:underline"
+                    >
+                        <h2 className="text-2xl font-bold tracking-tight group-hover:text-primary transition-colors">
+                            {chunk.title}
+                        </h2>
+                    </Link>
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                        <Badge variant="secondary" size="sm" className="font-mono text-[9px]">
+                            {chunk.type}
+                        </Badge>
+                        {chunk.tags && chunk.tags.length > 0 && (
+                            <span className="text-xs text-muted-foreground">
+                                {chunk.tags.join(" · ")}
+                            </span>
+                        )}
+                        {chunk.connectionCount ? (
+                            <span className="text-xs text-muted-foreground">
+                                · {chunk.connectionCount} connection{chunk.connectionCount === 1 ? "" : "s"}
+                            </span>
+                        ) : null}
+                    </div>
+                </div>
+
+                {chunk.summary && (
+                    <p className="mb-4 text-base italic text-muted-foreground">{chunk.summary}</p>
+                )}
+
+                {chunk.content && (
+                    <div className="prose prose-sm dark:prose-invert max-w-none">
+                        <MarkdownRenderer>{chunk.content}</MarkdownRenderer>
+                    </div>
+                )}
+
+                {chunk.rationale && (
+                    <div className="mt-4 rounded-md border-l-2 border-amber-500/40 bg-amber-500/5 px-4 py-3">
+                        <div className="text-xs font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400 mb-1">
+                            Rationale
+                        </div>
+                        <div className="prose prose-sm dark:prose-invert max-w-none text-muted-foreground">
+                            <MarkdownRenderer>{chunk.rationale}</MarkdownRenderer>
+                        </div>
+                    </div>
+                )}
+            </article>
+        );
+    }
 
     return (
         <>
@@ -257,9 +357,9 @@ function ComposePage() {
                         <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
                             Contents
                         </div>
-                        {chunks.length > 0 ? (
+                        {sortedChunks.length > 0 ? (
                             <nav className="space-y-1 max-h-[calc(100vh-8rem)] overflow-y-auto">
-                                {chunks.map((chunk) => (
+                                {sortedChunks.map((chunk) => (
                                     <a
                                         key={chunk.id}
                                         href={`#chunk-${chunk.id}`}
@@ -293,6 +393,35 @@ function ComposePage() {
                                 <code className="bg-muted/60 rounded px-2 py-0.5 font-mono text-xs">{q}</code>
                             </div>
                         )}
+                        <div className="flex items-center gap-3 mt-3 text-xs print:hidden">
+                            <label className="flex items-center gap-1.5 text-muted-foreground">
+                                Sort:
+                                <select
+                                    value={sort}
+                                    onChange={e => updateParam("sort", e.target.value)}
+                                    className="bg-muted/50 rounded px-2 py-1 border text-xs"
+                                >
+                                    <option value="updated">Recently updated</option>
+                                    <option value="newest">Newest</option>
+                                    <option value="oldest">Oldest</option>
+                                    <option value="title">Title A-Z</option>
+                                    <option value="type">By type</option>
+                                    <option value="connections">Most connected</option>
+                                </select>
+                            </label>
+                            <label className="flex items-center gap-1.5 text-muted-foreground">
+                                Group by:
+                                <select
+                                    value={group}
+                                    onChange={e => updateParam("group", e.target.value)}
+                                    className="bg-muted/50 rounded px-2 py-1 border text-xs"
+                                >
+                                    <option value="none">None</option>
+                                    <option value="type">Type</option>
+                                    <option value="tag">Tag</option>
+                                </select>
+                            </label>
+                        </div>
                     </div>
 
                     {/* Content */}
@@ -312,59 +441,24 @@ function ComposePage() {
                         </div>
                     )}
 
-                    {!loading && chunks.length > 0 && (
-                        <div className="space-y-12">
-                            {chunks.map((chunk, i) => (
-                                <article key={chunk.id} id={`chunk-${chunk.id}`} className={i > 0 ? "border-t pt-12" : ""}>
-                                    <div className="mb-4">
-                                        <Link
-                                            to="/chunks/$chunkId"
-                                            params={{ chunkId: chunk.id }}
-                                            className="group inline-flex items-baseline gap-3 hover:underline"
-                                        >
-                                            <h2 className="text-2xl font-bold tracking-tight group-hover:text-primary transition-colors">
-                                                {chunk.title}
-                                            </h2>
-                                        </Link>
-                                        <div className="mt-2 flex flex-wrap items-center gap-2">
-                                            <Badge variant="secondary" size="sm" className="font-mono text-[9px]">
-                                                {chunk.type}
-                                            </Badge>
-                                            {chunk.tags && chunk.tags.length > 0 && (
-                                                <span className="text-xs text-muted-foreground">
-                                                    {chunk.tags.join(" · ")}
-                                                </span>
-                                            )}
-                                            {chunk.connectionCount ? (
-                                                <span className="text-xs text-muted-foreground">
-                                                    · {chunk.connectionCount} connection{chunk.connectionCount === 1 ? "" : "s"}
-                                                </span>
-                                            ) : null}
-                                        </div>
+                    {!loading && chunks.length > 0 && groupedChunks && (
+                        <div className="space-y-16">
+                            {groupedChunks.map(([groupKey, groupChunks]) => (
+                                <section key={groupKey}>
+                                    <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-6 pb-2 border-b">
+                                        {groupKey} <span className="text-muted-foreground/60">({groupChunks.length})</span>
+                                    </h2>
+                                    <div className="space-y-12">
+                                        {groupChunks.map((chunk, i) => renderChunk(chunk, i, true))}
                                     </div>
-
-                                    {chunk.summary && (
-                                        <p className="mb-4 text-base italic text-muted-foreground">{chunk.summary}</p>
-                                    )}
-
-                                    {chunk.content && (
-                                        <div className="prose prose-sm dark:prose-invert max-w-none">
-                                            <MarkdownRenderer>{chunk.content}</MarkdownRenderer>
-                                        </div>
-                                    )}
-
-                                    {chunk.rationale && (
-                                        <div className="mt-4 rounded-md border-l-2 border-amber-500/40 bg-amber-500/5 px-4 py-3">
-                                            <div className="text-xs font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400 mb-1">
-                                                Rationale
-                                            </div>
-                                            <div className="prose prose-sm dark:prose-invert max-w-none text-muted-foreground">
-                                                <MarkdownRenderer>{chunk.rationale}</MarkdownRenderer>
-                                            </div>
-                                        </div>
-                                    )}
-                                </article>
+                                </section>
                             ))}
+                        </div>
+                    )}
+
+                    {!loading && chunks.length > 0 && !groupedChunks && (
+                        <div className="space-y-12">
+                            {sortedChunks.map((chunk, i) => renderChunk(chunk, i, true))}
                         </div>
                     )}
                 </div>
