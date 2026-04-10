@@ -348,3 +348,15 @@ export function getRequirementStats(userId: string, codebaseId?: string) {
         catch: cause => new DatabaseError({ cause })
     });
 }
+
+export function searchRequirementTitles(prefix: string, limit = 10) {
+    return Effect.tryPromise({
+        try: () =>
+            db
+                .select({ id: requirement.id, title: requirement.title })
+                .from(requirement)
+                .where(ilike(requirement.title, `%${prefix}%`))
+                .limit(limit),
+        catch: cause => new DatabaseError({ cause })
+    });
+}

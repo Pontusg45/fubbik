@@ -8,13 +8,11 @@ import {
     getHopDistances,
     getChunksAffectedByRequirement,
     semanticSearch as semanticSearchRepo,
-    findDuplicatePairs
+    findDuplicatePairs,
+    searchChunkTitles,
+    searchRequirementTitles
 } from "@fubbik/db/repository";
-import { db } from "@fubbik/db";
-import { chunk } from "@fubbik/db/schema/chunk";
-import { requirement } from "@fubbik/db/schema/requirement";
 import { Effect } from "effect";
-import { ilike } from "drizzle-orm";
 
 import { generateQueryEmbedding } from "../ollama/client";
 
@@ -280,28 +278,16 @@ export function autocomplete(
         }
 
         if (field === "chunk") {
-            const rows = yield* Effect.tryPromise({
-                try: () =>
-                    db
-                        .select({ title: chunk.title })
-                        .from(chunk)
-                        .where(ilike(chunk.title, `%${prefix}%`))
-                        .limit(10),
-                catch: () => [] as { title: string }[]
-            }).pipe(Effect.orElse(() => Effect.succeed([] as { title: string }[])));
+            const rows = yield* searchChunkTitles(prefix).pipe(
+                Effect.orElse(() => Effect.succeed([] as { id: string; title: string }[]))
+            );
             return rows.map(r => r.title);
         }
 
         if (field === "requirement") {
-            const rows = yield* Effect.tryPromise({
-                try: () =>
-                    db
-                        .select({ title: requirement.title })
-                        .from(requirement)
-                        .where(ilike(requirement.title, `%${prefix}%`))
-                        .limit(10),
-                catch: () => [] as { title: string }[]
-            }).pipe(Effect.orElse(() => Effect.succeed([] as { title: string }[])));
+            const rows = yield* searchRequirementTitles(prefix).pipe(
+                Effect.orElse(() => Effect.succeed([] as { id: string; title: string }[]))
+            );
             return rows.map(r => r.title);
         }
 

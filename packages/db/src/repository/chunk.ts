@@ -513,3 +513,15 @@ export function updateManyChunks(ids: string[], userId: string, data: Partial<{ 
         catch: cause => new DatabaseError({ cause })
     });
 }
+
+export function searchChunkTitles(prefix: string, limit = 10) {
+    return Effect.tryPromise({
+        try: () =>
+            db
+                .select({ id: chunk.id, title: chunk.title })
+                .from(chunk)
+                .where(ilike(chunk.title, `%${prefix}%`))
+                .limit(limit),
+        catch: cause => new DatabaseError({ cause })
+    });
+}
