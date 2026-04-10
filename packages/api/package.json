@@ -16,7 +16,7 @@
         "@fubbik/db": "workspace:*",
         "@fubbik/env": "workspace:*",
         "ai": "^6.0.116",
-        "effect": "^3.19.19",
+        "effect": "^3.21.0",
         "elysia": "catalog:"
     },
     "devDependencies": {

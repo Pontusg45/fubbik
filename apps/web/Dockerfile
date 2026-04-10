@@ -37,7 +37,7 @@ ENV VITE_SERVER_URL=${VITE_SERVER_URL}
 # 3. Build only the web app
 RUN pnpm run build --filter=web
 
-FROM node:22-slim AS runner
+FROM oven/bun:1.3.10-slim AS runner
 
 WORKDIR /app
 
