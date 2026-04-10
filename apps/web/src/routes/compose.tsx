@@ -1,6 +1,6 @@
 import { useMutation } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Check, Copy, FileText, Printer } from "lucide-react";
+import { ArrowLeft, Check, Copy, Download, FileText, Printer } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { MarkdownRenderer } from "@/components/markdown-renderer";
@@ -187,8 +187,9 @@ function ComposePage() {
         return Array.from(groups.entries()).sort(([a], [b]) => a.localeCompare(b));
     }, [sortedChunks, group]);
 
-    function handleCopy() {
-        const md = sortedChunks
+    function buildMarkdown(): string {
+        const filterLine = q ? `<!-- Filters: ${q} -->\n\n` : "";
+        const body = sortedChunks
             .map(c => {
                 const parts = [`## ${c.title}`];
                 if (c.summary) parts.push(`*${c.summary}*`);
@@ -197,9 +198,24 @@ function ComposePage() {
                 return parts.join("\n\n");
             })
             .join("\n\n---\n\n");
-        void navigator.clipboard.writeText(md);
+        return `# Composite View\n\n${filterLine}${body}`;
+    }
+
+    function handleCopy() {
+        void navigator.clipboard.writeText(buildMarkdown());
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
+    }
+
+    function handleDownload() {
+        const md = buildMarkdown();
+        const blob = new Blob([md], { type: "text/markdown" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `composite-${new Date().toISOString().slice(0, 10)}.md`;
+        a.click();
+        URL.revokeObjectURL(url);
     }
 
     function handlePrint() {
@@ -341,6 +357,10 @@ function ComposePage() {
                     <Button variant="outline" size="sm" onClick={handleCopy} className="gap-1.5">
                         {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
                         {copied ? "Copied" : "Copy all"}
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={handleDownload} className="gap-1.5">
+                        <Download className="size-3.5" />
+                        Download
                     </Button>
                     <Button variant="outline" size="sm" onClick={handlePrint} className="gap-1.5">
                         <Printer className="size-3.5" />
