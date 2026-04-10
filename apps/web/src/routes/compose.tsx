@@ -70,6 +70,7 @@ function ComposePage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [copied, setCopied] = useState(false);
+    const [scrollProgress, setScrollProgress] = useState(0);
 
     useEffect(() => {
         document.documentElement.classList.add("scroll-smooth");
@@ -201,7 +202,26 @@ function ComposePage() {
         return () => window.removeEventListener("keydown", handleKey);
     }, [chunks]);
 
+    useEffect(() => {
+        function handleScroll() {
+            const scrollTop = window.scrollY;
+            const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+            const progress = docHeight > 0 ? (scrollTop / docHeight) * 100 : 0;
+            setScrollProgress(Math.min(100, Math.max(0, progress)));
+        }
+        window.addEventListener("scroll", handleScroll, { passive: true });
+        handleScroll();
+        return () => window.removeEventListener("scroll", handleScroll);
+    }, [chunks]);
+
     return (
+        <>
+        <div className="fixed top-0 left-0 right-0 z-50 h-0.5 bg-transparent print:hidden">
+            <div
+                className="h-full bg-primary transition-[width] duration-100 ease-out"
+                style={{ width: `${scrollProgress}%` }}
+            />
+        </div>
         <div className="container mx-auto max-w-6xl px-4 py-8 print:py-4">
             {/* Header */}
             <div className="mb-6 flex items-center justify-between print:hidden">
@@ -350,5 +370,6 @@ function ComposePage() {
                 </div>
             </div>
         </div>
+        </>
     );
 }
