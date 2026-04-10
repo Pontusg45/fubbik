@@ -534,9 +534,9 @@ export function SearchResults({ chunks, total, graphMeta, duplicateHints, isLoad
                                 <div className="mt-1.5 flex flex-wrap items-center gap-2">
                                     {chunk.tags && chunk.tags.length > 0 && (
                                         <div className="flex flex-wrap gap-1">
-                                            {chunk.tags.slice(0, 4).map(tag => (
+                                            {chunk.tags.slice(0, 4).map((tag, idx) => (
                                                 <span
-                                                    key={tag.name}
+                                                    key={`${tag.name}-${idx}`}
                                                     className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground"
                                                 >
                                                     {tag.name}

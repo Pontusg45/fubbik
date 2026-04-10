@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 const STORAGE_KEY = "fubbik-recently-viewed";
 const MAX_ITEMS = 10;
@@ -11,19 +11,27 @@ export interface RecentItem {
 }
 
 export function useRecentlyViewed() {
-    const [items, setItems] = useState<RecentItem[]>(() => {
+    const [items, setItems] = useState<RecentItem[]>([]);
+
+    // Load from localStorage after mount to avoid SSR hydration mismatch
+    useEffect(() => {
         try {
-            return JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "[]");
+            const stored = localStorage.getItem(STORAGE_KEY);
+            if (stored) setItems(JSON.parse(stored));
         } catch {
-            return [];
+            // ignore
         }
-    });
+    }, []);
 
     const addItem = useCallback((item: Omit<RecentItem, "viewedAt">) => {
         setItems(prev => {
             const filtered = prev.filter(i => i.id !== item.id);
             const next = [{ ...item, viewedAt: new Date().toISOString() }, ...filtered].slice(0, MAX_ITEMS);
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+            } catch {
+                // ignore (e.g., SSR or disabled storage)
+            }
             return next;
         });
     }, []);
