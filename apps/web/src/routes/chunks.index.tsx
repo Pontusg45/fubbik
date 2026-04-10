@@ -359,6 +359,28 @@ function ChunksList() {
         return () => window.removeEventListener("keydown", handleKeyDown);
     }, [selectedIndex, navTo]);
 
+    useEffect(() => {
+        function handleKey(e: KeyboardEvent) {
+            const tag = document.activeElement?.tagName;
+            if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+            if (e.metaKey || e.ctrlKey || e.altKey) return;
+
+            if (!/^[1-9]$/.test(e.key)) return;
+
+            const n = Number(e.key) - 1;
+            const chunksArray = collectionFilteredChunks ?? [];
+            if (n >= chunksArray.length) return;
+
+            e.preventDefault();
+            const chunk = chunksArray[n];
+            if (chunk) {
+                void navTo({ to: "/chunks/$chunkId", params: { chunkId: chunk.id } });
+            }
+        }
+        window.addEventListener("keydown", handleKey);
+        return () => window.removeEventListener("keydown", handleKey);
+    }, [collectionFilteredChunks, navTo]);
+
     const total = activeQuery.data?.pages[0]?.total ?? 0;
 
     const fetchNextPageCb = useCallback(() => {
