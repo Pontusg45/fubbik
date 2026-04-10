@@ -71,6 +71,11 @@ function ComposePage() {
     const [error, setError] = useState<string | null>(null);
     const [copied, setCopied] = useState(false);
 
+    useEffect(() => {
+        document.documentElement.classList.add("scroll-smooth");
+        return () => document.documentElement.classList.remove("scroll-smooth");
+    }, []);
+
     const searchMutation = useMutation({
         mutationFn: async (clauses: any[]) =>
             unwrapEden(
@@ -159,7 +164,7 @@ function ComposePage() {
     }
 
     return (
-        <div className="container mx-auto max-w-4xl px-4 py-8 print:py-4">
+        <div className="container mx-auto max-w-6xl px-4 py-8 print:py-4">
             {/* Header */}
             <div className="mb-6 flex items-center justify-between print:hidden">
                 <Button
@@ -183,95 +188,126 @@ function ComposePage() {
                 </div>
             </div>
 
-            {/* Title and filter summary */}
-            <div className="mb-8 border-b pb-6">
-                <div className="flex items-center gap-2 text-xs text-muted-foreground uppercase tracking-wider mb-2">
-                    <FileText className="size-3.5" />
-                    Composite View
-                </div>
-                <h1 className="text-3xl font-bold tracking-tight mb-3">
-                    {loading ? "Loading…" : `${chunks.length} chunk${chunks.length === 1 ? "" : "s"}`}
-                </h1>
-                {q && (
-                    <div className="flex items-center gap-2">
-                        <span className="text-xs text-muted-foreground">Filters:</span>
-                        <code className="bg-muted/60 rounded px-2 py-0.5 font-mono text-xs">{q}</code>
-                    </div>
-                )}
-            </div>
-
-            {/* Content */}
-            {loading && (
-                <div className="py-16 text-center text-muted-foreground">Loading chunks…</div>
-            )}
-
-            {error && (
-                <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-4 text-sm text-red-500">
-                    {error}
-                </div>
-            )}
-
-            {!loading && !error && chunks.length === 0 && (
-                <div className="py-16 text-center text-muted-foreground">
-                    No chunks match the current filter.
-                </div>
-            )}
-
-            {!loading && chunks.length > 0 && (
-                <div className="space-y-12">
-                    {chunks.map((chunk, i) => (
-                        <article key={chunk.id} className={i > 0 ? "border-t pt-12" : ""}>
-                            <div className="mb-4">
-                                <Link
-                                    to="/chunks/$chunkId"
-                                    params={{ chunkId: chunk.id }}
-                                    className="group inline-flex items-baseline gap-3 hover:underline"
-                                >
-                                    <h2 className="text-2xl font-bold tracking-tight group-hover:text-primary transition-colors">
+            {/* Two-column layout */}
+            <div className="flex gap-8">
+                {/* ToC sidebar */}
+                <aside className="hidden lg:block w-56 shrink-0 print:hidden">
+                    <div className="sticky top-8">
+                        <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+                            Contents
+                        </div>
+                        {chunks.length > 0 ? (
+                            <nav className="space-y-1 max-h-[calc(100vh-8rem)] overflow-y-auto">
+                                {chunks.map((chunk) => (
+                                    <a
+                                        key={chunk.id}
+                                        href={`#chunk-${chunk.id}`}
+                                        className="block truncate rounded px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                                        title={chunk.title}
+                                    >
                                         {chunk.title}
-                                    </h2>
-                                </Link>
-                                <div className="mt-2 flex flex-wrap items-center gap-2">
-                                    <Badge variant="secondary" size="sm" className="font-mono text-[9px]">
-                                        {chunk.type}
-                                    </Badge>
-                                    {chunk.tags && chunk.tags.length > 0 && (
-                                        <span className="text-xs text-muted-foreground">
-                                            {chunk.tags.join(" · ")}
-                                        </span>
-                                    )}
-                                    {chunk.connectionCount ? (
-                                        <span className="text-xs text-muted-foreground">
-                                            · {chunk.connectionCount} connection{chunk.connectionCount === 1 ? "" : "s"}
-                                        </span>
-                                    ) : null}
-                                </div>
+                                    </a>
+                                ))}
+                            </nav>
+                        ) : (
+                            <p className="text-xs text-muted-foreground">No chunks</p>
+                        )}
+                    </div>
+                </aside>
+
+                {/* Main content column */}
+                <div className="flex-1 min-w-0">
+                    {/* Title and filter summary */}
+                    <div className="mb-8 border-b pb-6">
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground uppercase tracking-wider mb-2">
+                            <FileText className="size-3.5" />
+                            Composite View
+                        </div>
+                        <h1 className="text-3xl font-bold tracking-tight mb-3">
+                            {loading ? "Loading…" : `${chunks.length} chunk${chunks.length === 1 ? "" : "s"}`}
+                        </h1>
+                        {q && (
+                            <div className="flex items-center gap-2">
+                                <span className="text-xs text-muted-foreground">Filters:</span>
+                                <code className="bg-muted/60 rounded px-2 py-0.5 font-mono text-xs">{q}</code>
                             </div>
+                        )}
+                    </div>
 
-                            {chunk.summary && (
-                                <p className="mb-4 text-base italic text-muted-foreground">{chunk.summary}</p>
-                            )}
+                    {/* Content */}
+                    {loading && (
+                        <div className="py-16 text-center text-muted-foreground">Loading chunks…</div>
+                    )}
 
-                            {chunk.content && (
-                                <div className="prose prose-sm dark:prose-invert max-w-none">
-                                    <MarkdownRenderer>{chunk.content}</MarkdownRenderer>
-                                </div>
-                            )}
+                    {error && (
+                        <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-4 text-sm text-red-500">
+                            {error}
+                        </div>
+                    )}
 
-                            {chunk.rationale && (
-                                <div className="mt-4 rounded-md border-l-2 border-amber-500/40 bg-amber-500/5 px-4 py-3">
-                                    <div className="text-xs font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400 mb-1">
-                                        Rationale
+                    {!loading && !error && chunks.length === 0 && (
+                        <div className="py-16 text-center text-muted-foreground">
+                            No chunks match the current filter.
+                        </div>
+                    )}
+
+                    {!loading && chunks.length > 0 && (
+                        <div className="space-y-12">
+                            {chunks.map((chunk, i) => (
+                                <article key={chunk.id} id={`chunk-${chunk.id}`} className={i > 0 ? "border-t pt-12" : ""}>
+                                    <div className="mb-4">
+                                        <Link
+                                            to="/chunks/$chunkId"
+                                            params={{ chunkId: chunk.id }}
+                                            className="group inline-flex items-baseline gap-3 hover:underline"
+                                        >
+                                            <h2 className="text-2xl font-bold tracking-tight group-hover:text-primary transition-colors">
+                                                {chunk.title}
+                                            </h2>
+                                        </Link>
+                                        <div className="mt-2 flex flex-wrap items-center gap-2">
+                                            <Badge variant="secondary" size="sm" className="font-mono text-[9px]">
+                                                {chunk.type}
+                                            </Badge>
+                                            {chunk.tags && chunk.tags.length > 0 && (
+                                                <span className="text-xs text-muted-foreground">
+                                                    {chunk.tags.join(" · ")}
+                                                </span>
+                                            )}
+                                            {chunk.connectionCount ? (
+                                                <span className="text-xs text-muted-foreground">
+                                                    · {chunk.connectionCount} connection{chunk.connectionCount === 1 ? "" : "s"}
+                                                </span>
+                                            ) : null}
+                                        </div>
                                     </div>
-                                    <div className="prose prose-sm dark:prose-invert max-w-none text-muted-foreground">
-                                        <MarkdownRenderer>{chunk.rationale}</MarkdownRenderer>
-                                    </div>
-                                </div>
-                            )}
-                        </article>
-                    ))}
+
+                                    {chunk.summary && (
+                                        <p className="mb-4 text-base italic text-muted-foreground">{chunk.summary}</p>
+                                    )}
+
+                                    {chunk.content && (
+                                        <div className="prose prose-sm dark:prose-invert max-w-none">
+                                            <MarkdownRenderer>{chunk.content}</MarkdownRenderer>
+                                        </div>
+                                    )}
+
+                                    {chunk.rationale && (
+                                        <div className="mt-4 rounded-md border-l-2 border-amber-500/40 bg-amber-500/5 px-4 py-3">
+                                            <div className="text-xs font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400 mb-1">
+                                                Rationale
+                                            </div>
+                                            <div className="prose prose-sm dark:prose-invert max-w-none text-muted-foreground">
+                                                <MarkdownRenderer>{chunk.rationale}</MarkdownRenderer>
+                                            </div>
+                                        </div>
+                                    )}
+                                </article>
+                            ))}
+                        </div>
+                    )}
                 </div>
-            )}
+            </div>
         </div>
     );
 }
