@@ -1,6 +1,6 @@
 import { useMutation } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Check, Copy, Download, FileText, Printer } from "lucide-react";
+import { ArrowLeft, Check, Copy, Download, FileText, Printer, Share2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { MarkdownRenderer } from "@/components/markdown-renderer";
@@ -72,6 +72,7 @@ function ComposePage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [copied, setCopied] = useState(false);
+    const [shared, setShared] = useState(false);
     const [scrollProgress, setScrollProgress] = useState(0);
 
     function updateParam(key: string, value: string) {
@@ -233,6 +234,12 @@ function ComposePage() {
         });
     }
 
+    function handleShare() {
+        void navigator.clipboard.writeText(window.location.href);
+        setShared(true);
+        setTimeout(() => setShared(false), 2000);
+    }
+
     function handlePrint() {
         window.print();
     }
@@ -382,6 +389,10 @@ function ComposePage() {
                         {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
                         {copied ? "Copied" : "Copy all"}
                     </Button>
+                    <Button variant="outline" size="sm" onClick={handleShare} className="gap-1.5">
+                        {shared ? <Check className="size-3.5" /> : <Share2 className="size-3.5" />}
+                        {shared ? "Copied" : "Share"}
+                    </Button>
                     <Button variant="outline" size="sm" onClick={handleDownload} className="gap-1.5">
                         <Download className="size-3.5" />
                         Download
@@ -512,8 +523,20 @@ function ComposePage() {
                     )}
 
                     {!loading && !error && chunks.length === 0 && (
-                        <div className="py-16 text-center text-muted-foreground">
-                            No chunks match the current filter.
+                        <div className="py-16 flex flex-col items-center gap-4">
+                            <div className="text-center">
+                                <p className="text-muted-foreground mb-2">No chunks match the current filter.</p>
+                                <p className="text-muted-foreground/70 text-xs">Try broadening your filters.</p>
+                            </div>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => void navigate({ to: "/search", search: { q } as any })}
+                                className="gap-1.5"
+                            >
+                                <ArrowLeft className="size-3.5" />
+                                Back to search
+                            </Button>
                         </div>
                     )}
 
