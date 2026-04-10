@@ -10,6 +10,7 @@ import {
     Filter,
     FolderPlus,
     Globe,
+    LayoutGrid,
     List,
     Pin,
     Plus,
@@ -37,6 +38,7 @@ import { ChunkRowActions } from "@/features/chunks/chunk-row-actions";
 import { useBulkChunkOperations } from "@/features/chunks/use-bulk-chunk-operations";
 import { useChunkFilters } from "@/features/chunks/use-chunk-filters";
 import { KanbanView } from "@/features/chunks/kanban-view";
+import { ChunkCardGrid } from "@/features/chunks/chunk-card-grid";
 import { useCollections } from "@/features/chunks/use-collections";
 import { usePinnedChunks } from "@/features/chunks/use-pinned-chunks";
 import { useSavedFilters } from "@/features/chunks/use-saved-filters";
@@ -519,6 +521,12 @@ function ChunksList() {
                         <List className="size-3.5" />
                     </button>
                     <button
+                        onClick={() => updateSearch({ view: "grid" })}
+                        className={`px-2 py-1.5 text-xs ${view === "grid" ? "bg-muted" : ""}`}
+                    >
+                        <LayoutGrid className="size-3.5" />
+                    </button>
+                    <button
                         onClick={() => updateSearch({ view: "kanban" })}
                         className={`px-2 py-1.5 text-xs ${view === "kanban" ? "bg-muted" : ""}`}
                     >
@@ -604,6 +612,8 @@ function ChunksList() {
                 />
             ) : activeQuery.isLoading ? (
                 <SkeletonList count={10} />
+            ) : view === "grid" ? (
+                <ChunkCardGrid chunks={collectionFilteredChunks} />
             ) : collectionFilteredChunks.length === 0 ? (
                 <PageEmpty
                     icon={FileText}
