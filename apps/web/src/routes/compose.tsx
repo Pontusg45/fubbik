@@ -3,6 +3,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, Check, Copy, FileText, Printer } from "lucide-react";
 import { useEffect, useState } from "react";
 
+import { MarkdownRenderer } from "@/components/markdown-renderer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useActiveCodebase } from "@/features/codebases/use-active-codebase";
@@ -252,8 +253,8 @@ function ComposePage() {
                             )}
 
                             {chunk.content && (
-                                <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap text-sm leading-relaxed">
-                                    {chunk.content}
+                                <div className="prose prose-sm dark:prose-invert max-w-none">
+                                    <MarkdownRenderer>{chunk.content}</MarkdownRenderer>
                                 </div>
                             )}
 
@@ -262,8 +263,8 @@ function ComposePage() {
                                     <div className="text-xs font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400 mb-1">
                                         Rationale
                                     </div>
-                                    <div className="text-sm text-muted-foreground whitespace-pre-wrap">
-                                        {chunk.rationale}
+                                    <div className="prose prose-sm dark:prose-invert max-w-none text-muted-foreground">
+                                        <MarkdownRenderer>{chunk.rationale}</MarkdownRenderer>
                                     </div>
                                 </div>
                             )}
