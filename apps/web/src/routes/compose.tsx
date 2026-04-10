@@ -218,6 +218,19 @@ function ComposePage() {
         URL.revokeObjectURL(url);
     }
 
+    function removeFilter(index: number) {
+        const clauses = parseSimpleQuery(q ?? "");
+        const remaining = clauses.filter((_, i) => i !== index);
+        const newQ = remaining
+            .map(c => `${c.negate ? "NOT " : ""}${c.field}:${c.value}`)
+            .join(" ");
+        void navigate({
+            to: "/compose",
+            search: { q: newQ || undefined, sort, group } as any,
+            replace: true,
+        });
+    }
+
     function handlePrint() {
         window.print();
     }
@@ -417,9 +430,27 @@ function ComposePage() {
                             {loading ? "Loading…" : `${chunks.length} chunk${chunks.length === 1 ? "" : "s"}`}
                         </h1>
                         {q && (
-                            <div className="flex items-center gap-2">
+                            <div className="flex flex-wrap items-center gap-2">
                                 <span className="text-xs text-muted-foreground">Filters:</span>
-                                <code className="bg-muted/60 rounded px-2 py-0.5 font-mono text-xs">{q}</code>
+                                {parseSimpleQuery(q).map((clause, idx) => (
+                                    <span
+                                        key={idx}
+                                        className="inline-flex items-center gap-1 rounded border border-slate-500/30 bg-slate-500/15 text-slate-400 px-2 py-0.5 text-xs"
+                                    >
+                                        {clause.negate && <span className="font-semibold">NOT</span>}
+                                        <span className="font-semibold">{clause.field}</span>
+                                        <span className="text-muted-foreground">is</span>
+                                        <span>{clause.value}</span>
+                                        <button
+                                            type="button"
+                                            onClick={() => removeFilter(idx)}
+                                            className="opacity-50 hover:opacity-100 transition-opacity print:hidden"
+                                            aria-label={`Remove ${clause.field} filter`}
+                                        >
+                                            ×
+                                        </button>
+                                    </span>
+                                ))}
                             </div>
                         )}
                         <div className="flex items-center gap-3 mt-3 text-xs print:hidden">
