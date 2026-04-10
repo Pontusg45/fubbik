@@ -12,6 +12,8 @@ import {
     DialogTitle
 } from "@/components/ui/dialog";
 
+const SCROLL_AMOUNT = 100;
+
 function isInputElement(target: EventTarget | null): boolean {
     if (!target || !(target instanceof HTMLElement)) return false;
     const tagName = target.tagName.toLowerCase();
@@ -30,6 +32,39 @@ export function useGlobalShortcuts() {
             const pathname = location.pathname;
 
             switch (e.key) {
+                case "j":
+                    e.preventDefault();
+                    window.scrollBy({ top: SCROLL_AMOUNT, behavior: "smooth" });
+                    break;
+
+                case "k":
+                    e.preventDefault();
+                    window.scrollBy({ top: -SCROLL_AMOUNT, behavior: "smooth" });
+                    break;
+
+                case "g":
+                    e.preventDefault();
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                    break;
+
+                case "G":
+                    e.preventDefault();
+                    window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "smooth" });
+                    break;
+
+                case "f":
+                    e.preventDefault();
+                    document.documentElement.classList.toggle("focus-mode");
+                    try {
+                        localStorage.setItem(
+                            "fubbik-focus-mode",
+                            document.documentElement.classList.contains("focus-mode") ? "true" : "false"
+                        );
+                    } catch {
+                        // ignore
+                    }
+                    break;
+
                 case "?":
                     e.preventDefault();
                     setHelpOpen(prev => !prev);
@@ -80,16 +115,22 @@ export function useGlobalShortcuts() {
 }
 
 const shortcuts = [
+    { section: "Navigation", items: [
+        { key: "j", description: "Scroll down" },
+        { key: "k", description: "Scroll up" },
+        { key: "g", description: "Jump to top" },
+        { key: "G", description: "Jump to bottom" }
+    ]},
     { section: "Global", items: [
         { key: "?", description: "Show keyboard shortcuts" },
         { key: "n", description: "Create new item (context-aware)" },
         { key: "e", description: "Edit current item (on detail pages)" },
+        { key: "f", description: "Toggle focus mode" },
+        { key: "/", description: "Focus search" },
         { key: "Esc", description: "Go back" }
     ]},
     { section: "Chunks List", items: [
-        { key: "/", description: "Focus search" },
-        { key: "j", description: "Move selection down" },
-        { key: "k", description: "Move selection up" },
+        { key: "j / k", description: "Move selection down / up" },
         { key: "Enter", description: "Open selected chunk" },
         { key: "n", description: "Create new chunk" }
     ]}
