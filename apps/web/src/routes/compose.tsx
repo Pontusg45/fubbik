@@ -17,6 +17,7 @@ export const Route = createFileRoute("/compose")({
         q: (search.q as string) || undefined,
         sort: (search.sort as string) || "updated",
         group: (search.group as string) || "none",
+        limit: (search.limit as string) || "50",
     }),
     beforeLoad: async () => {
         let session = null;
@@ -64,7 +65,7 @@ function parseSimpleQuery(q: string): Array<{ field: string; operator: string; v
 }
 
 function ComposePage() {
-    const { q, sort, group } = Route.useSearch();
+    const { q, sort, group, limit } = Route.useSearch();
     const navigate = useNavigate();
     const { codebaseId } = useActiveCodebase();
     const [chunks, setChunks] = useState<ComposedChunk[]>([]);
@@ -76,7 +77,7 @@ function ComposePage() {
     function updateParam(key: string, value: string) {
         void navigate({
             to: "/compose",
-            search: { q, sort, group, [key]: value } as any,
+            search: { q, sort, group, limit, [key]: value } as any,
             replace: true,
         });
     }
@@ -87,13 +88,13 @@ function ComposePage() {
     }, []);
 
     const searchMutation = useMutation({
-        mutationFn: async (clauses: any[]) =>
+        mutationFn: async ({ clauses, lim }: { clauses: any[]; lim: number }) =>
             unwrapEden(
                 await api.api.search.query.post({
                     clauses,
                     join: "and",
                     sort: (sort as any) ?? "updated",
-                    limit: 500,
+                    limit: lim,
                     offset: 0,
                     ...(codebaseId ? { codebaseId } : {}),
                 } as any),
@@ -111,7 +112,8 @@ function ComposePage() {
                 setLoading(true);
                 setError(null);
                 const clauses = parseSimpleQuery(q);
-                const result = await searchMutation.mutateAsync(clauses);
+                const lim = limit === "all" ? 500 : Number(limit);
+                const result = await searchMutation.mutateAsync({ clauses, lim });
                 const searchChunks = (result as any)?.chunks ?? [];
 
                 // Fetch full content for each chunk (search only returns summary)
@@ -152,7 +154,7 @@ function ComposePage() {
         }
         void load();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [q, codebaseId]);
+    }, [q, codebaseId, limit]);
 
     const sortedChunks = useMemo(() => {
         const copy = [...chunks];
@@ -226,7 +228,7 @@ function ComposePage() {
             .join(" ");
         void navigate({
             to: "/compose",
-            search: { q: newQ || undefined, sort, group } as any,
+            search: { q: newQ || undefined, sort, group, limit } as any,
             replace: true,
         });
     }
@@ -479,6 +481,20 @@ function ComposePage() {
                                     <option value="none">None</option>
                                     <option value="type">Type</option>
                                     <option value="tag">Tag</option>
+                                </select>
+                            </label>
+                            <label className="flex items-center gap-1.5 text-muted-foreground">
+                                Limit:
+                                <select
+                                    value={limit}
+                                    onChange={e => updateParam("limit", e.target.value)}
+                                    className="bg-muted/50 rounded px-2 py-1 border text-xs"
+                                >
+                                    <option value="10">10</option>
+                                    <option value="25">25</option>
+                                    <option value="50">50</option>
+                                    <option value="100">100</option>
+                                    <option value="all">All</option>
                                 </select>
                             </label>
                         </div>
