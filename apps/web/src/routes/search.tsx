@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { AlertTriangle, Network, Save, Search as SearchIcon, Trash2, X } from "lucide-react";
+import { AlertTriangle, FileText, Network, Save, Search as SearchIcon, Trash2, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -262,6 +262,21 @@ function SearchPage() {
                 </div>
 
                 <div className="flex items-center gap-2">
+                    {/* Compose button */}
+                    {builder.clauses.length > 0 && (
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                                const qs = clausesToQueryString(builder.clauses);
+                                void navigate({ to: "/compose", search: { q: qs } as any });
+                            }}
+                            className="gap-1.5"
+                        >
+                            <FileText className="size-3.5" />
+                            View as document
+                        </Button>
+                    )}
                     {/* Save query button */}
                     {builder.clauses.length > 0 && (
                         <Button variant="outline" size="sm" onClick={() => void handleSaveQuery()} className="gap-1.5">

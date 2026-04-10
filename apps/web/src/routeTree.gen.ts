@@ -26,6 +26,7 @@ import { Route as DocsRouteImport } from "./routes/docs";
 import { Route as DashboardRouteImport } from "./routes/dashboard";
 import { Route as CoverageRouteImport } from "./routes/coverage";
 import { Route as ContextRouteImport } from "./routes/context";
+import { Route as ComposeRouteImport } from "./routes/compose";
 import { Route as CompareRouteImport } from "./routes/compare";
 import { Route as CodebasesRouteImport } from "./routes/codebases";
 import { Route as ActivityRouteImport } from "./routes/activity";
@@ -129,6 +130,11 @@ const ContextRoute = ContextRouteImport.update({
   path: "/context",
   getParentRoute: () => rootRouteImport,
 } as any);
+const ComposeRoute = ComposeRouteImport.update({
+  id: "/compose",
+  path: "/compose",
+  getParentRoute: () => rootRouteImport,
+} as any);
 const CompareRoute = CompareRouteImport.update({
   id: "/compare",
   path: "/compare",
@@ -221,6 +227,7 @@ export interface FileRoutesByFullPath {
   "/activity": typeof ActivityRoute;
   "/codebases": typeof CodebasesRoute;
   "/compare": typeof CompareRoute;
+  "/compose": typeof ComposeRoute;
   "/context": typeof ContextRoute;
   "/coverage": typeof CoverageRoute;
   "/dashboard": typeof DashboardRoute;
@@ -257,6 +264,7 @@ export interface FileRoutesByTo {
   "/activity": typeof ActivityRoute;
   "/codebases": typeof CodebasesRoute;
   "/compare": typeof CompareRoute;
+  "/compose": typeof ComposeRoute;
   "/context": typeof ContextRoute;
   "/coverage": typeof CoverageRoute;
   "/dashboard": typeof DashboardRoute;
@@ -294,6 +302,7 @@ export interface FileRoutesById {
   "/activity": typeof ActivityRoute;
   "/codebases": typeof CodebasesRoute;
   "/compare": typeof CompareRoute;
+  "/compose": typeof ComposeRoute;
   "/context": typeof ContextRoute;
   "/coverage": typeof CoverageRoute;
   "/dashboard": typeof DashboardRoute;
@@ -332,6 +341,7 @@ export interface FileRouteTypes {
     | "/activity"
     | "/codebases"
     | "/compare"
+    | "/compose"
     | "/context"
     | "/coverage"
     | "/dashboard"
@@ -368,6 +378,7 @@ export interface FileRouteTypes {
     | "/activity"
     | "/codebases"
     | "/compare"
+    | "/compose"
     | "/context"
     | "/coverage"
     | "/dashboard"
@@ -404,6 +415,7 @@ export interface FileRouteTypes {
     | "/activity"
     | "/codebases"
     | "/compare"
+    | "/compose"
     | "/context"
     | "/coverage"
     | "/dashboard"
@@ -441,6 +453,7 @@ export interface RootRouteChildren {
   ActivityRoute: typeof ActivityRoute;
   CodebasesRoute: typeof CodebasesRoute;
   CompareRoute: typeof CompareRoute;
+  ComposeRoute: typeof ComposeRoute;
   ContextRoute: typeof ContextRoute;
   CoverageRoute: typeof CoverageRoute;
   DashboardRoute: typeof DashboardRoute;
@@ -594,6 +607,13 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof ContextRouteImport;
       parentRoute: typeof rootRouteImport;
     };
+    "/compose": {
+      id: "/compose";
+      path: "/compose";
+      fullPath: "/compose";
+      preLoaderRoute: typeof ComposeRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     "/compare": {
       id: "/compare";
       path: "/compare";
@@ -721,6 +741,7 @@ const rootRouteChildren: RootRouteChildren = {
   ActivityRoute: ActivityRoute,
   CodebasesRoute: CodebasesRoute,
   CompareRoute: CompareRoute,
+  ComposeRoute: ComposeRoute,
   ContextRoute: ContextRoute,
   CoverageRoute: CoverageRoute,
   DashboardRoute: DashboardRoute,
