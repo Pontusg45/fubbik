@@ -2,9 +2,12 @@ import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 
 import { PageContainer, PageLoading } from "@/components/ui/page";
+import { PlanAnalyzeSection } from "@/features/plans/plan-analyze-section";
 import { PlanDescriptionSection } from "@/features/plans/plan-description-section";
 import { PlanDetailHeader } from "@/features/plans/plan-detail-header";
+import { PlanRequirementsSection } from "@/features/plans/plan-requirements-section";
 import type { PlanStatusValue } from "@/features/plans/plan-status-pill";
+import { PlanTasksSection } from "@/features/plans/plan-tasks-section";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
@@ -37,10 +40,13 @@ function PlanDetailPage() {
             />
             <div className="space-y-8 pb-12 pt-6">
                 <PlanDescriptionSection planId={plan.id} description={plan.description} onUpdate={refetch} />
-                {/* Sections added in later tasks:
-                    <PlanRequirementsSection /> (Task 14)
-                    <PlanAnalyzeSection /> (Task 15)
-                    <PlanTasksSection /> (Task 16) */}
+                <PlanRequirementsSection planId={plan.id} requirements={detail.requirements ?? []} onUpdate={refetch} />
+                <PlanAnalyzeSection
+                    planId={plan.id}
+                    analyze={detail.analyze ?? { chunk: [], file: [], risk: [], assumption: [], question: [] }}
+                    onUpdate={refetch}
+                />
+                <PlanTasksSection planId={plan.id} tasks={tasks} onUpdate={refetch} />
             </div>
         </PageContainer>
     );
