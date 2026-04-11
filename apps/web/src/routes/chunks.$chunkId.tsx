@@ -61,6 +61,19 @@ function ChunkDetail() {
     const { toggleFavorite, isFavorite } = useFavorites();
     const { enabled: focusMode, toggle: toggleFocus } = useFocusMode();
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+    const [scrollProgress, setScrollProgress] = useState(0);
+
+    useEffect(() => {
+        function handleScroll() {
+            const scrollTop = window.scrollY;
+            const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+            const progress = docHeight > 0 ? (scrollTop / docHeight) * 100 : 0;
+            setScrollProgress(Math.min(100, Math.max(0, progress)));
+        }
+        window.addEventListener("scroll", handleScroll, { passive: true });
+        handleScroll();
+        return () => window.removeEventListener("scroll", handleScroll);
+    }, []);
 
     useEffect(() => {
         trackView(chunkId);
@@ -240,6 +253,13 @@ function ChunkDetail() {
     const isEntryPoint = (chunk as Record<string, unknown>).isEntryPoint as boolean | undefined;
 
     return (
+        <>
+        <div className="fixed top-0 left-0 right-0 z-50 h-0.5 bg-transparent print:hidden">
+            <div
+                className="h-full bg-primary transition-[width] duration-100 ease-out"
+                style={{ width: `${scrollProgress}%` }}
+            />
+        </div>
         <div className="container mx-auto max-w-3xl px-4 py-8">
             <div className="mb-6 flex items-center justify-between">
                 <Button variant="ghost" size="sm" render={<Link to="/dashboard" />}>
@@ -612,6 +632,7 @@ function ChunkDetail() {
             </CollapsibleSection>
             </div>
         </div>
+        </>
     );
 }
 
