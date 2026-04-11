@@ -12,7 +12,8 @@ import { chunkAppliesTo } from "./schema/applies-to";
 import { chunkFileRef } from "./schema/file-ref";
 import { requirement, requirementChunk } from "./schema/requirement";
 import { useCase } from "./schema/use-case";
-import { plan, planStep, planChunkRef } from "./schema/plan";
+// TODO: removed in plans rewrite — planStep and planChunkRef deleted (Task 17 will rewrite seed)
+import { plan } from "./schema/plan";
 import { vocabularyEntry } from "./schema/vocabulary";
 import { collection } from "./schema/collection";
 import { workspace, workspaceCodebase } from "./schema/workspace";
@@ -43,8 +44,7 @@ await db.delete(workspaceCodebase).catch(() => {});
 await db.delete(workspace).where(eq(workspace.userId, DEV_USER_ID)).catch(() => {});
 await db.delete(collection).where(eq(collection.userId, DEV_USER_ID)).catch(() => {});
 await db.delete(vocabularyEntry).where(eq(vocabularyEntry.userId, DEV_USER_ID)).catch(() => {});
-await db.delete(planChunkRef).catch(() => {});
-await db.delete(planStep).catch(() => {});
+// TODO: removed in plans rewrite — planChunkRef and planStep deleted (Task 17 will rewrite seed)
 await db.delete(plan).where(eq(plan.userId, DEV_USER_ID)).catch(() => {});
 await db.delete(requirementChunk).catch(() => {});
 await db.delete(requirement).where(eq(requirement.userId, DEV_USER_ID)).catch(() => {});
@@ -1648,156 +1648,14 @@ await db
     .catch(e => console.error("  \u2717 plan:", e));
 console.log("  \u2713 1 plan");
 
-const seedPlanSteps = [
-    { id: "seed-ps-api-docs", planId: PLAN_ID, description: "Document all API endpoints", status: "done", order: 0 },
-    { id: "seed-ps-adr", planId: PLAN_ID, description: "Add architecture decision records", status: "done", order: 1 },
-    { id: "seed-ps-onboarding", planId: PLAN_ID, description: "Create onboarding guide", status: "in_progress", order: 2 },
-    { id: "seed-ps-deploy", planId: PLAN_ID, description: "Document deployment process", status: "pending", order: 3 },
-    { id: "seed-ps-autogen", planId: PLAN_ID, description: "Set up automated doc generation", status: "pending", order: 4 }
-];
-for (const ps of seedPlanSteps) {
-    await db.insert(planStep).values(ps).catch(e => console.error("  \u2717 plan_step:", e));
-}
-console.log(`  \u2713 ${seedPlanSteps.length} plan steps`);
+// TODO: removed in plans rewrite — planStep and planChunkRef deleted (Task 17 will rewrite seed)
+// const seedPlanSteps = [...];
+// const planChunkRefs = [...];
 
-// Link plan to relevant chunks
-const planChunkRefs = [
-    { id: "seed-pcr-arch", planId: PLAN_ID, chunkId: ids.arch, relation: "context" },
-    { id: "seed-pcr-api", planId: PLAN_ID, chunkId: ids.apiChunks, relation: "context" },
-    { id: "seed-pcr-docker", planId: PLAN_ID, chunkId: ids.docker, relation: "context" }
-];
-for (const pcr of planChunkRefs) {
-    await db.insert(planChunkRef).values(pcr).catch(e => console.error("  \u2717 plan_chunk_ref:", e));
-}
-console.log(`  \u2713 ${planChunkRefs.length} plan-chunk references`);
+// TODO: removed in plans rewrite — implementation sessions deleted (Task 17 will rewrite seed)
+// ─── 7. Implementation Sessions (Reviews) — REMOVED ─────────────────
 
-// ─── 7. Implementation Sessions (Reviews) ─────────────────────────
-import { implementationSession, sessionChunkRef, sessionAssumption, sessionRequirementRef } from "./schema/implementation-session";
-
-// Clean up existing sessions
-await db.delete(sessionRequirementRef).catch(() => {});
-await db.delete(sessionAssumption).catch(() => {});
-await db.delete(sessionChunkRef).catch(() => {});
-await db.delete(implementationSession).where(eq(implementationSession.userId, DEV_USER_ID)).catch(() => {});
-
-const sessions = [
-    {
-        id: "seed-session-api-docs",
-        title: "Document API endpoints",
-        status: "completed",
-        userId: DEV_USER_ID,
-        codebaseId: CODEBASE_ID,
-        planId: PLAN_ID,
-        reviewBrief: `## Review Brief
-
-Documented all core API endpoints including chunks CRUD, connections, tags, codebases, and workspaces. Added request/response examples and error codes.
-
-### Coverage
-- 5 chunks referenced during implementation
-- 2 requirements addressed (CRUD operations, search functionality)
-- All BDD steps verified against implementation
-
-### Notes
-- Swagger/OpenAPI spec at \`/docs\` is auto-generated and stays in sync
-- Added rate limiting docs for production deployment`,
-        completedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), // 5 days ago
-        reviewedAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000),
-    },
-    {
-        id: "seed-session-search",
-        title: "Implement semantic search",
-        status: "completed",
-        userId: DEV_USER_ID,
-        codebaseId: CODEBASE_ID,
-        planId: PLAN_ID,
-        reviewBrief: `## Review Brief
-
-Added embedding-based semantic search using Ollama nomic-embed-text model. Chunks are embedded on creation/update and searchable via cosine similarity.
-
-### Coverage
-- 3 chunks referenced
-- 1 requirement addressed (search functionality)
-
-### Assumptions
-- Ollama availability is optional — search degrades to text-only
-- 768-dimension vectors sufficient for codebase-scale knowledge`,
-        completedAt: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000), // 12 days ago
-        reviewedAt: new Date(Date.now() - 11 * 24 * 60 * 60 * 1000),
-    },
-    {
-        id: "seed-session-health",
-        title: "Build health scoring system",
-        status: "completed",
-        userId: DEV_USER_ID,
-        codebaseId: CODEBASE_ID,
-        reviewBrief: `## Review Brief
-
-Implemented per-chunk health scores (0-100) computed from freshness, completeness, richness, connectivity, and coverage. Exposed via chunk detail API and displayed as badge on detail page.
-
-### Coverage
-- 4 chunks referenced
-- 1 requirement addressed (staleness detection)
-
-### Open questions
-- Should health scores be cached or always computed on-demand?`,
-        completedAt: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000), // 20 days ago
-    },
-    {
-        id: "seed-session-active",
-        title: "Add workspace support",
-        status: "in_progress",
-        userId: DEV_USER_ID,
-        codebaseId: CODEBASE_ID,
-    }
-];
-
-for (const s of sessions) {
-    await db.insert(implementationSession).values(s).catch(e => console.error(`  ✗ session ${s.title}:`, e));
-}
-console.log(`  ✓ ${sessions.length} implementation sessions`);
-
-// Session chunk references
-const sessionChunkRefs = [
-    { sessionId: "seed-session-api-docs", chunkId: ids.apiChunks, reason: "Primary documentation target" },
-    { sessionId: "seed-session-api-docs", chunkId: ids.routes, reason: "Route implementation reference" },
-    { sessionId: "seed-session-api-docs", chunkId: ids.eden, reason: "Client SDK reference" },
-    { sessionId: "seed-session-api-docs", chunkId: ids.schemaChunks, reason: "Schema documentation" },
-    { sessionId: "seed-session-api-docs", chunkId: ids.auth, reason: "Auth endpoint reference" },
-    { sessionId: "seed-session-search", chunkId: ids.semantic, reason: "Search implementation" },
-    { sessionId: "seed-session-search", chunkId: ids.enrich, reason: "Embedding pipeline" },
-    { sessionId: "seed-session-search", chunkId: ids.repo, reason: "Repository pattern reference" },
-    { sessionId: "seed-session-health", chunkId: ids.arch, reason: "Architecture context" },
-    { sessionId: "seed-session-health", chunkId: ids.service, reason: "Service layer reference" },
-    { sessionId: "seed-session-health", chunkId: ids.schemaChunks, reason: "Schema reference" },
-    { sessionId: "seed-session-health", chunkId: ids.apiChunks, reason: "API endpoint reference" },
-];
-for (const scr of sessionChunkRefs) {
-    await db.insert(sessionChunkRef).values(scr).catch(e => console.error(`  ✗ session_chunk_ref:`, e));
-}
-console.log(`  ✓ ${sessionChunkRefs.length} session-chunk references`);
-
-// Session requirement references
-const sessionReqRefs = [
-    { sessionId: "seed-session-api-docs", requirementId: "seed-req-crud", stepsAddressed: [0, 1, 2] },
-    { sessionId: "seed-session-api-docs", requirementId: "seed-req-search", stepsAddressed: [0] },
-    { sessionId: "seed-session-search", requirementId: "seed-req-search", stepsAddressed: [0, 1, 2] },
-    { sessionId: "seed-session-health", requirementId: "seed-req-health-stale", stepsAddressed: [0, 1] },
-];
-for (const srr of sessionReqRefs) {
-    await db.insert(sessionRequirementRef).values(srr).catch(e => console.error(`  ✗ session_req_ref:`, e));
-}
-console.log(`  ✓ ${sessionReqRefs.length} session-requirement references`);
-
-// Session assumptions
-const sessionAssumptions = [
-    { id: "seed-assumption-ollama", sessionId: "seed-session-search", description: "Ollama will be available in most dev environments", resolved: true, resolution: "Made Ollama optional — features degrade gracefully" },
-    { id: "seed-assumption-vectors", sessionId: "seed-session-search", description: "768-dim vectors are sufficient for codebase knowledge", resolved: true, resolution: "Validated with nomic-embed-text — good quality for technical docs" },
-    { id: "seed-assumption-cache", sessionId: "seed-session-health", description: "Health scores should be computed on-demand vs cached", resolved: false },
-];
-for (const sa of sessionAssumptions) {
-    await db.insert(sessionAssumption).values(sa).catch(e => console.error(`  ✗ session_assumption:`, e));
-}
-console.log(`  ✓ ${sessionAssumptions.length} session assumptions`);
+// TODO: removed in plans rewrite — sessions data deleted (Task 17 will rewrite seed)
 
 // ─── 8. Document Chunks ───────────────────────────────────────────
 import { document } from "./schema/document";
@@ -2184,28 +2042,9 @@ await db
     .catch(e => console.error("  \u2717 polish plan:", e));
 console.log("  \u2713 1 frontend polish plan");
 
-const polishPlanSteps = [
-    { id: "seed-ps-graph-tag", planId: PLAN_POLISH_ID, description: "Fix graph tag grouping", status: "done", order: 0, requirementId: "seed-req-graph-layouts" },
-    { id: "seed-ps-collapsible", planId: PLAN_POLISH_ID, description: "Add collapsible sections to chunk detail", status: "done", order: 1 },
-    { id: "seed-ps-infinite", planId: PLAN_POLISH_ID, description: "Implement infinite scroll on chunk list", status: "done", order: 2 },
-    { id: "seed-ps-workspace", planId: PLAN_POLISH_ID, description: "Add workspace management page", status: "in_progress", order: 3, requirementId: "seed-req-workspace-queries" },
-    { id: "seed-ps-plan-form", planId: PLAN_POLISH_ID, description: "Polish plan creation form", status: "pending", order: 4 },
-    { id: "seed-ps-traceability", planId: PLAN_POLISH_ID, description: "Add traceability dashboard", status: "pending", order: 5 }
-];
-for (const ps of polishPlanSteps) {
-    await db.insert(planStep).values(ps).catch(e => console.error("  \u2717 polish plan_step:", e));
-}
-console.log(`  \u2713 ${polishPlanSteps.length} frontend polish plan steps`);
-
-// Link polish plan to relevant chunks
-const polishPlanChunkRefs = [
-    { id: "seed-pcr-graph", planId: PLAN_POLISH_ID, chunkId: ids.graph, relation: "context" },
-    { id: "seed-pcr-routes", planId: PLAN_POLISH_ID, chunkId: ids.routes, relation: "context" }
-];
-for (const pcr of polishPlanChunkRefs) {
-    await db.insert(planChunkRef).values(pcr).catch(e => console.error("  \u2717 polish plan_chunk_ref:", e));
-}
-console.log(`  \u2713 ${polishPlanChunkRefs.length} polish plan-chunk references`);
+// TODO: removed in plans rewrite — planStep and planChunkRef deleted (Task 17 will rewrite seed)
+// const polishPlanSteps = [...];
+// const polishPlanChunkRefs = [...];
 
 // ─── 13. More vocabulary ────────────────────────────────────────────
 const moreVocabEntries = [

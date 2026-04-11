@@ -24,9 +24,9 @@ export * from "./settings";
 export * from "./comment";
 export * from "./coverage";
 export * from "./requirement-dependency";
-export * from "./implementation-session";
+// implementation-session removed in plans rewrite
 export * from "./similarity";
-export * from "./plan";
+// plan repository removed in plans rewrite — Task 2 will rewrite it
 export * from "./workspace";
 export * from "./saved-graph";
 export * from "./saved-query";

@@ -17,7 +17,7 @@ export * from "./notification";
 export * from "./activity";
 export * from "./settings";
 export * from "./comment";
-export * from "./implementation-session";
+// implementation-session removed in plans rewrite
 export * from "./plan";
 export * from "./workspace";
 export * from "./saved-graph";
