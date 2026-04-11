@@ -1,5 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { Badge } from "@/components/ui/badge";
+import { ChunkTypeIcon } from "./chunk-type-icon";
+import { ContentThumbnail } from "./content-thumbnail";
 
 interface ChunkCardData {
     id: string;
@@ -28,11 +30,17 @@ export function ChunkCardGrid({ chunks }: { chunks: ChunkCardData[] }) {
                     params={{ chunkId: chunk.id }}
                     className="group flex h-full flex-col rounded-lg border bg-card p-4 hover:bg-muted/40 hover:border-foreground/20 transition-all"
                 >
+                    {chunk.content && (
+                        <div className="mb-3 text-muted-foreground">
+                            <ContentThumbnail content={chunk.content} className="h-10 w-full" />
+                        </div>
+                    )}
                     <div className="mb-2 flex items-start justify-between gap-2">
                         <span className="line-clamp-2 text-sm font-semibold leading-tight text-foreground group-hover:text-primary transition-colors">
                             {chunk.title}
                         </span>
-                        <Badge variant="secondary" size="sm" className="shrink-0 font-mono text-[9px]">
+                        <Badge variant="secondary" size="sm" className="shrink-0 font-mono text-[9px] flex items-center gap-1">
+                            <ChunkTypeIcon type={chunk.type} className="size-3" />
                             {chunk.type}
                         </Badge>
                     </div>
