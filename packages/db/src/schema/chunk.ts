@@ -1,5 +1,5 @@
 import { relations, sql } from "drizzle-orm";
-import { pgTable, text, timestamp, jsonb, index, uniqueIndex, customType, integer } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, jsonb, index, uniqueIndex, customType, integer, boolean } from "drizzle-orm/pg-core";
 
 import { user } from "./auth";
 import { document } from "./document";
@@ -46,7 +46,8 @@ export const chunk = pgTable(
         reviewedAt: timestamp("reviewed_at"),
         archivedAt: timestamp("archived_at"),
         documentId: text("document_id").references(() => document.id, { onDelete: "set null" }),
-        documentOrder: integer("document_order")
+        documentOrder: integer("document_order"),
+        isEntryPoint: boolean("is_entry_point").notNull().default(false)
     },
     table => [
         index("chunk_userId_idx").on(table.userId),

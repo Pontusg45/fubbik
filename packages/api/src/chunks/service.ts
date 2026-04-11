@@ -247,6 +247,7 @@ export function updateChunk(
         consequences?: string;
         origin?: string;
         reviewStatus?: string;
+        isEntryPoint?: boolean;
     }
 ) {
     return getChunkById(chunkId, userId).pipe(

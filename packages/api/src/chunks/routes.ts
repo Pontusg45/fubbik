@@ -275,7 +275,8 @@ export const chunkRoutes = new Elysia()
                 alternatives: alternativesSchema,
                 consequences: t.Optional(t.String({ maxLength: 5000 })),
                 origin: t.Optional(t.Union([t.Literal("human"), t.Literal("ai")])),
-                reviewStatus: t.Optional(t.Union([t.Literal("draft"), t.Literal("reviewed"), t.Literal("approved")]))
+                reviewStatus: t.Optional(t.Union([t.Literal("draft"), t.Literal("reviewed"), t.Literal("approved")])),
+                isEntryPoint: t.Optional(t.Boolean())
             })
         }
     )

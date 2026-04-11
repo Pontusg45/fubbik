@@ -12,6 +12,7 @@ import {
     Eye,
     FileCode,
     FileText,
+    Flag,
     Network,
     Plus,
     Star,
@@ -137,6 +138,15 @@ function DashboardPage() {
             return results.filter((c): c is NonNullable<typeof c> => !!c);
         },
         enabled: recentIds.length > 0
+    });
+
+    const entryPointsQuery = useQuery({
+        queryKey: ["entry-points", codebaseId],
+        queryFn: async () => {
+            const result = unwrapEden(await api.api.chunks.get({ query: { ...codebaseQuery, limit: "500" } as any }));
+            const chunks = ((result as any)?.chunks ?? []) as any[];
+            return chunks.filter(c => c.isEntryPoint === true);
+        }
     });
 
     // ─── Mutations ───
@@ -321,6 +331,32 @@ function DashboardPage() {
                                         className="hover:bg-muted/50 flex items-center gap-2 rounded-md px-3 py-2 transition-colors"
                                     >
                                         <Star className="size-3 shrink-0 fill-yellow-500/40 text-yellow-500/40" />
+                                        <span className="truncate text-sm">{chunk.title}</span>
+                                        <Badge variant="secondary" size="sm" className="ml-auto shrink-0 font-mono text-[9px]">
+                                            {chunk.type}
+                                        </Badge>
+                                    </Link>
+                                ))}
+                            </div>
+                        </DashboardSection>
+                    )}
+
+                    {/* Start here — entry points */}
+                    {entryPointsQuery.data && entryPointsQuery.data.length > 0 && (
+                        <DashboardSection
+                            icon={Flag}
+                            title="Start here"
+                            iconClass="text-emerald-500"
+                        >
+                            <div className="space-y-1">
+                                {entryPointsQuery.data.map((chunk: any) => (
+                                    <Link
+                                        key={chunk.id}
+                                        to="/chunks/$chunkId"
+                                        params={{ chunkId: chunk.id }}
+                                        className="flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-muted transition-colors"
+                                    >
+                                        <Flag className="size-3 shrink-0 text-emerald-500/60" />
                                         <span className="truncate text-sm">{chunk.title}</span>
                                         <Badge variant="secondary" size="sm" className="ml-auto shrink-0 font-mono text-[9px]">
                                             {chunk.type}

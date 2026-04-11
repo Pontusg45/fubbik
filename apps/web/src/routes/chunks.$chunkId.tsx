@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Archive, ArrowLeft, ArrowRight, Bot, Calendar, Clock, Code, Download, Edit, FileCode, FileText, Focus, GitFork, Hash, History, Lightbulb, Link2, MessageSquare, Network, Pencil, Scale, Sparkles, Star, Trash2 } from "lucide-react";
+import { Archive, ArrowLeft, ArrowRight, Bot, Calendar, Clock, Code, Download, Edit, FileCode, FileText, Flag, Focus, GitFork, Hash, History, Lightbulb, Link2, MessageSquare, Network, Pencil, Scale, Sparkles, Star, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -141,6 +141,22 @@ function ChunkDetail() {
         }
     });
 
+    const toggleEntryPointMutation = useMutation({
+        mutationFn: async () => {
+            const isEntryPoint = !((data?.chunk as any)?.isEntryPoint);
+            const { error } = await api.api.chunks({ id: chunkId }).patch({ isEntryPoint } as any);
+            if (error) throw new Error("Failed to update entry point");
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["chunk", chunkId] });
+            queryClient.invalidateQueries({ queryKey: ["entry-points"] });
+            toast.success("Entry point updated");
+        },
+        onError: () => {
+            toast.error("Failed to update entry point");
+        }
+    });
+
     if (isLoading) {
         return (
             <div className="container mx-auto max-w-3xl px-4 py-8">
@@ -219,6 +235,7 @@ function ChunkDetail() {
         | { total: number; breakdown: { freshness: number; completeness: number; richness: number; connectivity: number }; issues: string[] }
         | undefined;
     const hasDecisionContext = !!rationale || (alternatives && alternatives.length > 0) || !!consequences;
+    const isEntryPoint = (chunk as Record<string, unknown>).isEntryPoint as boolean | undefined;
 
     return (
         <div className="container mx-auto max-w-3xl px-4 py-8">
@@ -263,6 +280,17 @@ function ChunkDetail() {
                     <Button variant="ghost" size="sm" onClick={toggleFocus} className="gap-1.5" title="Focus mode">
                         <Focus className="size-3.5" />
                         {focusMode ? "Exit focus" : "Focus"}
+                    </Button>
+                    <Button
+                        variant={isEntryPoint ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => toggleEntryPointMutation.mutate()}
+                        disabled={toggleEntryPointMutation.isPending}
+                        className="gap-1.5"
+                        title="Mark as entry point for a topic"
+                    >
+                        <Flag className="size-3.5" />
+                        {isEntryPoint ? "Entry point" : "Mark as entry"}
                     </Button>
                     <Button variant="outline" size="sm" render={<Link to="/chunks/$chunkId/edit" params={{ chunkId }} />}>
                         <Edit className="size-3.5" />

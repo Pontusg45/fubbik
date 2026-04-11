@@ -332,6 +332,7 @@ export interface UpdateChunkParams {
     reviewedBy?: string | null;
     reviewedAt?: Date | null;
     documentOrder?: number;
+    isEntryPoint?: boolean;
 }
 
 export function updateChunk(chunkId: string, params: UpdateChunkParams) {
@@ -354,7 +355,8 @@ export function updateChunk(chunkId: string, params: UpdateChunkParams) {
                     ...(params.reviewStatus !== undefined && { reviewStatus: params.reviewStatus }),
                     ...(params.reviewedBy !== undefined && { reviewedBy: params.reviewedBy }),
                     ...(params.reviewedAt !== undefined && { reviewedAt: params.reviewedAt }),
-                    ...(params.documentOrder !== undefined && { documentOrder: params.documentOrder })
+                    ...(params.documentOrder !== undefined && { documentOrder: params.documentOrder }),
+                    ...(params.isEntryPoint !== undefined && { isEntryPoint: params.isEntryPoint })
                 })
                 .where(eq(chunk.id, chunkId))
                 .returning();
