@@ -50,10 +50,10 @@ describe("CLI help output", () => {
         expect(stdout).toContain("create");
         expect(stdout).toContain("list");
         expect(stdout).toContain("show");
-        expect(stdout).toContain("step-done");
-        expect(stdout).toContain("add-step");
-        expect(stdout).toContain("activate");
-        expect(stdout).toContain("complete");
+        expect(stdout).toContain("status");
+        expect(stdout).toContain("add-task");
+        expect(stdout).toContain("task-done");
+        expect(stdout).toContain("link-requirement");
     });
 
     it("check-files --help shows --staged option", () => {

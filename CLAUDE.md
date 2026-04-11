@@ -104,14 +104,16 @@ Built-in + user-created chunk templates (Convention, Architecture Decision, Runb
 
 ### Plans
 
-Implementation tracking entities for AI agents and humans. Plans have ordered steps with individual status tracking.
-- `plan` table with `title`, `description`, `status` (draft/active/completed/archived), `userId`, `codebaseId`
-- `plan_step` table with `description`, `status` (pending/in_progress/done/skipped/blocked), `order`, `parentStepId` (nesting), `note`, optional `chunkId` link, optional `requirementId` link
-- `plan_chunk_ref` join table linking plans to chunks with `relation` (context/created/modified)
-- Plan templates: feature-dev, bug-fix, migration, requirement-standard, requirement-detailed
-- Markdown import: parse AI-generated plan .md files into plans with steps
-- Web UI: `/plans` list, `/plans/new` create (with template selector, markdown paste, bulk entry, requirement linking), `/plans/:id` detail with interactive checklist
-- CLI: `fubbik plan create/list/show/step-done/add-step/activate/complete/import`
+The central unit of work. Each plan holds a description, linked requirements, structured analyze fields, and enriched tasks.
+
+- `plan` table: `title`, `description` (markdown), `status` (`draft | analyzing | ready | in_progress | completed | archived` — labels only, ungated), `userId`, `codebaseId`, `completedAt`
+- `plan_requirement` — many-to-many link to existing `requirement` entities at the plan level
+- `plan_analyze_item` — discriminated table holding five kinds: `chunk`, `file`, `risk`, `assumption`, `question`, each with kind-specific metadata (severity for risks, verified flag for assumptions, answer for questions, line range for files)
+- `plan_task` — enriched tasks with `title`, `description`, `acceptanceCriteria` (JSONB string array), `status`
+- `plan_task_chunk` — many-to-many linking tasks to multiple chunks with a relation (`context | created | modified`)
+- `plan_task_dependency` — task dependencies; marking a task `done` auto-unblocks dependents in `blocked` state
+- Web UI: `/plans` list, `/plans/new` (simple form), `/plans/:id` (sticky header + four sections: description, requirements, analyze, tasks)
+- CLI: `fubbik plan create/list/show/status/add-task/task-done/link-requirement`
 
 ### Requirements
 
@@ -120,16 +122,6 @@ BDD-style requirements with Given/When/Then steps.
 - `requirement_chunk` join table linking requirements to chunks
 - Plan steps can link to requirements via `requirementId` for full traceability
 - Requirements auto-update to "passing" when implementation sessions complete
-
-### Implementation Sessions (Reviews)
-
-Track AI implementation work. Sessions link to plans and requirements.
-- `implementation_session` table with `title`, `status`, `planId`, `codebaseId`, `reviewBrief`
-- `session_chunk_ref` — chunks referenced during implementation
-- `session_assumption` — knowledge gaps identified
-- `session_requirement_ref` — requirements addressed with step tracking
-- When a session completes: auto-completes linked plan, auto-syncs requirement statuses
-- Review brief generation with coverage analysis
 
 ### Chunk Health Scores
 
@@ -243,20 +235,15 @@ Two distinct context services exist in `packages/api/src/`:
 - `DELETE /api/templates/:id` — delete custom (built-in protected)
 
 ### Plans
-- `GET /api/plans` — list plans (supports `codebaseId`, `status`)
-- `GET /api/plans/templates` — list plan templates with step strings
-- `POST /api/plans` — create plan (with optional `steps` array, `template` name)
-- `POST /api/plans/import-markdown` — import plan from markdown content
-- `POST /api/plans/generate-from-requirements` — generate plan from requirement IDs
-- `GET /api/plans/:id` — detail (includes steps with requirement info, chunk refs, progress)
-- `PATCH /api/plans/:id` — update plan (title, description, status)
-- `DELETE /api/plans/:id` — delete plan
-- `POST /api/plans/:id/steps` — add step (supports `requirementId`)
-- `PATCH /api/plans/:id/steps/:stepId` — update step (status, note, description, requirementId)
-- `DELETE /api/plans/:id/steps/:stepId` — delete step
-- `POST /api/plans/:id/steps/reorder` — reorder steps
-- `POST /api/plans/:id/chunks` — add chunk reference
-- `DELETE /api/plans/:id/chunks/:refId` — remove chunk reference
+- `GET /api/plans` — list (filters: `codebaseId`, `status`, `requirementId`, `includeArchived`)
+- `POST /api/plans` — create (body: `title`, `description?`, `codebaseId?`, `requirementIds?`, `tasks?`)
+- `GET /api/plans/:id` — detail (plan + requirements + analyze grouped by kind + tasks with chunks + dependencies)
+- `PATCH /api/plans/:id` — update title/description/status/codebaseId
+- `DELETE /api/plans/:id`
+- `POST /api/plans/:id/requirements` / `DELETE /api/plans/:id/requirements/:requirementId` / `POST /api/plans/:id/requirements/reorder`
+- `GET /api/plans/:id/analyze` / `POST /api/plans/:id/analyze` / `PATCH /api/plans/:id/analyze/:itemId` / `DELETE /api/plans/:id/analyze/:itemId` / `POST /api/plans/:id/analyze/reorder`
+- `POST /api/plans/:id/tasks` / `PATCH /api/plans/:id/tasks/:taskId` / `DELETE /api/plans/:id/tasks/:taskId` / `POST /api/plans/:id/tasks/reorder`
+- `POST /api/plans/:id/tasks/:taskId/chunks` / `DELETE /api/plans/:id/tasks/:taskId/chunks/:linkId`
 
 ### Requirements
 - `GET /api/requirements` — list (supports filters: status, priority, codebaseId, search)
@@ -267,13 +254,6 @@ Two distinct context services exist in `packages/api/src/`:
 - `DELETE /api/requirements/:id` — delete
 - `GET /api/requirements/coverage` — chunk coverage metrics
 - `GET /api/requirements/traceability` — requirement → plan → session traceability
-
-### Sessions
-- `GET /api/sessions` — list implementation sessions
-- `POST /api/sessions` — create (with optional `planId`)
-- `GET /api/sessions/:id` — detail with chunk refs, assumptions, requirement refs
-- `PATCH /api/sessions/:id/complete` — complete session (auto-syncs requirements + plan)
-- `PATCH /api/sessions/:id/review` — mark reviewed with requirement statuses
 
 ### Context
 - `GET /api/context/for-file?path=<path>&deps=<deps>` — chunks relevant to a file (file-refs + appliesTo + dependency matching)
@@ -304,9 +284,7 @@ The server exposes Swagger/OpenAPI at `/docs` (e.g., `http://localhost:3000/docs
 - `/chunks/:id/edit` — edit chunk (with autosave, glob validation)
 - `/graph` — knowledge graph visualization (force-directed, hierarchical, radial layouts; tag grouping with clickable legend filters; path finding; workspace view with cross-codebase edge styling; focus mode via double-click; saveable filter presets)
 - `/requirements` — tabbed page: Requirements list | Plans list | Traceability dashboard
-- `/requirements/:id` — requirement detail with plan coverage, session links, BDD steps, export
-- `/reviews` — tabbed page: Implementation sessions | Review queue (AI draft approval)
-- `/reviews/:sessionId` — session detail with review brief, requirements addressed, assumptions
+- `/requirements/:id` — requirement detail with plan coverage, BDD steps, export
 - `/search` — full-text search across all entity types
 - `/tags` — tag management
 - `/codebases` — codebase management
@@ -315,9 +293,9 @@ The server exposes Swagger/OpenAPI at `/docs` (e.g., `http://localhost:3000/docs
 - `/context` — file-path context search (find chunks relevant to a file)
 - `/knowledge-health` — orphan, stale, thin chunks, stale embeddings, file references, knowledge gaps with "Create Requirement" action
 - `/coverage` — chunk coverage + traceability views
-- `/plans` — standalone plans list (also embedded as tab in requirements)
-- `/plans/new` — create plan (templates, markdown paste, bulk entry, requirement linking, keyboard shortcuts)
-- `/plans/:id` — plan detail with interactive checklist, step reorder, status actions
+- `/plans` — list of plans with status pills and task progress
+- `/plans/new` — simple form (title + description + optional codebase)
+- `/plans/:id` — sticky header + four sections (Description, Requirements, Analyze, Tasks)
 - `/import` — dedicated markdown docs import with folder upload, preview table, codebase selection
 - `/login` — authentication
 - `/settings` — user/codebase/instance settings
@@ -337,8 +315,13 @@ The server exposes Swagger/OpenAPI at `/docs` (e.g., `http://localhost:3000/docs
 - `fubbik export/import` — bulk operations
 - `fubbik enrich` — AI enrichment
 - `fubbik health/stats` — system info
-- `fubbik plan create/list/show/step-done/add-step/activate/complete` — plan management
-- `fubbik plan import <file.md>` — import plan from markdown
+- `fubbik plan create <title>` — create a plan
+- `fubbik plan list` — list plans
+- `fubbik plan show <id>` — show plan detail
+- `fubbik plan status <id> <status>` — update plan status
+- `fubbik plan add-task <planId> <title>` — add a task
+- `fubbik plan task-done <planId> <taskId>` — mark a task done
+- `fubbik plan link-requirement <planId> <requirementId>` — link a requirement
 - `fubbik quick "title"` — one-liner chunk creation (auto-detects codebase, supports `--type`, `--tags`, pipe stdin for content)
 - `fubbik check-files [files...] [--staged]` — check files against chunk knowledge
 - `fubbik hooks install/uninstall` — git pre-commit hook management

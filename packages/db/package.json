@@ -6,7 +6,9 @@
         "./schema/auth": "./src/schema/auth.ts",
         "./schema/chunk": "./src/schema/chunk.ts",
         "./schema/requirement": "./src/schema/requirement.ts",
+        "./schema/plan": "./src/schema/plan.ts",
         "./repository": "./src/repository/index.ts",
+        "./repository/plan": "./src/repository/plan.ts",
         "./errors": "./src/errors.ts"
     },
     "scripts": {
