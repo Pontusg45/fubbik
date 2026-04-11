@@ -31,6 +31,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Skeleton } from "@/components/ui/skeleton";
 import { SkeletonList } from "@/components/ui/skeleton-list";
 import { FeaturedChunkWidget } from "@/features/chunks/featured-chunk-widget";
+import { SmartCollections } from "@/features/chunks/smart-collections";
+import { MissedChunksWidget } from "@/features/dashboard/missed-chunks-widget";
 import { useFavorites } from "@/features/chunks/use-favorites";
 import { MilestoneCards } from "@/features/onboarding/milestone-cards";
 import { WelcomeWizard } from "@/features/onboarding/welcome-wizard";
@@ -444,6 +446,12 @@ function DashboardPage() {
                 <div className="space-y-6">
                     {/* Featured chunk of the day */}
                     <FeaturedChunkWidget />
+
+                    {/* Smart collections */}
+                    <SmartCollections />
+
+                    {/* You might have missed this */}
+                    <MissedChunksWidget />
 
                     {/* Quick Actions */}
                     <div className="mb-0">
