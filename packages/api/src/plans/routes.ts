@@ -86,5 +86,12 @@ const planBase = new Elysia({ prefix: "/api/plans" })
         return { ok: true };
     });
 
-// Sub-routes (requirements, analyze, tasks) will be added in Tasks 4-6.
-export const planRoutes = planBase;
+import { planRequirementRoutes } from "./requirements";
+import { planAnalyzeRoutes } from "./analyze";
+import { planTaskRoutes } from "./tasks";
+
+export const planRoutes = new Elysia()
+    .use(planBase)
+    .use(planRequirementRoutes)
+    .use(planAnalyzeRoutes)
+    .use(planTaskRoutes);
