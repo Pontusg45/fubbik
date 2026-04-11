@@ -10,6 +10,7 @@ import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 import { HeaderSearchDropdown, type SuggestionKind } from "./header-search-dropdown";
+import { useHeaderSearchSuggestions } from "./use-header-search-suggestions";
 
 const SLATE_COLOR = "bg-slate-500/15 border-slate-500/30 text-slate-400";
 
@@ -55,6 +56,8 @@ export function HeaderSearchBar() {
     });
 
     const savedQueries = (savedQueriesQuery.data as Array<{ id: string; name: string; query: unknown }>) ?? [];
+
+    const { suggestions, mode, field } = useHeaderSearchSuggestions(rawInput, clauses.length > 0, savedQueries, recentQueries);
 
     const parseMutation = useMutation({
         mutationFn: async (q: string) => {
@@ -153,6 +156,8 @@ export function HeaderSearchBar() {
                 case "recent":
                     try {
                         const parsed = await parseMutation.mutateAsync(suggestion.q);
+                        setClauses([]);
+                        setRawInput("");
                         void submit(parsed);
                     } catch {
                         // ignore
@@ -195,11 +200,17 @@ export function HeaderSearchBar() {
         [rawInput, clauses, navigate, submit, parseMutation],
     );
 
+    const dropdownOpen = focused && (clauses.length > 0 || rawInput.length > 0 || savedQueries.length > 0 || recentQueries.length > 0);
+
     const handleKeyDown = useCallback(
         (e: React.KeyboardEvent<HTMLInputElement>) => {
             if (e.key === "Enter") {
                 e.preventDefault();
-                void submit();
+                if (dropdownOpen && suggestions[selectedIdx]) {
+                    void handleSuggestionSelect(suggestions[selectedIdx]);
+                } else {
+                    void submit();
+                }
                 return;
             }
             if (e.key === "Escape") {
@@ -215,7 +226,7 @@ export function HeaderSearchBar() {
             }
             if (e.key === "ArrowDown") {
                 e.preventDefault();
-                setSelectedIdx(i => i + 1);
+                setSelectedIdx(i => Math.min(suggestions.length - 1, i + 1));
                 return;
             }
             if (e.key === "ArrowUp") {
@@ -224,10 +235,8 @@ export function HeaderSearchBar() {
                 return;
             }
         },
-        [clauses.length, rawInput.length, submit],
+        [clauses.length, rawInput.length, submit, dropdownOpen, suggestions, selectedIdx, handleSuggestionSelect],
     );
-
-    const dropdownOpen = focused && (clauses.length > 0 || rawInput.length > 0 || savedQueries.length > 0 || recentQueries.length > 0);
 
     return (
         <div className="relative hidden md:block flex-1 max-w-[460px] min-w-[240px]" ref={containerRef}>
@@ -271,8 +280,9 @@ export function HeaderSearchBar() {
 
             <HeaderSearchDropdown
                 open={dropdownOpen}
-                rawInput={rawInput}
-                hasPills={clauses.length > 0}
+                mode={mode}
+                field={field}
+                suggestions={suggestions}
                 savedQueries={savedQueries}
                 recentQueries={recentQueries}
                 selectedIdx={selectedIdx}

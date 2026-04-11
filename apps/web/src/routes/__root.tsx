@@ -9,7 +9,7 @@ import { ErrorBoundary } from "@/components/error-boundary";
 import FubbikLogo from "@/components/fubbik-logo";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Toaster } from "@/components/ui/sonner";
 import UserMenu from "@/features/auth/user-menu";
 
@@ -123,6 +123,7 @@ function RootDocument() {
                                                 </span>
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="start">
+                                                <DropdownMenuLabel>Navigate</DropdownMenuLabel>
                                                 <DropdownMenuItem render={<Link to="/features" />}>
                                                     <Compass className="size-4" />
                                                     Features

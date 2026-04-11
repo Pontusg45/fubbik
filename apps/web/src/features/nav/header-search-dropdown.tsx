@@ -1,13 +1,10 @@
-import { useQuery } from "@tanstack/react-query";
 import { Clock, FileText, Search, Star } from "lucide-react";
-import { useMemo } from "react";
 
 import { Badge } from "@/components/ui/badge";
-import { FILTER_CATEGORIES } from "@/features/search/query-types";
 import type { QueryClause } from "@/features/search/query-types";
 import type { RecentQuery } from "@/hooks/use-recent-queries";
-import { api } from "@/utils/api";
-import { unwrapEden } from "@/utils/eden";
+
+import type { HeaderSearchMode } from "./use-header-search-suggestions";
 
 export type SuggestionKind =
     | { type: "saved"; name: string; clauses: QueryClause[] }
@@ -19,8 +16,9 @@ export type SuggestionKind =
 
 export interface HeaderSearchDropdownProps {
     open: boolean;
-    rawInput: string;
-    hasPills: boolean;
+    mode: HeaderSearchMode;
+    field?: string;
+    suggestions: SuggestionKind[];
     savedQueries: Array<{ id: string; name: string; query: unknown }>;
     recentQueries: RecentQuery[];
     selectedIdx: number;
@@ -28,159 +26,17 @@ export interface HeaderSearchDropdownProps {
     onHover: (idx: number) => void;
 }
 
-const ENUM_VALUES: Record<string, string[]> = {
-    type: ["note", "document", "reference", "schema", "checklist"],
-    origin: ["human", "ai"],
-    review: ["draft", "reviewed", "approved"],
-};
-
-/**
- * Parse the raw input to determine what kind of suggestions to show.
- */
-function parseMode(rawInput: string): {
-    mode: "empty" | "field-prefix" | "value" | "free-text";
-    field?: string;
-    prefix: string;
-} {
-    const trimmed = rawInput.trim();
-    if (trimmed.length === 0) return { mode: "empty", prefix: "" };
-
-    const lastSpace = trimmed.lastIndexOf(" ");
-    const lastToken = lastSpace === -1 ? trimmed : trimmed.slice(lastSpace + 1);
-    const colonIdx = lastToken.indexOf(":");
-
-    if (colonIdx === -1) {
-        const allFields = FILTER_CATEGORIES.flatMap(c => c.fields.map(f => f.field));
-        const matchingFields = allFields.filter(f => f.startsWith(lastToken.toLowerCase()));
-        if (matchingFields.length > 0 && lastToken.length >= 1) {
-            return { mode: "field-prefix", prefix: lastToken };
-        }
-        return { mode: "free-text", prefix: lastToken };
-    }
-
-    const field = lastToken.slice(0, colonIdx);
-    const valuePrefix = lastToken.slice(colonIdx + 1);
-    return { mode: "value", field, prefix: valuePrefix };
-}
-
 export function HeaderSearchDropdown({
     open,
-    rawInput,
-    hasPills,
+    mode,
+    field,
+    suggestions,
     savedQueries,
     recentQueries,
     selectedIdx,
     onSelect,
     onHover,
 }: HeaderSearchDropdownProps) {
-    const { mode, field, prefix } = parseMode(rawInput);
-
-    const valueAutocomplete = useQuery({
-        queryKey: ["header-search-autocomplete", field, prefix],
-        queryFn: async () => {
-            if (!field) return [];
-            const acField = field === "near" || field === "path" || field === "similar-to"
-                ? "chunk"
-                : field === "affected-by"
-                  ? "requirement"
-                  : field === "tag"
-                    ? "tag"
-                    : null;
-            if (!acField) return [];
-            try {
-                const result = unwrapEden(
-                    await api.api.search.autocomplete.get({
-                        query: { field: acField, prefix } as any,
-                    }),
-                );
-                return (result as any) ?? [];
-            } catch {
-                return [];
-            }
-        },
-        enabled: mode === "value" && !!field,
-        staleTime: 30_000,
-    });
-
-    const chunkSearch = useQuery({
-        queryKey: ["header-search-chunks", prefix],
-        queryFn: async () => {
-            try {
-                const result = unwrapEden(
-                    await api.api.search.autocomplete.get({
-                        query: { field: "chunk", prefix } as any,
-                    }),
-                );
-                return (result as any) ?? [];
-            } catch {
-                return [];
-            }
-        },
-        enabled: mode === "free-text" && prefix.length >= 1,
-        staleTime: 30_000,
-    });
-
-    const suggestions: SuggestionKind[] = useMemo(() => {
-        const list: SuggestionKind[] = [];
-
-        if (mode === "empty" && !hasPills) {
-            for (const saved of savedQueries.slice(0, 5)) {
-                const query = (saved.query as any) ?? {};
-                const clauses = (query.clauses ?? []) as QueryClause[];
-                list.push({ type: "saved", name: saved.name, clauses });
-            }
-            for (const recent of recentQueries.slice(0, 5)) {
-                list.push({ type: "recent", q: recent.q, usedAt: recent.usedAt });
-            }
-            return list;
-        }
-
-        if (mode === "field-prefix") {
-            const allFields = FILTER_CATEGORIES.flatMap(c => c.fields);
-            const matches = allFields.filter(f => f.field.startsWith(prefix.toLowerCase())).slice(0, 8);
-            for (const f of matches) {
-                list.push({ type: "field", field: f.field, label: f.label, description: f.description });
-            }
-            return list;
-        }
-
-        if (mode === "value" && field) {
-            if (ENUM_VALUES[field]) {
-                const values = ENUM_VALUES[field].filter(v =>
-                    v.toLowerCase().startsWith(prefix.toLowerCase()),
-                );
-                for (const value of values) {
-                    list.push({ type: "value", field, value });
-                }
-                return list;
-            }
-            const results = (valueAutocomplete.data as any[]) ?? [];
-            for (const r of results.slice(0, 8)) {
-                const name = typeof r === "string" ? r : r.name ?? r.title ?? r.id;
-                const id = typeof r === "object" ? r.id : undefined;
-                list.push({ type: "value", field, value: id ?? name, label: name });
-            }
-            return list;
-        }
-
-        if (mode === "free-text") {
-            const results = (chunkSearch.data as any[]) ?? [];
-            for (const r of results.slice(0, 5)) {
-                list.push({
-                    type: "chunk",
-                    id: (typeof r === "object" ? r.id : r) as string,
-                    title: (typeof r === "object" ? r.title ?? r.name : r) as string,
-                    chunkType: (typeof r === "object" ? r.type : "note") as string,
-                });
-            }
-            if (prefix.trim().length > 0) {
-                list.push({ type: "text-search", q: prefix });
-            }
-            return list;
-        }
-
-        return list;
-    }, [mode, field, prefix, hasPills, savedQueries, recentQueries, valueAutocomplete.data, chunkSearch.data]);
 
     if (!open || suggestions.length === 0) return null;
 
