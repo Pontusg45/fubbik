@@ -1,43 +1,22 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Archive, ArrowLeft, ArrowRight, Bot, Calendar, Clock, Code, Download, Edit, FileCode, FileText, Flag, Focus, GitFork, Hash, History, Lightbulb, Link2, MessageSquare, Network, Scale, Sparkles, Star, Trash2 } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
-import { ConfirmDialog } from "@/components/confirm-dialog";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardPanel, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AiSection } from "@/features/chunks/ai-section";
-import { ChunkComments } from "@/features/chunks/chunk-comments";
-import { CollapsibleSection } from "@/features/chunks/collapsible-section";
-import { ChunkHealthBadge } from "@/features/chunks/chunk-health-badge";
-import { ChunkToc } from "@/features/chunks/chunk-toc";
-import { ChunkLinkRenderer } from "@/features/chunks/chunk-link-renderer";
-import { ChunkLink } from "@/features/chunks/chunk-link";
-import { getChunkSize } from "@/features/chunks/chunk-size";
-import { estimateReadingTime } from "@/features/chunks/reading-time";
-import { DeleteConnectionButton } from "@/features/chunks/delete-connection-button";
-import { DependencyTree } from "@/features/chunks/dependency-tree";
-import { InlineTagEditor } from "@/features/chunks/inline-tag-editor";
-import { LinkChunkDialog } from "@/features/chunks/link-chunk-dialog";
-import { RelatedChunks } from "@/features/chunks/related-chunks";
-import { RelatedSuggestions } from "@/features/chunks/related-suggestions";
-import { relationColor } from "@/features/chunks/relation-colors";
-import { SplitChunkDialog } from "@/features/chunks/split-chunk-dialog";
-import { SuggestedConnections } from "@/features/chunks/suggested-connections";
+import { ChunkDetailContent } from "@/features/chunks/detail/chunk-detail-content";
+import { ChunkDetailTopBar } from "@/features/chunks/detail/chunk-detail-top-bar";
+import { ChunkMetadataPanel } from "@/features/chunks/detail/chunk-metadata-panel";
+import { ChunkSiblingNavigator } from "@/features/chunks/detail/chunk-sibling-navigator";
+import { MoreContextDrawer, type DrawerTab } from "@/features/chunks/detail/more-context-drawer";
 import { useFavorites } from "@/features/chunks/use-favorites";
 import { useRecentChunks } from "@/features/chunks/use-recent-chunks";
-import { VersionHistory } from "@/features/chunks/version-history";
-import { StalenessBanner } from "@/features/staleness/staleness-banner";
-import { useFocusMode } from "@/hooks/use-focus-mode";
 import { useRecentlyViewed } from "@/hooks/use-recently-viewed";
 import { useReadingTrail } from "@/hooks/use-reading-trail";
 import { useReaderSettings, getReaderClasses } from "@/hooks/use-reader-settings";
-import { ReaderSettingsPopover } from "@/features/chunks/reader-settings";
-import { SimilarButton } from "@/features/chunks/similar-button";
 import { getUser } from "@/functions/get-user";
 import { api } from "@/utils/api";
 import { archiveChunk } from "@/utils/api-helpers";
@@ -63,11 +42,11 @@ function ChunkDetail() {
     const { addItem: addRecentlyViewed } = useRecentlyViewed();
     const { addVisit } = useReadingTrail();
     const { toggleFavorite, isFavorite } = useFavorites();
-    const { enabled: focusMode, toggle: toggleFocus } = useFocusMode();
     const { settings: readerSettings } = useReaderSettings();
     const readerClasses = getReaderClasses(readerSettings);
-    const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [scrollProgress, setScrollProgress] = useState(0);
+    const [drawerOpen, setDrawerOpen] = useState(false);
+    const [drawerTab, setDrawerTab] = useState<DrawerTab>("links");
 
     useEffect(() => {
         function handleScroll() {
@@ -79,6 +58,20 @@ function ChunkDetail() {
         window.addEventListener("scroll", handleScroll, { passive: true });
         handleScroll();
         return () => window.removeEventListener("scroll", handleScroll);
+    }, []);
+
+    useEffect(() => {
+        function handleKey(e: KeyboardEvent) {
+            const tag = document.activeElement?.tagName;
+            if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+            if (e.metaKey || e.ctrlKey || e.altKey) return;
+            if (e.key === "m") {
+                e.preventDefault();
+                setDrawerOpen(prev => !prev);
+            }
+        }
+        window.addEventListener("keydown", handleKey);
+        return () => window.removeEventListener("keydown", handleKey);
     }, []);
 
     useEffect(() => {
@@ -241,7 +234,6 @@ function ChunkDetail() {
     const currentCodebases = (data as Record<string, unknown>).codebases as
         | Array<{ id: string; name: string }>
         | undefined;
-    const currentCodebaseNames = new Set(currentCodebases?.map(c => c.name) ?? []);
     const appliesTo = (data as Record<string, unknown>).appliesTo as
         | Array<{ id: string; pattern: string; note?: string | null }>
         | undefined;
@@ -255,392 +247,110 @@ function ChunkDetail() {
     const healthScore = (data as Record<string, unknown>).healthScore as
         | { total: number; breakdown: { freshness: number; completeness: number; richness: number; connectivity: number }; issues: string[] }
         | undefined;
-    const hasDecisionContext = !!rationale || (alternatives && alternatives.length > 0) || !!consequences;
     const isEntryPoint = (chunk as Record<string, unknown>).isEntryPoint as boolean | undefined;
+
+    const totalSignals = connections.length + (appliesTo?.length ?? 0) + (fileReferences?.length ?? 0);
 
     return (
         <>
-        <div className="fixed top-0 left-0 right-0 z-50 h-0.5 bg-transparent print:hidden">
-            <div
-                className="h-full bg-primary transition-[width] duration-100 ease-out"
-                style={{ width: `${scrollProgress}%` }}
-            />
-        </div>
-        <div className="container mx-auto max-w-3xl px-4 py-8">
-            <div className="mb-6 flex items-center justify-between">
-                <Button variant="ghost" size="sm" render={<Link to="/dashboard" />}>
-                    <ArrowLeft className="size-4" />
-                    Back
-                </Button>
-                <div className="flex gap-2">
-                    <SplitChunkDialog
-                        chunkId={chunkId}
-                        title={chunk.title}
-                        content={chunk.content}
-                        type={chunk.type}
-                        tags={[]}
-                    />
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        render={<Link to="/graph" search={{ pathFrom: chunkId }} />}
-                    >
-                        <Network className="size-3.5" />
-                        Find path
-                    </Button>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                            const md = `# ${chunk.title}\n\n**Type:** ${chunk.type}\n**Tags:** ${tags.map((t: any) => t.name || t).join(", ")}\n\n${chunk.content}`;
-                            const blob = new Blob([md], { type: "text/markdown" });
-                            const url = URL.createObjectURL(blob);
-                            const a = document.createElement("a");
-                            a.href = url;
-                            a.download = `${chunk.title.replace(/[^a-z0-9]/gi, "-").toLowerCase()}.md`;
-                            a.click();
-                            URL.revokeObjectURL(url);
-                        }}
-                    >
-                        <Download className="size-3.5" />
-                        Export MD
-                    </Button>
-                    <ReaderSettingsPopover />
-                    <SimilarButton chunkTitle={chunk.title} />
-                    <Button variant="ghost" size="sm" onClick={toggleFocus} className="gap-1.5" title="Focus mode">
-                        <Focus className="size-3.5" />
-                        {focusMode ? "Exit focus" : "Focus"}
-                    </Button>
-                    <Button
-                        variant={isEntryPoint ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => toggleEntryPointMutation.mutate()}
-                        disabled={toggleEntryPointMutation.isPending}
-                        className="gap-1.5"
-                        title="Mark as entry point for a topic"
-                    >
-                        <Flag className="size-3.5" />
-                        {isEntryPoint ? "Entry point" : "Mark as entry"}
-                    </Button>
-                    <Button variant="outline" size="sm" render={<Link to="/chunks/$chunkId/edit" params={{ chunkId }} />}>
-                        <Edit className="size-3.5" />
-                        Edit
-                    </Button>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => archiveMutation.mutate()}
-                        disabled={archiveMutation.isPending}
-                    >
-                        <Archive className="size-3.5" />
-                        {archiveMutation.isPending ? "Archiving..." : "Archive"}
-                    </Button>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        className="text-destructive"
-                        onClick={() => setShowDeleteDialog(true)}
-                        disabled={deleteMutation.isPending}
-                    >
-                        <Trash2 className="size-3.5" />
-                        {deleteMutation.isPending ? "Deleting..." : "Delete"}
-                    </Button>
-                    <ConfirmDialog
-                        open={showDeleteDialog}
-                        onOpenChange={setShowDeleteDialog}
-                        title="Delete chunk"
-                        description="Permanently delete this chunk? This cannot be undone."
-                        confirmLabel="Delete"
-                        confirmVariant="destructive"
-                        onConfirm={() => {
-                            setShowDeleteDialog(false);
-                            deleteMutation.mutate();
-                        }}
-                        loading={deleteMutation.isPending}
-                    />
-                </div>
-            </div>
-
-            <div className="mb-6" data-focus-main="true">
-                <div className="mb-2 flex items-center gap-2">
-                    <Badge variant="secondary" className="font-mono text-xs">
-                        {chunk.type}
-                    </Badge>
-                    <span className="text-muted-foreground flex items-center gap-1 font-mono text-xs">
-                        <Hash className="size-3" />
-                        {chunk.id.slice(0, 8)}
-                    </span>
-                </div>
-                <div className="flex items-center gap-2">
-                    <h1 className="text-2xl font-bold tracking-tight">{chunk.title}</h1>
-                    {isAi && (
-                        <Badge
-                            variant="outline"
-                            className={
-                                reviewStatus === "draft"
-                                    ? "border-yellow-500/30 bg-yellow-500/10 text-yellow-600"
-                                    : reviewStatus === "reviewed"
-                                      ? "border-blue-500/30 bg-blue-500/10 text-blue-600"
-                                      : "border-green-500/30 bg-green-500/10 text-green-600"
-                            }
-                        >
-                            <Bot className="mr-1 size-3" />
-                            AI {reviewStatus === "draft" ? "Draft" : reviewStatus === "reviewed" ? "Reviewed" : "Approved"}
-                        </Badge>
-                    )}
-                    <button
-                        onClick={() => toggleFavorite(chunkId)}
-                        className="text-muted-foreground transition-colors hover:text-yellow-500"
-                        title={isFavorite(chunkId) ? "Remove from favorites" : "Add to favorites"}
-                    >
-                        <Star className={`size-4 ${isFavorite(chunkId) ? "fill-yellow-500 text-yellow-500" : ""}`} />
-                    </button>
-                </div>
-                {isAi && reviewStatus !== "approved" && (
-                    <div className="mt-2 flex items-center gap-2">
-                        {reviewStatus === "draft" && (
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => reviewMutation.mutate("reviewed")}
-                                disabled={reviewMutation.isPending}
-                            >
-                                Mark Reviewed
-                            </Button>
-                        )}
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => reviewMutation.mutate("approved")}
-                            disabled={reviewMutation.isPending}
-                        >
-                            Mark Approved
-                        </Button>
-                    </div>
-                )}
-                <div className="text-muted-foreground mt-2 flex flex-wrap items-center gap-4 text-xs">
-                    <span className="flex items-center gap-1">
-                        <Calendar className="size-3" />
-                        Created {new Date(chunk.createdAt).toLocaleDateString()}
-                    </span>
-                    <span className="flex items-center gap-1">
-                        <Clock className="size-3" />
-                        Updated {new Date(chunk.updatedAt).toLocaleDateString()}
-                    </span>
-                    {(() => {
-                        const size = getChunkSize(chunk.content);
-                        return (
-                            <span className="flex items-center gap-1" style={{ color: size.color }}>
-                                <FileText className="size-3" />
-                                {size.lines} lines · {size.chars.toLocaleString()} chars · {size.label}
-                            </span>
-                        );
-                    })()}
-                    <span className="flex items-center gap-1">
-                        <Clock className="size-3" />
-                        {estimateReadingTime(chunk.content).label}
-                    </span>
-                    {healthScore && <ChunkHealthBadge healthScore={healthScore} />}
-                </div>
-            </div>
-
-            <div className="mb-2">
-                <InlineTagEditor
-                    tags={tags}
-                    onUpdate={(newTags) => tagMutation.mutate(newTags)}
-                    loading={tagMutation.isPending}
+            <div className="fixed top-0 left-0 right-0 z-50 h-0.5 bg-transparent print:hidden">
+                <div
+                    className="h-full bg-primary transition-[width] duration-100 ease-out"
+                    style={{ width: `${scrollProgress}%` }}
                 />
             </div>
 
-            <Separator className="my-6" />
+            <div className="container mx-auto max-w-[1400px] px-4 py-8">
+                <ChunkDetailTopBar
+                    chunkId={chunkId}
+                    title={chunk.title}
+                    content={chunk.content}
+                    type={chunk.type}
+                    isEntryPoint={isEntryPoint}
+                    isAi={isAi}
+                    reviewStatus={reviewStatus}
+                    onArchive={() => archiveMutation.mutate()}
+                    onDelete={() => deleteMutation.mutate()}
+                    onSplit={() => {}}
+                    onToggleEntryPoint={() => toggleEntryPointMutation.mutate()}
+                    onReview={(status) => reviewMutation.mutate(status)}
+                    archivePending={archiveMutation.isPending}
+                    deletePending={deleteMutation.isPending}
+                />
 
-            <StalenessBanner chunkId={chunkId} />
+                <div className="flex gap-8">
+                    <ChunkSiblingNavigator
+                        currentChunkId={chunkId}
+                        codebaseId={currentCodebases?.[0]?.id}
+                        codebaseName={currentCodebases?.[0]?.name}
+                    />
 
-            <div className="lg:grid lg:grid-cols-[1fr_200px] lg:gap-8">
-                <div className={`prose dark:prose-invert prose-sm max-w-none ${readerClasses}`}>
-                    <ChunkLinkRenderer content={chunk.content} currentChunkId={chunk.id} />
+                    <ChunkDetailContent
+                        chunkId={chunkId}
+                        type={chunk.type}
+                        title={chunk.title}
+                        content={chunk.content}
+                        summary={(chunk as Record<string, unknown>).summary as string | null | undefined}
+                        updatedAt={chunk.updatedAt}
+                        isAi={isAi}
+                        reviewStatus={reviewStatus}
+                        isFavorite={isFavorite(chunkId)}
+                        onToggleFavorite={() => toggleFavorite(chunkId)}
+                        rationale={rationale}
+                        alternatives={alternatives ?? null}
+                        consequences={consequences}
+                        readerClasses={readerClasses}
+                    />
+
+                    <ChunkMetadataPanel
+                        content={chunk.content}
+                        tags={tags}
+                        onTagsUpdate={(newTags) => tagMutation.mutate(newTags)}
+                        tagsLoading={tagMutation.isPending}
+                        type={chunk.type}
+                        createdAt={chunk.createdAt}
+                        updatedAt={chunk.updatedAt}
+                        connectionCount={connections.length}
+                        codebases={currentCodebases}
+                        origin={origin}
+                        reviewStatus={reviewStatus}
+                        healthScore={healthScore}
+                        onShowConnections={() => {
+                            setDrawerTab("links");
+                            setDrawerOpen(true);
+                        }}
+                    />
                 </div>
-                <aside className="hidden lg:block" data-focus-hide="true">
-                    <ChunkToc content={chunk.content ?? ""} />
-                </aside>
+
+                <button
+                    type="button"
+                    onClick={() => setDrawerOpen(true)}
+                    className="fixed bottom-6 right-6 z-30 inline-flex items-center gap-2 rounded-full border border-indigo-500/30 bg-indigo-500/15 px-4 py-2 text-xs font-semibold text-indigo-400 shadow-lg backdrop-blur hover:bg-indigo-500/25 transition-colors print:hidden"
+                    data-focus-hide="true"
+                    title="More context (m)"
+                >
+                    ▸ More context
+                    {totalSignals > 0 && (
+                        <span className="text-[10px] text-indigo-400/60 font-mono">
+                            ({totalSignals})
+                        </span>
+                    )}
+                </button>
+
+                <MoreContextDrawer
+                    open={drawerOpen}
+                    onOpenChange={setDrawerOpen}
+                    chunkId={chunkId}
+                    chunkTitle={chunk.title}
+                    outgoing={outgoing}
+                    incoming={incoming}
+                    tags={tags}
+                    appliesTo={appliesTo}
+                    fileReferences={fileReferences}
+                    initialTab={drawerTab}
+                />
+
             </div>
-
-            {hasDecisionContext && (
-                <div className="bg-muted/50 mt-6 rounded-lg border p-4">
-                    <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold">
-                        <Scale className="size-4" />
-                        Decision Context
-                    </h2>
-                    {rationale && (
-                        <div className="mb-3">
-                            <p className="text-muted-foreground mb-1 text-xs font-medium uppercase tracking-wide">Rationale</p>
-                            <p className="text-sm">{rationale}</p>
-                        </div>
-                    )}
-                    {alternatives && alternatives.length > 0 && (
-                        <div className="mb-3">
-                            <p className="text-muted-foreground mb-1 text-xs font-medium uppercase tracking-wide">
-                                Alternatives Considered
-                            </p>
-                            <ul className="list-inside list-disc space-y-0.5 text-sm">
-                                {alternatives.map((alt, i) => (
-                                    <li key={i}>{alt}</li>
-                                ))}
-                            </ul>
-                        </div>
-                    )}
-                    {consequences && (
-                        <div>
-                            <p className="text-muted-foreground mb-1 text-xs font-medium uppercase tracking-wide">Consequences</p>
-                            <p className="text-sm">{consequences}</p>
-                        </div>
-                    )}
-                </div>
-            )}
-
-            <CollapsibleSection title="Applies To" icon={Code} count={appliesTo?.length ?? 0} defaultOpen={(appliesTo?.length ?? 0) > 0}>
-                <div className="flex flex-wrap gap-2">
-                    {appliesTo?.map(item => (
-                        <Badge key={item.id} variant="outline" className="font-mono text-xs">
-                            {item.pattern}
-                            {item.note && (
-                                <span className="text-muted-foreground ml-1 font-sans">({item.note})</span>
-                            )}
-                        </Badge>
-                    ))}
-                    {(!appliesTo || appliesTo.length === 0) && (
-                        <p className="text-muted-foreground text-sm">No patterns defined</p>
-                    )}
-                </div>
-            </CollapsibleSection>
-
-            <CollapsibleSection title="File References" icon={FileCode} count={fileReferences?.length ?? 0} defaultOpen={(fileReferences?.length ?? 0) > 0}>
-                <div className="space-y-2">
-                    {fileReferences?.map(ref => (
-                        <div key={ref.id} className="flex items-center gap-2 text-sm">
-                            <code className="bg-muted rounded px-1.5 py-0.5 font-mono text-xs">{ref.path}</code>
-                            {ref.anchor && (
-                                <Badge variant="secondary" size="sm" className="text-[10px]">
-                                    {ref.anchor}
-                                </Badge>
-                            )}
-                            <span className="text-muted-foreground text-xs">{ref.relation}</span>
-                        </div>
-                    ))}
-                    {(!fileReferences || fileReferences.length === 0) && (
-                        <p className="text-muted-foreground text-sm">No file references</p>
-                    )}
-                </div>
-            </CollapsibleSection>
-
-            <CollapsibleSection title="AI Enrichment" icon={Sparkles} defaultOpen={false}>
-                <AiSection chunkId={chunkId} />
-            </CollapsibleSection>
-
-            <CollapsibleSection title="Comments" icon={MessageSquare} defaultOpen={false}>
-                <ChunkComments chunkId={chunkId} />
-            </CollapsibleSection>
-
-            <div data-focus-hide="true">
-            <CollapsibleSection title="Connections" icon={Network} count={connections.length} defaultOpen={true}>
-                <div className="flex items-center justify-end mb-3">
-                    <LinkChunkDialog chunkId={chunkId} />
-                </div>
-                {outgoing.length > 0 && (
-                    <div className="space-y-2">
-                        <h4 className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1">
-                            <ArrowRight className="size-3" /> Links to ({outgoing.length})
-                        </h4>
-                        {outgoing.map(conn => (
-                            <div
-                                key={conn.id}
-                                className="hover:bg-muted flex items-center justify-between rounded-md border px-3 py-2 text-sm transition-colors"
-                            >
-                                <ChunkLink chunkId={conn.targetId}>
-                                    {conn.title ?? conn.targetId}
-                                </ChunkLink>
-                                <div className="flex items-center gap-2">
-                                    {conn.codebaseName && !currentCodebaseNames.has(conn.codebaseName) && (
-                                        <Badge variant="outline" size="sm" className="text-[10px]">
-                                            {conn.codebaseName}
-                                        </Badge>
-                                    )}
-                                    <Badge
-                                        variant="outline"
-                                        size="sm"
-                                        className="text-[10px]"
-                                        style={{ borderColor: relationColor(conn.relation), color: relationColor(conn.relation) }}
-                                    >
-                                        {conn.relation}
-                                    </Badge>
-                                    <DeleteConnectionButton connectionId={conn.id} chunkId={chunkId} />
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                )}
-                {incoming.length > 0 && (
-                    <div className="space-y-2">
-                        <h4 className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1 mt-3">
-                            <ArrowLeft className="size-3" /> Linked from ({incoming.length})
-                        </h4>
-                        {incoming.map(conn => (
-                            <div
-                                key={conn.id}
-                                className="hover:bg-muted flex items-center justify-between rounded-md border px-3 py-2 text-sm transition-colors"
-                            >
-                                <ChunkLink chunkId={conn.sourceId}>
-                                    {conn.title ?? conn.sourceId}
-                                </ChunkLink>
-                                <div className="flex items-center gap-2">
-                                    {conn.codebaseName && !currentCodebaseNames.has(conn.codebaseName) && (
-                                        <Badge variant="outline" size="sm" className="text-[10px]">
-                                            {conn.codebaseName}
-                                        </Badge>
-                                    )}
-                                    <Badge
-                                        variant="outline"
-                                        size="sm"
-                                        className="text-[10px]"
-                                        style={{ borderColor: relationColor(conn.relation), color: relationColor(conn.relation) }}
-                                    >
-                                        {conn.relation}
-                                    </Badge>
-                                    <DeleteConnectionButton connectionId={conn.id} chunkId={chunkId} />
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                )}
-                {connections.length === 0 && (
-                    <p className="text-muted-foreground text-sm">No connections yet</p>
-                )}
-            </CollapsibleSection>
-
-            <CollapsibleSection title="Dependency Tree" icon={GitFork} count={connections.length} defaultOpen={connections.length > 0}>
-                <DependencyTree chunkId={chunkId} connections={connections} />
-            </CollapsibleSection>
-
-            <CollapsibleSection title="Suggested Connections" icon={Lightbulb} defaultOpen={false}>
-                <SuggestedConnections chunkId={chunkId} />
-            </CollapsibleSection>
-
-            <CollapsibleSection title="Related Chunks" icon={Link2} defaultOpen={false}>
-                <RelatedChunks chunkId={chunkId} connections={connections} tags={tags} />
-            </CollapsibleSection>
-
-            <RelatedSuggestions
-                chunkId={chunkId}
-                chunkTitle={chunk.title}
-                connectedIds={connections.map(c => c.sourceId === chunkId ? c.targetId : c.sourceId)}
-            />
-
-            <CollapsibleSection title="Version History" icon={History} defaultOpen={false}>
-                <VersionHistory chunkId={chunkId} />
-            </CollapsibleSection>
-            </div>
-        </div>
         </>
     );
 }
-
