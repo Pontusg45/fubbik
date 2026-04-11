@@ -17,6 +17,7 @@ import { ChunkToc } from "@/features/chunks/chunk-toc";
 import { ChunkLinkRenderer } from "@/features/chunks/chunk-link-renderer";
 import { ChunkLink } from "@/features/chunks/chunk-link";
 import { getChunkSize } from "@/features/chunks/chunk-size";
+import { estimateReadingTime } from "@/features/chunks/reading-time";
 import { DeleteConnectionButton } from "@/features/chunks/delete-connection-button";
 import { DependencyTree } from "@/features/chunks/dependency-tree";
 import { InlineTagEditor } from "@/features/chunks/inline-tag-editor";
@@ -407,6 +408,10 @@ function ChunkDetail() {
                             </span>
                         );
                     })()}
+                    <span className="flex items-center gap-1">
+                        <Clock className="size-3" />
+                        {estimateReadingTime(chunk.content).label}
+                    </span>
                     {healthScore && <ChunkHealthBadge healthScore={healthScore} />}
                 </div>
             </div>
