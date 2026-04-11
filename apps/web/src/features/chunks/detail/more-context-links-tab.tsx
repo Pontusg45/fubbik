@@ -1,8 +1,8 @@
+import { ArrowLeft, ArrowRight, Lightbulb } from "lucide-react";
+
 import { Badge } from "@/components/ui/badge";
 import { ChunkLink } from "@/features/chunks/chunk-link";
 import { DeleteConnectionButton } from "@/features/chunks/delete-connection-button";
-import { DependencyTree } from "@/features/chunks/dependency-tree";
-import { RelatedChunks } from "@/features/chunks/related-chunks";
 import { RelatedSuggestions } from "@/features/chunks/related-suggestions";
 import { relationColor } from "@/features/chunks/relation-colors";
 import { SuggestedConnections } from "@/features/chunks/suggested-connections";
@@ -16,33 +16,42 @@ export interface ConnectionItem {
     codebaseName?: string | null;
 }
 
-export interface TagItem {
-    id: string;
-    name: string;
-}
-
 export interface MoreContextLinksTabProps {
     chunkId: string;
     chunkTitle: string;
     outgoing: ConnectionItem[];
     incoming: ConnectionItem[];
-    tags: TagItem[];
 }
 
-export function MoreContextLinksTab({ chunkId, chunkTitle, outgoing, incoming, tags }: MoreContextLinksTabProps) {
+export function MoreContextLinksTab({ chunkId, chunkTitle, outgoing, incoming }: MoreContextLinksTabProps) {
     const allConnections = [...outgoing, ...incoming];
     const connectedIds = allConnections.map(c => (c.sourceId === chunkId ? c.targetId : c.sourceId));
+    const hasConnections = outgoing.length > 0 || incoming.length > 0;
 
     return (
         <div className="space-y-6 px-1 pb-4">
-            {outgoing.length > 0 && (
-                <section>
-                    <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                        Outgoing ({outgoing.length})
+            {/* Connected — the source of truth */}
+            <section>
+                <div className="mb-2 flex items-center justify-between">
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                        Connected
                     </h3>
+                    {hasConnections && (
+                        <span className="text-[10px] text-muted-foreground font-mono">
+                            {outgoing.length} out · {incoming.length} in
+                        </span>
+                    )}
+                </div>
+
+                {!hasConnections ? (
+                    <p className="text-xs text-muted-foreground">No connections yet. Use suggestions below to discover links.</p>
+                ) : (
                     <div className="space-y-1">
                         {outgoing.map(conn => (
                             <div key={conn.id} className="flex items-center gap-2 rounded border px-3 py-2 text-sm">
+                                <span title="Outgoing">
+                                    <ArrowRight className="size-3 shrink-0 text-muted-foreground/60" />
+                                </span>
                                 <Badge
                                     variant="outline"
                                     size="sm"
@@ -58,18 +67,11 @@ export function MoreContextLinksTab({ chunkId, chunkTitle, outgoing, incoming, t
                                 <DeleteConnectionButton connectionId={conn.id} chunkId={chunkId} />
                             </div>
                         ))}
-                    </div>
-                </section>
-            )}
-
-            {incoming.length > 0 && (
-                <section>
-                    <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                        Incoming ({incoming.length})
-                    </h3>
-                    <div className="space-y-1">
                         {incoming.map(conn => (
                             <div key={conn.id} className="flex items-center gap-2 rounded border px-3 py-2 text-sm">
+                                <span title="Incoming">
+                                    <ArrowLeft className="size-3 shrink-0 text-muted-foreground/60" />
+                                </span>
                                 <Badge
                                     variant="outline"
                                     size="sm"
@@ -85,43 +87,27 @@ export function MoreContextLinksTab({ chunkId, chunkTitle, outgoing, incoming, t
                             </div>
                         ))}
                     </div>
-                </section>
-            )}
-
-            {outgoing.length === 0 && incoming.length === 0 && (
-                <p className="text-xs text-muted-foreground">No connections yet.</p>
-            )}
-
-            <section>
-                <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    Dependency tree
-                </h3>
-                <DependencyTree chunkId={chunkId} connections={allConnections} />
+                )}
             </section>
 
+            {/* Discover — unified suggestions */}
             <section>
-                <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    Suggested connections
+                <h3 className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    <Lightbulb className="size-3.5" />
+                    Discover
                 </h3>
-                <SuggestedConnections chunkId={chunkId} />
-            </section>
 
-            <section>
-                <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    Related chunks
-                </h3>
-                <RelatedChunks
-                    chunkId={chunkId}
-                    connections={allConnections.map(c => ({ ...c, title: c.title ?? null }))}
-                    tags={tags}
-                />
-            </section>
+                <div className="space-y-3">
+                    <div>
+                        <div className="mb-1 text-[10px] text-muted-foreground/70">By content similarity</div>
+                        <RelatedSuggestions chunkId={chunkId} chunkTitle={chunkTitle} connectedIds={connectedIds} />
+                    </div>
 
-            <section>
-                <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    Semantic suggestions
-                </h3>
-                <RelatedSuggestions chunkId={chunkId} chunkTitle={chunkTitle} connectedIds={connectedIds} />
+                    <div>
+                        <div className="mb-1 text-[10px] text-muted-foreground/70">By rule-based analysis</div>
+                        <SuggestedConnections chunkId={chunkId} />
+                    </div>
+                </div>
             </section>
         </div>
     );

@@ -8,7 +8,7 @@ import { VersionHistory } from "@/features/chunks/version-history";
 
 import type { AppliesTo, FileReference } from "./more-context-context-tab";
 import { MoreContextContextTab } from "./more-context-context-tab";
-import type { ConnectionItem, TagItem } from "./more-context-links-tab";
+import type { ConnectionItem } from "./more-context-links-tab";
 import { MoreContextLinksTab } from "./more-context-links-tab";
 
 export type DrawerTab = "links" | "context" | "comments" | "history";
@@ -23,7 +23,6 @@ export interface MoreContextDrawerProps {
     chunkTitle: string;
     outgoing: ConnectionItem[];
     incoming: ConnectionItem[];
-    tags: TagItem[];
     appliesTo?: AppliesTo[];
     fileReferences?: FileReference[];
     initialTab?: DrawerTab;
@@ -36,7 +35,6 @@ export function MoreContextDrawer({
     chunkTitle,
     outgoing,
     incoming,
-    tags,
     appliesTo,
     fileReferences,
     initialTab,
@@ -112,7 +110,6 @@ export function MoreContextDrawer({
                             chunkTitle={chunkTitle}
                             outgoing={outgoing}
                             incoming={incoming}
-                            tags={tags}
                         />
                     )}
                     {tab === "context" && (

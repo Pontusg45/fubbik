@@ -344,7 +344,6 @@ function ChunkDetail() {
                     chunkTitle={chunk.title}
                     outgoing={outgoing}
                     incoming={incoming}
-                    tags={tags}
                     appliesTo={appliesTo}
                     fileReferences={fileReferences}
                     initialTab={drawerTab}
