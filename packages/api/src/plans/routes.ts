@@ -2,280 +2,89 @@ import { Effect } from "effect";
 import { Elysia, t } from "elysia";
 
 import { requireSession } from "../require-session";
-import { parsePlanMarkdown } from "./parse-plan-markdown";
 import * as planService from "./service";
 
-export const planRoutes = new Elysia()
+const planBase = new Elysia({ prefix: "/api/plans" })
     .get(
-        "/plans",
-        ctx =>
-            Effect.runPromise(
+        "/",
+        async ctx => {
+            return await Effect.runPromise(
                 requireSession(ctx).pipe(
                     Effect.flatMap(session =>
-                        planService.listPlans(session.user.id, ctx.query.codebaseId, ctx.query.status)
-                    )
-                )
-            ),
+                        planService.listPlans({
+                            userId: session.user.id,
+                            codebaseId: ctx.query.codebaseId,
+                            status: ctx.query.status,
+                            requirementId: ctx.query.requirementId,
+                            includeArchived: ctx.query.includeArchived === "true",
+                        }),
+                    ),
+                ),
+            );
+        },
         {
             query: t.Object({
                 codebaseId: t.Optional(t.String()),
-                status: t.Optional(t.String())
-            })
-        }
+                status: t.Optional(t.String()),
+                requirementId: t.Optional(t.String()),
+                includeArchived: t.Optional(t.String()),
+            }),
+        },
     )
+    .get("/:id", async ctx => {
+        return await Effect.runPromise(
+            requireSession(ctx).pipe(Effect.flatMap(() => planService.getPlanDetail(ctx.params.id))),
+        );
+    })
     .post(
-        "/plans",
-        ctx =>
-            Effect.runPromise(
+        "/",
+        async ctx => {
+            return await Effect.runPromise(
                 requireSession(ctx).pipe(
-                    Effect.flatMap(session =>
-                        planService.createPlan(session.user.id, ctx.body)
-                    ),
-                    Effect.tap(() =>
-                        Effect.sync(() => {
-                            ctx.set.status = 201;
-                        })
-                    )
-                )
-            ),
+                    Effect.flatMap(session => planService.createPlan(session.user.id, ctx.body)),
+                ),
+            );
+        },
         {
             body: t.Object({
-                title: t.String({ maxLength: 200 }),
-                description: t.Optional(t.String({ maxLength: 5000 })),
-                status: t.Optional(t.String()),
+                title: t.String(),
+                description: t.Optional(t.String()),
                 codebaseId: t.Optional(t.String()),
-                template: t.Optional(t.String()),
-                steps: t.Optional(
+                requirementIds: t.Optional(t.Array(t.String())),
+                tasks: t.Optional(
                     t.Array(
                         t.Object({
-                            description: t.String({ maxLength: 2000 }),
-                            order: t.Optional(t.Number()),
-                            parentStepId: t.Optional(t.String()),
-                            note: t.Optional(t.String({ maxLength: 2000 })),
-                            chunkId: t.Optional(t.String()),
-                            requirementId: t.Optional(t.String()),
-                            dependsOnStepId: t.Optional(t.String())
-                        })
-                    )
-                )
-            })
-        }
-    )
-    .get("/plans/templates", () => ({ templates: planService.listPlanTemplates() }))
-    .post(
-        "/plans/generate-from-requirements",
-        ctx =>
-            Effect.runPromise(
-                requireSession(ctx).pipe(
-                    Effect.flatMap(session =>
-                        planService.generatePlanFromRequirements(session.user.id, ctx.body)
+                            title: t.String(),
+                            description: t.Optional(t.String()),
+                            acceptanceCriteria: t.Optional(t.Array(t.String())),
+                        }),
                     ),
-                    Effect.tap(() =>
-                        Effect.sync(() => {
-                            ctx.set.status = 201;
-                        })
-                    )
-                )
-            ),
-        {
-            body: t.Object({
-                title: t.String({ maxLength: 200 }),
-                description: t.Optional(t.String({ maxLength: 5000 })),
-                requirementIds: t.Array(t.String()),
-                codebaseId: t.Optional(t.String()),
-                template: t.Optional(t.Union([t.Literal("standard"), t.Literal("detailed")]))
-            })
-        }
-    )
-    .post(
-        "/plans/import-markdown",
-        ctx =>
-            Effect.runPromise(
-                requireSession(ctx).pipe(
-                    Effect.flatMap(session => {
-                        const parsed = parsePlanMarkdown(ctx.body.markdown);
-                        return planService.createPlan(session.user.id, {
-                            title: ctx.body.title ?? parsed.title,
-                            description: ctx.body.description ?? parsed.description,
-                            codebaseId: ctx.body.codebaseId,
-                            steps: parsed.steps.map(s => ({
-                                description: s.taskGroup
-                                    ? `[${s.taskGroup}] ${s.description}`
-                                    : s.description,
-                                order: s.order
-                            }))
-                        });
-                    }),
-                    Effect.tap(() =>
-                        Effect.sync(() => {
-                            ctx.set.status = 201;
-                        })
-                    )
-                )
-            ),
-        {
-            body: t.Object({
-                markdown: t.String({ maxLength: 100000 }),
-                title: t.Optional(t.String({ maxLength: 200 })),
-                description: t.Optional(t.String({ maxLength: 5000 })),
-                codebaseId: t.Optional(t.String())
-            })
-        }
-    )
-    .get("/plans/:id", ctx =>
-        Effect.runPromise(
-            requireSession(ctx).pipe(
-                Effect.flatMap(session =>
-                    planService.getPlanDetail(ctx.params.id, session.user.id)
-                )
-            )
-        )
+                ),
+            }),
+        },
     )
     .patch(
-        "/plans/:id",
-        ctx =>
-            Effect.runPromise(
-                requireSession(ctx).pipe(
-                    Effect.flatMap(session =>
-                        planService.updatePlan(ctx.params.id, session.user.id, ctx.body)
-                    )
-                )
-            ),
+        "/:id",
+        async ctx => {
+            return await Effect.runPromise(
+                requireSession(ctx).pipe(Effect.flatMap(() => planService.updatePlan(ctx.params.id, ctx.body))),
+            );
+        },
         {
             body: t.Object({
-                title: t.Optional(t.String({ maxLength: 200 })),
-                description: t.Optional(t.Union([t.String({ maxLength: 5000 }), t.Null()])),
+                title: t.Optional(t.String()),
+                description: t.Optional(t.Union([t.String(), t.Null()])),
                 status: t.Optional(t.String()),
-                codebaseId: t.Optional(t.Union([t.String(), t.Null()]))
-            })
-        }
+                codebaseId: t.Optional(t.Union([t.String(), t.Null()])),
+            }),
+        },
     )
-    .delete("/plans/:id", ctx =>
-        Effect.runPromise(
-            requireSession(ctx).pipe(
-                Effect.flatMap(session =>
-                    planService.deletePlan(ctx.params.id, session.user.id)
-                ),
-                Effect.map(() => ({ message: "Deleted" }))
-            )
-        )
-    )
-    // ── Steps ──────────────────────────────────────────────────────
-    .post(
-        "/plans/:id/steps",
-        ctx =>
-            Effect.runPromise(
-                requireSession(ctx).pipe(
-                    Effect.flatMap(session =>
-                        planService.addStep(ctx.params.id, session.user.id, ctx.body)
-                    ),
-                    Effect.tap(() =>
-                        Effect.sync(() => {
-                            ctx.set.status = 201;
-                        })
-                    )
-                )
-            ),
-        {
-            body: t.Object({
-                description: t.String({ maxLength: 2000 }),
-                order: t.Optional(t.Number()),
-                parentStepId: t.Optional(t.String()),
-                note: t.Optional(t.String({ maxLength: 2000 })),
-                chunkId: t.Optional(t.String()),
-                requirementId: t.Optional(t.String()),
-                dependsOnStepId: t.Optional(t.String())
-            })
-        }
-    )
-    .patch(
-        "/plans/:id/steps/:stepId",
-        ctx =>
-            Effect.runPromise(
-                requireSession(ctx).pipe(
-                    Effect.flatMap(session =>
-                        planService.updateStep(
-                            ctx.params.id,
-                            ctx.params.stepId,
-                            session.user.id,
-                            ctx.body
-                        )
-                    )
-                )
-            ),
-        {
-            body: t.Object({
-                description: t.Optional(t.String({ maxLength: 2000 })),
-                status: t.Optional(t.String()),
-                order: t.Optional(t.Number()),
-                parentStepId: t.Optional(t.Union([t.String(), t.Null()])),
-                note: t.Optional(t.Union([t.String({ maxLength: 2000 }), t.Null()])),
-                chunkId: t.Optional(t.Union([t.String(), t.Null()])),
-                requirementId: t.Optional(t.Union([t.String(), t.Null()])),
-                dependsOnStepId: t.Optional(t.Union([t.String(), t.Null()]))
-            })
-        }
-    )
-    .post(
-        "/plans/:id/steps/reorder",
-        ctx =>
-            Effect.runPromise(
-                requireSession(ctx).pipe(
-                    Effect.flatMap(session =>
-                        planService.reorderSteps(ctx.params.id, session.user.id, ctx.body.stepIds)
-                    )
-                )
-            ),
-        {
-            body: t.Object({
-                stepIds: t.Array(t.String())
-            })
-        }
-    )
-    .delete("/plans/:id/steps/:stepId", ctx =>
-        Effect.runPromise(
-            requireSession(ctx).pipe(
-                Effect.flatMap(session =>
-                    planService.deleteStep(ctx.params.id, ctx.params.stepId, session.user.id)
-                ),
-                Effect.map(() => ({ message: "Deleted" }))
-            )
-        )
-    )
-    // ── Chunk Refs ─────────────────────────────────────────────────
-    .post(
-        "/plans/:id/chunks",
-        ctx =>
-            Effect.runPromise(
-                requireSession(ctx).pipe(
-                    Effect.flatMap(session =>
-                        planService.addPlanChunkRef(ctx.params.id, session.user.id, ctx.body)
-                    ),
-                    Effect.tap(() =>
-                        Effect.sync(() => {
-                            ctx.set.status = 201;
-                        })
-                    )
-                )
-            ),
-        {
-            body: t.Object({
-                chunkId: t.String(),
-                relation: t.Optional(t.String())
-            })
-        }
-    )
-    .delete("/plans/:id/chunks/:refId", ctx =>
-        Effect.runPromise(
-            requireSession(ctx).pipe(
-                Effect.flatMap(session =>
-                    planService.removePlanChunkRef(
-                        ctx.params.id,
-                        ctx.params.refId,
-                        session.user.id
-                    )
-                ),
-                Effect.map(() => ({ message: "Deleted" }))
-            )
-        )
-    );
+    .delete("/:id", async ctx => {
+        await Effect.runPromise(
+            requireSession(ctx).pipe(Effect.flatMap(() => planService.deletePlan(ctx.params.id))),
+        );
+        return { ok: true };
+    });
+
+// Sub-routes (requirements, analyze, tasks) will be added in Tasks 4-6.
+export const planRoutes = planBase;
