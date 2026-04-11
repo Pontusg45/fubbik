@@ -1,4 +1,5 @@
-import { listChunksByTag, listRequirements, listSessions, getSessionDetail, listPlans, getStepsForPlan, getChunksForRequirement } from "@fubbik/db/repository";
+import { listChunksByTag, listRequirements, listPlans, getChunksForRequirement } from "@fubbik/db/repository";
+import { listTasks } from "@fubbik/db/repository/plan";
 import { Effect } from "effect";
 
 interface GenerateClaudeMdParams {
@@ -109,54 +110,29 @@ export function generateClaudeMd(params: GenerateClaudeMdParams) {
         }
 
         // ── Active plans section ──
-        const plans = yield* listPlans(params.userId, params.codebaseId, "active");
+        const plans = yield* listPlans({
+            userId: params.userId,
+            codebaseId: params.codebaseId,
+            status: "in_progress",
+        });
 
         if (plans.length > 0) {
             parts.push("## Active Plans\n");
 
             for (const plan of plans) {
-                const steps = yield* getStepsForPlan(plan.id);
-                type Step = (typeof steps)[number];
-                const done = steps.filter((s: Step) => s.status === "done" || s.status === "skipped").length;
-                const total = steps.length;
+                const tasks = yield* listTasks(plan.id);
+                const done = tasks.filter(t => t.status === "done").length;
+                const total = tasks.length;
                 const pct = total > 0 ? Math.round((done / total) * 100) : 0;
 
-                parts.push(`### ${plan.title} (${done}/${total} steps — ${pct}%)`);
+                parts.push(`### ${plan.title} (${done}/${total} tasks — ${pct}%)`);
 
-                const pending = steps.filter(
-                    (s: Step) => s.status === "pending" || s.status === "in_progress"
+                const pending = tasks.filter(
+                    t => t.status === "pending" || t.status === "in_progress"
                 );
                 if (pending.length > 0) {
-                    const pendingText = pending.map((s: Step) => `- [ ] ${s.description}`).join("\n");
+                    const pendingText = pending.map(t => `- [ ] ${t.title}`).join("\n");
                     parts.push(pendingText);
-                }
-            }
-        }
-
-        // ── Recent sessions section ──
-        const { sessions } = yield* listSessions({
-            userId: params.userId,
-            status: "completed",
-            limit: 5,
-            offset: 0
-        });
-
-        if (sessions.length > 0) {
-            parts.push("## Recent Implementation Sessions\n");
-
-            for (const session of sessions) {
-                const detail = yield* getSessionDetail(session.id);
-                const reqCount = detail.requirementRefs?.length ?? 0;
-                const unresolvedCount = (detail.assumptions ?? []).filter(
-                    (a: { resolved: boolean }) => !a.resolved
-                ).length;
-
-                let line = `### ${session.title} — ${session.status}`;
-                if (reqCount > 0) line += ` (${reqCount} requirements addressed)`;
-                parts.push(line);
-
-                if (unresolvedCount > 0) {
-                    parts.push(`**${unresolvedCount} unresolved assumption(s)**`);
                 }
             }
         }
