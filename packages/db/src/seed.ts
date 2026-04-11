@@ -12,8 +12,7 @@ import { chunkAppliesTo } from "./schema/applies-to";
 import { chunkFileRef } from "./schema/file-ref";
 import { requirement, requirementChunk } from "./schema/requirement";
 import { useCase } from "./schema/use-case";
-// TODO: removed in plans rewrite — planStep and planChunkRef deleted (Task 17 will rewrite seed)
-import { plan } from "./schema/plan";
+import { plan, planRequirement, planAnalyzeItem, planTask } from "./schema/plan";
 import { vocabularyEntry } from "./schema/vocabulary";
 import { collection } from "./schema/collection";
 import { workspace, workspaceCodebase } from "./schema/workspace";
@@ -44,7 +43,10 @@ await db.delete(workspaceCodebase).catch(() => {});
 await db.delete(workspace).where(eq(workspace.userId, DEV_USER_ID)).catch(() => {});
 await db.delete(collection).where(eq(collection.userId, DEV_USER_ID)).catch(() => {});
 await db.delete(vocabularyEntry).where(eq(vocabularyEntry.userId, DEV_USER_ID)).catch(() => {});
-// TODO: removed in plans rewrite — planChunkRef and planStep deleted (Task 17 will rewrite seed)
+// Delete plan sub-tables first (FK constraints), then plans
+await db.delete(planTask).catch(() => {});
+await db.delete(planAnalyzeItem).catch(() => {});
+await db.delete(planRequirement).catch(() => {});
 await db.delete(plan).where(eq(plan.userId, DEV_USER_ID)).catch(() => {});
 await db.delete(requirementChunk).catch(() => {});
 await db.delete(requirement).where(eq(requirement.userId, DEV_USER_ID)).catch(() => {});
@@ -1633,29 +1635,129 @@ for (const rc of reqChunkLinks) {
 }
 console.log(`  \u2713 ${reqChunkLinks.length} requirement-chunk links`);
 
-// ─── 6. Plan ───────────────────────────────────────────────────────
-const PLAN_ID = "seed-plan-docs";
-await db
+// ─── 6. Plans ──────────────────────────────────────────────────────
+
+const [planCompleted] = await db
     .insert(plan)
     .values({
-        id: PLAN_ID,
-        title: "Improve fubbik documentation",
-        description: "Comprehensive documentation improvement plan covering API docs, ADRs, onboarding, deployment, and automation",
+        title: "Add user avatars",
+        description:
+            "Let users upload a profile picture. Shown on chunk detail pages and in the top-right nav.",
+        status: "completed",
+        userId: DEV_USER_ID,
+        codebaseId: CODEBASE_ID,
+        completedAt: new Date(),
+    })
+    .returning();
+
+if (!planCompleted) throw new Error("failed to seed completed plan");
+
+await db.insert(planTask).values([
+    { planId: planCompleted.id, title: "Add avatar column to user table", status: "done", order: 0 },
+    { planId: planCompleted.id, title: "Wire upload endpoint", status: "done", order: 1 },
+    { planId: planCompleted.id, title: "Render avatar in nav", status: "done", order: 2 },
+]);
+
+const [planInProgress] = await db
+    .insert(plan)
+    .values({
+        title: "Federated chunk search",
+        description:
+            "Search chunks across all linked codebases from one query. Returns results grouped by codebase.",
         status: "in_progress",
         userId: DEV_USER_ID,
-        codebaseId: CODEBASE_ID
+        codebaseId: CODEBASE_ID,
     })
-    .catch(e => console.error("  \u2717 plan:", e));
-console.log("  \u2713 1 plan");
+    .returning();
 
-// TODO: removed in plans rewrite — planStep and planChunkRef deleted (Task 17 will rewrite seed)
-// const seedPlanSteps = [...];
-// const planChunkRefs = [...];
+if (!planInProgress) throw new Error("failed to seed in_progress plan");
 
-// TODO: removed in plans rewrite — implementation sessions deleted (Task 17 will rewrite seed)
-// ─── 7. Implementation Sessions (Reviews) — REMOVED ─────────────────
+// Link the first requirement if one exists
+await db.insert(planRequirement).values({
+    planId: planInProgress.id,
+    requirementId: "seed-req-plan",
+    order: 0,
+}).catch(e => console.error("  ✗ planRequirement:", e));
 
-// TODO: removed in plans rewrite — sessions data deleted (Task 17 will rewrite seed)
+await db.insert(planAnalyzeItem).values([
+    {
+        planId: planInProgress.id,
+        kind: "chunk",
+        chunkId: ids.apiChunks,
+        text: "Existing search service entry point",
+        order: 0,
+    },
+    {
+        planId: planInProgress.id,
+        kind: "file",
+        filePath: "packages/api/src/search/service.ts",
+        text: "Main search entry point",
+        metadata: { lineStart: 1, lineEnd: 50 },
+        order: 1,
+    },
+    {
+        planId: planInProgress.id,
+        kind: "risk",
+        text: "Cross-codebase indexes may blow up memory for 10+ codebases",
+        metadata: { severity: "medium" },
+        order: 2,
+    },
+    {
+        planId: planInProgress.id,
+        kind: "assumption",
+        text: "All codebases share the same embedding model",
+        metadata: { verified: false },
+        order: 3,
+    },
+    {
+        planId: planInProgress.id,
+        kind: "question",
+        text: "Should archived codebases be searchable?",
+        metadata: { answered: false },
+        order: 4,
+    },
+]);
+
+await db.insert(planTask).values([
+    { planId: planInProgress.id, title: "Extend search service to accept codebase list", status: "done", order: 0 },
+    { planId: planInProgress.id, title: "Group results by codebase in response", status: "in_progress", order: 1 },
+    { planId: planInProgress.id, title: "Add federated mode toggle to search page", status: "pending", order: 2 },
+    { planId: planInProgress.id, title: "Integration test: 3 codebases, 1 query", status: "pending", order: 3 },
+    { planId: planInProgress.id, title: "Update CLAUDE.md with federated search docs", status: "pending", order: 4 },
+]);
+
+const [planAnalyzing] = await db
+    .insert(plan)
+    .values({
+        title: "Plans as a central entity",
+        description:
+            "Make Plan the home for a unit of work — description, linked requirements, structured analyze fields, and enriched tasks.",
+        status: "analyzing",
+        userId: DEV_USER_ID,
+        codebaseId: CODEBASE_ID,
+    })
+    .returning();
+
+if (!planAnalyzing) throw new Error("failed to seed analyzing plan");
+
+await db.insert(planAnalyzeItem).values([
+    {
+        planId: planAnalyzing.id,
+        kind: "risk",
+        text: "Dropping session data loses review history",
+        metadata: { severity: "low" },
+        order: 0,
+    },
+    {
+        planId: planAnalyzing.id,
+        kind: "assumption",
+        text: "Existing plan data is mostly seed/scratch, safe to wipe",
+        metadata: { verified: true },
+        order: 1,
+    },
+]);
+
+console.log("  ✓ 3 plans with tasks and analyze items");
 
 // ─── 8. Document Chunks ───────────────────────────────────────────
 import { document } from "./schema/document";
@@ -2027,24 +2129,7 @@ for (const rc of moreReqChunkLinks) {
 }
 console.log(`  \u2713 ${moreReqChunkLinks.length} more requirement-chunk links`);
 
-// ─── 12. Second plan (Frontend polish) ─────────────────────────────
-const PLAN_POLISH_ID = "seed-plan-polish";
-await db
-    .insert(plan)
-    .values({
-        id: PLAN_POLISH_ID,
-        title: "Frontend polish",
-        description: "UI improvements to the web application covering graph, chunk list, workspace management, plans, and traceability",
-        status: "active",
-        userId: DEV_USER_ID,
-        codebaseId: CODEBASE_ID
-    })
-    .catch(e => console.error("  \u2717 polish plan:", e));
-console.log("  \u2713 1 frontend polish plan");
-
-// TODO: removed in plans rewrite — planStep and planChunkRef deleted (Task 17 will rewrite seed)
-// const polishPlanSteps = [...];
-// const polishPlanChunkRefs = [...];
+// (Second plan seeding moved to section 6 — Plans)
 
 // ─── 13. More vocabulary ────────────────────────────────────────────
 const moreVocabEntries = [
