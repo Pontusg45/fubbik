@@ -32,9 +32,11 @@ import { Route as CodebasesRouteImport } from "./routes/codebases";
 import { Route as BrowseRouteImport } from "./routes/browse";
 import { Route as ActivityRouteImport } from "./routes/activity";
 import { Route as IndexRouteImport } from "./routes/index";
+import { Route as PlansIndexRouteImport } from "./routes/plans.index";
 import { Route as ChunksIndexRouteImport } from "./routes/chunks.index";
 import { Route as RequirementsNewRouteImport } from "./routes/requirements_.new";
 import { Route as RequirementsRequirementIdRouteImport } from "./routes/requirements_.$requirementId";
+import { Route as PlansNewRouteImport } from "./routes/plans.new";
 import { Route as LearnPathIdRouteImport } from "./routes/learn.$pathId";
 import { Route as GraphGraphIdRouteImport } from "./routes/graph_.$graphId";
 import { Route as CodebasesCodebaseIdRouteImport } from "./routes/codebases.$codebaseId";
@@ -159,6 +161,11 @@ const IndexRoute = IndexRouteImport.update({
   path: "/",
   getParentRoute: () => rootRouteImport,
 } as any);
+const PlansIndexRoute = PlansIndexRouteImport.update({
+  id: "/plans/",
+  path: "/plans/",
+  getParentRoute: () => rootRouteImport,
+} as any);
 const ChunksIndexRoute = ChunksIndexRouteImport.update({
   id: "/chunks/",
   path: "/chunks/",
@@ -175,6 +182,11 @@ const RequirementsRequirementIdRoute =
     path: "/requirements/$requirementId",
     getParentRoute: () => rootRouteImport,
   } as any);
+const PlansNewRoute = PlansNewRouteImport.update({
+  id: "/plans/new",
+  path: "/plans/new",
+  getParentRoute: () => rootRouteImport,
+} as any);
 const LearnPathIdRoute = LearnPathIdRouteImport.update({
   id: "/$pathId",
   path: "/$pathId",
@@ -247,9 +259,11 @@ export interface FileRoutesByFullPath {
   "/codebases/$codebaseId": typeof CodebasesCodebaseIdRoute;
   "/graph/$graphId": typeof GraphGraphIdRoute;
   "/learn/$pathId": typeof LearnPathIdRoute;
+  "/plans/new": typeof PlansNewRoute;
   "/requirements/$requirementId": typeof RequirementsRequirementIdRoute;
   "/requirements/new": typeof RequirementsNewRoute;
   "/chunks/": typeof ChunksIndexRoute;
+  "/plans/": typeof PlansIndexRoute;
   "/chunks/$chunkId/edit": typeof ChunksChunkIdEditRoute;
 }
 export interface FileRoutesByTo {
@@ -283,9 +297,11 @@ export interface FileRoutesByTo {
   "/codebases/$codebaseId": typeof CodebasesCodebaseIdRoute;
   "/graph/$graphId": typeof GraphGraphIdRoute;
   "/learn/$pathId": typeof LearnPathIdRoute;
+  "/plans/new": typeof PlansNewRoute;
   "/requirements/$requirementId": typeof RequirementsRequirementIdRoute;
   "/requirements/new": typeof RequirementsNewRoute;
   "/chunks": typeof ChunksIndexRoute;
+  "/plans": typeof PlansIndexRoute;
   "/chunks/$chunkId/edit": typeof ChunksChunkIdEditRoute;
 }
 export interface FileRoutesById {
@@ -320,9 +336,11 @@ export interface FileRoutesById {
   "/codebases/$codebaseId": typeof CodebasesCodebaseIdRoute;
   "/graph_/$graphId": typeof GraphGraphIdRoute;
   "/learn/$pathId": typeof LearnPathIdRoute;
+  "/plans/new": typeof PlansNewRoute;
   "/requirements_/$requirementId": typeof RequirementsRequirementIdRoute;
   "/requirements_/new": typeof RequirementsNewRoute;
   "/chunks/": typeof ChunksIndexRoute;
+  "/plans/": typeof PlansIndexRoute;
   "/chunks/$chunkId_/edit": typeof ChunksChunkIdEditRoute;
 }
 export interface FileRouteTypes {
@@ -358,9 +376,11 @@ export interface FileRouteTypes {
     | "/codebases/$codebaseId"
     | "/graph/$graphId"
     | "/learn/$pathId"
+    | "/plans/new"
     | "/requirements/$requirementId"
     | "/requirements/new"
     | "/chunks/"
+    | "/plans/"
     | "/chunks/$chunkId/edit";
   fileRoutesByTo: FileRoutesByTo;
   to:
@@ -394,9 +414,11 @@ export interface FileRouteTypes {
     | "/codebases/$codebaseId"
     | "/graph/$graphId"
     | "/learn/$pathId"
+    | "/plans/new"
     | "/requirements/$requirementId"
     | "/requirements/new"
     | "/chunks"
+    | "/plans"
     | "/chunks/$chunkId/edit";
   id:
     | "__root__"
@@ -430,9 +452,11 @@ export interface FileRouteTypes {
     | "/codebases/$codebaseId"
     | "/graph_/$graphId"
     | "/learn/$pathId"
+    | "/plans/new"
     | "/requirements_/$requirementId"
     | "/requirements_/new"
     | "/chunks/"
+    | "/plans/"
     | "/chunks/$chunkId_/edit";
   fileRoutesById: FileRoutesById;
 }
@@ -464,9 +488,11 @@ export interface RootRouteChildren {
   ChunksArchivedRoute: typeof ChunksArchivedRoute;
   ChunksNewRoute: typeof ChunksNewRoute;
   GraphGraphIdRoute: typeof GraphGraphIdRoute;
+  PlansNewRoute: typeof PlansNewRoute;
   RequirementsRequirementIdRoute: typeof RequirementsRequirementIdRoute;
   RequirementsNewRoute: typeof RequirementsNewRoute;
   ChunksIndexRoute: typeof ChunksIndexRoute;
+  PlansIndexRoute: typeof PlansIndexRoute;
   ChunksChunkIdEditRoute: typeof ChunksChunkIdEditRoute;
 }
 
@@ -633,6 +659,13 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof IndexRouteImport;
       parentRoute: typeof rootRouteImport;
     };
+    "/plans/": {
+      id: "/plans/";
+      path: "/plans";
+      fullPath: "/plans/";
+      preLoaderRoute: typeof PlansIndexRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     "/chunks/": {
       id: "/chunks/";
       path: "/chunks";
@@ -652,6 +685,13 @@ declare module "@tanstack/react-router" {
       path: "/requirements/$requirementId";
       fullPath: "/requirements/$requirementId";
       preLoaderRoute: typeof RequirementsRequirementIdRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/plans/new": {
+      id: "/plans/new";
+      path: "/plans/new";
+      fullPath: "/plans/new";
+      preLoaderRoute: typeof PlansNewRouteImport;
       parentRoute: typeof rootRouteImport;
     };
     "/learn/$pathId": {
@@ -774,9 +814,11 @@ const rootRouteChildren: RootRouteChildren = {
   ChunksArchivedRoute: ChunksArchivedRoute,
   ChunksNewRoute: ChunksNewRoute,
   GraphGraphIdRoute: GraphGraphIdRoute,
+  PlansNewRoute: PlansNewRoute,
   RequirementsRequirementIdRoute: RequirementsRequirementIdRoute,
   RequirementsNewRoute: RequirementsNewRoute,
   ChunksIndexRoute: ChunksIndexRoute,
+  PlansIndexRoute: PlansIndexRoute,
   ChunksChunkIdEditRoute: ChunksChunkIdEditRoute,
 };
 export const routeTree = rootRouteImport
