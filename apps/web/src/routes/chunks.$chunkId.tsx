@@ -36,6 +36,7 @@ import { useRecentlyViewed } from "@/hooks/use-recently-viewed";
 import { useReadingTrail } from "@/hooks/use-reading-trail";
 import { useReaderSettings, getReaderClasses } from "@/hooks/use-reader-settings";
 import { ReaderSettingsPopover } from "@/features/chunks/reader-settings";
+import { SimilarButton } from "@/features/chunks/similar-button";
 import { getUser } from "@/functions/get-user";
 import { api } from "@/utils/api";
 import { archiveChunk } from "@/utils/api-helpers";
@@ -304,6 +305,7 @@ function ChunkDetail() {
                         Export MD
                     </Button>
                     <ReaderSettingsPopover />
+                    <SimilarButton chunkTitle={chunk.title} />
                     <Button variant="ghost" size="sm" onClick={toggleFocus} className="gap-1.5" title="Focus mode">
                         <Focus className="size-3.5" />
                         {focusMode ? "Exit focus" : "Focus"}
