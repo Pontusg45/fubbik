@@ -34,6 +34,8 @@ import { StalenessBanner } from "@/features/staleness/staleness-banner";
 import { useFocusMode } from "@/hooks/use-focus-mode";
 import { useRecentlyViewed } from "@/hooks/use-recently-viewed";
 import { useReadingTrail } from "@/hooks/use-reading-trail";
+import { useReaderSettings, getReaderClasses } from "@/hooks/use-reader-settings";
+import { ReaderSettingsPopover } from "@/features/chunks/reader-settings";
 import { getUser } from "@/functions/get-user";
 import { api } from "@/utils/api";
 import { archiveChunk } from "@/utils/api-helpers";
@@ -60,6 +62,8 @@ function ChunkDetail() {
     const { addVisit } = useReadingTrail();
     const { toggleFavorite, isFavorite } = useFavorites();
     const { enabled: focusMode, toggle: toggleFocus } = useFocusMode();
+    const { settings: readerSettings } = useReaderSettings();
+    const readerClasses = getReaderClasses(readerSettings);
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [scrollProgress, setScrollProgress] = useState(0);
 
@@ -299,6 +303,7 @@ function ChunkDetail() {
                         <Download className="size-3.5" />
                         Export MD
                     </Button>
+                    <ReaderSettingsPopover />
                     <Button variant="ghost" size="sm" onClick={toggleFocus} className="gap-1.5" title="Focus mode">
                         <Focus className="size-3.5" />
                         {focusMode ? "Exit focus" : "Focus"}
@@ -449,7 +454,7 @@ function ChunkDetail() {
             <StalenessBanner chunkId={chunkId} />
 
             <div className="lg:grid lg:grid-cols-[1fr_200px] lg:gap-8">
-                <div className="prose dark:prose-invert prose-sm max-w-none">
+                <div className={`prose dark:prose-invert prose-sm max-w-none ${readerClasses}`}>
                     <ChunkLinkRenderer content={chunk.content} currentChunkId={chunk.id} />
                 </div>
                 <aside className="hidden lg:block" data-focus-hide="true">
