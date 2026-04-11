@@ -13,7 +13,7 @@ import { user } from "./auth";
 export const plan = pgTable(
     "plan",
     {
-        id: text("id").primaryKey(),
+        id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
         title: text("title").notNull(),
         description: text("description"),
         status: text("status").notNull().default("draft"),
@@ -38,7 +38,7 @@ export const plan = pgTable(
 export const planRequirement = pgTable(
     "plan_requirement",
     {
-        id: text("id").primaryKey(),
+        id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
         planId: text("plan_id")
             .notNull()
             .references(() => plan.id, { onDelete: "cascade" }),
@@ -61,7 +61,7 @@ export const planRequirement = pgTable(
 export const planAnalyzeItem = pgTable(
     "plan_analyze_item",
     {
-        id: text("id").primaryKey(),
+        id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
         planId: text("plan_id")
             .notNull()
             .references(() => plan.id, { onDelete: "cascade" }),
@@ -86,7 +86,7 @@ export const planAnalyzeItem = pgTable(
 export const planTask = pgTable(
     "plan_task",
     {
-        id: text("id").primaryKey(),
+        id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
         planId: text("plan_id")
             .notNull()
             .references(() => plan.id, { onDelete: "cascade" }),
@@ -108,7 +108,7 @@ export const planTask = pgTable(
 export const planTaskChunk = pgTable(
     "plan_task_chunk",
     {
-        id: text("id").primaryKey(),
+        id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
         taskId: text("task_id")
             .notNull()
             .references(() => planTask.id, { onDelete: "cascade" }),
@@ -127,7 +127,7 @@ export const planTaskChunk = pgTable(
 export const planTaskDependency = pgTable(
     "plan_task_dependency",
     {
-        id: text("id").primaryKey(),
+        id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
         taskId: text("task_id")
             .notNull()
             .references(() => planTask.id, { onDelete: "cascade" }),
