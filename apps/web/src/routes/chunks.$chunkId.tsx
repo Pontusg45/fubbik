@@ -13,6 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { AiSection } from "@/features/chunks/ai-section";
 import { CollapsibleSection } from "@/features/chunks/collapsible-section";
 import { ChunkHealthBadge } from "@/features/chunks/chunk-health-badge";
+import { ChunkToc } from "@/features/chunks/chunk-toc";
 import { ChunkLinkRenderer } from "@/features/chunks/chunk-link-renderer";
 import { ChunkLink } from "@/features/chunks/chunk-link";
 import { getChunkSize } from "@/features/chunks/chunk-size";
@@ -422,8 +423,13 @@ function ChunkDetail() {
 
             <StalenessBanner chunkId={chunkId} />
 
-            <div className="prose dark:prose-invert prose-sm max-w-none">
-                <ChunkLinkRenderer content={chunk.content} currentChunkId={chunk.id} />
+            <div className="lg:grid lg:grid-cols-[1fr_200px] lg:gap-8">
+                <div className="prose dark:prose-invert prose-sm max-w-none">
+                    <ChunkLinkRenderer content={chunk.content} currentChunkId={chunk.id} />
+                </div>
+                <aside className="hidden lg:block" data-focus-hide="true">
+                    <ChunkToc content={chunk.content ?? ""} />
+                </aside>
             </div>
 
             {hasDecisionContext && (
