@@ -123,6 +123,8 @@ const shortcuts = [
     ]},
     { section: "Global", items: [
         { key: "?", description: "Show keyboard shortcuts" },
+        { key: "Ctrl+K", description: "Open command palette" },
+        { key: "Ctrl+O", description: "Quick open chunk (fuzzy)" },
         { key: "n", description: "Create new item (context-aware)" },
         { key: "e", description: "Edit current item (on detail pages)" },
         { key: "f", description: "Toggle focus mode" },

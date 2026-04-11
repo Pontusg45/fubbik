@@ -120,6 +120,8 @@ export function CommandPalette() {
     const { recentPages } = useRecentPages();
     const { setCodebaseId } = useActiveCodebase();
 
+    const isChunkMode = subMode === "chunks";
+
     const quickNoteMutation = useMutation({
         mutationFn: async (title: string) => {
             const result = unwrapEden(
@@ -151,12 +153,18 @@ export function CommandPalette() {
     const isFederatedSearch = query.startsWith("*");
     const federatedQuery = isFederatedSearch ? query.slice(1).trim() : "";
 
-    // Global Cmd+K / Ctrl+K shortcut
+    // Global Cmd+K / Ctrl+K shortcut, and Ctrl+O / Cmd+O for chunk quick-open
     useEffect(() => {
         const down = (e: KeyboardEvent) => {
             if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
                 e.preventDefault();
                 setOpen((prev) => !prev);
+            } else if (e.key === "o" && (e.metaKey || e.ctrlKey)) {
+                e.preventDefault();
+                setOpen(true);
+                setSubMode("chunks");
+                setQuery("");
+                setSelectedIndex(0);
             }
         };
         document.addEventListener("keydown", down);
@@ -279,6 +287,22 @@ export function CommandPalette() {
         staleTime: 60_000,
     });
 
+    // Fetch all chunks for the chunk quick-open (Ctrl+O) mode
+    const allChunksQuery = useQuery({
+        queryKey: ["command-palette-all-chunks"],
+        queryFn: async () => {
+            try {
+                return unwrapEden(
+                    await api.api.chunks.get({ query: { limit: "500" } })
+                ) as { chunks: Array<{ id: string; title: string; type: string }> };
+            } catch {
+                return { chunks: [] };
+            }
+        },
+        enabled: open && isChunkMode,
+        staleTime: 300_000,
+    });
+
     // Fetch recent chunk details
     const recentChunksQuery = useQuery({
         queryKey: ["command-palette-recent", recentIds],
@@ -325,6 +349,37 @@ export function CommandPalette() {
                     badge: cb.remoteUrl ? "git" : undefined,
                     onSelect: () => {
                         setCodebaseId(cb.id);
+                        close();
+                    },
+                });
+            }
+            return result;
+        }
+
+        // Sub-mode: chunk quick-open (Ctrl+O)
+        if (isChunkMode) {
+            const allChunks = allChunksQuery.data?.chunks ?? [];
+            // Client-side fuzzy filter: every character of the query must appear in order in the title
+            const filtered = allChunks
+                .filter((c) => {
+                    if (!lowerQuery) return true;
+                    const title = c.title.toLowerCase();
+                    let qi = 0;
+                    for (let i = 0; i < title.length && qi < lowerQuery.length; i++) {
+                        if (title[i] === lowerQuery[qi]) qi++;
+                    }
+                    return qi === lowerQuery.length;
+                })
+                .slice(0, 20);
+            for (const chunk of filtered) {
+                result.push({
+                    id: `qo-${chunk.id}`,
+                    title: chunk.title,
+                    group: "Chunks",
+                    icon: <Blocks className="size-4" />,
+                    badge: chunk.type,
+                    onSelect: () => {
+                        navigate({ to: "/chunks/$chunkId", params: { chunkId: chunk.id } });
                         close();
                     },
                 });
@@ -512,7 +567,7 @@ export function CommandPalette() {
         }
 
         return result;
-    }, [query, debouncedQuery, subMode, isTagSearch, isFederatedSearch, tagQuery, tagSearch.data, federatedSearch.data, recentPages, recentChunksQuery.data, chunkSearch.data, requirementsSearch.data, plansSearch.data, codebasesQuery.data, navigate, close, setCodebaseId, quickNoteMutation]);
+    }, [query, debouncedQuery, subMode, isChunkMode, isTagSearch, isFederatedSearch, tagQuery, tagSearch.data, federatedSearch.data, recentPages, recentChunksQuery.data, chunkSearch.data, requirementsSearch.data, plansSearch.data, codebasesQuery.data, allChunksQuery.data, navigate, close, setCodebaseId, quickNoteMutation]);
 
     // Clamp selected index when items change
     useEffect(() => {
@@ -590,7 +645,7 @@ export function CommandPalette() {
                         <Search className="text-muted-foreground size-4 shrink-0" />
                         {subMode && (
                             <Badge variant="secondary" size="sm" className="shrink-0">
-                                {subMode === "codebase" ? "Switch Codebase" : subMode}
+                                {subMode === "codebase" ? "Switch Codebase" : subMode === "chunks" ? "Go to Chunk" : subMode}
                             </Badge>
                         )}
                         <input
@@ -604,7 +659,9 @@ export function CommandPalette() {
                             placeholder={
                                 subMode === "codebase"
                                     ? "Filter codebases..."
-                                    : "Type a command or search... (# tags, * all codebases)"
+                                    : subMode === "chunks"
+                                      ? "Fuzzy search chunks..."
+                                      : "Type a command or search... (# tags, * all codebases)"
                             }
                             autoFocus
                             className="placeholder:text-muted-foreground flex-1 bg-transparent text-sm outline-none"
