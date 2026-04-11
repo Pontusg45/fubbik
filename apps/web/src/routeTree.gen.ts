@@ -18,6 +18,7 @@ import { Route as SearchRouteImport } from "./routes/search";
 import { Route as ReviewsRouteImport } from "./routes/reviews";
 import { Route as RequirementsRouteImport } from "./routes/requirements";
 import { Route as LoginRouteImport } from "./routes/login";
+import { Route as LearnRouteImport } from "./routes/learn";
 import { Route as KnowledgeHealthRouteImport } from "./routes/knowledge-health";
 import { Route as ImportRouteImport } from "./routes/import";
 import { Route as GraphRouteImport } from "./routes/graph";
@@ -40,6 +41,7 @@ import { Route as RequirementsNewRouteImport } from "./routes/requirements_.new"
 import { Route as RequirementsRequirementIdRouteImport } from "./routes/requirements_.$requirementId";
 import { Route as PlansNewRouteImport } from "./routes/plans.new";
 import { Route as PlansPlanIdRouteImport } from "./routes/plans.$planId";
+import { Route as LearnPathIdRouteImport } from "./routes/learn.$pathId";
 import { Route as GraphGraphIdRouteImport } from "./routes/graph_.$graphId";
 import { Route as CodebasesCodebaseIdRouteImport } from "./routes/codebases.$codebaseId";
 import { Route as ChunksNewRouteImport } from "./routes/chunks.new";
@@ -91,6 +93,11 @@ const RequirementsRoute = RequirementsRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: "/login",
   path: "/login",
+  getParentRoute: () => rootRouteImport,
+} as any);
+const LearnRoute = LearnRouteImport.update({
+  id: "/learn",
+  path: "/learn",
   getParentRoute: () => rootRouteImport,
 } as any);
 const KnowledgeHealthRoute = KnowledgeHealthRouteImport.update({
@@ -204,6 +211,11 @@ const PlansPlanIdRoute = PlansPlanIdRouteImport.update({
   path: "/plans/$planId",
   getParentRoute: () => rootRouteImport,
 } as any);
+const LearnPathIdRoute = LearnPathIdRouteImport.update({
+  id: "/$pathId",
+  path: "/$pathId",
+  getParentRoute: () => LearnRoute,
+} as any);
 const GraphGraphIdRoute = GraphGraphIdRouteImport.update({
   id: "/graph_/$graphId",
   path: "/graph/$graphId",
@@ -255,6 +267,7 @@ export interface FileRoutesByFullPath {
   "/graph": typeof GraphRoute;
   "/import": typeof ImportRoute;
   "/knowledge-health": typeof KnowledgeHealthRoute;
+  "/learn": typeof LearnRouteWithChildren;
   "/login": typeof LoginRoute;
   "/requirements": typeof RequirementsRoute;
   "/reviews": typeof ReviewsRoute;
@@ -270,6 +283,7 @@ export interface FileRoutesByFullPath {
   "/chunks/new": typeof ChunksNewRoute;
   "/codebases/$codebaseId": typeof CodebasesCodebaseIdRoute;
   "/graph/$graphId": typeof GraphGraphIdRoute;
+  "/learn/$pathId": typeof LearnPathIdRoute;
   "/plans/$planId": typeof PlansPlanIdRoute;
   "/plans/new": typeof PlansNewRoute;
   "/requirements/$requirementId": typeof RequirementsRequirementIdRoute;
@@ -295,6 +309,7 @@ export interface FileRoutesByTo {
   "/graph": typeof GraphRoute;
   "/import": typeof ImportRoute;
   "/knowledge-health": typeof KnowledgeHealthRoute;
+  "/learn": typeof LearnRouteWithChildren;
   "/login": typeof LoginRoute;
   "/requirements": typeof RequirementsRoute;
   "/reviews": typeof ReviewsRoute;
@@ -310,6 +325,7 @@ export interface FileRoutesByTo {
   "/chunks/new": typeof ChunksNewRoute;
   "/codebases/$codebaseId": typeof CodebasesCodebaseIdRoute;
   "/graph/$graphId": typeof GraphGraphIdRoute;
+  "/learn/$pathId": typeof LearnPathIdRoute;
   "/plans/$planId": typeof PlansPlanIdRoute;
   "/plans/new": typeof PlansNewRoute;
   "/requirements/$requirementId": typeof RequirementsRequirementIdRoute;
@@ -336,6 +352,7 @@ export interface FileRoutesById {
   "/graph": typeof GraphRoute;
   "/import": typeof ImportRoute;
   "/knowledge-health": typeof KnowledgeHealthRoute;
+  "/learn": typeof LearnRouteWithChildren;
   "/login": typeof LoginRoute;
   "/requirements": typeof RequirementsRoute;
   "/reviews": typeof ReviewsRoute;
@@ -351,6 +368,7 @@ export interface FileRoutesById {
   "/chunks/new": typeof ChunksNewRoute;
   "/codebases/$codebaseId": typeof CodebasesCodebaseIdRoute;
   "/graph_/$graphId": typeof GraphGraphIdRoute;
+  "/learn/$pathId": typeof LearnPathIdRoute;
   "/plans/$planId": typeof PlansPlanIdRoute;
   "/plans/new": typeof PlansNewRoute;
   "/requirements_/$requirementId": typeof RequirementsRequirementIdRoute;
@@ -378,6 +396,7 @@ export interface FileRouteTypes {
     | "/graph"
     | "/import"
     | "/knowledge-health"
+    | "/learn"
     | "/login"
     | "/requirements"
     | "/reviews"
@@ -393,6 +412,7 @@ export interface FileRouteTypes {
     | "/chunks/new"
     | "/codebases/$codebaseId"
     | "/graph/$graphId"
+    | "/learn/$pathId"
     | "/plans/$planId"
     | "/plans/new"
     | "/requirements/$requirementId"
@@ -418,6 +438,7 @@ export interface FileRouteTypes {
     | "/graph"
     | "/import"
     | "/knowledge-health"
+    | "/learn"
     | "/login"
     | "/requirements"
     | "/reviews"
@@ -433,6 +454,7 @@ export interface FileRouteTypes {
     | "/chunks/new"
     | "/codebases/$codebaseId"
     | "/graph/$graphId"
+    | "/learn/$pathId"
     | "/plans/$planId"
     | "/plans/new"
     | "/requirements/$requirementId"
@@ -458,6 +480,7 @@ export interface FileRouteTypes {
     | "/graph"
     | "/import"
     | "/knowledge-health"
+    | "/learn"
     | "/login"
     | "/requirements"
     | "/reviews"
@@ -473,6 +496,7 @@ export interface FileRouteTypes {
     | "/chunks/new"
     | "/codebases/$codebaseId"
     | "/graph_/$graphId"
+    | "/learn/$pathId"
     | "/plans/$planId"
     | "/plans/new"
     | "/requirements_/$requirementId"
@@ -499,6 +523,7 @@ export interface RootRouteChildren {
   GraphRoute: typeof GraphRoute;
   ImportRoute: typeof ImportRoute;
   KnowledgeHealthRoute: typeof KnowledgeHealthRoute;
+  LearnRoute: typeof LearnRouteWithChildren;
   LoginRoute: typeof LoginRoute;
   RequirementsRoute: typeof RequirementsRoute;
   ReviewsRoute: typeof ReviewsRoute;
@@ -586,6 +611,13 @@ declare module "@tanstack/react-router" {
       path: "/login";
       fullPath: "/login";
       preLoaderRoute: typeof LoginRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/learn": {
+      id: "/learn";
+      path: "/learn";
+      fullPath: "/learn";
+      preLoaderRoute: typeof LearnRouteImport;
       parentRoute: typeof rootRouteImport;
     };
     "/knowledge-health": {
@@ -742,6 +774,13 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof PlansPlanIdRouteImport;
       parentRoute: typeof rootRouteImport;
     };
+    "/learn/$pathId": {
+      id: "/learn/$pathId";
+      path: "/$pathId";
+      fullPath: "/learn/$pathId";
+      preLoaderRoute: typeof LearnPathIdRouteImport;
+      parentRoute: typeof LearnRoute;
+    };
     "/graph_/$graphId": {
       id: "/graph_/$graphId";
       path: "/graph/$graphId";
@@ -817,6 +856,16 @@ const CodebasesRouteWithChildren = CodebasesRoute._addFileChildren(
   CodebasesRouteChildren,
 );
 
+interface LearnRouteChildren {
+  LearnPathIdRoute: typeof LearnPathIdRoute;
+}
+
+const LearnRouteChildren: LearnRouteChildren = {
+  LearnPathIdRoute: LearnPathIdRoute,
+};
+
+const LearnRouteWithChildren = LearnRoute._addFileChildren(LearnRouteChildren);
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ActivityRoute: ActivityRoute,
@@ -832,6 +881,7 @@ const rootRouteChildren: RootRouteChildren = {
   GraphRoute: GraphRoute,
   ImportRoute: ImportRoute,
   KnowledgeHealthRoute: KnowledgeHealthRoute,
+  LearnRoute: LearnRouteWithChildren,
   LoginRoute: LoginRoute,
   RequirementsRoute: RequirementsRoute,
   ReviewsRoute: ReviewsRoute,

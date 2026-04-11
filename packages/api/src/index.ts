@@ -42,6 +42,7 @@ import { settingsRoutes } from "./settings/routes";
 import { savedGraphRoutes } from "./saved-graphs/routes";
 import { stalenessRoutes } from "./staleness/routes";
 import { searchRoutes } from "./search/routes";
+import { learningPathRoutes } from "./learning-paths/routes";
 import { planRoutes } from "./plans/routes";
 import { taskQueueRoutes } from "./tasks/routes";
 import { vocabularyRoutes } from "./vocabulary/routes";
@@ -165,6 +166,7 @@ export const api = new Elysia({ prefix: "/api" })
     .use(workspaceRoutes)
     .use(stalenessRoutes)
     .use(savedGraphRoutes)
-    .use(searchRoutes);
+    .use(searchRoutes)
+    .use(learningPathRoutes);
 
 export type Api = typeof api;
