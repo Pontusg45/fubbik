@@ -29,6 +29,7 @@ import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SkeletonList } from "@/components/ui/skeleton-list";
+import { FeaturedChunkWidget } from "@/features/chunks/featured-chunk-widget";
 import { useFavorites } from "@/features/chunks/use-favorites";
 import { MilestoneCards } from "@/features/onboarding/milestone-cards";
 import { WelcomeWizard } from "@/features/onboarding/welcome-wizard";
@@ -405,6 +406,9 @@ function DashboardPage() {
 
                 {/* Right column — 1/3 */}
                 <div className="space-y-6">
+                    {/* Featured chunk of the day */}
+                    <FeaturedChunkWidget />
+
                     {/* Quick Actions */}
                     <div className="mb-0">
                         <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
