@@ -32,5 +32,6 @@ export * from "./saved-graph";
 export * from "./saved-query";
 export * from "./document";
 export * from "./staleness";
+export * from "./clusters";
 export * from "../age/query";
 export { isAgeAvailable } from "../age/client";

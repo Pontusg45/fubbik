@@ -9,6 +9,7 @@ registerEventHandlers();
 import { aiRoutes } from "./ai/routes";
 import { appliesToRoutes } from "./applies-to/routes";
 import { chunkRoutes } from "./chunks/routes";
+import { clusterRoutes } from "./chunks/cluster-routes";
 import { commentRoutes } from "./comments/routes";
 import { coverageRoutes } from "./coverage/routes";
 import { diagramRoutes } from "./diagram/routes";
@@ -131,6 +132,7 @@ export const api = new Elysia({ prefix: "/api" })
     .use(contextExportRoutes)
     .use(contextForFileRoutes)
     .use(chunkRoutes)
+    .use(clusterRoutes)
     .use(appliesToRoutes)
     .use(statsRoutes)
     .use(connectionRoutes)

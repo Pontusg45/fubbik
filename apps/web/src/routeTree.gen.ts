@@ -45,6 +45,7 @@ import { Route as CodebasesCodebaseIdRouteImport } from "./routes/codebases.$cod
 import { Route as ChunksNewRouteImport } from "./routes/chunks.new";
 import { Route as ChunksArchivedRouteImport } from "./routes/chunks.archived";
 import { Route as ChunksChunkIdRouteImport } from "./routes/chunks.$chunkId";
+import { Route as BrowseClustersRouteImport } from "./routes/browse.clusters";
 import { Route as ChunksChunkIdEditRouteImport } from "./routes/chunks.$chunkId_.edit";
 
 const WorkspacesRoute = WorkspacesRouteImport.update({
@@ -228,6 +229,11 @@ const ChunksChunkIdRoute = ChunksChunkIdRouteImport.update({
   path: "/chunks/$chunkId",
   getParentRoute: () => rootRouteImport,
 } as any);
+const BrowseClustersRoute = BrowseClustersRouteImport.update({
+  id: "/clusters",
+  path: "/clusters",
+  getParentRoute: () => BrowseRoute,
+} as any);
 const ChunksChunkIdEditRoute = ChunksChunkIdEditRouteImport.update({
   id: "/chunks/$chunkId_/edit",
   path: "/chunks/$chunkId/edit",
@@ -237,7 +243,7 @@ const ChunksChunkIdEditRoute = ChunksChunkIdEditRouteImport.update({
 export interface FileRoutesByFullPath {
   "/": typeof IndexRoute;
   "/activity": typeof ActivityRoute;
-  "/browse": typeof BrowseRoute;
+  "/browse": typeof BrowseRouteWithChildren;
   "/codebases": typeof CodebasesRouteWithChildren;
   "/compare": typeof CompareRoute;
   "/compose": typeof ComposeRoute;
@@ -258,6 +264,7 @@ export interface FileRoutesByFullPath {
   "/templates": typeof TemplatesRoute;
   "/vocabulary": typeof VocabularyRoute;
   "/workspaces": typeof WorkspacesRoute;
+  "/browse/clusters": typeof BrowseClustersRoute;
   "/chunks/$chunkId": typeof ChunksChunkIdRoute;
   "/chunks/archived": typeof ChunksArchivedRoute;
   "/chunks/new": typeof ChunksNewRoute;
@@ -276,7 +283,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   "/": typeof IndexRoute;
   "/activity": typeof ActivityRoute;
-  "/browse": typeof BrowseRoute;
+  "/browse": typeof BrowseRouteWithChildren;
   "/codebases": typeof CodebasesRouteWithChildren;
   "/compare": typeof CompareRoute;
   "/compose": typeof ComposeRoute;
@@ -297,6 +304,7 @@ export interface FileRoutesByTo {
   "/templates": typeof TemplatesRoute;
   "/vocabulary": typeof VocabularyRoute;
   "/workspaces": typeof WorkspacesRoute;
+  "/browse/clusters": typeof BrowseClustersRoute;
   "/chunks/$chunkId": typeof ChunksChunkIdRoute;
   "/chunks/archived": typeof ChunksArchivedRoute;
   "/chunks/new": typeof ChunksNewRoute;
@@ -316,7 +324,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport;
   "/": typeof IndexRoute;
   "/activity": typeof ActivityRoute;
-  "/browse": typeof BrowseRoute;
+  "/browse": typeof BrowseRouteWithChildren;
   "/codebases": typeof CodebasesRouteWithChildren;
   "/compare": typeof CompareRoute;
   "/compose": typeof ComposeRoute;
@@ -337,6 +345,7 @@ export interface FileRoutesById {
   "/templates": typeof TemplatesRoute;
   "/vocabulary": typeof VocabularyRoute;
   "/workspaces": typeof WorkspacesRoute;
+  "/browse/clusters": typeof BrowseClustersRoute;
   "/chunks/$chunkId": typeof ChunksChunkIdRoute;
   "/chunks/archived": typeof ChunksArchivedRoute;
   "/chunks/new": typeof ChunksNewRoute;
@@ -378,6 +387,7 @@ export interface FileRouteTypes {
     | "/templates"
     | "/vocabulary"
     | "/workspaces"
+    | "/browse/clusters"
     | "/chunks/$chunkId"
     | "/chunks/archived"
     | "/chunks/new"
@@ -417,6 +427,7 @@ export interface FileRouteTypes {
     | "/templates"
     | "/vocabulary"
     | "/workspaces"
+    | "/browse/clusters"
     | "/chunks/$chunkId"
     | "/chunks/archived"
     | "/chunks/new"
@@ -456,6 +467,7 @@ export interface FileRouteTypes {
     | "/templates"
     | "/vocabulary"
     | "/workspaces"
+    | "/browse/clusters"
     | "/chunks/$chunkId"
     | "/chunks/archived"
     | "/chunks/new"
@@ -475,7 +487,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute;
   ActivityRoute: typeof ActivityRoute;
-  BrowseRoute: typeof BrowseRoute;
+  BrowseRoute: typeof BrowseRouteWithChildren;
   CodebasesRoute: typeof CodebasesRouteWithChildren;
   CompareRoute: typeof CompareRoute;
   ComposeRoute: typeof ComposeRoute;
@@ -765,6 +777,13 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof ChunksChunkIdRouteImport;
       parentRoute: typeof rootRouteImport;
     };
+    "/browse/clusters": {
+      id: "/browse/clusters";
+      path: "/clusters";
+      fullPath: "/browse/clusters";
+      preLoaderRoute: typeof BrowseClustersRouteImport;
+      parentRoute: typeof BrowseRoute;
+    };
     "/chunks/$chunkId_/edit": {
       id: "/chunks/$chunkId_/edit";
       path: "/chunks/$chunkId/edit";
@@ -774,6 +793,17 @@ declare module "@tanstack/react-router" {
     };
   }
 }
+
+interface BrowseRouteChildren {
+  BrowseClustersRoute: typeof BrowseClustersRoute;
+}
+
+const BrowseRouteChildren: BrowseRouteChildren = {
+  BrowseClustersRoute: BrowseClustersRoute,
+};
+
+const BrowseRouteWithChildren =
+  BrowseRoute._addFileChildren(BrowseRouteChildren);
 
 interface CodebasesRouteChildren {
   CodebasesCodebaseIdRoute: typeof CodebasesCodebaseIdRoute;
@@ -790,7 +820,7 @@ const CodebasesRouteWithChildren = CodebasesRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ActivityRoute: ActivityRoute,
-  BrowseRoute: BrowseRoute,
+  BrowseRoute: BrowseRouteWithChildren,
   CodebasesRoute: CodebasesRouteWithChildren,
   CompareRoute: CompareRoute,
   ComposeRoute: ComposeRoute,
