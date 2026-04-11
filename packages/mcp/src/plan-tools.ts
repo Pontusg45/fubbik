@@ -4,291 +4,252 @@ import { apiFetch } from "./api-client.js";
 import type { McpPlugin } from "./plugin.js";
 
 export function registerPlanTools(server: McpServer): void {
-    // 1. create_plan
-    // 0. list_plan_templates
-    server.tool(
-        "list_plan_templates",
-        "List available plan templates (feature-dev, bug-fix, migration)",
-        {},
-        async () => {
-            const data = (await apiFetch("/plans/templates")) as {
-                templates: Array<{
-                    key: string;
-                    title: string;
-                    description: string;
-                    stepCount: number;
-                }>;
-            };
-
-            return {
-                content: [
-                    {
-                        type: "text" as const,
-                        text: JSON.stringify(data.templates, null, 2)
-                    }
-                ]
-            };
-        }
-    );
-
-    // 1. create_plan
     server.tool(
         "create_plan",
-        "Create a new plan with title, description, and optional steps. Use template param to start from a pre-built template.",
+        "Create a new plan with title, optional description, codebase, and requirements",
         {
             title: z.string().describe("Plan title"),
             description: z.string().optional().describe("Plan description"),
-            template: z
-                .string()
-                .optional()
-                .describe("Template name: feature-dev, bug-fix, or migration"),
-            steps: z
-                .array(z.string())
-                .optional()
-                .describe("List of step descriptions to add (overrides template steps)")
+            codebaseId: z.string().optional().describe("Codebase ID to associate with"),
+            requirementIds: z.array(z.string()).optional().describe("Requirement IDs to link"),
         },
-        async ({ title, description, template, steps }) => {
+        async ({ title, description, codebaseId, requirementIds }) => {
             const body: Record<string, unknown> = { title };
             if (description) body.description = description;
-            if (template) body.template = template;
-            if (steps) {
-                body.steps = steps.map((s, i) => ({
-                    description: s,
-                    order: i
-                }));
-            }
+            if (codebaseId) body.codebaseId = codebaseId;
+            if (requirementIds) body.requirementIds = requirementIds;
 
-            const data = (await apiFetch("/plans", {
+            const plan = (await apiFetch("/plans", {
                 method: "POST",
-                body: JSON.stringify(body)
-            })) as { id: string; title: string };
+                body: JSON.stringify(body),
+            })) as Record<string, unknown>;
 
-            return {
-                content: [
-                    {
-                        type: "text" as const,
-                        text: JSON.stringify(
-                            { id: data.id, title: data.title },
-                            null,
-                            2
-                        )
-                    }
-                ]
-            };
-        }
+            return { content: [{ type: "text" as const, text: JSON.stringify(plan, null, 2) }] };
+        },
     );
 
-    // 2. list_plans
     server.tool(
         "list_plans",
-        "List plans with optional status filter",
+        "List plans with optional filters",
         {
-            status: z
-                .enum(["draft", "active", "completed", "archived"])
-                .optional()
-                .describe("Filter by plan status")
+            codebaseId: z.string().optional().describe("Filter by codebase ID"),
+            status: z.string().optional().describe("Filter by status (draft, analyzing, ready, in_progress, completed, archived)"),
+            requirementId: z.string().optional().describe("Filter by linked requirement ID"),
         },
-        async ({ status }) => {
+        async ({ codebaseId, status, requirementId }) => {
             const params = new URLSearchParams();
+            if (codebaseId) params.set("codebaseId", codebaseId);
             if (status) params.set("status", status);
+            if (requirementId) params.set("requirementId", requirementId);
 
-            const data = (await apiFetch(`/plans?${params}`)) as {
-                plans: Array<{
-                    id: string;
-                    title: string;
-                    status: string;
-                    description: string | null;
-                }>;
-            };
-
-            const results = data.plans.map((p) => ({
-                id: p.id,
-                title: p.title,
-                status: p.status,
-                description: p.description
-            }));
-
-            return {
-                content: [
-                    {
-                        type: "text" as const,
-                        text: JSON.stringify(results, null, 2)
-                    }
-                ]
-            };
-        }
+            const plans = (await apiFetch(`/plans?${params}`)) as unknown;
+            return { content: [{ type: "text" as const, text: JSON.stringify(plans, null, 2) }] };
+        },
     );
 
-    // 3. get_plan
     server.tool(
         "get_plan",
-        "Get plan details with steps and progress",
-        {
-            planId: z.string().describe("Plan ID")
-        },
+        "Get plan details including tasks, analyze items, and requirements",
+        { planId: z.string().describe("Plan ID") },
         async ({ planId }) => {
-            const data = (await apiFetch(`/plans/${planId}`)) as Record<
-                string,
-                unknown
-            >;
-
-            return {
-                content: [
-                    {
-                        type: "text" as const,
-                        text: JSON.stringify(data, null, 2)
-                    }
-                ]
-            };
-        }
+            const detail = (await apiFetch(`/plans/${planId}`)) as unknown;
+            return { content: [{ type: "text" as const, text: JSON.stringify(detail, null, 2) }] };
+        },
     );
 
-    // 4. update_plan_step
     server.tool(
-        "update_plan_step",
-        "Update a step's status or add a note",
+        "update_plan",
+        "Update plan title, description, or status",
         {
             planId: z.string().describe("Plan ID"),
-            stepId: z.string().describe("Step ID"),
-            status: z.string().optional().describe("New step status"),
-            note: z.string().optional().describe("Note to add to the step")
-        },
-        async ({ planId, stepId, status, note }) => {
-            const body: Record<string, unknown> = {};
-            if (status) body.status = status;
-            if (note) body.note = note;
-
-            const data = (await apiFetch(`/plans/${planId}/steps/${stepId}`, {
-                method: "PATCH",
-                body: JSON.stringify(body)
-            })) as { id: string; description: string; status: string };
-
-            return {
-                content: [
-                    {
-                        type: "text" as const,
-                        text: `Step updated: ${data.description} (${data.status})`
-                    }
-                ]
-            };
-        }
-    );
-
-    // 5. add_plan_step
-    server.tool(
-        "add_plan_step",
-        "Add a new step to a plan",
-        {
-            planId: z.string().describe("Plan ID"),
-            description: z.string().describe("Step description")
-        },
-        async ({ planId, description }) => {
-            const data = (await apiFetch(`/plans/${planId}/steps`, {
-                method: "POST",
-                body: JSON.stringify({ description })
-            })) as { id: string; description: string };
-
-            return {
-                content: [
-                    {
-                        type: "text" as const,
-                        text: JSON.stringify(
-                            { id: data.id, description: data.description },
-                            null,
-                            2
-                        )
-                    }
-                ]
-            };
-        }
-    );
-
-    // 6. complete_plan
-    server.tool(
-        "complete_plan",
-        "Mark a plan as completed",
-        {
-            planId: z.string().describe("Plan ID")
-        },
-        async ({ planId }) => {
-            const data = (await apiFetch(`/plans/${planId}`, {
-                method: "PATCH",
-                body: JSON.stringify({ status: "completed" })
-            })) as { id: string; title: string; status: string };
-
-            return {
-                content: [
-                    {
-                        type: "text" as const,
-                        text: `Plan completed: ${data.title} (${data.id})`
-                    }
-                ]
-            };
-        }
-    );
-
-    // 7. import_plan_markdown
-    server.tool(
-        "import_plan_markdown",
-        "Import a plan from markdown content (the format used by superpowers plans with # Title, **Goal:**, ## Task N:, and - [ ] **Step N:** checkboxes)",
-        {
-            markdown: z.string().describe("Full markdown content of the plan file"),
-            title: z.string().optional().describe("Override plan title"),
-            codebaseId: z.string().optional().describe("Codebase ID to associate with")
-        },
-        async ({ markdown, title, codebaseId }) => {
-            const body: Record<string, unknown> = { markdown };
-            if (title) body.title = title;
-            if (codebaseId) body.codebaseId = codebaseId;
-
-            const plan = (await apiFetch("/plans/import-markdown", {
-                method: "POST",
-                body: JSON.stringify(body)
-            })) as { id: string; title: string; steps?: Array<unknown> };
-
-            return {
-                content: [
-                    {
-                        type: "text" as const,
-                        text: `Imported plan "${plan.title}" with ${plan.steps?.length ?? 0} steps. Plan ID: ${plan.id}`
-                    }
-                ]
-            };
-        }
-    );
-
-    // 8. create_plan_from_requirements
-    server.tool(
-        "create_plan_from_requirements",
-        "Generate a plan from selected requirements with implementation steps",
-        {
-            title: z.string().describe("Plan title"),
-            requirementIds: z.array(z.string()).describe("Requirement IDs to generate steps from"),
-            template: z
-                .enum(["standard", "detailed"])
+            title: z.string().optional().describe("New title"),
+            description: z.string().optional().describe("New description"),
+            status: z
+                .enum(["draft", "analyzing", "ready", "in_progress", "completed", "archived"])
                 .optional()
-                .describe("Template: standard (implement+verify) or detailed (verify+implement+test+document)"),
-            codebaseId: z.string().optional().describe("Codebase ID to associate with")
+                .describe("New status"),
         },
-        async ({ title, requirementIds, template, codebaseId }) => {
-            const body: Record<string, unknown> = { title, requirementIds };
-            if (template) body.template = template;
-            if (codebaseId) body.codebaseId = codebaseId;
+        async ({ planId, ...patch }) => {
+            const plan = (await apiFetch(`/plans/${planId}`, {
+                method: "PATCH",
+                body: JSON.stringify(patch),
+            })) as unknown;
+            return { content: [{ type: "text" as const, text: JSON.stringify(plan, null, 2) }] };
+        },
+    );
 
-            const plan = (await apiFetch("/plans/generate-from-requirements", {
+    server.tool(
+        "link_requirement",
+        "Link a requirement to a plan",
+        { planId: z.string().describe("Plan ID"), requirementId: z.string().describe("Requirement ID") },
+        async ({ planId, requirementId }) => {
+            await apiFetch(`/plans/${planId}/requirements`, {
                 method: "POST",
-                body: JSON.stringify(body)
-            })) as { id: string; title: string; steps?: Array<unknown> };
+                body: JSON.stringify({ requirementId }),
+            });
+            return { content: [{ type: "text" as const, text: "Requirement linked" }] };
+        },
+    );
 
-            return {
-                content: [
-                    {
-                        type: "text" as const,
-                        text: `Created plan "${plan.title}" with ${plan.steps?.length ?? 0} steps from ${requirementIds.length} requirement(s). Plan ID: ${plan.id}`
-                    }
-                ]
-            };
-        }
+    server.tool(
+        "unlink_requirement",
+        "Unlink a requirement from a plan",
+        { planId: z.string().describe("Plan ID"), requirementId: z.string().describe("Requirement ID") },
+        async ({ planId, requirementId }) => {
+            await apiFetch(`/plans/${planId}/requirements/${requirementId}`, { method: "DELETE" });
+            return { content: [{ type: "text" as const, text: "Requirement unlinked" }] };
+        },
+    );
+
+    server.tool(
+        "add_analyze_item",
+        "Add a chunk, file, risk, assumption, or question to the plan's analyze phase",
+        {
+            planId: z.string().describe("Plan ID"),
+            kind: z
+                .enum(["chunk", "file", "risk", "assumption", "question"])
+                .describe("Kind of analyze item"),
+            chunkId: z.string().optional().describe("Chunk ID (for kind=chunk)"),
+            filePath: z.string().optional().describe("File path (for kind=file)"),
+            text: z.string().optional().describe("Text content (for risk/assumption/question)"),
+            metadata: z.record(z.unknown()).optional().describe("Additional metadata"),
+        },
+        async ({ planId, kind, chunkId, filePath, text, metadata }) => {
+            const body: Record<string, unknown> = { kind };
+            if (chunkId) body.chunkId = chunkId;
+            if (filePath) body.filePath = filePath;
+            if (text) body.text = text;
+            if (metadata) body.metadata = metadata;
+
+            const item = (await apiFetch(`/plans/${planId}/analyze`, {
+                method: "POST",
+                body: JSON.stringify(body),
+            })) as unknown;
+            return { content: [{ type: "text" as const, text: JSON.stringify(item, null, 2) }] };
+        },
+    );
+
+    server.tool(
+        "update_analyze_item",
+        "Update an analyze item's text or metadata",
+        {
+            planId: z.string().describe("Plan ID"),
+            itemId: z.string().describe("Analyze item ID"),
+            text: z.string().optional().describe("Updated text"),
+            metadata: z.record(z.unknown()).optional().describe("Updated metadata"),
+        },
+        async ({ planId, itemId, text, metadata }) => {
+            const body: Record<string, unknown> = {};
+            if (text !== undefined) body.text = text;
+            if (metadata !== undefined) body.metadata = metadata;
+
+            const item = (await apiFetch(`/plans/${planId}/analyze/${itemId}`, {
+                method: "PATCH",
+                body: JSON.stringify(body),
+            })) as unknown;
+            return { content: [{ type: "text" as const, text: JSON.stringify(item, null, 2) }] };
+        },
+    );
+
+    server.tool(
+        "delete_analyze_item",
+        "Delete an analyze item from a plan",
+        { planId: z.string().describe("Plan ID"), itemId: z.string().describe("Analyze item ID") },
+        async ({ planId, itemId }) => {
+            await apiFetch(`/plans/${planId}/analyze/${itemId}`, { method: "DELETE" });
+            return { content: [{ type: "text" as const, text: "Analyze item deleted" }] };
+        },
+    );
+
+    server.tool(
+        "add_task",
+        "Add a task to a plan",
+        {
+            planId: z.string().describe("Plan ID"),
+            title: z.string().describe("Task title"),
+            description: z.string().optional().describe("Task description"),
+            acceptanceCriteria: z.array(z.string()).optional().describe("Acceptance criteria"),
+            chunks: z
+                .array(
+                    z.object({
+                        chunkId: z.string(),
+                        relation: z.enum(["context", "created", "modified"]),
+                    }),
+                )
+                .optional()
+                .describe("Chunk links with relation type"),
+            dependsOnTaskIds: z.array(z.string()).optional().describe("Task IDs this task depends on"),
+        },
+        async ({ planId, title, description, acceptanceCriteria, chunks, dependsOnTaskIds }) => {
+            const body: Record<string, unknown> = { title };
+            if (description) body.description = description;
+            if (acceptanceCriteria) body.acceptanceCriteria = acceptanceCriteria;
+            if (chunks) body.chunks = chunks;
+            if (dependsOnTaskIds) body.dependsOnTaskIds = dependsOnTaskIds;
+
+            const task = (await apiFetch(`/plans/${planId}/tasks`, {
+                method: "POST",
+                body: JSON.stringify(body),
+            })) as unknown;
+            return { content: [{ type: "text" as const, text: JSON.stringify(task, null, 2) }] };
+        },
+    );
+
+    server.tool(
+        "update_task",
+        "Update a task's title, description, acceptance criteria, or status",
+        {
+            planId: z.string().describe("Plan ID"),
+            taskId: z.string().describe("Task ID"),
+            title: z.string().optional().describe("New title"),
+            description: z.string().optional().describe("New description"),
+            acceptanceCriteria: z.array(z.string()).optional().describe("Updated acceptance criteria"),
+            status: z
+                .enum(["pending", "in_progress", "done", "skipped", "blocked"])
+                .optional()
+                .describe("New status"),
+        },
+        async ({ planId, taskId, title, description, acceptanceCriteria, status }) => {
+            const body: Record<string, unknown> = {};
+            if (title !== undefined) body.title = title;
+            if (description !== undefined) body.description = description;
+            if (acceptanceCriteria !== undefined) body.acceptanceCriteria = acceptanceCriteria;
+            if (status !== undefined) body.status = status;
+
+            const task = (await apiFetch(`/plans/${planId}/tasks/${taskId}`, {
+                method: "PATCH",
+                body: JSON.stringify(body),
+            })) as unknown;
+            return { content: [{ type: "text" as const, text: JSON.stringify(task, null, 2) }] };
+        },
+    );
+
+    server.tool(
+        "delete_task",
+        "Delete a task from a plan",
+        { planId: z.string().describe("Plan ID"), taskId: z.string().describe("Task ID") },
+        async ({ planId, taskId }) => {
+            await apiFetch(`/plans/${planId}/tasks/${taskId}`, { method: "DELETE" });
+            return { content: [{ type: "text" as const, text: "Task deleted" }] };
+        },
+    );
+
+    server.tool(
+        "link_task_chunk",
+        "Link a chunk to a task with a relation type",
+        {
+            planId: z.string().describe("Plan ID"),
+            taskId: z.string().describe("Task ID"),
+            chunkId: z.string().describe("Chunk ID"),
+            relation: z.enum(["context", "created", "modified"]).describe("Relation type"),
+        },
+        async ({ planId, taskId, chunkId, relation }) => {
+            const link = (await apiFetch(`/plans/${planId}/tasks/${taskId}/chunks`, {
+                method: "POST",
+                body: JSON.stringify({ chunkId, relation }),
+            })) as unknown;
+            return { content: [{ type: "text" as const, text: JSON.stringify(link, null, 2) }] };
+        },
     );
 }
 

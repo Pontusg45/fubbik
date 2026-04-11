@@ -4,14 +4,12 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 
 import { registerPlugin, loadAllPlugins } from "./plugin.js";
 import { corePlugin } from "./tools.js";
-import { sessionPlugin } from "./session-tools.js";
 import { suggestionPlugin } from "./suggestion-tools.js";
 import { planPlugin } from "./plan-tools.js";
 import { contextPlugin } from "./context-tools.js";
 import { taskPlugin } from "./task-tools.js";
 
 registerPlugin(corePlugin);
-registerPlugin(sessionPlugin);
 registerPlugin(suggestionPlugin);
 registerPlugin(planPlugin);
 registerPlugin(contextPlugin);
