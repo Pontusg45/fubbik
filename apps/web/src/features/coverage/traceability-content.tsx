@@ -154,22 +154,7 @@ export function TraceabilityContent() {
                                             )}
 
                                             {/* Session coverage */}
-                                            {req.sessions.length > 0 ? (
-                                                req.sessions.map(s => (
-                                                    <span key={s.sessionId} className="text-muted-foreground">
-                                                        Addressed in{" "}
-                                                        <Link
-                                                            to="/reviews/$sessionId"
-                                                            params={{ sessionId: s.sessionId }}
-                                                            className="text-foreground hover:underline"
-                                                        >
-                                                            {s.sessionTitle}
-                                                        </Link>
-                                                    </span>
-                                                ))
-                                            ) : (
-                                                <span className="text-muted-foreground italic">Not addressed</span>
-                                            )}
+                                            <span className="text-muted-foreground italic">Not addressed</span>
                                         </div>
                                     </div>
 

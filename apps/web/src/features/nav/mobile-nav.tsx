@@ -31,8 +31,8 @@ const primaryItems = [
     { label: "Features", to: "/features" as const, icon: Sparkles },
     { label: "Chunks", to: "/chunks" as const, icon: Blocks },
     { label: "Graph", to: "/graph" as const, icon: Network },
+    { label: "Plans", to: "/plans" as const, icon: ClipboardList },
     { label: "Requirements", to: "/requirements" as const, icon: ClipboardCheck },
-    { label: "Reviews", to: "/reviews" as const, icon: ClipboardList },
     { label: "Docs", to: "/docs" as const, icon: FileText },
     { label: "Search", to: "/search" as const, icon: Search }
 ];

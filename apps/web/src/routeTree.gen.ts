@@ -15,7 +15,6 @@ import { Route as TemplatesRouteImport } from "./routes/templates";
 import { Route as TagsRouteImport } from "./routes/tags";
 import { Route as SettingsRouteImport } from "./routes/settings";
 import { Route as SearchRouteImport } from "./routes/search";
-import { Route as ReviewsRouteImport } from "./routes/reviews";
 import { Route as RequirementsRouteImport } from "./routes/requirements";
 import { Route as LoginRouteImport } from "./routes/login";
 import { Route as LearnRouteImport } from "./routes/learn";
@@ -33,14 +32,9 @@ import { Route as CodebasesRouteImport } from "./routes/codebases";
 import { Route as BrowseRouteImport } from "./routes/browse";
 import { Route as ActivityRouteImport } from "./routes/activity";
 import { Route as IndexRouteImport } from "./routes/index";
-import { Route as PlansIndexRouteImport } from "./routes/plans.index";
 import { Route as ChunksIndexRouteImport } from "./routes/chunks.index";
-import { Route as ReviewsQueueRouteImport } from "./routes/reviews_.queue";
-import { Route as ReviewsSessionIdRouteImport } from "./routes/reviews_.$sessionId";
 import { Route as RequirementsNewRouteImport } from "./routes/requirements_.new";
 import { Route as RequirementsRequirementIdRouteImport } from "./routes/requirements_.$requirementId";
-import { Route as PlansNewRouteImport } from "./routes/plans.new";
-import { Route as PlansPlanIdRouteImport } from "./routes/plans.$planId";
 import { Route as LearnPathIdRouteImport } from "./routes/learn.$pathId";
 import { Route as GraphGraphIdRouteImport } from "./routes/graph_.$graphId";
 import { Route as CodebasesCodebaseIdRouteImport } from "./routes/codebases.$codebaseId";
@@ -78,11 +72,6 @@ const SettingsRoute = SettingsRouteImport.update({
 const SearchRoute = SearchRouteImport.update({
   id: "/search",
   path: "/search",
-  getParentRoute: () => rootRouteImport,
-} as any);
-const ReviewsRoute = ReviewsRouteImport.update({
-  id: "/reviews",
-  path: "/reviews",
   getParentRoute: () => rootRouteImport,
 } as any);
 const RequirementsRoute = RequirementsRouteImport.update({
@@ -170,24 +159,9 @@ const IndexRoute = IndexRouteImport.update({
   path: "/",
   getParentRoute: () => rootRouteImport,
 } as any);
-const PlansIndexRoute = PlansIndexRouteImport.update({
-  id: "/plans/",
-  path: "/plans/",
-  getParentRoute: () => rootRouteImport,
-} as any);
 const ChunksIndexRoute = ChunksIndexRouteImport.update({
   id: "/chunks/",
   path: "/chunks/",
-  getParentRoute: () => rootRouteImport,
-} as any);
-const ReviewsQueueRoute = ReviewsQueueRouteImport.update({
-  id: "/reviews_/queue",
-  path: "/reviews/queue",
-  getParentRoute: () => rootRouteImport,
-} as any);
-const ReviewsSessionIdRoute = ReviewsSessionIdRouteImport.update({
-  id: "/reviews_/$sessionId",
-  path: "/reviews/$sessionId",
   getParentRoute: () => rootRouteImport,
 } as any);
 const RequirementsNewRoute = RequirementsNewRouteImport.update({
@@ -201,16 +175,6 @@ const RequirementsRequirementIdRoute =
     path: "/requirements/$requirementId",
     getParentRoute: () => rootRouteImport,
   } as any);
-const PlansNewRoute = PlansNewRouteImport.update({
-  id: "/plans/new",
-  path: "/plans/new",
-  getParentRoute: () => rootRouteImport,
-} as any);
-const PlansPlanIdRoute = PlansPlanIdRouteImport.update({
-  id: "/plans/$planId",
-  path: "/plans/$planId",
-  getParentRoute: () => rootRouteImport,
-} as any);
 const LearnPathIdRoute = LearnPathIdRouteImport.update({
   id: "/$pathId",
   path: "/$pathId",
@@ -270,7 +234,6 @@ export interface FileRoutesByFullPath {
   "/learn": typeof LearnRouteWithChildren;
   "/login": typeof LoginRoute;
   "/requirements": typeof RequirementsRoute;
-  "/reviews": typeof ReviewsRoute;
   "/search": typeof SearchRoute;
   "/settings": typeof SettingsRoute;
   "/tags": typeof TagsRoute;
@@ -284,14 +247,9 @@ export interface FileRoutesByFullPath {
   "/codebases/$codebaseId": typeof CodebasesCodebaseIdRoute;
   "/graph/$graphId": typeof GraphGraphIdRoute;
   "/learn/$pathId": typeof LearnPathIdRoute;
-  "/plans/$planId": typeof PlansPlanIdRoute;
-  "/plans/new": typeof PlansNewRoute;
   "/requirements/$requirementId": typeof RequirementsRequirementIdRoute;
   "/requirements/new": typeof RequirementsNewRoute;
-  "/reviews/$sessionId": typeof ReviewsSessionIdRoute;
-  "/reviews/queue": typeof ReviewsQueueRoute;
   "/chunks/": typeof ChunksIndexRoute;
-  "/plans/": typeof PlansIndexRoute;
   "/chunks/$chunkId/edit": typeof ChunksChunkIdEditRoute;
 }
 export interface FileRoutesByTo {
@@ -312,7 +270,6 @@ export interface FileRoutesByTo {
   "/learn": typeof LearnRouteWithChildren;
   "/login": typeof LoginRoute;
   "/requirements": typeof RequirementsRoute;
-  "/reviews": typeof ReviewsRoute;
   "/search": typeof SearchRoute;
   "/settings": typeof SettingsRoute;
   "/tags": typeof TagsRoute;
@@ -326,14 +283,9 @@ export interface FileRoutesByTo {
   "/codebases/$codebaseId": typeof CodebasesCodebaseIdRoute;
   "/graph/$graphId": typeof GraphGraphIdRoute;
   "/learn/$pathId": typeof LearnPathIdRoute;
-  "/plans/$planId": typeof PlansPlanIdRoute;
-  "/plans/new": typeof PlansNewRoute;
   "/requirements/$requirementId": typeof RequirementsRequirementIdRoute;
   "/requirements/new": typeof RequirementsNewRoute;
-  "/reviews/$sessionId": typeof ReviewsSessionIdRoute;
-  "/reviews/queue": typeof ReviewsQueueRoute;
   "/chunks": typeof ChunksIndexRoute;
-  "/plans": typeof PlansIndexRoute;
   "/chunks/$chunkId/edit": typeof ChunksChunkIdEditRoute;
 }
 export interface FileRoutesById {
@@ -355,7 +307,6 @@ export interface FileRoutesById {
   "/learn": typeof LearnRouteWithChildren;
   "/login": typeof LoginRoute;
   "/requirements": typeof RequirementsRoute;
-  "/reviews": typeof ReviewsRoute;
   "/search": typeof SearchRoute;
   "/settings": typeof SettingsRoute;
   "/tags": typeof TagsRoute;
@@ -369,14 +320,9 @@ export interface FileRoutesById {
   "/codebases/$codebaseId": typeof CodebasesCodebaseIdRoute;
   "/graph_/$graphId": typeof GraphGraphIdRoute;
   "/learn/$pathId": typeof LearnPathIdRoute;
-  "/plans/$planId": typeof PlansPlanIdRoute;
-  "/plans/new": typeof PlansNewRoute;
   "/requirements_/$requirementId": typeof RequirementsRequirementIdRoute;
   "/requirements_/new": typeof RequirementsNewRoute;
-  "/reviews_/$sessionId": typeof ReviewsSessionIdRoute;
-  "/reviews_/queue": typeof ReviewsQueueRoute;
   "/chunks/": typeof ChunksIndexRoute;
-  "/plans/": typeof PlansIndexRoute;
   "/chunks/$chunkId_/edit": typeof ChunksChunkIdEditRoute;
 }
 export interface FileRouteTypes {
@@ -399,7 +345,6 @@ export interface FileRouteTypes {
     | "/learn"
     | "/login"
     | "/requirements"
-    | "/reviews"
     | "/search"
     | "/settings"
     | "/tags"
@@ -413,14 +358,9 @@ export interface FileRouteTypes {
     | "/codebases/$codebaseId"
     | "/graph/$graphId"
     | "/learn/$pathId"
-    | "/plans/$planId"
-    | "/plans/new"
     | "/requirements/$requirementId"
     | "/requirements/new"
-    | "/reviews/$sessionId"
-    | "/reviews/queue"
     | "/chunks/"
-    | "/plans/"
     | "/chunks/$chunkId/edit";
   fileRoutesByTo: FileRoutesByTo;
   to:
@@ -441,7 +381,6 @@ export interface FileRouteTypes {
     | "/learn"
     | "/login"
     | "/requirements"
-    | "/reviews"
     | "/search"
     | "/settings"
     | "/tags"
@@ -455,14 +394,9 @@ export interface FileRouteTypes {
     | "/codebases/$codebaseId"
     | "/graph/$graphId"
     | "/learn/$pathId"
-    | "/plans/$planId"
-    | "/plans/new"
     | "/requirements/$requirementId"
     | "/requirements/new"
-    | "/reviews/$sessionId"
-    | "/reviews/queue"
     | "/chunks"
-    | "/plans"
     | "/chunks/$chunkId/edit";
   id:
     | "__root__"
@@ -483,7 +417,6 @@ export interface FileRouteTypes {
     | "/learn"
     | "/login"
     | "/requirements"
-    | "/reviews"
     | "/search"
     | "/settings"
     | "/tags"
@@ -497,14 +430,9 @@ export interface FileRouteTypes {
     | "/codebases/$codebaseId"
     | "/graph_/$graphId"
     | "/learn/$pathId"
-    | "/plans/$planId"
-    | "/plans/new"
     | "/requirements_/$requirementId"
     | "/requirements_/new"
-    | "/reviews_/$sessionId"
-    | "/reviews_/queue"
     | "/chunks/"
-    | "/plans/"
     | "/chunks/$chunkId_/edit";
   fileRoutesById: FileRoutesById;
 }
@@ -526,7 +454,6 @@ export interface RootRouteChildren {
   LearnRoute: typeof LearnRouteWithChildren;
   LoginRoute: typeof LoginRoute;
   RequirementsRoute: typeof RequirementsRoute;
-  ReviewsRoute: typeof ReviewsRoute;
   SearchRoute: typeof SearchRoute;
   SettingsRoute: typeof SettingsRoute;
   TagsRoute: typeof TagsRoute;
@@ -537,14 +464,9 @@ export interface RootRouteChildren {
   ChunksArchivedRoute: typeof ChunksArchivedRoute;
   ChunksNewRoute: typeof ChunksNewRoute;
   GraphGraphIdRoute: typeof GraphGraphIdRoute;
-  PlansPlanIdRoute: typeof PlansPlanIdRoute;
-  PlansNewRoute: typeof PlansNewRoute;
   RequirementsRequirementIdRoute: typeof RequirementsRequirementIdRoute;
   RequirementsNewRoute: typeof RequirementsNewRoute;
-  ReviewsSessionIdRoute: typeof ReviewsSessionIdRoute;
-  ReviewsQueueRoute: typeof ReviewsQueueRoute;
   ChunksIndexRoute: typeof ChunksIndexRoute;
-  PlansIndexRoute: typeof PlansIndexRoute;
   ChunksChunkIdEditRoute: typeof ChunksChunkIdEditRoute;
 }
 
@@ -590,13 +512,6 @@ declare module "@tanstack/react-router" {
       path: "/search";
       fullPath: "/search";
       preLoaderRoute: typeof SearchRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/reviews": {
-      id: "/reviews";
-      path: "/reviews";
-      fullPath: "/reviews";
-      preLoaderRoute: typeof ReviewsRouteImport;
       parentRoute: typeof rootRouteImport;
     };
     "/requirements": {
@@ -718,32 +633,11 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof IndexRouteImport;
       parentRoute: typeof rootRouteImport;
     };
-    "/plans/": {
-      id: "/plans/";
-      path: "/plans";
-      fullPath: "/plans/";
-      preLoaderRoute: typeof PlansIndexRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
     "/chunks/": {
       id: "/chunks/";
       path: "/chunks";
       fullPath: "/chunks/";
       preLoaderRoute: typeof ChunksIndexRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/reviews_/queue": {
-      id: "/reviews_/queue";
-      path: "/reviews/queue";
-      fullPath: "/reviews/queue";
-      preLoaderRoute: typeof ReviewsQueueRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/reviews_/$sessionId": {
-      id: "/reviews_/$sessionId";
-      path: "/reviews/$sessionId";
-      fullPath: "/reviews/$sessionId";
-      preLoaderRoute: typeof ReviewsSessionIdRouteImport;
       parentRoute: typeof rootRouteImport;
     };
     "/requirements_/new": {
@@ -758,20 +652,6 @@ declare module "@tanstack/react-router" {
       path: "/requirements/$requirementId";
       fullPath: "/requirements/$requirementId";
       preLoaderRoute: typeof RequirementsRequirementIdRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/plans/new": {
-      id: "/plans/new";
-      path: "/plans/new";
-      fullPath: "/plans/new";
-      preLoaderRoute: typeof PlansNewRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/plans/$planId": {
-      id: "/plans/$planId";
-      path: "/plans/$planId";
-      fullPath: "/plans/$planId";
-      preLoaderRoute: typeof PlansPlanIdRouteImport;
       parentRoute: typeof rootRouteImport;
     };
     "/learn/$pathId": {
@@ -884,7 +764,6 @@ const rootRouteChildren: RootRouteChildren = {
   LearnRoute: LearnRouteWithChildren,
   LoginRoute: LoginRoute,
   RequirementsRoute: RequirementsRoute,
-  ReviewsRoute: ReviewsRoute,
   SearchRoute: SearchRoute,
   SettingsRoute: SettingsRoute,
   TagsRoute: TagsRoute,
@@ -895,14 +774,9 @@ const rootRouteChildren: RootRouteChildren = {
   ChunksArchivedRoute: ChunksArchivedRoute,
   ChunksNewRoute: ChunksNewRoute,
   GraphGraphIdRoute: GraphGraphIdRoute,
-  PlansPlanIdRoute: PlansPlanIdRoute,
-  PlansNewRoute: PlansNewRoute,
   RequirementsRequirementIdRoute: RequirementsRequirementIdRoute,
   RequirementsNewRoute: RequirementsNewRoute,
-  ReviewsSessionIdRoute: ReviewsSessionIdRoute,
-  ReviewsQueueRoute: ReviewsQueueRoute,
   ChunksIndexRoute: ChunksIndexRoute,
-  PlansIndexRoute: PlansIndexRoute,
   ChunksChunkIdEditRoute: ChunksChunkIdEditRoute,
 };
 export const routeTree = rootRouteImport

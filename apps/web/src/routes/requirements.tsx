@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardPanel } from "@/components/ui/card";
 import { useActiveCodebase } from "@/features/codebases/use-active-codebase";
 import { TraceabilityContent } from "@/features/coverage/traceability-content";
-import { PlansListContent } from "@/features/plans/plans-list-content";
 import { BulkActions } from "@/features/requirements/bulk-actions";
 import { SidebarFilters } from "@/features/requirements/sidebar-filters";
 import { SortableRequirementList } from "@/features/requirements/sortable-requirement-list";
@@ -362,7 +361,11 @@ function RequirementsPage() {
                         </>
                     )}
 
-                    {activeTab === "plans" && <PlansListContent />}
+                    {activeTab === "plans" && (
+                        <div className="py-8 text-center text-sm text-muted-foreground">
+                            Plans have moved to <Link to="/plans" className="underline">Plans</Link>.
+                        </div>
+                    )}
 
                     {activeTab === "traceability" && <TraceabilityContent />}
                 </div>

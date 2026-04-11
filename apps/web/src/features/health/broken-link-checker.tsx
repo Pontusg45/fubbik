@@ -12,7 +12,7 @@ import { unwrapEden } from "@/utils/eden";
 const KNOWN_ROUTES = [
     "/chunks", "/graph", "/dashboard", "/search", "/tags", "/codebases",
     "/workspaces", "/templates", "/context", "/knowledge-health", "/coverage",
-    "/plans", "/requirements", "/reviews", "/import", "/settings", "/activity",
+    "/plans", "/requirements", "/import", "/settings", "/activity",
     "/vocabulary", "/docs", "/compare", "/login"
 ];
 

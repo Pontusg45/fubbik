@@ -72,14 +72,6 @@ function RequirementDetail() {
 
     const { codebaseId } = useActiveCodebase();
 
-    const sessionsQuery = useQuery({
-        queryKey: ["sessions-for-requirement", requirementId],
-        queryFn: async () => {
-            return unwrapEden(await (api.api.sessions as any)["by-requirement"]({ requirementId }).get()) as
-                Array<{ id: string; title: string; status: string; createdAt: string }>;
-        }
-    });
-
     const { data, isLoading, error } = useQuery({
         queryKey: ["requirement", requirementId],
         queryFn: async () => {
@@ -445,36 +437,6 @@ function RequirementDetail() {
                                     >
                                         {c.title}
                                     </Link>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Implementation Sessions */}
-                    {sessionsQuery.data && sessionsQuery.data.length > 0 && (
-                        <div className="mb-6">
-                            <h2 className="mb-3 text-sm font-semibold">Implementation Sessions</h2>
-                            <div className="space-y-1">
-                                {sessionsQuery.data.map((s: any) => (
-                                    <a
-                                        key={s.id}
-                                        href={`/reviews/${s.id}`}
-                                        className="hover:bg-muted/50 flex items-center justify-between rounded-md border px-3 py-2 text-sm transition-colors"
-                                    >
-                                        <span>{s.title}</span>
-                                        <Badge
-                                            variant="outline"
-                                            className={
-                                                s.status === "reviewed"
-                                                    ? "border-green-500/30 bg-green-500/10 text-green-600"
-                                                    : s.status === "completed"
-                                                      ? "border-amber-500/30 bg-amber-500/10 text-amber-600"
-                                                      : "border-blue-500/30 bg-blue-500/10 text-blue-600"
-                                            }
-                                        >
-                                            {s.status === "in_progress" ? "In Progress" : s.status === "completed" ? "Completed" : "Reviewed"}
-                                        </Badge>
-                                    </a>
                                 ))}
                             </div>
                         </div>

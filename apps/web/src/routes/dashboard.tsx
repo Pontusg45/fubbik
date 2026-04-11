@@ -106,11 +106,6 @@ function DashboardPage() {
         queryFn: async () => unwrapEden(await api.api.plans.get({ query: { ...codebaseQuery, status: "active" } as any }))
     });
 
-    const sessionsQuery = useQuery({
-        queryKey: ["dashboard-sessions"],
-        queryFn: async () => unwrapEden(await api.api.sessions.get({ query: { status: "completed", limit: "3" } as any }))
-    });
-
     const favoritesChunksQuery = useQuery({
         queryKey: ["chunks-favorites", favoriteIds],
         queryFn: async () => {
@@ -594,48 +589,6 @@ function DashboardPage() {
                         })()}
                     </DashboardSection>
 
-                    {/* Recent Sessions */}
-                    <DashboardSection
-                        icon={Workflow}
-                        title="Recent Sessions"
-                        action={
-                            <Link to="/reviews" className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-xs transition-colors">
-                                View all <ArrowRight className="size-3" />
-                            </Link>
-                        }
-                    >
-                        {sessionsQuery.isLoading ? (
-                            <SkeletonList count={3} />
-                        ) : (() => {
-                            const sessions = (sessionsQuery.data as any)?.sessions ?? (Array.isArray(sessionsQuery.data) ? sessionsQuery.data : []);
-                            if (sessions.length === 0) {
-                                return <p className="text-muted-foreground py-2 text-center text-sm">No recent sessions</p>;
-                            }
-                            return (
-                                <div className="space-y-1">
-                                    {sessions.slice(0, 3).map((session: any) => (
-                                        <Link
-                                            key={session.id}
-                                            to="/reviews/$sessionId"
-                                            params={{ sessionId: session.id }}
-                                            className="hover:bg-muted/50 flex items-center gap-2 rounded-md px-2 py-1.5 transition-colors"
-                                        >
-                                            <div className="min-w-0 flex-1">
-                                                <p className="truncate text-sm">{session.title}</p>
-                                                {session.completedAt && (
-                                                    <p className="text-muted-foreground text-[10px]">{timeAgo(session.completedAt)}</p>
-                                                )}
-                                            </div>
-                                            <Badge variant="secondary" size="sm" className="shrink-0 font-mono text-[9px]">
-                                                {session.status}
-                                            </Badge>
-                                        </Link>
-                                    ))}
-                                </div>
-                            );
-                        })()}
-                    </DashboardSection>
-
                     {/* Activity */}
                     <DashboardSection
                         icon={Clock}
@@ -737,7 +690,7 @@ function getActivityLink(entityType: string, entityId: string): string | null {
         case "chunk": return `/chunks/${entityId}`;
         case "requirement": return `/requirements/${entityId}`;
         case "plan": return `/plans/${entityId}`;
-        case "session": return `/reviews/${entityId}`;
+        case "session": return null;
         default: return null;
     }
 }
