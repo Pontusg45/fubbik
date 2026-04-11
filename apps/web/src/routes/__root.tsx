@@ -1,10 +1,9 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
-import { HeadContent, Link, Outlet, Scripts, createRootRouteWithContext, useLocation, useNavigate } from "@tanstack/react-router";
+import { HeadContent, Link, Outlet, Scripts, createRootRouteWithContext, useLocation } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
-import { useEffect, useRef, useState } from "react";
 
-import { Settings, SlidersHorizontal, Tags, FileText, BookOpen, Languages, Folder, FileSearch, FolderUp, Layers, Search } from "lucide-react";
+import { Settings, SlidersHorizontal, Tags, FileText, BookOpen, Languages, Folder, FileSearch, FolderUp, Layers, Compass, MessageSquare } from "lucide-react";
 
 import { ErrorBoundary } from "@/components/error-boundary";
 import FubbikLogo from "@/components/fubbik-logo";
@@ -15,6 +14,7 @@ import { Toaster } from "@/components/ui/sonner";
 import UserMenu from "@/features/auth/user-menu";
 
 import { Breadcrumbs } from "@/features/nav/breadcrumbs";
+import { HeaderSearchBar } from "@/features/nav/header-search-bar";
 import { ConnectionStatus } from "@/features/nav/connection-status";
 import { useStaleCount } from "@/features/staleness/use-stale-count";
 import { KeyboardShortcutsHelp, useGlobalShortcuts } from "@/features/nav/keyboard-shortcuts";
@@ -61,25 +61,6 @@ function RootDocument() {
     const location = useLocation();
     const isLanding = location.pathname === "/";
     const staleCount = useStaleCount();
-    const navigate = useNavigate();
-    const [navSearch, setNavSearch] = useState("");
-    const searchInputRef = useRef<HTMLInputElement>(null);
-
-    useEffect(() => {
-        function isInputFocused() {
-            const tag = document.activeElement?.tagName;
-            return tag === "INPUT" || tag === "TEXTAREA" || (document.activeElement as HTMLElement)?.isContentEditable;
-        }
-        function handleKeyDown(e: KeyboardEvent) {
-            if (e.key === "/" && !isInputFocused()) {
-                e.preventDefault();
-                searchInputRef.current?.focus();
-            }
-        }
-        document.addEventListener("keydown", handleKeyDown);
-        return () => document.removeEventListener("keydown", handleKeyDown);
-    }, []);
-
     return (
         <html lang="en" suppressHydrationWarning>
             <head>
@@ -115,12 +96,6 @@ function RootDocument() {
                                             )}
                                         </Link>
                                         <Link
-                                            to="/features"
-                                            className="text-muted-foreground hover:text-foreground [&.active]:text-foreground rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
-                                        >
-                                            Features
-                                        </Link>
-                                        <Link
                                             to="/chunks"
                                             search={{}}
                                             className="text-muted-foreground hover:text-foreground [&.active]:text-foreground rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
@@ -139,41 +114,7 @@ function RootDocument() {
                                         >
                                             Requirements
                                         </Link>
-                                        <Link
-                                            to="/reviews"
-                                            className="text-muted-foreground hover:text-foreground [&.active]:text-foreground rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
-                                        >
-                                            Reviews
-                                        </Link>
-                                        <Link
-                                            to="/docs"
-                                            search={{}}
-                                            className="text-muted-foreground hover:text-foreground [&.active]:text-foreground rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
-                                        >
-                                            Docs
-                                        </Link>
-                                        <div className="relative hidden md:block">
-                                            <Search className="text-muted-foreground pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2" />
-                                            <input
-                                                ref={searchInputRef}
-                                                type="text"
-                                                placeholder="Search... (press /)"
-                                                value={navSearch}
-                                                onChange={e => setNavSearch(e.target.value)}
-                                                onKeyDown={e => {
-                                                    if (e.key === "Enter" && navSearch.trim()) {
-                                                        navigate({ to: "/search", search: { q: navSearch.trim() } });
-                                                        setNavSearch("");
-                                                        e.currentTarget.blur();
-                                                    }
-                                                    if (e.key === "Escape") {
-                                                        setNavSearch("");
-                                                        e.currentTarget.blur();
-                                                    }
-                                                }}
-                                                className="bg-muted/50 border-border/50 text-foreground placeholder:text-muted-foreground h-8 w-40 rounded-md border pl-8 pr-3 text-xs transition-all focus:w-56 focus:outline-none focus:ring-1 focus:ring-ring"
-                                            />
-                                        </div>
+                                        <HeaderSearchBar />
                                         <DropdownMenu>
                                             <DropdownMenuTrigger className="text-muted-foreground hover:text-foreground rounded-md px-3 py-1.5 text-sm font-medium transition-colors">
                                                 <span className="flex items-center gap-1">
@@ -182,6 +123,19 @@ function RootDocument() {
                                                 </span>
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="start">
+                                                <DropdownMenuItem render={<Link to="/features" />}>
+                                                    <Compass className="size-4" />
+                                                    Features
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem render={<Link to="/reviews" />}>
+                                                    <MessageSquare className="size-4" />
+                                                    Reviews
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem render={<Link to="/docs" search={{}} />}>
+                                                    <FileText className="size-4" />
+                                                    Docs
+                                                </DropdownMenuItem>
+                                                <DropdownMenuSeparator />
                                                 <DropdownMenuItem render={<Link to="/tags" />}>
                                                     <Tags className="size-4" />
                                                     Tags
