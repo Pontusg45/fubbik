@@ -3,7 +3,7 @@ import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { HeadContent, Link, Outlet, Scripts, createRootRouteWithContext, useLocation } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 
-import { Settings, SlidersHorizontal, Tags, FileText, BookOpen, Languages, Folder, FileSearch, FolderUp, Layers, Compass, ClipboardList } from "lucide-react";
+import { Settings, SlidersHorizontal, Tags, FileText, BookOpen, Languages, Folder, FileSearch, FolderUp, Layers, Compass, ClipboardList, AlertTriangle } from "lucide-react";
 
 import { ErrorBoundary } from "@/components/error-boundary";
 import FubbikLogo from "@/components/fubbik-logo";
@@ -17,6 +17,7 @@ import { Breadcrumbs } from "@/features/nav/breadcrumbs";
 import { HeaderSearchBar } from "@/features/nav/header-search-bar";
 import { ConnectionStatus } from "@/features/nav/connection-status";
 import { useStaleCount } from "@/features/staleness/use-stale-count";
+import { usePendingProposalCount } from "@/features/proposals/use-pending-proposal-count";
 import { KeyboardShortcutsHelp, useGlobalShortcuts } from "@/features/nav/keyboard-shortcuts";
 import { MobileNav } from "@/features/nav/mobile-nav";
 import { CodebaseSwitcher } from "@/features/codebases/codebase-switcher";
@@ -61,6 +62,7 @@ function RootDocument() {
     const location = useLocation();
     const isLanding = location.pathname === "/";
     const staleCount = useStaleCount();
+    const proposalCount = usePendingProposalCount();
     return (
         <html lang="en" suppressHydrationWarning>
             <head>
@@ -131,6 +133,15 @@ function RootDocument() {
                                                 <DropdownMenuItem render={<Link to="/requirements" />}>
                                                     <ClipboardList className="size-4" />
                                                     Requirements
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem render={<Link to="/review" />}>
+                                                    <AlertTriangle className="size-4" />
+                                                    Review
+                                                    {proposalCount > 0 && (
+                                                        <span className="ml-auto flex size-4 items-center justify-center rounded-full bg-amber-500 text-[10px] font-bold text-white">
+                                                            {proposalCount > 9 ? "9+" : proposalCount}
+                                                        </span>
+                                                    )}
                                                 </DropdownMenuItem>
                                                 <DropdownMenuItem render={<Link to="/docs" search={{}} />}>
                                                     <FileText className="size-4" />
