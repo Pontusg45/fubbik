@@ -262,7 +262,50 @@ export function registerTools(server: McpServer): void {
         }
     );
 
-    // 7. search_vocabulary
+    // 7. propose_chunk_update
+    server.tool(
+        "propose_chunk_update",
+        "Propose changes to an existing chunk for human review. Changes are staged as a pending proposal — the chunk is NOT modified until a human approves.",
+        {
+            chunkId: z.string().describe("The chunk ID to propose changes for"),
+            changes: z
+                .object({
+                    title: z.string().optional(),
+                    content: z.string().optional(),
+                    type: z.string().optional(),
+                    tags: z.array(z.string()).optional(),
+                    rationale: z.string().optional(),
+                    alternatives: z.array(z.string()).optional(),
+                    consequences: z.string().optional(),
+                    scope: z.record(z.string()).optional(),
+                })
+                .describe("Only include fields you want to change"),
+            reason: z
+                .string()
+                .optional()
+                .describe("Why you're proposing this change"),
+        },
+        async ({ chunkId, changes, reason }) => {
+            const body: Record<string, unknown> = { changes };
+            if (reason) body.reason = reason;
+
+            const proposal = (await apiFetch(`/chunks/${chunkId}/proposals`, {
+                method: "POST",
+                body: JSON.stringify(body),
+            })) as Record<string, unknown>;
+
+            return {
+                content: [
+                    {
+                        type: "text" as const,
+                        text: `Proposal created (pending review):\n${JSON.stringify(proposal, null, 2)}`,
+                    },
+                ],
+            };
+        }
+    );
+
+    // 8. search_vocabulary
     server.tool(
         "search_vocabulary",
         "Search vocabulary entries for a codebase",
