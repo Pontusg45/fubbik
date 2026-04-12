@@ -4,7 +4,7 @@ import { loadConfig } from "../lib/config";
 import { output, outputQuiet } from "../lib/output";
 import { getServerUrl } from "../lib/store";
 
-export const contextCommand = new Command("context")
+export const contextCommand = new Command("export")
     .description("Export token-aware context for AI consumption")
     .option("--max-tokens <tokens>", "token budget", "4000")
     .option("--codebase <id>", "scope to a specific codebase ID")

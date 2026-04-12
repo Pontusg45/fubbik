@@ -115,7 +115,7 @@ function formatDirectoryMarkdown(chunks: ContextChunk[], directory: string): str
     return lines.join("\n");
 }
 
-export const contextDirCommand = new Command("context-dir")
+export const contextDirCommand = new Command("dir")
     .description("Generate CLAUDE.md-style context for all files in a directory")
     .argument("<directory>", "directory to generate context for")
     .option("--codebase <name>", "scope to a specific codebase")

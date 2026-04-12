@@ -88,7 +88,7 @@ function formatMarkdown(chunks: ContextChunk[], filePath: string): string {
     return lines.join("\n");
 }
 
-export const contextForCommand = new Command("context-for")
+export const contextForCommand = new Command("for")
     .description("Generate focused context for a specific file")
     .argument("<path>", "file path to get context for")
     .option("--codebase <name>", "scope to a specific codebase")

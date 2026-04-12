@@ -3,7 +3,7 @@ import { Command } from "commander";
 import { output, outputQuiet } from "../lib/output";
 import { readStore } from "../lib/store";
 
-export const tagsCommand = new Command("tags").description("List all unique tags with counts").action((_opts: unknown, cmd: Command) => {
+export const tagsCommand = new Command("list").description("List all unique tags with counts").action((_opts: unknown, cmd: Command) => {
     const store = readStore();
     const counts = new Map<string, number>();
 

@@ -52,7 +52,7 @@ function requireServer(): string {
     return serverUrl;
 }
 
-export const importRequirementsCommand = new Command("import-requirements")
+export const importRequirementsCommand = new Command("import")
     .description("Import requirements from a Gherkin .feature file")
     .argument("<file>", "path to .feature file")
     .option("--codebase <name>", "scope to codebase")

@@ -18,7 +18,6 @@ const MERGE_MAP: Record<string, string> = {
     document: "docs",
     documents: "docs",
     conventions: "convention",
-    conventions: "convention",
     architectures: "architecture",
     configurations: "configuration",
     configs: "configuration",
@@ -36,7 +35,7 @@ const MERGE_MAP: Record<string, string> = {
 
 const FILENAME_PATTERN = /(\.\w{2,4}$|\/|^\d{4}-\d{2})/;
 
-export const tagNormalizeCommand = new Command("tag-normalize")
+export const tagNormalizeCommand = new Command("normalize")
     .description("Identify tag issues and optionally fix them")
     .option("--dry-run", "show what would be changed (default)", true)
     .option("--confirm", "apply changes")
