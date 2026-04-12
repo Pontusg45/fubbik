@@ -24,9 +24,8 @@ export * from "./settings";
 export * from "./comment";
 export * from "./coverage";
 export * from "./requirement-dependency";
-// implementation-session removed in plans rewrite
 export * from "./similarity";
-// plan repository removed in plans rewrite — Task 2 will rewrite it
+export * from "./plan";
 export * from "./workspace";
 export * from "./saved-graph";
 export * from "./saved-query";
@@ -36,3 +35,4 @@ export * from "./learning-path";
 export * from "./clusters";
 export * from "../age/query";
 export { isAgeAvailable } from "../age/client";
+export * from "./chunk-proposal";
