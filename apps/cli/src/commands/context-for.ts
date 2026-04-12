@@ -3,8 +3,9 @@ import { dirname, join, resolve } from "node:path";
 
 import { Command } from "commander";
 
+import { fetchApi } from "../lib/api";
 import { loadConfig } from "../lib/config";
-import { output, outputError, outputQuiet } from "../lib/output";
+import { output, outputError, outputQuiet, isJson } from "../lib/output";
 import { getServerUrl } from "../lib/store";
 
 interface ContextChunk {
@@ -95,6 +96,33 @@ export const contextForCommand = new Command("for")
     .option("--format <format>", "output format: markdown or json", "markdown")
     .option("--include-deps", "include chunks from dependency codebases")
     .action(async (filePath: string, opts: { codebase?: string; format: string; includeDeps?: boolean }, cmd: Command) => {
+        // If the path contains glob characters, use multi-file endpoint
+        if (filePath.includes("*")) {
+            try {
+                const config = loadConfig();
+                const codebaseName = opts.codebase ?? config.codebase;
+                const params = new URLSearchParams({
+                    paths: filePath,
+                    maxTokens: "8000",
+                    format: isJson(cmd) ? "structured-json" : "structured-md",
+                });
+                if (codebaseName) params.set("codebaseId", codebaseName);
+
+                const res = await fetchApi(`/context/for-files?${params}`);
+                if (!res.ok) {
+                    outputError(`Failed: ${res.status} ${await res.text()}`);
+                    process.exit(1);
+                }
+                const data = await res.json();
+                const content = isJson(cmd) ? "" : ((data as any).content ?? JSON.stringify(data, null, 2));
+                output(cmd, data, content);
+            } catch (err) {
+                outputError(String(err));
+                process.exit(1);
+            }
+            return;
+        }
+
         const config = loadConfig();
 
         let serverUrl: string | undefined;
