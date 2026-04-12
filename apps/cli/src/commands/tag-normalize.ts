@@ -1,8 +1,8 @@
 import { Command } from "commander";
 
 import { formatBold, formatDim, formatError, formatSuccess } from "../lib/colors";
+import { requireServer } from "../lib/api";
 import { isJson, outputError } from "../lib/output";
-import { getServerUrl } from "../lib/store";
 
 interface TagIssue {
     action: "merge" | "remove";
@@ -10,15 +10,6 @@ interface TagIssue {
     mergeTo?: string;
     reason: string;
     affectedChunks: number;
-}
-
-function requireServer(): string {
-    const serverUrl = getServerUrl();
-    if (!serverUrl) {
-        console.error('No server URL configured. Run "fubbik init" first.');
-        process.exit(1);
-    }
-    return serverUrl;
 }
 
 // Known merge candidates: variants that should collapse to a canonical form

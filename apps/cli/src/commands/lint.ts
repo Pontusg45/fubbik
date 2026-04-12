@@ -1,8 +1,8 @@
 import { Command } from "commander";
 
 import { formatBold, formatDim, formatError, formatSuccess } from "../lib/colors";
+import { requireServer } from "../lib/api";
 import { isJson, outputError } from "../lib/output";
-import { getServerUrl } from "../lib/store";
 
 interface LintIssue {
     chunkId: string;
@@ -10,15 +10,6 @@ interface LintIssue {
     severity: "error" | "warning";
     rule: string;
     message: string;
-}
-
-function requireServer(): string {
-    const serverUrl = getServerUrl();
-    if (!serverUrl) {
-        console.error('No server URL configured. Run "fubbik init" first.');
-        process.exit(1);
-    }
-    return serverUrl;
 }
 
 const GENERIC_TAGS = new Set([

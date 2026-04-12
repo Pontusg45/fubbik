@@ -1,30 +1,8 @@
 import { Command } from "commander";
 
 import { formatBold, formatDim, formatSuccess } from "../lib/colors";
+import { fetchApi } from "../lib/api";
 import { isJson, output, outputError, outputQuiet } from "../lib/output";
-import { getServerUrl } from "../lib/store";
-
-// ── Helpers ─────────────────────────────────────────────────────────
-
-function requireServer(): string {
-    const serverUrl = getServerUrl();
-    if (!serverUrl) {
-        console.error('No server URL configured. Run "fubbik init" first.');
-        process.exit(1);
-    }
-    return serverUrl;
-}
-
-async function fetchApi(path: string, opts?: RequestInit): Promise<Response> {
-    const serverUrl = requireServer();
-    return fetch(`${serverUrl}/api${path}`, {
-        ...opts,
-        headers: {
-            "Content-Type": "application/json",
-            ...opts?.headers
-        }
-    });
-}
 
 interface PlanTask {
     id: string;

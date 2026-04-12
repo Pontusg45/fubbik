@@ -1,17 +1,9 @@
 import { Command } from "commander";
 import pc from "picocolors";
+import { requireServer } from "../lib/api";
 import { apiFetch } from "../lib/api-fetch";
 import { output, outputError } from "../lib/output";
-import { getServerUrl, listChunks } from "../lib/store";
-
-function requireServer() {
-    const serverUrl = getServerUrl();
-    if (!serverUrl) {
-        outputError("No server URL configured. Run 'fubbik init' first.");
-        process.exit(1);
-    }
-    return serverUrl;
-}
+import { listChunks } from "../lib/store";
 
 /** Convert relative date string to number of days for the API */
 function parseToDays(since: string): number {

@@ -1,27 +1,8 @@
 import { Command } from "commander";
 
 import { formatBold, formatDim, formatSuccess, formatType } from "../lib/colors";
+import { fetchApiJson } from "../lib/api";
 import { isJson, outputError } from "../lib/output";
-import { getServerUrl } from "../lib/store";
-
-function requireServer(): string {
-    const serverUrl = getServerUrl();
-    if (!serverUrl) {
-        console.error('No server URL configured. Run "fubbik init" first.');
-        process.exit(1);
-    }
-    return serverUrl;
-}
-
-async function fetchTaskApi(path: string, opts?: RequestInit) {
-    const serverUrl = requireServer();
-    const res = await fetch(`${serverUrl}/api${path}`, {
-        ...opts,
-        headers: { "Content-Type": "application/json", ...opts?.headers }
-    });
-    if (!res.ok) throw new Error(`API error: ${res.status}`);
-    return res.json();
-}
 
 export const taskCommand = new Command("task")
     .description("Manage quick tasks for AI agents")
@@ -34,7 +15,7 @@ export const taskCommand = new Command("task")
             .option("--codebase <name>", "codebase")
             .action(async (title, opts, cmd) => {
                 try {
-                    const task = (await fetchTaskApi("/tasks", {
+                    const task = (await fetchApiJson("/tasks", {
                         method: "POST",
                         body: JSON.stringify({ title, description: opts.description })
                     })) as any;
@@ -55,7 +36,7 @@ export const taskCommand = new Command("task")
             .description("List open tasks")
             .action(async (_opts, cmd) => {
                 try {
-                    const tasks = await fetchTaskApi("/tasks");
+                    const tasks = await fetchApiJson("/tasks");
                     if (isJson(cmd)) {
                         console.log(JSON.stringify(tasks, null, 2));
                         return;
@@ -83,7 +64,7 @@ export const taskCommand = new Command("task")
             .argument("<id>", "task ID")
             .action(async (id, _opts, cmd) => {
                 try {
-                    await fetchTaskApi(`/tasks/${id}/claim`, { method: "POST" });
+                    await fetchApiJson(`/tasks/${id}/claim`, { method: "POST" });
                     if (!isJson(cmd)) console.error(formatSuccess("Task claimed"));
                 } catch (e: any) {
                     outputError(e.message);
@@ -98,7 +79,7 @@ export const taskCommand = new Command("task")
             .option("-n, --note <note>", "completion note")
             .action(async (id, opts, cmd) => {
                 try {
-                    await fetchTaskApi(`/tasks/${id}/complete`, {
+                    await fetchApiJson(`/tasks/${id}/complete`, {
                         method: "POST",
                         body: JSON.stringify({ note: opts.note })
                     });

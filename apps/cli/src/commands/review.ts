@@ -1,30 +1,8 @@
 import { Command } from "commander";
 
 import { formatBold, formatDim, formatSuccess } from "../lib/colors";
-import { isJson, output, outputError } from "../lib/output";
-import { getServerUrl } from "../lib/store";
-
-// ── Helpers ─────────────────────────────────────────────────────────
-
-function requireServer(): string {
-    const serverUrl = getServerUrl();
-    if (!serverUrl) {
-        console.error('No server URL configured. Run "fubbik init" first.');
-        process.exit(1);
-    }
-    return serverUrl;
-}
-
-async function fetchApi(path: string, opts?: RequestInit): Promise<Response> {
-    const serverUrl = requireServer();
-    return fetch(`${serverUrl}/api${path}`, {
-        ...opts,
-        headers: {
-            "Content-Type": "application/json",
-            ...opts?.headers,
-        },
-    });
-}
+import { fetchApi } from "../lib/api";
+import { isJson, output, outputError, outputQuiet } from "../lib/output";
 
 interface Proposal {
     id: string;
@@ -72,28 +50,31 @@ const listProposals = new Command("list")
             }
 
             const proposals = (await res.json()) as Proposal[];
+
+            if (proposals.length === 0) {
+                output(cmd, [], formatDim("No proposals found."));
+                return;
+            }
+
             if (isJson(cmd)) {
                 output(cmd, proposals, "");
                 return;
             }
 
-            if (proposals.length === 0) {
-                console.log(formatDim("No proposals found."));
-                return;
-            }
-
+            const lines: string[] = [];
             for (const p of proposals) {
                 const icon = statusIcon(p.status);
                 const fields = Object.keys(p.changes).join(", ");
                 const age = timeSince(p.createdAt);
-                console.log(
+                lines.push(
                     `  ${icon} ${formatBold(p.chunkTitle ?? p.chunkId.slice(0, 8))} ${formatDim(`[${fields}]`)} ${formatDim(age)} ${formatDim(p.id.slice(0, 8))}`,
                 );
                 if (p.reason) {
-                    console.log(`    ${formatDim(p.reason)}`);
+                    lines.push(`    ${formatDim(p.reason)}`);
                 }
             }
-            console.log(formatDim(`\n${proposals.length} proposal(s)`));
+            lines.push(formatDim(`\n${proposals.length} proposal(s)`));
+            output(cmd, proposals, lines.join("\n"));
         } catch (err) {
             outputError(String(err));
             process.exit(1);
@@ -117,22 +98,24 @@ const showProposal = new Command("show")
                 return;
             }
 
-            console.log(`${formatBold("Proposal")} ${proposal.id}`);
-            console.log(`${formatDim("Chunk:")} ${proposal.chunkId}`);
-            console.log(`${formatDim("Status:")} ${proposal.status}`);
-            console.log(`${formatDim("Proposed by:")} ${proposal.proposedBy}`);
-            console.log(`${formatDim("Created:")} ${new Date(proposal.createdAt).toLocaleString()}`);
+            const lines: string[] = [];
+            lines.push(`${formatBold("Proposal")} ${proposal.id}`);
+            lines.push(`${formatDim("Chunk:")} ${proposal.chunkId}`);
+            lines.push(`${formatDim("Status:")} ${proposal.status}`);
+            lines.push(`${formatDim("Proposed by:")} ${proposal.proposedBy}`);
+            lines.push(`${formatDim("Created:")} ${new Date(proposal.createdAt).toLocaleString()}`);
             if (proposal.reason) {
-                console.log(`${formatDim("Reason:")} ${proposal.reason}`);
+                lines.push(`${formatDim("Reason:")} ${proposal.reason}`);
             }
-            console.log(`${formatDim("Changes:")}`);
+            lines.push(`${formatDim("Changes:")}`);
             for (const [field, value] of Object.entries(proposal.changes)) {
                 const display =
                     typeof value === "string" && value.length > 80
                         ? `${value.slice(0, 80)}…`
                         : JSON.stringify(value);
-                console.log(`  ${formatBold(field)}: ${display}`);
+                lines.push(`  ${formatBold(field)}: ${display}`);
             }
+            output(cmd, proposal, lines.join("\n"));
         } catch (err) {
             outputError(String(err));
             process.exit(1);
@@ -159,6 +142,7 @@ const approveProposal = new Command("approve")
             }
 
             const proposal = (await res.json()) as Proposal;
+            outputQuiet(cmd, proposal.id);
             output(cmd, proposal, formatSuccess("Proposal approved — changes applied to chunk."));
         } catch (err) {
             outputError(String(err));
@@ -186,6 +170,7 @@ const rejectProposal = new Command("reject")
             }
 
             const proposal = (await res.json()) as Proposal;
+            outputQuiet(cmd, proposal.id);
             output(cmd, proposal, formatSuccess("Proposal rejected."));
         } catch (err) {
             outputError(String(err));
