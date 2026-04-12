@@ -40,9 +40,28 @@ describe("CLI help output", () => {
         expect(stdout).toContain("plan");
         expect(stdout).toContain("check-files");
         expect(stdout).toContain("sync-claude-md");
-        expect(stdout).toContain("context-for");
+        expect(stdout).toContain("context");
         expect(stdout).toContain("hooks");
         expect(stdout).toContain("completions");
+        // New group commands
+        expect(stdout).toContain("chunk");
+        expect(stdout).toContain("tag");
+        expect(stdout).toContain("req");
+        expect(stdout).toContain("maintain");
+        expect(stdout).toContain("review");
+    });
+
+    it("chunk --help shows subcommands", () => {
+        const { stdout } = runCli("chunk --help");
+        expect(stdout).toContain("add");
+        expect(stdout).toContain("get");
+        expect(stdout).toContain("list");
+        expect(stdout).toContain("search");
+        expect(stdout).toContain("update");
+        expect(stdout).toContain("remove");
+        expect(stdout).toContain("enrich");
+        expect(stdout).toContain("link");
+        expect(stdout).toContain("unlink");
     });
 
     it("plan --help shows subcommands", () => {
@@ -68,14 +87,16 @@ describe("CLI help output", () => {
         expect(stdout).toContain("--watch");
     });
 
-    it("context-for --help shows path argument", () => {
-        const { stdout } = runCli("context-for --help");
+    it("context for --help shows path argument", () => {
+        const { stdout } = runCli("context for --help");
         expect(stdout).toContain("path");
     });
 
-    it("context --help shows --for option", () => {
+    it("context --help shows subcommands", () => {
         const { stdout } = runCli("context --help");
-        expect(stdout).toContain("--for");
+        expect(stdout).toContain("export");
+        expect(stdout).toContain("for");
+        expect(stdout).toContain("dir");
     });
 
     it("hooks --help shows install and uninstall", () => {

@@ -1,55 +1,40 @@
 import { Command } from "commander";
 
-import { addCommand } from "./commands/add";
-import { bulkAddCommand } from "./commands/bulk-add";
-import { catCommand } from "./commands/cat";
-import { checkFilesCommand } from "./commands/check-files";
-import { cleanupCommand } from "./commands/cleanup";
+// Group commands
+import { chunkCommand } from "./commands/chunk";
 import { codebaseCommand } from "./commands/codebase";
-import { contextCommand } from "./commands/context";
-import { contextDirCommand } from "./commands/context-dir";
-import { contextForCommand } from "./commands/context-for";
+import { contextGroupCommand } from "./commands/context-group";
+import { maintainCommand } from "./commands/maintain";
+import { planCommand } from "./commands/plan";
+import { reqCommand } from "./commands/req";
+import { reviewCommand } from "./commands/review";
+import { tagGroupCommand } from "./commands/tag-group";
+
+// Remaining top-level commands
+import { checkFilesCommand } from "./commands/check-files";
 import { diffCommand } from "./commands/diff";
-import { doctorCommand } from "./commands/doctor";
 import { docsCommand } from "./commands/docs";
-import { enrichCommand } from "./commands/enrich";
 import { exportCommand } from "./commands/export";
 import { exportSiteCommand } from "./commands/export-site";
 import { gapsCommand } from "./commands/gaps";
 import { generateCommand } from "./commands/generate";
-import { requirementsCommand } from "./commands/requirements";
-import { getCommand } from "./commands/get";
-import { importRequirementsCommand } from "./commands/import-requirements";
-import { kbDiffCommand } from "./commands/kb-diff";
-import { watchCommand } from "./commands/watch";
-import { healthCommand } from "./commands/health";
 import { hooksCommand } from "./commands/hooks";
 import { importCommand } from "./commands/import";
 import { initCommand } from "./commands/init";
-import { lintCommand } from "./commands/lint";
-import { linkCommand } from "./commands/link";
+import { kbDiffCommand } from "./commands/kb-diff";
 import { mcpToolsCommand } from "./commands/mcp-tools";
-import { planCommand } from "./commands/plan";
-import { promptCommand } from "./commands/prompt";
-import { reviewCommand } from "./commands/review";
-import { quickCommand } from "./commands/quick";
-import { recapCommand } from "./commands/recap";
-import { listCommand } from "./commands/list";
 import { openCommand } from "./commands/open";
-import { removeCommand } from "./commands/remove";
-import { searchCommand } from "./commands/search";
-import { seedConventionsCommand } from "./commands/seed-conventions";
+import { promptCommand } from "./commands/prompt";
+import { recapCommand } from "./commands/recap";
 import { statsCommand } from "./commands/stats";
 import { statusCommand } from "./commands/status";
 import { suggestCommand } from "./commands/suggest";
 import { syncCommand } from "./commands/sync";
 import { syncClaudeMdCommand } from "./commands/sync-claude-md";
-import { tagNormalizeCommand } from "./commands/tag-normalize";
-import { tagsCommand } from "./commands/tags";
 import { taskCommand } from "./commands/task";
-import { unlinkCommand } from "./commands/unlink";
-import { updateCommand } from "./commands/update";
+import { watchCommand } from "./commands/watch";
 import { whyCommand } from "./commands/why";
+
 import { generateZshCompletions } from "./lib/completions";
 
 const program = new Command();
@@ -61,56 +46,40 @@ program
     .option("--json", "output as JSON (machine-readable)")
     .option("-q, --quiet", "minimal output (just IDs/values)");
 
-program.addCommand(initCommand);
-program.addCommand(healthCommand);
-program.addCommand(addCommand);
-program.addCommand(catCommand);
-program.addCommand(bulkAddCommand);
-program.addCommand(getCommand);
-program.addCommand(listCommand);
-program.addCommand(searchCommand);
-program.addCommand(updateCommand);
-program.addCommand(removeCommand);
-program.addCommand(linkCommand);
-program.addCommand(unlinkCommand);
-program.addCommand(tagsCommand);
-program.addCommand(statsCommand);
-program.addCommand(statusCommand);
+// Groups
+program.addCommand(chunkCommand);
+program.addCommand(codebaseCommand);
+program.addCommand(contextGroupCommand);
+program.addCommand(maintainCommand);
+program.addCommand(planCommand);
+program.addCommand(reqCommand);
+program.addCommand(reviewCommand);
+program.addCommand(tagGroupCommand);
+
+// Top-level
+program.addCommand(checkFilesCommand);
+program.addCommand(diffCommand);
+program.addCommand(docsCommand);
 program.addCommand(exportCommand);
 program.addCommand(exportSiteCommand);
-program.addCommand(importCommand);
-program.addCommand(diffCommand);
-program.addCommand(syncCommand);
-program.addCommand(syncClaudeMdCommand);
-program.addCommand(enrichCommand);
-program.addCommand(codebaseCommand);
-program.addCommand(contextCommand);
-program.addCommand(contextDirCommand);
-program.addCommand(contextForCommand);
+program.addCommand(gapsCommand);
 program.addCommand(generateCommand);
-program.addCommand(requirementsCommand);
-program.addCommand(checkFilesCommand);
-program.addCommand(cleanupCommand);
 program.addCommand(hooksCommand);
-program.addCommand(lintCommand);
-program.addCommand(planCommand);
-program.addCommand(promptCommand);
-program.addCommand(reviewCommand);
-program.addCommand(quickCommand);
-program.addCommand(recapCommand);
-program.addCommand(suggestCommand);
-program.addCommand(taskCommand);
-program.addCommand(doctorCommand);
-program.addCommand(docsCommand);
+program.addCommand(importCommand);
+program.addCommand(initCommand);
+program.addCommand(kbDiffCommand);
 program.addCommand(mcpToolsCommand);
 program.addCommand(openCommand);
-program.addCommand(importRequirementsCommand);
-program.addCommand(kbDiffCommand);
+program.addCommand(promptCommand);
+program.addCommand(recapCommand);
+program.addCommand(statsCommand);
+program.addCommand(statusCommand);
+program.addCommand(suggestCommand);
+program.addCommand(syncCommand);
+program.addCommand(syncClaudeMdCommand);
+program.addCommand(taskCommand);
 program.addCommand(watchCommand);
 program.addCommand(whyCommand);
-program.addCommand(gapsCommand);
-program.addCommand(seedConventionsCommand);
-program.addCommand(tagNormalizeCommand);
 
 program.command("completions")
     .description("Generate shell completions")
