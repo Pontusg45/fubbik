@@ -43,6 +43,7 @@ import { stalenessRoutes } from "./staleness/routes";
 import { searchRoutes } from "./search/routes";
 import { learningPathRoutes } from "./learning-paths/routes";
 import { planRoutes } from "./plans/routes";
+import { proposalRoutes } from "./proposals/routes";
 import { taskQueueRoutes } from "./tasks/routes";
 import { vocabularyRoutes } from "./vocabulary/routes";
 import { workspaceRoutes } from "./workspaces/routes";
@@ -160,6 +161,7 @@ export const api = new Elysia({ prefix: "/api" })
     .use(diagramRoutes)
     .use(documentRoutes)
     .use(planRoutes)
+    .use(proposalRoutes)
     .use(taskQueueRoutes)
     .use(workspaceRoutes)
     .use(stalenessRoutes)

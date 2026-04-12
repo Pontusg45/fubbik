@@ -7,8 +7,11 @@ import {
     chunkProposal,
     type ChunkProposal,
     type NewChunkProposal,
+    type ProposedChanges,
 } from "../schema/chunk-proposal";
 import { chunk } from "../schema/chunk";
+
+export type { ProposedChanges };
 
 export function createProposal(input: NewChunkProposal): Effect.Effect<ChunkProposal, DatabaseError> {
     return Effect.tryPromise({
