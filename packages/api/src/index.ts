@@ -19,6 +19,7 @@ import { collectionRoutes } from "./collections/routes";
 import { connectionRoutes } from "./connections/routes";
 import { contextExportRoutes } from "./context-export/routes";
 import { contextForFileRoutes } from "./context-for-file/routes";
+import { contextRoutes } from "./context/routes";
 import { favoriteRoutes } from "./favorites/routes";
 import { generateInstructionsRoutes } from "./generate-instructions/routes";
 import { knowledgeHealthRoutes } from "./knowledge-health/routes";
@@ -132,6 +133,7 @@ export const api = new Elysia({ prefix: "/api" })
     )
     .use(contextExportRoutes)
     .use(contextForFileRoutes)
+    .use(contextRoutes)
     .use(chunkRoutes)
     .use(clusterRoutes)
     .use(appliesToRoutes)
