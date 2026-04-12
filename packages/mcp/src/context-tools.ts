@@ -165,6 +165,77 @@ export function registerContextTools(server: McpServer): void {
     );
 }
 
+    server.tool(
+        "create_context_snapshot",
+        "Freeze the current context for a plan, concept, or set of files into a persistent snapshot. AI agents should call this at the start of a session to get a stable snapshotId they can reference throughout — the content won't change even if chunks are edited mid-session.",
+        {
+            planId: z.string().optional().describe("Plan ID to snapshot context for"),
+            taskId: z.string().optional().describe("Task ID within the plan"),
+            filePaths: z.array(z.string()).optional().describe("File paths to snapshot context for"),
+            concept: z.string().optional().describe("Concept or topic to snapshot context about"),
+            maxTokens: z.number().optional().describe("Max tokens (default 8000)"),
+            codebaseId: z.string().optional().describe("Codebase ID to scope context"),
+        },
+        async ({ planId, taskId, filePaths, concept, maxTokens, codebaseId }) => {
+            const body: Record<string, unknown> = {};
+            if (planId) body.planId = planId;
+            if (taskId) body.taskId = taskId;
+            if (filePaths) body.filePaths = filePaths;
+            if (concept) body.concept = concept;
+            if (maxTokens) body.maxTokens = maxTokens;
+            if (codebaseId) body.codebaseId = codebaseId;
+
+            const data = (await apiFetch("/context/snapshot", {
+                method: "POST",
+                body: JSON.stringify(body),
+            })) as { snapshotId: string; tokenCount: number; chunkCount: number; createdAt: string };
+
+            return {
+                content: [
+                    {
+                        type: "text" as const,
+                        text: `Snapshot created.\nsnapshotId: ${data.snapshotId}\nchunks: ${data.chunkCount}\ntokens: ${data.tokenCount}\ncreatedAt: ${data.createdAt}\n\nUse get_context_snapshot with this ID to retrieve the frozen content.`,
+                    },
+                ],
+            };
+        },
+    );
+
+    server.tool(
+        "get_context_snapshot",
+        "Retrieve a previously created context snapshot by ID. Returns the frozen chunk content exactly as it was when the snapshot was created.",
+        {
+            snapshotId: z.string().describe("Snapshot ID returned by create_context_snapshot"),
+        },
+        async ({ snapshotId }) => {
+            const data = (await apiFetch(`/context/snapshot/${snapshotId}`)) as {
+                id: string;
+                query: unknown;
+                chunks: Array<{ title: string; content: string; type: string; rationale?: string | null }>;
+                tokenCount: number;
+                createdAt: string;
+            };
+
+            const lines: string[] = [
+                `# Context Snapshot: ${data.id}`,
+                `> Created: ${data.createdAt} | Tokens: ${data.tokenCount} | Chunks: ${data.chunks.length}`,
+                "",
+            ];
+
+            for (const chunk of data.chunks) {
+                lines.push(`## ${chunk.title} [${chunk.type}]`);
+                if (chunk.content) lines.push("", chunk.content);
+                if (chunk.rationale) lines.push("", `**Rationale:** ${chunk.rationale}`);
+                lines.push("");
+            }
+
+            return {
+                content: [{ type: "text" as const, text: lines.join("\n").trimEnd() }],
+            };
+        },
+    );
+}
+
 export const contextPlugin: McpPlugin = {
     name: "context",
     description: "Context export and CLAUDE.md sync tools",

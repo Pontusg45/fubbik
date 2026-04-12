@@ -6,6 +6,7 @@ import { contextDirCommand } from "./context-dir";
 import { contextForCommand } from "./context-for";
 import { contextForDiffCommand } from "./context-for-diff";
 import { contextForPlanCommand } from "./context-for-plan";
+import { contextSnapshotCommand } from "./context-snapshot";
 
 export const contextGroupCommand = new Command("context")
     .description("Export context for AI consumption")
@@ -14,4 +15,5 @@ export const contextGroupCommand = new Command("context")
     .addCommand(contextForCommand)
     .addCommand(contextForPlanCommand)
     .addCommand(contextAboutCommand)
-    .addCommand(contextForDiffCommand);
+    .addCommand(contextForDiffCommand)
+    .addCommand(contextSnapshotCommand);

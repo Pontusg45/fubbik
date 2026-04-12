@@ -36,3 +36,4 @@ export * from "./clusters";
 export * from "../age/query";
 export { isAgeAvailable } from "../age/client";
 export * from "./chunk-proposal";
+export * from "./context-snapshot";
