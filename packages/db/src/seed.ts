@@ -56,7 +56,6 @@ await db.delete(chunkAppliesTo).catch(() => {});
 await db.delete(chunkCodebase).catch(() => {});
 await db.delete(codebase).where(eq(codebase.userId, DEV_USER_ID)).catch(() => {});
 // Original cleanup
-await db.delete(chunkTag);
 await db.delete(tag).where(eq(tag.userId, DEV_USER_ID));
 await db.delete(tagType).where(eq(tagType.userId, DEV_USER_ID));
 await db.delete(chunk).where(eq(chunk.userId, DEV_USER_ID));
@@ -1287,7 +1286,6 @@ const connections = [
     { id: "conn-37", sourceId: ids.docsDeploy, targetId: ids.docker, relation: "references" }
 ];
 
-await db.delete(chunkConnection);
 for (const conn of connections) {
     await db
         .insert(chunkConnection)
@@ -1486,7 +1484,7 @@ await db
         id: CODEBASE_ID,
         name: "fubbik",
         remoteUrl: "https://github.com/user/fubbik",
-        localPaths: ["/Users/pontus/projects/fubbik"],
+        localPaths: [process.cwd()],
         userId: DEV_USER_ID
     })
     .catch(e => console.error("  \u2717 codebase:", e));
@@ -1954,7 +1952,7 @@ const docConnections = [
     { id: "seed-conn-api-auth", sourceId: "seed-doc-chunk-api-overview", targetId: ids.auth, relation: "references" },
 ];
 for (const conn of docConnections) {
-    await db.insert(chunkConnection).values({ ...conn, userId: DEV_USER_ID }).catch(e => console.error(`  ✗ doc connection:`, e));
+    await db.insert(chunkConnection).values(conn).catch(e => console.error(`  ✗ doc connection:`, e));
 }
 console.log(`  ✓ ${docConnections.length} doc chunk connections`);
 
