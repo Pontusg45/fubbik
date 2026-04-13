@@ -101,8 +101,8 @@ function ChunkSelector({
 
 function DiffView({ leftContent, rightContent }: { leftContent: string; rightContent: string }) {
     const { leftLines, rightLines, diff } = useMemo(() => {
-        const l = leftContent.split("\n");
-        const r = rightContent.split("\n");
+        const l = (leftContent ?? "").split("\n");
+        const r = (rightContent ?? "").split("\n");
         return { leftLines: l, rightLines: r, diff: simpleDiff(l, r) };
     }, [leftContent, rightContent]);
 
@@ -169,13 +169,19 @@ function ComparePage() {
 
     const leftQuery = useQuery({
         queryKey: ["chunk", leftId],
-        queryFn: async () => unwrapEden(await api.api.chunks({ id: leftId! }).get()) as unknown as ChunkSummary,
+        queryFn: async () => {
+            const res = unwrapEden(await api.api.chunks({ id: leftId! }).get()) as any;
+            return (res.chunk ?? res) as ChunkSummary;
+        },
         enabled: !!leftId
     });
 
     const rightQuery = useQuery({
         queryKey: ["chunk", rightId],
-        queryFn: async () => unwrapEden(await api.api.chunks({ id: rightId! }).get()) as unknown as ChunkSummary,
+        queryFn: async () => {
+            const res = unwrapEden(await api.api.chunks({ id: rightId! }).get()) as any;
+            return (res.chunk ?? res) as ChunkSummary;
+        },
         enabled: !!rightId
     });
 
