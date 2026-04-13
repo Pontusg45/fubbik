@@ -126,7 +126,7 @@ fubbik/
 \u2502   \u251c\u2500\u2500 auth/     # Better Auth + Drizzle adapter
 \u2502   \u251c\u2500\u2500 config/   # Shared TypeScript config
 \u2502   \u251c\u2500\u2500 db/       # Schema, repositories, migrations
-\u2502   \u2514\u2500\u2500 env/      # Arktype environment validation
+\u2502   \u2514\u2500\u2500 env/      # Elysia t schema environment validation
 \`\`\`
 
 ## Key Technologies
@@ -136,7 +136,7 @@ fubbik/
 - **Backend:** Elysia, Effect (error handling), Drizzle ORM
 - **Database:** PostgreSQL with pgvector extension
 - **Auth:** Better Auth (email/password)
-- **AI:** OpenAI (gpt-4o-mini), Ollama (llama3.2 + nomic-embed-text)
+- **AI:** Ollama (local LLM — llama3.2 for enrichment, nomic-embed-text for embeddings)
 - **Build:** Turborepo
 - **Testing:** Vitest`
     },
@@ -299,7 +299,7 @@ In dev mode, a \`DEV_SESSION\` with \`userId="dev-user"\` is injected when no au
     {
         id: ids.effect,
         title: "Effect Error Handling Pattern",
-        type: "guide",
+        type: "reference",
         content: `All backend code uses the Effect library for typed error handling. Errors flow from repositories through services to a global handler.
 
 ## Error Types
@@ -451,38 +451,34 @@ Defined in \`packages/api/src/graph/routes.ts\`.
         id: ids.apiAI,
         title: "API Endpoints: AI & Enrichment",
         type: "reference",
-        content: `## OpenAI Endpoints
+        content: `## Ollama AI Integration
 
-Defined in \`packages/api/src/ai/routes.ts\`. Require \`OPENAI_API_KEY\`.
-
-- \`POST /api/ai/summarize\` \u2014 Summarize a chunk (200 token max)
-  - Body: \`{ chunkId }\`
-- \`POST /api/ai/suggest-connections\` \u2014 Suggest connections via LLM (500 token max)
-  - Body: \`{ chunkId }\`
-  - Returns \`[{ id, relation }]\` \u2014 suggested target chunks
-- \`POST /api/ai/generate\` \u2014 Generate a new chunk from a prompt (1000 token max)
-  - Body: \`{ prompt }\`
-  - Returns \`{ title, content, type, tags }\`
-
-Uses \`@ai-sdk/openai\` with \`gpt-4o-mini\` (configurable via \`OPENAI_MODEL\` env var).
-
-## Ollama Enrichment
+Fubbik uses Ollama exclusively for all AI features — no external AI APIs required.
 
 Defined in \`packages/api/src/enrich/routes.ts\`. Requires Ollama running locally.
 
-- \`POST /api/chunks/:id/enrich\` \u2014 Enrich a single chunk
-- \`POST /api/chunks/enrich-all\` \u2014 Enrich all user's chunks sequentially
+- \`POST /api/chunks/:id/enrich\` — Enrich a single chunk
+- \`POST /api/chunks/enrich-all\` — Enrich all user's chunks sequentially
 
 Enrichment generates:
 1. **Metadata** (via \`llama3.2\`): summary, aliases[], notAbout[]
 2. **Embedding** (via \`nomic-embed-text\`): 768-dim vector for semantic search
 
-Enrichment also fires automatically (async, fire-and-forget) when a chunk is created or updated with title/content changes.`
+Enrichment also fires automatically (async, fire-and-forget) when a chunk is created or updated with title/content changes.
+
+## Required Models
+
+\`\`\`bash
+ollama pull llama3.2           # metadata generation
+ollama pull nomic-embed-text   # 768-dim embeddings
+\`\`\`
+
+Without Ollama, all other features work normally. There is no OpenAI or external AI SDK dependency.`
     },
     {
         id: ids.enrich,
         title: "Enrichment Pipeline",
-        type: "guide",
+        type: "reference",
         content: `The enrichment pipeline generates AI metadata for chunks using Ollama (local LLM).
 
 ## Flow
@@ -533,7 +529,7 @@ Without Ollama, all other features work normally. Enrichment fails gracefully.`
     {
         id: ids.semantic,
         title: "Semantic Search",
-        type: "guide",
+        type: "reference",
         content: `Semantic search uses vector embeddings to find chunks by meaning rather than keywords.
 
 ## How It Works
@@ -684,7 +680,7 @@ getUserGraph(userId?)
     {
         id: ids.eden,
         title: "Eden Treaty API Client",
-        type: "guide",
+        type: "reference",
         content: `The frontend communicates with the backend using Eden Treaty \u2014 a type-safe RPC-like client generated from Elysia's route definitions.
 
 ## Setup
@@ -1008,7 +1004,7 @@ The server URL is saved after first sync for future use.`
     {
         id: ids.cliScanner,
         title: "CLI Project Scanner",
-        type: "guide",
+        type: "reference",
         content: `The project scanner (\`apps/cli/src/lib/scanner.ts\`) auto-generates chunks from a codebase.
 
 ## What Gets Scanned
@@ -1047,7 +1043,7 @@ The scanner extracts markdown titles from \`# Heading\` lines and generates path
         id: ids.env,
         title: "Environment Variables",
         type: "reference",
-        content: `Environment validation uses \`@t3-oss/env-core\` with Arktype schemas. Defined in \`packages/env/src/\`.
+        content: `Environment validation uses Elysia \`t\` schema (TypeBox). Defined in \`packages/env/src/\`.
 
 ## Server Variables
 
@@ -1059,8 +1055,6 @@ The scanner extracts markdown titles from \`# Heading\` lines and generates path
 | \`CORS_ORIGIN\` | Yes | \u2014 | Allowed frontend origin |
 | \`PORT\` | Yes | \`3000\` | Server port |
 | \`NODE_ENV\` | No | \`development\` | Environment |
-| \`OPENAI_API_KEY\` | No | \u2014 | For AI features |
-| \`OPENAI_MODEL\` | No | \`gpt-4o-mini\` | OpenAI model |
 | \`OLLAMA_URL\` | No | \`http://localhost:11434\` | Ollama server |
 | \`RATE_LIMIT_MAX\` | No | \u2014 | Max requests per window |
 | \`RATE_LIMIT_DURATION_MS\` | No | \u2014 | Rate limit window |
@@ -1083,7 +1077,7 @@ DATABASE_URL=postgresql://postgres:password@db:5432/fubbik
     {
         id: ids.docker,
         title: "Docker Deployment",
-        type: "guide",
+        type: "reference",
         content: `Fubbik can be deployed via Docker Compose with three services.
 
 ## Services
@@ -1126,16 +1120,16 @@ services:
 ## Development
 
 \`\`\`bash
-bun install
-bun dev          # Start all services via Turborepo
-bun db:push      # Push schema to PostgreSQL
-bun db:studio    # Open Drizzle Studio (port 5555)
+pnpm install
+pnpm dev          # Start all services via Turborepo
+pnpm db:push      # Push schema to PostgreSQL
+pnpm db:studio    # Open Drizzle Studio (port 5555)
 \`\`\`
 
 ## CI Pipeline
 
 \`\`\`bash
-bun ci           # type-check \u2192 lint \u2192 test \u2192 build \u2192 format-check \u2192 sherif
+pnpm ci           # type-check \u2192 lint \u2192 test \u2192 build \u2192 format-check \u2192 sherif
 \`\`\``
     },
     {
@@ -1172,14 +1166,14 @@ bun ci           # type-check \u2192 lint \u2192 test \u2192 build \u2192 format
 
 | Script | Purpose |
 |--------|---------|
-| \`bun dev\` | Start all apps in dev mode |
-| \`bun dev:web\` | Frontend only |
-| \`bun dev:server\` | Backend only |
-| \`bun build\` | Production build (respects \`^build\` deps) |
-| \`bun test\` | Run Vitest across all packages |
-| \`bun ci\` | Full CI: type-check, lint, test, build, format, sherif |
-| \`bun db:push\` | Push Drizzle schema |
-| \`bun db:studio\` | Drizzle Studio UI |
+| \`pnpm dev\` | Start all apps in dev mode |
+| \`pnpm dev:web\` | Frontend only |
+| \`pnpm dev:server\` | Backend only |
+| \`pnpm build\` | Production build (respects \`^build\` deps) |
+| \`pnpm test\` | Run Vitest across all packages |
+| \`pnpm ci\` | Full CI: type-check, lint, test, build, format, sherif |
+| \`pnpm db:push\` | Push Drizzle schema |
+| \`pnpm db:studio\` | Drizzle Studio UI |
 
 ## Package Dependencies
 
@@ -1202,13 +1196,13 @@ packages/db   \u2192 @fubbik/env
     {
         id: ids.docsContent,
         title: "Content Guidelines",
-        type: "guide",
+        type: "reference",
         content: `All documentation pages follow a consistent structure: a title, a one-sentence summary, a "Prerequisites" section listing required knowledge, and the main body. Code examples must be runnable — every snippet is extracted and executed in CI via a custom test harness. Tone should be concise and direct, avoiding marketing language. Diagrams use Mermaid syntax embedded in fenced code blocks. Each page must declare its audience (beginner, intermediate, advanced) in frontmatter so the site can surface appropriate content based on reader context.`
     },
     {
         id: ids.docsDeploy,
         title: "Deployment Process",
-        type: "guide",
+        type: "reference",
         content: `The docs site deploys automatically on every push to the main branch via a Vercel project linked to the fubbik-docs repository. Preview deployments are created for every pull request, allowing reviewers to check rendered output before merging. The build step runs Astro's static build, then Pagefind indexing, and finally a link-checker that fails the build if any internal links are broken. Environment variables for the Vercel project include FUBBIK_API_URL (pointing to the production API for live OpenAPI spec fetching) and SITE_URL for canonical URL generation.`
     }
 ];
