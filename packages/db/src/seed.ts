@@ -12,7 +12,15 @@ import { chunkAppliesTo } from "./schema/applies-to";
 import { chunkFileRef } from "./schema/file-ref";
 import { requirement, requirementChunk } from "./schema/requirement";
 import { useCase } from "./schema/use-case";
-import { plan, planRequirement, planAnalyzeItem, planTask } from "./schema/plan";
+import { plan, planRequirement, planAnalyzeItem, planTask, planTaskChunk, planTaskDependency } from "./schema/plan";
+import { chunkVersion } from "./schema/chunk-version";
+import { chunkStaleness } from "./schema/staleness";
+import { chunkProposal } from "./schema/chunk-proposal";
+import { activityLog } from "./schema/activity";
+import { userFavorite } from "./schema/favorite";
+import { notification } from "./schema/notification";
+import { chunkComment } from "./schema/comment";
+import { savedQuery } from "./schema/saved-query";
 import { vocabularyEntry } from "./schema/vocabulary";
 import { collection } from "./schema/collection";
 import { workspace, workspaceCodebase } from "./schema/workspace";
@@ -39,11 +47,21 @@ if (!existing) {
 
 // Clear existing data for dev user (order matters for FK constraints)
 // New entity cleanup (must come before chunk/codebase deletion)
+await db.delete(savedQuery).where(eq(savedQuery.userId, DEV_USER_ID)).catch(() => {});
+await db.delete(notification).where(eq(notification.userId, DEV_USER_ID)).catch(() => {});
+await db.delete(userFavorite).where(eq(userFavorite.userId, DEV_USER_ID)).catch(() => {});
+await db.delete(activityLog).where(eq(activityLog.userId, DEV_USER_ID)).catch(() => {});
+await db.delete(chunkComment).catch(() => {});
+await db.delete(chunkProposal).catch(() => {});
+await db.delete(chunkStaleness).catch(() => {});
+await db.delete(chunkVersion).catch(() => {});
 await db.delete(workspaceCodebase).catch(() => {});
 await db.delete(workspace).where(eq(workspace.userId, DEV_USER_ID)).catch(() => {});
 await db.delete(collection).where(eq(collection.userId, DEV_USER_ID)).catch(() => {});
 await db.delete(vocabularyEntry).where(eq(vocabularyEntry.userId, DEV_USER_ID)).catch(() => {});
 // Delete plan sub-tables first (FK constraints), then plans
+await db.delete(planTaskChunk).catch(() => {});
+await db.delete(planTaskDependency).catch(() => {});
 await db.delete(planTask).catch(() => {});
 await db.delete(planAnalyzeItem).catch(() => {});
 await db.delete(planRequirement).catch(() => {});
@@ -89,7 +107,11 @@ const ids = {
     // Docs codebase chunks
     docsArch: "seed-docs-arch",
     docsContent: "seed-docs-content",
-    docsDeploy: "seed-docs-deploy"
+    docsDeploy: "seed-docs-deploy",
+    // Note + checklist chunks
+    noteAuth: "seed-note-auth-convention",
+    noteError: "seed-note-error-convention",
+    checklistFeature: "seed-checklist-new-feature"
 };
 
 const chunks = [
@@ -1204,6 +1226,90 @@ packages/db   \u2192 @fubbik/env
         title: "Deployment Process",
         type: "reference",
         content: `The docs site deploys automatically on every push to the main branch via a Vercel project linked to the fubbik-docs repository. Preview deployments are created for every pull request, allowing reviewers to check rendered output before merging. The build step runs Astro's static build, then Pagefind indexing, and finally a link-checker that fails the build if any internal links are broken. Environment variables for the Vercel project include FUBBIK_API_URL (pointing to the production API for live OpenAPI spec fetching) and SITE_URL for canonical URL generation.`
+    },
+    // ── Note-type chunks ────────────────────────────────────────────
+    {
+        id: ids.noteAuth,
+        title: "Authentication Convention: requireSession pattern",
+        type: "note",
+        content: `Every protected API route must call \`requireSession(ctx)\` as the outermost Effect in the pipe. This function reads the session cookie, looks up the session in the database, and returns an \`Effect<Session, AuthError>\`.
+
+**Convention:** never read \`ctx.request.headers\` directly in route handlers — always use \`requireSession\`.
+
+\`\`\`typescript
+// ✅ Correct
+.get("/chunks", ctx =>
+  Effect.runPromise(
+    requireSession(ctx).pipe(
+      Effect.flatMap(session => listChunks(session.user.id, ctx.query))
+    )
+  )
+)
+
+// ❌ Wrong — bypasses session validation
+.get("/chunks", ctx => listChunks("dev-user", ctx.query))
+\`\`\`
+
+In development, if no session cookie is present, the \`DEV_SESSION\` middleware injects a fake session with \`userId = "dev-user"\` so routes work without sign-in.`
+    },
+    {
+        id: ids.noteError,
+        title: "Error Handling Convention: Effect → tagged error → HTTP status",
+        type: "note",
+        content: `All backend errors must be expressed as tagged Effect failures — never throw raw \`Error\` objects in service or repository code.
+
+**Tagged error classes** (defined in \`packages/api/src/errors.ts\`):
+- \`DatabaseError\` — wraps Drizzle/pg exceptions
+- \`NotFoundError\` — resource missing (includes \`resource\` field)
+- \`AuthError\` — unauthenticated or unauthorized
+- \`ValidationError\` — invalid input
+- \`AiError\` — Ollama unavailable or malformed response
+
+**HTTP mapping** (global \`.onError\` handler in \`packages/api/src/index.ts\`):
+| _tag | HTTP status |
+|------|------------|
+| ValidationError | 400 |
+| AuthError | 401 |
+| NotFoundError | 404 |
+| AiError | 502 |
+| DatabaseError | 500 |
+
+**Convention:** repositories return \`Effect<T, DatabaseError>\`; services introduce other error types; routes call \`Effect.runPromise\` and let the global handler translate them.`
+    },
+    // ── Checklist-type chunk ────────────────────────────────────────
+    {
+        id: ids.checklistFeature,
+        title: "New Feature Checklist",
+        type: "checklist",
+        content: `Use this checklist whenever adding a new domain feature across the fubbik monorepo.
+
+## Database
+- [ ] Add schema table in \`packages/db/src/schema/<feature>.ts\`
+- [ ] Export from \`packages/db/src/schema/index.ts\`
+- [ ] Add Drizzle relations if needed
+- [ ] Run \`pnpm db:push\` to apply schema
+- [ ] Add repository functions in \`packages/db/src/repository/<feature>.ts\`
+
+## API
+- [ ] Add service in \`packages/api/src/<feature>/service.ts\` (Effect-based)
+- [ ] Add routes in \`packages/api/src/<feature>/routes.ts\` (Elysia + t schema validation)
+- [ ] Mount routes in \`packages/api/src/index.ts\`
+- [ ] Update \`Api\` export type
+
+## Web
+- [ ] Add route file in \`apps/web/src/routes/<feature>.tsx\`
+- [ ] Add feature components in \`apps/web/src/features/<feature>/\`
+- [ ] Add to navigation if needed
+
+## CLI (if applicable)
+- [ ] Add command in \`apps/cli/src/commands/<feature>.ts\`
+- [ ] Register in \`apps/cli/src/index.ts\`
+
+## Testing & Docs
+- [ ] Add vitest tests for service and repository
+- [ ] Update seed data in \`packages/db/src/seed.ts\`
+- [ ] Update CLAUDE.md with new endpoints and pages
+- [ ] Run \`pnpm ci\` to verify all checks pass`
     }
 ];
 
@@ -1352,6 +1458,7 @@ const seedTags: { id: string; name: string; tagTypeId: string; userId: string }[
     { id: "seed-tag-error-handling", name: "error-handling", tagTypeId: tagTypeIds.pattern, userId: DEV_USER_ID },
     { id: "seed-tag-force-directed", name: "force-directed", tagTypeId: tagTypeIds.pattern, userId: DEV_USER_ID },
     { id: "seed-tag-rest", name: "rest", tagTypeId: tagTypeIds.pattern, userId: DEV_USER_ID },
+    { id: "seed-tag-convention", name: "convention", tagTypeId: tagTypeIds.pattern, userId: DEV_USER_ID },
     // documentation tags
     { id: "seed-tag-overview", name: "overview", tagTypeId: tagTypeIds.documentation, userId: DEV_USER_ID },
     { id: "seed-tag-schema", name: "schema", tagTypeId: tagTypeIds.documentation, userId: DEV_USER_ID },
@@ -1462,7 +1569,18 @@ const chunkTagAssociations: { chunkId: string; tagId: string }[] = [
     { chunkId: ids.docsContent, tagId: "seed-tag-guide" },
     // Docs: Deployment
     { chunkId: ids.docsDeploy, tagId: "seed-tag-deployment" },
-    { chunkId: ids.docsDeploy, tagId: "seed-tag-ci" }
+    { chunkId: ids.docsDeploy, tagId: "seed-tag-ci" },
+    // Note: Authentication Convention
+    { chunkId: ids.noteAuth, tagId: "seed-tag-convention" },
+    { chunkId: ids.noteAuth, tagId: "seed-tag-authentication" },
+    { chunkId: ids.noteAuth, tagId: "seed-tag-backend" },
+    // Note: Error Handling Convention
+    { chunkId: ids.noteError, tagId: "seed-tag-convention" },
+    { chunkId: ids.noteError, tagId: "seed-tag-error-handling" },
+    { chunkId: ids.noteError, tagId: "seed-tag-backend" },
+    // Checklist: New Feature
+    { chunkId: ids.checklistFeature, tagId: "seed-tag-guide" },
+    { chunkId: ids.checklistFeature, tagId: "seed-tag-reference" }
 ];
 
 for (const ct of chunkTagAssociations) {
@@ -2189,6 +2307,324 @@ for (const fr of moreFileRefs) {
 console.log(`  \u2713 ${moreFileRefs.length} more file references`);
 
 console.log(`\n\u2705 Database seeded: ${chunks.length} chunks, ${connections.length} connections, ${seedTagTypes.length} tag types, ${seedTags.length} tags, plus codebases, patterns, refs, requirements, use cases, plans, vocabulary, collections, workspaces`);
+
+// ─── A. chunk_version — version history ────────────────────────────
+const chunkVersions = [
+    {
+        id: "seed-cv-arch-v1",
+        chunkId: ids.arch,
+        version: 1,
+        title: "Fubbik Architecture Overview",
+        content: "Fubbik is a local-first knowledge framework. It stores knowledge as chunks connected by typed relationships.",
+        type: "document",
+        tags: ["overview", "monorepo"],
+        createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) // 30 days ago
+    },
+    {
+        id: "seed-cv-arch-v2",
+        chunkId: ids.arch,
+        version: 2,
+        title: "Fubbik Architecture Overview",
+        content: "Fubbik is a local-first knowledge framework for humans and machines. It stores knowledge as **chunks** connected by typed relationships in a graph.\n\nAdded monorepo layout section and key technologies table.",
+        type: "document",
+        tags: ["overview", "monorepo"],
+        createdAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000) // 14 days ago
+    }
+];
+for (const cv of chunkVersions) {
+    await db.insert(chunkVersion).values(cv).catch(e => console.error("  \u2717 chunk_version:", e));
+}
+console.log(`  \u2713 ${chunkVersions.length} chunk versions`);
+
+// ─── B. chunk_staleness — staleness flags ───────────────────────────
+const stalenessFlags = [
+    {
+        id: "seed-staleness-age",
+        chunkId: ids.docker,
+        reason: "age",
+        detail: "This chunk has not been updated in 120 days. Docker configuration may be outdated.",
+        detectedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000) // detected 5 days ago
+    },
+    {
+        id: "seed-staleness-dup",
+        chunkId: ids.schemaVer,
+        reason: "diverged_duplicate",
+        detail: "This chunk has overlapping content with 'Database Schema: Chunks'. Both describe version history storage.",
+        relatedChunkId: ids.schemaChunks,
+        detectedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000) // detected 2 days ago
+    }
+];
+for (const sf of stalenessFlags) {
+    await db.insert(chunkStaleness).values(sf).catch(e => console.error("  \u2717 chunk_staleness:", e));
+}
+console.log(`  \u2713 ${stalenessFlags.length} staleness flags`);
+
+// ─── C. chunk_proposal — proposals in all 4 statuses ────────────────
+const proposals = [
+    {
+        id: "seed-proposal-pending-1",
+        chunkId: ids.effect,
+        changes: { title: "Effect Error Handling Pattern (Updated)", content: "Updated content with new AiError examples and retry logic." },
+        reason: "The AiError type was added recently but the chunk doesn't document it.",
+        status: "pending",
+        proposedBy: DEV_USER_ID,
+        createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000)
+    },
+    {
+        id: "seed-proposal-pending-2",
+        chunkId: ids.apiChunks,
+        changes: { tags: ["api", "rest", "chunks", "pagination"] },
+        reason: "Add pagination tag so this chunk surfaces in pagination-related searches.",
+        status: "pending",
+        proposedBy: DEV_USER_ID,
+        createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000)
+    },
+    {
+        id: "seed-proposal-approved",
+        chunkId: ids.auth,
+        changes: { content: "Added section on cookie prefix configuration and httpOnly attribute requirements." },
+        reason: "Missing important cookie security configuration details.",
+        status: "approved",
+        proposedBy: DEV_USER_ID,
+        reviewedBy: DEV_USER_ID,
+        reviewedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+        reviewNote: "Good catch — this is needed for cross-origin deployments.",
+        createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000)
+    },
+    {
+        id: "seed-proposal-rejected",
+        chunkId: ids.graph,
+        changes: { title: "Graph Visualization (React Flow)" },
+        reason: "Rename to include the library name for discoverability.",
+        status: "rejected",
+        proposedBy: DEV_USER_ID,
+        reviewedBy: DEV_USER_ID,
+        reviewedAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000),
+        reviewNote: "Keep titles technology-agnostic; we may switch libraries in the future.",
+        createdAt: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000)
+    }
+];
+for (const p of proposals) {
+    await db.insert(chunkProposal).values(p).catch(e => console.error("  \u2717 chunk_proposal:", e));
+}
+console.log(`  \u2713 ${proposals.length} chunk proposals (2 pending, 1 approved, 1 rejected)`);
+
+// ─── D. More plans (draft, ready with task deps/chunks, archived) ────
+const [planDraft] = await db
+    .insert(plan)
+    .values({
+        title: "Add MCP resource endpoints",
+        description: "Expose fubbik chunks as MCP resources so AI agents can read them without using tools. This requires updating the MCP server package.",
+        status: "draft",
+        userId: DEV_USER_ID,
+        codebaseId: CODEBASE_ID
+    })
+    .returning();
+if (!planDraft) throw new Error("failed to seed draft plan");
+
+const [planReady] = await db
+    .insert(plan)
+    .values({
+        title: "Chunk health score dashboard widget",
+        description: "Add a dashboard widget showing health score distribution (excellent/good/fair/poor) with drill-down to low-scoring chunks.",
+        status: "ready",
+        userId: DEV_USER_ID,
+        codebaseId: CODEBASE_ID
+    })
+    .returning();
+if (!planReady) throw new Error("failed to seed ready plan");
+
+const [readyTask1] = await db
+    .insert(planTask)
+    .values({ planId: planReady.id, title: "Add health score aggregation query to stats repository", status: "pending", order: 0 })
+    .returning();
+const [readyTask2] = await db
+    .insert(planTask)
+    .values({ planId: planReady.id, title: "Add /api/stats/health endpoint", status: "blocked", order: 1 })
+    .returning();
+const [readyTask3] = await db
+    .insert(planTask)
+    .values({ planId: planReady.id, title: "Add HealthScoreWidget component to dashboard", status: "skipped", order: 2 })
+    .returning();
+
+if (!readyTask1 || !readyTask2 || !readyTask3) throw new Error("failed to seed ready plan tasks");
+
+// task 2 depends on task 1
+await db.insert(planTaskDependency).values({
+    taskId: readyTask2.id,
+    dependsOnTaskId: readyTask1.id
+}).catch(e => console.error("  \u2717 planTaskDependency:", e));
+
+// link task 1 to an existing chunk with relation "context"
+await db.insert(planTaskChunk).values({
+    taskId: readyTask1.id,
+    chunkId: ids.schemaChunks,
+    relation: "context"
+}).catch(e => console.error("  \u2717 planTaskChunk:", e));
+
+const [planArchived] = await db
+    .insert(plan)
+    .values({
+        title: "Migrate tags from JSONB array to normalized table",
+        description: "Replace the JSONB tags array on chunk with a proper chunk_tag join table and tag/tag_type tables. Completed in v0.3.",
+        status: "archived",
+        userId: DEV_USER_ID,
+        codebaseId: CODEBASE_ID,
+        completedAt: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000) // completed 60 days ago
+    })
+    .returning();
+if (!planArchived) throw new Error("failed to seed archived plan");
+
+await db.insert(planTask).values([
+    { planId: planArchived.id, title: "Create tag and tag_type tables", status: "done", order: 0 },
+    { planId: planArchived.id, title: "Create chunk_tag join table", status: "done", order: 1 },
+    { planId: planArchived.id, title: "Migrate existing JSONB data to new tables", status: "done", order: 2 },
+    { planId: planArchived.id, title: "Drop tags column from chunk", status: "done", order: 3 }
+]);
+
+console.log("  \u2713 3 more plans (draft, ready with task deps + chunk links, archived)");
+
+// ─── E. activity_log ────────────────────────────────────────────────
+const activityEntries = [
+    {
+        id: "seed-activity-1",
+        userId: DEV_USER_ID,
+        entityType: "chunk",
+        entityId: ids.arch,
+        entityTitle: "Fubbik Architecture Overview",
+        action: "updated",
+        codebaseId: CODEBASE_ID,
+        createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000) // 2 hours ago
+    },
+    {
+        id: "seed-activity-2",
+        userId: DEV_USER_ID,
+        entityType: "chunk",
+        entityId: ids.noteAuth,
+        entityTitle: "Authentication Convention: requireSession pattern",
+        action: "created",
+        codebaseId: CODEBASE_ID,
+        createdAt: new Date(Date.now() - 1 * 60 * 60 * 1000) // 1 hour ago
+    },
+    {
+        id: "seed-activity-3",
+        userId: DEV_USER_ID,
+        entityType: "requirement",
+        entityId: "seed-req-crud",
+        entityTitle: "Chunk CRUD operations",
+        action: "updated",
+        codebaseId: CODEBASE_ID,
+        createdAt: new Date(Date.now() - 30 * 60 * 1000) // 30 minutes ago
+    }
+];
+for (const entry of activityEntries) {
+    await db.insert(activityLog).values(entry).catch(e => console.error("  \u2717 activity_log:", e));
+}
+console.log(`  \u2713 ${activityEntries.length} activity log entries`);
+
+// ─── F. user_favorite ───────────────────────────────────────────────
+const favorites = [
+    { id: "seed-fav-arch", userId: DEV_USER_ID, chunkId: ids.arch, order: 0 },
+    { id: "seed-fav-effect", userId: DEV_USER_ID, chunkId: ids.effect, order: 1 },
+    { id: "seed-fav-checklist", userId: DEV_USER_ID, chunkId: ids.checklistFeature, order: 2 }
+];
+for (const fav of favorites) {
+    await db.insert(userFavorite).values(fav).catch(e => console.error("  \u2717 user_favorite:", e));
+}
+console.log(`  \u2713 ${favorites.length} user favorites`);
+
+// ─── G. notification ────────────────────────────────────────────────
+const notifications = [
+    {
+        id: "seed-notif-stale",
+        userId: DEV_USER_ID,
+        type: "stale_chunks",
+        title: "2 chunks may need attention",
+        message: "Docker Deployment hasn't been updated in 120 days and may be outdated.",
+        linkTo: `/chunks/${ids.docker}`,
+        read: false,
+        createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000)
+    },
+    {
+        id: "seed-notif-proposal",
+        userId: DEV_USER_ID,
+        type: "review_needed",
+        title: "2 proposals awaiting review",
+        message: "There are pending proposals for Effect Error Handling Pattern and API Endpoints: Chunks.",
+        linkTo: "/reviews",
+        read: false,
+        createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000)
+    },
+    {
+        id: "seed-notif-read",
+        userId: DEV_USER_ID,
+        type: "chunk_updated",
+        title: "Authentication System was updated",
+        message: "A proposal to add cookie security documentation was approved and applied.",
+        linkTo: `/chunks/${ids.auth}`,
+        read: true,
+        createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+    }
+];
+for (const n of notifications) {
+    await db.insert(notification).values(n).catch(e => console.error("  \u2717 notification:", e));
+}
+console.log(`  \u2713 ${notifications.length} notifications`);
+
+// ─── H. chunk_comment ───────────────────────────────────────────────
+const comments = [
+    {
+        id: "seed-comment-1",
+        chunkId: ids.effect,
+        userId: DEV_USER_ID,
+        content: "Should we add an example of using Effect.catchTag to handle specific error types in routes? That pattern comes up a lot.",
+        createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
+        updatedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000)
+    },
+    {
+        id: "seed-comment-2",
+        chunkId: ids.arch,
+        userId: DEV_USER_ID,
+        content: "Consider adding MCP server to the monorepo layout diagram — it's now a first-class package.",
+        createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
+        updatedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000)
+    }
+];
+for (const c of comments) {
+    await db.insert(chunkComment).values(c).catch(e => console.error("  \u2717 chunk_comment:", e));
+}
+console.log(`  \u2713 ${comments.length} chunk comments`);
+
+// ─── I. saved_query ─────────────────────────────────────────────────
+const savedQueries = [
+    {
+        id: "seed-sq-backend-patterns",
+        name: "Backend patterns",
+        query: { type: "reference", tags: ["backend", "pattern"], sort: "updated" },
+        userId: DEV_USER_ID,
+        codebaseId: CODEBASE_ID,
+        createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+    },
+    {
+        id: "seed-sq-schema-docs",
+        name: "Schema documentation",
+        query: { type: "schema", sort: "alpha" },
+        userId: DEV_USER_ID,
+        codebaseId: CODEBASE_ID,
+        createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000)
+    },
+    {
+        id: "seed-sq-recent-notes",
+        name: "Recent notes and conventions",
+        query: { type: "note", sort: "updated", after: "30" },
+        userId: DEV_USER_ID,
+        createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000)
+    }
+];
+for (const sq of savedQueries) {
+    await db.insert(savedQuery).values(sq).catch(e => console.error("  \u2717 saved_query:", e));
+}
+console.log(`  \u2713 ${savedQueries.length} saved queries`);
 
 // Build a lookup for enrichment prompts (replacing old tags property)
 const chunkTagNames = new Map<string, string[]>();
