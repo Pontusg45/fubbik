@@ -231,10 +231,8 @@ function SearchPage() {
                     {/* Saved queries dropdown */}
                     {savedQueries.length > 0 && (
                         <DropdownMenu>
-                            <DropdownMenuTrigger>
-                                <Button variant="outline" size="sm" className="gap-1.5 text-xs">
+                            <DropdownMenuTrigger className="inline-flex items-center gap-1.5 rounded-md border border-input bg-background px-3 py-1.5 text-xs font-medium shadow-xs hover:bg-accent hover:text-accent-foreground transition-colors">
                                     Saved queries
-                                </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="start" className="w-56">
                                 {savedQueries.map((saved: any) => (
