@@ -31,7 +31,7 @@ function validateKind(kind: string): Effect.Effect<PlanAnalyzeKind, ValidationEr
     return Effect.succeed(kind as PlanAnalyzeKind);
 }
 
-export const planAnalyzeRoutes = new Elysia({ prefix: "/api/plans/:id/analyze" })
+export const planAnalyzeRoutes = new Elysia({ prefix: "/plans/:id/analyze" })
     .get("/", async ctx => {
         return await Effect.runPromise(
             requireSession(ctx).pipe(

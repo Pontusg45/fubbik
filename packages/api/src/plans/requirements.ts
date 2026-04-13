@@ -6,7 +6,7 @@ import * as planRepo from "@fubbik/db/repository/plan";
 import { requireSession } from "../require-session";
 import { getPlan } from "./service";
 
-export const planRequirementRoutes = new Elysia({ prefix: "/api/plans/:id/requirements" })
+export const planRequirementRoutes = new Elysia({ prefix: "/plans/:id/requirements" })
     .post(
         "/",
         async ctx => {

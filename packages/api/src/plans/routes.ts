@@ -4,7 +4,7 @@ import { Elysia, t } from "elysia";
 import { requireSession } from "../require-session";
 import * as planService from "./service";
 
-const planBase = new Elysia({ prefix: "/api/plans" })
+const planBase = new Elysia({ prefix: "/plans" })
     .get(
         "/",
         async ctx => {

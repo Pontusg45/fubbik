@@ -24,7 +24,7 @@ function validateRelation(rel: string): Effect.Effect<PlanTaskChunkRelation, Val
     return Effect.succeed(rel as PlanTaskChunkRelation);
 }
 
-export const planTaskRoutes = new Elysia({ prefix: "/api/plans/:id/tasks" })
+export const planTaskRoutes = new Elysia({ prefix: "/plans/:id/tasks" })
     .post(
         "/",
         async ctx => {
