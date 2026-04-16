@@ -30,14 +30,15 @@ function extractLinks(content: string, chunkId: string, chunkTitle: string): Lin
     const links: LinkInfo[] = [];
     let match: RegExpExecArray | null;
     while ((match = LINK_REGEX.exec(content)) !== null) {
-        const text = match[1];
+        const text = match[1] ?? "";
         const url = match[2];
+        if (!url) continue;
 
         let status: LinkInfo["status"];
         if (url.startsWith("http://") || url.startsWith("https://")) {
             status = "external";
         } else if (url.startsWith("/")) {
-            const basePath = url.split("?")[0].split("#")[0];
+            const basePath = url.split("?")[0]?.split("#")[0] ?? "";
             const isKnown = KNOWN_ROUTES.some(r => basePath === r || basePath.startsWith(r + "/"));
             status = isKnown ? "ok" : "broken";
         } else if (url.startsWith("#")) {
@@ -116,7 +117,7 @@ export function BrokenLinkChecker() {
                         </thead>
                         <tbody className="divide-y">
                             {sortedLinks.map((link, i) => {
-                                const style = STATUS_STYLES[link.status];
+                                const style = STATUS_STYLES[link.status]!;
                                 return (
                                     <tr key={`${link.chunkId}-${i}`}>
                                         <td className="py-2 pr-3">

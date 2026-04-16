@@ -52,15 +52,18 @@ export function ImportDocsDialog() {
         staleTime: 60_000
     });
 
+    type ImportResult = { created: number; skipped: number; errors: Array<{ path: string; error: string }> };
     const importMutation = useMutation({
-        mutationFn: async (payload: { files: FileEntry[]; codebaseId: string }) =>
-            unwrapEden(
+        mutationFn: async (payload: { files: FileEntry[]; codebaseId: string }) => {
+            const result = unwrapEden(
                 await api.api.chunks["import-docs"].post({
                     files: payload.files,
                     codebaseId: payload.codebaseId
                 })
-            ),
-        onSuccess: data => {
+            );
+            return result as ImportResult;
+        },
+        onSuccess: (data) => {
             const msg = `Created: ${data.created} | Skipped: ${data.skipped} | Errors: ${data.errors.length}`;
             if (data.errors.length > 0) {
                 toast.warning(msg);

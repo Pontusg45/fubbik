@@ -256,6 +256,27 @@ function ChunksList() {
         staleTime: 60_000
     });
 
+    // Fetch chunk-tag mappings for grouping
+    const chunkTagsQuery = useQuery({
+        queryKey: ["chunk-tags-map"],
+        queryFn: async () => {
+            try {
+                const graph = unwrapEden(await api.api.graph.get({ query: {} }));
+                const map = new Map<string, string[]>();
+                for (const ct of (graph.chunkTags ?? [])) {
+                    const existing = map.get(ct.chunkId) ?? [];
+                    existing.push(ct.tagName);
+                    map.set(ct.chunkId, existing);
+                }
+                return map;
+            } catch {
+                return new Map<string, string[]>();
+            }
+        },
+        enabled: group === "tag",
+        staleTime: 60_000,
+    });
+
     const allChunks = activeQuery.data?.pages.flatMap(p => p?.chunks ?? []) ?? [];
     const chunks = allChunks;
     const { pinnedIds, togglePin, isPinned } = usePinnedChunks();
@@ -286,35 +307,58 @@ function ChunksList() {
         });
     }
 
+    const chunkTagMap = chunkTagsQuery.data;
+
     const groupedChunks = useMemo(() => {
+        type ChunkList = typeof collectionFilteredChunks;
+        const grouped = new Map<string, ChunkList>();
+
+        function addTo(key: string, chunk: ChunkList[number]) {
+            const existing = grouped.get(key) ?? [];
+            existing.push(chunk);
+            grouped.set(key, existing);
+        }
+
         if (group === "type") {
-            const groups = new Map<string, typeof collectionFilteredChunks>();
-            for (const c of collectionFilteredChunks) {
-                const existing = groups.get(c.type) ?? [];
-                existing.push(c);
-                groups.set(c.type, existing);
-            }
-            return groups;
+            for (const c of collectionFilteredChunks) addTo(c.type, c);
+            return grouped;
         }
+
         if (group === "tag") {
-            const groups = new Map<string, typeof collectionFilteredChunks>();
             for (const c of collectionFilteredChunks) {
-                const chunkTags: string[] = [];
-                if (chunkTags.length === 0) {
-                    const existing = groups.get("untagged") ?? [];
-                    existing.push(c);
-                    groups.set("untagged", existing);
-                }
-                for (const tag of chunkTags) {
-                    const existing = groups.get(tag) ?? [];
-                    existing.push(c);
-                    groups.set(tag, existing);
+                const tags = chunkTagMap?.get(c.id);
+                if (!tags || tags.length === 0) {
+                    addTo("untagged", c);
+                } else {
+                    for (const tag of tags) addTo(tag, c);
                 }
             }
-            return groups;
+            return grouped;
         }
+
+        if (group === "status") {
+            for (const c of collectionFilteredChunks) addTo(c.reviewStatus ?? "draft", c);
+            return grouped;
+        }
+
+        if (group === "origin") {
+            for (const c of collectionFilteredChunks) addTo(c.origin ?? "human", c);
+            return grouped;
+        }
+
+        if (group === "freshness") {
+            for (const c of collectionFilteredChunks) {
+                const days = Math.floor((Date.now() - new Date(c.updatedAt).getTime()) / (1000 * 60 * 60 * 24));
+                if (days <= 7) addTo("This week", c);
+                else if (days <= 30) addTo("This month", c);
+                else if (days <= 90) addTo("Last 3 months", c);
+                else addTo("Older", c);
+            }
+            return grouped;
+        }
+
         return null;
-    }, [collectionFilteredChunks, group]);
+    }, [collectionFilteredChunks, group, chunkTagMap]);
 
     const chunksRef = useRef(chunks);
     chunksRef.current = chunks;
@@ -488,6 +532,9 @@ function ChunksList() {
                     <option value="">No grouping</option>
                     <option value="type">Group by type</option>
                     <option value="tag">Group by tag</option>
+                    <option value="status">Group by status</option>
+                    <option value="origin">Group by origin</option>
+                    <option value="freshness">Group by freshness</option>
                 </select>
 
                 {collections.length > 0 && (

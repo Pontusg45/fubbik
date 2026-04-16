@@ -67,7 +67,9 @@ export function listDocuments(userId: string, codebaseId?: string) {
                     codebaseId: document.codebaseId,
                     createdAt: document.createdAt,
                     updatedAt: document.updatedAt,
-                    chunkCount: sql<number>`count(${chunk.id})`.as("chunk_count")
+                    chunkCount: sql<number>`count(${chunk.id})`.as("chunk_count"),
+                    lastChunkUpdatedAt: sql<Date>`max(${chunk.updatedAt})`.as("last_chunk_updated_at"),
+                    oldestChunkUpdatedAt: sql<Date>`min(${chunk.updatedAt})`.as("oldest_chunk_updated_at"),
                 })
                 .from(document)
                 .leftJoin(chunk, eq(chunk.documentId, document.id))

@@ -1,5 +1,4 @@
 import {
-    addPlanChunkRef,
     archiveChunk as archiveChunkRepo,
     createChunk as createChunkRepo,
     createVersion,
@@ -7,7 +6,6 @@ import {
     deleteMany as deleteManyRepo,
     exportAllChunks as exportAllChunksRepo,
     findOrCreateTag,
-    getActiveSessionsWithPlan,
     getAppliesToForChunk,
     getChunkById,
     getChunkConnections,
@@ -18,7 +16,6 @@ import {
     getRequirementsForChunks,
     getTagsForChunk,
     getVersionsByChunkId,
-    isChunkReferencedInSession,
     listArchivedChunks as listArchivedChunksRepo,
     listChunks as listChunksRepo,
     restoreChunk as restoreChunkRepo,
@@ -29,8 +26,8 @@ import {
 } from "@fubbik/db/repository";
 import { Effect } from "effect";
 
+import { importDocument } from "../documents/service";
 import { enrichChunk } from "../enrich/service";
-import { parseDocFile } from "./parse-docs";
 import { NotFoundError } from "../errors";
 import { events, EVENTS } from "../events/bus";
 import { generateQueryEmbedding } from "../ollama/client";
@@ -133,15 +130,13 @@ export function getChunkDetail(chunkId: string, userId?: string) {
                 appliesTo: getAppliesToForChunk(chunkId),
                 fileReferences: getFileRefsForChunk(chunkId),
                 tags: getTagsForChunk(chunkId),
-                requirements: getRequirementsForChunks([chunkId]),
-                referencedInSession: isChunkReferencedInSession(chunkId)
+                requirements: getRequirementsForChunks([chunkId])
             })
         ),
         Effect.map(result => {
             const chunkRequirements = result.requirements.filter(r => r.chunkId === chunkId);
             const requirementCount = chunkRequirements.length;
             const allRequirementsPassing = requirementCount > 0 && chunkRequirements.every(r => r.status === "passing");
-            const referencedInSession = result.referencedInSession;
             const healthScore = computeHealthScore({
                 content: result.chunk.content,
                 updatedAt: result.chunk.updatedAt,
@@ -153,7 +148,7 @@ export function getChunkDetail(chunkId: string, userId?: string) {
                 hasEmbedding: result.chunk.embedding != null,
                 requirementCount,
                 allRequirementsPassing,
-                referencedInSession
+                referencedInSession: false
             });
             return { ...result, healthScore };
         })
@@ -209,23 +204,7 @@ export function createChunk(
         Effect.tap(() => {
             events.emit(EVENTS.CHUNK_CREATED, { chunkId: id, userId });
             return Effect.void;
-        }),
-        // Auto-link chunk to active plan session
-        Effect.tap(() =>
-            getActiveSessionsWithPlan(userId).pipe(
-                Effect.flatMap(sessions => {
-                    const session = sessions[0];
-                    if (!session?.planId) return Effect.void;
-                    return addPlanChunkRef({
-                        id: crypto.randomUUID(),
-                        planId: session.planId,
-                        chunkId: id,
-                        relation: "created"
-                    }).pipe(Effect.asVoid);
-                }),
-                Effect.catchAll(() => Effect.void)
-            )
-        )
+        })
     );
 }
 
@@ -332,30 +311,20 @@ export function importDocs(
     return Effect.forEach(
         files,
         file =>
-            Effect.try(() => parseDocFile(file.path, file.content)).pipe(
-                Effect.flatMap(parsed => {
-                    if (!parsed.content && !parsed.title) {
+            importDocument(userId, file.path, file.content, codebaseId).pipe(
+                Effect.map(result => {
+                    if (result.status === "unchanged") {
                         results.skipped++;
-                        return Effect.void;
+                    } else {
+                        results.created += result.created;
                     }
-                    return createChunk(userId, {
-                        title: parsed.title,
-                        content: parsed.content,
-                        type: parsed.type,
-                        tags: parsed.tags,
-                        codebaseIds: [codebaseId]
-                    }).pipe(
-                        Effect.map(() => {
-                            results.created++;
-                        })
-                    );
                 }),
                 Effect.catchAll(err => {
                     results.errors.push({ path: file.path, error: String(err) });
                     return Effect.void;
                 })
             ),
-        { concurrency: 10 }
+        { concurrency: 5 }
     ).pipe(Effect.map(() => results));
 }
 

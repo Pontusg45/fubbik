@@ -30,15 +30,17 @@ export interface ListPlansInput {
 }
 
 export function listPlans(input: ListPlansInput) {
-    if (input.status && !VALID_STATUSES.includes(input.status as PlanStatus)) {
-        return Effect.fail(new ValidationError({ message: `Invalid status: ${input.status}` }));
-    }
-    return planRepo.listPlans({
-        userId: input.userId,
-        codebaseId: input.codebaseId,
-        status: input.status as PlanStatus | undefined,
-        requirementId: input.requirementId,
-        includeArchived: input.includeArchived,
+    return Effect.gen(function* () {
+        if (input.status && !VALID_STATUSES.includes(input.status as PlanStatus)) {
+            return yield* Effect.fail(new ValidationError({ message: `Invalid status: ${input.status}` }));
+        }
+        return yield* planRepo.listPlans({
+            userId: input.userId,
+            codebaseId: input.codebaseId,
+            status: input.status as PlanStatus | undefined,
+            requirementId: input.requirementId,
+            includeArchived: input.includeArchived,
+        });
     });
 }
 

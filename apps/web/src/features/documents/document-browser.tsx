@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "@tanstack/react-router";
-import { Check, ChevronLeft, ChevronRight, FileText, FolderOpen, Link2, Menu, Pencil, Plus, Printer, Search, X } from "lucide-react";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { Check, ChevronDown, ChevronLeft, ChevronRight, FileText, FolderOpen, Link2, Menu, Pencil, Plus, Printer, Search, X } from "lucide-react";
 import { Fragment, useEffect, useMemo, useState } from "react";
 
 import { MarkdownRenderer } from "@/components/markdown-renderer";
@@ -19,7 +19,9 @@ interface DocumentListItem {
     sourcePath: string;
     description: string | null;
     chunkCount: number;
-    updatedAt: string;
+    updatedAt: Date;
+    lastChunkUpdatedAt: Date | null;
+    oldestChunkUpdatedAt: Date | null;
 }
 
 interface DocumentChunk {
@@ -55,6 +57,47 @@ function folderFromPath(sourcePath: string): string {
 
 function filenameFromPath(sourcePath: string): string {
     return sourcePath.split("/").pop() ?? sourcePath;
+}
+
+/* ─── Folder tree ─── */
+
+interface FolderNode {
+    name: string;
+    fullPath: string;
+    docs: DocumentListItem[];
+    children: FolderNode[];
+}
+
+function buildFolderTree(documents: DocumentListItem[]): FolderNode {
+    const root: FolderNode = { name: "/", fullPath: "", docs: [], children: [] };
+
+    for (const doc of documents) {
+        const folder = folderFromPath(doc.sourcePath);
+        const parts = folder === "/" ? [] : folder.split("/").filter(Boolean);
+
+        let node = root;
+        let path = "";
+        for (const part of parts) {
+            path = path ? `${path}/${part}` : part;
+            let child = node.children.find(c => c.name === part);
+            if (!child) {
+                child = { name: part, fullPath: path, docs: [], children: [] };
+                node.children.push(child);
+            }
+            node = child;
+        }
+        node.docs.push(doc);
+    }
+
+    // Sort children and docs at each level
+    function sortNode(node: FolderNode) {
+        node.children.sort((a, b) => a.name.localeCompare(b.name));
+        node.docs.sort((a, b) => a.title.localeCompare(b.title));
+        for (const child of node.children) sortNode(child);
+    }
+    sortNode(root);
+
+    return root;
 }
 
 function extractSnippet(content: string, query: string, contextChars = 120): string {
@@ -102,16 +145,147 @@ function mdToHtml(md: string): string {
         .replace(/\n{2,}/g, "<br><br>");
 }
 
-function getStaleness(updatedAt: string): { label: string; color: string } {
-    const days = Math.floor((Date.now() - new Date(updatedAt).getTime()) / (1000 * 60 * 60 * 24));
-    if (days <= 7) return { label: "Fresh", color: "text-green-600 dark:text-green-400" };
-    if (days <= 30) return { label: "Recent", color: "text-yellow-600 dark:text-yellow-400" };
-    return { label: "May be outdated", color: "text-orange-600 dark:text-orange-400" };
+function getStaleness(doc: DocumentListItem): { label: string; color: string; tooltip: string } {
+    // Use the oldest chunk's updatedAt to represent overall content freshness
+    const contentDate = doc.oldestChunkUpdatedAt ?? doc.lastChunkUpdatedAt ?? doc.updatedAt;
+    const days = Math.floor((Date.now() - new Date(contentDate).getTime()) / (1000 * 60 * 60 * 24));
+
+    // If newest and oldest chunk differ significantly, some sections are stale
+    const newestDate = doc.lastChunkUpdatedAt ?? doc.updatedAt;
+    const oldestDate = doc.oldestChunkUpdatedAt ?? doc.updatedAt;
+    const spread = Math.floor(
+        (new Date(newestDate).getTime() - new Date(oldestDate).getTime()) / (1000 * 60 * 60 * 24)
+    );
+
+    if (days <= 7) {
+        return { label: "Fresh", color: "text-green-600 dark:text-green-400", tooltip: "All sections updated within the last week" };
+    }
+    if (days <= 30) {
+        const tip = spread > 14
+            ? `Some sections updated recently, oldest section is ${days} days old`
+            : `Last content update ${days} days ago`;
+        return { label: "Recent", color: "text-yellow-600 dark:text-yellow-400", tooltip: tip };
+    }
+    const tip = spread > 30
+        ? `Oldest section is ${days} days old, newest is ${Math.floor((Date.now() - new Date(newestDate).getTime()) / (1000 * 60 * 60 * 24))} days old`
+        : `Content last updated ${days} days ago`;
+    return { label: "May be outdated", color: "text-orange-600 dark:text-orange-400", tooltip: tip };
 }
 
 function estimateReadingTime(chunks: DocumentChunk[]): number {
     const words = chunks.reduce((sum, c) => sum + c.content.split(/\s+/).length, 0);
     return Math.max(1, Math.ceil(words / 200));
+}
+
+/* ─── Folder Tree Sidebar Node ─── */
+
+function FolderTreeNode({
+    node,
+    depth,
+    selectedId,
+    onSelect,
+    defaultOpen,
+}: {
+    node: FolderNode;
+    depth: number;
+    selectedId: string | null;
+    onSelect: (id: string) => void;
+    defaultOpen: boolean;
+}) {
+    const [open, setOpen] = useState(defaultOpen);
+    const hasContent = node.docs.length > 0 || node.children.length > 0;
+    if (!hasContent) return null;
+
+    const paddingLeft = depth * 12;
+
+    return (
+        <div>
+            <button
+                type="button"
+                onClick={() => setOpen(o => !o)}
+                className="text-muted-foreground hover:text-foreground mb-0.5 flex w-full items-center gap-1 px-2 py-1 text-xs font-medium transition-colors"
+                style={{ paddingLeft }}
+            >
+                {open ? <ChevronDown className="size-3" /> : <ChevronRight className="size-3" />}
+                <FolderOpen className="size-3.5" />
+                <span className="truncate">{node.name}</span>
+            </button>
+            {open && (
+                <div>
+                    {node.docs.map(doc => (
+                        <button
+                            key={doc.id}
+                            onClick={() => onSelect(doc.id)}
+                            className={`flex w-full items-center gap-2 rounded-md py-1.5 text-left text-sm transition-colors ${
+                                selectedId === doc.id
+                                    ? "bg-muted text-foreground font-medium"
+                                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                            }`}
+                            style={{ paddingLeft: paddingLeft + 20 }}
+                        >
+                            <FileText className="size-3.5 shrink-0" />
+                            <span className="min-w-0 flex-1 truncate">{doc.title || filenameFromPath(doc.sourcePath)}</span>
+                            <Badge variant="secondary" size="sm" className="shrink-0 font-mono text-[9px] mr-2">
+                                {doc.chunkCount}
+                            </Badge>
+                        </button>
+                    ))}
+                    {node.children.map(child => (
+                        <FolderTreeNode
+                            key={child.fullPath}
+                            node={child}
+                            depth={depth + 1}
+                            selectedId={selectedId}
+                            onSelect={onSelect}
+                            defaultOpen={defaultOpen}
+                        />
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
+/* ─── Index Tree (main content "All Documents" view) ─── */
+
+function IndexTree({ node, depth, onSelect }: { node: FolderNode; depth: number; onSelect: (id: string) => void }) {
+    return (
+        <>
+            {depth > 0 && (
+                <h3
+                    className="text-sm font-semibold text-muted-foreground mb-2 mt-4 flex items-center gap-1.5"
+                    style={{ paddingLeft: (depth - 1) * 16 }}
+                >
+                    <FolderOpen className="size-3.5" />
+                    {node.name}
+                </h3>
+            )}
+            <div className="space-y-1" style={{ paddingLeft: depth > 0 ? (depth - 1) * 16 + 20 : 0 }}>
+                {node.docs.map(doc => {
+                    const staleness = getStaleness(doc);
+                    return (
+                        <button
+                            key={doc.id}
+                            onClick={() => onSelect(doc.id)}
+                            className="text-foreground hover:text-foreground/80 flex items-center gap-2 text-sm w-full text-left"
+                        >
+                            <FileText className="size-3.5 text-muted-foreground shrink-0" />
+                            <span>{doc.title}</span>
+                            {doc.description && (
+                                <span className="text-muted-foreground text-xs truncate">— {doc.description}</span>
+                            )}
+                            <span className={`text-xs ml-auto shrink-0 ${staleness.color}`} title={staleness.tooltip}>
+                                {staleness.label}
+                            </span>
+                        </button>
+                    );
+                })}
+            </div>
+            {node.children.map(child => (
+                <IndexTree key={child.fullPath} node={child} depth={depth + 1} onSelect={onSelect} />
+            ))}
+        </>
+    );
 }
 
 /* ─── Document Browser ─── */
@@ -122,7 +296,7 @@ interface DocumentBrowserProps {
 }
 
 export function DocumentBrowser({ initialDocId, initialSection }: DocumentBrowserProps) {
-    const { codebaseId } = useActiveCodebase();
+    useActiveCodebase();
     const navigate = useNavigate();
     const [selectedId, setSelectedIdState] = useState<string | null>(initialDocId ?? null);
     const [searchQuery, setSearchQuery] = useState("");
@@ -183,9 +357,10 @@ export function DocumentBrowser({ initialDocId, initialSection }: DocumentBrowse
         queryKey: ["documents"],
         queryFn: async () => {
             try {
-                return unwrapEden(
+                const result = unwrapEden(
                     await api.api.documents.get({ query: {} })
-                ) as DocumentListItem[];
+                );
+                return result as DocumentListItem[];
             } catch {
                 return [];
             }
@@ -476,19 +651,7 @@ export function DocumentBrowser({ initialDocId, initialSection }: DocumentBrowse
         );
     }, [documents, searchQuery, isSearching]);
 
-    const grouped = useMemo(() => {
-        const map = new Map<string, DocumentListItem[]>();
-        for (const doc of sidebarFiltered) {
-            const folder = folderFromPath(doc.sourcePath);
-            const list = map.get(folder) ?? [];
-            list.push(doc);
-            map.set(folder, list);
-        }
-        for (const [, docs] of map) {
-            docs.sort((a, b) => a.title.localeCompare(b.title));
-        }
-        return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b));
-    }, [sidebarFiltered]);
+    const folderTree = useMemo(() => buildFolderTree(sidebarFiltered), [sidebarFiltered]);
 
     const handleSearch = (value: string) => {
         setSearchQuery(value);
@@ -612,32 +775,34 @@ export function DocumentBrowser({ initialDocId, initialSection }: DocumentBrowse
                             <FolderOpen className="size-4" />
                             <span>All Documents</span>
                         </button>
-                        {grouped.map(([folder, docs]) => (
-                            <div key={folder}>
-                                <div className="text-muted-foreground mb-1 flex items-center gap-1.5 px-2 text-xs font-medium">
-                                    <FolderOpen className="size-3.5" />
-                                    <span className="truncate">{folder || "/"}</span>
-                                </div>
-                                <div className="space-y-0.5">
-                                    {docs.map(doc => (
-                                        <button
-                                            key={doc.id}
-                                            onClick={() => handleDocClick(doc.id)}
-                                            className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors ${
-                                                selectedId === doc.id
-                                                    ? "bg-muted text-foreground font-medium"
-                                                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                                            }`}
-                                        >
-                                            <FileText className="size-4 shrink-0" />
-                                            <span className="min-w-0 flex-1 truncate">{doc.title || filenameFromPath(doc.sourcePath)}</span>
-                                            <Badge variant="secondary" size="sm" className="shrink-0 font-mono text-[9px]">
-                                                {doc.chunkCount}
-                                            </Badge>
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
+                        {/* Root-level docs (no folder) */}
+                        {folderTree.docs.map(doc => (
+                            <button
+                                key={doc.id}
+                                onClick={() => handleDocClick(doc.id)}
+                                className={`flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-left text-sm transition-colors ${
+                                    selectedId === doc.id
+                                        ? "bg-muted text-foreground font-medium"
+                                        : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                                }`}
+                            >
+                                <FileText className="size-3.5 shrink-0" />
+                                <span className="min-w-0 flex-1 truncate">{doc.title || filenameFromPath(doc.sourcePath)}</span>
+                                <Badge variant="secondary" size="sm" className="shrink-0 font-mono text-[9px]">
+                                    {doc.chunkCount}
+                                </Badge>
+                            </button>
+                        ))}
+                        {/* Folder tree */}
+                        {folderTree.children.map(child => (
+                            <FolderTreeNode
+                                key={child.fullPath}
+                                node={child}
+                                depth={0}
+                                selectedId={selectedId}
+                                onSelect={handleDocClick}
+                                defaultOpen={folderTree.children.length <= 5}
+                            />
                         ))}
                     </nav>
                 )}
@@ -683,29 +848,7 @@ export function DocumentBrowser({ initialDocId, initialSection }: DocumentBrowse
                 {!selectedId && (
                     <div>
                         <h2 className="text-xl font-bold mb-6">All Documents</h2>
-                        {grouped.map(([folder, docs]) => (
-                            <div key={folder} className="mb-6">
-                                <h3 className="text-sm font-semibold text-muted-foreground mb-2 flex items-center gap-1.5">
-                                    <FolderOpen className="size-3.5" />
-                                    {folder || "/"}
-                                </h3>
-                                <div className="space-y-1 pl-5">
-                                    {docs.map(doc => (
-                                        <button
-                                            key={doc.id}
-                                            onClick={() => setSelectedId(doc.id)}
-                                            className="text-foreground hover:text-foreground/80 flex items-center gap-2 text-sm"
-                                        >
-                                            <FileText className="size-3.5 text-muted-foreground" />
-                                            <span>{doc.title}</span>
-                                            {doc.description && (
-                                                <span className="text-muted-foreground text-xs">— {doc.description}</span>
-                                            )}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                        ))}
+                        <IndexTree node={folderTree} depth={0} onSelect={setSelectedId} />
                     </div>
                 )}
 
@@ -779,11 +922,12 @@ export function DocumentBrowser({ initialDocId, initialSection }: DocumentBrowse
                                 <p className="text-muted-foreground mt-1 text-sm">{detail.description}</p>
                             )}
                             <p className="text-muted-foreground mt-1 font-mono text-xs">{detail.sourcePath}</p>
-                            {selectedListItem?.updatedAt && (() => {
-                                const staleness = getStaleness(selectedListItem.updatedAt);
+                            {selectedListItem && (() => {
+                                const staleness = getStaleness(selectedListItem);
+                                const contentDate = selectedListItem.lastChunkUpdatedAt ?? selectedListItem.updatedAt;
                                 return (
-                                    <p className="text-muted-foreground mt-1 flex items-center gap-2 text-xs">
-                                        Last updated {new Date(selectedListItem.updatedAt).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}
+                                    <p className="text-muted-foreground mt-1 flex items-center gap-2 text-xs" title={staleness.tooltip}>
+                                        Last updated {new Date(contentDate).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}
                                         <span className={`font-medium ${staleness.color}`}>{staleness.label}</span>
                                     </p>
                                 );
@@ -804,12 +948,18 @@ export function DocumentBrowser({ initialDocId, initialSection }: DocumentBrowse
                         )}
 
                         {/* Sections */}
-                        <div className="space-y-8" data-doc-content onClick={handleContentClick}>
+                        <div className="space-y-2" data-doc-content onClick={handleContentClick}>
                             {detail.chunks.map((chunk, idx) => (
                                 <Fragment key={chunk.id}>
                                     <section id={`section-${chunk.id}`} className="scroll-mt-24">
-                                        <div className="group mb-3 flex items-center gap-2">
-                                            <h3 className="text-lg font-semibold">{chunk.title}</h3>
+                                        <div className="group mb-1.5 flex items-center gap-2">
+                                            <Link
+                                                to="/chunks/$chunkId"
+                                                params={{ chunkId: chunk.id }}
+                                                className="text-lg font-semibold hover:underline underline-offset-2"
+                                            >
+                                                <h3 className="inline">{chunk.title}</h3>
+                                            </Link>
                                             <button
                                                 onClick={() => {
                                                     const url = `${window.location.origin}/docs?id=${detail.id}&section=${chunk.id}`;
@@ -873,7 +1023,7 @@ export function DocumentBrowser({ initialDocId, initialSection }: DocumentBrowse
                                     </section>
 
                                     {/* Add section button */}
-                                    <div className="flex justify-center py-2">
+                                    <div className="flex justify-center py-0.5">
                                         {addingAfter === (chunk.documentOrder ?? idx) ? (
                                             <div className="border-border w-full rounded-lg border p-4 space-y-3">
                                                 <input

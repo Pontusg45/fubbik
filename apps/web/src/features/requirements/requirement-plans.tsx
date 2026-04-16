@@ -29,7 +29,6 @@ interface PlanWithSteps {
         id: string;
         description: string;
         status: string;
-        requirementId: string | null;
     }>;
 }
 
@@ -53,28 +52,28 @@ export function RequirementPlans({ requirementId }: { requirementId: string }) {
             const results: PlanWithSteps[] = [];
             for (const plan of plans) {
                 try {
-                    const detail = unwrapEden(
+                    const raw = unwrapEden(
                         await api.api.plans({ id: plan.id }).get()
-                    ) as {
-                        id: string;
-                        title: string;
-                        status: string;
-                        steps: Array<{
-                            id: string;
-                            description: string;
-                            status: string;
-                            requirementId: string | null;
-                        }>;
-                    };
-                    const matchingSteps = detail.steps.filter(
-                        s => s.requirementId === requirementId
                     );
-                    if (matchingSteps.length > 0) {
+                    // Plan tasks don't have requirementId — match via plan-level requirements instead
+                    const planRequirementIds = raw.requirements.map(r => r.requirementId);
+                    const detail = {
+                        id: raw.plan.id,
+                        title: raw.plan.title,
+                        status: raw.plan.status,
+                        steps: raw.tasks.map(t => ({
+                            id: t.id,
+                            description: t.description ?? t.title,
+                            status: t.status,
+                        })),
+                        hasRequirement: planRequirementIds.includes(requirementId),
+                    };
+                    if (detail.hasRequirement) {
                         results.push({
                             id: detail.id,
                             title: detail.title,
                             status: detail.status,
-                            steps: matchingSteps
+                            steps: detail.steps,
                         });
                     }
                 } catch {

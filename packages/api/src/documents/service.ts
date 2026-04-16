@@ -157,7 +157,7 @@ export function syncDocument(
         // Flag deleted sections as stale (don't delete)
         for (const existing of existingChunks) {
             if (!matchedIds.has(existing.id)) {
-                yield* updateChunkRepo(existing.id, { documentOrder: null });
+                yield* updateChunkRepo(existing.id, { documentOrder: undefined });
                 const currentTags = yield* getTagsForChunk(existing.id);
                 const tagNames = currentTags.map((t: { name: string }) => t.name);
                 if (!tagNames.includes("stale")) {

@@ -80,7 +80,7 @@ export function enrichChunks(
                     content: row.content,
                     type: row.type,
                     rationale: row.rationale,
-                    tags: tags.map((t: { tagName: string }) => t.tagName),
+                    tags: tags.map((t: { name: string }) => t.name),
                     score,
                     healthScore: health.total,
                     isStale,

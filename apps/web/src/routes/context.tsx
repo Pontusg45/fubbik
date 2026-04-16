@@ -75,14 +75,15 @@ function ContextPage() {
     const contextQuery = useQuery({
         queryKey: ["context-for-file", searchPath, codebaseId],
         queryFn: async () => {
-            return unwrapEden(
+            const result = unwrapEden(
                 await api.api.context["for-file"].get({
                     query: {
                         path: searchPath,
                         ...(codebaseId && codebaseId !== "global" ? { codebaseId } : {})
                     }
                 })
-            ) as ContextResult[];
+            );
+            return (result.chunks ?? []) as ContextResult[];
         },
         enabled: searchPath.length > 0
     });

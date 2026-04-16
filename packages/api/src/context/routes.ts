@@ -1,7 +1,7 @@
 import { Effect } from "effect";
 import { Elysia, t } from "elysia";
 
-import { NotFoundError, ValidationError } from "../errors";
+import { ValidationError } from "../errors";
 import { requireSession } from "../require-session";
 import { formatStructured, formatStructuredMarkdown } from "./formatter";
 import { enrichChunks, resolveForConcept, resolveForFiles, resolveForPlan } from "./resolvers";

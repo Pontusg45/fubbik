@@ -41,9 +41,9 @@ export function scoreChunk(c: ChunkRow, connectionCount: number): number {
     return healthPoints + typePoints + rationalePoints + connectionPoints + reviewPoints;
 }
 
-export function budgetChunks(chunks: ScoredChunk[], maxTokens: number): ScoredChunk[] {
+export function budgetChunks<T extends ScoredChunk>(chunks: T[], maxTokens: number): T[] {
     const sorted = [...chunks].sort((a, b) => b.score - a.score);
-    const selected: ScoredChunk[] = [];
+    const selected: T[] = [];
     let usedTokens = estimateTokens("# Project Context\n\n");
     for (const chunk of sorted) {
         const chunkText = formatChunkText(chunk);

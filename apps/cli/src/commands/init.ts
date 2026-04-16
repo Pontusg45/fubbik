@@ -6,7 +6,7 @@ import { formatSuccess } from "../lib/colors";
 import { findConfigFile } from "../lib/config";
 import { output, outputError, outputQuiet } from "../lib/output";
 import { scanProject } from "../lib/scanner";
-import { addChunk, createStore, getServerUrl, readStore, storeDir, storeExists } from "../lib/store";
+import { addChunk, createStore, getServerUrl, readStore, setServerUrl, storeDir, storeExists } from "../lib/store";
 
 export const initCommand = new Command("init")
     .description("Initialize a new knowledge base")

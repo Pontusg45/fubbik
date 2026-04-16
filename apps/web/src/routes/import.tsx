@@ -133,13 +133,15 @@ function ImportPage() {
     });
 
     const importMutation = useMutation({
-        mutationFn: async (payload: { files: FileEntry[]; codebaseId: string }) =>
-            unwrapEden(
+        mutationFn: async (payload: { files: FileEntry[]; codebaseId: string }) => {
+            const result = unwrapEden(
                 await api.api.chunks["import-docs"].post({
                     files: payload.files,
                     codebaseId: payload.codebaseId
                 })
-            ),
+            );
+            return result as ImportResult;
+        },
         onSuccess: (data: ImportResult) => {
             setResult(data);
             const msg = `Created: ${data.created} | Skipped: ${data.skipped} | Errors: ${data.errors.length}`;

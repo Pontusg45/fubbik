@@ -15,7 +15,7 @@ type StaleFlag = {
     relatedChunkId: string | null;
     chunkTitle: string;
     chunkType: string;
-    detectedAt: string;
+    detectedAt: Date;
 };
 
 const REASON_ICON: Record<string, typeof GitCommit> = {

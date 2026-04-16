@@ -17,16 +17,18 @@ export function createProposal(
     proposedBy: string,
     body: { changes: ProposedChanges; reason?: string }
 ) {
-    if (!body.changes || Object.keys(body.changes).length === 0) {
-        return Effect.fail(new ValidationError({ message: "changes must not be empty" }));
-    }
-    return createProposalRepo({
-        id: crypto.randomUUID(),
-        chunkId,
-        proposedBy,
-        changes: body.changes,
-        reason: body.reason ?? null,
-        status: "pending",
+    return Effect.gen(function* () {
+        if (!body.changes || Object.keys(body.changes).length === 0) {
+            return yield* Effect.fail(new ValidationError({ message: "changes must not be empty" }));
+        }
+        return yield* createProposalRepo({
+            id: crypto.randomUUID(),
+            chunkId,
+            proposedBy,
+            changes: body.changes,
+            reason: body.reason ?? null,
+            status: "pending",
+        });
     });
 }
 
@@ -44,15 +46,17 @@ export function listProposals(filter: {
     limit?: number;
     offset?: number;
 }) {
-    const validStatuses = ["pending", "approved", "rejected"];
-    if (filter.status && !validStatuses.includes(filter.status)) {
-        return Effect.fail(new ValidationError({ message: `status must be one of: ${validStatuses.join(", ")}` }));
-    }
-    return listProposalsRepo({
-        chunkId: filter.chunkId,
-        status: filter.status ?? "pending",
-        limit: filter.limit,
-        offset: filter.offset,
+    return Effect.gen(function* () {
+        const validStatuses = ["pending", "approved", "rejected"];
+        if (filter.status && !validStatuses.includes(filter.status)) {
+            return yield* Effect.fail(new ValidationError({ message: `status must be one of: ${validStatuses.join(", ")}` }));
+        }
+        return yield* listProposalsRepo({
+            chunkId: filter.chunkId,
+            status: filter.status ?? "pending",
+            limit: filter.limit,
+            offset: filter.offset,
+        });
     });
 }
 
@@ -65,12 +69,14 @@ export function approveProposal(proposalId: string, reviewerId: string, note?: s
         Effect.flatMap(found =>
             found ? Effect.succeed(found) : Effect.fail(new NotFoundError({ resource: "Proposal" }))
         ),
-        Effect.flatMap(proposal => {
-            if (proposal.status !== "pending") {
-                return Effect.fail(
+        Effect.flatMap(proposal =>
+            proposal.status !== "pending"
+                ? Effect.fail(
                     new ValidationError({ message: `Proposal is already ${proposal.status}` })
-                );
-            }
+                )
+                : Effect.succeed(proposal)
+        ),
+        Effect.flatMap(proposal => {
             const changes = proposal.changes as ProposedChanges;
             return updateChunk(proposal.chunkId, reviewerId, {
                 ...(changes.title !== undefined && { title: changes.title }),
@@ -93,14 +99,14 @@ export function rejectProposal(proposalId: string, reviewerId: string, note?: st
         Effect.flatMap(found =>
             found ? Effect.succeed(found) : Effect.fail(new NotFoundError({ resource: "Proposal" }))
         ),
-        Effect.flatMap(proposal => {
-            if (proposal.status !== "pending") {
-                return Effect.fail(
+        Effect.flatMap(proposal =>
+            proposal.status !== "pending"
+                ? Effect.fail(
                     new ValidationError({ message: `Proposal is already ${proposal.status}` })
-                );
-            }
-            return updateProposalStatus(proposalId, "rejected", reviewerId, note);
-        })
+                )
+                : Effect.succeed(proposal)
+        ),
+        Effect.flatMap(() => updateProposalStatus(proposalId, "rejected", reviewerId, note))
     );
 }
 

@@ -65,14 +65,14 @@ export function TerminalDemo() {
         if (token.cancel) return;
         const line = DEMO_LINES[i];
 
-        if (line.type === "command") {
+        if (line!.type === "command") {
           // Typewriter effect for commands
           setTypingIndex(i);
-          for (let c = 0; c <= line.text.length; c++) {
+          for (let c = 0; c <= line!.text.length; c++) {
             if (token.cancel) return;
             setVisibleLines((prev) => {
               const next = prev.slice(0, i);
-              next.push({ text: line.text.slice(0, c), type: "command" });
+              next.push({ text: line!.text.slice(0, c), type: "command" });
               return next;
             });
             await sleep(CHAR_DELAY);
@@ -80,13 +80,13 @@ export function TerminalDemo() {
           setTypingIndex(-1);
           // Delay before output appears
           await sleep(OUTPUT_DELAY);
-        } else if (line.text === "") {
+        } else if (line!.text === "") {
           // Blank separator line
           setVisibleLines((prev) => [...prev, { text: "", type: "output" }]);
           await sleep(BLANK_LINE_DELAY);
         } else {
           // Output lines appear instantly
-          setVisibleLines((prev) => [...prev, { text: line.text, type: "output" }]);
+          setVisibleLines((prev) => [...prev, { text: line!.text, type: "output" }]);
         }
       }
 
@@ -108,10 +108,10 @@ export function TerminalDemo() {
 
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting && !isAnimating) {
+        if (entry!.isIntersecting && !isAnimating) {
           setIsAnimating(true);
           runAnimation();
-        } else if (!entry.isIntersecting && isAnimating) {
+        } else if (!entry!.isIntersecting && isAnimating) {
           animationRef.current.cancel = true;
           setIsAnimating(false);
         }

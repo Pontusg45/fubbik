@@ -95,6 +95,19 @@
     --code-highlight: --alpha(var(--color-white) / 4%);
 }
 
+/* Shiki dual-theme: map CSS variables to color based on light/dark mode */
+.shiki,
+.shiki span {
+    color: var(--shiki-light);
+    background-color: var(--shiki-light-bg);
+}
+
+.dark .shiki,
+.dark .shiki span {
+    color: var(--shiki-dark);
+    background-color: var(--shiki-dark-bg);
+}
+
 @theme inline {
     --font-sans: var(--font-sans, ui-sans-serif, system-ui, sans-serif);
     --color-sidebar-ring: var(--sidebar-ring);

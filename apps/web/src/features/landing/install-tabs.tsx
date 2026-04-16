@@ -41,7 +41,7 @@ export function InstallTabs() {
     const currentTab = tabs[activeTab];
 
     function handleCopy() {
-        const text = currentTab.lines
+        const text = currentTab!.lines
             .map((line) =>
                 "comment" in line && line.comment
                     ? `${line.code}    ${line.comment}`
@@ -94,7 +94,7 @@ export function InstallTabs() {
                 </button>
 
                 <pre className="font-mono text-[13px] leading-relaxed text-white/70">
-                    {currentTab.lines.map((line, index) => (
+                    {currentTab!.lines.map((line, index) => (
                         <div key={index}>
                             <span>{line.code}</span>
                             {"comment" in line && line.comment && (
