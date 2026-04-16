@@ -26,3 +26,5 @@ export * from "./staleness";
 export * from "./learning-path";
 export * from "./chunk-proposal";
 export * from "./context-snapshot";
+export * from "./chunk-type";
+export * from "./connection-relation";

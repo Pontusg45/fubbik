@@ -3,7 +3,7 @@ import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { HeadContent, Link, Outlet, Scripts, createRootRouteWithContext, useLocation } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 
-import { Settings, SlidersHorizontal, Tags, FileText, BookOpen, Languages, Folder, FileSearch, FolderUp, Layers, Compass, ClipboardList, AlertTriangle } from "lucide-react";
+import { Settings, SlidersHorizontal, Tags, FileText, BookOpen, Languages, Folder, FileSearch, FolderUp, FolderTree, History, Layers, Library, Compass, ClipboardList, AlertTriangle } from "lucide-react";
 
 import { ErrorBoundary } from "@/components/error-boundary";
 import FubbikLogo from "@/components/fubbik-logo";
@@ -25,6 +25,7 @@ import { CommandPalette } from "@/features/command-palette/command-palette";
 import { NotificationBell } from "@/features/nav/notification-bell";
 import { RecentlyViewed } from "@/features/nav/recently-viewed";
 import { ReadingTrailSidebar } from "@/features/nav/reading-trail-sidebar";
+import { VocabularyPrimer } from "@/features/vocabularies/use-vocabularies";
 
 import appCss from "../index.css?url";
 
@@ -70,6 +71,7 @@ function RootDocument() {
             </head>
             <body>
                 <ThemeProvider>
+                    <VocabularyPrimer />
                     <a
                         href="#main-content"
                         className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded-md focus:bg-background focus:px-4 focus:py-2 focus:text-sm focus:shadow-lg"
@@ -177,6 +179,14 @@ function RootDocument() {
                                                     <BookOpen className="size-4" />
                                                     Health
                                                 </DropdownMenuItem>
+                                                <DropdownMenuItem render={<Link to="/density" />}>
+                                                    <FolderTree className="size-4" />
+                                                    Density
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem render={<Link to="/timeline" />}>
+                                                    <History className="size-4" />
+                                                    Timeline
+                                                </DropdownMenuItem>
                                                 <DropdownMenuItem render={<Link to="/activity" />}>
                                                     <BookOpen className="size-4" />
                                                     Activity
@@ -186,6 +196,10 @@ function RootDocument() {
                                                     Import Docs
                                                 </DropdownMenuItem>
                                                 <DropdownMenuSeparator />
+                                                <DropdownMenuItem render={<Link to="/settings/vocabulary" />}>
+                                                    <Library className="size-4" />
+                                                    Vocabulary
+                                                </DropdownMenuItem>
                                                 <DropdownMenuItem render={<Link to="/settings" />}>
                                                     <SlidersHorizontal className="size-4" />
                                                     Settings

@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from "./routes/__root";
 import { Route as WorkspacesRouteImport } from "./routes/workspaces";
 import { Route as VocabularyRouteImport } from "./routes/vocabulary";
+import { Route as TimelineRouteImport } from "./routes/timeline";
 import { Route as TemplatesRouteImport } from "./routes/templates";
 import { Route as TagsRouteImport } from "./routes/tags";
 import { Route as SettingsRouteImport } from "./routes/settings";
@@ -24,6 +25,7 @@ import { Route as ImportRouteImport } from "./routes/import";
 import { Route as GraphRouteImport } from "./routes/graph";
 import { Route as FeaturesRouteImport } from "./routes/features";
 import { Route as DocsRouteImport } from "./routes/docs";
+import { Route as DensityRouteImport } from "./routes/density";
 import { Route as DashboardRouteImport } from "./routes/dashboard";
 import { Route as CoverageRouteImport } from "./routes/coverage";
 import { Route as ContextRouteImport } from "./routes/context";
@@ -35,6 +37,7 @@ import { Route as ActivityRouteImport } from "./routes/activity";
 import { Route as IndexRouteImport } from "./routes/index";
 import { Route as PlansIndexRouteImport } from "./routes/plans.index";
 import { Route as ChunksIndexRouteImport } from "./routes/chunks.index";
+import { Route as SettingsVocabularyRouteImport } from "./routes/settings.vocabulary";
 import { Route as RequirementsNewRouteImport } from "./routes/requirements_.new";
 import { Route as RequirementsRequirementIdRouteImport } from "./routes/requirements_.$requirementId";
 import { Route as PlansNewRouteImport } from "./routes/plans.new";
@@ -56,6 +59,11 @@ const WorkspacesRoute = WorkspacesRouteImport.update({
 const VocabularyRoute = VocabularyRouteImport.update({
   id: "/vocabulary",
   path: "/vocabulary",
+  getParentRoute: () => rootRouteImport,
+} as any);
+const TimelineRoute = TimelineRouteImport.update({
+  id: "/timeline",
+  path: "/timeline",
   getParentRoute: () => rootRouteImport,
 } as any);
 const TemplatesRoute = TemplatesRouteImport.update({
@@ -123,6 +131,11 @@ const DocsRoute = DocsRouteImport.update({
   path: "/docs",
   getParentRoute: () => rootRouteImport,
 } as any);
+const DensityRoute = DensityRouteImport.update({
+  id: "/density",
+  path: "/density",
+  getParentRoute: () => rootRouteImport,
+} as any);
 const DashboardRoute = DashboardRouteImport.update({
   id: "/dashboard",
   path: "/dashboard",
@@ -177,6 +190,11 @@ const ChunksIndexRoute = ChunksIndexRouteImport.update({
   id: "/chunks/",
   path: "/chunks/",
   getParentRoute: () => rootRouteImport,
+} as any);
+const SettingsVocabularyRoute = SettingsVocabularyRouteImport.update({
+  id: "/vocabulary",
+  path: "/vocabulary",
+  getParentRoute: () => SettingsRoute,
 } as any);
 const RequirementsNewRoute = RequirementsNewRouteImport.update({
   id: "/requirements_/new",
@@ -250,6 +268,7 @@ export interface FileRoutesByFullPath {
   "/context": typeof ContextRoute;
   "/coverage": typeof CoverageRoute;
   "/dashboard": typeof DashboardRoute;
+  "/density": typeof DensityRoute;
   "/docs": typeof DocsRoute;
   "/features": typeof FeaturesRoute;
   "/graph": typeof GraphRoute;
@@ -260,9 +279,10 @@ export interface FileRoutesByFullPath {
   "/requirements": typeof RequirementsRoute;
   "/review": typeof ReviewRoute;
   "/search": typeof SearchRoute;
-  "/settings": typeof SettingsRoute;
+  "/settings": typeof SettingsRouteWithChildren;
   "/tags": typeof TagsRoute;
   "/templates": typeof TemplatesRoute;
+  "/timeline": typeof TimelineRoute;
   "/vocabulary": typeof VocabularyRoute;
   "/workspaces": typeof WorkspacesRoute;
   "/browse/clusters": typeof BrowseClustersRoute;
@@ -276,6 +296,7 @@ export interface FileRoutesByFullPath {
   "/plans/new": typeof PlansNewRoute;
   "/requirements/$requirementId": typeof RequirementsRequirementIdRoute;
   "/requirements/new": typeof RequirementsNewRoute;
+  "/settings/vocabulary": typeof SettingsVocabularyRoute;
   "/chunks/": typeof ChunksIndexRoute;
   "/plans/": typeof PlansIndexRoute;
   "/chunks/$chunkId/edit": typeof ChunksChunkIdEditRoute;
@@ -290,6 +311,7 @@ export interface FileRoutesByTo {
   "/context": typeof ContextRoute;
   "/coverage": typeof CoverageRoute;
   "/dashboard": typeof DashboardRoute;
+  "/density": typeof DensityRoute;
   "/docs": typeof DocsRoute;
   "/features": typeof FeaturesRoute;
   "/graph": typeof GraphRoute;
@@ -300,9 +322,10 @@ export interface FileRoutesByTo {
   "/requirements": typeof RequirementsRoute;
   "/review": typeof ReviewRoute;
   "/search": typeof SearchRoute;
-  "/settings": typeof SettingsRoute;
+  "/settings": typeof SettingsRouteWithChildren;
   "/tags": typeof TagsRoute;
   "/templates": typeof TemplatesRoute;
+  "/timeline": typeof TimelineRoute;
   "/vocabulary": typeof VocabularyRoute;
   "/workspaces": typeof WorkspacesRoute;
   "/browse/clusters": typeof BrowseClustersRoute;
@@ -316,6 +339,7 @@ export interface FileRoutesByTo {
   "/plans/new": typeof PlansNewRoute;
   "/requirements/$requirementId": typeof RequirementsRequirementIdRoute;
   "/requirements/new": typeof RequirementsNewRoute;
+  "/settings/vocabulary": typeof SettingsVocabularyRoute;
   "/chunks": typeof ChunksIndexRoute;
   "/plans": typeof PlansIndexRoute;
   "/chunks/$chunkId/edit": typeof ChunksChunkIdEditRoute;
@@ -331,6 +355,7 @@ export interface FileRoutesById {
   "/context": typeof ContextRoute;
   "/coverage": typeof CoverageRoute;
   "/dashboard": typeof DashboardRoute;
+  "/density": typeof DensityRoute;
   "/docs": typeof DocsRoute;
   "/features": typeof FeaturesRoute;
   "/graph": typeof GraphRoute;
@@ -341,9 +366,10 @@ export interface FileRoutesById {
   "/requirements": typeof RequirementsRoute;
   "/review": typeof ReviewRoute;
   "/search": typeof SearchRoute;
-  "/settings": typeof SettingsRoute;
+  "/settings": typeof SettingsRouteWithChildren;
   "/tags": typeof TagsRoute;
   "/templates": typeof TemplatesRoute;
+  "/timeline": typeof TimelineRoute;
   "/vocabulary": typeof VocabularyRoute;
   "/workspaces": typeof WorkspacesRoute;
   "/browse/clusters": typeof BrowseClustersRoute;
@@ -357,6 +383,7 @@ export interface FileRoutesById {
   "/plans/new": typeof PlansNewRoute;
   "/requirements_/$requirementId": typeof RequirementsRequirementIdRoute;
   "/requirements_/new": typeof RequirementsNewRoute;
+  "/settings/vocabulary": typeof SettingsVocabularyRoute;
   "/chunks/": typeof ChunksIndexRoute;
   "/plans/": typeof PlansIndexRoute;
   "/chunks/$chunkId_/edit": typeof ChunksChunkIdEditRoute;
@@ -373,6 +400,7 @@ export interface FileRouteTypes {
     | "/context"
     | "/coverage"
     | "/dashboard"
+    | "/density"
     | "/docs"
     | "/features"
     | "/graph"
@@ -386,6 +414,7 @@ export interface FileRouteTypes {
     | "/settings"
     | "/tags"
     | "/templates"
+    | "/timeline"
     | "/vocabulary"
     | "/workspaces"
     | "/browse/clusters"
@@ -399,6 +428,7 @@ export interface FileRouteTypes {
     | "/plans/new"
     | "/requirements/$requirementId"
     | "/requirements/new"
+    | "/settings/vocabulary"
     | "/chunks/"
     | "/plans/"
     | "/chunks/$chunkId/edit";
@@ -413,6 +443,7 @@ export interface FileRouteTypes {
     | "/context"
     | "/coverage"
     | "/dashboard"
+    | "/density"
     | "/docs"
     | "/features"
     | "/graph"
@@ -426,6 +457,7 @@ export interface FileRouteTypes {
     | "/settings"
     | "/tags"
     | "/templates"
+    | "/timeline"
     | "/vocabulary"
     | "/workspaces"
     | "/browse/clusters"
@@ -439,6 +471,7 @@ export interface FileRouteTypes {
     | "/plans/new"
     | "/requirements/$requirementId"
     | "/requirements/new"
+    | "/settings/vocabulary"
     | "/chunks"
     | "/plans"
     | "/chunks/$chunkId/edit";
@@ -453,6 +486,7 @@ export interface FileRouteTypes {
     | "/context"
     | "/coverage"
     | "/dashboard"
+    | "/density"
     | "/docs"
     | "/features"
     | "/graph"
@@ -466,6 +500,7 @@ export interface FileRouteTypes {
     | "/settings"
     | "/tags"
     | "/templates"
+    | "/timeline"
     | "/vocabulary"
     | "/workspaces"
     | "/browse/clusters"
@@ -479,6 +514,7 @@ export interface FileRouteTypes {
     | "/plans/new"
     | "/requirements_/$requirementId"
     | "/requirements_/new"
+    | "/settings/vocabulary"
     | "/chunks/"
     | "/plans/"
     | "/chunks/$chunkId_/edit";
@@ -494,6 +530,7 @@ export interface RootRouteChildren {
   ContextRoute: typeof ContextRoute;
   CoverageRoute: typeof CoverageRoute;
   DashboardRoute: typeof DashboardRoute;
+  DensityRoute: typeof DensityRoute;
   DocsRoute: typeof DocsRoute;
   FeaturesRoute: typeof FeaturesRoute;
   GraphRoute: typeof GraphRoute;
@@ -504,9 +541,10 @@ export interface RootRouteChildren {
   RequirementsRoute: typeof RequirementsRoute;
   ReviewRoute: typeof ReviewRoute;
   SearchRoute: typeof SearchRoute;
-  SettingsRoute: typeof SettingsRoute;
+  SettingsRoute: typeof SettingsRouteWithChildren;
   TagsRoute: typeof TagsRoute;
   TemplatesRoute: typeof TemplatesRoute;
+  TimelineRoute: typeof TimelineRoute;
   VocabularyRoute: typeof VocabularyRoute;
   WorkspacesRoute: typeof WorkspacesRoute;
   ChunksChunkIdRoute: typeof ChunksChunkIdRoute;
@@ -536,6 +574,13 @@ declare module "@tanstack/react-router" {
       path: "/vocabulary";
       fullPath: "/vocabulary";
       preLoaderRoute: typeof VocabularyRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/timeline": {
+      id: "/timeline";
+      path: "/timeline";
+      fullPath: "/timeline";
+      preLoaderRoute: typeof TimelineRouteImport;
       parentRoute: typeof rootRouteImport;
     };
     "/templates": {
@@ -629,6 +674,13 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof DocsRouteImport;
       parentRoute: typeof rootRouteImport;
     };
+    "/density": {
+      id: "/density";
+      path: "/density";
+      fullPath: "/density";
+      preLoaderRoute: typeof DensityRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     "/dashboard": {
       id: "/dashboard";
       path: "/dashboard";
@@ -705,6 +757,13 @@ declare module "@tanstack/react-router" {
       fullPath: "/chunks/";
       preLoaderRoute: typeof ChunksIndexRouteImport;
       parentRoute: typeof rootRouteImport;
+    };
+    "/settings/vocabulary": {
+      id: "/settings/vocabulary";
+      path: "/vocabulary";
+      fullPath: "/settings/vocabulary";
+      preLoaderRoute: typeof SettingsVocabularyRouteImport;
+      parentRoute: typeof SettingsRoute;
     };
     "/requirements_/new": {
       id: "/requirements_/new";
@@ -826,6 +885,18 @@ const LearnRouteChildren: LearnRouteChildren = {
 
 const LearnRouteWithChildren = LearnRoute._addFileChildren(LearnRouteChildren);
 
+interface SettingsRouteChildren {
+  SettingsVocabularyRoute: typeof SettingsVocabularyRoute;
+}
+
+const SettingsRouteChildren: SettingsRouteChildren = {
+  SettingsVocabularyRoute: SettingsVocabularyRoute,
+};
+
+const SettingsRouteWithChildren = SettingsRoute._addFileChildren(
+  SettingsRouteChildren,
+);
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ActivityRoute: ActivityRoute,
@@ -836,6 +907,7 @@ const rootRouteChildren: RootRouteChildren = {
   ContextRoute: ContextRoute,
   CoverageRoute: CoverageRoute,
   DashboardRoute: DashboardRoute,
+  DensityRoute: DensityRoute,
   DocsRoute: DocsRoute,
   FeaturesRoute: FeaturesRoute,
   GraphRoute: GraphRoute,
@@ -846,9 +918,10 @@ const rootRouteChildren: RootRouteChildren = {
   RequirementsRoute: RequirementsRoute,
   ReviewRoute: ReviewRoute,
   SearchRoute: SearchRoute,
-  SettingsRoute: SettingsRoute,
+  SettingsRoute: SettingsRouteWithChildren,
   TagsRoute: TagsRoute,
   TemplatesRoute: TemplatesRoute,
+  TimelineRoute: TimelineRoute,
   VocabularyRoute: VocabularyRoute,
   WorkspacesRoute: WorkspacesRoute,
   ChunksChunkIdRoute: ChunksChunkIdRoute,

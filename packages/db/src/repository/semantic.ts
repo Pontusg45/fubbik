@@ -13,6 +13,58 @@ export interface SemanticSearchParams {
     limit: number;
 }
 
+export interface NeighborRow {
+    id: string;
+    title: string;
+    summary: string | null;
+    type: string;
+    distance: number;
+}
+
+export function findNeighborsByChunkId(chunkId: string, userId: string, k: number) {
+    return Effect.tryPromise({
+        try: async (): Promise<NeighborRow[]> => {
+            const result = await db.execute(sql`
+                WITH source AS (
+                    SELECT embedding
+                    FROM chunk
+                    WHERE id = ${chunkId}
+                      AND user_id = ${userId}
+                      AND embedding IS NOT NULL
+                )
+                SELECT
+                    c.id AS id,
+                    c.title AS title,
+                    c.summary AS summary,
+                    c.type AS type,
+                    (c.embedding <=> (SELECT embedding FROM source))::float8 AS distance
+                FROM chunk c, source
+                WHERE c.id <> ${chunkId}
+                  AND c.user_id = ${userId}
+                  AND c.embedding IS NOT NULL
+                  AND c.archived_at IS NULL
+                ORDER BY c.embedding <=> (SELECT embedding FROM source)
+                LIMIT ${k}
+            `);
+            const rows = result.rows as Array<{
+                id: string;
+                title: string;
+                summary: string | null;
+                type: string;
+                distance: string | number;
+            }>;
+            return rows.map(r => ({
+                id: r.id,
+                title: r.title,
+                summary: r.summary,
+                type: r.type,
+                distance: Number(r.distance)
+            }));
+        },
+        catch: cause => new DatabaseError({ cause })
+    });
+}
+
 export function semanticSearch(params: SemanticSearchParams) {
     return Effect.tryPromise({
         try: async () => {

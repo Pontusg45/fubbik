@@ -18,7 +18,7 @@ import {
     type Viewport
 } from "@xyflow/react";
 import { toPng } from "html-to-image";
-import { Route } from "lucide-react";
+import { Filter, Route } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -33,6 +33,10 @@ import { runForceLayout } from "@/features/graph/force-layout";
 import { GraphDetailPanel } from "@/features/graph/graph-detail-panel";
 import { GraphFilters } from "@/features/graph/graph-filters";
 import { GraphSettingsPanel } from "@/features/graph/graph-settings-panel";
+import { GraphFilterDialog, EMPTY_FILTER, type GraphFilterValues } from "@/features/graph/graph-filter-dialog";
+import { GROUP_NODE_ID_PREFIX, GROUP_STRATEGIES, UNGROUPED_NODE_ID, isGroupNodeId, type GroupBy } from "@/features/graph/group-strategies";
+import { applyPrefilter } from "@/features/graph/apply-prefilter";
+import { MermaidExportModal } from "@/features/graph/mermaid-export-modal";
 import { GraphLegend } from "@/features/graph/graph-legend";
 import { GraphMetrics } from "@/features/graph/graph-metrics";
 import { GraphNode } from "@/features/graph/graph-node";
@@ -197,10 +201,6 @@ function GraphViewInner() {
         }
     });
 
-    // Filter state (empty = show all)
-    const allTypes = useMemo(() => [...new Set((data?.chunks ?? []).map(c => c.type))], [data]);
-    const allRelations = useMemo(() => [...new Set((data?.connections ?? []).map(c => c.relation))], [data]);
-
     const debouncedSearchQuery = useDebouncedValue(searchQuery, 150);
 
     // Measured node sizes for group bounding box calculation (ref + counter to trigger recalc)
@@ -208,7 +208,16 @@ function GraphViewInner() {
     const [measuredSizesVersion, setMeasuredSizesVersion] = useState(0);
 
     // Read path params from URL search
-    const search = useSearch({ strict: false }) as { pathFrom?: string; pathTo?: string };
+    const search = useSearch({ strict: false }) as {
+        pathFrom?: string;
+        pathTo?: string;
+        tags?: string;
+        types?: string;
+        focus?: string;
+        depth?: number;
+        groupBy?: "tag" | "type" | "codebase" | "none";
+        all?: number;
+    };
     useEffect(() => {
         if (search.pathFrom) {
             dispatch({ type: "SET_PATH_START", id: search.pathFrom });
@@ -219,6 +228,39 @@ function GraphViewInner() {
             dispatch({ type: "SET_SHOW_PATH_PANEL", show: true });
         }
     }, [search.pathFrom, search.pathTo, dispatch]);
+
+    // Pre-filter driven by URL params (set via GraphFilterDialog on entry)
+    const prefilter = useMemo<GraphFilterValues>(() => {
+        if (!search.tags && !search.types && !search.focus && !search.groupBy) return EMPTY_FILTER;
+        return {
+            tags: search.tags ? search.tags.split(",").filter(Boolean) : [],
+            types: search.types ? search.types.split(",").filter(Boolean) : [],
+            focusChunkId: search.focus ?? null,
+            depth: typeof search.depth === "number" && search.depth >= 1 && search.depth <= 3 ? search.depth : 2,
+            groupBy: search.groupBy ?? "tag"
+        };
+    }, [search.tags, search.types, search.focus, search.depth, search.groupBy]);
+
+    const hasAnyFilterParams = !!(search.tags || search.types || search.focus || search.groupBy || search.all);
+    const [filterDialogOpen, setFilterDialogOpen] = useState(!hasAnyFilterParams);
+
+    useEffect(() => {
+        // Re-open dialog if user navigates back to /graph with no params (e.g., clear)
+        if (!hasAnyFilterParams) setFilterDialogOpen(true);
+    }, [hasAnyFilterParams]);
+
+    // Apply groupBy from prefilter once graph data is available
+    useEffect(() => {
+        if (!data?.tagTypes) return;
+        if (prefilter.groupBy === "tag") {
+            const ids = new Set(data.tagTypes.map(tt => tt.id));
+            if (ids.size > 0) dispatch({ type: "SET_ACTIVE_TAG_TYPE_IDS", ids });
+        } else if (prefilter.groupBy === "none") {
+            dispatch({ type: "SET_ACTIVE_TAG_TYPE_IDS", ids: new Set() });
+        }
+        // "type" grouping is handled via the filteredGraph pre-filter (types narrow the set);
+        // visual grouping-by-type is a future addition.
+    }, [prefilter.groupBy, data?.tagTypes, dispatch]);
 
     useEffect(() => {
         if (typeof window !== "undefined" && !localStorage.getItem("fubbik-graph-welcomed")) {
@@ -249,38 +291,33 @@ function GraphViewInner() {
     function toggleRelation(r: string) {
         dispatch({ type: "TOGGLE_FILTER_RELATION", relation: r });
     }
-    function toggleTagType(id: string) {
-        dispatch({ type: "TOGGLE_TAG_TYPE", id });
-    }
 
-    // Tag types for the filter panel
-    const tagTypeInfos = useMemo(() => {
-        if (!data?.tagTypes) return [];
-        const tagCountByType = new Map<string, number>();
-        for (const ct of data.chunkTags ?? []) {
-            if (ct.tagTypeId) {
-                tagCountByType.set(ct.tagTypeId, (tagCountByType.get(ct.tagTypeId) ?? 0) + 1);
-            }
-        }
-        return data.tagTypes.map(tt => ({
-            id: tt.id,
-            name: tt.name,
-            color: tt.color,
-            tagCount: tagCountByType.get(tt.id) ?? 0
-        }));
-    }, [data]);
+    // Resolve active grouping strategy from prefilter + existing tag-type toggles.
+    // prefilter.groupBy explicitly wins when set to something other than "tag" (its default).
+    // "tag" falls back to activeTagTypeIds (the in-graph toggle).
+    const groupingMode: Exclude<GroupBy, "none"> | null = useMemo(() => {
+        if (prefilter.groupBy === "type") return "type";
+        if (prefilter.groupBy === "codebase") return "codebase";
+        if (prefilter.groupBy === "none") return null;
+        if (activeTagTypeIds.size > 0) return "tag";
+        return null;
+    }, [prefilter.groupBy, activeTagTypeIds]);
 
-    // Build tag groups: tagName -> chunkIds (for active tag types only)
-    const tagGroups = useMemo(() => {
-        if (activeTagTypeIds.size === 0 || !data?.chunkTags) return null;
-        const groups = new Map<string, string[]>();
-        for (const ct of data.chunkTags) {
-            if (!ct.tagTypeId || !activeTagTypeIds.has(ct.tagTypeId)) continue;
-            if (!groups.has(ct.tagName)) groups.set(ct.tagName, []);
-            groups.get(ct.tagName)!.push(ct.chunkId);
-        }
-        return groups;
-    }, [activeTagTypeIds, data]);
+    const groupResult = useMemo(() => {
+        if (!groupingMode || !data) return null;
+        const typeColorMap: Record<string, string> = {};
+        for (const [name, palette] of Object.entries(TYPE_COLORS)) typeColorMap[name] = palette.border;
+        return GROUP_STRATEGIES[groupingMode].build({
+            chunks: data.chunks,
+            chunkTags: data.chunkTags,
+            activeTagTypeIds,
+            chunkCodebases: data.chunkCodebases,
+            typeColorMap
+        });
+    }, [groupingMode, data, activeTagTypeIds, TYPE_COLORS]);
+
+    // Keep `tagGroups` variable name — downstream pipeline references it by this name.
+    const tagGroups = groupResult?.groups ?? null;
 
     // Build chunk-to-tag-group lookup for edge opacity
     const chunkTagGroupMap = useMemo(() => {
@@ -322,10 +359,15 @@ function GraphViewInner() {
 
     // Pre-compute filtered data that both the worker and the styling memo need
     const filteredGraph = useMemo(() => {
-        let chunks = data?.chunks ?? [];
-        let connections = data?.connections ?? [];
+        if (!data?.chunks || data.chunks.length === 0) return null;
 
-        if (chunks.length === 0) return null;
+        // Shared prefilter logic (see apply-prefilter.ts) — same function as the dialog preview.
+        const prefiltered = applyPrefilter(
+            { chunks: data.chunks, connections: data.connections ?? [], chunkTags: data.chunkTags },
+            { tags: prefilter.tags, types: prefilter.types, focusChunkId: prefilter.focusChunkId, depth: prefilter.depth }
+        );
+        let chunks = prefiltered.chunks;
+        let connections = prefiltered.connections;
 
         // Build parent-children map from part_of edges
         const parentChildren = new Map<string, Set<string>>();
@@ -378,7 +420,7 @@ function GraphViewInner() {
         }
 
         return { chunks, connections, parentChildren, childIds, hiddenIds };
-    }, [data, filterTypes, filterRelations, collapsedParents, exploreMode, exploredNodeIds, timelineCutoff]);
+    }, [data, filterTypes, filterRelations, collapsedParents, exploreMode, exploredNodeIds, timelineCutoff, prefilter]);
 
     // Post to worker when simulation inputs change
     useEffect(() => {
@@ -536,33 +578,29 @@ function GraphViewInner() {
         const tagGroupNodeIds = new Set<string>();
         const chunkToGroupId = new Map<string, string>(); // chunkId -> groupNodeId
 
-        if (tagGroups && tagGroups.size > 0 && data?.chunkTags) {
-            // Build tag color lookup
-            const tagColorMap = new Map<string, string>();
-            for (const ct of data.chunkTags) {
-                if (ct.tagTypeColor) tagColorMap.set(ct.tagName, ct.tagTypeColor);
-            }
+        if (tagGroups && tagGroups.size > 0) {
+            const colorFor = groupResult?.colorFor;
 
             // Build set of visible chunk IDs (nodes already in rawNodes)
             const visibleChunkIds = new Set(rawNodes.map(n => n.id));
 
-            for (const [tagName, chunkIds] of tagGroups) {
+            for (const [label, chunkIds] of tagGroups) {
                 // Only include chunks that are actually visible (not filtered out)
                 const visibleInGroup = chunkIds.filter(cid => visibleChunkIds.has(cid));
                 if (visibleInGroup.length === 0) continue; // skip empty groups
 
-                const groupId = `tag-group-${tagName}`;
+                const groupId = `${GROUP_NODE_ID_PREFIX}${label}`;
                 tagGroupNodeIds.add(groupId);
                 for (const cid of visibleInGroup) {
                     if (!chunkToGroupId.has(cid)) {
                         chunkToGroupId.set(cid, groupId);
                     }
                 }
-                const color = tagColorMap.get(tagName) ?? "#8b5cf6";
+                const color = colorFor?.(label) ?? "#8b5cf6";
                 rawNodes.unshift({
                     id: groupId,
                     type: "group",
-                    data: { label: tagName, color },
+                    data: { label, color },
                     position: { x: 0, y: 0 },
                     selectable: false,
                     draggable: true,
@@ -581,7 +619,7 @@ function GraphViewInner() {
             }
             if (showUngrouped && ungroupedChunkIds.size > 0) {
                 const ungroupedChunks = rawNodes.filter(n => ungroupedChunkIds.has(n.id));
-                const ungroupedId = "tag-group-ungrouped";
+                const ungroupedId = UNGROUPED_NODE_ID;
                 tagGroupNodeIds.add(ungroupedId);
                 for (const c of ungroupedChunks) {
                     chunkToGroupId.set(c.id, ungroupedId);
@@ -625,21 +663,116 @@ function GraphViewInner() {
         const PADDING_BOTTOM = 28;
         const DEFAULT_NODE_W = 180;
         const DEFAULT_NODE_H = 36;
+        const GRID_GAP_X = 16; // horizontal gap between columns
+        const GRID_GAP_Y = 12; // vertical gap between rows
         const groupBounds = new Map<string, { minX: number; minY: number; maxX: number; maxY: number }>();
 
         const measuredSizes = measuredNodeSizesRef.current;
 
+        // Re-space grid positions using measured node widths/heights. The worker
+        // lays chunks on a uniform grid (NODE_W=200); long titles can exceed this
+        // and cause siblings to overlap. For each group we compute a per-column
+        // max-width and per-row max-height, then re-emit each chunk's center at
+        // the cumulative offset from the group's centroid.
+        //
+        // This runs client-side where measured DOM sizes are available; the worker
+        // only provides the rough grid order, which we preserve.
+        const respacedPositions = new Map<string, { x: number; y: number }>();
         if (tagGroupNodeIds.size > 0 && layoutPositions) {
+            // Build per-group member lists in chunkToGroupId insertion order — same
+            // order the worker used to populate the grid.
+            const groupMembers = new Map<string, string[]>();
+            for (const [chunkId, groupId] of chunkToGroupId) {
+                if (!groupMembers.has(groupId)) groupMembers.set(groupId, []);
+                groupMembers.get(groupId)!.push(chunkId);
+            }
+
+            function colsForCount(n: number) {
+                if (n <= 1) return 1;
+                // Same aspect-balanced formula the worker uses, kept in sync so row
+                // indices match the worker's row ordering when resolving ties.
+                const NODE_W = 200, NODE_H = 72;
+                return Math.max(1, Math.ceil(Math.sqrt(n * (NODE_H / NODE_W))));
+            }
+
+            for (const [, members] of groupMembers) {
+                if (members.length === 0) continue;
+                // Group centroid = average of worker positions; robust against any
+                // member being dragged away (dragged ones take their own position).
+                let cx = 0, cy = 0, centroidCount = 0;
+                for (const cid of members) {
+                    const lp = layoutPositions[cid];
+                    if (lp) { cx += lp.x; cy += lp.y; centroidCount++; }
+                }
+                if (centroidCount === 0) continue;
+                cx /= centroidCount;
+                cy /= centroidCount;
+
+                const cols = colsForCount(members.length);
+                const rows = Math.ceil(members.length / cols);
+
+                // Column widths: widest measured w in each column (fallback to default).
+                // Row heights: same for each row.
+                const colW: number[] = new Array(cols).fill(DEFAULT_NODE_W);
+                const rowH: number[] = new Array(rows).fill(DEFAULT_NODE_H);
+                for (let i = 0; i < members.length; i++) {
+                    const cid = members[i]!;
+                    const s = measuredSizes.get(cid);
+                    const w = s?.w ?? DEFAULT_NODE_W;
+                    const h = s?.h ?? DEFAULT_NODE_H;
+                    const col = i % cols;
+                    const row = Math.floor(i / cols);
+                    if (w > colW[col]!) colW[col] = w;
+                    if (h > rowH[row]!) rowH[row] = h;
+                }
+
+                // Cumulative column centers relative to the grid left edge.
+                const colCenters: number[] = [];
+                let xCursor = 0;
+                for (let c = 0; c < cols; c++) {
+                    colCenters.push(xCursor + colW[c]! / 2);
+                    xCursor += colW[c]! + GRID_GAP_X;
+                }
+                const totalW = xCursor - GRID_GAP_X;
+
+                const rowCenters: number[] = [];
+                let yCursor = 0;
+                for (let r = 0; r < rows; r++) {
+                    rowCenters.push(yCursor + rowH[r]! / 2);
+                    yCursor += rowH[r]! + GRID_GAP_Y;
+                }
+                const totalH = yCursor - GRID_GAP_Y;
+
+                // Shift so the grid is centered on (cx, cy).
+                const originX = cx - totalW / 2;
+                const originY = cy - totalH / 2;
+
+                for (let i = 0; i < members.length; i++) {
+                    const cid = members[i]!;
+                    const col = i % cols;
+                    const row = Math.floor(i / cols);
+                    respacedPositions.set(cid, {
+                        x: originX + colCenters[col]!,
+                        y: originY + rowCenters[row]!
+                    });
+                }
+            }
+
+            // Build bounds from the re-spaced positions so the group box wraps
+            // them exactly (respacing may have shifted edges by a few px).
             for (const [chunkId, groupId] of chunkToGroupId) {
                 const dragged = draggedPositions.get(chunkId);
+                const re = respacedPositions.get(chunkId);
                 const lp = layoutPositions[chunkId];
-                if (!dragged && !lp) continue;
+                if (!dragged && !re && !lp) continue;
                 const size = measuredSizes.get(chunkId);
                 const w = size?.w ?? DEFAULT_NODE_W;
                 const h = size?.h ?? DEFAULT_NODE_H;
-                // dragged positions are top-left, layout positions are centers
-                const x = dragged ? dragged.x : lp!.x - w / 2;
-                const y = dragged ? dragged.y : lp!.y - h / 2;
+                // Centers: dragged positions are top-left; re-spaced + worker positions are centers.
+                const centerX = dragged ? dragged.x + w / 2 : (re?.x ?? lp!.x);
+                const centerY = dragged ? dragged.y + h / 2 : (re?.y ?? lp!.y);
+                const x = centerX - w / 2;
+                const y = centerY - h / 2;
                 const prev = groupBounds.get(groupId);
                 if (prev) {
                     prev.minX = Math.min(prev.minX, x);
@@ -684,7 +817,11 @@ function GraphViewInner() {
             const size = measuredSizes.get(node.id);
             const hw = (size?.w ?? DEFAULT_NODE_W) / 2;
             const hh = (size?.h ?? DEFAULT_NODE_H) / 2;
-            return { ...node, position: { x: p.x - hw, y: p.y - hh } };
+            // Prefer the re-spaced position (accounts for variable node widths) over
+            // the worker's fixed-cell grid position.
+            const re = respacedPositions.get(node.id);
+            const center = re ?? p;
+            return { ...node, position: { x: center.x - hw, y: center.y - hh } };
         });
 
         if (bundleEdges) {
@@ -806,6 +943,7 @@ function GraphViewInner() {
 
     const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
     const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
+    const [mermaidModalOpen, setMermaidModalOpen] = useState(false);
 
     // Keep measured sizes ref in sync for group bounding box calculation
     useEffect(() => {
@@ -919,7 +1057,7 @@ function GraphViewInner() {
             }));
         } else if (chunkTagGroupMap && chunkTagGroupMap.size > 0) {
             styledNodes = layoutNodes.map(node => {
-                if (node.id.startsWith("tag-group-")) return node;
+                if (isGroupNodeId(node.id)) return node;
                 const inGroup = chunkTagGroupMap.has(node.id);
                 return {
                     ...node,
@@ -1106,10 +1244,74 @@ function GraphViewInner() {
         });
     }
 
+    // Extracted so the pre-render gate and the normal mount share identical handlers.
+    function handleFilterApply(values: GraphFilterValues) {
+        navigate({
+            to: "/graph",
+            search: (prev: Record<string, unknown>) => ({
+                ...prev,
+                tags: values.tags.length > 0 ? values.tags.join(",") : undefined,
+                types: values.types.length > 0 ? values.types.join(",") : undefined,
+                focus: values.focusChunkId ?? undefined,
+                depth: values.focusChunkId ? values.depth : undefined,
+                groupBy: values.groupBy,
+                all: undefined
+            })
+        });
+    }
+    function handleShowEverything() {
+        navigate({
+            to: "/graph",
+            search: (prev: Record<string, unknown>) => ({
+                ...prev,
+                tags: undefined,
+                types: undefined,
+                focus: undefined,
+                depth: undefined,
+                groupBy: undefined,
+                all: 1
+            })
+        });
+    }
+
     if (isLoading) {
         return (
             <div className="flex h-[calc(100vh-4rem)] items-center justify-center">
                 <p className="text-muted-foreground">Loading graph...</p>
+            </div>
+        );
+    }
+
+    // Gate the heavy graph render until the user has committed to a filter.
+    // Keeps the data query alive (dialog still shows live preview) but skips
+    // ReactFlow mount + layout worker until the user clicks Apply or Show everything.
+    const graphGated = filterDialogOpen && !hasAnyFilterParams;
+    if (graphGated) {
+        const previewData = data?.chunks
+            ? {
+                  chunks: data.chunks,
+                  connections: data.connections ?? [],
+                  chunkTags: data.chunkTags ?? []
+              }
+            : undefined;
+        return (
+            <div className="relative flex h-[calc(100vh-4rem)] items-center justify-center">
+                <div className="max-w-sm text-center text-muted-foreground">
+                    <Filter className="mx-auto size-10 opacity-30" />
+                    <p className="mt-4 text-sm font-medium text-foreground">Pick a filter first</p>
+                    <p className="mt-1 text-xs">
+                        The graph renders after you apply a filter or choose "Show everything". This keeps the layout
+                        work focused on what you actually want to see.
+                    </p>
+                </div>
+                <GraphFilterDialog
+                    open={filterDialogOpen}
+                    onOpenChange={setFilterDialogOpen}
+                    initial={prefilter}
+                    previewData={previewData}
+                    onApply={handleFilterApply}
+                    onShowEverything={handleShowEverything}
+                />
             </div>
         );
     }
@@ -1191,7 +1393,7 @@ function GraphViewInner() {
                         onConnect={onConnect}
                         connectionMode={ConnectionMode.Loose}
                         onNodeClick={(event, node) => {
-                            if (node.id.startsWith("tag-group-")) return;
+                            if (isGroupNodeId(node.id)) return;
                             if (event.shiftKey) {
                                 dispatch({ type: "TOGGLE_MULTI_SELECT", id: node.id });
                                 return;
@@ -1231,7 +1433,7 @@ function GraphViewInner() {
                             setContextMenu(null);
                         }}
                         onNodeDoubleClick={(_, node) => {
-                            if (node.id.startsWith("tag-group-")) return;
+                            if (isGroupNodeId(node.id)) return;
                             // Toggle focus mode: dims everything beyond 2 hops
                             if (focusModeNodeId === node.id) {
                                 setFocusModeNodeId(null);
@@ -1243,12 +1445,12 @@ function GraphViewInner() {
                             setHoveredNode({ id: node.id, x: event.clientX, y: event.clientY });
                         }}
                         onNodeDragStart={(_, node) => {
-                            if (node.id.startsWith("tag-group-")) {
+                            if (isGroupNodeId(node.id)) {
                                 groupDragStartRef.current = { groupId: node.id, startPos: { ...node.position } };
                             }
                         }}
                         onNodeDrag={(_, node) => {
-                            if (node.id.startsWith("tag-group-") && groupDragStartRef.current?.groupId === node.id) {
+                            if (isGroupNodeId(node.id) && groupDragStartRef.current?.groupId === node.id) {
                                 const dx = node.position.x - groupDragStartRef.current.startPos.x;
                                 const dy = node.position.y - groupDragStartRef.current.startPos.y;
                                 const childIds = groupToChunkIds.get(node.id);
@@ -1273,7 +1475,7 @@ function GraphViewInner() {
                             }
                         }}
                         onNodeDragStop={(_, node) => {
-                            if (node.id.startsWith("tag-group-") && groupDragStartRef.current?.groupId === node.id) {
+                            if (isGroupNodeId(node.id) && groupDragStartRef.current?.groupId === node.id) {
                                 groupDragStartRef.current = null;
                                 const childIds = groupToChunkIds.get(node.id);
                                 if (!childIds) return;
@@ -1300,7 +1502,7 @@ function GraphViewInner() {
                         onNodeMouseLeave={() => setHoveredNode(null)}
                         onNodeContextMenu={(event, node) => {
                             event.preventDefault();
-                            if (node.id.startsWith("tag-group-")) return;
+                            if (isGroupNodeId(node.id)) return;
                             setContextMenu({ x: event.clientX, y: event.clientY, nodeId: node.id });
                         }}
                         onPaneContextMenu={(event) => {
@@ -1413,22 +1615,28 @@ function GraphViewInner() {
                     </div>
                 )}
 
-                {/* Top-left: Filters */}
+                {/* Top-left: Filter panel (reuses the dialog's form) */}
                 <div className="max-md:hidden">
                     <GraphFilters
-                        types={allTypes}
-                        relations={allRelations}
-                        activeTypes={filterTypes}
-                        activeRelations={filterRelations}
-                        onToggleType={toggleType}
-                        onToggleRelation={toggleRelation}
-                        tagTypes={tagTypeInfos}
-                        activeTagTypeIds={activeTagTypeIds}
-                        onToggleTagType={toggleTagType}
+                        filter={prefilter}
+                        onFilterChange={handleFilterApply}
+                        previewData={
+                            data?.chunks
+                                ? {
+                                      chunks: data.chunks,
+                                      connections: data.connections ?? [],
+                                      chunkTags: data.chunkTags ?? []
+                                  }
+                                : undefined
+                        }
                         edgeAnimated={edgeAnimated}
                         onToggleEdgeAnimated={() => dispatch({ type: "TOGGLE_EDGE_ANIMATED" })}
                         showUngrouped={showUngrouped}
                         onToggleUngrouped={() => dispatch({ type: "TOGGLE_UNGROUPED" })}
+                        hasActiveGrouping={activeTagTypeIds.size > 0 || prefilter.groupBy === "type" || prefilter.groupBy === "codebase"}
+                        activeTypes={filterTypes}
+                        activeRelations={filterRelations}
+                        activeTagTypeIds={activeTagTypeIds}
                         onApplyPreset={(filters) => {
                             dispatch({ type: "SET_FILTER_TYPES", types: new Set(filters.activeTypes) });
                             dispatch({ type: "SET_FILTER_RELATIONS", relations: new Set(filters.activeRelations) });
@@ -1460,7 +1668,7 @@ function GraphViewInner() {
                     </div>
                     {debouncedSearchQuery.trim() && (
                         <span className="bg-background/80 text-muted-foreground whitespace-nowrap rounded-md border px-2 py-1.5 text-[10px] backdrop-blur-sm">
-                            {searchMatchIds.size} of {layoutNodes.filter(n => !n.id.startsWith("tag-group-")).length}
+                            {searchMatchIds.size} of {layoutNodes.filter(n => !isGroupNodeId(n.id)).length}
                         </span>
                     )}
                     <Popover open={showPathPanel} onOpenChange={(v) => dispatch({ type: "SET_SHOW_PATH_PANEL", show: v })}>
@@ -1522,6 +1730,7 @@ function GraphViewInner() {
                         onOpenGraph={(id) => navigate({ to: "/graph/$graphId", params: { graphId: id } })}
                         onDeleteGraph={(id) => deleteCustomGraphMutation.mutate(id)}
                         onExportImage={handleExportImage}
+                        onExportMermaid={() => setMermaidModalOpen(true)}
                     />
                     <span className="text-muted-foreground bg-background/80 rounded-lg border px-3 py-1.5 text-xs backdrop-blur-sm">
                         {nodes.length - 1} · {edges.length}
@@ -1666,6 +1875,30 @@ function GraphViewInner() {
                     dispatch({ type: "SET_SHOW_DELETE_CONFIRM", show: false });
                 }}
                 loading={deleteManyMutation.isPending}
+            />
+
+            <MermaidExportModal
+                open={mermaidModalOpen}
+                onOpenChange={setMermaidModalOpen}
+                nodes={nodes}
+                edges={edges}
+            />
+
+            <GraphFilterDialog
+                open={filterDialogOpen}
+                onOpenChange={setFilterDialogOpen}
+                initial={prefilter}
+                previewData={
+                    data?.chunks
+                        ? {
+                              chunks: data.chunks,
+                              connections: data.connections ?? [],
+                              chunkTags: data.chunkTags ?? []
+                          }
+                        : undefined
+                }
+                onApply={handleFilterApply}
+                onShowEverything={handleShowEverything}
             />
         </div>
     );

@@ -10,7 +10,9 @@ import {
     FileSearch,
     FileText,
     FolderGit2,
+    FolderTree,
     FolderUp,
+    History,
     Layers,
     LayoutDashboard,
     Menu,
@@ -46,6 +48,8 @@ const manageItems = [
     { label: "Workspaces", to: "/workspaces" as const, icon: Layers },
     { label: "Import Docs", to: "/import" as const, icon: FolderUp },
     { label: "Health", to: "/knowledge-health" as const, icon: Activity },
+    { label: "Density", to: "/density" as const, icon: FolderTree },
+    { label: "Timeline", to: "/timeline" as const, icon: History },
     { label: "Activity", to: "/activity" as const, icon: Clock },
     { label: "Settings", to: "/settings" as const, icon: Settings }
 ];

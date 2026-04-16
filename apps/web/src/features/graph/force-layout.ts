@@ -135,16 +135,27 @@ function runGroupedLayout(
     edges: { source: string; target: string; relation: string }[],
     tagGroups: Map<string, string[]>
 ): Record<string, { x: number; y: number }> {
-    // Build node-to-group mapping (first group wins)
+    const nodeSet = new Set(nodes.map(n => n.id));
+
+    // Drop tags with zero visible members BEFORE computing first-wins. graph-view
+    // does the same skip when rendering — if we diverge here, a chunk ends up
+    // positioned in group A's grid (layout side) while rendered as a member of
+    // group B (render side), stretching B's bounding box across the canvas.
+    const visibleTagGroups = new Map<string, string[]>();
+    for (const [name, nodeIds] of tagGroups) {
+        const visible = nodeIds.filter(id => nodeSet.has(id));
+        if (visible.length > 0) visibleTagGroups.set(name, visible);
+    }
+
+    // Build node-to-group mapping (first visible group wins)
     const nodeToGroup = new Map<string, string>();
-    for (const [groupName, nodeIds] of tagGroups) {
+    for (const [groupName, nodeIds] of visibleTagGroups) {
         for (const nid of nodeIds) {
             if (!nodeToGroup.has(nid)) nodeToGroup.set(nid, groupName);
         }
     }
 
     // Assign ungrouped nodes
-    const nodeSet = new Set(nodes.map(n => n.id));
     const ungroupedNodes: string[] = [];
     for (const n of nodes) {
         if (!nodeToGroup.has(n.id)) {
@@ -152,7 +163,7 @@ function runGroupedLayout(
             nodeToGroup.set(n.id, "__ungrouped__");
         }
     }
-    const allGroups = new Map(tagGroups);
+    const allGroups = new Map(visibleTagGroups);
     if (ungroupedNodes.length > 0) {
         allGroups.set("__ungrouped__", ungroupedNodes);
     }
@@ -186,16 +197,42 @@ function runGroupedLayout(
         groupPos.set(groupNames[i]!, { x: Math.cos(angle) * r, y: Math.sin(angle) * r, vx: 0, vy: 0 });
     }
 
-    const NODE_W = 280;
-    const NODE_H = 80;
+    // Grid cell size — sized to the actual measured chunk nodes (~180×36) with
+    // enough padding to keep labels readable. Previously 280×80 which left the grid
+    // ~2-3× wider than tall and wasted lots of space inside each group box.
+    const NODE_W = 200;
+    const NODE_H = 72;
+
+    // Pick column count so that the rendered grid approximates a square *visual*
+    // block, not a square *count* grid. With cells taller in aspect than wide
+    // (NODE_H/NODE_W), we need more rows than columns to balance out the
+    // per-cell footprint:
+    //   cols * NODE_W ≈ rows * NODE_H   ⇒   cols ≈ sqrt(n * NODE_H / NODE_W)
+    // This keeps group boxes compact across any chunk count.
+    function cellsForCount(n: number): { cols: number; rows: number } {
+        if (n <= 1) return { cols: 1, rows: n };
+        const cols = Math.max(1, Math.ceil(Math.sqrt(n * (NODE_H / NODE_W))));
+        const rows = Math.ceil(n / cols);
+        return { cols, rows };
+    }
+
+    // Authoritative per-group membership from nodeToGroup (first-wins, matches
+    // graph-view's chunkToGroupId). Using allGroups directly here would double-count
+    // chunks that carry multiple tags, making groupRadius + Phase 2 placement
+    // overlap-overwrite each other.
+    const groupMembers = new Map<string, string[]>();
+    for (const [chunkId, groupName] of nodeToGroup) {
+        if (!nodeSet.has(chunkId)) continue;
+        if (!groupMembers.has(groupName)) groupMembers.set(groupName, []);
+        groupMembers.get(groupName)!.push(chunkId);
+    }
 
     // Pre-compute group radii based on grid layout footprint
     const groupRadius = new Map<string, number>();
-    for (const [name, nodeIds] of allGroups) {
-        const n = nodeIds.filter(id => nodeSet.has(id)).length;
-        if (n === 0) { groupRadius.set(name, 0); continue; }
-        const cols = Math.ceil(Math.sqrt(n));
-        const rows = Math.ceil(n / cols);
+    for (const name of groupNames) {
+        const members = groupMembers.get(name) ?? [];
+        if (members.length === 0) { groupRadius.set(name, 0); continue; }
+        const { cols, rows } = cellsForCount(members.length);
         const w = cols * NODE_W / 2;
         const h = rows * NODE_H / 2;
         groupRadius.set(name, Math.sqrt(w * w + h * h) + 60); // 60px padding
@@ -207,10 +244,12 @@ function runGroupedLayout(
     const GROUP_DAMPING = 0.85;
     const GROUP_ITERATIONS = 200;
 
+    const OVERLAP_PAD = 40; // extra gutter between group boxes
+
     for (let iter = 0; iter < GROUP_ITERATIONS; iter++) {
         const temp = 1 - iter / GROUP_ITERATIONS;
 
-        // Repulsion between groups (with overlap prevention)
+        // Repulsion between groups (with strong overlap prevention)
         for (let i = 0; i < groupNames.length; i++) {
             for (let j = i + 1; j < groupNames.length; j++) {
                 const a = groupPos.get(groupNames[i]!)!;
@@ -220,17 +259,20 @@ function runGroupedLayout(
                 const dist = Math.sqrt(dx * dx + dy * dy) + 1;
                 const rA = groupRadius.get(groupNames[i]!) ?? 100;
                 const rB = groupRadius.get(groupNames[j]!) ?? 100;
-                const minDist = rA + rB;
+                const minDist = rA + rB + OVERLAP_PAD;
 
-                // Standard repulsion
+                // Standard inverse-square repulsion scaled by group sizes.
                 const sizeA = allGroups.get(groupNames[i]!)!.length;
                 const sizeB = allGroups.get(groupNames[j]!)!.length;
                 const sizeFactor = Math.sqrt(sizeA * sizeB);
                 let force = (GROUP_REPULSION * sizeFactor * temp) / (dist * dist);
 
-                // Strong overlap separation force when groups are too close
+                // Hard separation when groups would visually overlap. This used to be
+                // too weak (0.5) to fight springs pulling big, highly-connected groups
+                // together — the result was three giant boxes stacked at the origin.
+                // 2.0 dominates the spring force at reasonable separations.
                 if (dist < minDist) {
-                    force += (minDist - dist) * 0.5;
+                    force += (minDist - dist) * 2.0;
                 }
 
                 const fx = (dx / dist) * force;
@@ -251,9 +293,14 @@ function runGroupedLayout(
             const dx = b.x - a.x;
             const dy = b.y - a.y;
             const dist = Math.sqrt(dx * dx + dy * dy) + 1;
-            // Average spring length from relations
+            // Target spring length must be at least sum-of-radii so the spring's pull
+            // doesn't drag big groups through each other. Before, it was min 350px
+            // regardless of how big the groups actually drew.
             const avgLen = relations.reduce((sum, r) => sum + (RELATION_SPRING_LEN[r] ?? SPRING_LEN), 0) / relations.length;
-            const targetLen = Math.max(GROUP_SPRING_LEN, avgLen * 1.5);
+            const rA = groupRadius.get(gA!) ?? 100;
+            const rB = groupRadius.get(gB!) ?? 100;
+            const separation = rA + rB + OVERLAP_PAD;
+            const targetLen = Math.max(GROUP_SPRING_LEN, avgLen * 1.5, separation);
             const force = GROUP_SPRING_K * (dist - targetLen) * Math.min(count, 5) * temp;
             const fx = (dx / dist) * force;
             const fy = (dy / dist) * force;
@@ -278,23 +325,53 @@ function runGroupedLayout(
         }
     }
 
-    // Phase 2: Place nodes in a square grid within each group
+    // Phase 1.5: Hard collision resolution pass. The soft forces above may leave
+    // some groups still overlapping because (a) the annealing temperature is
+    // zero at the end so late-phase adjustments are tiny, and (b) with many
+    // groups pulling on each other, springs can lock overlaps in. This pass
+    // walks pairs and pushes them apart by half the penetration each — no force,
+    // no damping, just geometry. Repeats a few times so cascades settle.
+    for (let pass = 0; pass < 40; pass++) {
+        let moved = false;
+        for (let i = 0; i < groupNames.length; i++) {
+            for (let j = i + 1; j < groupNames.length; j++) {
+                const a = groupPos.get(groupNames[i]!)!;
+                const b = groupPos.get(groupNames[j]!)!;
+                const rA = groupRadius.get(groupNames[i]!) ?? 0;
+                const rB = groupRadius.get(groupNames[j]!) ?? 0;
+                if (rA === 0 || rB === 0) continue;
+                const dx = b.x - a.x;
+                const dy = b.y - a.y;
+                const dist = Math.sqrt(dx * dx + dy * dy) + 0.0001;
+                const minDist = rA + rB + OVERLAP_PAD;
+                if (dist >= minDist) continue;
+                const overlap = minDist - dist;
+                const nx = dx / dist;
+                const ny = dy / dist;
+                // Push each group by half the overlap along the separation axis.
+                a.x -= nx * overlap * 0.5;
+                a.y -= ny * overlap * 0.5;
+                b.x += nx * overlap * 0.5;
+                b.y += ny * overlap * 0.5;
+                moved = true;
+            }
+        }
+        if (!moved) break;
+    }
+
+    // Phase 2: Place each chunk exactly once, in its first-wins group's grid.
+    // (Using allGroups here would double-place chunks that belong to multiple tags
+    // — the last group in iteration would win, leaving chunks far from their
+    // "visual" group's center and stretching bounds across the whole canvas.)
     const positions: Record<string, { x: number; y: number }> = {};
-
-    for (const [groupName, nodeIds] of allGroups) {
+    for (const [groupName, members] of groupMembers) {
         const gp = groupPos.get(groupName);
-        if (!gp) continue;
-
-        const validIds = nodeIds.filter(id => nodeSet.has(id));
-        if (validIds.length === 0) continue;
-
-        const cols = Math.ceil(Math.sqrt(validIds.length));
-        const rows = Math.ceil(validIds.length / cols);
-
-        for (let i = 0; i < validIds.length; i++) {
+        if (!gp || members.length === 0) continue;
+        const { cols, rows } = cellsForCount(members.length);
+        for (let i = 0; i < members.length; i++) {
             const col = i % cols;
             const row = Math.floor(i / cols);
-            positions[validIds[i]!] = {
+            positions[members[i]!] = {
                 x: gp.x + (col - (cols - 1) / 2) * NODE_W,
                 y: gp.y + (row - (rows - 1) / 2) * NODE_H
             };

@@ -37,3 +37,6 @@ export * from "../age/query";
 export { isAgeAvailable } from "../age/client";
 export * from "./chunk-proposal";
 export * from "./context-snapshot";
+export * from "./timeline";
+export * from "./density";
+export * from "./vocabulary-catalog";

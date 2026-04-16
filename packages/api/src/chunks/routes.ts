@@ -205,6 +205,23 @@ export const chunkRoutes = new Elysia()
     .get("/chunks/:id/history", ctx =>
         Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(session => chunkService.getChunkHistory(ctx.params.id, session.user.id))))
     )
+    .get(
+        "/chunks/:id/neighbors",
+        ctx =>
+            Effect.runPromise(
+                requireSession(ctx).pipe(
+                    Effect.flatMap(session => {
+                        const k = Math.min(Math.max(Number(ctx.query.k ?? 10), 1), 50);
+                        return chunkService.getChunkNeighbors(ctx.params.id, session.user.id, k);
+                    })
+                )
+            ),
+        {
+            query: t.Object({
+                k: t.Optional(t.String())
+            })
+        }
+    )
     .get("/chunks/:id", ctx =>
         Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(session => chunkService.getChunkDetail(ctx.params.id, session.user.id))))
     )

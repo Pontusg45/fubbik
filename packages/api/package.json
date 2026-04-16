@@ -4,7 +4,8 @@
     "exports": {
         ".": "./src/index.ts",
         "./context": "./src/context.ts",
-        "./chunk-size": "./src/chunks/chunk-size.ts"
+        "./chunk-size": "./src/chunks/chunk-size.ts",
+        "./enums": "./src/enums.ts"
     },
     "scripts": {
         "lint": "oxlint src",

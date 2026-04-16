@@ -1,4 +1,4 @@
-import { Download, ExternalLink, Save, Settings2 } from "lucide-react";
+import { Download, ExternalLink, FileCode2, Save, Settings2 } from "lucide-react";
 
 import { Popover, PopoverTrigger, PopoverPopup } from "@/components/ui/popover";
 import type { LayoutAlgorithm } from "@/features/graph/layouts";
@@ -39,6 +39,7 @@ export interface GraphSettingsPanelProps {
     onOpenGraph: (id: string) => void;
     onDeleteGraph: (id: string) => void;
     onExportImage: () => void;
+    onExportMermaid: () => void;
 }
 
 export function GraphSettingsPanel({
@@ -63,6 +64,7 @@ export function GraphSettingsPanel({
     onOpenGraph,
     onDeleteGraph,
     onExportImage,
+    onExportMermaid,
 }: GraphSettingsPanelProps) {
     return (
         <Popover>
@@ -187,13 +189,20 @@ export function GraphSettingsPanel({
                             </div>
                         ))}
                     </div>
-                    <div className="border-t pt-3">
+                    <div className="flex flex-col gap-2 border-t pt-3">
                         <button
                             onClick={onExportImage}
                             className="text-muted-foreground hover:text-foreground flex w-full items-center gap-2 rounded-md border px-2.5 py-1.5 text-xs"
                         >
                             <Download className="size-3.5" />
                             Export as PNG
+                        </button>
+                        <button
+                            onClick={onExportMermaid}
+                            className="text-muted-foreground hover:text-foreground flex w-full items-center gap-2 rounded-md border px-2.5 py-1.5 text-xs"
+                        >
+                            <FileCode2 className="size-3.5" />
+                            Export as Mermaid
                         </button>
                     </div>
                 </div>

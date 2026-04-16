@@ -1,18 +1,11 @@
 import { Handle, Position, type NodeProps } from "@xyflow/react";
-import { BookOpen, CheckSquare, Compass, Database, FileText, StickyNote } from "lucide-react";
 
-const TYPE_ICONS: Record<string, typeof BookOpen> = {
-    guide: BookOpen,
-    document: FileText,
-    checklist: CheckSquare,
-    schema: Database,
-    reference: Compass,
-    note: StickyNote
-};
+import { resolveChunkTypeIcon, useChunkTypeMeta } from "@/features/vocabularies/use-vocabularies";
 
 export function GraphNode({ data }: NodeProps) {
     const nodeData = data as { label: string; type?: string; connectionCount?: number; tags?: string[]; codebaseName?: string };
-    const Icon = TYPE_ICONS[nodeData.type ?? ""] ?? StickyNote;
+    const meta = useChunkTypeMeta(nodeData.type);
+    const Icon = resolveChunkTypeIcon(meta.icon);
     const count = nodeData.connectionCount ?? 0;
     const tags = nodeData.tags ?? [];
     const codebaseName = nodeData.codebaseName;

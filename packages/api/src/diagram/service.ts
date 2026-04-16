@@ -1,39 +1,56 @@
 import { getAllChunksMeta, getAllConnectionsForUser } from "@fubbik/db/repository";
 import { Effect } from "effect";
 
-export function generateDiagram(userId: string, codebaseId: string) {
+const DEFAULT_MAX_NODES = 100;
+
+interface DiagramOptions {
+    codebaseId?: string;
+    workspaceId?: string;
+    maxNodes?: number;
+    direction?: "LR" | "TB";
+}
+
+export function generateDiagram(userId: string, codebaseIdOrOpts: string | DiagramOptions) {
+    const opts: DiagramOptions =
+        typeof codebaseIdOrOpts === "string" ? { codebaseId: codebaseIdOrOpts } : codebaseIdOrOpts;
+    const maxNodes = opts.maxNodes ?? DEFAULT_MAX_NODES;
+    const direction = opts.direction ?? "LR";
+
     return Effect.all({
-        chunks: getAllChunksMeta(userId, codebaseId),
+        chunks: getAllChunksMeta(userId, opts.codebaseId, opts.workspaceId),
         connections: getAllConnectionsForUser(userId)
     }).pipe(
         Effect.map(({ chunks, connections }) => {
-            const chunkMap = new Map(chunks.map(c => [c.id, c.title]));
+            const truncated = chunks.length > maxNodes;
+            const keptChunks = truncated ? chunks.slice(0, maxNodes) : chunks;
+            const keptIds = new Set(keptChunks.map(c => c.id));
+            const keptConnections = connections.filter(c => keptIds.has(c.sourceId) && keptIds.has(c.targetId));
 
-            // Filter connections to only those where both source and target are in the codebase chunks
-            const relevantConnections = connections.filter(
-                c => chunkMap.has(c.sourceId) && chunkMap.has(c.targetId)
-            );
-
-            const lines: string[] = ["graph TD"];
-
-            // Create node declarations with sanitised labels
-            for (const chunk of chunks) {
-                const safeTitle = chunk.title.replace(/"/g, "'").replace(/[[\]]/g, "");
-                lines.push(`    ${sanitizeId(chunk.id)}["${safeTitle}"]`);
+            const lines: string[] = [`flowchart ${direction}`];
+            for (const chunk of keptChunks) {
+                lines.push(`    ${sanitizeId(chunk.id)}["${escapeLabel(chunk.title)}"]`);
+            }
+            for (const conn of keptConnections) {
+                lines.push(
+                    `    ${sanitizeId(conn.sourceId)} -->|${escapeLabel(conn.relation)}| ${sanitizeId(conn.targetId)}`
+                );
             }
 
-            // Create edges
-            for (const conn of relevantConnections) {
-                const safeRelation = conn.relation.replace(/"/g, "'");
-                lines.push(`    ${sanitizeId(conn.sourceId)} -->|${safeRelation}| ${sanitizeId(conn.targetId)}`);
-            }
-
-            return { diagram: lines.join("\n") };
+            return {
+                diagram: lines.join("\n"),
+                nodeCount: keptChunks.length,
+                edgeCount: keptConnections.length,
+                truncated
+            };
         })
     );
 }
 
 /** Convert a UUID-style id into a valid Mermaid node identifier */
 function sanitizeId(id: string): string {
-    return "n" + id.replace(/-/g, "");
+    return "n" + id.replace(/[^a-zA-Z0-9]/g, "");
+}
+
+function escapeLabel(raw: string): string {
+    return raw.replace(/"/g, "'").replace(/[[\]]/g, "").replace(/\|/g, "／");
 }

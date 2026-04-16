@@ -1,15 +1,11 @@
-import { BookOpen, ClipboardCheck, Database, FileText, Lightbulb, Wrench, type LucideIcon } from "lucide-react";
+import { resolveChunkTypeIcon, useChunkTypeMeta } from "@/features/vocabularies/use-vocabularies";
 
-const ICON_MAP: Record<string, LucideIcon> = {
-    note: Lightbulb,
-    document: BookOpen,
-    reference: FileText,
-    schema: Database,
-    checklist: ClipboardCheck,
-    guide: Wrench,
-};
-
+/**
+ * Chunk type icon — resolved from the chunk_type catalog (DB-driven).
+ * Unknown icon names fall back to FileText via resolveChunkTypeIcon.
+ */
 export function ChunkTypeIcon({ type, className }: { type: string; className?: string }) {
-    const Icon = ICON_MAP[type] ?? FileText;
+    const meta = useChunkTypeMeta(type);
+    const Icon = resolveChunkTypeIcon(meta.icon);
     return <Icon className={className ?? "size-3.5"} />;
 }

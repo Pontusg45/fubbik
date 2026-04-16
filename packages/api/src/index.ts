@@ -44,6 +44,9 @@ import { savedGraphRoutes } from "./saved-graphs/routes";
 import { stalenessRoutes } from "./staleness/routes";
 import { searchRoutes } from "./search/routes";
 import { learningPathRoutes } from "./learning-paths/routes";
+import { timelineRoutes } from "./timeline/routes";
+import { densityRoutes } from "./density/routes";
+import { vocabularyCatalogRoutes } from "./vocabularies/routes";
 import { planRoutes } from "./plans/routes";
 import { proposalRoutes } from "./proposals/routes";
 import { taskQueueRoutes } from "./tasks/routes";
@@ -171,6 +174,9 @@ export const api = new Elysia({ prefix: "/api" })
     .use(stalenessRoutes)
     .use(savedGraphRoutes)
     .use(searchRoutes)
-    .use(learningPathRoutes);
+    .use(learningPathRoutes)
+    .use(timelineRoutes)
+    .use(densityRoutes)
+    .use(vocabularyCatalogRoutes);
 
 export type Api = typeof api;

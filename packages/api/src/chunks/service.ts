@@ -5,6 +5,7 @@ import {
     deleteChunk as deleteChunkRepo,
     deleteMany as deleteManyRepo,
     exportAllChunks as exportAllChunksRepo,
+    findNeighborsByChunkId,
     findOrCreateTag,
     getAppliesToForChunk,
     getChunkById,
@@ -283,6 +284,36 @@ export function getChunkHistory(chunkId: string, userId?: string) {
     return getChunkById(chunkId, userId).pipe(
         Effect.flatMap(existing => (existing ? Effect.succeed(existing) : Effect.fail(new NotFoundError({ resource: "Chunk" })))),
         Effect.flatMap(() => getVersionsByChunkId(chunkId))
+    );
+}
+
+interface NeighborItem {
+    id: string;
+    title: string;
+    summary: string | null;
+    type: string;
+    distance: number;
+}
+
+interface NeighborsResult {
+    neighbors: NeighborItem[];
+    note: string | null;
+}
+
+export function getChunkNeighbors(chunkId: string, userId: string, k: number) {
+    return getChunkById(chunkId, userId).pipe(
+        Effect.flatMap(existing => (existing ? Effect.succeed(existing) : Effect.fail(new NotFoundError({ resource: "Chunk" })))),
+        Effect.flatMap(source => {
+            if (!source.embedding) {
+                return Effect.succeed<NeighborsResult>({
+                    neighbors: [],
+                    note: "Chunk has no embedding — run enrichment first."
+                });
+            }
+            return findNeighborsByChunkId(chunkId, userId, k).pipe(
+                Effect.map((neighbors): NeighborsResult => ({ neighbors, note: null }))
+            );
+        })
     );
 }
 

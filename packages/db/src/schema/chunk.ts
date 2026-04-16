@@ -2,6 +2,8 @@ import { relations, sql } from "drizzle-orm";
 import { pgTable, text, timestamp, jsonb, index, uniqueIndex, customType, integer, boolean } from "drizzle-orm/pg-core";
 
 import { user } from "./auth";
+import { chunkType } from "./chunk-type";
+import { connectionRelation } from "./connection-relation";
 import { document } from "./document";
 
 const vector = customType<{ data: number[]; driverParam: string }>({
@@ -22,7 +24,7 @@ export const chunk = pgTable(
         id: text("id").primaryKey(),
         title: text("title").notNull(),
         content: text("content").notNull().default(""),
-        type: text("type").notNull().default("note"),
+        type: text("type").notNull().default("note").references(() => chunkType.id, { onDelete: "restrict" }),
         userId: text("user_id")
             .notNull()
             .references(() => user.id, { onDelete: "cascade" }),
@@ -68,7 +70,7 @@ export const chunkConnection = pgTable(
         targetId: text("target_id")
             .notNull()
             .references(() => chunk.id, { onDelete: "cascade" }),
-        relation: text("relation").notNull().default("related"),
+        relation: text("relation").notNull().default("related_to").references(() => connectionRelation.id, { onDelete: "restrict" }),
         createdAt: timestamp("created_at").defaultNow().notNull(),
         origin: text("origin").notNull().default("human"),
         reviewStatus: text("review_status").notNull().default("approved"),

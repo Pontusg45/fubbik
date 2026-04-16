@@ -1,23 +1,9 @@
+import { CONNECTION_RELATIONS as RELATION_TYPES } from "@fubbik/api/enums";
 import type { UseMutationResult } from "@tanstack/react-query";
 import { Dialog, DialogPopup, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { relationColor } from "@/features/chunks/relation-colors";
 import type { GraphAction } from "./use-graph-state";
 import type { LayoutAlgorithm } from "./layouts";
-
-// ---------------------------------------------------------------------------
-// Shared constants
-// ---------------------------------------------------------------------------
-
-const RELATION_TYPES = [
-    "related_to",
-    "part_of",
-    "depends_on",
-    "extends",
-    "references",
-    "supports",
-    "contradicts",
-    "alternative_to"
-] as const;
 
 // ---------------------------------------------------------------------------
 // ChangeConnectionDialog
