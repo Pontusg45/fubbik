@@ -47,4 +47,21 @@ export const tagRoutes = new Elysia()
                 Effect.map(() => ({ message: "Deleted" }))
             )
         )
+    )
+    .post(
+        "/tags/merge",
+        ctx =>
+            Effect.runPromise(
+                requireSession(ctx).pipe(
+                    Effect.flatMap(session =>
+                        tagService.mergeUserTags(session.user.id, ctx.body.sourceId, ctx.body.targetId)
+                    )
+                )
+            ),
+        {
+            body: t.Object({
+                sourceId: t.String(),
+                targetId: t.String()
+            })
+        }
     );

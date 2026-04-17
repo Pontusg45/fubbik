@@ -1,4 +1,4 @@
-import { and, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, ne, sql } from "drizzle-orm";
 import { Effect } from "effect";
 
 import { DatabaseError } from "../errors";
@@ -26,11 +26,15 @@ export function getTagsForUser(userId: string) {
                     name: tag.name,
                     tagTypeId: tag.tagTypeId,
                     tagTypeName: tagType.name,
-                    tagTypeColor: tagType.color
+                    tagTypeColor: tagType.color,
+                    tagTypeIcon: tagType.icon,
+                    chunkCount: sql<number>`count(${chunkTag.chunkId})::int`.as("chunk_count")
                 })
                 .from(tag)
                 .leftJoin(tagType, eq(tag.tagTypeId, tagType.id))
-                .where(eq(tag.userId, userId)),
+                .leftJoin(chunkTag, eq(chunkTag.tagId, tag.id))
+                .where(eq(tag.userId, userId))
+                .groupBy(tag.id, tagType.id),
         catch: cause => new DatabaseError({ cause })
     });
 }
@@ -44,6 +48,58 @@ export function updateTag(id: string, userId: string, data: { name?: string; tag
                 .where(and(eq(tag.id, id), eq(tag.userId, userId)))
                 .returning();
             return updated;
+        },
+        catch: cause => new DatabaseError({ cause })
+    });
+}
+
+export function tagNameConflict(id: string, userId: string, name: string) {
+    return Effect.tryPromise({
+        try: async () => {
+            const [hit] = await db
+                .select({ id: tag.id })
+                .from(tag)
+                .where(and(eq(tag.userId, userId), eq(tag.name, name), ne(tag.id, id)))
+                .limit(1);
+            return !!hit;
+        },
+        catch: cause => new DatabaseError({ cause })
+    });
+}
+
+export function mergeTags(sourceId: string, targetId: string, userId: string) {
+    return Effect.tryPromise({
+        try: async () => {
+            return await db.transaction(async tx => {
+                // Ensure both belong to the same user (authorisation)
+                const rows = await tx
+                    .select({ id: tag.id })
+                    .from(tag)
+                    .where(and(inArray(tag.id, [sourceId, targetId]), eq(tag.userId, userId)));
+                if (rows.length !== 2) {
+                    throw new Error("source or target tag not found for user");
+                }
+
+                // Re-point chunk_tag rows from source → target, skipping pairs
+                // where the target link already exists.
+                await tx.execute(sql`
+                    INSERT INTO chunk_tag (chunk_id, tag_id)
+                    SELECT chunk_id, ${targetId} FROM chunk_tag
+                    WHERE tag_id = ${sourceId}
+                    ON CONFLICT (chunk_id, tag_id) DO NOTHING
+                `);
+                await tx.delete(chunkTag).where(eq(chunkTag.tagId, sourceId));
+
+                // Drop the source tag.
+                await tx.delete(tag).where(and(eq(tag.id, sourceId), eq(tag.userId, userId)));
+
+                // Return the new total chunk count on the target for UX.
+                const [count] = await tx
+                    .select({ count: sql<number>`count(*)::int` })
+                    .from(chunkTag)
+                    .where(eq(chunkTag.tagId, targetId));
+                return { targetId, chunkCount: count?.count ?? 0 };
+            });
         },
         catch: cause => new DatabaseError({ cause })
     });

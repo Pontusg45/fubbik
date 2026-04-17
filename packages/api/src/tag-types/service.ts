@@ -7,12 +7,12 @@ export function listTagTypes(userId: string) {
     return getTagTypesForUser(userId);
 }
 
-export function createTagType(userId: string, body: { name: string; color?: string }) {
+export function createTagType(userId: string, body: { name: string; color?: string; icon?: string | null }) {
     const id = crypto.randomUUID();
-    return createTagTypeRepo({ id, name: body.name, color: body.color ?? "#8b5cf6", userId });
+    return createTagTypeRepo({ id, name: body.name, color: body.color ?? "#8b5cf6", icon: body.icon ?? null, userId });
 }
 
-export function updateTagType(id: string, userId: string, body: { name?: string; color?: string }) {
+export function updateTagType(id: string, userId: string, body: { name?: string; color?: string; icon?: string | null }) {
     return updateTagTypeRepo(id, userId, body).pipe(
         Effect.flatMap(updated => (updated ? Effect.succeed(updated) : Effect.fail(new NotFoundError({ resource: "TagType" }))))
     );

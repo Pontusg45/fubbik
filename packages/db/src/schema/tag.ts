@@ -10,6 +10,7 @@ export const tagType = pgTable(
         id: text("id").primaryKey(),
         name: text("name").notNull(),
         color: text("color").notNull().default("#8b5cf6"),
+        icon: text("icon"),
         userId: text("user_id")
             .notNull()
             .references(() => user.id, { onDelete: "cascade" }),

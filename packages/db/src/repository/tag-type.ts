@@ -5,7 +5,7 @@ import { DatabaseError } from "../errors";
 import { db } from "../index";
 import { tagType } from "../schema/tag";
 
-export function createTagType(params: { id: string; name: string; color: string; userId: string }) {
+export function createTagType(params: { id: string; name: string; color: string; icon?: string | null; userId: string }) {
     return Effect.tryPromise({
         try: async () => {
             const [created] = await db.insert(tagType).values(params).returning();
@@ -22,7 +22,7 @@ export function getTagTypesForUser(userId: string) {
     });
 }
 
-export function updateTagType(id: string, userId: string, data: { name?: string; color?: string }) {
+export function updateTagType(id: string, userId: string, data: { name?: string; color?: string; icon?: string | null }) {
     return Effect.tryPromise({
         try: async () => {
             const [updated] = await db

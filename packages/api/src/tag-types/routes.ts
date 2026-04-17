@@ -20,7 +20,8 @@ export const tagTypeRoutes = new Elysia()
         {
             body: t.Object({
                 name: t.String({ maxLength: 50 }),
-                color: t.Optional(t.String({ maxLength: 7 }))
+                color: t.Optional(t.String({ maxLength: 7 })),
+                icon: t.Optional(t.Union([t.String({ maxLength: 40 }), t.Null()]))
             })
         }
     )
@@ -35,7 +36,8 @@ export const tagTypeRoutes = new Elysia()
         {
             body: t.Object({
                 name: t.Optional(t.String({ maxLength: 50 })),
-                color: t.Optional(t.String({ maxLength: 7 }))
+                color: t.Optional(t.String({ maxLength: 7 })),
+                icon: t.Optional(t.Union([t.String({ maxLength: 40 }), t.Null()]))
             })
         }
     )
