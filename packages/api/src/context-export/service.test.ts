@@ -7,6 +7,17 @@ vi.mock("@fubbik/db/repository", () => ({
     getTagsForChunks: vi.fn(),
     getChunkConnections: vi.fn(),
     listChunksByTag: vi.fn(),
+    // claude-md now also pulls requirements/plans/requirement-chunk links for the
+    // "Requirements" section; mock these so the import resolves in tests that
+    // only exercise the chunks sections. Each returns an Effect of an empty
+    // array / empty shape so the requirements block produces no output.
+    listRequirements: vi.fn(() => Effect.succeed({ requirements: [], total: 0 })),
+    listPlans: vi.fn(() => Effect.succeed([])),
+    getChunksForRequirement: vi.fn(() => Effect.succeed([])),
+}));
+
+vi.mock("@fubbik/db/repository/plan", () => ({
+    listTasks: vi.fn(() => Effect.succeed([])),
 }));
 
 vi.mock("../context-for-file/service", () => ({

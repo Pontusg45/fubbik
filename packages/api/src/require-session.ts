@@ -3,14 +3,17 @@ import { Effect } from "effect";
 import type { Session } from "./context";
 import { AuthError } from "./errors";
 
-const DEV_SESSION: NonNullable<Session> = {
-    session: { id: "dev-session", userId: "dev-user", expiresAt: new Date("2099-01-01"), token: "dev-token", createdAt: new Date(), updatedAt: new Date(), ipAddress: null, userAgent: null },
-    user: { id: "dev-user", name: "Dev User", email: "dev@localhost", emailVerified: false, image: null, createdAt: new Date(), updatedAt: new Date() }
-};
-
+/**
+ * Requires a session on the request context. Dev-mode DEV_SESSION injection
+ * happens upstream in `index.ts` — by the time requireSession runs, either a
+ * real session is present or the caller is genuinely unauthenticated. No
+ * silent fallback here (the old version masked auth-guard test failures and
+ * made it hard to distinguish "dev convenience" from "actual unauthenticated
+ * request").
+ */
 export function requireSession(ctx: unknown): Effect.Effect<NonNullable<Session>, AuthError> {
     const session = (ctx as unknown as { session: Session }).session;
-    if (!session) return Effect.succeed(DEV_SESSION);
+    if (!session) return Effect.fail(new AuthError({}));
     return Effect.succeed(session);
 }
 

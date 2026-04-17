@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Check, ChevronDown, ChevronLeft, ChevronRight, FileText, FolderOpen, Link2, Menu, Pencil, Plus, Printer, Search, X } from "lucide-react";
+import { Check, ChevronDown, ChevronLeft, ChevronRight, Eye, FileText, FolderOpen, Link2, Menu, Pencil, Plus, Printer, Search, X } from "lucide-react";
 import { Fragment, useEffect, useMemo, useState } from "react";
 
 import { MarkdownRenderer } from "@/components/markdown-renderer";
@@ -959,6 +959,14 @@ export function DocumentBrowser({ initialDocId, initialSection }: DocumentBrowse
                                                 className="text-lg font-semibold hover:underline underline-offset-2"
                                             >
                                                 <h3 className="inline">{chunk.title}</h3>
+                                            </Link>
+                                            <Link
+                                                to="/chunks/$chunkId"
+                                                params={{ chunkId: chunk.id }}
+                                                className="text-muted-foreground hover:text-foreground opacity-0 transition-opacity group-hover:opacity-100"
+                                                title="Open chunk detail"
+                                            >
+                                                <Eye className="size-3.5" />
                                             </Link>
                                             <button
                                                 onClick={() => {

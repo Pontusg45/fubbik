@@ -29,13 +29,15 @@ import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Spinner } from "@/components/ui/spinner";
 import { relationColor } from "@/features/chunks/relation-colors";
 import { FloatingEdge } from "@/features/graph/floating-edge";
-import { runForceLayout } from "@/features/graph/force-layout";
+import { runForceLayout, runRegroupLayout } from "@/features/graph/force-layout";
+import { getCachedLayout, layoutCacheKey, setCachedLayout } from "@/features/graph/layout-cache";
 import { GraphDetailPanel } from "@/features/graph/graph-detail-panel";
 import { GraphFilters } from "@/features/graph/graph-filters";
 import { GraphSettingsPanel } from "@/features/graph/graph-settings-panel";
 import { GraphFilterDialog, EMPTY_FILTER, type GraphFilterValues } from "@/features/graph/graph-filter-dialog";
 import { GROUP_NODE_ID_PREFIX, GROUP_STRATEGIES, UNGROUPED_NODE_ID, isGroupNodeId, type GroupBy } from "@/features/graph/group-strategies";
 import { applyPrefilter } from "@/features/graph/apply-prefilter";
+import { mark, measure } from "@/features/graph/graph-timings";
 import { MermaidExportModal } from "@/features/graph/mermaid-export-modal";
 import { GraphLegend } from "@/features/graph/graph-legend";
 import { GraphMetrics } from "@/features/graph/graph-metrics";
@@ -278,18 +280,28 @@ function GraphViewInner() {
 
     // Dragged node positions (persist across layout changes)
     const [draggedPositions, setDraggedPositions] = useState<Map<string, { x: number; y: number }>>(new Map());
-    const groupDragStartRef = useRef<{ groupId: string; startPos: { x: number; y: number } } | null>(null);
-
-    // Active types/relations for legend
-    const activeTypes = useMemo(() => new Set((data?.chunks ?? []).map(c => c.type)), [data]);
-    const activeRelations = useMemo(() => new Set((data?.connections ?? []).map(c => c.relation)), [data]);
+    // Group drag snapshot: group's own start position AND a snapshot of every
+    // child's live on-screen position at drag-start. Needed because children are
+    // rendered at `respacedPositions` (per-column variable-width grid), not at
+    // the worker's fixed-cell `layoutPositions`. Offsetting from the wrong base
+    // makes children appear to jump when the group moves.
+    const groupDragStartRef = useRef<{
+        groupId: string;
+        startPos: { x: number; y: number };
+        childStart: Map<string, { x: number; y: number }>;
+    } | null>(null);
 
     // Toggle helpers
-    function toggleType(t: string) {
-        dispatch({ type: "TOGGLE_FILTER_TYPE", filterType: t });
-    }
     function toggleRelation(r: string) {
         dispatch({ type: "TOGGLE_FILTER_RELATION", relation: r });
+    }
+    // Legend type-pill click: add/remove from the URL-driven prefilter so the
+    // legend stays consistent with the top-left filter panel and dialog.
+    function toggleTypePrefilterFromLegend(typeId: string) {
+        const next = prefilter.types.includes(typeId)
+            ? prefilter.types.filter(t => t !== typeId)
+            : [...prefilter.types, typeId];
+        handleFilterApply({ ...prefilter, types: next });
     }
 
     // Resolve active grouping strategy from prefilter + existing tag-type toggles.
@@ -338,12 +350,27 @@ function GraphViewInner() {
     const [layoutPositions, setLayoutPositions] = useState<Record<string, { x: number; y: number }> | null>(null);
     const [isLayouting, setIsLayouting] = useState(false);
 
+    // Mount-time marker — start of the route for time-to-first-node.
+    useEffect(() => {
+        mark("mount");
+        return () => {
+            // Clear on unmount so repeated visits don't compound.
+        };
+    }, []);
+
     // Create / teardown the worker
     useEffect(() => {
         const worker = new Worker(new URL("./layout.worker.ts", import.meta.url), { type: "module" });
         worker.onmessage = (e: MessageEvent<LayoutWorkerOutput>) => {
             if (e.data.requestId !== requestIdRef.current) return;
+            mark("layout-end");
+            measure("layout-duration", "layout-start", "layout-end");
             setLayoutPositions(e.data.positions);
+            lastSimulationPositionsRef.current = e.data.positions;
+            if (pendingCacheKeyRef.current) {
+                setCachedLayout(pendingCacheKeyRef.current, e.data.positions);
+                pendingCacheKeyRef.current = null;
+            }
             setIsLayouting(false);
         };
         worker.onerror = err => {
@@ -422,6 +449,32 @@ function GraphViewInner() {
         return { chunks, connections, parentChildren, childIds, hiddenIds };
     }, [data, filterTypes, filterRelations, collapsedParents, exploreMode, exploredNodeIds, timelineCutoff, prefilter]);
 
+    // Live counts by type + relation for the legend — derived from the visible
+    // (filtered) dataset so pill counts always match what the user sees on screen.
+    const legendTypeCounts = useMemo(() => {
+        const m = new Map<string, number>();
+        for (const c of filteredGraph?.chunks ?? []) {
+            m.set(c.type, (m.get(c.type) ?? 0) + 1);
+        }
+        return m;
+    }, [filteredGraph]);
+    const legendRelationCounts = useMemo(() => {
+        const m = new Map<string, number>();
+        for (const conn of filteredGraph?.connections ?? []) {
+            m.set(conn.relation, (m.get(conn.relation) ?? 0) + 1);
+        }
+        return m;
+    }, [filteredGraph]);
+
+    // Signature of the last full simulation — chunk IDs + edge IDs, independent of
+    // grouping. When only grouping changes, we can skip the 200-iteration
+    // simulation entirely by re-deriving group centers from existing positions.
+    const lastSimulationSigRef = useRef<string | null>(null);
+    const lastSimulationPositionsRef = useRef<Record<string, { x: number; y: number }> | null>(null);
+    // Holds the cache key for an in-flight worker job so the onmessage handler
+    // can write completed positions to the sessionStorage cache.
+    const pendingCacheKeyRef = useRef<string | null>(null);
+
     // Post to worker when simulation inputs change
     useEffect(() => {
         if (!filteredGraph) return;
@@ -439,24 +492,88 @@ function GraphViewInner() {
             relation: conn.relation
         }));
 
+        // Build a simulation-input signature (sort for order-independence). If it
+        // matches the previous run and grouping is the only axis that changed, we
+        // fast-path through runRegroupLayout.
+        const sortedNodeIds = workerNodes.map(n => n.id).sort();
+        const sortedEdgeIds = workerEdges.map(e => `${e.source}>${e.target}:${e.relation}`).sort();
+        const nodeIds = sortedNodeIds.join("|");
+        const edgeIds = sortedEdgeIds.join("|");
+        const sig = `${layoutAlgorithm}::${nodeIds}::${edgeIds}`;
+        const dataUnchanged = sig === lastSimulationSigRef.current;
+        const prevPositions = lastSimulationPositionsRef.current;
+
+        // Full structural key (includes grouping mode + membership) for the
+        // sessionStorage cache. A hit here means we've laid out this exact graph
+        // shape + grouping before in this tab — skip everything.
+        const groupingKey = groupingMode ?? "none";
+        const tagGroupMembership = tagGroups
+            ? [...tagGroups.entries()]
+                  .map(([name, ids]) => `${name}:${[...ids].sort().join(",")}`)
+                  .sort()
+                  .join(";")
+            : "";
+        const cacheKey = layoutCacheKey({
+            layoutAlgorithm,
+            groupingMode: `${groupingKey}#${tagGroupMembership}`,
+            nodeIds: sortedNodeIds,
+            edgeIds: sortedEdgeIds
+        });
+
+        mark("layout-start");
+
+        const cached = getCachedLayout(cacheKey);
+        if (cached && layoutAlgorithm === "force") {
+            mark("layout-end");
+            measure("layout-cache-hit", "layout-start", "layout-end");
+            setLayoutPositions(cached);
+            lastSimulationSigRef.current = sig;
+            lastSimulationPositionsRef.current = cached;
+            setIsLayouting(false);
+            return;
+        }
         if (layoutAlgorithm === "force") {
+            // Fast path: same chunks+edges, different grouping. Skip Phase 1.
+            if (dataUnchanged && prevPositions && tagGroups && tagGroups.size > 0) {
+                const regroupedPositions = runRegroupLayout(workerNodes, workerEdges, tagGroups, prevPositions);
+                if (regroupedPositions) {
+                    mark("layout-end");
+                    measure("layout-regroup", "layout-start", "layout-end");
+                    setLayoutPositions(regroupedPositions);
+                    lastSimulationPositionsRef.current = regroupedPositions;
+                    setCachedLayout(cacheKey, regroupedPositions);
+                    setIsLayouting(false);
+                    return;
+                }
+            }
+
             const tagGroupsObj = tagGroups ? Object.fromEntries(tagGroups) : undefined;
             if (useMainThread) {
                 setIsLayouting(true);
                 // Run synchronously on main thread — avoids worker serialization overhead
                 const positions = runForceLayout(workerNodes, workerEdges, tagGroups ?? undefined);
+                mark("layout-end");
+                measure("layout-duration", "layout-start", "layout-end");
                 setLayoutPositions(positions);
+                lastSimulationSigRef.current = sig;
+                lastSimulationPositionsRef.current = positions;
+                setCachedLayout(cacheKey, positions);
                 setIsLayouting(false);
             } else {
                 if (!workerRef.current) return;
                 setIsLayouting(true);
                 requestIdRef.current += 1;
+                pendingCacheKeyRef.current = cacheKey;
                 workerRef.current.postMessage({
                     requestId: requestIdRef.current,
                     nodes: workerNodes,
                     edges: workerEdges,
                     tagGroups: tagGroupsObj
                 } satisfies LayoutWorkerInput);
+                // Record the sig now so a follow-up groupBy change can match even
+                // before the worker responds. The positions ref is populated in the
+                // worker onmessage handler.
+                lastSimulationSigRef.current = sig;
             }
         } else {
             let positions: Record<string, { x: number; y: number }>;
@@ -467,6 +584,8 @@ function GraphViewInner() {
                 const center = selectedChunkId ?? getMostConnected(workerNodes, workerEdges);
                 positions = center ? radialLayout(workerNodes, workerEdges, center) : hierarchicalLayout(workerNodes, workerEdges);
             }
+            mark("layout-end");
+            measure("layout-duration", "layout-start", "layout-end");
             setLayoutPositions(positions);
             setIsLayouting(false);
         }
@@ -1202,6 +1321,8 @@ function GraphViewInner() {
     useEffect(() => {
         if (layoutPositions && !initialFitDoneRef.current) {
             initialFitDoneRef.current = true;
+            mark("flow-painted");
+            measure("time-to-first-node", "mount", "flow-painted");
             const timer = setTimeout(() => fitViewRef.current({ padding: 0.1 }), 200);
             return () => clearTimeout(timer);
         }
@@ -1392,6 +1513,11 @@ function GraphViewInner() {
                         onEdgesChange={onEdgesChange}
                         onConnect={onConnect}
                         connectionMode={ConnectionMode.Loose}
+                        // Skip mounting DOM for off-screen nodes. MiniMap reads node
+                        // data directly from the React Flow store (not the DOM) so
+                        // it continues to show the full graph footprint. fitView
+                        // and bounds calculations are also store-based.
+                        onlyRenderVisibleElements
                         onNodeClick={(event, node) => {
                             if (isGroupNodeId(node.id)) return;
                             if (event.shiftKey) {
@@ -1446,31 +1572,32 @@ function GraphViewInner() {
                         }}
                         onNodeDragStart={(_, node) => {
                             if (isGroupNodeId(node.id)) {
-                                groupDragStartRef.current = { groupId: node.id, startPos: { ...node.position } };
+                                // Snapshot each child's live rendered position so the drag
+                                // math offsets from where children actually are, not from
+                                // stale worker/layout positions.
+                                const childIds = groupToChunkIds.get(node.id) ?? [];
+                                const childStart = new Map<string, { x: number; y: number }>();
+                                for (const cid of childIds) {
+                                    const childNode = nodes.find(n => n.id === cid);
+                                    if (childNode) childStart.set(cid, { ...childNode.position });
+                                }
+                                groupDragStartRef.current = {
+                                    groupId: node.id,
+                                    startPos: { ...node.position },
+                                    childStart
+                                };
                             }
                         }}
                         onNodeDrag={(_, node) => {
                             if (isGroupNodeId(node.id) && groupDragStartRef.current?.groupId === node.id) {
                                 const dx = node.position.x - groupDragStartRef.current.startPos.x;
                                 const dy = node.position.y - groupDragStartRef.current.startPos.y;
-                                const childIds = groupToChunkIds.get(node.id);
-                                if (!childIds) return;
+                                const childStart = groupDragStartRef.current.childStart;
+                                if (childStart.size === 0) return;
                                 setNodes(prev => prev.map(n => {
-                                    if (!childIds.includes(n.id)) return n;
-                                    const dragged = draggedPositions.get(n.id);
-                                    const lp = layoutPositions?.[n.id];
-                                    if (!dragged && !lp) return n;
-                                    // dragged is top-left, layoutPositions is center — normalize to top-left
-                                    let baseX: number, baseY: number;
-                                    if (dragged) {
-                                        baseX = dragged.x;
-                                        baseY = dragged.y;
-                                    } else {
-                                        const size = measuredNodeSizesRef.current.get(n.id);
-                                        baseX = lp!.x - (size?.w ?? 180) / 2;
-                                        baseY = lp!.y - (size?.h ?? 36) / 2;
-                                    }
-                                    return { ...n, position: { x: baseX + dx, y: baseY + dy } };
+                                    const start = childStart.get(n.id);
+                                    if (!start) return n;
+                                    return { ...n, position: { x: start.x + dx, y: start.y + dy } };
                                 }));
                             }
                         }}
@@ -1737,8 +1864,15 @@ function GraphViewInner() {
                     </span>
                 </div>
 
-                {/* Top-center: Legend */}
-                <GraphLegend activeTypes={activeTypes} activeRelations={activeRelations} onToggleType={toggleType} onToggleRelation={toggleRelation} />
+                {/* Top-center: Legend (catalog-driven, live counts, filter toggles) */}
+                <GraphLegend
+                    typeCounts={legendTypeCounts}
+                    activeTypePrefilter={new Set(prefilter.types)}
+                    onToggleTypePrefilter={toggleTypePrefilterFromLegend}
+                    relationCounts={legendRelationCounts}
+                    activeRelationFilter={filterRelations}
+                    onToggleRelationFilter={toggleRelation}
+                />
 
                 {/* Tooltip */}
                 {hoveredNode &&

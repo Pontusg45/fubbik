@@ -32,47 +32,6 @@ describe("Health check", () => {
     });
 });
 
-describe("Auth guards — unauthenticated access", () => {
-    it("GET /api/me returns 401", async () => {
-        const { status } = await client.api.me.get();
-        expect(status).toBe(401);
-    });
-
-    it("GET /api/chunks returns 401", async () => {
-        const { status } = await client.api.chunks.get();
-        expect(status).toBe(401);
-    });
-
-    it("GET /api/chunks/:id returns 401", async () => {
-        const { status } = await client.api.chunks({ id: "nonexistent" }).get();
-        expect(status).toBe(401);
-    });
-
-    it("POST /api/chunks returns 401", async () => {
-        const { status } = await client.api.chunks.post({
-            title: "Test chunk"
-        });
-        expect(status).toBe(401);
-    });
-
-    it("PATCH /api/chunks/:id returns 401", async () => {
-        const { status } = await client.api.chunks({ id: "nonexistent" }).patch({
-            title: "Updated"
-        });
-        expect(status).toBe(401);
-    });
-
-    it("DELETE /api/chunks/:id returns 401", async () => {
-        const { status } = await client.api.chunks({ id: "nonexistent" }).delete();
-        expect(status).toBe(401);
-    });
-
-    it("GET /api/stats returns 401", async () => {
-        const { status } = await client.api.stats.get();
-        expect(status).toBe(401);
-    });
-});
-
 describe("Effect error pipeline — FiberFailure extraction", () => {
     it("FiberFailure wraps tagged errors correctly", async () => {
         const FiberFailureCauseSymbol = Symbol.for("effect/Runtime/FiberFailure/Cause");

@@ -28,6 +28,13 @@ export const plan = pgTable(
             .defaultNow()
             .$onUpdate(() => new Date()),
         completedAt: timestamp("completed_at"),
+        /**
+         * Free-form JSONB for anything the fixed columns don't cover —
+         * tokenEstimate, blockedOn, deployment env, external-tool state, etc.
+         * Promote a key to a first-class column only after the same shape
+         * shows up in multiple callers.
+         */
+        metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
     },
     table => [
         index("plan_userId_idx").on(table.userId),
@@ -101,6 +108,8 @@ export const planTask = pgTable(
             .notNull()
             .defaultNow()
             .$onUpdate(() => new Date()),
+        /** See plan.metadata — same escape-hatch per task. */
+        metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
     },
     table => [index("plan_task_planId_idx").on(table.planId)],
 );
@@ -140,6 +149,44 @@ export const planTaskDependency = pgTable(
         uniqueIndex("plan_task_dependency_unique_idx").on(t.taskId, t.dependsOnTaskId),
         index("plan_task_dependency_taskId_idx").on(t.taskId),
     ],
+);
+
+/**
+ * External links on plans — GitHub issues, Linear tickets, Slack threads,
+ * Figma files, arbitrary URLs. `system` is a loose slug (github/linear/slack/
+ * figma/url/...) used by the UI to pick an icon.
+ */
+export const planExternalLink = pgTable(
+    "plan_external_link",
+    {
+        id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+        planId: text("plan_id")
+            .notNull()
+            .references(() => plan.id, { onDelete: "cascade" }),
+        system: text("system").notNull().default("url"),
+        url: text("url").notNull(),
+        label: text("label"),
+        order: integer("order").notNull().default(0),
+        createdAt: timestamp("created_at").notNull().defaultNow(),
+    },
+    t => [index("plan_external_link_planId_idx").on(t.planId)],
+);
+
+/** See planExternalLink — same shape for per-task links. */
+export const planTaskExternalLink = pgTable(
+    "plan_task_external_link",
+    {
+        id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+        taskId: text("task_id")
+            .notNull()
+            .references(() => planTask.id, { onDelete: "cascade" }),
+        system: text("system").notNull().default("url"),
+        url: text("url").notNull(),
+        label: text("label"),
+        order: integer("order").notNull().default(0),
+        createdAt: timestamp("created_at").notNull().defaultNow(),
+    },
+    t => [index("plan_task_external_link_taskId_idx").on(t.taskId)],
 );
 
 // Relations
@@ -186,6 +233,14 @@ export const planTaskDependencyRelations = relations(planTaskDependency, ({ one 
     }),
 }));
 
+export const planExternalLinkRelations = relations(planExternalLink, ({ one }) => ({
+    plan: one(plan, { fields: [planExternalLink.planId], references: [plan.id] }),
+}));
+
+export const planTaskExternalLinkRelations = relations(planTaskExternalLink, ({ one }) => ({
+    task: one(planTask, { fields: [planTaskExternalLink.taskId], references: [planTask.id] }),
+}));
+
 // Inferred types
 export type Plan = typeof plan.$inferSelect;
 export type NewPlan = typeof plan.$inferInsert;
@@ -199,6 +254,10 @@ export type PlanTaskChunk = typeof planTaskChunk.$inferSelect;
 export type NewPlanTaskChunk = typeof planTaskChunk.$inferInsert;
 export type PlanTaskDependency = typeof planTaskDependency.$inferSelect;
 export type NewPlanTaskDependency = typeof planTaskDependency.$inferInsert;
+export type PlanExternalLink = typeof planExternalLink.$inferSelect;
+export type NewPlanExternalLink = typeof planExternalLink.$inferInsert;
+export type PlanTaskExternalLink = typeof planTaskExternalLink.$inferSelect;
+export type NewPlanTaskExternalLink = typeof planTaskExternalLink.$inferInsert;
 
 export type PlanStatus = "draft" | "analyzing" | "ready" | "in_progress" | "completed" | "archived";
 export type PlanTaskStatus = "pending" | "in_progress" | "done" | "skipped" | "blocked";

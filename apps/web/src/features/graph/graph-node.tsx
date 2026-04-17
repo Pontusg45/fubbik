@@ -1,9 +1,18 @@
 import { Handle, Position, type NodeProps } from "@xyflow/react";
+import { memo } from "react";
 
 import { resolveChunkTypeIcon, useChunkTypeMeta } from "@/features/vocabularies/use-vocabularies";
 
-export function GraphNode({ data }: NodeProps) {
-    const nodeData = data as { label: string; type?: string; connectionCount?: number; tags?: string[]; codebaseName?: string };
+interface GraphNodeData {
+    label: string;
+    type?: string;
+    connectionCount?: number;
+    tags?: string[];
+    codebaseName?: string;
+}
+
+function GraphNodeInner({ data }: NodeProps) {
+    const nodeData = data as unknown as GraphNodeData;
     const meta = useChunkTypeMeta(nodeData.type);
     const Icon = resolveChunkTypeIcon(meta.icon);
     const count = nodeData.connectionCount ?? 0;
@@ -54,3 +63,22 @@ export function GraphNode({ data }: NodeProps) {
         </>
     );
 }
+
+// React Flow re-renders every node when any graph state changes. Memoizing with
+// shallow data equality cuts reconciliation cost from O(nodes) to O(changed nodes)
+// on every select/hover/filter tick. Position changes are handled by React Flow
+// outside this render path so they don't need to go through equality.
+export const GraphNode = memo(GraphNodeInner, (prev, next) => {
+    const a = prev.data as unknown as GraphNodeData;
+    const b = next.data as unknown as GraphNodeData;
+    if (a === b) return true;
+    if (a.label !== b.label) return false;
+    if (a.type !== b.type) return false;
+    if ((a.connectionCount ?? 0) !== (b.connectionCount ?? 0)) return false;
+    if (a.codebaseName !== b.codebaseName) return false;
+    const at = a.tags ?? [];
+    const bt = b.tags ?? [];
+    if (at.length !== bt.length) return false;
+    for (let i = 0; i < at.length; i++) if (at[i] !== bt[i]) return false;
+    return true;
+});

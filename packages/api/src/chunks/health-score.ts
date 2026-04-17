@@ -27,19 +27,13 @@ export interface HealthScore {
 export function computeHealthScore(input: ChunkHealthInput): HealthScore {
     const issues: string[] = [];
 
-    // Freshness (0-20): Full at <7 days, degrades to 0 at 90 days
-    const daysSinceUpdate = (Date.now() - input.updatedAt.getTime()) / (1000 * 60 * 60 * 24);
-    let freshness: number;
-    if (daysSinceUpdate < 7) {
-        freshness = 20;
-    } else if (daysSinceUpdate >= 90) {
-        freshness = 0;
-    } else {
-        freshness = Math.round(20 * (1 - (daysSinceUpdate - 7) / (90 - 7)));
-    }
-    if (daysSinceUpdate >= 30) {
-        issues.push("Chunk has not been updated in over 30 days");
-    }
+    // Freshness (0-20): no longer age-penalised. Old chunks are not inherently
+    // worse — a 2-year-old architecture decision can still be correct. Age-based
+    // signals live in the separate `chunk_staleness` feature (file_changed,
+    // age, diverged_duplicate), which the user can dismiss per flag.
+    // The category stays in the breakdown for backwards-compat with callers
+    // that render a 5-bar widget.
+    const freshness = 20;
 
     // Completeness (0-20): Base 8 for content, +4 each for rationale/alternatives/consequences
     let completeness = input.content.length > 0 ? 8 : 0;

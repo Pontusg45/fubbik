@@ -19,6 +19,7 @@ export interface CreatePlanInput {
     codebaseId?: string;
     requirementIds?: string[];
     tasks?: Array<{ title: string; description?: string; acceptanceCriteria?: string[] }>;
+    metadata?: Record<string, unknown>;
 }
 
 export interface ListPlansInput {
@@ -96,6 +97,7 @@ export function createPlan(userId: string, input: CreatePlanInput) {
             codebaseId: input.codebaseId ?? null,
             userId,
             status: "draft",
+            metadata: input.metadata ?? {},
         });
         if (input.requirementIds) {
             for (const rid of input.requirementIds) {
@@ -123,6 +125,7 @@ export interface UpdatePlanInput {
     description?: string | null;
     status?: string;
     codebaseId?: string | null;
+    metadata?: Record<string, unknown>;
 }
 
 export function updatePlan(id: string, input: UpdatePlanInput) {
@@ -135,6 +138,7 @@ export function updatePlan(id: string, input: UpdatePlanInput) {
         if (input.title !== undefined) patch.title = input.title;
         if (input.description !== undefined) patch.description = input.description;
         if (input.codebaseId !== undefined) patch.codebaseId = input.codebaseId;
+        if (input.metadata !== undefined) patch.metadata = input.metadata;
         if (input.status !== undefined) {
             patch.status = input.status as PlanStatus;
             if (input.status === "completed" && existing.status !== "completed") {

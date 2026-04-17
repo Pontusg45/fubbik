@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { applyPrefilter } from "@/features/graph/apply-prefilter";
 import { useChunkTypes, type ChunkTypeMeta } from "@/features/vocabularies/use-vocabularies";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
@@ -87,15 +88,20 @@ export function GraphFilterForm({ values, onChange, previewData, compact, initia
         return (data as { chunks: Array<{ id: string; title: string; type: string }> }).chunks;
     }, [chunkSearchQuery.data]);
 
+    // Debounce the filter values that feed into the preview: chips toggle
+    // instantly (good feedback), but applyPrefilter only runs 120ms after the
+    // last change. On medium graphs it's cheap, but linear in chunks + edges,
+    // so debouncing keeps the dialog snappy on large KBs.
+    const debouncedFilter = useDebouncedValue({ tags, types, focusChunkId, depth }, 120);
     const preview = useMemo(() => {
         if (!previewData) return null;
-        const { chunks } = applyPrefilter(previewData, { tags, types, focusChunkId, depth });
+        const { chunks } = applyPrefilter(previewData, debouncedFilter);
         return {
             totalBefore: previewData.chunks.length,
             totalAfter: chunks.length,
             titles: chunks.map(c => ({ id: c.id, title: c.title, type: c.type }))
         };
-    }, [previewData, tags, types, focusChunkId, depth]);
+    }, [previewData, debouncedFilter]);
 
     function emit(patch: Partial<GraphFilterValues>) {
         onChange({ ...values, ...patch });

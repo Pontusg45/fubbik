@@ -380,3 +380,135 @@ function runGroupedLayout(
 
     return positions;
 }
+
+/**
+ * Regroup without re-running the Phase-1 force simulation.
+ *
+ * When the chunk set and edges haven't changed but grouping has (tag → type →
+ * codebase, or toggled tag-type filters), we can avoid the 200-iteration
+ * simulation entirely. Steps:
+ *   1. Build the new group membership with first-wins (same logic as full run).
+ *   2. Seed each new group's center at the centroid of its members' previous
+ *      positions — this preserves the spatial intuition of the last layout.
+ *   3. Run only Phase 1.5 (hard geometric separation) to resolve any overlaps
+ *      the new grouping introduces.
+ *   4. Phase 2 grid placement as normal.
+ *
+ * Budget target: <50 ms on a 200-node graph, vs 400+ ms for the full simulation.
+ */
+export function runRegroupLayout(
+    nodes: { id: string; type: string }[],
+    _edges: { source: string; target: string; relation: string }[],
+    tagGroups: Map<string, string[]>,
+    previousPositions: Record<string, { x: number; y: number }>
+): Record<string, { x: number; y: number }> | null {
+    if (!tagGroups || tagGroups.size === 0) return null;
+
+    const nodeSet = new Set(nodes.map(n => n.id));
+
+    // Step 1 — first-wins membership, matching runGroupedLayout.
+    const visibleTagGroups = new Map<string, string[]>();
+    for (const [name, nodeIds] of tagGroups) {
+        const visible = nodeIds.filter(id => nodeSet.has(id));
+        if (visible.length > 0) visibleTagGroups.set(name, visible);
+    }
+    const nodeToGroup = new Map<string, string>();
+    for (const [groupName, nodeIds] of visibleTagGroups) {
+        for (const nid of nodeIds) {
+            if (!nodeToGroup.has(nid)) nodeToGroup.set(nid, groupName);
+        }
+    }
+    const ungroupedNodes: string[] = [];
+    for (const n of nodes) {
+        if (!nodeToGroup.has(n.id)) {
+            ungroupedNodes.push(n.id);
+            nodeToGroup.set(n.id, "__ungrouped__");
+        }
+    }
+
+    const groupMembers = new Map<string, string[]>();
+    for (const [chunkId, groupName] of nodeToGroup) {
+        if (!nodeSet.has(chunkId)) continue;
+        if (!groupMembers.has(groupName)) groupMembers.set(groupName, []);
+        groupMembers.get(groupName)!.push(chunkId);
+    }
+
+    const NODE_W = 200;
+    const NODE_H = 72;
+    const OVERLAP_PAD = 40;
+
+    function cellsForCount(n: number): { cols: number; rows: number } {
+        if (n <= 1) return { cols: 1, rows: n };
+        const cols = Math.max(1, Math.ceil(Math.sqrt(n * (NODE_H / NODE_W))));
+        const rows = Math.ceil(n / cols);
+        return { cols, rows };
+    }
+
+    // Step 2 — seed each new group at the centroid of its members' previous positions.
+    // Groups whose members have no prior positions get placed at the origin; the
+    // separation pass moves them outward.
+    const groupPos = new Map<string, { x: number; y: number }>();
+    const groupRadius = new Map<string, number>();
+    for (const [name, members] of groupMembers) {
+        let cx = 0, cy = 0, n = 0;
+        for (const cid of members) {
+            const p = previousPositions[cid];
+            if (!p) continue;
+            cx += p.x;
+            cy += p.y;
+            n++;
+        }
+        groupPos.set(name, n > 0 ? { x: cx / n, y: cy / n } : { x: 0, y: 0 });
+        const { cols, rows } = cellsForCount(members.length);
+        const w = cols * NODE_W / 2;
+        const h = rows * NODE_H / 2;
+        groupRadius.set(name, Math.sqrt(w * w + h * h) + 60);
+    }
+
+    // Step 3 — hard separation: same algorithm as Phase 1.5 of the full layout.
+    const groupNames = [...groupPos.keys()];
+    for (let pass = 0; pass < 40; pass++) {
+        let moved = false;
+        for (let i = 0; i < groupNames.length; i++) {
+            for (let j = i + 1; j < groupNames.length; j++) {
+                const a = groupPos.get(groupNames[i]!)!;
+                const b = groupPos.get(groupNames[j]!)!;
+                const rA = groupRadius.get(groupNames[i]!) ?? 0;
+                const rB = groupRadius.get(groupNames[j]!) ?? 0;
+                if (rA === 0 || rB === 0) continue;
+                const dx = b.x - a.x;
+                const dy = b.y - a.y;
+                const dist = Math.sqrt(dx * dx + dy * dy) + 0.0001;
+                const minDist = rA + rB + OVERLAP_PAD;
+                if (dist >= minDist) continue;
+                const overlap = minDist - dist;
+                const nx = dx / dist;
+                const ny = dy / dist;
+                a.x -= nx * overlap * 0.5;
+                a.y -= ny * overlap * 0.5;
+                b.x += nx * overlap * 0.5;
+                b.y += ny * overlap * 0.5;
+                moved = true;
+            }
+        }
+        if (!moved) break;
+    }
+
+    // Step 4 — Phase 2 grid placement.
+    const positions: Record<string, { x: number; y: number }> = {};
+    for (const [groupName, members] of groupMembers) {
+        const gp = groupPos.get(groupName);
+        if (!gp || members.length === 0) continue;
+        const { cols, rows } = cellsForCount(members.length);
+        for (let i = 0; i < members.length; i++) {
+            const col = i % cols;
+            const row = Math.floor(i / cols);
+            positions[members[i]!] = {
+                x: gp.x + (col - (cols - 1) / 2) * NODE_W,
+                y: gp.y + (row - (rows - 1) / 2) * NODE_H
+            };
+        }
+    }
+
+    return positions;
+}

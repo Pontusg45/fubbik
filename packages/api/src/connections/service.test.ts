@@ -7,47 +7,50 @@ import { api } from "../index";
 const app = new Elysia().use(api);
 const client = treaty(app);
 
-describe("Connection routes — auth required", () => {
-    it("POST /api/connections returns 401 without auth", async () => {
+// Auth is globally bypassed for now — every request resolves to DEV_SESSION.
+// Flip `.not.toBe(401)` back to `.toBe(401)` on write endpoints here when
+// auth is re-enabled.
+describe("Connection routes — auth currently bypassed", () => {
+    it("POST /api/connections does not 401 without auth", async () => {
         const { status } = await client.api.connections.post({
             sourceId: "a",
             targetId: "b",
             relation: "related"
         });
-        expect(status).toBe(401);
+        expect(status).not.toBe(401);
     });
 
-    it("DELETE /api/connections/:id returns 401 without auth", async () => {
+    it("DELETE /api/connections/:id does not 401 without auth", async () => {
         const { status } = await client.api.connections({ id: "test" }).delete();
-        expect(status).toBe(401);
+        expect(status).not.toBe(401);
     });
 });
 
-describe("AI routes — auth required", () => {
-    it("POST /api/ai/summarize returns 401 without auth", async () => {
+describe("AI routes — auth currently bypassed", () => {
+    it("POST /api/ai/summarize does not 401 without auth", async () => {
         const { status } = await client.api.ai.summarize.post({ chunkId: "test" });
-        expect(status).toBe(401);
+        expect(status).not.toBe(401);
     });
 
-    it("POST /api/ai/suggest-connections returns 401 without auth", async () => {
+    it("POST /api/ai/suggest-connections does not 401 without auth", async () => {
         const { status } = await client.api.ai["suggest-connections"].post({ chunkId: "test" });
-        expect(status).toBe(401);
+        expect(status).not.toBe(401);
     });
 
-    it("POST /api/ai/generate returns 401 without auth", async () => {
+    it("POST /api/ai/generate does not 401 without auth", async () => {
         const { status } = await client.api.ai.generate.post({ prompt: "test" });
-        expect(status).toBe(401);
+        expect(status).not.toBe(401);
     });
 });
 
-describe("Graph & Tags routes — auth required", () => {
-    it("GET /api/graph returns 401 without auth", async () => {
+describe("Graph & Tags routes — auth currently bypassed", () => {
+    it("GET /api/graph does not 401 without auth", async () => {
         const { status } = await client.api.graph.get();
-        expect(status).toBe(401);
+        expect(status).not.toBe(401);
     });
 
-    it("GET /api/tags returns 401 without auth", async () => {
+    it("GET /api/tags does not 401 without auth", async () => {
         const { status } = await client.api.tags.get();
-        expect(status).toBe(401);
+        expect(status).not.toBe(401);
     });
 });

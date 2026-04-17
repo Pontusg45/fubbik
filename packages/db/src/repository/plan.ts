@@ -432,3 +432,77 @@ export function unblockDependentsOf(taskId: string): Effect.Effect<string[], Dat
 }
 
 export type PlanTaskStatusType = PlanTaskStatus;
+
+// --- External links ---
+
+import { planExternalLink, planTaskExternalLink } from "../schema/plan";
+import type {
+    NewPlanExternalLink,
+    NewPlanTaskExternalLink,
+    PlanExternalLink,
+    PlanTaskExternalLink,
+} from "../schema/plan";
+
+export function listPlanLinks(planId: string): Effect.Effect<PlanExternalLink[], DatabaseError> {
+    return Effect.tryPromise({
+        try: async () =>
+            db
+                .select()
+                .from(planExternalLink)
+                .where(eq(planExternalLink.planId, planId))
+                .orderBy(asc(planExternalLink.order), asc(planExternalLink.createdAt)),
+        catch: e => new DatabaseError({ cause: e }),
+    });
+}
+
+export function addPlanLink(input: NewPlanExternalLink): Effect.Effect<PlanExternalLink, DatabaseError> {
+    return Effect.tryPromise({
+        try: async () => {
+            const [row] = await db.insert(planExternalLink).values(input).returning();
+            if (!row) throw new Error("Insert returned no row");
+            return row;
+        },
+        catch: e => new DatabaseError({ cause: e }),
+    });
+}
+
+export function removePlanLink(linkId: string): Effect.Effect<void, DatabaseError> {
+    return Effect.tryPromise({
+        try: async () => {
+            await db.delete(planExternalLink).where(eq(planExternalLink.id, linkId));
+        },
+        catch: e => new DatabaseError({ cause: e }),
+    });
+}
+
+export function listTaskLinks(taskId: string): Effect.Effect<PlanTaskExternalLink[], DatabaseError> {
+    return Effect.tryPromise({
+        try: async () =>
+            db
+                .select()
+                .from(planTaskExternalLink)
+                .where(eq(planTaskExternalLink.taskId, taskId))
+                .orderBy(asc(planTaskExternalLink.order), asc(planTaskExternalLink.createdAt)),
+        catch: e => new DatabaseError({ cause: e }),
+    });
+}
+
+export function addTaskLink(input: NewPlanTaskExternalLink): Effect.Effect<PlanTaskExternalLink, DatabaseError> {
+    return Effect.tryPromise({
+        try: async () => {
+            const [row] = await db.insert(planTaskExternalLink).values(input).returning();
+            if (!row) throw new Error("Insert returned no row");
+            return row;
+        },
+        catch: e => new DatabaseError({ cause: e }),
+    });
+}
+
+export function removeTaskLink(linkId: string): Effect.Effect<void, DatabaseError> {
+    return Effect.tryPromise({
+        try: async () => {
+            await db.delete(planTaskExternalLink).where(eq(planTaskExternalLink.id, linkId));
+        },
+        catch: e => new DatabaseError({ cause: e }),
+    });
+}

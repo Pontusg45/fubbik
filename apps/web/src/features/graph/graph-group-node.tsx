@@ -1,4 +1,5 @@
 import type { NodeProps } from "@xyflow/react";
+import { memo } from "react";
 
 interface GroupNodeData {
     label: string;
@@ -13,7 +14,7 @@ function hexToRgb(hex: string): { r: number; g: number; b: number } {
         : { r: 139, g: 92, b: 246 };
 }
 
-export function GraphGroupNode({ data }: NodeProps) {
+function GraphGroupNodeInner({ data }: NodeProps) {
     const { label, color } = data as GroupNodeData;
     const { r, g, b } = hexToRgb(color);
     return (
@@ -34,3 +35,12 @@ export function GraphGroupNode({ data }: NodeProps) {
         </div>
     );
 }
+
+// Group nodes change only when their label or color change. Position/size are
+// handled by React Flow outside the render path. Memoize to stop re-renders on
+// every hover/select of an unrelated chunk.
+export const GraphGroupNode = memo(GraphGroupNodeInner, (prev, next) => {
+    const a = prev.data as GroupNodeData;
+    const b = next.data as GroupNodeData;
+    return a === b || (a.label === b.label && a.color === b.color);
+});

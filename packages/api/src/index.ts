@@ -63,8 +63,9 @@ function extractEffectError(error: unknown): Record<string, unknown> | null {
     return Option.isSome(option) ? option.value : null;
 }
 
-const isDev = process.env.NODE_ENV !== "production";
-
+// Auth is globally bypassed for now — every request gets DEV_SESSION when no
+// real session is present. Writes and reads alike. Flip this back by
+// reintroducing a method/env gate in `getSession` when auth is re-enabled.
 const DEV_USER_ID = "dev-user";
 const DEV_SESSION: Session = {
     session: {
@@ -91,11 +92,9 @@ const DEV_SESSION: Session = {
 async function getSession(headers: Headers): Promise<Session> {
     try {
         const session = await auth.api.getSession({ headers });
-        if (!session && isDev) return DEV_SESSION;
-        return session;
+        return session ?? DEV_SESSION;
     } catch {
-        if (isDev) return DEV_SESSION;
-        return null as unknown as Session;
+        return DEV_SESSION;
     }
 }
 
