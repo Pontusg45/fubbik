@@ -5,7 +5,7 @@ import {
 
 export function listActivity(
     userId: string,
-    opts: { codebaseId?: string; entityType?: string; limit?: number; offset?: number } = {}
+    opts: { codebaseId?: string; entityType?: string; entityId?: string; limit?: number; offset?: number } = {}
 ) {
     return listActivityRepo(userId, opts);
 }

@@ -9,6 +9,22 @@ import { ValidationError } from "../errors";
 import { createActivity } from "../activity/service";
 import { VALID_TASK_RELATIONS, getPlan } from "./service";
 
+/**
+ * Body schema for acceptance criteria. Legacy callers send `string[]`; new
+ * callers send `{text, done}[]`. We accept both and normalise before persist.
+ */
+const acceptanceCriteriaBodySchema = t.Array(
+    t.Union([
+        t.String(),
+        t.Object({ text: t.String(), done: t.Boolean() }),
+    ])
+);
+
+function normaliseCriteriaForWrite(raw: Array<string | { text: string; done: boolean }> | undefined) {
+    if (!raw) return undefined;
+    return raw.map(item => (typeof item === "string" ? { text: item, done: false } : item));
+}
+
 const VALID_TASK_STATUSES: PlanTaskStatus[] = ["pending", "in_progress", "done", "skipped", "blocked"];
 
 function validateStatus(status: string): Effect.Effect<PlanTaskStatus, ValidationError> {
@@ -38,7 +54,7 @@ export const planTaskRoutes = new Elysia({ prefix: "/plans/:id/tasks" })
                                 planId: ctx.params.id,
                                 title: ctx.body.title,
                                 description: ctx.body.description ?? null,
-                                acceptanceCriteria: ctx.body.acceptanceCriteria ?? [],
+                                acceptanceCriteria: normaliseCriteriaForWrite(ctx.body.acceptanceCriteria) ?? [],
                                 status: "pending",
                                 metadata: ctx.body.metadata ?? {},
                             });
@@ -71,7 +87,7 @@ export const planTaskRoutes = new Elysia({ prefix: "/plans/:id/tasks" })
             body: t.Object({
                 title: t.String(),
                 description: t.Optional(t.String()),
-                acceptanceCriteria: t.Optional(t.Array(t.String())),
+                acceptanceCriteria: t.Optional(acceptanceCriteriaBodySchema),
                 chunks: t.Optional(t.Array(t.Object({ chunkId: t.String(), relation: t.String() }))),
                 dependsOnTaskIds: t.Optional(t.Array(t.String())),
                 metadata: t.Optional(t.Record(t.String(), t.Unknown())),
@@ -90,7 +106,7 @@ export const planTaskRoutes = new Elysia({ prefix: "/plans/:id/tasks" })
                             if (ctx.body.title !== undefined) patch.title = ctx.body.title;
                             if (ctx.body.description !== undefined) patch.description = ctx.body.description;
                             if (ctx.body.acceptanceCriteria !== undefined)
-                                patch.acceptanceCriteria = ctx.body.acceptanceCriteria;
+                                patch.acceptanceCriteria = normaliseCriteriaForWrite(ctx.body.acceptanceCriteria);
                             if (ctx.body.metadata !== undefined) patch.metadata = ctx.body.metadata;
                             let markedDone = false;
                             if (ctx.body.status !== undefined) {
@@ -120,7 +136,7 @@ export const planTaskRoutes = new Elysia({ prefix: "/plans/:id/tasks" })
             body: t.Object({
                 title: t.Optional(t.String()),
                 description: t.Optional(t.Union([t.String(), t.Null()])),
-                acceptanceCriteria: t.Optional(t.Array(t.String())),
+                acceptanceCriteria: t.Optional(acceptanceCriteriaBodySchema),
                 status: t.Optional(t.String()),
                 metadata: t.Optional(t.Record(t.String(), t.Unknown())),
             }),

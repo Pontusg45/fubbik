@@ -35,13 +35,20 @@ export function listPlans(input: ListPlansInput) {
         if (input.status && !VALID_STATUSES.includes(input.status as PlanStatus)) {
             return yield* Effect.fail(new ValidationError({ message: `Invalid status: ${input.status}` }));
         }
-        return yield* planRepo.listPlans({
+        return yield* planRepo.listPlansWithRollups({
             userId: input.userId,
             codebaseId: input.codebaseId,
             status: input.status as PlanStatus | undefined,
             requirementId: input.requirementId,
             includeArchived: input.includeArchived,
         });
+    });
+}
+
+export function duplicatePlan(userId: string, sourceId: string) {
+    return Effect.gen(function* () {
+        yield* getPlan(sourceId); // 404 if missing
+        return yield* planRepo.duplicatePlan(sourceId, userId);
     });
 }
 
@@ -78,10 +85,38 @@ export function getPlanDetail(id: string) {
             }
         }
 
-        const taskChunks = yield* Effect.all(tasks.map(t => planRepo.listTaskChunks(t.id)));
-        const tasksWithChunks = tasks.map((t, i) => ({ ...t, chunks: taskChunks[i] ?? [] }));
+        const taskChunks = yield* Effect.all(tasks.map(t => planRepo.listTaskChunksWithTitles(t.id)));
+        const tasksWithChunks = tasks.map((t, i) => ({
+            ...t,
+            acceptanceCriteria: normaliseAcceptanceCriteria(t.acceptanceCriteria),
+            chunks: taskChunks[i] ?? [],
+        }));
 
         return { plan, requirements, analyze, tasks: tasksWithChunks, dependencies };
+    });
+}
+
+export interface AcceptanceCriterion {
+    text: string;
+    done: boolean;
+}
+
+/**
+ * acceptanceCriteria was originally `string[]`. We keep reading either the
+ * legacy shape or the new `{text, done}[]` shape and always return the object
+ * shape to clients. Write-side callers must send the object shape.
+ */
+export function normaliseAcceptanceCriteria(raw: unknown): AcceptanceCriterion[] {
+    if (!Array.isArray(raw)) return [];
+    return raw.map(item => {
+        if (typeof item === "string") return { text: item, done: false };
+        if (item && typeof item === "object" && "text" in item) {
+            return {
+                text: String((item as { text: unknown }).text ?? ""),
+                done: Boolean((item as { done?: unknown }).done),
+            };
+        }
+        return { text: "", done: false };
     });
 }
 
@@ -111,7 +146,7 @@ export function createPlan(userId: string, input: CreatePlanInput) {
                     planId: created.id,
                     title: t.title,
                     description: t.description ?? null,
-                    acceptanceCriteria: t.acceptanceCriteria ?? [],
+                    acceptanceCriteria: normaliseAcceptanceCriteria(t.acceptanceCriteria ?? []),
                     status: "pending",
                 });
             }

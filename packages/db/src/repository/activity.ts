@@ -7,7 +7,7 @@ import { activityLog } from "../schema/activity";
 
 export function listActivity(
     userId: string,
-    opts: { codebaseId?: string; entityType?: string; limit?: number; offset?: number } = {}
+    opts: { codebaseId?: string; entityType?: string; entityId?: string; limit?: number; offset?: number } = {}
 ) {
     return Effect.tryPromise({
         try: () => {
@@ -17,6 +17,9 @@ export function listActivity(
             }
             if (opts.entityType) {
                 conditions.push(eq(activityLog.entityType, opts.entityType));
+            }
+            if (opts.entityId) {
+                conditions.push(eq(activityLog.entityId, opts.entityId));
             }
             return db
                 .select()

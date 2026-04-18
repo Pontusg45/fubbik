@@ -3,7 +3,7 @@ import { Elysia, t } from "elysia";
 
 import * as planRepo from "@fubbik/db/repository/plan";
 import { requireSession } from "../require-session";
-import { createActivity } from "../activity/service";
+import { createActivity, listActivity } from "../activity/service";
 import * as planService from "./service";
 
 const planBase = new Elysia({ prefix: "/plans" })
@@ -132,6 +132,58 @@ const planBase = new Elysia({ prefix: "/plans" })
             ),
         );
         return { ok: true };
+    })
+    .post("/:id/duplicate", async ctx => {
+        return await Effect.runPromise(
+            requireSession(ctx).pipe(
+                Effect.flatMap(session =>
+                    Effect.gen(function* () {
+                        const created = yield* planService.duplicatePlan(session.user.id, ctx.params.id);
+                        yield* createActivity({
+                            userId: session.user.id,
+                            entityType: "plan",
+                            entityId: created.id,
+                            entityTitle: created.title,
+                            action: "duplicated",
+                            codebaseId: created.codebaseId ?? undefined,
+                        });
+                        return created;
+                    }),
+                ),
+            ),
+        );
+    })
+    .get("/:id/activity", async ctx => {
+        return await Effect.runPromise(
+            requireSession(ctx).pipe(
+                Effect.flatMap(session =>
+                    Effect.gen(function* () {
+                        // Ensure the plan exists + is visible to the user.
+                        yield* planService.getPlan(ctx.params.id);
+                        // Two parallel reads: plan-level events + task-level events
+                        // whose entity ids belong to this plan's tasks.
+                        const tasks = yield* planRepo.listTasks(ctx.params.id);
+                        const taskIds = new Set(tasks.map(t => t.id));
+                        const planEvents = yield* listActivity(session.user.id, {
+                            entityType: "plan",
+                            entityId: ctx.params.id,
+                            limit: 100,
+                        });
+                        const taskEvents = yield* listActivity(session.user.id, {
+                            entityType: "plan_task",
+                            limit: 200,
+                        });
+                        const merged = [
+                            ...planEvents,
+                            ...taskEvents.filter(e => taskIds.has(e.entityId)),
+                        ].sort((a, b) =>
+                            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+                        );
+                        return merged.slice(0, 100);
+                    }),
+                ),
+            ),
+        );
     })
     // External links on the plan itself
     .get("/:id/links", async ctx =>
