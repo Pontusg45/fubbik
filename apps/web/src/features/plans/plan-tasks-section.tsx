@@ -118,7 +118,7 @@ export function PlanTasksSection({ planId, tasks, dependencies, onUpdate }: Plan
                 <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     Tasks <span className="ml-1 font-mono text-muted-foreground/60">{doneCount}/{tasks.length} done</span>
                 </h2>
-                <Button size="sm" variant="ghost" onClick={() => setAdding(a => !a)}>
+                <Button size="sm" variant="ghost" onClick={() => setAdding(a => !a)} data-plan-add-task>
                     <Plus className="size-3.5" />
                     Add task
                 </Button>
