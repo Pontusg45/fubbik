@@ -1,6 +1,24 @@
+import {
+    DndContext,
+    closestCenter,
+    KeyboardSensor,
+    PointerSensor,
+    useSensor,
+    useSensors,
+    type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+    SortableContext,
+    arrayMove,
+    sortableKeyboardCoordinates,
+    useSortable,
+    verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { useMutation } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,17 +28,53 @@ import { unwrapEden } from "@/utils/eden";
 
 import { PlanTaskCard, type Task } from "./plan-task-card";
 
+export interface TaskDependency {
+    id: string;
+    taskId: string;
+    dependsOnTaskId: string;
+}
+
 export interface PlanTasksSectionProps {
     planId: string;
     tasks: Task[];
+    dependencies: TaskDependency[];
     onUpdate: () => void;
 }
 
-export function PlanTasksSection({ planId, tasks, onUpdate }: PlanTasksSectionProps) {
+export function PlanTasksSection({ planId, tasks, dependencies, onUpdate }: PlanTasksSectionProps) {
     const [adding, setAdding] = useState(false);
     const [draftTitle, setDraftTitle] = useState("");
     const [draftDescription, setDraftDescription] = useState("");
     const [showDescription, setShowDescription] = useState(false);
+    const [localOrder, setLocalOrder] = useState(tasks);
+
+    useEffect(() => { setLocalOrder(tasks); }, [tasks]);
+
+    const sensors = useSensors(
+        useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+    );
+
+    const reorderMutation = useMutation({
+        mutationFn: async (taskIds: string[]) =>
+            unwrapEden(await (api.api as any).plans[planId].tasks.reorder.post({ taskIds })),
+        onSuccess: () => onUpdate(),
+        onError: () => {
+            setLocalOrder(tasks);
+            toast.error("Failed to reorder tasks");
+        },
+    });
+
+    function onDragEnd(event: DragEndEvent) {
+        const { active, over } = event;
+        if (!over || active.id === over.id) return;
+        const oldIndex = localOrder.findIndex(t => t.id === active.id);
+        const newIndex = localOrder.findIndex(t => t.id === over.id);
+        if (oldIndex === -1 || newIndex === -1) return;
+        const next = arrayMove(localOrder, oldIndex, newIndex);
+        setLocalOrder(next);
+        reorderMutation.mutate(next.map(t => t.id));
+    }
 
     const addMutation = useMutation({
         mutationFn: async () => {
@@ -37,10 +91,7 @@ export function PlanTasksSection({ planId, tasks, onUpdate }: PlanTasksSectionPr
         },
     });
 
-    const submit = () => {
-        if (draftTitle.trim()) addMutation.mutate();
-    };
-
+    const submit = () => { if (draftTitle.trim()) addMutation.mutate(); };
     const cancel = () => {
         setAdding(false);
         setDraftTitle("");
@@ -48,7 +99,18 @@ export function PlanTasksSection({ planId, tasks, onUpdate }: PlanTasksSectionPr
         setShowDescription(false);
     };
 
+    // Build per-task dependency lookups.
+    const dependsOnByTask = new Map<string, TaskDependency[]>();
+    const dependentsByTask = new Map<string, TaskDependency[]>();
+    for (const d of dependencies) {
+        if (!dependsOnByTask.has(d.taskId)) dependsOnByTask.set(d.taskId, []);
+        dependsOnByTask.get(d.taskId)!.push(d);
+        if (!dependentsByTask.has(d.dependsOnTaskId)) dependentsByTask.set(d.dependsOnTaskId, []);
+        dependentsByTask.get(d.dependsOnTaskId)!.push(d);
+    }
+
     const doneCount = tasks.filter(t => t.status === "done").length;
+    const ids = localOrder.map(t => t.id);
 
     return (
         <section className="space-y-2">
@@ -70,15 +132,9 @@ export function PlanTasksSection({ planId, tasks, onUpdate }: PlanTasksSectionPr
                             value={draftTitle}
                             onChange={e => setDraftTitle(e.target.value)}
                             onKeyDown={e => {
-                                if (e.key === "Enter" && !e.shiftKey) {
-                                    e.preventDefault();
-                                    submit();
-                                } else if (e.key === "Enter" && e.shiftKey) {
-                                    e.preventDefault();
-                                    setShowDescription(true);
-                                } else if (e.key === "Escape") {
-                                    cancel();
-                                }
+                                if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(); }
+                                else if (e.key === "Enter" && e.shiftKey) { e.preventDefault(); setShowDescription(true); }
+                                else if (e.key === "Escape") cancel();
                             }}
                             className="h-8 text-sm"
                         />
@@ -110,12 +166,60 @@ export function PlanTasksSection({ planId, tasks, onUpdate }: PlanTasksSectionPr
                     No tasks yet. Add the first one to start executing.
                 </div>
             ) : (
-                <div className="space-y-2">
-                    {tasks.map(t => (
-                        <PlanTaskCard key={t.id} planId={planId} task={t} onUpdate={onUpdate} />
-                    ))}
-                </div>
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+                    <SortableContext items={ids} strategy={verticalListSortingStrategy}>
+                        <div className="space-y-2">
+                            {localOrder.map(t => (
+                                <SortableTaskRow
+                                    key={t.id}
+                                    task={t}
+                                    planId={planId}
+                                    allTasks={localOrder}
+                                    dependsOn={dependsOnByTask.get(t.id) ?? []}
+                                    dependentCount={(dependentsByTask.get(t.id) ?? []).length}
+                                    onUpdate={onUpdate}
+                                />
+                            ))}
+                        </div>
+                    </SortableContext>
+                </DndContext>
             )}
         </section>
+    );
+}
+
+function SortableTaskRow({
+    task,
+    planId,
+    allTasks,
+    dependsOn,
+    dependentCount,
+    onUpdate,
+}: {
+    task: Task;
+    planId: string;
+    allTasks: Task[];
+    dependsOn: TaskDependency[];
+    dependentCount: number;
+    onUpdate: () => void;
+}) {
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task.id });
+    const style: React.CSSProperties = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : undefined,
+    };
+    return (
+        <div ref={setNodeRef} style={style}>
+            <PlanTaskCard
+                planId={planId}
+                task={task}
+                allTasks={allTasks}
+                dependsOn={dependsOn}
+                dependentCount={dependentCount}
+                dragHandleProps={{ ...attributes, ...listeners }}
+                onUpdate={onUpdate}
+            />
+        </div>
     );
 }

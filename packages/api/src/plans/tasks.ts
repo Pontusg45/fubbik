@@ -197,6 +197,30 @@ export const planTaskRoutes = new Elysia({ prefix: "/plans/:id/tasks" })
         );
         return { ok: true };
     })
+    // Task dependencies — add/remove after creation. The schema's auto-unblock
+    // on done is already wired in the PATCH /tasks/:taskId path above.
+    .post(
+        "/:taskId/dependencies",
+        async ctx =>
+            Effect.runPromise(
+                requireSession(ctx).pipe(
+                    Effect.flatMap(() => getPlan(ctx.params.id)),
+                    Effect.flatMap(() =>
+                        planRepo.addTaskDependency(ctx.params.taskId, ctx.body.dependsOnTaskId)
+                    ),
+                ),
+            ),
+        { body: t.Object({ dependsOnTaskId: t.String() }) },
+    )
+    .delete("/:taskId/dependencies/:depId", async ctx => {
+        await Effect.runPromise(
+            requireSession(ctx).pipe(
+                Effect.flatMap(() => getPlan(ctx.params.id)),
+                Effect.flatMap(() => planRepo.removeTaskDependency(ctx.params.depId)),
+            ),
+        );
+        return { ok: true };
+    })
     // Task external links — parallels plan /links
     .get("/:taskId/links", async ctx =>
         Effect.runPromise(

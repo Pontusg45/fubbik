@@ -46,7 +46,7 @@ function PlanDetailPage() {
                     analyze={detail.analyze ?? { chunk: [], file: [], risk: [], assumption: [], question: [] }}
                     onUpdate={refetch}
                 />
-                <PlanTasksSection planId={plan.id} tasks={tasks} onUpdate={refetch} />
+                <PlanTasksSection planId={plan.id} tasks={tasks} dependencies={detail.dependencies ?? []} onUpdate={refetch} />
             </div>
         </PageContainer>
     );
