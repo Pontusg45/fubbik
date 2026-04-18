@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
@@ -18,16 +19,34 @@ export interface PlanTasksSectionProps {
 export function PlanTasksSection({ planId, tasks, onUpdate }: PlanTasksSectionProps) {
     const [adding, setAdding] = useState(false);
     const [draftTitle, setDraftTitle] = useState("");
+    const [draftDescription, setDraftDescription] = useState("");
+    const [showDescription, setShowDescription] = useState(false);
 
     const addMutation = useMutation({
-        mutationFn: async () =>
-            unwrapEden(await (api.api as any).plans[planId].tasks.post({ title: draftTitle.trim() })),
+        mutationFn: async () => {
+            const body: Record<string, unknown> = { title: draftTitle.trim() };
+            if (draftDescription.trim()) body.description = draftDescription.trim();
+            return unwrapEden(await (api.api as any).plans[planId].tasks.post(body));
+        },
         onSuccess: () => {
             setDraftTitle("");
+            setDraftDescription("");
+            setShowDescription(false);
             setAdding(false);
             onUpdate();
         },
     });
+
+    const submit = () => {
+        if (draftTitle.trim()) addMutation.mutate();
+    };
+
+    const cancel = () => {
+        setAdding(false);
+        setDraftTitle("");
+        setDraftDescription("");
+        setShowDescription(false);
+    };
 
     const doneCount = tasks.filter(t => t.status === "done").length;
 
@@ -43,22 +62,47 @@ export function PlanTasksSection({ planId, tasks, onUpdate }: PlanTasksSectionPr
                 </Button>
             </div>
             {adding && (
-                <div className="flex gap-2 rounded-md border bg-card p-2">
-                    <Input
-                        autoFocus
-                        placeholder="Task title"
-                        value={draftTitle}
-                        onChange={e => setDraftTitle(e.target.value)}
-                        onKeyDown={e => {
-                            if (e.key === "Enter" && draftTitle.trim()) addMutation.mutate();
-                            if (e.key === "Escape") {
-                                setAdding(false);
-                                setDraftTitle("");
-                            }
-                        }}
-                        className="h-8 text-sm"
-                    />
-                    <Button size="sm" onClick={() => draftTitle.trim() && addMutation.mutate()}>Add</Button>
+                <div className="rounded-md border bg-card p-2 space-y-2">
+                    <div className="flex gap-2">
+                        <Input
+                            autoFocus
+                            placeholder="Task title — Enter to add, Shift+Enter for description"
+                            value={draftTitle}
+                            onChange={e => setDraftTitle(e.target.value)}
+                            onKeyDown={e => {
+                                if (e.key === "Enter" && !e.shiftKey) {
+                                    e.preventDefault();
+                                    submit();
+                                } else if (e.key === "Enter" && e.shiftKey) {
+                                    e.preventDefault();
+                                    setShowDescription(true);
+                                } else if (e.key === "Escape") {
+                                    cancel();
+                                }
+                            }}
+                            className="h-8 text-sm"
+                        />
+                        <Button size="sm" onClick={submit} disabled={!draftTitle.trim() || addMutation.isPending}>
+                            {addMutation.isPending ? "Adding..." : "Add"}
+                        </Button>
+                    </div>
+                    {showDescription ? (
+                        <Textarea
+                            placeholder="Optional description (markdown)"
+                            value={draftDescription}
+                            onChange={e => setDraftDescription(e.target.value)}
+                            rows={3}
+                            className="text-sm"
+                        />
+                    ) : (
+                        <button
+                            type="button"
+                            onClick={() => setShowDescription(true)}
+                            className="text-xs text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
+                        >
+                            + add description
+                        </button>
+                    )}
                 </div>
             )}
             {tasks.length === 0 && !adding ? (
