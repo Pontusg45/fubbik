@@ -1,11 +1,10 @@
-import { useMutation } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { Archive, Check, Copy, Link2, Printer, Trash2 } from "lucide-react";
 import { useState } from "react";
-import { toast } from "sonner";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Button } from "@/components/ui/button";
+import { InlineEdit } from "@/components/ui/inline-edit";
 import {
     Select,
     SelectItem,
@@ -13,8 +12,8 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import { useApiMutation } from "@/hooks/use-api-mutation";
 import { api } from "@/utils/api";
-import { unwrapEden } from "@/utils/eden";
 
 import { PlanStatusPill, type PlanStatusValue } from "./plan-status-pill";
 
@@ -37,35 +36,28 @@ export interface PlanDetailHeaderProps {
 
 export function PlanDetailHeader({ plan, taskCount, onUpdate }: PlanDetailHeaderProps) {
     const navigate = useNavigate();
-    const [titleDraft, setTitleDraft] = useState(plan.title);
-    const [editingTitle, setEditingTitle] = useState(false);
     const [confirmDelete, setConfirmDelete] = useState(false);
     const [copiedUrl, setCopiedUrl] = useState(false);
 
-    const updateMutation = useMutation({
-        mutationFn: async (patch: Record<string, unknown>) =>
-            unwrapEden(await (api.api as any).plans[plan.id].patch(patch)),
+    const updateMutation = useApiMutation({
+        mutationFn: async (patch: Record<string, unknown>) => await (api.api as any).plans[plan.id].patch(patch),
+        errorToast: "Failed to update plan",
+        successToast: false,
         onSuccess: () => onUpdate(),
-        onError: () => toast.error("Failed to update plan"),
     });
 
-    const duplicateMutation = useMutation({
-        mutationFn: async () =>
-            unwrapEden(await (api.api as any).plans[plan.id].duplicate.post()) as { id: string; title: string },
-        onSuccess: created => {
-            toast.success(`Duplicated as "${created.title}"`);
-            navigate({ to: "/plans/$planId", params: { planId: created.id } });
-        },
-        onError: () => toast.error("Failed to duplicate plan"),
+    const duplicateMutation = useApiMutation<{ id: string; title: string }, void>({
+        mutationFn: async () => await (api.api as any).plans[plan.id].duplicate.post(),
+        errorToast: "Failed to duplicate plan",
+        successToast: created => `Duplicated as "${created.title}"`,
+        onSuccess: created => navigate({ to: "/plans/$planId", params: { planId: created.id } }),
     });
 
-    const deleteMutation = useMutation({
-        mutationFn: async () => unwrapEden(await (api.api as any).plans[plan.id].delete()),
-        onSuccess: () => {
-            toast.success("Plan deleted");
-            navigate({ to: "/plans" });
-        },
-        onError: () => toast.error("Failed to delete plan"),
+    const deleteMutation = useApiMutation<unknown, void>({
+        mutationFn: async () => await (api.api as any).plans[plan.id].delete(),
+        successToast: "Plan deleted",
+        errorToast: "Failed to delete plan",
+        onSuccess: () => navigate({ to: "/plans" }),
     });
 
     const onCopyUrl = () => {
@@ -80,33 +72,13 @@ export function PlanDetailHeader({ plan, taskCount, onUpdate }: PlanDetailHeader
         <div className="sticky top-0 z-20 -mx-4 border-b bg-background/95 px-4 py-3 backdrop-blur">
             <div className="flex items-start gap-3">
                 <div className="flex-1">
-                    {editingTitle ? (
-                        <input
-                            autoFocus
-                            value={titleDraft}
-                            onChange={e => setTitleDraft(e.target.value)}
-                            onBlur={() => {
-                                setEditingTitle(false);
-                                if (titleDraft !== plan.title) updateMutation.mutate({ title: titleDraft });
-                            }}
-                            onKeyDown={e => {
-                                if (e.key === "Enter") e.currentTarget.blur();
-                                if (e.key === "Escape") {
-                                    setTitleDraft(plan.title);
-                                    setEditingTitle(false);
-                                }
-                            }}
-                            className="w-full bg-transparent text-xl font-semibold outline-none"
-                        />
-                    ) : (
-                        <h1
-                            className="cursor-text text-xl font-semibold hover:bg-muted/30 rounded px-1 -mx-1"
-                            onClick={() => setEditingTitle(true)}
-                            title="Click to rename"
-                        >
-                            {plan.title}
-                        </h1>
-                    )}
+                    <InlineEdit
+                        value={plan.title}
+                        onSave={next => { if (next.trim()) updateMutation.mutate({ title: next.trim() }); }}
+                        className="block w-full text-xl font-semibold hover:bg-muted/30"
+                        inputClassName="bg-transparent text-xl font-semibold p-0 border-0 focus:ring-0"
+                        renderDisplay={val => <h1 className="text-xl font-semibold">{val}</h1>}
+                    />
                     <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
                         <Select value={plan.status} onValueChange={val => { if (val) updateMutation.mutate({ status: val }); }}>
                             <SelectTrigger

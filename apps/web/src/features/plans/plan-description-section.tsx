@@ -1,8 +1,6 @@
-import { useMutation } from "@tanstack/react-query";
-
 import { InlineEdit } from "@/components/ui/inline-edit";
+import { useApiMutation } from "@/hooks/use-api-mutation";
 import { api } from "@/utils/api";
-import { unwrapEden } from "@/utils/eden";
 
 export interface PlanDescriptionSectionProps {
     planId: string;
@@ -11,9 +9,11 @@ export interface PlanDescriptionSectionProps {
 }
 
 export function PlanDescriptionSection({ planId, description, onUpdate }: PlanDescriptionSectionProps) {
-    const updateMutation = useMutation({
+    const updateMutation = useApiMutation({
         mutationFn: async (body: Record<string, unknown>) =>
-            unwrapEden(await (api.api as any).plans[planId].patch(body)),
+            await (api.api as any).plans[planId].patch(body),
+        successToast: false,
+        errorToast: "Failed to update description",
         onSuccess: () => onUpdate(),
     });
 
