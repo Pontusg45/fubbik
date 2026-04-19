@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
     ArrowUpDown,
@@ -17,6 +17,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { useApiQuery } from "@/hooks/use-api-query";
 import { Button } from "@/components/ui/button";
 import {
     Dialog,
@@ -107,28 +108,16 @@ function TagsPage() {
 
     const searchRef = useRef<HTMLInputElement>(null);
 
-    const tagsQuery = useQuery({
+    const tagsQuery = useApiQuery<Tag[]>({
         queryKey: ["tags"],
-        queryFn: async () => {
-            try {
-                return unwrapEden(await api.api.tags.get()) as Tag[];
-            } catch {
-                return [];
-            }
-        },
-        staleTime: 60_000
+        queryFn: () => api.api.tags.get() as unknown as Promise<{ data: Tag[]; error: unknown }>,
+        fallback: [],
     });
 
-    const tagTypesQuery = useQuery({
+    const tagTypesQuery = useApiQuery<TagType[]>({
         queryKey: ["tag-types"],
-        queryFn: async () => {
-            try {
-                return unwrapEden(await api.api["tag-types"].get()) as TagType[];
-            } catch {
-                return [];
-            }
-        },
-        staleTime: 60_000
+        queryFn: () => api.api["tag-types"].get() as unknown as Promise<{ data: TagType[]; error: unknown }>,
+        fallback: [],
     });
 
     const createTagMutation = useMutation({

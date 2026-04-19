@@ -17,3 +17,5 @@ pool.on("connect", async (client) => {
 });
 
 export const db = drizzle(pool, { schema });
+
+export { dbEffect } from "./effect";
