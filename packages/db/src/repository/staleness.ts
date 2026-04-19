@@ -1,8 +1,7 @@
 import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { Effect } from "effect";
 
-import { DatabaseError } from "../errors";
-import { db } from "../index";
+import { db, dbEffect } from "../index";
 import { chunk } from "../schema/chunk";
 import { chunkCodebase } from "../schema/codebase";
 import { requirementChunk } from "../schema/requirement";
@@ -24,8 +23,7 @@ export function getStaleFlags(
     userId: string,
     params?: { reason?: string; codebaseId?: string; limit?: number }
 ) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const conditions = [
                 eq(chunk.userId, userId),
                 ...undismissedUnsuppressed,
@@ -49,14 +47,11 @@ export function getStaleFlags(
                 .where(and(...conditions))
                 .orderBy(desc(chunkStaleness.detectedAt))
                 .limit(params?.limit ?? 50);
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 export function getStaleCount(userId: string, codebaseId?: string) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const conditions = [
                 eq(chunk.userId, userId),
                 ...undismissedUnsuppressed,
@@ -70,14 +65,11 @@ export function getStaleCount(userId: string, codebaseId?: string) {
                 .where(and(...conditions));
 
             return Number(result[0]?.count ?? 0);
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 export function getStaleFlagsForChunk(chunkId: string) {
-    return Effect.tryPromise({
-        try: () =>
+    return dbEffect(() =>
             db
                 .select({
                     id: chunkStaleness.id,
@@ -89,9 +81,7 @@ export function getStaleFlagsForChunk(chunkId: string) {
                 .from(chunkStaleness)
                 .where(
                     and(eq(chunkStaleness.chunkId, chunkId), ...undismissedUnsuppressed)
-                ),
-        catch: cause => new DatabaseError({ cause })
-    });
+                ));
 }
 
 export function createStaleFlag(data: {
@@ -101,8 +91,7 @@ export function createStaleFlag(data: {
     detail?: string;
     relatedChunkId?: string;
 }) {
-    return Effect.tryPromise({
-        try: () =>
+    return dbEffect(() =>
             db
                 .insert(chunkStaleness)
                 .values({
@@ -112,26 +101,20 @@ export function createStaleFlag(data: {
                     detail: data.detail ?? null,
                     relatedChunkId: data.relatedChunkId ?? null
                 })
-                .onConflictDoNothing(),
-        catch: cause => new DatabaseError({ cause })
-    });
+                .onConflictDoNothing());
 }
 
 export function dismissStaleFlag(flagId: string, userId: string) {
-    return Effect.tryPromise({
-        try: () =>
+    return dbEffect(() =>
             db
                 .update(chunkStaleness)
                 .set({ dismissedAt: new Date(), dismissedBy: userId })
-                .where(eq(chunkStaleness.id, flagId)),
-        catch: cause => new DatabaseError({ cause })
-    });
+                .where(eq(chunkStaleness.id, flagId)));
 }
 
 export function suppressDuplicatePair(chunkIdA: string, chunkIdB: string) {
     const pairKey = [chunkIdA, chunkIdB].sort().join(":");
-    return Effect.tryPromise({
-        try: () =>
+    return dbEffect(() =>
             db
                 .update(chunkStaleness)
                 .set({ suppressPair: pairKey })
@@ -141,14 +124,11 @@ export function suppressDuplicatePair(chunkIdA: string, chunkIdB: string) {
                         isNull(chunkStaleness.dismissedAt),
                         sql`(${chunkStaleness.chunkId} IN (${chunkIdA}, ${chunkIdB}) OR ${chunkStaleness.relatedChunkId} IN (${chunkIdA}, ${chunkIdB}))`
                     )
-                ),
-        catch: cause => new DatabaseError({ cause })
-    });
+                ));
 }
 
 export function detectAgeStaleChunks(userId: string, codebaseId?: string, thresholdDays = 90) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const threshold = sql`NOW() - INTERVAL '${sql.raw(String(thresholdDays))} days'`;
 
             // Find chunks already flagged for "age" (undismissed)
@@ -192,14 +172,11 @@ export function detectAgeStaleChunks(userId: string, codebaseId?: string, thresh
             await db.insert(chunkStaleness).values(flags).onConflictDoNothing();
 
             return { flagged: flags.length };
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 export function getLastScan(codebaseId: string) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const rows = await db
                 .select()
                 .from(stalenessScan)
@@ -207,14 +184,11 @@ export function getLastScan(codebaseId: string) {
                 .orderBy(desc(stalenessScan.scannedAt))
                 .limit(1);
             return rows[0] ?? null;
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 export function upsertScan(data: { id: string; codebaseId: string; lastCommitSha: string }) {
-    return Effect.tryPromise({
-        try: () =>
+    return dbEffect(() =>
             db
                 .insert(stalenessScan)
                 .values({
@@ -228,14 +202,11 @@ export function upsertScan(data: { id: string; codebaseId: string; lastCommitSha
                         lastCommitSha: data.lastCommitSha,
                         scannedAt: new Date()
                     }
-                }),
-        catch: cause => new DatabaseError({ cause })
-    });
+                }));
 }
 
 export function detectUncoveredChunks(userId: string, codebaseId?: string, thresholdDays = 30) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const threshold = sql`NOW() - INTERVAL '${sql.raw(String(thresholdDays))} days'`;
 
             // Find chunks already flagged for "requirement_uncovered" (undismissed)
@@ -282,9 +253,7 @@ export function detectUncoveredChunks(userId: string, codebaseId?: string, thres
             await db.insert(chunkStaleness).values(flags).onConflictDoNothing();
 
             return { flagged: flags.length };
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 export function flagRequirementFailing(
@@ -298,8 +267,7 @@ export function flagRequirementFailing(
 
     const detail = `Requirement "${requirementTitle}" (${requirementId}) is failing`;
 
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             // Find chunks already flagged for this specific requirement (undismissed)
             const alreadyFlagged = await db
                 .select({ chunkId: chunkStaleness.chunkId })
@@ -330,7 +298,5 @@ export function flagRequirementFailing(
             await db.insert(chunkStaleness).values(flags).onConflictDoNothing();
 
             return { flagged: flags.length };
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }

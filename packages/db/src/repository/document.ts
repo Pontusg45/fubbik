@@ -1,8 +1,6 @@
 import { and, eq, ilike, isNull, or, sql } from "drizzle-orm";
-import { Effect } from "effect";
 
-import { DatabaseError } from "../errors";
-import { db } from "../index";
+import { db, dbEffect } from "../index";
 import { chunk } from "../schema/chunk";
 import { document } from "../schema/document";
 
@@ -17,28 +15,21 @@ export interface CreateDocumentParams {
 }
 
 export function createDocument(params: CreateDocumentParams) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const [created] = await db.insert(document).values(params).returning();
             return created;
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 export function getDocumentById(id: string) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const [doc] = await db.select().from(document).where(eq(document.id, id));
             return doc ?? null;
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 export function getDocumentBySourcePath(sourcePath: string, codebaseId: string | undefined, userId: string) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const conditions = [eq(document.sourcePath, sourcePath), eq(document.userId, userId)];
             if (codebaseId) {
                 conditions.push(eq(document.codebaseId, codebaseId));
@@ -47,14 +38,11 @@ export function getDocumentBySourcePath(sourcePath: string, codebaseId: string |
             }
             const [doc] = await db.select().from(document).where(and(...conditions));
             return doc ?? null;
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 export function listDocuments(userId: string, codebaseId?: string) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const conditions = [eq(document.userId, userId)];
             if (codebaseId) conditions.push(eq(document.codebaseId, codebaseId));
             const docs = await db
@@ -77,14 +65,11 @@ export function listDocuments(userId: string, codebaseId?: string) {
                 .groupBy(document.id)
                 .orderBy(document.title);
             return docs;
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 export function updateDocument(id: string, params: { title?: string; contentHash?: string; description?: string }) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const [updated] = await db
                 .update(document)
                 .set({
@@ -95,25 +80,19 @@ export function updateDocument(id: string, params: { title?: string; contentHash
                 .where(eq(document.id, id))
                 .returning();
             return updated;
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 export function deleteDocument(id: string) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             await db.update(chunk).set({ documentId: null, documentOrder: null }).where(eq(chunk.documentId, id));
             const [deleted] = await db.delete(document).where(eq(document.id, id)).returning();
             return deleted;
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 export function searchDocumentChunks(userId: string, query: string, limit = 20) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const results = await db
                 .select({
                     chunkId: chunk.id,
@@ -138,21 +117,16 @@ export function searchDocumentChunks(userId: string, query: string, limit = 20) 
                 .orderBy(document.title, chunk.documentOrder)
                 .limit(limit);
             return results;
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 export function getDocumentChunks(documentId: string) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const chunks = await db
                 .select()
                 .from(chunk)
                 .where(eq(chunk.documentId, documentId))
                 .orderBy(chunk.documentOrder);
             return chunks;
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }

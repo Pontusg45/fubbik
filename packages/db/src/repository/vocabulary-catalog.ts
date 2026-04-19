@@ -1,8 +1,6 @@
 import { and, asc, eq, or } from "drizzle-orm";
-import { Effect } from "effect";
 
-import { DatabaseError } from "../errors";
-import { db } from "../index";
+import { db, dbEffect } from "../index";
 import { chunkType } from "../schema/chunk-type";
 import { connectionRelation } from "../schema/connection-relation";
 
@@ -16,8 +14,7 @@ export interface ListCatalogParams {
  * Ordered by displayOrder for stable UI rendering.
  */
 export function listChunkTypes(params: ListCatalogParams = {}) {
-    return Effect.tryPromise({
-        try: () => {
+    return dbEffect(() => {
             const conditions = [eq(chunkType.builtIn, true)];
             if (params.userId) conditions.push(eq(chunkType.userId, params.userId));
             if (params.codebaseId) conditions.push(eq(chunkType.codebaseId, params.codebaseId));
@@ -26,14 +23,11 @@ export function listChunkTypes(params: ListCatalogParams = {}) {
                 .from(chunkType)
                 .where(or(...conditions))
                 .orderBy(asc(chunkType.displayOrder), asc(chunkType.id));
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 export function listConnectionRelations(params: ListCatalogParams = {}) {
-    return Effect.tryPromise({
-        try: () => {
+    return dbEffect(() => {
             const conditions = [eq(connectionRelation.builtIn, true)];
             if (params.userId) conditions.push(eq(connectionRelation.userId, params.userId));
             if (params.codebaseId) conditions.push(eq(connectionRelation.codebaseId, params.codebaseId));
@@ -42,9 +36,7 @@ export function listConnectionRelations(params: ListCatalogParams = {}) {
                 .from(connectionRelation)
                 .where(or(...conditions))
                 .orderBy(asc(connectionRelation.displayOrder), asc(connectionRelation.id));
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 // --- writes ------------------------------------------------------------
@@ -62,8 +54,7 @@ export interface ChunkTypeInsert {
 }
 
 export function createChunkType(row: ChunkTypeInsert) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const [created] = await db
                 .insert(chunkType)
                 .values({
@@ -80,24 +71,18 @@ export function createChunkType(row: ChunkTypeInsert) {
                 })
                 .returning();
             return created!;
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 export function findChunkTypeById(id: string) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const [row] = await db.select().from(chunkType).where(eq(chunkType.id, id));
             return row ?? null;
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 export function updateChunkTypeRow(id: string, userId: string, data: Partial<Omit<ChunkTypeInsert, "id" | "userId">>) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const [updated] = await db
                 .update(chunkType)
                 .set({
@@ -111,22 +96,17 @@ export function updateChunkTypeRow(id: string, userId: string, data: Partial<Omi
                 .where(and(eq(chunkType.id, id), eq(chunkType.userId, userId)))
                 .returning();
             return updated ?? null;
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 export function deleteChunkTypeRow(id: string, userId: string) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const [deleted] = await db
                 .delete(chunkType)
                 .where(and(eq(chunkType.id, id), eq(chunkType.userId, userId)))
                 .returning();
             return deleted ?? null;
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 export interface ConnectionRelationInsert {
@@ -143,8 +123,7 @@ export interface ConnectionRelationInsert {
 }
 
 export function createConnectionRelation(row: ConnectionRelationInsert) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const [created] = await db
                 .insert(connectionRelation)
                 .values({
@@ -162,19 +141,14 @@ export function createConnectionRelation(row: ConnectionRelationInsert) {
                 })
                 .returning();
             return created!;
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 export function findConnectionRelationById(id: string) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const [row] = await db.select().from(connectionRelation).where(eq(connectionRelation.id, id));
             return row ?? null;
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 export function updateConnectionRelationRow(
@@ -182,8 +156,7 @@ export function updateConnectionRelationRow(
     userId: string,
     data: Partial<Omit<ConnectionRelationInsert, "id" | "userId">>
 ) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const [updated] = await db
                 .update(connectionRelation)
                 .set({
@@ -198,21 +171,16 @@ export function updateConnectionRelationRow(
                 .where(and(eq(connectionRelation.id, id), eq(connectionRelation.userId, userId)))
                 .returning();
             return updated ?? null;
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 export function deleteConnectionRelationRow(id: string, userId: string) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const [deleted] = await db
                 .delete(connectionRelation)
                 .where(and(eq(connectionRelation.id, id), eq(connectionRelation.userId, userId)))
                 .returning();
             return deleted ?? null;
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 

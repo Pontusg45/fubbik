@@ -2,8 +2,7 @@ import { and, asc, desc, eq, getTableColumns, gte, ilike, inArray, isNotNull, is
 import { Effect } from "effect";
 
 import { ensureVertex, deleteVertex } from "../age/sync";
-import { DatabaseError } from "../errors";
-import { db } from "../index";
+import { db, dbEffect } from "../index";
 import { chunk, chunkConnection } from "../schema/chunk";
 import { codebase, chunkCodebase } from "../schema/codebase";
 import { tag, chunkTag } from "../schema/tag";
@@ -32,8 +31,7 @@ export interface ListChunksParams {
 }
 
 export function listChunks(params: ListChunksParams) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const conditions = params.userId ? [eq(chunk.userId, params.userId)] : [];
             if (!params.includeArchived) {
                 conditions.push(isNull(chunk.archivedAt));
@@ -148,9 +146,7 @@ export function listChunks(params: ListChunksParams) {
                 .where(and(...conditions));
 
             return { chunks, total: Number(total[0]?.count ?? 0) };
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 export interface ListChunksWithCodebaseParams {
@@ -167,8 +163,7 @@ export interface ListChunksWithCodebaseParams {
 }
 
 export function listChunksWithCodebase(params: ListChunksWithCodebaseParams) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const conditions = params.userId ? [eq(chunk.userId, params.userId)] : [];
             conditions.push(isNull(chunk.archivedAt));
             if (params.type) {
@@ -239,14 +234,11 @@ export function listChunksWithCodebase(params: ListChunksWithCodebaseParams) {
             });
 
             return { chunks, total: Number(total[0]?.count ?? 0) };
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 export function getChunkById(chunkId: string, userId?: string) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const conditions = [eq(chunk.id, chunkId)];
             if (userId) conditions.push(eq(chunk.userId, userId));
             const [found] = await db
@@ -254,14 +246,11 @@ export function getChunkById(chunkId: string, userId?: string) {
                 .from(chunk)
                 .where(and(...conditions));
             return found ?? null;
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 export function getChunkConnections(chunkId: string) {
-    return Effect.tryPromise({
-        try: () =>
+    return dbEffect(() =>
             db
                 .select({
                     id: chunkConnection.id,
@@ -281,9 +270,7 @@ export function getChunkConnections(chunkId: string) {
                 )
                 .leftJoin(chunkCodebase, eq(chunkCodebase.chunkId, chunk.id))
                 .leftJoin(codebase, eq(codebase.id, chunkCodebase.codebaseId))
-                .where(or(eq(chunkConnection.sourceId, chunkId), eq(chunkConnection.targetId, chunkId))),
-        catch: cause => new DatabaseError({ cause })
-    });
+                .where(or(eq(chunkConnection.sourceId, chunkId), eq(chunkConnection.targetId, chunkId))));
 }
 
 export interface CreateChunkParams {
@@ -302,8 +289,7 @@ export interface CreateChunkParams {
 }
 
 export function createChunk(params: CreateChunkParams) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const [created] = await db.insert(chunk).values({ ...params, title: params.title.trim() }).returning();
             await Effect.runPromise(
                 ensureVertex("chunk", created!.id).pipe(
@@ -311,9 +297,7 @@ export function createChunk(params: CreateChunkParams) {
                 )
             );
             return created;
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 export interface UpdateChunkParams {
@@ -336,8 +320,7 @@ export interface UpdateChunkParams {
 }
 
 export function updateChunk(chunkId: string, params: UpdateChunkParams) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const [updated] = await db
                 .update(chunk)
                 .set({
@@ -361,19 +344,14 @@ export function updateChunk(chunkId: string, params: UpdateChunkParams) {
                 .where(eq(chunk.id, chunkId))
                 .returning();
             return updated;
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 export function exportAllChunks(userId?: string) {
-    return Effect.tryPromise({
-        try: () => {
+    return dbEffect(() => {
             const query = db.select().from(chunk).orderBy(desc(chunk.createdAt));
             return userId ? query.where(eq(chunk.userId, userId)) : query;
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 export interface EnrichChunkParams {
@@ -386,8 +364,7 @@ export interface EnrichChunkParams {
 }
 
 export function updateChunkEnrichment(chunkId: string, params: EnrichChunkParams) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const [updated] = await db
                 .update(chunk)
                 .set({
@@ -400,14 +377,11 @@ export function updateChunkEnrichment(chunkId: string, params: EnrichChunkParams
                 .where(eq(chunk.id, chunkId))
                 .returning();
             return updated;
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 export function deleteChunk(chunkId: string, userId: string) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const [deleted] = await db
                 .delete(chunk)
                 .where(and(eq(chunk.id, chunkId), eq(chunk.userId, userId)))
@@ -420,9 +394,7 @@ export function deleteChunk(chunkId: string, userId: string) {
                 );
             }
             return deleted ?? null;
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 /**
@@ -437,8 +409,7 @@ export function deleteChunk(chunkId: string, userId: string) {
  * Returns the updated target chunk so callers can refresh their cache.
  */
 export function mergeChunks(sourceId: string, targetId: string, userId: string) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             return await db.transaction(async tx => {
                 const rows = await tx
                     .select()
@@ -533,14 +504,11 @@ export function mergeChunks(sourceId: string, targetId: string, userId: string) 
 
                 return updated!;
             });
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 export function deleteMany(ids: string[], userId: string) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const result = await db.delete(chunk).where(and(inArray(chunk.id, ids), eq(chunk.userId, userId))).returning({ id: chunk.id });
             for (const row of result) {
                 await Effect.runPromise(
@@ -550,54 +518,42 @@ export function deleteMany(ids: string[], userId: string) {
                 );
             }
             return result;
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 export function archiveChunk(chunkId: string, userId: string) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const [updated] = await db
                 .update(chunk)
                 .set({ archivedAt: new Date() })
                 .where(and(eq(chunk.id, chunkId), eq(chunk.userId, userId)))
                 .returning();
             return updated ?? null;
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 export function archiveMany(ids: string[], userId: string) {
-    return Effect.tryPromise({
-        try: () =>
+    return dbEffect(() =>
             db
                 .update(chunk)
                 .set({ archivedAt: new Date() })
                 .where(and(inArray(chunk.id, ids), eq(chunk.userId, userId)))
-                .returning({ id: chunk.id }),
-        catch: cause => new DatabaseError({ cause })
-    });
+                .returning({ id: chunk.id }));
 }
 
 export function restoreChunk(chunkId: string, userId: string) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const [updated] = await db
                 .update(chunk)
                 .set({ archivedAt: null })
                 .where(and(eq(chunk.id, chunkId), eq(chunk.userId, userId)))
                 .returning();
             return updated ?? null;
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 export function listArchivedChunks(userId: string, codebaseId?: string) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const conditions = [eq(chunk.userId, userId), isNotNull(chunk.archivedAt)];
             if (codebaseId) {
                 const inCodebase = db
@@ -612,31 +568,23 @@ export function listArchivedChunks(userId: string, codebaseId?: string) {
                 .where(and(...conditions))
                 .orderBy(desc(chunk.archivedAt));
             return chunks;
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 export function updateManyChunks(ids: string[], userId: string, data: Partial<{ type: string; reviewStatus: string }>) {
-    return Effect.tryPromise({
-        try: () =>
+    return dbEffect(() =>
             db
                 .update(chunk)
                 .set(data)
                 .where(and(inArray(chunk.id, ids), eq(chunk.userId, userId)))
-                .returning({ id: chunk.id }),
-        catch: cause => new DatabaseError({ cause })
-    });
+                .returning({ id: chunk.id }));
 }
 
 export function searchChunkTitles(prefix: string, limit = 10) {
-    return Effect.tryPromise({
-        try: () =>
+    return dbEffect(() =>
             db
                 .select({ id: chunk.id, title: chunk.title })
                 .from(chunk)
                 .where(ilike(chunk.title, `%${prefix}%`))
-                .limit(limit),
-        catch: cause => new DatabaseError({ cause })
-    });
+                .limit(limit));
 }

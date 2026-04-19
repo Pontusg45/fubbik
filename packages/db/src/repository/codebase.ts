@@ -1,8 +1,7 @@
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { Effect } from "effect";
 
-import { DatabaseError } from "../errors";
-import { db } from "../index";
+import { db, dbEffect } from "../index";
 import { codebase, chunkCodebase } from "../schema/codebase";
 
 export interface CreateCodebaseParams {
@@ -14,8 +13,7 @@ export interface CreateCodebaseParams {
 }
 
 export function createCodebase(params: CreateCodebaseParams) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const [created] = await db
                 .insert(codebase)
                 .values({
@@ -27,14 +25,11 @@ export function createCodebase(params: CreateCodebaseParams) {
                 })
                 .returning();
             return created!;
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 export function getCodebaseById(codebaseId: string, userId?: string) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const conditions = [eq(codebase.id, codebaseId)];
             if (userId) conditions.push(eq(codebase.userId, userId));
             const [found] = await db
@@ -42,42 +37,31 @@ export function getCodebaseById(codebaseId: string, userId?: string) {
                 .from(codebase)
                 .where(and(...conditions));
             return found ?? null;
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 export function listCodebases(userId: string) {
-    return Effect.tryPromise({
-        try: () => db.select().from(codebase).where(eq(codebase.userId, userId)),
-        catch: cause => new DatabaseError({ cause })
-    });
+    return dbEffect(() => db.select().from(codebase).where(eq(codebase.userId, userId)));
 }
 
 export function getCodebaseByRemoteUrl(remoteUrl: string, userId: string) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const [found] = await db
                 .select()
                 .from(codebase)
                 .where(and(eq(codebase.remoteUrl, remoteUrl), eq(codebase.userId, userId)));
             return found ?? null;
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 export function getCodebaseByLocalPath(localPath: string, userId: string) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const [found] = await db
                 .select()
                 .from(codebase)
                 .where(and(sql`${codebase.localPaths} @> ${JSON.stringify([localPath])}::jsonb`, eq(codebase.userId, userId)));
             return found ?? null;
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 export interface UpdateCodebaseParams {
@@ -87,8 +71,7 @@ export interface UpdateCodebaseParams {
 }
 
 export function updateCodebase(codebaseId: string, userId: string, params: UpdateCodebaseParams) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const [updated] = await db
                 .update(codebase)
                 .set({
@@ -99,40 +82,31 @@ export function updateCodebase(codebaseId: string, userId: string, params: Updat
                 .where(and(eq(codebase.id, codebaseId), eq(codebase.userId, userId)))
                 .returning();
             return updated ?? null;
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 export function deleteCodebase(codebaseId: string, userId: string) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const [deleted] = await db
                 .delete(codebase)
                 .where(and(eq(codebase.id, codebaseId), eq(codebase.userId, userId)))
                 .returning();
             return deleted ?? null;
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 export function countChunksInCodebase(codebaseId: string) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const [result] = await db
                 .select({ count: sql<number>`count(*)` })
                 .from(chunkCodebase)
                 .where(eq(chunkCodebase.codebaseId, codebaseId));
             return Number(result?.count ?? 0);
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 export function setChunkCodebases(chunkId: string, codebaseIds: string[]) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             await db.delete(chunkCodebase).where(eq(chunkCodebase.chunkId, chunkId));
             if (codebaseIds.length === 0) return [];
             return db
@@ -140,14 +114,11 @@ export function setChunkCodebases(chunkId: string, codebaseIds: string[]) {
                 .values(codebaseIds.map(codebaseId => ({ chunkId, codebaseId })))
                 .onConflictDoNothing()
                 .returning();
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 export function getCodebasesForChunk(chunkId: string) {
-    return Effect.tryPromise({
-        try: () =>
+    return dbEffect(() =>
             db
                 .select({
                     id: codebase.id,
@@ -157,15 +128,12 @@ export function getCodebasesForChunk(chunkId: string) {
                 })
                 .from(chunkCodebase)
                 .innerJoin(codebase, eq(chunkCodebase.codebaseId, codebase.id))
-                .where(eq(chunkCodebase.chunkId, chunkId)),
-        catch: cause => new DatabaseError({ cause })
-    });
+                .where(eq(chunkCodebase.chunkId, chunkId)));
 }
 
 export function getCodebasesForChunks(chunkIds: string[]) {
     if (chunkIds.length === 0) return Effect.succeed([]);
-    return Effect.tryPromise({
-        try: () =>
+    return dbEffect(() =>
             db
                 .select({
                     chunkId: chunkCodebase.chunkId,
@@ -174,7 +142,5 @@ export function getCodebasesForChunks(chunkIds: string[]) {
                 })
                 .from(chunkCodebase)
                 .innerJoin(codebase, eq(chunkCodebase.codebaseId, codebase.id))
-                .where(inArray(chunkCodebase.chunkId, chunkIds)),
-        catch: cause => new DatabaseError({ cause })
-    });
+                .where(inArray(chunkCodebase.chunkId, chunkIds)));
 }

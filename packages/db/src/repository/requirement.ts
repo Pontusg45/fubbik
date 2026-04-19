@@ -2,8 +2,7 @@ import { and, asc, eq, ilike, inArray, or, sql } from "drizzle-orm";
 import { Effect } from "effect";
 
 import { ensureVertex, deleteVertex, createEdge, deleteEdgesFrom } from "../age/sync";
-import { DatabaseError } from "../errors";
-import { db } from "../index";
+import { db, dbEffect } from "../index";
 import { chunk } from "../schema/chunk";
 import type { RequirementStep } from "../schema/requirement";
 import { requirement, requirementChunk } from "../schema/requirement";
@@ -23,8 +22,7 @@ export interface CreateRequirementParams {
 }
 
 export function createRequirement(params: CreateRequirementParams) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const [created] = await db.insert(requirement).values(params).returning();
             await Effect.runPromise(
                 ensureVertex("requirement", created!.id).pipe(
@@ -32,14 +30,11 @@ export function createRequirement(params: CreateRequirementParams) {
                 )
             );
             return created!;
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 export function getRequirementById(id: string, userId?: string) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const conditions = [eq(requirement.id, id)];
             if (userId) conditions.push(eq(requirement.userId, userId));
             const [found] = await db
@@ -47,9 +42,7 @@ export function getRequirementById(id: string, userId?: string) {
                 .from(requirement)
                 .where(and(...conditions));
             return found ?? null;
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 export interface ListRequirementsParams {
@@ -66,8 +59,7 @@ export interface ListRequirementsParams {
 }
 
 export function listRequirements(params: ListRequirementsParams) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const conditions = [eq(requirement.userId, params.userId)];
             if (params.codebaseId) conditions.push(eq(requirement.codebaseId, params.codebaseId));
             if (params.useCaseId) conditions.push(eq(requirement.useCaseId, params.useCaseId));
@@ -100,9 +92,7 @@ export function listRequirements(params: ListRequirementsParams) {
                 .where(and(...conditions));
 
             return { requirements, total: Number(total[0]?.count ?? 0) };
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 export interface UpdateRequirementParams {
@@ -120,8 +110,7 @@ export interface UpdateRequirementParams {
 }
 
 export function updateRequirement(id: string, userId: string, params: UpdateRequirementParams) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const setClause: Record<string, unknown> = {};
             if (params.title !== undefined) setClause.title = params.title;
             if (params.description !== undefined) setClause.description = params.description;
@@ -149,14 +138,11 @@ export function updateRequirement(id: string, userId: string, params: UpdateRequ
                 .where(and(eq(requirement.id, id), eq(requirement.userId, userId)))
                 .returning();
             return updated ?? null;
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 export function deleteRequirement(id: string, userId: string) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const [deleted] = await db
                 .delete(requirement)
                 .where(and(eq(requirement.id, id), eq(requirement.userId, userId)))
@@ -167,28 +153,22 @@ export function deleteRequirement(id: string, userId: string) {
                 )
             );
             return deleted ?? null;
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 export function updateRequirementStatus(id: string, userId: string, status: string) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const [updated] = await db
                 .update(requirement)
                 .set({ status })
                 .where(and(eq(requirement.id, id), eq(requirement.userId, userId)))
                 .returning();
             return updated ?? null;
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 export function setRequirementChunks(requirementId: string, chunkIds: string[]) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             await db.delete(requirementChunk).where(eq(requirementChunk.requirementId, requirementId));
             if (chunkIds.length === 0) return [];
             const result = await db
@@ -210,14 +190,11 @@ export function setRequirementChunks(requirementId: string, chunkIds: string[]) 
                 )
             );
             return result;
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 export function getChunksForRequirement(requirementId: string) {
-    return Effect.tryPromise({
-        try: () =>
+    return dbEffect(() =>
             db
                 .select({
                     id: chunk.id,
@@ -227,9 +204,7 @@ export function getChunksForRequirement(requirementId: string) {
                 })
                 .from(requirementChunk)
                 .innerJoin(chunk, eq(requirementChunk.chunkId, chunk.id))
-                .where(eq(requirementChunk.requirementId, requirementId)),
-        catch: cause => new DatabaseError({ cause })
-    });
+                .where(eq(requirementChunk.requirementId, requirementId)));
 }
 
 export function bulkUpdateRequirements(
@@ -237,8 +212,7 @@ export function bulkUpdateRequirements(
     userId: string,
     params: { status?: string; useCaseId?: string | null }
 ) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const setClause: Record<string, unknown> = {};
             if (params.status !== undefined) setClause.status = params.status;
             if (params.useCaseId !== undefined) setClause.useCaseId = params.useCaseId;
@@ -250,36 +224,27 @@ export function bulkUpdateRequirements(
                 .set(setClause)
                 .where(and(inArray(requirement.id, ids), eq(requirement.userId, userId)));
             return result.rowCount ?? 0;
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 export function bulkDeleteRequirements(ids: string[], userId: string) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const result = await db
                 .delete(requirement)
                 .where(and(inArray(requirement.id, ids), eq(requirement.userId, userId)));
             return result.rowCount ?? 0;
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 export function getRequirementsByIds(ids: string[], userId: string) {
-    return Effect.tryPromise({
-        try: () =>
+    return dbEffect(() =>
             db.select({ id: requirement.id, useCaseId: requirement.useCaseId, title: requirement.title, status: requirement.status })
                 .from(requirement)
-                .where(and(inArray(requirement.id, ids), eq(requirement.userId, userId))),
-        catch: cause => new DatabaseError({ cause })
-    });
+                .where(and(inArray(requirement.id, ids), eq(requirement.userId, userId))));
 }
 
 export function setRequirementOrder(requirementIds: string[]) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             for (let i = 0; i < requirementIds.length; i++) {
                 await db
                     .update(requirement)
@@ -287,9 +252,7 @@ export function setRequirementOrder(requirementIds: string[]) {
                     .where(eq(requirement.id, requirementIds[i]!));
             }
             return requirementIds.length;
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 export interface RequirementForChunk {
@@ -302,8 +265,7 @@ export interface RequirementForChunk {
 }
 
 export function getRequirementsForChunks(chunkIds: string[]) {
-    return Effect.tryPromise({
-        try: () =>
+    return dbEffect(() =>
             db
                 .select({
                     chunkId: requirementChunk.chunkId,
@@ -315,14 +277,11 @@ export function getRequirementsForChunks(chunkIds: string[]) {
                 })
                 .from(requirementChunk)
                 .innerJoin(requirement, eq(requirementChunk.requirementId, requirement.id))
-                .where(inArray(requirementChunk.chunkId, chunkIds)),
-        catch: cause => new DatabaseError({ cause })
-    });
+                .where(inArray(requirementChunk.chunkId, chunkIds)));
 }
 
 export function getRequirementStats(userId: string, codebaseId?: string) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const conditions = [eq(requirement.userId, userId)];
             if (codebaseId) conditions.push(eq(requirement.codebaseId, codebaseId));
 
@@ -344,19 +303,14 @@ export function getRequirementStats(userId: string, codebaseId?: string) {
                 else if (row.status === "untested") stats.untested = count;
             }
             return stats;
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 export function searchRequirementTitles(prefix: string, limit = 10) {
-    return Effect.tryPromise({
-        try: () =>
+    return dbEffect(() =>
             db
                 .select({ id: requirement.id, title: requirement.title })
                 .from(requirement)
                 .where(ilike(requirement.title, `%${prefix}%`))
-                .limit(limit),
-        catch: cause => new DatabaseError({ cause })
-    });
+                .limit(limit));
 }
