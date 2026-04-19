@@ -425,6 +425,119 @@ export function deleteChunk(chunkId: string, userId: string) {
     });
 }
 
+/**
+ * Merge `sourceId` into `targetId` for `userId`:
+ *   - reparent chunk_tag, chunk_codebase, chunk_file_ref, chunk_applies_to,
+ *     chunk_connection (both endpoints), plan_task_chunk, plan_analyze_item,
+ *     and favorite rows from source → target
+ *   - dedupe against existing target rows wherever a unique index would fire
+ *   - append the source's content to the target under a heading
+ *   - delete the source (cascade cleans up versions / staleness / proposals)
+ *
+ * Returns the updated target chunk so callers can refresh their cache.
+ */
+export function mergeChunks(sourceId: string, targetId: string, userId: string) {
+    return Effect.tryPromise({
+        try: async () => {
+            return await db.transaction(async tx => {
+                const rows = await tx
+                    .select()
+                    .from(chunk)
+                    .where(and(inArray(chunk.id, [sourceId, targetId]), eq(chunk.userId, userId)));
+                const source = rows.find(r => r.id === sourceId);
+                const target = rows.find(r => r.id === targetId);
+                if (!source || !target) {
+                    throw new Error("source or target chunk not found for user");
+                }
+
+                // --- chunk_tag (unique on (chunk_id, tag_id)) ---
+                await tx.execute(sql`
+                    INSERT INTO chunk_tag (chunk_id, tag_id)
+                    SELECT ${targetId}, tag_id FROM chunk_tag
+                    WHERE chunk_id = ${sourceId}
+                    ON CONFLICT (chunk_id, tag_id) DO NOTHING
+                `);
+                await tx.execute(sql`DELETE FROM chunk_tag WHERE chunk_id = ${sourceId}`);
+
+                // --- chunk_codebase (unique on (chunk_id, codebase_id)) ---
+                await tx.execute(sql`
+                    INSERT INTO chunk_codebase (chunk_id, codebase_id)
+                    SELECT ${targetId}, codebase_id FROM chunk_codebase
+                    WHERE chunk_id = ${sourceId}
+                    ON CONFLICT (chunk_id, codebase_id) DO NOTHING
+                `);
+                await tx.execute(sql`DELETE FROM chunk_codebase WHERE chunk_id = ${sourceId}`);
+
+                // --- chunk_connection: repoint sources then targets; dedupe on the
+                // (source,target,relation) unique index; drop self-loops produced
+                // by the swap.
+                await tx.execute(sql`
+                    UPDATE chunk_connection SET source_id = ${targetId}
+                    WHERE source_id = ${sourceId}
+                      AND NOT EXISTS (
+                          SELECT 1 FROM chunk_connection c2
+                          WHERE c2.source_id = ${targetId}
+                            AND c2.target_id = chunk_connection.target_id
+                            AND c2.relation = chunk_connection.relation
+                      )
+                `);
+                await tx.execute(sql`DELETE FROM chunk_connection WHERE source_id = ${sourceId}`);
+                await tx.execute(sql`
+                    UPDATE chunk_connection SET target_id = ${targetId}
+                    WHERE target_id = ${sourceId}
+                      AND NOT EXISTS (
+                          SELECT 1 FROM chunk_connection c2
+                          WHERE c2.target_id = ${targetId}
+                            AND c2.source_id = chunk_connection.source_id
+                            AND c2.relation = chunk_connection.relation
+                      )
+                `);
+                await tx.execute(sql`DELETE FROM chunk_connection WHERE target_id = ${sourceId}`);
+                await tx.execute(sql`DELETE FROM chunk_connection WHERE source_id = target_id`);
+
+                // --- chunk_file_ref / chunk_applies_to: simple re-parent ---
+                await tx.execute(sql`UPDATE chunk_file_ref SET chunk_id = ${targetId} WHERE chunk_id = ${sourceId}`);
+                await tx.execute(sql`UPDATE chunk_applies_to SET chunk_id = ${targetId} WHERE chunk_id = ${sourceId}`);
+
+                // --- plan references ---
+                await tx.execute(sql`UPDATE plan_task_chunk SET chunk_id = ${targetId} WHERE chunk_id = ${sourceId}`);
+                await tx.execute(sql`UPDATE plan_analyze_item SET chunk_id = ${targetId} WHERE chunk_id = ${sourceId}`);
+
+                // --- favorite (unique on (user_id, chunk_id)) ---
+                await tx.execute(sql`
+                    INSERT INTO favorite (user_id, chunk_id, created_at)
+                    SELECT user_id, ${targetId}, created_at FROM favorite
+                    WHERE chunk_id = ${sourceId}
+                    ON CONFLICT (user_id, chunk_id) DO NOTHING
+                `);
+                await tx.execute(sql`DELETE FROM favorite WHERE chunk_id = ${sourceId}`);
+
+                // --- content merge: append source body under a heading if distinct ---
+                const separator = `\n\n## Merged from "${source.title}"\n\n`;
+                const existingBody = target.content ?? "";
+                const sourceBody = (source.content ?? "").trim();
+                let mergedContent = existingBody;
+                if (sourceBody && !existingBody.includes(sourceBody)) {
+                    mergedContent = `${existingBody}${separator}${sourceBody}`;
+                }
+
+                const [updated] = await tx
+                    .update(chunk)
+                    .set({ content: mergedContent, updatedAt: new Date() })
+                    .where(and(eq(chunk.id, targetId), eq(chunk.userId, userId)))
+                    .returning();
+
+                // --- finally: delete source (cascade handles chunk_version,
+                // chunk_staleness, chunk_proposal, age vertex) ---
+                await tx.delete(chunk).where(and(eq(chunk.id, sourceId), eq(chunk.userId, userId)));
+
+                return updated!;
+            });
+        },
+        catch: cause => new DatabaseError({ cause })
+    });
+}
+
 export function deleteMany(ids: string[], userId: string) {
     return Effect.tryPromise({
         try: async () => {

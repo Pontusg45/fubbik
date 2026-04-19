@@ -1,6 +1,6 @@
 import { useLocation, useNavigate } from "@tanstack/react-router";
 import { Keyboard } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
     Dialog,
@@ -20,16 +20,47 @@ function isInputElement(target: EventTarget | null): boolean {
     return tagName === "input" || tagName === "textarea" || tagName === "select" || target.isContentEditable;
 }
 
+// Two-key navigation combos ("go to X"). After `g`, wait up to NAV_COMBO_WINDOW
+// ms for a second key; if it matches a mapping, navigate. Otherwise fall back
+// to the single-`g` behaviour (scroll to top).
+const NAV_COMBO_WINDOW = 800;
+const NAV_COMBOS: Record<string, string> = {
+    c: "/chunks",
+    p: "/plans",
+    r: "/requirements",
+    g: "/graph",
+    d: "/dashboard",
+    s: "/search",
+    t: "/tags",
+    h: "/knowledge-health",
+};
+
 export function useGlobalShortcuts() {
     const [helpOpen, setHelpOpen] = useState(false);
     const navigate = useNavigate();
     const location = useLocation();
+    // Non-reactive "are we waiting for the 2nd key of g?" — avoids stale
+    // closures in the keydown handler by living in a ref.
+    const gPendingRef = useRef<number | null>(null);
 
     const handleKeyDown = useCallback(
         (e: KeyboardEvent) => {
             if (isInputElement(e.target)) return;
 
             const pathname = location.pathname;
+
+            // If we're mid-combo, treat this key as the second half.
+            if (gPendingRef.current !== null) {
+                const now = Date.now();
+                const withinWindow = now - gPendingRef.current < NAV_COMBO_WINDOW;
+                gPendingRef.current = null;
+                if (withinWindow && e.key in NAV_COMBOS) {
+                    e.preventDefault();
+                    navigate({ to: NAV_COMBOS[e.key]! as never });
+                    return;
+                }
+                // Otherwise let the key fall through to its normal handler below.
+            }
 
             switch (e.key) {
                 case "j":
@@ -43,8 +74,16 @@ export function useGlobalShortcuts() {
                     break;
 
                 case "g":
+                    // Start a combo; fall back to "scroll to top" if no second
+                    // key arrives within NAV_COMBO_WINDOW.
                     e.preventDefault();
-                    window.scrollTo({ top: 0, behavior: "smooth" });
+                    gPendingRef.current = Date.now();
+                    setTimeout(() => {
+                        if (gPendingRef.current !== null) {
+                            gPendingRef.current = null;
+                            window.scrollTo({ top: 0, behavior: "smooth" });
+                        }
+                    }, NAV_COMBO_WINDOW);
                     break;
 
                 case "G":
@@ -118,8 +157,18 @@ const shortcuts = [
     { section: "Navigation", items: [
         { key: "j", description: "Scroll down" },
         { key: "k", description: "Scroll up" },
-        { key: "g", description: "Jump to top" },
+        { key: "g", description: "Jump to top (or start a 'go to' combo)" },
         { key: "G", description: "Jump to bottom" }
+    ]},
+    { section: "Go to", items: [
+        { key: "g d", description: "Dashboard" },
+        { key: "g c", description: "Chunks" },
+        { key: "g g", description: "Graph" },
+        { key: "g p", description: "Plans" },
+        { key: "g r", description: "Requirements" },
+        { key: "g s", description: "Search" },
+        { key: "g t", description: "Tags" },
+        { key: "g h", description: "Knowledge health" }
     ]},
     { section: "Global", items: [
         { key: "?", description: "Show keyboard shortcuts" },

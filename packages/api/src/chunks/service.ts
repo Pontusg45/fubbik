@@ -19,6 +19,7 @@ import {
     getVersionsByChunkId,
     listArchivedChunks as listArchivedChunksRepo,
     listChunks as listChunksRepo,
+    mergeChunks as mergeChunksRepo,
     restoreChunk as restoreChunkRepo,
     semanticSearch as semanticSearchRepo,
     setChunkCodebases,
@@ -29,7 +30,7 @@ import { Effect } from "effect";
 
 import { importDocument } from "../documents/service";
 import { enrichChunk } from "../enrich/service";
-import { NotFoundError } from "../errors";
+import { NotFoundError, ValidationError } from "../errors";
 import { events, EVENTS } from "../events/bus";
 import { generateQueryEmbedding } from "../ollama/client";
 import { computeHealthScore } from "./health-score";
@@ -400,4 +401,18 @@ export function semanticSearch(userId: string | undefined, query: { q: string; l
     return generateQueryEmbedding(query.q).pipe(
         Effect.flatMap(embedding => semanticSearchRepo({ embedding, userId, exclude, scope, limit }))
     );
+}
+
+/**
+ * Merge two chunks belonging to the same user. See repo `mergeChunks` for
+ * the reparenting semantics. Refuses same-id merges up front so the UI can
+ * display a clean 400 rather than a cryptic DB error.
+ */
+export function mergeChunks(userId: string, sourceId: string, targetId: string) {
+    return Effect.gen(function* () {
+        if (sourceId === targetId) {
+            return yield* Effect.fail(new ValidationError({ message: "Cannot merge a chunk into itself" }));
+        }
+        return yield* mergeChunksRepo(sourceId, targetId, userId);
+    });
 }

@@ -319,4 +319,21 @@ export const chunkRoutes = new Elysia()
                 Effect.map(() => ({ message: "Deleted" }))
             )
         )
+    )
+    .post(
+        "/chunks/merge",
+        ctx =>
+            Effect.runPromise(
+                requireSession(ctx).pipe(
+                    Effect.flatMap(session =>
+                        chunkService.mergeChunks(session.user.id, ctx.body.sourceId, ctx.body.targetId)
+                    )
+                )
+            ),
+        {
+            body: t.Object({
+                sourceId: t.String(),
+                targetId: t.String()
+            })
+        }
     );

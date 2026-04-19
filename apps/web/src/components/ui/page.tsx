@@ -1,4 +1,4 @@
-import type { LucideIcon } from "lucide-react";
+import { AlertCircle, FileQuestion, Filter, type LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { Badge } from "@/components/ui/badge";
@@ -72,22 +72,88 @@ export function PageLoading({ count = 5 }: PageLoadingProps) {
 
 // ─── Page Empty State ───
 
+/**
+ * Variants:
+ *   "none"     — nothing exists yet (default). Show an onboarding CTA.
+ *   "filtered" — data exists but the current filters hide it. Show a "Clear filters" action.
+ *   "error"    — the fetch failed. Show "Try again" + the error message if any.
+ * Extra props give sensible defaults per variant so page-level callers only
+ * override the title/description when the defaults don't fit.
+ */
+type PageEmptyVariant = "none" | "filtered" | "error";
+
 interface PageEmptyProps {
-    icon: LucideIcon;
-    title: string;
-    description: string;
+    icon?: LucideIcon;
+    title?: string;
+    description?: string;
     action?: ReactNode;
+    variant?: PageEmptyVariant;
+    /** For variant="filtered": a one-click handler to clear every active filter. */
+    onReset?: () => void;
+    /** For variant="error": the underlying error, rendered as description fallback. */
+    error?: { message?: string } | null;
 }
 
-export function PageEmpty({ icon: Icon, title, description, action }: PageEmptyProps) {
+export function PageEmpty({
+    icon,
+    title,
+    description,
+    action,
+    variant = "none",
+    onReset,
+    error,
+}: PageEmptyProps) {
+    const Icon = icon ?? defaultIcon(variant);
+    const t = title ?? defaultTitle(variant);
+    const d = description ?? defaultDescription(variant, error);
+    const a = action ?? defaultAction(variant, onReset);
     return (
         <Empty>
             <EmptyMedia variant="icon">
                 <Icon className="h-10 w-10" />
             </EmptyMedia>
-            <EmptyTitle>{title}</EmptyTitle>
-            <EmptyDescription>{description}</EmptyDescription>
-            {action && <EmptyAction>{action}</EmptyAction>}
+            <EmptyTitle>{t}</EmptyTitle>
+            <EmptyDescription>{d}</EmptyDescription>
+            {a && <EmptyAction>{a}</EmptyAction>}
         </Empty>
     );
+}
+
+function defaultIcon(variant: PageEmptyVariant): LucideIcon {
+    switch (variant) {
+        case "filtered": return Filter;
+        case "error": return AlertCircle;
+        default: return FileQuestion;
+    }
+}
+
+function defaultTitle(variant: PageEmptyVariant): string {
+    switch (variant) {
+        case "filtered": return "No results";
+        case "error": return "Something went wrong";
+        default: return "Nothing here yet";
+    }
+}
+
+function defaultDescription(variant: PageEmptyVariant, error?: { message?: string } | null): string {
+    switch (variant) {
+        case "filtered": return "No items match the current filters. Try clearing them to see everything.";
+        case "error": return error?.message ?? "We couldn't load this. Try again in a moment.";
+        default: return "";
+    }
+}
+
+function defaultAction(variant: PageEmptyVariant, onReset?: () => void): ReactNode {
+    if (variant === "filtered" && onReset) {
+        return (
+            <button
+                type="button"
+                onClick={onReset}
+                className="text-sm underline underline-offset-2 hover:opacity-80"
+            >
+                Clear filters
+            </button>
+        );
+    }
+    return undefined;
 }
