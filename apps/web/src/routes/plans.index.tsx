@@ -1,19 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-router";
-import { Archive, ArchiveRestore, Copy, MoreHorizontal, Plus, Search, Trash2, X } from "lucide-react";
+import { Archive, ArchiveRestore, Copy, Plus, Search, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Button } from "@/components/ui/button";
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { PageContainer, PageHeader, PageLoading } from "@/components/ui/page";
+import { RowActionsMenu } from "@/components/ui/row-actions-menu";
 import {
     Select,
     SelectItem,
@@ -368,35 +362,30 @@ function PlanRow({ plan, onArchiveToggle, onDuplicate, onDelete }: PlanRowProps)
                 <span className="text-[10px] text-muted-foreground tabular-nums">
                     {new Date(plan.lastActivityAt).toLocaleDateString()}
                 </span>
-                <DropdownMenu>
-                    <DropdownMenuTrigger
-                        render={
-                            <button
-                                aria-label={`Actions for ${plan.title}`}
-                                className="text-muted-foreground/0 group-hover:text-muted-foreground hover:text-foreground rounded p-1 transition-colors"
-                                onClick={e => e.stopPropagation()}
-                            >
-                                <MoreHorizontal className="size-4" />
-                            </button>
-                        }
-                    />
-                    <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={onDuplicate}>
-                            <Copy className="size-3.5" />
-                            Duplicate
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={onArchiveToggle}>
-                            {isArchived
+                <RowActionsMenu
+                    ariaLabel={`Actions for ${plan.title}`}
+                    items={[
+                        {
+                            key: "duplicate",
+                            onSelect: onDuplicate,
+                            children: (<><Copy className="size-3.5" /> Duplicate</>),
+                        },
+                        {
+                            key: "archive",
+                            onSelect: onArchiveToggle,
+                            children: isArchived
                                 ? (<><ArchiveRestore className="size-3.5" /> Unarchive</>)
-                                : (<><Archive className="size-3.5" /> Archive</>)}
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={onDelete} className="text-destructive">
-                            <Trash2 className="size-3.5" />
-                            Delete
-                        </DropdownMenuItem>
-                    </DropdownMenuContent>
-                </DropdownMenu>
+                                : (<><Archive className="size-3.5" /> Archive</>),
+                        },
+                        {
+                            key: "delete",
+                            onSelect: onDelete,
+                            destructive: true,
+                            separatorBefore: true,
+                            children: (<><Trash2 className="size-3.5" /> Delete</>),
+                        },
+                    ]}
+                />
             </div>
         </div>
     );
