@@ -1,4 +1,3 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { FolderGit2, GitBranch, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
@@ -8,10 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardPanel } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { PageContainer, PageEmpty, PageHeader, PageLoading } from "@/components/ui/page";
+import { useApiMutation } from "@/hooks/use-api-mutation";
 import { useApiQuery } from "@/hooks/use-api-query";
 import { getUser } from "@/functions/get-user";
 import { api } from "@/utils/api";
-import { unwrapEden } from "@/utils/eden";
 
 export const Route = createFileRoute("/codebases")({
     component: CodebasesPage,
@@ -27,7 +26,6 @@ export const Route = createFileRoute("/codebases")({
 });
 
 function CodebasesPage() {
-    const queryClient = useQueryClient();
     const [name, setName] = useState("");
     const [remoteUrl, setRemoteUrl] = useState("");
 
@@ -37,24 +35,20 @@ function CodebasesPage() {
         fallback: [],
     });
 
-    const createMutation = useMutation({
-        mutationFn: async (body: { name: string; remoteUrl?: string }) => {
-            return unwrapEden(await api.api.codebases.post(body));
-        },
+    const createMutation = useApiMutation<unknown, { name: string; remoteUrl?: string }>({
+        mutationFn: body => api.api.codebases.post(body) as any,
+        invalidate: ["codebases"],
+        successToast: false,
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["codebases"] });
             setName("");
             setRemoteUrl("");
-        }
+        },
     });
 
-    const deleteMutation = useMutation({
-        mutationFn: async (id: string) => {
-            return unwrapEden(await api.api.codebases({ id }).delete());
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["codebases"] });
-        }
+    const deleteMutation = useApiMutation<unknown, string>({
+        mutationFn: id => api.api.codebases({ id }).delete() as any,
+        invalidate: ["codebases"],
+        successToast: false,
     });
 
     const codebases = Array.isArray(codebasesQuery.data) ? codebasesQuery.data : [];
