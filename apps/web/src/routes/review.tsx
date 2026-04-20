@@ -1,10 +1,11 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { PageContainer, PageHeader, PageLoading } from "@/components/ui/page";
 import { ProposalCard, type Proposal } from "@/features/proposals/proposal-card";
+import { useApiQuery } from "@/hooks/use-api-query";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
@@ -13,18 +14,18 @@ export const Route = createFileRoute("/review")({ component: ReviewPage });
 function ReviewPage() {
     const [statusFilter, setStatusFilter] = useState<string>("pending");
 
-    const proposalsQuery = useQuery({
+    const proposalsQuery = useApiQuery<any>({
         queryKey: ["proposals", statusFilter],
-        queryFn: async () => {
-            const params = new URLSearchParams();
-            if (statusFilter !== "all") params.set("status", statusFilter);
-            return unwrapEden(await (api.api as any).proposals.get({ query: Object.fromEntries(params) }));
+        queryFn: () => {
+            const query: Record<string, string> = {};
+            if (statusFilter !== "all") query.status = statusFilter;
+            return (api.api as any).proposals.get({ query });
         },
     });
 
-    const countQuery = useQuery({
+    const countQuery = useApiQuery<any>({
         queryKey: ["proposals-count"],
-        queryFn: async () => unwrapEden(await (api.api as any).proposals.count.get()),
+        queryFn: () => (api.api as any).proposals.count.get(),
     });
 
     const bulkApproveMutation = useMutation({

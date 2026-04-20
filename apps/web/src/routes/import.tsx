@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
     AlertTriangle,
@@ -19,6 +19,7 @@ import { Card, CardHeader, CardPanel, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { PageContainer, PageHeader } from "@/components/ui/page";
 import { getUser } from "@/functions/get-user";
+import { useApiQuery } from "@/hooks/use-api-query";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
@@ -126,10 +127,10 @@ function ImportPage() {
     const [result, setResult] = useState<ImportResult | null>(null);
     const [showErrors, setShowErrors] = useState(false);
 
-    const { data: codebases } = useQuery({
+    const { data: codebases } = useApiQuery<any[]>({
         queryKey: ["codebases"],
-        queryFn: async () => unwrapEden(await api.api.codebases.get()),
-        staleTime: 60_000
+        queryFn: () => api.api.codebases.get() as unknown as Promise<{ data: any[]; error: unknown }>,
+        fallback: [],
     });
 
     const importMutation = useMutation({

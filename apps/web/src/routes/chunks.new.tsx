@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, ChevronDown, FileText, Loader2, Plus, Sparkles, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -15,6 +15,7 @@ import { SimilarChunksWarning } from "@/features/chunks/similar-chunks-warning";
 import { loadDraft, useAutosave } from "@/features/chunks/use-autosave";
 import { MarkdownEditor } from "@/features/editor/markdown-editor";
 import { getUser } from "@/functions/get-user";
+import { useApiQuery } from "@/hooks/use-api-query";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
@@ -102,41 +103,39 @@ function NewChunk() {
     );
     const { clearDraft, lastSaved } = useAutosave(DRAFT_KEY, formState);
 
-    const templatesQuery = useQuery({
+    type TemplateRow = {
+        id: string;
+        name: string;
+        description: string | null;
+        type: string;
+        content: string;
+        isBuiltIn: boolean;
+    };
+    const templatesQuery = useApiQuery<TemplateRow[]>({
         queryKey: ["templates"],
-        queryFn: async () => {
-            try {
-                return unwrapEden(await api.api.templates.get()) as Array<{
-                    id: string;
-                    name: string;
-                    description: string | null;
-                    type: string;
-                    content: string;
-                    isBuiltIn: boolean;
-                }>;
-            } catch {
-                return [];
-            }
-        },
-        staleTime: 60_000
+        queryFn: () => api.api.templates.get() as unknown as Promise<{ data: TemplateRow[]; error: unknown }>,
+        fallback: [],
     });
 
     const serverTemplates = Array.isArray(templatesQuery.data) ? templatesQuery.data : [];
 
-    const duplicateQuery = useQuery({
+    // Duplicate check needs its own queryFn: the raw response carries a
+    // { chunks } envelope and we strip/filter before caching.
+    const duplicateQuery = useApiQuery<{ id: string; title: string }[]>({
         queryKey: ["duplicate-check", debouncedTitle],
         queryFn: async () => {
-            if (!debouncedTitle.trim() || debouncedTitle.length < 3) return [];
-            try {
-                const result = unwrapEden(await api.api.chunks.get({ query: { search: debouncedTitle, limit: "3" } })) as {
-                    chunks?: { id: string; title: string }[];
-                } | null;
-                return result?.chunks?.filter(c => c.title.toLowerCase() !== debouncedTitle.toLowerCase()).slice(0, 3) ?? [];
-            } catch {
-                return [];
+            if (!debouncedTitle.trim() || debouncedTitle.length < 3) {
+                return { data: [], error: null };
             }
+            const response = await api.api.chunks.get({ query: { search: debouncedTitle, limit: "3" } });
+            const raw = unwrapEden(response) as { chunks?: { id: string; title: string }[] } | null;
+            const filtered = raw?.chunks
+                ?.filter(c => c.title.toLowerCase() !== debouncedTitle.toLowerCase())
+                .slice(0, 3) ?? [];
+            return { data: filtered, error: null };
         },
-        enabled: debouncedTitle.length >= 3
+        fallback: [],
+        enabled: debouncedTitle.length >= 3,
     });
 
     const duplicates = duplicateQuery.data ?? [];

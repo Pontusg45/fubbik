@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 
@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PageContainer, PageHeader } from "@/components/ui/page";
 import { Textarea } from "@/components/ui/textarea";
+import { useApiQuery } from "@/hooks/use-api-query";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
@@ -32,32 +33,26 @@ function NewPlanPage() {
     const [bootstrapTasks, setBootstrapTasks] = useState("");
     const [tasksExpanded, setTasksExpanded] = useState(false);
 
-    const codebasesQuery = useQuery({
+    const codebasesQuery = useApiQuery<Array<{ id: string; name: string }>>({
         queryKey: ["codebases"],
-        queryFn: async () => {
-            try {
-                return (unwrapEden(await api.api.codebases.get()) as Array<{ id: string; name: string }>) ?? [];
-            } catch {
-                return [];
-            }
-        },
+        queryFn: () => api.api.codebases.get() as unknown as Promise<{ data: Array<{ id: string; name: string }>; error: unknown }>,
+        fallback: [],
     });
 
-    const requirementsListQuery = useQuery({
+    // The endpoint may return either { requirements, total } or a bare array —
+    // keep a small queryFn wrapper to normalise the shape before the fallback
+    // short-circuits.
+    const requirementsListQuery = useApiQuery<RequirementRow[]>({
         queryKey: ["requirements-for-plan-picker"],
         queryFn: async () => {
-            try {
-                const result = unwrapEden(await api.api.requirements.get({ query: {} }));
-                // The endpoint may return either { requirements, total } or a bare array.
-                const arr =
-                    Array.isArray(result)
-                        ? result
-                        : (result as { requirements?: RequirementRow[] })?.requirements ?? [];
-                return arr as RequirementRow[];
-            } catch {
-                return [];
-            }
+            const response = await api.api.requirements.get({ query: {} });
+            const raw = unwrapEden(response);
+            const arr = Array.isArray(raw)
+                ? raw
+                : (raw as { requirements?: RequirementRow[] })?.requirements ?? [];
+            return { data: arr as RequirementRow[], error: null };
         },
+        fallback: [],
         enabled: requirementsExpanded,
     });
 
