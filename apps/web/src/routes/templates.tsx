@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { Copy, Eye, FileText, LayoutTemplate, Pencil, Plus, Trash2, X } from "lucide-react";
 import { useState } from "react";
@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardPanel } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { PageContainer, PageEmpty, PageHeader, PageLoading } from "@/components/ui/page";
+import { useApiQuery } from "@/hooks/use-api-query";
 import { getUser } from "@/functions/get-user";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
@@ -48,16 +49,10 @@ function TemplatesPage() {
     const [formType, setFormType] = useState("note");
     const [formContent, setFormContent] = useState("");
 
-    const templatesQuery = useQuery({
+    const templatesQuery = useApiQuery<Template[]>({
         queryKey: ["templates"],
-        queryFn: async () => {
-            try {
-                return unwrapEden(await api.api.templates.get()) as Template[];
-            } catch {
-                return [];
-            }
-        },
-        staleTime: 60_000
+        queryFn: () => api.api.templates.get() as unknown as Promise<{ data: Template[]; error: unknown }>,
+        fallback: [],
     });
 
     const templates = Array.isArray(templatesQuery.data) ? templatesQuery.data : [];

@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { ChevronDown, ChevronRight, Folder, Layers, Plus, Trash2, X } from "lucide-react";
 import { useState } from "react";
@@ -11,6 +11,7 @@ import { Card, CardPanel } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { PageContainer, PageEmpty, PageHeader, PageLoading } from "@/components/ui/page";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useApiQuery } from "@/hooks/use-api-query";
 import { getUser } from "@/functions/get-user";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
@@ -35,27 +36,16 @@ function WorkspacesPage() {
     const [expandedId, setExpandedId] = useState<string | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
 
-    const workspacesQuery = useQuery({
+    const workspacesQuery = useApiQuery<any[]>({
         queryKey: ["workspaces"],
-        queryFn: async () => {
-            try {
-                return unwrapEden(await api.api.workspaces.get());
-            } catch {
-                return [];
-            }
-        }
+        queryFn: () => api.api.workspaces.get() as unknown as Promise<{ data: any[]; error: unknown }>,
+        fallback: [],
     });
 
-    const codebasesQuery = useQuery({
+    const codebasesQuery = useApiQuery<any[]>({
         queryKey: ["codebases"],
-        queryFn: async () => {
-            try {
-                return unwrapEden(await api.api.codebases.get());
-            } catch {
-                return [];
-            }
-        },
-        staleTime: 60_000
+        queryFn: () => api.api.codebases.get() as unknown as Promise<{ data: any[]; error: unknown }>,
+        fallback: [],
     });
 
     const createMutation = useMutation({
@@ -227,16 +217,11 @@ function WorkspaceRow({
     onAddCodebase: (codebaseId: string) => void;
     onRemoveCodebase: (codebaseId: string) => void;
 }) {
-    const detailQuery = useQuery({
+    const detailQuery = useApiQuery<unknown>({
         queryKey: ["workspace-detail", workspace.id],
-        queryFn: async () => {
-            try {
-                return unwrapEden(await api.api.workspaces({ id: workspace.id }).get());
-            } catch {
-                return null;
-            }
-        },
-        enabled: expanded
+        queryFn: () => api.api.workspaces({ id: workspace.id }).get() as unknown as Promise<{ data: unknown; error: unknown }>,
+        fallback: null,
+        enabled: expanded,
     });
 
     const detail = detailQuery.data as any;

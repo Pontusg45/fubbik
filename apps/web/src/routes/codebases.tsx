@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { FolderGit2, GitBranch, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardPanel } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { PageContainer, PageEmpty, PageHeader, PageLoading } from "@/components/ui/page";
+import { useApiQuery } from "@/hooks/use-api-query";
 import { getUser } from "@/functions/get-user";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
@@ -30,16 +31,10 @@ function CodebasesPage() {
     const [name, setName] = useState("");
     const [remoteUrl, setRemoteUrl] = useState("");
 
-    const codebasesQuery = useQuery({
+    const codebasesQuery = useApiQuery<any[]>({
         queryKey: ["codebases"],
-        queryFn: async () => {
-            try {
-                return unwrapEden(await api.api.codebases.get());
-            } catch {
-                return [];
-            }
-        },
-        staleTime: 60_000
+        queryFn: () => api.api.codebases.get() as unknown as Promise<{ data: any[]; error: unknown }>,
+        fallback: [],
     });
 
     const createMutation = useMutation({
