@@ -1,16 +1,13 @@
 import { and, eq, inArray, or, sql } from "drizzle-orm";
-import { Effect } from "effect";
 
-import { DatabaseError } from "../errors";
-import { db } from "../index";
+import { db, dbEffect } from "../index";
 import { chunk, chunkConnection } from "../schema/chunk";
 import { codebase, chunkCodebase } from "../schema/codebase";
 import { chunkTag, tag, tagType } from "../schema/tag";
 import { workspaceCodebase } from "../schema/workspace";
 
 export function getAllChunksMeta(userId?: string, codebaseId?: string, workspaceId?: string) {
-    return Effect.tryPromise({
-        try: () => {
+    return dbEffect(() => {
             const conditions = [];
             if (userId) conditions.push(eq(chunk.userId, userId));
             if (workspaceId) {
@@ -46,14 +43,11 @@ export function getAllChunksMeta(userId?: string, codebaseId?: string, workspace
                 })
                 .from(chunk);
             return conditions.length > 0 ? query.where(and(...conditions)) : query;
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 export function getAllTagsWithTypes(userId?: string) {
-    return Effect.tryPromise({
-        try: () => {
+    return dbEffect(() => {
             const query = db
                 .select({
                     chunkId: chunkTag.chunkId,
@@ -71,25 +65,19 @@ export function getAllTagsWithTypes(userId?: string) {
                 return query.where(eq(tag.userId, userId));
             }
             return query;
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 export function getTagTypesForGraph(userId?: string) {
-    return Effect.tryPromise({
-        try: () => {
+    return dbEffect(() => {
             const query = db.select().from(tagType);
             if (userId) return query.where(eq(tagType.userId, userId));
             return query;
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 export function getChunkCodebaseMappings(userId?: string) {
-    return Effect.tryPromise({
-        try: () => {
+    return dbEffect(() => {
             const query = db
                 .select({
                     chunkId: chunkCodebase.chunkId,
@@ -100,14 +88,11 @@ export function getChunkCodebaseMappings(userId?: string) {
                 .innerJoin(codebase, eq(chunkCodebase.codebaseId, codebase.id));
             if (userId) return query.where(eq(codebase.userId, userId));
             return query;
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 export function getAllConnectionsForUser(userId?: string) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             if (!userId) {
                 return db
                     .select({
@@ -128,7 +113,5 @@ export function getAllConnectionsForUser(userId?: string) {
                 })
                 .from(chunkConnection)
                 .where(or(sql`${chunkConnection.sourceId} IN (${userChunkIds})`, sql`${chunkConnection.targetId} IN (${userChunkIds})`));
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }

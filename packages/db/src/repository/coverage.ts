@@ -1,16 +1,13 @@
 import { and, eq, isNull, sql } from "drizzle-orm";
-import { Effect } from "effect";
 
-import { DatabaseError } from "../errors";
-import { db } from "../index";
+import { db, dbEffect } from "../index";
 import { chunk } from "../schema/chunk";
 import { chunkCodebase } from "../schema/codebase";
 // TODO: removed in plans rewrite — implementationSession, sessionRequirementRef, planStep deleted (Task 7 will rewrite coverage)
 import { requirement, requirementChunk } from "../schema/requirement";
 
 export function getChunkCoverage(userId: string, codebaseId?: string) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const conditions = [eq(chunk.userId, userId), isNull(chunk.archivedAt)];
 
             let chunkQuery;
@@ -40,14 +37,11 @@ export function getChunkCoverage(userId: string, codebaseId?: string) {
             }
 
             return chunkQuery;
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 export function getChunkCoverageMatrix(userId: string, codebaseId?: string) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             if (codebaseId) {
                 return db
                     .select({
@@ -83,15 +77,12 @@ export function getChunkCoverageMatrix(userId: string, codebaseId?: string) {
                         isNull(chunk.archivedAt)
                     ));
             }
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 // TODO: removed in plans rewrite — traceability needs rework in Task 7 (plan tasks replace plan steps, sessions removed)
 export function getTraceabilityMatrix(userId: string, codebaseId?: string) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const conditions = [eq(requirement.userId, userId)];
             if (codebaseId) {
                 conditions.push(eq(requirement.codebaseId, codebaseId));
@@ -111,7 +102,5 @@ export function getTraceabilityMatrix(userId: string, codebaseId?: string) {
                 planSteps: [] as unknown[],
                 sessions: [] as unknown[]
             }));
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }

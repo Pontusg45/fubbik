@@ -1,8 +1,6 @@
 import { and, eq, sql } from "drizzle-orm";
-import { Effect } from "effect";
 
-import { DatabaseError } from "../errors";
-import { db } from "../index";
+import { db, dbEffect } from "../index";
 import { chunk } from "../schema/chunk";
 
 export interface SemanticSearchParams {
@@ -22,8 +20,7 @@ export interface NeighborRow {
 }
 
 export function findNeighborsByChunkId(chunkId: string, userId: string, k: number) {
-    return Effect.tryPromise({
-        try: async (): Promise<NeighborRow[]> => {
+    return dbEffect(async (): Promise<NeighborRow[]> => {
             const result = await db.execute(sql`
                 WITH source AS (
                     SELECT embedding
@@ -60,14 +57,11 @@ export function findNeighborsByChunkId(chunkId: string, userId: string, k: numbe
                 type: r.type,
                 distance: Number(r.distance)
             }));
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 export function semanticSearch(params: SemanticSearchParams) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const conditions = [sql`${chunk.embedding} IS NOT NULL`];
             if (params.userId) conditions.push(eq(chunk.userId, params.userId));
             if (params.exclude?.length) {
@@ -96,7 +90,5 @@ export function semanticSearch(params: SemanticSearchParams) {
                 .limit(params.limit);
 
             return results;
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }

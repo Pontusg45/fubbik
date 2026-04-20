@@ -2,7 +2,7 @@ import { and, eq, ne, sql } from "drizzle-orm";
 import { Effect } from "effect";
 
 import { DatabaseError } from "../errors";
-import { db } from "../index";
+import { db, dbEffect } from "../index";
 import { chunk } from "../schema/chunk";
 import { chunkTag } from "../schema/tag";
 
@@ -21,8 +21,7 @@ export function findChunksSharingTags(
 ): Effect.Effect<SuggestionRow[], DatabaseError> {
     if (tagIds.length === 0) return Effect.succeed([]);
 
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const excludeArray = [...excludeIds];
             const tagPlaceholders = tagIds.map(id => sql`${id}`);
             const results = await db
@@ -54,9 +53,7 @@ export function findChunksSharingTags(
                 type: r.type,
                 reason: `shares ${r.sharedCount} tag${Number(r.sharedCount) > 1 ? "s" : ""}`
             }));
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 export function findChunksWithSimilarTitle(
@@ -64,8 +61,7 @@ export function findChunksWithSimilarTitle(
     userId: string,
     excludeIds: Set<string>
 ): Effect.Effect<SuggestionRow[], DatabaseError> {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const excludeArray = [...excludeIds];
             const results = await db
                 .select({
@@ -93,7 +89,5 @@ export function findChunksWithSimilarTitle(
                 type: r.type,
                 reason: "similar title"
             }));
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }

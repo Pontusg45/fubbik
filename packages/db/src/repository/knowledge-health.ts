@@ -1,9 +1,7 @@
 import { and, eq, isNotNull, sql } from "drizzle-orm";
-import { Effect } from "effect";
 
 import { getOrphanChunkIds } from "../age/query";
-import { DatabaseError } from "../errors";
-import { db } from "../index";
+import { db, dbEffect } from "../index";
 import { chunk, chunkConnection } from "../schema/chunk";
 import { chunkCodebase } from "../schema/codebase";
 import { chunkFileRef } from "../schema/file-ref";
@@ -19,8 +17,7 @@ function codebaseConditions(codebaseId?: string) {
 }
 
 export function getOrphanChunks(userId: string, codebaseId?: string) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const conditions = [
                 eq(chunk.userId, userId),
                 sql`${chunk.id} NOT IN (SELECT ${chunkConnection.sourceId} FROM ${chunkConnection})`,
@@ -45,14 +42,11 @@ export function getOrphanChunks(userId: string, codebaseId?: string) {
                 .where(and(...conditions));
 
             return { chunks, count: Number(countResult[0]?.count ?? 0) };
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 export function getStaleChunks(userId: string, codebaseId?: string) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const thirtyDaysAgo = sql`NOW() - INTERVAL '30 days'`;
             const sevenDaysAgo = sql`NOW() - INTERVAL '7 days'`;
 
@@ -104,14 +98,11 @@ export function getStaleChunks(userId: string, codebaseId?: string) {
                 .where(and(...conditions));
 
             return { chunks, count: Number(countResult[0]?.count ?? 0) };
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 export function getThinChunks(userId: string, codebaseId?: string) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const conditions = [
                 eq(chunk.userId, userId),
                 sql`LENGTH(${chunk.content}) < 100`,
@@ -135,14 +126,11 @@ export function getThinChunks(userId: string, codebaseId?: string) {
                 .where(and(...conditions));
 
             return { chunks, count: Number(countResult[0]?.count ?? 0) };
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 export function getStaleEmbeddings(userId: string, codebaseId?: string) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const conditions = [
                 eq(chunk.userId, userId),
                 isNotNull(chunk.embedding),
@@ -168,9 +156,7 @@ export function getStaleEmbeddings(userId: string, codebaseId?: string) {
                 .where(and(...conditions));
 
             return { chunks, count: Number(countResult[0]?.count ?? 0) };
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 export function getOrphanChunkIdsViaAge() {
@@ -178,8 +164,7 @@ export function getOrphanChunkIdsViaAge() {
 }
 
 export function getFileRefsForHealth(userId: string, codebaseId?: string) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const conditions = [eq(chunk.userId, userId), ...codebaseConditions(codebaseId)];
 
             const refs = await db
@@ -203,7 +188,5 @@ export function getFileRefsForHealth(userId: string, codebaseId?: string) {
                 .where(and(...conditions));
 
             return { refs, count: Number(countResult[0]?.count ?? 0) };
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }

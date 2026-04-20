@@ -2,7 +2,7 @@ import { and, asc, count, desc, eq } from "drizzle-orm";
 import { Effect } from "effect";
 
 import { DatabaseError } from "../errors";
-import { db } from "../index";
+import { db, dbEffect } from "../index";
 import {
     chunkProposal,
     type ChunkProposal,
@@ -14,24 +14,18 @@ import { chunk } from "../schema/chunk";
 export type { ProposedChanges };
 
 export function createProposal(input: NewChunkProposal): Effect.Effect<ChunkProposal, DatabaseError> {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const [row] = await db.insert(chunkProposal).values(input).returning();
             if (!row) throw new Error("Insert returned no row");
             return row;
-        },
-        catch: e => new DatabaseError({ cause: e }),
-    });
+        });
 }
 
 export function getProposalById(id: string): Effect.Effect<ChunkProposal | null, DatabaseError> {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const [row] = await db.select().from(chunkProposal).where(eq(chunkProposal.id, id)).limit(1);
             return row ?? null;
-        },
-        catch: e => new DatabaseError({ cause: e }),
-    });
+        });
 }
 
 export interface ListProposalsFilter {
@@ -45,8 +39,7 @@ export function listProposals(filter: ListProposalsFilter): Effect.Effect<
     Array<ChunkProposal & { chunkTitle: string; chunkType: string }>,
     DatabaseError
 > {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const conditions = [];
             if (filter.chunkId) conditions.push(eq(chunkProposal.chunkId, filter.chunkId));
             if (filter.status) conditions.push(eq(chunkProposal.status, filter.status));
@@ -74,17 +67,14 @@ export function listProposals(filter: ListProposalsFilter): Effect.Effect<
                 .offset(filter.offset ?? 0);
 
             return rows;
-        },
-        catch: e => new DatabaseError({ cause: e }),
-    });
+        });
 }
 
 export function listProposalsForChunk(
     chunkId: string,
     status?: string,
 ): Effect.Effect<ChunkProposal[], DatabaseError> {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const conditions = [eq(chunkProposal.chunkId, chunkId)];
             if (status) conditions.push(eq(chunkProposal.status, status));
 
@@ -93,9 +83,7 @@ export function listProposalsForChunk(
                 .from(chunkProposal)
                 .where(and(...conditions))
                 .orderBy(asc(chunkProposal.createdAt));
-        },
-        catch: e => new DatabaseError({ cause: e }),
-    });
+        });
 }
 
 export function updateProposalStatus(
@@ -104,8 +92,7 @@ export function updateProposalStatus(
     reviewedBy: string,
     reviewNote?: string,
 ): Effect.Effect<ChunkProposal, DatabaseError> {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const [row] = await db
                 .update(chunkProposal)
                 .set({
@@ -118,20 +105,15 @@ export function updateProposalStatus(
                 .returning();
             if (!row) throw new Error("Proposal not found");
             return row;
-        },
-        catch: e => new DatabaseError({ cause: e }),
-    });
+        });
 }
 
 export function getPendingCount(): Effect.Effect<number, DatabaseError> {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const [row] = await db
                 .select({ count: count() })
                 .from(chunkProposal)
                 .where(eq(chunkProposal.status, "pending"));
             return row?.count ?? 0;
-        },
-        catch: e => new DatabaseError({ cause: e }),
-    });
+        });
 }

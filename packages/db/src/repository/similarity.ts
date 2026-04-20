@@ -2,7 +2,7 @@ import { and, eq, ne, sql } from "drizzle-orm";
 import { Effect } from "effect";
 
 import { DatabaseError } from "../errors";
-import { db } from "../index";
+import { db, dbEffect } from "../index";
 import { chunk } from "../schema/chunk";
 
 export interface SimilarChunk {
@@ -27,8 +27,7 @@ export function findDuplicatePairs(params: {
 
     if (chunkIds.length < 2) return Effect.succeed([]);
 
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const idList = chunkIds.map(id => `'${id.replace(/'/g, "''")}'`).join(",");
             const rows = await db.execute(sql`
                 SELECT a.id AS id_a, b.id AS id_b,
@@ -47,9 +46,7 @@ export function findDuplicatePairs(params: {
                 idB: r.id_b,
                 similarity: Number(r.similarity),
             }));
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 export function findSimilarByEmbedding(params: {
@@ -61,8 +58,7 @@ export function findSimilarByEmbedding(params: {
 }): Effect.Effect<SimilarChunk[], DatabaseError> {
     const { embedding, userId, excludeId, threshold = 0.7, limit = 5 } = params;
 
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const vectorStr = `[${embedding.join(",")}]`;
             const conditions = [
                 eq(chunk.userId, userId),
@@ -83,7 +79,5 @@ export function findSimilarByEmbedding(params: {
                 .limit(limit);
 
             return results.filter(r => r.similarity >= threshold);
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }

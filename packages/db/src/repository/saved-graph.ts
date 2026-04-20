@@ -1,8 +1,6 @@
 import { and, eq } from "drizzle-orm";
-import { Effect } from "effect";
 
-import { DatabaseError } from "../errors";
-import { db } from "../index";
+import { db, dbEffect } from "../index";
 import { savedGraph } from "../schema/saved-graph";
 
 // ── Types ────────────────────────────────────────────────────────
@@ -29,18 +27,14 @@ export interface UpdateSavedGraphParams {
 // ── CRUD ─────────────────────────────────────────────────────────
 
 export function createSavedGraph(params: CreateSavedGraphParams) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const [created] = await db.insert(savedGraph).values(params).returning();
             return created!;
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 export function getSavedGraphById(id: string, userId?: string) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const conditions = [eq(savedGraph.id, id)];
             if (userId) conditions.push(eq(savedGraph.userId, userId));
             const [found] = await db
@@ -48,28 +42,22 @@ export function getSavedGraphById(id: string, userId?: string) {
                 .from(savedGraph)
                 .where(and(...conditions));
             return found ?? null;
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 export function listSavedGraphs(userId: string, codebaseId?: string | null) {
-    return Effect.tryPromise({
-        try: () => {
+    return dbEffect(() => {
             const conditions = [eq(savedGraph.userId, userId)];
             if (codebaseId) conditions.push(eq(savedGraph.codebaseId, codebaseId));
             return db
                 .select()
                 .from(savedGraph)
                 .where(and(...conditions));
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 export function updateSavedGraph(id: string, userId: string, params: UpdateSavedGraphParams) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const setClause: Record<string, unknown> = {};
             if (params.name !== undefined) setClause.name = params.name;
             if (params.description !== undefined) setClause.description = params.description;
@@ -91,20 +79,15 @@ export function updateSavedGraph(id: string, userId: string, params: UpdateSaved
                 .where(and(eq(savedGraph.id, id), eq(savedGraph.userId, userId)))
                 .returning();
             return updated ?? null;
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 export function deleteSavedGraph(id: string, userId: string) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const [deleted] = await db
                 .delete(savedGraph)
                 .where(and(eq(savedGraph.id, id), eq(savedGraph.userId, userId)))
                 .returning();
             return deleted ?? null;
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }

@@ -1,8 +1,6 @@
 import { and, asc, eq, sql } from "drizzle-orm";
-import { Effect } from "effect";
 
-import { DatabaseError } from "../errors";
-import { db } from "../index";
+import { db, dbEffect } from "../index";
 import { requirement } from "../schema/requirement";
 import { useCase } from "../schema/use-case";
 
@@ -17,31 +15,24 @@ export interface CreateUseCaseParams {
 }
 
 export function createUseCase(params: CreateUseCaseParams) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const [created] = await db.insert(useCase).values(params).returning();
             return created!;
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 export function getUseCaseByName(userId: string, name: string) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const [found] = await db
                 .select()
                 .from(useCase)
                 .where(and(eq(useCase.userId, userId), eq(useCase.name, name)));
             return found ?? null;
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 export function getUseCaseById(id: string, userId?: string) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const conditions = [eq(useCase.id, id)];
             if (userId) conditions.push(eq(useCase.userId, userId));
             const [found] = await db
@@ -49,14 +40,11 @@ export function getUseCaseById(id: string, userId?: string) {
                 .from(useCase)
                 .where(and(...conditions));
             return found ?? null;
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 export function listUseCases(userId: string, codebaseId?: string) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const conditions = [eq(useCase.userId, userId)];
             if (codebaseId) conditions.push(eq(useCase.codebaseId, codebaseId));
 
@@ -99,9 +87,7 @@ export function listUseCases(userId: string, codebaseId?: string) {
                 childCount: Number(uc.childCount),
                 requirementCount: countMap.get(uc.id) ?? 0
             }));
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 export interface UpdateUseCaseParams {
@@ -112,8 +98,7 @@ export interface UpdateUseCaseParams {
 }
 
 export function updateUseCase(id: string, userId: string, params: UpdateUseCaseParams) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const setClause: Record<string, unknown> = {};
             if (params.name !== undefined) setClause.name = params.name;
             if (params.description !== undefined) setClause.description = params.description;
@@ -134,14 +119,11 @@ export function updateUseCase(id: string, userId: string, params: UpdateUseCaseP
                 .where(and(eq(useCase.id, id), eq(useCase.userId, userId)))
                 .returning();
             return updated ?? null;
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 export function deleteUseCase(id: string, userId: string) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             // Unlink requirements first (set useCaseId to null)
             await db
                 .update(requirement)
@@ -153,14 +135,11 @@ export function deleteUseCase(id: string, userId: string) {
                 .where(and(eq(useCase.id, id), eq(useCase.userId, userId)))
                 .returning();
             return deleted ?? null;
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 export function listRequirementsByUseCase(useCaseId: string, userId: string) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             return db
                 .select()
                 .from(requirement)
@@ -170,7 +149,5 @@ export function listRequirementsByUseCase(useCaseId: string, userId: string) {
                         eq(requirement.userId, userId)
                     )
                 );
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }

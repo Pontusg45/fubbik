@@ -1,16 +1,13 @@
 import { and, desc, eq } from "drizzle-orm";
-import { Effect } from "effect";
 
-import { DatabaseError } from "../errors";
-import { db } from "../index";
+import { db, dbEffect } from "../index";
 import { activityLog } from "../schema/activity";
 
 export function listActivity(
     userId: string,
     opts: { codebaseId?: string; entityType?: string; entityId?: string; limit?: number; offset?: number } = {}
 ) {
-    return Effect.tryPromise({
-        try: () => {
+    return dbEffect(() => {
             const conditions = [eq(activityLog.userId, userId)];
             if (opts.codebaseId) {
                 conditions.push(eq(activityLog.codebaseId, opts.codebaseId));
@@ -28,9 +25,7 @@ export function listActivity(
                 .orderBy(desc(activityLog.createdAt))
                 .limit(opts.limit ?? 50)
                 .offset(opts.offset ?? 0);
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 export function createActivity(params: {
@@ -42,11 +37,8 @@ export function createActivity(params: {
     action: string;
     codebaseId?: string;
 }) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const [created] = await db.insert(activityLog).values(params).returning();
             return created!;
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }

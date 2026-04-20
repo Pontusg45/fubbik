@@ -1,8 +1,6 @@
 import { and, eq, inArray, isNull } from "drizzle-orm";
-import { Effect } from "effect";
 
-import { DatabaseError } from "../errors";
-import { db } from "../index";
+import { db, dbEffect } from "../index";
 import { chunk } from "../schema/chunk";
 import { chunkCodebase } from "../schema/codebase";
 import { chunkAppliesTo } from "../schema/applies-to";
@@ -17,8 +15,7 @@ export interface DensityPath {
 }
 
 export function fetchDensityPaths(userId: string, codebaseId?: string) {
-    return Effect.tryPromise({
-        try: async (): Promise<DensityPath[]> => {
+    return dbEffect(async (): Promise<DensityPath[]> => {
             const chunkFilter = [eq(chunk.userId, userId), isNull(chunk.archivedAt)];
             let chunkIds: string[];
             if (codebaseId) {
@@ -83,9 +80,7 @@ export function fetchDensityPaths(userId: string, codebaseId?: string) {
                 });
             }
             return results;
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 function globPrefix(pattern: string): string | null {

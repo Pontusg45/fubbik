@@ -1,8 +1,6 @@
 import { and, isNull, sql } from "drizzle-orm";
-import { Effect } from "effect";
 
-import { DatabaseError } from "../errors";
-import { db } from "../index";
+import { db, dbEffect } from "../index";
 import { chunk } from "../schema/chunk";
 
 export interface Cluster {
@@ -12,8 +10,7 @@ export interface Cluster {
 }
 
 export function computeClusters(userId: string, maxClusters = 10, clusterSize = 8) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             // Pick recent chunks with embeddings as seeds
             const seeds = await db
                 .select({ id: chunk.id, title: chunk.title, type: chunk.type })
@@ -71,7 +68,5 @@ export function computeClusters(userId: string, maxClusters = 10, clusterSize = 
             }
 
             return clusters;
-        },
-        catch: cause => new DatabaseError({ cause }),
-    });
+        });
 }

@@ -1,8 +1,6 @@
-import { Effect } from "effect";
 import { sql } from "drizzle-orm";
 
-import { DatabaseError } from "../errors";
-import { db } from "../index";
+import { db, dbEffect } from "../index";
 
 export interface TimelineEvent {
     chunkId: string;
@@ -21,8 +19,7 @@ export interface TimelineParams {
 }
 
 export function fetchTimeline(params: TimelineParams) {
-    return Effect.tryPromise({
-        try: async (): Promise<TimelineEvent[]> => {
+    return dbEffect(async (): Promise<TimelineEvent[]> => {
             const codebaseFilter = params.codebaseId
                 ? sql`AND c.id IN (SELECT chunk_id FROM chunk_codebase WHERE codebase_id = ${params.codebaseId})`
                 : sql``;
@@ -89,7 +86,5 @@ export function fetchTimeline(params: TimelineParams) {
                 at: typeof r.at === "string" ? r.at : r.at.toISOString(),
                 version: r.version
             }));
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }

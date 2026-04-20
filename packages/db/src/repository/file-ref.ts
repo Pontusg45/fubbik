@@ -1,14 +1,11 @@
 import { and, eq, inArray } from "drizzle-orm";
-import { Effect } from "effect";
 
-import { DatabaseError } from "../errors";
-import { db } from "../index";
+import { db, dbEffect } from "../index";
 import { chunk } from "../schema/chunk";
 import { chunkFileRef } from "../schema/file-ref";
 
 export function getFileRefsForChunk(chunkId: string) {
-    return Effect.tryPromise({
-        try: () =>
+    return dbEffect(() =>
             db
                 .select({
                     id: chunkFileRef.id,
@@ -17,28 +14,22 @@ export function getFileRefsForChunk(chunkId: string) {
                     relation: chunkFileRef.relation
                 })
                 .from(chunkFileRef)
-                .where(eq(chunkFileRef.chunkId, chunkId)),
-        catch: cause => new DatabaseError({ cause })
-    });
+                .where(eq(chunkFileRef.chunkId, chunkId)));
 }
 
 export function getFileRefsForChunks(chunkIds: string[]) {
-    return Effect.tryPromise({
-        try: () =>
+    return dbEffect(() =>
             db
                 .select()
                 .from(chunkFileRef)
-                .where(inArray(chunkFileRef.chunkId, chunkIds)),
-        catch: cause => new DatabaseError({ cause })
-    });
+                .where(inArray(chunkFileRef.chunkId, chunkIds)));
 }
 
 export function setFileRefsForChunk(
     chunkId: string,
     refs: { path: string; anchor?: string | null; relation: string }[]
 ) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             await db.delete(chunkFileRef).where(eq(chunkFileRef.chunkId, chunkId));
             if (refs.length === 0) return [];
             return db
@@ -53,14 +44,11 @@ export function setFileRefsForChunk(
                     }))
                 )
                 .returning();
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 export function lookupChunksByFilePath(path: string, userId: string) {
-    return Effect.tryPromise({
-        try: () =>
+    return dbEffect(() =>
             db
                 .select({
                     chunkId: chunk.id,
@@ -73,7 +61,5 @@ export function lookupChunksByFilePath(path: string, userId: string) {
                 })
                 .from(chunkFileRef)
                 .innerJoin(chunk, eq(chunkFileRef.chunkId, chunk.id))
-                .where(and(eq(chunkFileRef.path, path), eq(chunk.userId, userId))),
-        catch: cause => new DatabaseError({ cause })
-    });
+                .where(and(eq(chunkFileRef.path, path), eq(chunk.userId, userId))));
 }

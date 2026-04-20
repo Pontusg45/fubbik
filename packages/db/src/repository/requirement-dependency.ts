@@ -4,14 +4,12 @@ import { Effect } from "effect";
 import { cypherVoid, isAgeAvailable } from "../age/client";
 import { getTransitiveDeps as ageGetTransitiveDeps, checkCircular as ageCheckCircular } from "../age/query";
 import { ensureVertex, createEdge } from "../age/sync";
-import { DatabaseError } from "../errors";
-import { db } from "../index";
+import { db, dbEffect } from "../index";
 import { requirement } from "../schema/requirement";
 import { requirementDependency } from "../schema/requirement-dependency";
 
 export function addDependency(requirementId: string, dependsOnId: string) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const result = await db.insert(requirementDependency)
                 .values({ requirementId, dependsOnId })
                 .onConflictDoNothing()
@@ -24,14 +22,11 @@ export function addDependency(requirementId: string, dependsOnId: string) {
                 )
             );
             return result;
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 export function removeDependency(requirementId: string, dependsOnId: string) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const result = await db.delete(requirementDependency)
                 .where(and(
                     eq(requirementDependency.requirementId, requirementId),
@@ -43,14 +38,11 @@ export function removeDependency(requirementId: string, dependsOnId: string) {
                 ).pipe(Effect.catchAll(() => Effect.succeed(undefined)))
             );
             return result;
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 export function getDependencies(requirementId: string) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const dependsOn = await db
                 .select({
                     id: requirement.id,
@@ -74,14 +66,11 @@ export function getDependencies(requirementId: string) {
                 .where(eq(requirementDependency.dependsOnId, requirementId));
 
             return { dependsOn, dependedOnBy };
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 export function getTransitiveDependencies(requirementId: string) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const fetchById = async (ids: string[]) => {
                 if (ids.length === 0) return [];
                 return db
@@ -146,14 +135,11 @@ export function getTransitiveDependencies(requirementId: string) {
             ]);
 
             return { ancestors, descendants, edges: edgeResult };
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 export function checkCircularDependency(requirementId: string, dependsOnId: string) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             if (await isAgeAvailable()) {
                 return Effect.runPromise(ageCheckCircular(requirementId, dependsOnId));
             }
@@ -168,7 +154,5 @@ export function checkCircularDependency(requirementId: string, dependsOnId: stri
                 SELECT 1 FROM chain WHERE id = ${requirementId} LIMIT 1
             `);
             return result.rows.length > 0;
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }

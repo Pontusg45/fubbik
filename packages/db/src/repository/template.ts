@@ -1,29 +1,21 @@
 import { and, eq, or } from "drizzle-orm";
-import { Effect } from "effect";
 
-import { DatabaseError } from "../errors";
-import { db } from "../index";
+import { db, dbEffect } from "../index";
 import { chunkTemplate } from "../schema/template";
 
 export function listTemplates(userId: string) {
-    return Effect.tryPromise({
-        try: () =>
+    return dbEffect(() =>
             db
                 .select()
                 .from(chunkTemplate)
-                .where(or(eq(chunkTemplate.isBuiltIn, true), eq(chunkTemplate.userId, userId))),
-        catch: cause => new DatabaseError({ cause })
-    });
+                .where(or(eq(chunkTemplate.isBuiltIn, true), eq(chunkTemplate.userId, userId))));
 }
 
 export function getTemplateById(id: string) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const [found] = await db.select().from(chunkTemplate).where(eq(chunkTemplate.id, id));
             return found ?? null;
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 export function createTemplate(params: {
@@ -34,8 +26,7 @@ export function createTemplate(params: {
     content: string;
     userId: string;
 }) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const [created] = await db
                 .insert(chunkTemplate)
                 .values({
@@ -49,9 +40,7 @@ export function createTemplate(params: {
                 })
                 .returning();
             return created;
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 export function updateTemplate(
@@ -59,8 +48,7 @@ export function updateTemplate(
     userId: string,
     params: { name?: string; description?: string | null; type?: string; content?: string }
 ) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const [updated] = await db
                 .update(chunkTemplate)
                 .set({
@@ -72,14 +60,11 @@ export function updateTemplate(
                 .where(and(eq(chunkTemplate.id, id), eq(chunkTemplate.userId, userId)))
                 .returning();
             return updated ?? null;
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
 
 export function deleteTemplate(id: string, userId: string) {
-    return Effect.tryPromise({
-        try: async () => {
+    return dbEffect(async () => {
             const [deleted] = await db
                 .delete(chunkTemplate)
                 .where(
@@ -91,7 +76,5 @@ export function deleteTemplate(id: string, userId: string) {
                 )
                 .returning();
             return deleted ?? null;
-        },
-        catch: cause => new DatabaseError({ cause })
-    });
+        });
 }
