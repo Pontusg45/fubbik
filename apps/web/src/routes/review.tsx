@@ -19,20 +19,20 @@ function ReviewPage() {
         queryFn: () => {
             const query: Record<string, string> = {};
             if (statusFilter !== "all") query.status = statusFilter;
-            return (api.api as any).proposals.get({ query });
+            return api.api.proposals.get({ query });
         },
     });
 
     const countQuery = useApiQuery<any>({
         queryKey: ["proposals-count"],
-        queryFn: () => (api.api as any).proposals.count.get(),
+        queryFn: () => api.api.proposals.count.get(),
     });
 
     const bulkApproveMutation = useMutation({
         mutationFn: async () => {
             const pending = ((proposalsQuery.data ?? []) as Proposal[]).filter(p => p.status === "pending");
             const actions = pending.map(p => ({ proposalId: p.id, action: "approve" as const }));
-            return unwrapEden(await (api.api as any).proposals.bulk.post({ actions }));
+            return unwrapEden(await api.api.proposals.bulk.post({ actions }));
         },
         onSuccess: () => {
             void proposalsQuery.refetch();
@@ -44,7 +44,7 @@ function ReviewPage() {
         mutationFn: async () => {
             const pending = ((proposalsQuery.data ?? []) as Proposal[]).filter(p => p.status === "pending");
             const actions = pending.map(p => ({ proposalId: p.id, action: "reject" as const }));
-            return unwrapEden(await (api.api as any).proposals.bulk.post({ actions }));
+            return unwrapEden(await api.api.proposals.bulk.post({ actions }));
         },
         onSuccess: () => {
             void proposalsQuery.refetch();
@@ -53,7 +53,7 @@ function ReviewPage() {
     });
 
     const proposals = (proposalsQuery.data ?? []) as Proposal[];
-    const pendingCount = (countQuery.data as any)?.pending ?? 0;
+    const pendingCount = (countQuery.data as { pending?: number } | null | undefined)?.pending ?? 0;
     const hasPending = proposals.some(p => p.status === "pending");
 
     const refetch = () => {

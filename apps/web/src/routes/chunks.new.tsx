@@ -113,7 +113,7 @@ function NewChunk() {
     };
     const templatesQuery = useApiQuery<TemplateRow[]>({
         queryKey: ["templates"],
-        queryFn: () => api.api.templates.get() as unknown as Promise<{ data: TemplateRow[]; error: unknown }>,
+        queryFn: () => api.api.templates.get(),
         fallback: [],
     });
 

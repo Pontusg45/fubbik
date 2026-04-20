@@ -129,7 +129,7 @@ function ImportPage() {
 
     const { data: codebases } = useApiQuery<any[]>({
         queryKey: ["codebases"],
-        queryFn: () => api.api.codebases.get() as unknown as Promise<{ data: any[]; error: unknown }>,
+        queryFn: () => api.api.codebases.get(),
         fallback: [],
     });
 

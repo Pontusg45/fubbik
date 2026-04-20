@@ -5,6 +5,13 @@ import { unwrapEden } from "@/utils/eden";
 
 type QueryKey = readonly unknown[];
 
+/**
+ * Loose eden-response shape — same reasoning as in use-api-query: using the
+ * strict `Promise<{ data: TData; error: unknown }>` would force callers to
+ * `as unknown as Promise<…>` around every eden call.
+ */
+type EdenThunk<TVariables> = (vars: TVariables) => Promise<{ data: unknown; error: unknown }>;
+
 export interface UseApiMutationOptions<TData, TVariables>
     extends Omit<UseMutationOptions<TData, Error, TVariables>, "mutationFn" | "onSuccess" | "onError"> {
     /**
@@ -12,7 +19,7 @@ export interface UseApiMutationOptions<TData, TVariables>
      * raw `{ data, error }` Promise. The result is automatically unwrapped via
      * `unwrapEden`, so callers never touch the envelope.
      */
-    mutationFn: (vars: TVariables) => Promise<{ data: TData; error: unknown }>;
+    mutationFn: EdenThunk<TVariables>;
     /**
      * Query keys to invalidate on success. A single key is fine; an array of
      * keys invalidates all of them. The `|` separator isn't supported —

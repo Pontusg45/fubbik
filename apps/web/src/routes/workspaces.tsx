@@ -38,13 +38,13 @@ function WorkspacesPage() {
 
     const workspacesQuery = useApiQuery<any[]>({
         queryKey: ["workspaces"],
-        queryFn: () => api.api.workspaces.get() as unknown as Promise<{ data: any[]; error: unknown }>,
+        queryFn: () => api.api.workspaces.get(),
         fallback: [],
     });
 
     const codebasesQuery = useApiQuery<any[]>({
         queryKey: ["codebases"],
-        queryFn: () => api.api.codebases.get() as unknown as Promise<{ data: any[]; error: unknown }>,
+        queryFn: () => api.api.codebases.get(),
         fallback: [],
     });
 
@@ -217,16 +217,17 @@ function WorkspaceRow({
     onAddCodebase: (codebaseId: string) => void;
     onRemoveCodebase: (codebaseId: string) => void;
 }) {
-    const detailQuery = useApiQuery<unknown>({
+    type WorkspaceDetail = { codebases?: Array<{ id: string; name?: string }> } | null;
+    const detailQuery = useApiQuery<WorkspaceDetail>({
         queryKey: ["workspace-detail", workspace.id],
-        queryFn: () => api.api.workspaces({ id: workspace.id }).get() as unknown as Promise<{ data: unknown; error: unknown }>,
+        queryFn: () => api.api.workspaces({ id: workspace.id }).get(),
         fallback: null,
         enabled: expanded,
     });
 
-    const detail = detailQuery.data as any;
+    const detail = detailQuery.data;
     const workspaceCodebases = detail?.codebases ?? [];
-    const workspaceCodebaseIds = new Set(workspaceCodebases.map((c: any) => c.id));
+    const workspaceCodebaseIds = new Set(workspaceCodebases.map(c => c.id));
     const availableCodebases = codebases.filter(c => !workspaceCodebaseIds.has(c.id));
 
     return (

@@ -51,7 +51,7 @@ function TemplatesPage() {
 
     const templatesQuery = useApiQuery<Template[]>({
         queryKey: ["templates"],
-        queryFn: () => api.api.templates.get() as unknown as Promise<{ data: Template[]; error: unknown }>,
+        queryFn: () => api.api.templates.get(),
         fallback: [],
     });
 

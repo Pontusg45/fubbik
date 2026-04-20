@@ -75,10 +75,11 @@ function NewPlanPage() {
                 .filter(Boolean)
                 .map(t => ({ title: t }));
             if (tasks.length > 0) body.tasks = tasks;
-            return unwrapEden(await api.api.plans.post(body));
+            const created = unwrapEden(await api.api.plans.post(body)) as { id: string };
+            return created;
         },
         onSuccess: plan => {
-            navigate({ to: "/plans/$planId", params: { planId: (plan as any).id } });
+            navigate({ to: "/plans/$planId", params: { planId: plan.id } });
         },
     });
 

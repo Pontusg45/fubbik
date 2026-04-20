@@ -152,14 +152,14 @@ function PlansIndexPage() {
     // Row actions
     const updateMutation = useMutation({
         mutationFn: async ({ id, body }: { id: string; body: Record<string, unknown> }) =>
-            unwrapEden(await (api.api as any).plans[id].patch(body)),
+            unwrapEden(await api.api.plans({ id }).patch(body)),
         onSuccess: () => queryClient.invalidateQueries({ queryKey: ["plans"] }),
         onError: () => toast.error("Failed to update plan"),
     });
 
     const duplicateMutation = useMutation({
         mutationFn: async (id: string) =>
-            unwrapEden(await (api.api as any).plans[id].duplicate.post()) as PlanRow,
+            unwrapEden(await api.api.plans({ id }).duplicate.post()),
         onSuccess: created => {
             queryClient.invalidateQueries({ queryKey: ["plans"] });
             toast.success(`Duplicated as "${created.title}"`);
@@ -170,7 +170,7 @@ function PlansIndexPage() {
 
     const deleteMutation = useMutation({
         mutationFn: async (id: string) =>
-            unwrapEden(await (api.api as any).plans[id].delete()),
+            unwrapEden(await api.api.plans({ id }).delete()),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["plans"] });
             toast.success("Plan deleted");

@@ -31,12 +31,12 @@ function CodebasesPage() {
 
     const codebasesQuery = useApiQuery<any[]>({
         queryKey: ["codebases"],
-        queryFn: () => api.api.codebases.get() as unknown as Promise<{ data: any[]; error: unknown }>,
+        queryFn: () => api.api.codebases.get(),
         fallback: [],
     });
 
     const createMutation = useApiMutation<unknown, { name: string; remoteUrl?: string }>({
-        mutationFn: body => api.api.codebases.post(body) as any,
+        mutationFn: body => api.api.codebases.post(body),
         invalidate: ["codebases"],
         successToast: false,
         onSuccess: () => {
@@ -46,7 +46,7 @@ function CodebasesPage() {
     });
 
     const deleteMutation = useApiMutation<unknown, string>({
-        mutationFn: id => api.api.codebases({ id }).delete() as any,
+        mutationFn: id => api.api.codebases({ id }).delete(),
         invalidate: ["codebases"],
         successToast: false,
     });

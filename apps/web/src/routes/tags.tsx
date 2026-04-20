@@ -110,13 +110,13 @@ function TagsPage() {
 
     const tagsQuery = useApiQuery<Tag[]>({
         queryKey: ["tags"],
-        queryFn: () => api.api.tags.get() as unknown as Promise<{ data: Tag[]; error: unknown }>,
+        queryFn: () => api.api.tags.get(),
         fallback: [],
     });
 
     const tagTypesQuery = useApiQuery<TagType[]>({
         queryKey: ["tag-types"],
-        queryFn: () => api.api["tag-types"].get() as unknown as Promise<{ data: TagType[]; error: unknown }>,
+        queryFn: () => api.api["tag-types"].get(),
         fallback: [],
     });
 
