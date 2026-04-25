@@ -19,6 +19,7 @@ import {
     getVersionsByChunkId,
     listArchivedChunks as listArchivedChunksRepo,
     listChunks as listChunksRepo,
+    listTemplates as listTemplatesRepo,
     mergeChunks as mergeChunksRepo,
     restoreChunk as restoreChunkRepo,
     semanticSearch as semanticSearchRepo,
@@ -33,7 +34,11 @@ import { enrichChunk } from "../enrich/service";
 import { NotFoundError, ValidationError } from "../errors";
 import { events, EVENTS } from "../events/bus";
 import { generateQueryEmbedding } from "../ollama/client";
+import { extractFields, parseHeadings } from "../templates/field-extraction";
+import { matchTemplates } from "../templates/match-engine";
+import type { FieldMapping, TemplateWithRules } from "../templates/types";
 import { computeHealthScore } from "./health-score";
+import { extractFrontmatter, parseDocFile } from "./parse-docs";
 
 export function listChunks(
     userId: string | undefined,
@@ -401,6 +406,104 @@ export function semanticSearch(userId: string | undefined, query: { q: string; l
     return generateQueryEmbedding(query.q).pipe(
         Effect.flatMap(embedding => semanticSearchRepo({ embedding, userId, exclude, scope, limit }))
     );
+}
+
+export interface PreviewFileResult {
+    path: string;
+    title: string;
+    suggestedTemplate: {
+        id: string;
+        name: string;
+        score: number;
+        type: string;
+        tags: string[];
+        extractedFields: {
+            rationale?: string;
+            alternatives?: string[];
+            consequences?: string;
+            summary?: string;
+            scope?: Record<string, string>;
+        };
+    } | null;
+    parsed: {
+        title: string;
+        type: string;
+        tags: string[];
+        content: string;
+    };
+}
+
+export function previewImportDocs(
+    userId: string,
+    files: { path: string; content: string }[],
+    _codebaseId: string
+) {
+    return Effect.gen(function* () {
+        const allTemplates = yield* listTemplatesRepo(userId);
+
+        const templatesWithRules: TemplateWithRules[] = allTemplates
+            .filter(t => t.matchRules != null)
+            .map(t => ({
+                id: t.id,
+                name: t.name,
+                type: t.type,
+                matchRules: t.matchRules as TemplateWithRules["matchRules"],
+                fieldMappings: (t.fieldMappings ?? null) as FieldMapping[] | null,
+                priority: t.priority ?? 0,
+                tags: (t.tags ?? null) as string[] | null,
+            }));
+
+        const results: PreviewFileResult[] = [];
+
+        for (const file of files) {
+            const parsed = parseDocFile(file.path, file.content);
+            const { frontmatter } = extractFrontmatter(file.content);
+            const headings = parseHeadings(file.content);
+
+            const match = matchTemplates({ headings, frontmatter }, templatesWithRules);
+
+            let suggestedTemplate: PreviewFileResult["suggestedTemplate"] = null;
+
+            if (match !== null) {
+                const matchedTemplate = templatesWithRules.find(t => t.id === match.templateId);
+                const fieldMappings = matchedTemplate?.fieldMappings ?? [];
+                const { extracted } = fieldMappings.length > 0
+                    ? extractFields(file.content, fieldMappings)
+                    : { extracted: {} };
+
+                const mergedTags = [...new Set([...(match.tags ?? []), ...parsed.tags])];
+
+                suggestedTemplate = {
+                    id: match.templateId,
+                    name: match.templateName,
+                    score: match.score,
+                    type: match.type,
+                    tags: mergedTags,
+                    extractedFields: {
+                        ...(extracted.rationale !== undefined && { rationale: extracted.rationale }),
+                        ...(extracted.alternatives !== undefined && { alternatives: extracted.alternatives }),
+                        ...(extracted.consequences !== undefined && { consequences: extracted.consequences }),
+                        ...(extracted.summary !== undefined && { summary: extracted.summary }),
+                        ...(extracted.scope !== undefined && { scope: extracted.scope }),
+                    },
+                };
+            }
+
+            results.push({
+                path: file.path,
+                title: parsed.title,
+                suggestedTemplate,
+                parsed: {
+                    title: parsed.title,
+                    type: parsed.type,
+                    tags: parsed.tags,
+                    content: parsed.content,
+                },
+            });
+        }
+
+        return results;
+    });
 }
 
 /**
