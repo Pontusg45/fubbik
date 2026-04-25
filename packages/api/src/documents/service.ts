@@ -7,6 +7,7 @@ import {
     getDocumentBySourcePath,
     getDocumentChunks,
     getTagsForChunk,
+    getTemplateById,
     listDocuments as listDocumentsRepo,
     searchDocumentChunks,
     setChunkCodebases,
@@ -16,7 +17,10 @@ import {
 } from "@fubbik/db/repository";
 import { Effect } from "effect";
 
+import { parseDocFile } from "../chunks/parse-docs";
 import { NotFoundError } from "../errors";
+import { extractFields } from "../templates/field-extraction";
+import type { FieldMapping } from "../templates/types";
 import { splitMarkdown } from "./split-markdown";
 
 function hashContent(content: string): string {
@@ -40,7 +44,8 @@ export function importDocument(
     userId: string,
     sourcePath: string,
     rawContent: string,
-    codebaseId?: string
+    codebaseId?: string,
+    templateId?: string
 ) {
     return Effect.gen(function* () {
         const contentHash = hashContent(rawContent);
@@ -54,6 +59,65 @@ export function importDocument(
             return yield* syncDocument(existing.id, rawContent, userId, codebaseId);
         }
 
+        // Template-aware import path
+        if (templateId) {
+            const template = yield* getTemplateById(templateId);
+
+            if (template) {
+                const parsed = parseDocFile(sourcePath, rawContent);
+                const fieldMappings = (template.fieldMappings ?? []) as FieldMapping[];
+
+                const { extracted, remainingContent } =
+                    fieldMappings.length > 0
+                        ? extractFields(rawContent, fieldMappings)
+                        : { extracted: {}, remainingContent: rawContent };
+
+                const mergedTags = [...new Set([...(template.tags ?? []), ...parsed.tags])];
+
+                const docId = crypto.randomUUID();
+                const doc = yield* createDocumentRepo({
+                    id: docId,
+                    title: parsed.title,
+                    sourcePath,
+                    contentHash,
+                    description: undefined,
+                    codebaseId,
+                    userId
+                });
+
+                const tagIds = mergedTags.length > 0 ? yield* resolveTagIds(mergedTags, userId) : [];
+
+                const chunkId = crypto.randomUUID();
+                yield* createChunkRepo({
+                    id: chunkId,
+                    title: parsed.title,
+                    content: remainingContent,
+                    type: template.type,
+                    userId,
+                    rationale: extracted.rationale,
+                    alternatives: extracted.alternatives,
+                    consequences: extracted.consequences,
+                    origin: "ai",
+                    documentId: docId,
+                    documentOrder: 0
+                });
+
+                if (extracted.summary) {
+                    yield* updateChunkRepo(chunkId, { summary: extracted.summary });
+                }
+
+                if (tagIds.length > 0) {
+                    yield* setChunkTags(chunkId, tagIds);
+                }
+                if (codebaseId) {
+                    yield* setChunkCodebases(chunkId, [codebaseId]);
+                }
+
+                return { document: doc, created: 1, updated: 0, status: "created" as const };
+            }
+        }
+
+        // Default (non-template) import path
         const split = splitMarkdown(rawContent, sourcePath);
         const docId = crypto.randomUUID();
 

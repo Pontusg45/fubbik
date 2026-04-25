@@ -100,7 +100,12 @@ export const chunkRoutes = new Elysia()
                                 retryAfter: Math.ceil((rl.resetAt - Date.now()) / 1000)
                             } as any);
                         }
-                        return chunkService.importDocs(session.user.id, ctx.body.files, ctx.body.codebaseId);
+                        return chunkService.importDocs(
+                            session.user.id,
+                            ctx.body.files,
+                            ctx.body.codebaseId,
+                            ctx.body.templateOverrides
+                        );
                     })
                 )
             ),
@@ -113,7 +118,8 @@ export const chunkRoutes = new Elysia()
                     }),
                     { maxItems: 500 }
                 ),
-                codebaseId: t.String()
+                codebaseId: t.String(),
+                templateOverrides: t.Optional(t.Record(t.String(), t.Union([t.String(), t.Null()])))
             })
         }
     )

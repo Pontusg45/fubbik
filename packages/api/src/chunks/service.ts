@@ -337,7 +337,8 @@ export function importChunks(userId: string, chunks: { title: string; content?: 
 export function importDocs(
     userId: string,
     files: { path: string; content: string }[],
-    codebaseId: string
+    codebaseId: string,
+    templateOverrides?: Record<string, string | null>
 ) {
     const results: { created: number; skipped: number; errors: { path: string; error: string }[] } = {
         created: 0,
@@ -347,8 +348,9 @@ export function importDocs(
 
     return Effect.forEach(
         files,
-        file =>
-            importDocument(userId, file.path, file.content, codebaseId).pipe(
+        file => {
+            const templateId = templateOverrides?.[file.path] ?? undefined;
+            return importDocument(userId, file.path, file.content, codebaseId, templateId ?? undefined).pipe(
                 Effect.map(result => {
                     if (result.status === "unchanged") {
                         results.skipped++;
@@ -360,7 +362,8 @@ export function importDocs(
                     results.errors.push({ path: file.path, error: String(err) });
                     return Effect.void;
                 })
-            ),
+            );
+        },
         { concurrency: 5 }
     ).pipe(Effect.map(() => results));
 }
