@@ -26,7 +26,11 @@ export const templateRoutes = new Elysia()
                 name: t.String({ maxLength: 100 }),
                 description: t.Optional(t.Union([t.String({ maxLength: 500 }), t.Null()])),
                 type: t.String({ maxLength: 20 }),
-                content: t.String({ maxLength: 50000 })
+                content: t.String({ maxLength: 50000 }),
+                matchRules: t.Optional(t.Any()),
+                fieldMappings: t.Optional(t.Any()),
+                priority: t.Optional(t.Number()),
+                tags: t.Optional(t.Array(t.String({ maxLength: 50 }), { maxItems: 20 }))
             })
         }
     )
@@ -43,7 +47,11 @@ export const templateRoutes = new Elysia()
                 name: t.Optional(t.String({ maxLength: 100 })),
                 description: t.Optional(t.Union([t.String({ maxLength: 500 }), t.Null()])),
                 type: t.Optional(t.String({ maxLength: 20 })),
-                content: t.Optional(t.String({ maxLength: 50000 }))
+                content: t.Optional(t.String({ maxLength: 50000 })),
+                matchRules: t.Optional(t.Any()),
+                fieldMappings: t.Optional(t.Any()),
+                priority: t.Optional(t.Number()),
+                tags: t.Optional(t.Array(t.String({ maxLength: 50 }), { maxItems: 20 }))
             })
         }
     )

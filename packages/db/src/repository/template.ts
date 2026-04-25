@@ -24,6 +24,10 @@ export function createTemplate(params: {
     description?: string | null;
     type: string;
     content: string;
+    matchRules?: unknown;
+    fieldMappings?: unknown;
+    priority?: number;
+    tags?: string[];
     userId: string;
 }) {
     return dbEffect(async () => {
@@ -36,6 +40,10 @@ export function createTemplate(params: {
                     type: params.type,
                     content: params.content,
                     isBuiltIn: false,
+                    matchRules: params.matchRules ?? null,
+                    fieldMappings: params.fieldMappings ?? null,
+                    priority: params.priority ?? 0,
+                    tags: params.tags ?? null,
                     userId: params.userId
                 })
                 .returning();
@@ -46,7 +54,16 @@ export function createTemplate(params: {
 export function updateTemplate(
     id: string,
     userId: string,
-    params: { name?: string; description?: string | null; type?: string; content?: string }
+    params: {
+        name?: string;
+        description?: string | null;
+        type?: string;
+        content?: string;
+        matchRules?: unknown;
+        fieldMappings?: unknown;
+        priority?: number;
+        tags?: string[];
+    }
 ) {
     return dbEffect(async () => {
             const [updated] = await db
@@ -55,7 +72,11 @@ export function updateTemplate(
                     ...(params.name !== undefined && { name: params.name }),
                     ...(params.description !== undefined && { description: params.description }),
                     ...(params.type !== undefined && { type: params.type }),
-                    ...(params.content !== undefined && { content: params.content })
+                    ...(params.content !== undefined && { content: params.content }),
+                    ...(params.matchRules !== undefined && { matchRules: params.matchRules }),
+                    ...(params.fieldMappings !== undefined && { fieldMappings: params.fieldMappings }),
+                    ...(params.priority !== undefined && { priority: params.priority }),
+                    ...(params.tags !== undefined && { tags: params.tags })
                 })
                 .where(and(eq(chunkTemplate.id, id), eq(chunkTemplate.userId, userId)))
                 .returning();

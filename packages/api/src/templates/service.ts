@@ -15,7 +15,16 @@ export function listTemplates(userId: string) {
 
 export function createTemplate(
     userId: string,
-    body: { name: string; description?: string | null; type: string; content: string }
+    body: {
+        name: string;
+        description?: string | null;
+        type: string;
+        content: string;
+        matchRules?: unknown;
+        fieldMappings?: unknown;
+        priority?: number;
+        tags?: string[];
+    }
 ) {
     const id = crypto.randomUUID();
     return createTemplateRepo({
@@ -24,6 +33,10 @@ export function createTemplate(
         description: body.description,
         type: body.type,
         content: body.content,
+        matchRules: body.matchRules,
+        fieldMappings: body.fieldMappings,
+        priority: body.priority,
+        tags: body.tags,
         userId
     });
 }
@@ -31,7 +44,16 @@ export function createTemplate(
 export function updateTemplate(
     id: string,
     userId: string,
-    body: { name?: string; description?: string | null; type?: string; content?: string }
+    body: {
+        name?: string;
+        description?: string | null;
+        type?: string;
+        content?: string;
+        matchRules?: unknown;
+        fieldMappings?: unknown;
+        priority?: number;
+        tags?: string[];
+    }
 ) {
     return getTemplateById(id).pipe(
         Effect.flatMap(found =>
