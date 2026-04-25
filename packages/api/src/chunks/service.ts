@@ -36,7 +36,7 @@ import { events, EVENTS } from "../events/bus";
 import { generateQueryEmbedding } from "../ollama/client";
 import { extractFields, parseHeadings } from "../templates/field-extraction";
 import { matchTemplates } from "../templates/match-engine";
-import type { FieldMapping, TemplateWithRules } from "../templates/types";
+import type { ExtractedFields, FieldMapping, TemplateWithRules } from "../templates/types";
 import { computeHealthScore } from "./health-score";
 import { extractFrontmatter, parseDocFile } from "./parse-docs";
 
@@ -472,7 +472,7 @@ export function previewImportDocs(
                 const fieldMappings = matchedTemplate?.fieldMappings ?? [];
                 const { extracted } = fieldMappings.length > 0
                     ? extractFields(file.content, fieldMappings)
-                    : { extracted: {} };
+                    : { extracted: {} as ExtractedFields };
 
                 const mergedTags = [...new Set([...(match.tags ?? []), ...parsed.tags])];
 
