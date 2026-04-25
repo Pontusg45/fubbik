@@ -49,6 +49,7 @@ describe("CLI help output", () => {
         expect(stdout).toContain("req");
         expect(stdout).toContain("maintain");
         expect(stdout).toContain("review");
+        expect(stdout).toContain("setup");
     });
 
     it("chunk --help shows subcommands", () => {
@@ -108,6 +109,14 @@ describe("CLI help output", () => {
     it("completions --help shows shell argument", () => {
         const { stdout } = runCli("completions --help");
         expect(stdout).toContain("shell");
+    });
+
+    it("setup --help shows options", () => {
+        const { stdout } = runCli("setup --help");
+        expect(stdout).toContain("--server");
+        expect(stdout).toContain("--dry-run");
+        expect(stdout).toContain("--yes");
+        expect(stdout).toContain("--force");
     });
 });
 
