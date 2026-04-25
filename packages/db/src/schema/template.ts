@@ -1,5 +1,5 @@
 import { relations, sql } from "drizzle-orm";
-import { boolean, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import { boolean, integer, jsonb, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 import { user } from "./auth";
 
 export const chunkTemplate = pgTable(
@@ -11,6 +11,10 @@ export const chunkTemplate = pgTable(
         type: text("type").notNull().default("note"),
         content: text("content").notNull().default(""),
         isBuiltIn: boolean("is_built_in").notNull().default(false),
+        matchRules: jsonb("match_rules"),
+        fieldMappings: jsonb("field_mappings"),
+        priority: integer("priority").notNull().default(0),
+        tags: text("tags").array(),
         userId: text("user_id").references(() => user.id, { onDelete: "cascade" }),
         createdAt: timestamp("created_at").defaultNow().notNull()
     },

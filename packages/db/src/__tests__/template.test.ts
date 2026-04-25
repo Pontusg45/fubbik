@@ -12,6 +12,10 @@ describe("chunkTemplate table", () => {
         expect(columns).toHaveProperty("type");
         expect(columns).toHaveProperty("content");
         expect(columns).toHaveProperty("isBuiltIn");
+        expect(columns).toHaveProperty("matchRules");
+        expect(columns).toHaveProperty("fieldMappings");
+        expect(columns).toHaveProperty("priority");
+        expect(columns).toHaveProperty("tags");
         expect(columns).toHaveProperty("userId");
         expect(columns).toHaveProperty("createdAt");
     });
