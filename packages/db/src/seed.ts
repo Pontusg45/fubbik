@@ -26,6 +26,7 @@ import { collection } from "./schema/collection";
 import { workspace, workspaceCodebase } from "./schema/workspace";
 import { chunkType } from "./schema/chunk-type";
 import { connectionRelation } from "./schema/connection-relation";
+import { chunkTemplate } from "./schema/template";
 
 config({ path: resolve(import.meta.dirname, "../../../apps/server/.env") });
 
@@ -2785,5 +2786,144 @@ for (const setting of defaultInstanceSettings) {
         .onConflictDoNothing();
 }
 console.log("\nSeeded default instance settings");
+
+// ---------------------------------------------------------------------------
+// Builtin templates with match rules and field mappings.
+// Upsert on id so re-seeding is idempotent.
+// ---------------------------------------------------------------------------
+const BUILTIN_TEMPLATES = [
+    {
+        id: "builtin-decision-record",
+        name: "Decision Record",
+        description: "Architecture Decision Record (ADR)",
+        type: "document",
+        content: "## Context\n\n## Decision\n\n## Alternatives\n\n## Consequences\n",
+        isBuiltIn: true,
+        priority: 10,
+        tags: ["architecture", "decision"],
+        matchRules: {
+            minScore: 2,
+            headings: [
+                { patterns: ["Decision", "Choice", "Selected Option"], match: "prefix", level: 2, required: true },
+                { patterns: ["Alternatives", "Options Considered"], match: "prefix", level: 2, required: true },
+                { patterns: ["Consequences", "Impact"], match: "prefix", level: 2, required: false },
+                { patterns: ["Context", "Background"], match: "prefix", level: 2, required: false },
+            ],
+            frontmatter: [
+                { key: "type", match: "oneOf", values: ["adr", "decision", "architecture-decision"] },
+            ],
+        },
+        fieldMappings: [
+            { headings: ["Context", "Background"], match: "prefix", target: "content" },
+            { headings: ["Decision", "Choice"], match: "prefix", target: "rationale" },
+            { headings: ["Alternatives", "Options Considered"], match: "prefix", target: "alternatives" },
+            { headings: ["Consequences", "Impact"], match: "prefix", target: "consequences" },
+        ],
+    },
+    {
+        id: "builtin-api-reference",
+        name: "API Reference",
+        description: "API endpoint documentation",
+        type: "reference",
+        content: "## Endpoint\n\n## Request\n\n## Response\n\n## Errors\n",
+        isBuiltIn: true,
+        priority: 5,
+        tags: ["api", "reference"],
+        matchRules: {
+            minScore: 2,
+            headings: [
+                { patterns: ["Endpoint", "URL", "Route"], match: "prefix", level: 2, required: true },
+                { patterns: ["Request", "Parameters", "Payload"], match: "prefix", level: 2, required: true },
+                { patterns: ["Response", "Returns"], match: "prefix", level: 2, required: false },
+                { patterns: ["Errors", "Error Codes"], match: "prefix", level: 2, required: false },
+            ],
+            frontmatter: [
+                { key: "type", match: "oneOf", values: ["api", "endpoint", "reference"] },
+            ],
+        },
+        fieldMappings: null,
+    },
+    {
+        id: "builtin-meeting-notes",
+        name: "Meeting Notes",
+        description: "Meeting notes with attendees and action items",
+        type: "note",
+        content: "## Attendees\n\n## Agenda\n\n## Notes\n\n## Action Items\n",
+        isBuiltIn: true,
+        priority: 5,
+        tags: ["meeting"],
+        matchRules: {
+            minScore: 2,
+            headings: [
+                { patterns: ["Attendees", "Participants", "Present"], match: "prefix", level: 2, required: true },
+                { patterns: ["Action Items", "Actions", "TODOs", "Next Steps"], match: "prefix", level: 2, required: true },
+                { patterns: ["Agenda"], match: "prefix", level: 2, required: false },
+                { patterns: ["Notes", "Discussion"], match: "prefix", level: 2, required: false },
+            ],
+            frontmatter: [
+                { key: "type", match: "oneOf", values: ["meeting", "meeting-notes"] },
+            ],
+        },
+        fieldMappings: [
+            { headings: ["Summary", "TLDR"], match: "prefix", target: "summary" },
+        ],
+    },
+    {
+        id: "builtin-checklist",
+        name: "Checklist",
+        description: "Checklist or procedure",
+        type: "checklist",
+        content: "## Prerequisites\n\n## Steps\n\n- [ ] Step 1\n- [ ] Step 2\n",
+        isBuiltIn: true,
+        priority: 3,
+        tags: ["checklist"],
+        matchRules: {
+            minScore: 1,
+            headings: [],
+            frontmatter: [
+                { key: "type", match: "oneOf", values: ["checklist", "procedure"] },
+            ],
+        },
+        fieldMappings: null,
+    },
+    {
+        id: "builtin-schema",
+        name: "Schema",
+        description: "Data schema or model definition",
+        type: "schema",
+        content: "## Fields\n\n## Relationships\n\n## Constraints\n",
+        isBuiltIn: true,
+        priority: 3,
+        tags: ["schema"],
+        matchRules: {
+            minScore: 1,
+            headings: [],
+            frontmatter: [
+                { key: "type", match: "oneOf", values: ["schema", "model", "data-model"] },
+            ],
+        },
+        fieldMappings: null,
+    },
+];
+
+for (const tmpl of BUILTIN_TEMPLATES) {
+    await db
+        .insert(chunkTemplate)
+        .values(tmpl)
+        .onConflictDoUpdate({
+            target: chunkTemplate.id,
+            set: {
+                name: tmpl.name,
+                description: tmpl.description,
+                type: tmpl.type,
+                content: tmpl.content,
+                matchRules: tmpl.matchRules,
+                fieldMappings: tmpl.fieldMappings,
+                priority: tmpl.priority,
+                tags: tmpl.tags,
+            },
+        });
+}
+console.log(`\nSeeded ${BUILTIN_TEMPLATES.length} builtin templates`);
 
 process.exit(0);

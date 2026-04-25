@@ -10,6 +10,7 @@ import { eq } from "drizzle-orm";
 
 import { chunkType } from "../../schema/chunk-type";
 import { connectionRelation } from "../../schema/connection-relation";
+import { chunkTemplate } from "../../schema/template";
 import type { SeedContext } from "../context";
 
 const BUILTIN_CHUNK_TYPES = [
@@ -37,6 +38,121 @@ const BUILTIN_RELATIONS = [
     { id: "contradicts",    label: "Contradicts",    description: "Source disagrees with target",                                   arrowStyle: "solid",  direction: "bidirectional", color: "#ef4444", displayOrder: 70 },
     { id: "alternative_to", label: "Alternative to", description: "Source and target are competing approaches",                     arrowStyle: "dashed", direction: "bidirectional", color: "#a855f7", displayOrder: 80 }
 ] as const;
+
+const BUILTIN_TEMPLATES = [
+    {
+        id: "builtin-decision-record",
+        name: "Decision Record",
+        description: "Architecture Decision Record (ADR)",
+        type: "document",
+        content: "## Context\n\n## Decision\n\n## Alternatives\n\n## Consequences\n",
+        isBuiltIn: true,
+        priority: 10,
+        tags: ["architecture", "decision"],
+        matchRules: {
+            minScore: 2,
+            headings: [
+                { patterns: ["Decision", "Choice", "Selected Option"], match: "prefix", level: 2, required: true },
+                { patterns: ["Alternatives", "Options Considered"], match: "prefix", level: 2, required: true },
+                { patterns: ["Consequences", "Impact"], match: "prefix", level: 2, required: false },
+                { patterns: ["Context", "Background"], match: "prefix", level: 2, required: false },
+            ],
+            frontmatter: [
+                { key: "type", match: "oneOf", values: ["adr", "decision", "architecture-decision"] },
+            ],
+        },
+        fieldMappings: [
+            { headings: ["Context", "Background"], match: "prefix", target: "content" },
+            { headings: ["Decision", "Choice"], match: "prefix", target: "rationale" },
+            { headings: ["Alternatives", "Options Considered"], match: "prefix", target: "alternatives" },
+            { headings: ["Consequences", "Impact"], match: "prefix", target: "consequences" },
+        ],
+    },
+    {
+        id: "builtin-api-reference",
+        name: "API Reference",
+        description: "API endpoint documentation",
+        type: "reference",
+        content: "## Endpoint\n\n## Request\n\n## Response\n\n## Errors\n",
+        isBuiltIn: true,
+        priority: 5,
+        tags: ["api", "reference"],
+        matchRules: {
+            minScore: 2,
+            headings: [
+                { patterns: ["Endpoint", "URL", "Route"], match: "prefix", level: 2, required: true },
+                { patterns: ["Request", "Parameters", "Payload"], match: "prefix", level: 2, required: true },
+                { patterns: ["Response", "Returns"], match: "prefix", level: 2, required: false },
+                { patterns: ["Errors", "Error Codes"], match: "prefix", level: 2, required: false },
+            ],
+            frontmatter: [
+                { key: "type", match: "oneOf", values: ["api", "endpoint", "reference"] },
+            ],
+        },
+        fieldMappings: null,
+    },
+    {
+        id: "builtin-meeting-notes",
+        name: "Meeting Notes",
+        description: "Meeting notes with attendees and action items",
+        type: "note",
+        content: "## Attendees\n\n## Agenda\n\n## Notes\n\n## Action Items\n",
+        isBuiltIn: true,
+        priority: 5,
+        tags: ["meeting"],
+        matchRules: {
+            minScore: 2,
+            headings: [
+                { patterns: ["Attendees", "Participants", "Present"], match: "prefix", level: 2, required: true },
+                { patterns: ["Action Items", "Actions", "TODOs", "Next Steps"], match: "prefix", level: 2, required: true },
+                { patterns: ["Agenda"], match: "prefix", level: 2, required: false },
+                { patterns: ["Notes", "Discussion"], match: "prefix", level: 2, required: false },
+            ],
+            frontmatter: [
+                { key: "type", match: "oneOf", values: ["meeting", "meeting-notes"] },
+            ],
+        },
+        fieldMappings: [
+            { headings: ["Summary", "TLDR"], match: "prefix", target: "summary" },
+        ],
+    },
+    {
+        id: "builtin-checklist",
+        name: "Checklist",
+        description: "Checklist or procedure",
+        type: "checklist",
+        content: "## Prerequisites\n\n## Steps\n\n- [ ] Step 1\n- [ ] Step 2\n",
+        isBuiltIn: true,
+        priority: 3,
+        tags: ["checklist"],
+        matchRules: {
+            minScore: 1,
+            headings: [],
+            frontmatter: [
+                { key: "type", match: "oneOf", values: ["checklist", "procedure"] },
+            ],
+        },
+        fieldMappings: null,
+    },
+    {
+        id: "builtin-schema",
+        name: "Schema",
+        description: "Data schema or model definition",
+        type: "schema",
+        content: "## Fields\n\n## Relationships\n\n## Constraints\n",
+        isBuiltIn: true,
+        priority: 3,
+        tags: ["schema"],
+        matchRules: {
+            minScore: 1,
+            headings: [],
+            frontmatter: [
+                { key: "type", match: "oneOf", values: ["schema", "model", "data-model"] },
+            ],
+        },
+        fieldMappings: null,
+    },
+];
 
 const INVERSE_PAIRS: Array<[string, string]> = [
     ["depends_on", "required_by"],
@@ -88,6 +204,26 @@ export async function seed(ctx: SeedContext): Promise<void> {
         await ctx.db.update(connectionRelation).set({ inverseOfId: a }).where(eq(connectionRelation.id, b));
     }
     ctx.counters["connection_relations"] = BUILTIN_RELATIONS.length;
+
+    for (const tmpl of BUILTIN_TEMPLATES) {
+        await ctx.db
+            .insert(chunkTemplate)
+            .values(tmpl)
+            .onConflictDoUpdate({
+                target: chunkTemplate.id,
+                set: {
+                    name: tmpl.name,
+                    description: tmpl.description,
+                    type: tmpl.type,
+                    content: tmpl.content,
+                    matchRules: tmpl.matchRules,
+                    fieldMappings: tmpl.fieldMappings,
+                    priority: tmpl.priority,
+                    tags: tmpl.tags,
+                },
+            });
+    }
+    ctx.counters["builtin_templates"] = BUILTIN_TEMPLATES.length;
 }
 
 // No reset — catalogs are builtins and outlive individual runs.
