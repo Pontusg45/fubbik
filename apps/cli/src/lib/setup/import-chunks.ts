@@ -88,6 +88,25 @@ export async function importToServer(
 		}
 	}
 
+	// Set appliesTo patterns for chunks that have them
+	const chunksWithAppliesTo = tier23.filter(c => c.appliesTo && c.appliesTo.length > 0);
+	if (chunksWithAppliesTo.length > 0) {
+		onProgress?.("Setting file patterns...");
+		for (const chunk of chunksWithAppliesTo) {
+			const chunkId = titleToId.get(chunk.title);
+			if (!chunkId || !chunk.appliesTo) continue;
+			try {
+				await fetch(`${serverUrl}/api/chunks/${chunkId}/applies-to`, {
+					method: "PUT",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify(chunk.appliesTo.map(pattern => ({ pattern }))),
+				});
+			} catch {
+				// Non-fatal — patterns are a nice-to-have
+			}
+		}
+	}
+
 	// Look up tier-1 chunk IDs for connections
 	if (connections.length > 0) {
 		onProgress?.("Resolving chunk references...");
