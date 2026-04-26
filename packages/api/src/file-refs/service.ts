@@ -1,4 +1,4 @@
-import { getChunkById, getFileRefsForChunk, lookupChunksByFilePath, setFileRefsForChunk } from "@fubbik/db/repository";
+import { getChunkById, getFileRefsForChunk, lookupChunksByFilePath, setFileRefsForChunk, listAllFileRefs } from "@fubbik/db/repository";
 import { Effect } from "effect";
 
 import { NotFoundError } from "../errors";
@@ -23,4 +23,8 @@ export function setFileRefs(
 
 export function lookupByPath(path: string, userId: string) {
     return lookupChunksByFilePath(path, userId);
+}
+
+export function listAll(userId: string) {
+    return listAllFileRefs(userId);
 }

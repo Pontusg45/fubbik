@@ -35,6 +35,13 @@ export const fileRefRoutes = new Elysia()
         }
     )
     .get(
+        "/file-refs",
+        ctx =>
+            Effect.runPromise(
+                requireSession(ctx).pipe(Effect.flatMap(session => fileRefService.listAll(session.user.id)))
+            )
+    )
+    .get(
         "/file-refs/lookup",
         ctx =>
             Effect.runPromise(

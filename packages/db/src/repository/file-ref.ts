@@ -63,3 +63,18 @@ export function lookupChunksByFilePath(path: string, userId: string) {
                 .innerJoin(chunk, eq(chunkFileRef.chunkId, chunk.id))
                 .where(and(eq(chunkFileRef.path, path), eq(chunk.userId, userId))));
 }
+
+export function listAllFileRefs(userId: string) {
+    return dbEffect(() =>
+        db
+            .select({
+                chunkId: chunk.id,
+                chunkTitle: chunk.title,
+                path: chunkFileRef.path,
+                anchor: chunkFileRef.anchor
+            })
+            .from(chunkFileRef)
+            .innerJoin(chunk, eq(chunkFileRef.chunkId, chunk.id))
+            .where(eq(chunk.userId, userId))
+    );
+}
