@@ -2,7 +2,6 @@ import { Bot, Clock, Scale, Star } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { MarkdownRenderer } from "@/components/markdown-renderer";
-import { ChunkLinkRenderer } from "@/features/chunks/chunk-link-renderer";
 import { ChunkTypeIcon } from "@/features/chunks/chunk-type-icon";
 import { estimateReadingTime } from "@/features/chunks/reading-time";
 import { StalenessBanner } from "@/features/staleness/staleness-banner";
@@ -116,7 +115,7 @@ export function ChunkDetailContent({
 
             {/* Content */}
             <div className={`prose dark:prose-invert max-w-none ${readerClasses}`}>
-                <ChunkLinkRenderer content={content} currentChunkId={chunkId} />
+                <MarkdownRenderer excludeChunkId={chunkId}>{content}</MarkdownRenderer>
             </div>
 
             {/* Decision context callout */}
