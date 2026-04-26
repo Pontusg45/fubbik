@@ -7,6 +7,7 @@ import { Settings, SlidersHorizontal, Tags, FileText, BookOpen, Languages, Folde
 
 import { ErrorBoundary } from "@/components/error-boundary";
 import FubbikLogo from "@/components/fubbik-logo";
+import { SmartLinkProvider } from "@/components/smart-link-provider";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -71,6 +72,7 @@ function RootDocument() {
             </head>
             <body>
                 <ThemeProvider>
+                    <SmartLinkProvider>
                     <VocabularyPrimer />
                     <a
                         href="#main-content"
@@ -229,6 +231,7 @@ function RootDocument() {
                     {!isLanding && <ReadingTrailSidebar />}
                     <KeyboardShortcutsHelp open={helpOpen} onOpenChange={setHelpOpen} />
                     <Toaster richColors />
+                    </SmartLinkProvider>
                 </ThemeProvider>
 
                 <TanStackRouterDevtools position="bottom-left" />
