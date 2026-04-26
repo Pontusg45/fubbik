@@ -1,7 +1,10 @@
-import { useEffect, useId, useState } from "react";
+import { createContext, useContext, useEffect, useId, useState } from "react";
+import { Link } from "@tanstack/react-router";
 import Markdown, { type Components } from "react-markdown";
 import rehypeRaw from "rehype-raw";
 import remarkGfm from "remark-gfm";
+import { matchInCode, matchVocabularyInText, useSmartLinks } from "./smart-link-provider";
+import { VocabularyPopover } from "./vocabulary-popover";
 
 let mermaidReady: typeof import("mermaid").default | null = null;
 
@@ -119,6 +122,128 @@ function CodeBlock({ className, children }: { className?: string; children: stri
     );
 }
 
+const ExcludeChunkContext = createContext<string | undefined>(undefined);
+
+/* ─── Smart inline code ─── */
+
+function SmartCode({ children, className, ...props }: {
+    children: string;
+    className?: string;
+    [key: string]: unknown;
+}) {
+    const { chunkIndex, fileRefIndex, vocabIndex } = useSmartLinks();
+    const excludeChunkId = useContext(ExcludeChunkContext);
+    const text = String(children);
+    const isInline = !className && !text.includes("\n");
+
+    if (!isInline) {
+        return <CodeBlock className={className}>{text}</CodeBlock>;
+    }
+
+    const match = matchInCode(text, chunkIndex, fileRefIndex, vocabIndex, excludeChunkId);
+
+    if (match?.type === "chunk") {
+        return (
+            <Link
+                to="/chunks/$chunkId"
+                params={{ chunkId: match.id }}
+                className="rounded bg-primary/10 px-1.5 py-0.5 text-sm font-mono text-primary hover:bg-primary/20 transition-colors"
+            >
+                {children}
+            </Link>
+        );
+    }
+
+    if (match?.type === "fileRef") {
+        return (
+            <Link
+                to="/chunks/$chunkId"
+                params={{ chunkId: match.chunkId }}
+                className="rounded bg-primary/10 px-1.5 py-0.5 text-sm font-mono text-primary hover:bg-primary/20 transition-colors"
+                title={match.path}
+            >
+                {children}
+            </Link>
+        );
+    }
+
+    if (match?.type === "vocabulary") {
+        return (
+            <VocabularyPopover word={match.word} category={match.category} expects={match.expects}>
+                <code className="rounded bg-muted px-1.5 py-0.5 text-sm font-mono" {...props}>
+                    {children}
+                </code>
+            </VocabularyPopover>
+        );
+    }
+
+    return (
+        <code className="rounded bg-muted px-1.5 py-0.5 text-sm font-mono" {...props}>
+            {children}
+        </code>
+    );
+}
+
+/* ─── Smart text (vocabulary matching in prose) ─── */
+
+function SmartText({ children }: { children: string }) {
+    const { vocabIndex } = useSmartLinks();
+    const matches = matchVocabularyInText(children, vocabIndex);
+
+    if (matches.length === 0) return <>{children}</>;
+
+    const parts: React.ReactNode[] = [];
+    let lastEnd = 0;
+
+    for (const match of matches) {
+        if (match.start > lastEnd) {
+            parts.push(children.slice(lastEnd, match.start));
+        }
+        parts.push(
+            <VocabularyPopover
+                key={match.start}
+                word={match.word}
+                category={match.category}
+                expects={match.expects}
+            >
+                {children.slice(match.start, match.end)}
+            </VocabularyPopover>
+        );
+        lastEnd = match.end;
+    }
+
+    if (lastEnd < children.length) {
+        parts.push(children.slice(lastEnd));
+    }
+
+    return <>{parts}</>;
+}
+
+/* ─── Smart paragraph (wraps text children with vocab matching) ─── */
+
+function SmartParagraph({ children }: { children: React.ReactNode }) {
+    return <p>{processChildren(children)}</p>;
+}
+
+function SmartListItem({ children }: { children: React.ReactNode }) {
+    return <li>{processChildren(children)}</li>;
+}
+
+function processChildren(children: React.ReactNode): React.ReactNode {
+    if (typeof children === "string") {
+        return <SmartText>{children}</SmartText>;
+    }
+    if (Array.isArray(children)) {
+        return children.map((child, i) => {
+            if (typeof child === "string") {
+                return <SmartText key={i}>{child}</SmartText>;
+            }
+            return child;
+        });
+    }
+    return children;
+}
+
 /* ─── Component overrides ─── */
 
 const components: Components = {
@@ -127,15 +252,12 @@ const components: Components = {
         return <>{children}</>;
     },
     code({ className, children, ...props }) {
-        const isInline = !className && typeof children === "string" && !children.includes("\n");
+        const text = String(children);
+        const isInline = !className && !text.includes("\n");
         if (isInline) {
-            return (
-                <code className="rounded bg-muted px-1.5 py-0.5 text-sm font-mono" {...props}>
-                    {children}
-                </code>
-            );
+            return <SmartCode className={className} {...props}>{text}</SmartCode>;
         }
-        return <CodeBlock className={className}>{String(children)}</CodeBlock>;
+        return <CodeBlock className={className}>{text}</CodeBlock>;
     },
     table({ children }) {
         return (
@@ -175,6 +297,12 @@ const components: Components = {
     hr() {
         return <hr className="my-6 border-border/50" />;
     },
+    p({ children }) {
+        return <SmartParagraph>{children}</SmartParagraph>;
+    },
+    li({ children }) {
+        return <SmartListItem>{children}</SmartListItem>;
+    },
     img({ src, alt }) {
         return (
             <img
@@ -189,14 +317,16 @@ const components: Components = {
 
 /* ─── Renderer ─── */
 
-export function MarkdownRenderer({ children }: { children: string }) {
+export function MarkdownRenderer({ children, excludeChunkId }: { children: string; excludeChunkId?: string }) {
     return (
-        <Markdown
-            remarkPlugins={remarkPlugins}
-            rehypePlugins={rehypePlugins}
-            components={components}
-        >
-            {children}
-        </Markdown>
+        <ExcludeChunkContext.Provider value={excludeChunkId}>
+            <Markdown
+                remarkPlugins={remarkPlugins}
+                rehypePlugins={rehypePlugins}
+                components={components}
+            >
+                {children}
+            </Markdown>
+        </ExcludeChunkContext.Provider>
     );
 }
