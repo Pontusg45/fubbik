@@ -405,37 +405,6 @@ export function DocumentBrowser({ initialDocId, initialSection }: DocumentBrowse
         staleTime: 60_000
     });
 
-    // Build title-to-ID map for inter-document link navigation
-    const docTitleMap = useMemo(() => {
-        const map = new Map<string, { docId: string; chunkId?: string }>();
-        const allDocs = allDocsQuery.data ?? [];
-        for (const doc of allDocs) {
-            map.set(doc.title.toLowerCase(), { docId: doc.id });
-            for (const chunk of doc.chunks) {
-                map.set(chunk.title.toLowerCase(), { docId: doc.id, chunkId: chunk.id });
-            }
-        }
-        return map;
-    }, [allDocsQuery.data]);
-
-    const handleContentClick = (e: React.MouseEvent) => {
-        const target = e.target as HTMLElement;
-        const link = target.closest("a");
-        if (!link) return;
-
-        const text = link.textContent?.toLowerCase() ?? "";
-        const match = docTitleMap.get(text);
-        if (match) {
-            e.preventDefault();
-            setSelectedId(match.docId);
-            if (match.chunkId) {
-                setTimeout(() => {
-                    document.getElementById(`section-${match.chunkId}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
-                }, 300);
-            }
-        }
-    };
-
     const documents = listQuery.data ?? [];
     const detail = detailQuery.data;
     const selectedListItem = documents.find(d => d.id === selectedId);
@@ -811,7 +780,7 @@ export function DocumentBrowser({ initialDocId, initialSection }: DocumentBrowse
     };
 
     return (
-        <div className={`grid gap-6 ${showToc ? "lg:grid-cols-[280px_1fr_200px]" : "lg:grid-cols-[280px_1fr]"}`}>
+        <div className={`grid gap-8 ${showToc ? "lg:grid-cols-[240px_1fr_180px]" : "lg:grid-cols-[240px_1fr]"}`}>
             {/* ─── Sidebar ─── */}
             {/* Desktop sidebar */}
             <div className="hidden lg:block">{renderSidebar()}</div>
@@ -948,7 +917,7 @@ export function DocumentBrowser({ initialDocId, initialSection }: DocumentBrowse
                         )}
 
                         {/* Sections */}
-                        <div className="space-y-2" data-doc-content onClick={handleContentClick}>
+                        <div className="space-y-2" data-doc-content>
                             {detail.chunks.map((chunk, idx) => (
                                 <Fragment key={chunk.id}>
                                     <section id={`section-${chunk.id}`} className="scroll-mt-24">
