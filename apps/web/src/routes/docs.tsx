@@ -33,7 +33,7 @@ function DocsPage() {
     }, [search.tab]);
 
     return (
-        <div className="container mx-auto max-w-6xl px-4 py-8">
+        <div className="mx-auto max-w-[1600px] px-6 py-8">
             <div className="mb-6 flex items-center justify-between">
                 <div>
                     <h1 className="text-2xl font-bold tracking-tight">Documentation</h1>
