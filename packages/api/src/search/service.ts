@@ -10,7 +10,10 @@ import {
     semanticSearch as semanticSearchRepo,
     findDuplicatePairs,
     searchChunkTitles,
-    searchRequirementTitles
+    searchRequirementTitles,
+    listSavedQueries,
+    createSavedQuery,
+    deleteSavedQuery,
 } from "@fubbik/db/repository";
 import { Effect } from "effect";
 
@@ -296,3 +299,5 @@ export function autocomplete(
         Effect.orElse(() => Effect.succeed([] as string[]))
     );
 }
+
+export { listSavedQueries, createSavedQuery, deleteSavedQuery };

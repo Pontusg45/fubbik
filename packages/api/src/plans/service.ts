@@ -194,3 +194,7 @@ export function deletePlan(id: string) {
 }
 
 export { VALID_STATUSES, VALID_ANALYZE_KINDS, VALID_TASK_RELATIONS };
+
+export function updateTask(taskId: string, data: { status: string }) {
+    return planRepo.updateTask(taskId, data);
+}

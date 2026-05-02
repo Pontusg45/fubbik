@@ -7,7 +7,7 @@ import {
     createLearningPath,
     updateLearningPath,
     deleteLearningPath,
-} from "@fubbik/db/repository";
+} from "./service";
 import { requireSession } from "../require-session";
 
 export const learningPathRoutes = new Elysia()

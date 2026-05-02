@@ -1,9 +1,8 @@
 import { Effect } from "effect";
 import { Elysia, t } from "elysia";
 
-import { listSavedQueries, createSavedQuery, deleteSavedQuery } from "@fubbik/db/repository";
 import { requireSession } from "../require-session";
-import { executeSearch, autocomplete } from "./service";
+import { executeSearch, autocomplete, listSavedQueries, createSavedQuery, deleteSavedQuery } from "./service";
 import { parseQueryString } from "./parser";
 
 const ClauseSchema = t.Object({

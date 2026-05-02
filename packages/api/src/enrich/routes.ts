@@ -1,4 +1,4 @@
-import { listChunks } from "@fubbik/db/repository";
+import { listChunks } from "../chunks/service";
 import { Effect } from "effect";
 import { Elysia, t } from "elysia";
 

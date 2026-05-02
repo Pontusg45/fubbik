@@ -1,8 +1,6 @@
 import { Effect } from "effect";
 import { Elysia, t } from "elysia";
 
-import * as planRepo from "@fubbik/db/repository/plan";
-
 import { requireSession } from "../require-session";
 import * as planService from "../plans/service";
 
@@ -56,7 +54,7 @@ export const taskQueueRoutes = new Elysia()
                         const detail = yield* planService.getPlanDetail(ctx.params.id);
                         const firstTask = detail.tasks[0];
                         if (firstTask) {
-                            yield* planRepo.updateTask(firstTask.id, { status: "in_progress" });
+                            yield* planService.updateTask(firstTask.id, { status: "in_progress" });
                         }
                         return yield* planService.getPlanDetail(ctx.params.id);
                     }),
@@ -75,7 +73,7 @@ export const taskQueueRoutes = new Elysia()
                             const detail = yield* planService.getPlanDetail(ctx.params.id);
                             const firstTask = detail.tasks[0];
                             if (firstTask) {
-                                yield* planRepo.updateTask(firstTask.id, { status: "done" });
+                                yield* planService.updateTask(firstTask.id, { status: "done" });
                             }
                             return yield* planService.updatePlan(ctx.params.id, { status: "completed" });
                         }),
