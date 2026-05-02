@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "@tanstack/react-router";
 import { createContext, useContext, useMemo, type ReactNode } from "react";
 
 import { api } from "@/utils/api";
@@ -160,6 +161,10 @@ export function useSmartLinks() {
 const STALE_TIME = 5 * 60 * 1000; // 5 minutes
 
 export function SmartLinkProvider({ children }: { children: ReactNode }) {
+    const location = useLocation();
+    // Only fetch smart-link data on routes that render markdown content
+    const needsSmartLinks = /^\/(chunks|dashboard|plans|requirements|knowledge-health|coverage)/.test(location.pathname);
+
     const chunksQuery = useQuery({
         queryKey: ["smart-link-chunks"],
         queryFn: async () => {
@@ -167,7 +172,8 @@ export function SmartLinkProvider({ children }: { children: ReactNode }) {
             const chunks = (result as any)?.chunks ?? [];
             return chunks.map((c: any) => ({ id: c.id, title: c.title, aliases: c.aliases ?? [] }));
         },
-        staleTime: STALE_TIME
+        staleTime: STALE_TIME,
+        enabled: needsSmartLinks
     });
 
     const vocabQuery = useQuery({
@@ -182,7 +188,8 @@ export function SmartLinkProvider({ children }: { children: ReactNode }) {
                 return [];
             }
         },
-        staleTime: STALE_TIME
+        staleTime: STALE_TIME,
+        enabled: needsSmartLinks
     });
 
     const fileRefsQuery = useQuery({
@@ -195,7 +202,8 @@ export function SmartLinkProvider({ children }: { children: ReactNode }) {
                 return [];
             }
         },
-        staleTime: STALE_TIME
+        staleTime: STALE_TIME,
+        enabled: needsSmartLinks
     });
 
     const value = useMemo<SmartLinkContextValue>(() => {
