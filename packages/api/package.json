@@ -8,6 +8,7 @@
         "./enums": "./src/enums.ts"
     },
     "scripts": {
+        "check-types": "tsgo -b",
         "lint": "oxlint src",
         "test": "vitest run"
     },
@@ -18,7 +19,8 @@
         "@fubbik/env": "workspace:*",
         "ai": "^6.0.116",
         "effect": "^3.21.0",
-        "elysia": "catalog:"
+        "elysia": "catalog:",
+        "winston": "^3.19.0"
     },
     "devDependencies": {
         "@elysiajs/eden": "^1.4.8",

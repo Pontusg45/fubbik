@@ -12,6 +12,7 @@
         "./errors": "./src/errors.ts"
     },
     "scripts": {
+        "check-types": "tsgo -b",
         "lint": "oxlint src",
         "seed": "bun run src/seed/index.ts",
         "seed:legacy": "bun run src/seed.ts",

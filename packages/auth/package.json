@@ -5,6 +5,7 @@
         ".": "./src/index.ts"
     },
     "scripts": {
+        "check-types": "tsgo -b",
         "lint": "oxlint src"
     },
     "dependencies": {
