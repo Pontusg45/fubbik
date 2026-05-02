@@ -116,7 +116,12 @@ export const searchRoutes = new Elysia()
         {
             body: t.Object({
                 name: t.String({ maxLength: 200 }),
-                query: t.Any(),
+                query: t.Object({
+                    clauses: t.Array(ClauseSchema),
+                    join: t.Optional(t.Union([t.Literal("and"), t.Literal("or")])),
+                    sort: t.Optional(t.String()),
+                    codebaseId: t.Optional(t.String())
+                }),
                 codebaseId: t.Optional(t.String())
             })
         }

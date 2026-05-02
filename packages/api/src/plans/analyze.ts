@@ -31,6 +31,15 @@ function validateKind(kind: string): Effect.Effect<PlanAnalyzeKind, ValidationEr
     return Effect.succeed(kind as PlanAnalyzeKind);
 }
 
+const AnalyzeMetadataSchema = t.Optional(
+    t.Record(t.String(), t.Union([
+        t.String(),
+        t.Number(),
+        t.Boolean(),
+        t.Null()
+    ]))
+);
+
 export const planAnalyzeRoutes = new Elysia({ prefix: "/plans/:id/analyze" })
     .get("/", async ctx => {
         return await Effect.runPromise(
@@ -67,7 +76,7 @@ export const planAnalyzeRoutes = new Elysia({ prefix: "/plans/:id/analyze" })
                 chunkId: t.Optional(t.String()),
                 filePath: t.Optional(t.String()),
                 text: t.Optional(t.String()),
-                metadata: t.Optional(t.Any()),
+                metadata: AnalyzeMetadataSchema,
             }),
         },
     )
@@ -84,7 +93,7 @@ export const planAnalyzeRoutes = new Elysia({ prefix: "/plans/:id/analyze" })
         {
             body: t.Object({
                 text: t.Optional(t.String()),
-                metadata: t.Optional(t.Any()),
+                metadata: AnalyzeMetadataSchema,
                 chunkId: t.Optional(t.String()),
                 filePath: t.Optional(t.String()),
             }),
