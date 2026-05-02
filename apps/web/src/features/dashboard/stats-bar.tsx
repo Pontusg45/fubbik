@@ -26,7 +26,21 @@ export function StatsBar() {
         refetchInterval: 5 * 60 * 1000,
     });
 
-    if (statsQuery.isLoading) return null;
+    if (statsQuery.isLoading) {
+        return (
+            <div className="flex items-center gap-2 text-sm animate-pulse">
+                <div className="h-4 w-20 rounded bg-muted" />
+                <Dot />
+                <div className="h-4 w-24 rounded bg-muted" />
+                <Dot />
+                <div className="h-4 w-24 rounded bg-muted" />
+                <Dot />
+                <div className="h-4 w-28 rounded bg-muted" />
+                <Dot />
+                <div className="h-4 w-16 rounded bg-muted" />
+            </div>
+        );
+    }
 
     const stats = statsQuery.data as any;
     const pendingProposals = (proposalsQuery.data as any)?.pending ?? 0;

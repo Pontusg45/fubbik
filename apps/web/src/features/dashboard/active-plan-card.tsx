@@ -46,7 +46,6 @@ export function ActivePlanCard() {
         queryKey: ["plans-ready"],
         queryFn: async () =>
             unwrapEden(await api.api.plans.get({ query: { status: "ready" } as any })),
-        enabled: !inProgressQuery.isLoading && !(inProgressQuery.data as any)?.length,
     });
 
     const inProgressPlans = (inProgressQuery.data as any) ?? [];
@@ -70,9 +69,22 @@ export function ActivePlanCard() {
         },
     });
 
-    const isLoading = inProgressQuery.isLoading || (readyQuery.isLoading && !inProgressPlans.length);
+    const isLoading = inProgressQuery.isLoading || readyQuery.isLoading;
 
-    if (isLoading) return null;
+    if (isLoading) {
+        return (
+            <div className="rounded-lg border border-indigo-500/20 bg-indigo-500/5 p-4 animate-pulse">
+                <div className="mb-3 flex items-center justify-between">
+                    <div className="h-5 w-40 rounded bg-muted" />
+                    <div className="h-4 w-16 rounded bg-muted" />
+                </div>
+                <div className="space-y-2">
+                    <div className="h-4 w-full rounded bg-muted" />
+                    <div className="h-4 w-2/3 rounded bg-muted" />
+                </div>
+            </div>
+        );
+    }
 
     if (!activePlan) {
         return (
