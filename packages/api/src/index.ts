@@ -63,9 +63,8 @@ function extractEffectError(error: unknown): Record<string, unknown> | null {
     return Option.isSome(option) ? option.value : null;
 }
 
-// Auth is globally bypassed for now — every request gets DEV_SESSION when no
-// real session is present. Writes and reads alike. Flip this back by
-// reintroducing a method/env gate in `getSession` when auth is re-enabled.
+// DEV_SESSION is used as a fallback in non-production environments only.
+// In production, unauthenticated requests receive null and are rejected by requireSession.
 const DEV_USER_ID = "dev-user";
 const DEV_SESSION: Session = {
     session: {
@@ -89,13 +88,15 @@ const DEV_SESSION: Session = {
     }
 };
 
-async function getSession(headers: Headers): Promise<Session> {
+async function getSession(headers: Headers): Promise<Session | null> {
     try {
         const session = await auth.api.getSession({ headers });
-        return session ?? DEV_SESSION;
+        if (session) return session;
     } catch {
-        return DEV_SESSION;
+        // auth.api.getSession can throw on invalid/expired tokens
     }
+    if (process.env.NODE_ENV !== "production") return DEV_SESSION;
+    return null;
 }
 
 export const api = new Elysia({ prefix: "/api" })
@@ -129,7 +130,7 @@ export const api = new Elysia({ prefix: "/api" })
     })
     .resolve(async ({ headers }) => {
         const session = await getSession(new Headers(headers as Record<string, string>));
-        return { session };
+        return { session: session ?? undefined };
     })
     .get("/me", ctx =>
         Effect.runPromise(requireSession(ctx).pipe(Effect.map(session => ({ message: "This is private" as const, user: session.user }))))
