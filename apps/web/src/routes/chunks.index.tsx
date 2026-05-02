@@ -2,9 +2,7 @@ import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tansta
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
     Archive,
-    Bot,
     ChevronRight,
-    Clock,
     Columns3,
     FileText,
     Filter,
@@ -12,10 +10,8 @@ import {
     Globe,
     LayoutGrid,
     List,
-    Pin,
     Plus,
     Search,
-    Server,
     X
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -23,18 +19,16 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { PromptDialog } from "@/components/prompt-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardPanel } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Separator } from "@/components/ui/separator";
 import { PageEmpty } from "@/components/ui/page";
 import { SkeletonList } from "@/components/ui/skeleton-list";
-import { Tooltip, TooltipProvider, TooltipTrigger, TooltipPopup } from "@/components/ui/tooltip";
 import { ChunkFilterPills } from "@/features/chunks/chunk-filter-pills";
 import { ChunkFiltersPopover } from "@/features/chunks/chunk-filters-popover";
 import { getChunkSize } from "@/features/chunks/chunk-size";
 import { ChunkBulkActionBar } from "@/features/chunks/chunk-bulk-action-bar";
-import { ChunkRowActions } from "@/features/chunks/chunk-row-actions";
+import { ChunkRow } from "@/features/chunks/chunk-row";
 import { useBulkChunkOperations } from "@/features/chunks/use-bulk-chunk-operations";
 import { useChunkFilters } from "@/features/chunks/use-chunk-filters";
 import { KanbanView } from "@/features/chunks/kanban-view";
@@ -49,37 +43,6 @@ import { useIntersectionObserver } from "@/hooks/use-intersection-observer";
 import { getUser } from "@/functions/get-user";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
-
-function ChunkPreviewPopup({ chunk, queryClient }: { chunk: { id: string; content?: string | null; type: string; summary?: string | null }; queryClient: ReturnType<typeof useQueryClient> }) {
-    const cached = queryClient.getQueryData<{ tags?: { name: string }[]; summary?: string | null }>(["chunk", chunk.id]);
-    const summary = cached?.summary ?? chunk.summary;
-    const tags = cached?.tags?.slice(0, 3);
-    const content = chunk.content;
-
-    if (!content && !summary) return null;
-
-    return (
-        <TooltipPopup side="bottom" align="start" className="max-w-[300px] p-2.5">
-            {summary && (
-                <p className="text-xs font-medium text-foreground">{summary}</p>
-            )}
-            {content && (
-                <p className={`text-xs text-muted-foreground ${summary ? "mt-1.5" : ""}`}>
-                    {content.slice(0, 150)}{content.length > 150 ? "..." : ""}
-                </p>
-            )}
-            {(tags && tags.length > 0) && (
-                <div className="mt-2 flex flex-wrap gap-1">
-                    {tags.map(tag => (
-                        <span key={tag.name} className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
-                            {tag.name}
-                        </span>
-                    ))}
-                </div>
-            )}
-        </TooltipPopup>
-    );
-}
 
 export const Route = createFileRoute("/chunks/")({
     component: ChunksList,
@@ -709,102 +672,31 @@ function ChunksList() {
                                     {items.map((chunk, i) => {
                                         const globalIndex = collectionFilteredChunks.findIndex(c => c.id === chunk.id);
                                         return (
-                                        <div key={chunk.id}>
-                                            {i > 0 && <Separator />}
-                                            <CardPanel className="hover:bg-muted/50 flex items-center gap-3 p-4 transition-colors" onMouseEnter={() => handleChunkHover(chunk.id)}>
-                                                <Checkbox
-                                                    checked={selectedIds.has(chunk.id)}
-                                                    onCheckedChange={() => { /* handled in onClick */ }}
-                                                    onClick={(e: React.MouseEvent) => {
-                                                        e.stopPropagation();
-                                                        handleSelectionClick(chunk.id, globalIndex, allChunkIds, e);
-                                                    }}
-                                                />
-                                                <button
-                                                    onClick={e => {
-                                                        e.preventDefault();
-                                                        e.stopPropagation();
-                                                        togglePin(chunk.id);
-                                                    }}
-                                                    className="text-muted-foreground hover:text-foreground"
-                                                >
-                                                    <Pin className={`size-3 ${isPinned(chunk.id) ? "fill-current" : ""}`} />
-                                                </button>
-                                                <Link
-                                                    to="/chunks/$chunkId"
-                                                    params={{ chunkId: chunk.id }}
-                                                    className="flex flex-1 items-center justify-between gap-4"
-                                                >
-                                                    <div className="min-w-0">
-                                                        {editingChunkId === chunk.id ? (
-                                                            <input
-                                                                autoFocus
-                                                                className="bg-background w-full rounded border px-1 py-0.5 text-sm font-medium focus:ring-2 focus:ring-ring focus:outline-none"
-                                                                value={editTitle}
-                                                                onChange={e => setEditTitle(e.target.value)}
-                                                                onKeyDown={e => {
-                                                                    if (e.key === "Enter") { e.preventDefault(); commitEdit(); }
-                                                                    if (e.key === "Escape") { e.preventDefault(); cancelEdit(); }
-                                                                }}
-                                                                onBlur={commitEdit}
-                                                                onClick={e => { e.preventDefault(); e.stopPropagation(); }}
-                                                            />
-                                                        ) : (
-                                                        <TooltipProvider delay={300}><Tooltip>
-                                                            <TooltipTrigger
-                                                                render={<p className="truncate text-sm font-medium" />}
-                                                                onDoubleClick={e => {
-                                                                    e.preventDefault();
-                                                                    e.stopPropagation();
-                                                                    startEditing(chunk.id, chunk.title);
-                                                                }}
-                                                            >
-                                                                {chunk.title}
-                                                            </TooltipTrigger>
-                                                            <ChunkPreviewPopup chunk={chunk} queryClient={queryClient} />
-                                                        </Tooltip></TooltipProvider>
-                                                        )}
-                                                        <div className="mt-1 flex items-center gap-2">
-                                                            <Badge variant="secondary" size="sm" className="font-mono text-[10px]">
-                                                                {chunk.type}
-                                                            </Badge>
-                                                        </div>
-                                                    </div>
-                                                    <div className="flex shrink-0 items-center gap-3">
-                                                        {(() => {
-                                                            const chunkSize = getChunkSize(chunk.content);
-                                                            return chunkSize.level !== "good" ? (
-                                                                <span
-                                                                    className="flex items-center gap-1 text-xs"
-                                                                    style={{ color: chunkSize.color }}
-                                                                >
-                                                                    <FileText className="size-3" />
-                                                                    {chunkSize.lines}L
-                                                                </span>
-                                                            ) : null;
-                                                        })()}
-                                                        <span className="text-muted-foreground flex items-center gap-1 text-xs">
-                                                            <Clock className="size-3" />
-                                                            {new Date(chunk.updatedAt).toLocaleDateString()}
-                                                        </span>
-                                                    </div>
-                                                </Link>
-                                                <div onClick={e => e.stopPropagation()}>
-                                                    <ChunkRowActions
-                                                        chunkId={chunk.id}
-                                                        isPinned={isPinned(chunk.id)}
-                                                        onTogglePin={() => togglePin(chunk.id)}
-                                                        onDelete={() =>
-                                                            setConfirmAction({
-                                                                title: "Delete chunk",
-                                                                description: `Delete "${chunk.title}" permanently?`,
-                                                                action: () => singleDeleteMutation.mutate(chunk.id)
-                                                            })
-                                                        }
-                                                    />
-                                                </div>
-                                            </CardPanel>
-                                        </div>
+                                            <ChunkRow
+                                                key={chunk.id}
+                                                chunk={chunk}
+                                                index={globalIndex}
+                                                allChunkIds={allChunkIds}
+                                                isSelected={selectedIds.has(chunk.id)}
+                                                isPinned={isPinned(chunk.id)}
+                                                showSeparator={i > 0}
+                                                editingChunkId={editingChunkId}
+                                                editTitle={editTitle}
+                                                onStartEditing={startEditing}
+                                                onCommitEdit={commitEdit}
+                                                onCancelEdit={cancelEdit}
+                                                onEditTitleChange={setEditTitle}
+                                                onHover={handleChunkHover}
+                                                onTogglePin={togglePin}
+                                                onSelectionClick={handleSelectionClick}
+                                                onDelete={(id, title) =>
+                                                    setConfirmAction({
+                                                        title: "Delete chunk",
+                                                        description: `Delete "${title}" permanently?`,
+                                                        action: () => singleDeleteMutation.mutate(id),
+                                                    })
+                                                }
+                                            />
                                         );
                                     })}
                                 </Card>
@@ -815,147 +707,35 @@ function ChunksList() {
             ) : (
                 <Card>
                     {collectionFilteredChunks.map((chunk, i) => (
-                        <div key={chunk.id}>
-                            {i > 0 && <Separator />}
-                            <CardPanel
-                                className={`flex items-center gap-3 p-4 transition-colors ${selectedIndex === i ? "bg-muted/50 ring-primary/50 ring-2 ring-inset" : "hover:bg-muted/50"}`}
-                                onMouseEnter={() => handleChunkHover(chunk.id)}
-                            >
-                                <Checkbox
-                                    checked={selectedIds.has(chunk.id)}
-                                    onCheckedChange={() => { /* handled in onClick */ }}
-                                    onClick={(e: React.MouseEvent) => {
-                                        e.stopPropagation();
-                                        handleSelectionClick(chunk.id, i, allChunkIds, e);
-                                    }}
-                                />
-                                <button
-                                    onClick={e => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        togglePin(chunk.id);
-                                    }}
-                                    className="text-muted-foreground hover:text-foreground"
-                                >
-                                    <Pin className={`size-3 ${isPinned(chunk.id) ? "fill-current" : ""}`} />
-                                </button>
-                                <Link
-                                    to="/chunks/$chunkId"
-                                    params={{ chunkId: chunk.id }}
-                                    className="flex flex-1 items-center justify-between gap-4"
-                                >
-                                    <div className="min-w-0">
-                                        {editingChunkId === chunk.id ? (
-                                            <input
-                                                autoFocus
-                                                className="bg-background w-full rounded border px-1 py-0.5 text-sm font-medium focus:ring-2 focus:ring-ring focus:outline-none"
-                                                value={editTitle}
-                                                onChange={e => setEditTitle(e.target.value)}
-                                                onKeyDown={e => {
-                                                    if (e.key === "Enter") { e.preventDefault(); commitEdit(); }
-                                                    if (e.key === "Escape") { e.preventDefault(); cancelEdit(); }
-                                                }}
-                                                onBlur={commitEdit}
-                                                onClick={e => { e.preventDefault(); e.stopPropagation(); }}
-                                            />
-                                        ) : (
-                                        <TooltipProvider delay={300}><Tooltip>
-                                            <TooltipTrigger
-                                                render={<p className="truncate text-sm font-medium" />}
-                                                onDoubleClick={e => {
-                                                    e.preventDefault();
-                                                    e.stopPropagation();
-                                                    startEditing(chunk.id, chunk.title);
-                                                }}
-                                            >
-                                                {chunk.title}
-                                            </TooltipTrigger>
-                                            <ChunkPreviewPopup chunk={chunk} queryClient={queryClient} />
-                                        </Tooltip></TooltipProvider>
-                                        )}
-                                        <div className="mt-1 flex items-center gap-2">
-                                            <Badge variant="secondary" size="sm" className="font-mono text-[10px]">
-                                                {chunk.type}
-                                            </Badge>
-                                            {isFederated && !!(chunk as Record<string, unknown>).codebaseName && (
-                                                <Badge variant="outline" size="sm" className="border-blue-500/30 bg-blue-500/10 text-[10px] text-blue-600">
-                                                    <Server className="mr-0.5 size-2.5" />
-                                                    {String((chunk as Record<string, unknown>).codebaseName)}
-                                                </Badge>
-                                            )}
-                                            {(chunk as Record<string, unknown>).origin === "ai" && (
-                                                <>
-                                                    <Badge
-                                                        variant="outline"
-                                                        size="sm"
-                                                        className={
-                                                            (chunk as Record<string, unknown>).reviewStatus === "draft"
-                                                                ? "border-yellow-500/30 bg-yellow-500/10 text-[10px] text-yellow-600"
-                                                                : (chunk as Record<string, unknown>).reviewStatus === "reviewed"
-                                                                  ? "border-blue-500/30 bg-blue-500/10 text-[10px] text-blue-600"
-                                                                  : "border-green-500/30 bg-green-500/10 text-[10px] text-green-600"
-                                                        }
-                                                    >
-                                                        <Bot className="mr-0.5 size-2.5" />
-                                                        AI
-                                                    </Badge>
-                                                    <button
-                                                        onClick={(e) => {
-                                                            e.preventDefault();
-                                                            e.stopPropagation();
-                                                            const next = { draft: "reviewed", reviewed: "approved", approved: "draft" }[(chunk as Record<string, unknown>).reviewStatus as string] ?? "reviewed";
-                                                            reviewMutation.mutate({ id: chunk.id, status: next });
-                                                        }}
-                                                        className="size-2.5 rounded-full shrink-0"
-                                                        style={{
-                                                            backgroundColor:
-                                                                (chunk as Record<string, unknown>).reviewStatus === "approved" ? "#22c55e"
-                                                                : (chunk as Record<string, unknown>).reviewStatus === "reviewed" ? "#3b82f6"
-                                                                : "#f59e0b"
-                                                        }}
-                                                        title={`Review: ${(chunk as Record<string, unknown>).reviewStatus ?? "draft"} (click to change)`}
-                                                    />
-                                                </>
-                                            )}
-                                            {([] as string[]).map(tag => (
-                                                <Badge key={tag} variant="outline" size="sm" className="text-[10px]">
-                                                    {tag}
-                                                </Badge>
-                                            ))}
-                                        </div>
-                                    </div>
-                                    <div className="flex shrink-0 items-center gap-3">
-                                        {(() => {
-                                            const size = getChunkSize(chunk.content);
-                                            return size.level !== "good" ? (
-                                                <span className="flex items-center gap-1 text-xs" style={{ color: size.color }}>
-                                                    <FileText className="size-3" />
-                                                    {size.lines}L
-                                                </span>
-                                            ) : null;
-                                        })()}
-                                        <span className="text-muted-foreground flex items-center gap-1 text-xs">
-                                            <Clock className="size-3" />
-                                            {new Date(chunk.updatedAt).toLocaleDateString()}
-                                        </span>
-                                    </div>
-                                </Link>
-                                <div onClick={e => e.stopPropagation()}>
-                                    <ChunkRowActions
-                                        chunkId={chunk.id}
-                                        isPinned={isPinned(chunk.id)}
-                                        onTogglePin={() => togglePin(chunk.id)}
-                                        onDelete={() =>
-                                            setConfirmAction({
-                                                title: "Delete chunk",
-                                                description: `Delete "${chunk.title}" permanently?`,
-                                                action: () => singleDeleteMutation.mutate(chunk.id)
-                                            })
-                                        }
-                                    />
-                                </div>
-                            </CardPanel>
-                        </div>
+                        <ChunkRow
+                            key={chunk.id}
+                            chunk={chunk}
+                            index={i}
+                            allChunkIds={allChunkIds}
+                            isSelected={selectedIds.has(chunk.id)}
+                            isPinned={isPinned(chunk.id)}
+                            isKeyboardSelected={selectedIndex === i}
+                            showExtendedBadges
+                            isFederated={isFederated}
+                            showSeparator={i > 0}
+                            editingChunkId={editingChunkId}
+                            editTitle={editTitle}
+                            onStartEditing={startEditing}
+                            onCommitEdit={commitEdit}
+                            onCancelEdit={cancelEdit}
+                            onEditTitleChange={setEditTitle}
+                            onHover={handleChunkHover}
+                            onTogglePin={togglePin}
+                            onSelectionClick={handleSelectionClick}
+                            onDelete={(id, title) =>
+                                setConfirmAction({
+                                    title: "Delete chunk",
+                                    description: `Delete "${title}" permanently?`,
+                                    action: () => singleDeleteMutation.mutate(id),
+                                })
+                            }
+                            onReviewCycle={(id, next) => reviewMutation.mutate({ id, status: next })}
+                        />
                     ))}
                 </Card>
             )}
