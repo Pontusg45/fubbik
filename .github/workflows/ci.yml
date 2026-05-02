@@ -16,37 +16,43 @@ jobs:
         steps:
             - uses: actions/checkout@v4
 
-            - uses: oven-sh/setup-bun@v2
-              with:
-                  bun-version: "1.3.9"
+            - uses: pnpm/action-setup@v4
 
-            - run: bun install --frozen-lockfile
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: 22
+                  cache: pnpm
+
+            - run: pnpm install --frozen-lockfile
 
             - name: Sherif
-              run: bun sherif
+              run: pnpm sherif
 
             - name: Lint
-              run: bun lint
+              run: pnpm lint
 
             - name: Format check
-              run: bun fmt:check
+              run: pnpm fmt:check
 
     typecheck-and-test:
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v4
 
-            - uses: oven-sh/setup-bun@v2
-              with:
-                  bun-version: "1.3.9"
+            - uses: pnpm/action-setup@v4
 
-            - run: bun install --frozen-lockfile
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: 22
+                  cache: pnpm
+
+            - run: pnpm install --frozen-lockfile
 
             - name: Type check
-              run: bun check-types
+              run: pnpm check-types
 
             - name: Test
-              run: bun test
+              run: pnpm test
 
     build:
         needs: [lint-and-format, typecheck-and-test]
@@ -54,11 +60,14 @@ jobs:
         steps:
             - uses: actions/checkout@v4
 
-            - uses: oven-sh/setup-bun@v2
-              with:
-                  bun-version: "1.3.9"
+            - uses: pnpm/action-setup@v4
 
-            - run: bun install --frozen-lockfile
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: 22
+                  cache: pnpm
+
+            - run: pnpm install --frozen-lockfile
 
             - name: Build
-              run: bun run build
+              run: pnpm run build
