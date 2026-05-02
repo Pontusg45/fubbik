@@ -5,6 +5,11 @@ import { Effect } from "effect";
 import { DatabaseError } from "../errors";
 import { db } from "../index";
 
+/** Escape a string value for use inside Cypher single-quoted literals. */
+export function escCypher(value: string): string {
+    return value.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+}
+
 let ageAvailable: boolean | null = null;
 
 async function checkAgeAvailable(): Promise<boolean> {
