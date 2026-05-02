@@ -6,6 +6,8 @@ import { ActivePlanCard } from "@/features/dashboard/active-plan-card";
 import { StatsBar } from "@/features/dashboard/stats-bar";
 import { UnifiedFeed } from "@/features/dashboard/unified-feed";
 import { getUser } from "@/functions/get-user";
+import { api } from "@/utils/api";
+import { unwrapEden } from "@/utils/eden";
 
 export const Route = createFileRoute("/dashboard")({
     component: DashboardPage,
@@ -15,6 +17,16 @@ export const Route = createFileRoute("/dashboard")({
             session = await getUser();
         } catch {}
         return { session };
+    },
+    loader: async ({ context }) => {
+        const qc = context.queryClient;
+        if (qc) {
+            qc.prefetchQuery({
+                queryKey: ["stats"],
+                queryFn: async () => unwrapEden(await api.api.stats.get({ query: {} as any })),
+                staleTime: 60_000,
+            });
+        }
     },
 });
 

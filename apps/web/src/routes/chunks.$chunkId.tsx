@@ -33,7 +33,21 @@ export const Route = createFileRoute("/chunks/$chunkId")({
             // allow guest access
         }
         return { session };
-    }
+    },
+    loader: async ({ params, context }) => {
+        const qc = context.queryClient;
+        if (qc) {
+            qc.prefetchQuery({
+                queryKey: ["chunk", params.chunkId],
+                queryFn: async () => {
+                    const { data, error } = await api.api.chunks({ id: params.chunkId }).get();
+                    if (error) throw new Error("Failed to load chunk");
+                    return data;
+                },
+                staleTime: 60_000,
+            });
+        }
+    },
 });
 
 function ChunkDetail() {
