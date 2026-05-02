@@ -2,6 +2,8 @@ import { auth } from "@fubbik/auth";
 import { Cause, Effect, Option } from "effect";
 import { Elysia } from "elysia";
 
+import { logger } from "./logger";
+
 import { registerEventHandlers } from "./events";
 
 registerEventHandlers();
@@ -116,14 +118,14 @@ export const api = new Elysia({ prefix: "/api" })
                     return { message: `${effectError.resource} not found` };
                 case "AiError":
                     set.status = 502;
-                    console.error("AI service error", effectError.cause);
+                    logger.error("AI service error", { cause: effectError.cause });
                     return { message: "AI service error" };
                 case "StepValidationError":
                     set.status = 400;
                     return { message: "Invalid steps", errors: effectError.errors };
                 case "DatabaseError":
                     set.status = 500;
-                    console.error("Database error", effectError.cause);
+                    logger.error("Database error", { cause: effectError.cause });
                     return { message: "Internal server error" };
             }
         }

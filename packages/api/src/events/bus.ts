@@ -1,3 +1,5 @@
+import { logger } from "../logger";
+
 type EventHandler<T = unknown> = (payload: T) => void | Promise<void>;
 
 class EventBus {
@@ -22,7 +24,7 @@ class EventBus {
             try {
                 await handler(payload);
             } catch (err) {
-                console.error(`[event:${event}] handler error:`, err);
+                logger.error(`[event:${event}] handler error:`, { err });
             }
         }
     }

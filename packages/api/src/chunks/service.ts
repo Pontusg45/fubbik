@@ -37,6 +37,7 @@ import { generateQueryEmbedding } from "../ollama/client";
 import { extractFields, parseHeadings } from "../templates/field-extraction";
 import { matchTemplates } from "../templates/match-engine";
 import type { ExtractedFields, FieldMapping, TemplateWithRules } from "../templates/types";
+import { logger } from "../logger";
 import { computeHealthScore } from "./health-score";
 import { extractFrontmatter, parseDocFile } from "./parse-docs";
 
@@ -277,7 +278,7 @@ export function updateChunk(
         Effect.tap(() => {
             if (body.title !== undefined || body.content !== undefined) {
                 Effect.runPromise(enrichChunk(chunkId)).catch(err => {
-                    console.error(`[enrich] Failed to re-enrich chunk ${chunkId}:`, err);
+                    logger.error(`[enrich] Failed to re-enrich chunk ${chunkId}:`, { err });
                 });
             }
             events.emit(EVENTS.CHUNK_UPDATED, { chunkId, userId });
