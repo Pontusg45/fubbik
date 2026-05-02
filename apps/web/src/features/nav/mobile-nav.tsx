@@ -85,6 +85,7 @@ export function MobileNav() {
                 <Separator />
                 <button
                     type="button"
+                    aria-expanded={manageOpen}
                     onClick={() => setManageOpen(!manageOpen)}
                     className="flex w-full items-center justify-between px-5 pt-3 pb-1"
                 >

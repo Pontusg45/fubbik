@@ -378,8 +378,9 @@ function NewChunk() {
             <Card>
                 <CardPanel className="space-y-4 p-6">
                     <div>
-                        <label className="mb-1.5 block text-sm font-medium">Title</label>
+                        <label htmlFor="chunk-title" className="mb-1.5 block text-sm font-medium">Title</label>
                         <Input
+                            id="chunk-title"
                             type="text"
                             value={title}
                             onChange={e => setTitle(e.target.value)}
@@ -407,8 +408,9 @@ function NewChunk() {
                     </div>
 
                     <div>
-                        <label className="mb-1.5 block text-sm font-medium">Type</label>
+                        <label htmlFor="chunk-type" className="mb-1.5 block text-sm font-medium">Type</label>
                         <select
+                            id="chunk-type"
                             value={type}
                             onChange={e => setType(e.target.value)}
                             className="bg-background focus:ring-ring w-full rounded-md border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
@@ -422,7 +424,7 @@ function NewChunk() {
                     </div>
 
                     <div>
-                        <label className="mb-1.5 block text-sm font-medium">Tags</label>
+                        <label htmlFor="chunk-tags" className="mb-1.5 block text-sm font-medium">Tags</label>
                         <div className="mb-2 flex flex-wrap gap-2">
                             {tags.map(tag => (
                                 <Badge
@@ -437,6 +439,7 @@ function NewChunk() {
                             ))}
                         </div>
                         <Input
+                            id="chunk-tags"
                             type="text"
                             value={tagInput}
                             onChange={e => setTagInput(e.target.value)}
@@ -576,6 +579,7 @@ function NewChunk() {
                     <div>
                         <button
                             type="button"
+                            aria-expanded={showDecisionContext}
                             onClick={() => setShowDecisionContext(!showDecisionContext)}
                             className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-sm font-medium transition-colors"
                         >
@@ -587,8 +591,9 @@ function NewChunk() {
                         {showDecisionContext && (
                             <div className="mt-3 space-y-3 rounded-md border p-4">
                                 <div>
-                                    <label className="mb-1.5 block text-sm font-medium">Rationale</label>
+                                    <label htmlFor="chunk-rationale" className="mb-1.5 block text-sm font-medium">Rationale</label>
                                     <textarea
+                                        id="chunk-rationale"
                                         value={rationale}
                                         onChange={e => setRationale(e.target.value)}
                                         placeholder="Why was this decision made?"
@@ -597,8 +602,9 @@ function NewChunk() {
                                     />
                                 </div>
                                 <div>
-                                    <label className="mb-1.5 block text-sm font-medium">Alternatives Considered</label>
+                                    <label htmlFor="chunk-alternatives" className="mb-1.5 block text-sm font-medium">Alternatives Considered</label>
                                     <Input
+                                        id="chunk-alternatives"
                                         type="text"
                                         value={alternativesInput}
                                         onChange={e => setAlternativesInput(e.target.value)}
@@ -606,8 +612,9 @@ function NewChunk() {
                                     />
                                 </div>
                                 <div>
-                                    <label className="mb-1.5 block text-sm font-medium">Consequences</label>
+                                    <label htmlFor="chunk-consequences" className="mb-1.5 block text-sm font-medium">Consequences</label>
                                     <textarea
+                                        id="chunk-consequences"
                                         value={consequences}
                                         onChange={e => setConsequences(e.target.value)}
                                         placeholder="What becomes easier or harder?"

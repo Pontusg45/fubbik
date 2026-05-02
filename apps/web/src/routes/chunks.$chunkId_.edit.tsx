@@ -284,8 +284,9 @@ function EditChunk() {
             <Card>
                 <CardPanel className="space-y-4 p-6">
                     <div>
-                        <label className="mb-1.5 block text-sm font-medium">Title</label>
+                        <label htmlFor="edit-title" className="mb-1.5 block text-sm font-medium">Title</label>
                         <Input
+                            id="edit-title"
                             type="text"
                             value={title}
                             onChange={e => setTitle(e.target.value)}
@@ -295,8 +296,9 @@ function EditChunk() {
                     </div>
 
                     <div>
-                        <label className="mb-1.5 block text-sm font-medium">Type</label>
+                        <label htmlFor="edit-type" className="mb-1.5 block text-sm font-medium">Type</label>
                         <select
+                            id="edit-type"
                             value={type}
                             onChange={e => setType(e.target.value)}
                             className="bg-background focus:ring-ring w-full rounded-md border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
@@ -310,7 +312,7 @@ function EditChunk() {
                     </div>
 
                     <div>
-                        <label className="mb-1.5 block text-sm font-medium">Tags</label>
+                        <label htmlFor="edit-tags" className="mb-1.5 block text-sm font-medium">Tags</label>
                         <div className="mb-2 flex flex-wrap gap-2">
                             {tags.map(tag => (
                                 <Badge
@@ -325,6 +327,7 @@ function EditChunk() {
                             ))}
                         </div>
                         <Input
+                            id="edit-tags"
                             type="text"
                             value={tagInput}
                             onChange={e => setTagInput(e.target.value)}
@@ -461,6 +464,7 @@ function EditChunk() {
                     <div>
                         <button
                             type="button"
+                            aria-expanded={showDecisionContext}
                             onClick={() => setShowDecisionContext(!showDecisionContext)}
                             className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-sm font-medium transition-colors"
                         >
@@ -472,8 +476,9 @@ function EditChunk() {
                         {showDecisionContext && (
                             <div className="mt-3 space-y-3 rounded-md border p-4">
                                 <div>
-                                    <label className="mb-1.5 block text-sm font-medium">Rationale</label>
+                                    <label htmlFor="edit-rationale" className="mb-1.5 block text-sm font-medium">Rationale</label>
                                     <textarea
+                                        id="edit-rationale"
                                         value={rationale}
                                         onChange={e => setRationale(e.target.value)}
                                         placeholder="Why was this decision made?"
@@ -482,8 +487,9 @@ function EditChunk() {
                                     />
                                 </div>
                                 <div>
-                                    <label className="mb-1.5 block text-sm font-medium">Alternatives Considered</label>
+                                    <label htmlFor="edit-alternatives" className="mb-1.5 block text-sm font-medium">Alternatives Considered</label>
                                     <Input
+                                        id="edit-alternatives"
                                         type="text"
                                         value={alternativesInput}
                                         onChange={e => setAlternativesInput(e.target.value)}
@@ -491,8 +497,9 @@ function EditChunk() {
                                     />
                                 </div>
                                 <div>
-                                    <label className="mb-1.5 block text-sm font-medium">Consequences</label>
+                                    <label htmlFor="edit-consequences" className="mb-1.5 block text-sm font-medium">Consequences</label>
                                     <textarea
+                                        id="edit-consequences"
                                         value={consequences}
                                         onChange={e => setConsequences(e.target.value)}
                                         placeholder="What becomes easier or harder?"

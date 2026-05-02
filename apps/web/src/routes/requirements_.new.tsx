@@ -186,8 +186,9 @@ function NewRequirement() {
                 <CardPanel className="space-y-4 p-6">
                     {/* Title */}
                     <div>
-                        <label className="mb-1.5 block text-sm font-medium">Title</label>
+                        <label htmlFor="req-title" className="mb-1.5 block text-sm font-medium">Title</label>
                         <Input
+                            id="req-title"
                             value={title}
                             onChange={e => setTitle(e.target.value)}
                             placeholder="Enter requirement title..."
@@ -198,8 +199,9 @@ function NewRequirement() {
 
                     {/* Description */}
                     <div>
-                        <label className="mb-1.5 block text-sm font-medium">Description (optional)</label>
+                        <label htmlFor="req-description" className="mb-1.5 block text-sm font-medium">Description (optional)</label>
                         <textarea
+                            id="req-description"
                             value={description}
                             onChange={e => setDescription(e.target.value)}
                             placeholder="Describe the requirement..."
@@ -210,8 +212,9 @@ function NewRequirement() {
 
                     {/* Priority */}
                     <div>
-                        <label className="mb-1.5 block text-sm font-medium">Priority</label>
+                        <label htmlFor="req-priority" className="mb-1.5 block text-sm font-medium">Priority</label>
                         <select
+                            id="req-priority"
                             value={priority}
                             onChange={e => setPriority(e.target.value)}
                             className="bg-background focus:ring-ring w-full rounded-md border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
@@ -227,8 +230,9 @@ function NewRequirement() {
                     {/* Use Case */}
                     {allUseCases.length > 0 && (
                         <div>
-                            <label className="mb-1.5 block text-sm font-medium">Use Case (optional)</label>
+                            <label htmlFor="req-use-case" className="mb-1.5 block text-sm font-medium">Use Case (optional)</label>
                             <select
+                                id="req-use-case"
                                 value={useCaseId}
                                 onChange={e => setUseCaseId(e.target.value)}
                                 className="bg-background focus:ring-ring w-full rounded-md border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
@@ -249,6 +253,7 @@ function NewRequirement() {
                     <div>
                         <button
                             type="button"
+                            aria-expanded={aiExpanded}
                             onClick={() => setAiExpanded(!aiExpanded)}
                             className="mb-2 flex items-center gap-1.5 text-sm font-medium"
                         >
