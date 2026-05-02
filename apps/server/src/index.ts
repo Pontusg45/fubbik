@@ -7,6 +7,12 @@ import { Elysia } from "elysia";
 import { rateLimit } from "elysia-rate-limit";
 
 import { logger } from "./logger";
+import { startTracing, shutdownTracing } from "./lib/tracing";
+
+// Start OpenTelemetry if an OTLP endpoint is configured
+if (process.env.OTEL_EXPORTER_OTLP_ENDPOINT) {
+    startTracing();
+}
 
 new Elysia()
     .use(
@@ -52,3 +58,10 @@ new Elysia()
     .listen(Number(env.PORT), () => {
         logger.info(`Server is running on http://localhost:${env.PORT}`);
     });
+
+process.on("SIGTERM", async () => {
+    if (process.env.OTEL_EXPORTER_OTLP_ENDPOINT) {
+        await shutdownTracing();
+    }
+    process.exit(0);
+});

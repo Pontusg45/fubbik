@@ -6,6 +6,8 @@ import { PeriodicExportingMetricReader } from "@opentelemetry/sdk-metrics";
 import { NodeSDK } from "@opentelemetry/sdk-node";
 import { ATTR_SERVICE_NAME, ATTR_SERVICE_VERSION } from "@opentelemetry/semantic-conventions";
 
+import { logger } from "../logger";
+
 // Service configuration from environment variables
 const serviceName = process.env.OTEL_SERVICE_NAME || "fubbik-server";
 const serviceVersion = process.env.OTEL_SERVICE_VERSION || "1.0.0";
@@ -69,8 +71,8 @@ const sdk = new NodeSDK({
  */
 export function startTracing(): void {
     sdk.start();
-    console.log(`[OpenTelemetry] Tracing started for service: ${serviceName}`);
-    console.log(`[OpenTelemetry] Exporting to: ${otlpEndpoint}`);
+    logger.info(`[OpenTelemetry] Tracing started for service: ${serviceName}`);
+    logger.info(`[OpenTelemetry] Exporting to: ${otlpEndpoint}`);
 }
 
 /**
@@ -86,9 +88,9 @@ export function startTracing(): void {
 export async function shutdownTracing(): Promise<void> {
     try {
         await sdk.shutdown();
-        console.log("[OpenTelemetry] Tracing shutdown complete");
+        logger.info("[OpenTelemetry] Tracing shutdown complete");
     } catch (error) {
-        console.error("[OpenTelemetry] Error shutting down tracing:", error);
+        logger.error("[OpenTelemetry] Error shutting down tracing:", error);
     }
 }
 
