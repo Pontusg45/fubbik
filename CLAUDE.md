@@ -39,7 +39,7 @@ This file provides context about the project for AI assistants.
 ### Additional Features
 
 - Testing: vitest
-- AI: Ollama (local LLM for enrichment + embeddings — vercel-ai SDK was removed)
+- AI: Ollama (local LLM for enrichment + embeddings), OpenAI via Vercel AI SDK (optional, for summarization/suggestions)
 - Embeddings: Ollama (nomic-embed-text) for local vector embeddings
 - Logging: winston
 - Observability: opentelemetry
