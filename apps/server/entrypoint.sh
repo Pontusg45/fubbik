@@ -24,10 +24,8 @@ cd /app/packages/db
 export PATH="/app/node_modules/.bin:$PATH"
 
 # Apply Drizzle-managed schema migrations (tracked in __drizzle_migrations table)
-if ! drizzle-kit push 2>&1; then
-    echo "Warning: drizzle-kit push failed. Trying migrate..."
-    drizzle-kit migrate 2>&1 || echo "Warning: drizzle-kit migrate also failed. Continuing..."
-fi
+echo "Running drizzle-kit migrate..."
+drizzle-kit migrate 2>&1 || { echo "ERROR: drizzle-kit migrate failed. Aborting."; exit 1; }
 
 echo "Running SQL extensions and seeds..."
 bun run src/run-sql-migrations.ts 2>&1 || echo "Warning: some SQL migrations may have failed. Continuing..."
