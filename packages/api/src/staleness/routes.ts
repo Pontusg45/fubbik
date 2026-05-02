@@ -15,7 +15,7 @@ export const stalenessRoutes = new Elysia()
                         stalenessService.getStaleFlags(session.user.id, {
                             reason: ctx.query.reason,
                             codebaseId: ctx.query.codebaseId,
-                            limit: ctx.query.limit ? Number(ctx.query.limit) : undefined
+                            limit: ctx.query.limit
                         })
                     )
                 )
@@ -24,7 +24,7 @@ export const stalenessRoutes = new Elysia()
             query: t.Object({
                 reason: t.Optional(t.String()),
                 codebaseId: t.Optional(t.String()),
-                limit: t.Optional(t.String())
+                limit: t.Optional(t.Numeric())
             })
         }
     )

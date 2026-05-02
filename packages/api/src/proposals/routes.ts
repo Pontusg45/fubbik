@@ -100,8 +100,8 @@ export const proposalRoutes = new Elysia()
                         proposalService.listProposals({
                             chunkId: ctx.query.chunkId,
                             status: ctx.query.status,
-                            limit: ctx.query.limit ? Number(ctx.query.limit) : undefined,
-                            offset: ctx.query.offset ? Number(ctx.query.offset) : undefined,
+                            limit: ctx.query.limit,
+                            offset: ctx.query.offset,
                         })
                     )
                 )
@@ -111,8 +111,8 @@ export const proposalRoutes = new Elysia()
             query: t.Object({
                 status: t.Optional(t.String()),
                 chunkId: t.Optional(t.String()),
-                limit: t.Optional(t.String()),
-                offset: t.Optional(t.String()),
+                limit: t.Optional(t.Numeric()),
+                offset: t.Optional(t.Numeric()),
             }),
         }
     )

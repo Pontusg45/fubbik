@@ -13,8 +13,8 @@ export const activityRoutes = new Elysia().get(
                     activityService.listActivity(session.user.id, {
                         codebaseId: ctx.query.codebaseId || undefined,
                         entityType: ctx.query.entityType || undefined,
-                        limit: ctx.query.limit ? Number(ctx.query.limit) : undefined,
-                        offset: ctx.query.offset ? Number(ctx.query.offset) : undefined
+                        limit: ctx.query.limit,
+                        offset: ctx.query.offset
                     })
                 )
             )
@@ -23,8 +23,8 @@ export const activityRoutes = new Elysia().get(
         query: t.Object({
             codebaseId: t.Optional(t.String()),
             entityType: t.Optional(t.String()),
-            limit: t.Optional(t.String()),
-            offset: t.Optional(t.String())
+            limit: t.Optional(t.Numeric()),
+            offset: t.Optional(t.Numeric())
         })
     }
 );

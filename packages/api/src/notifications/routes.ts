@@ -30,7 +30,7 @@ export const notificationRoutes = new Elysia()
                 requireSession(ctx).pipe(
                     Effect.flatMap(session =>
                         notificationService.listNotifications(session.user.id, {
-                            limit: ctx.query.limit ? Number(ctx.query.limit) : undefined,
+                            limit: ctx.query.limit,
                             unreadOnly: ctx.query.unreadOnly === "true"
                         })
                     )
@@ -38,7 +38,7 @@ export const notificationRoutes = new Elysia()
             ),
         {
             query: t.Object({
-                limit: t.Optional(t.String()),
+                limit: t.Optional(t.Numeric()),
                 unreadOnly: t.Optional(t.String())
             })
         }
