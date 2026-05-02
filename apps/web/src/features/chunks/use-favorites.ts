@@ -20,18 +20,46 @@ export function useFavorites() {
         mutationFn: async (chunkId: string) => {
             return unwrapEden(await api.api.favorites.post({ chunkId }));
         },
-        onSuccess: () => {
+        onMutate: async (chunkId) => {
+            await queryClient.cancelQueries({ queryKey: ["favorites"] });
+            const previous = queryClient.getQueryData(["favorites"]);
+            queryClient.setQueryData(["favorites"], (old: any) => {
+                if (!Array.isArray(old)) return old;
+                return [...old, { chunkId }];
+            });
+            return { previous };
+        },
+        onError: (_err, _chunkId, context) => {
+            if (context?.previous) {
+                queryClient.setQueryData(["favorites"], context.previous);
+            }
+        },
+        onSettled: () => {
             queryClient.invalidateQueries({ queryKey: ["favorites"] });
-        }
+        },
     });
 
     const removeMutation = useMutation({
         mutationFn: async (chunkId: string) => {
             return unwrapEden(await api.api.favorites({ chunkId }).delete());
         },
-        onSuccess: () => {
+        onMutate: async (chunkId) => {
+            await queryClient.cancelQueries({ queryKey: ["favorites"] });
+            const previous = queryClient.getQueryData(["favorites"]);
+            queryClient.setQueryData(["favorites"], (old: any) => {
+                if (!Array.isArray(old)) return old;
+                return old.filter((f: any) => f.chunkId !== chunkId);
+            });
+            return { previous };
+        },
+        onError: (_err, _chunkId, context) => {
+            if (context?.previous) {
+                queryClient.setQueryData(["favorites"], context.previous);
+            }
+        },
+        onSettled: () => {
             queryClient.invalidateQueries({ queryKey: ["favorites"] });
-        }
+        },
     });
 
     function toggleFavorite(chunkId: string) {
