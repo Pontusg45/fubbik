@@ -132,6 +132,19 @@ Per-chunk health scores (0-100) computed on-demand from:
 - **Connectivity** (0-25): number of connections
 Exposed via chunk detail API response and shown as a badge on the detail page.
 
+### Features (Knowledge Overlays)
+
+Named entities that track field-level modifications to chunks. Each feature stores deltas — sparse JSONB objects containing only the changed fields. Features have a priority (higher wins on same-field conflicts) and can be toggled on/off globally via the nav switcher.
+
+- `feature` table: `name`, `description`, `priority` (unique per user), `status` (inactive/active/merged/archived), `color`, `userId`
+- `feature_codebase` join table (optional codebase association)
+- `chunk_feature_delta` table: one delta per chunk per feature, contains JSONB with changed content fields only (title, content, type, rationale, alternatives, consequences, summary)
+- `user_active_feature` table: persists which features are active per user
+- Resolution: `Object.assign(baseChunk, ...deltasAscByPriority)` — applied at the service layer
+- Merge: permanently applies all deltas to base chunks (with version snapshots), sets feature status to `merged`
+- Feature switcher in nav bar alongside codebase switcher
+- `/features` management page with create, merge, archive, delete actions
+
 ### Staleness Detection
 
 Proactive detection of chunks that may need attention:
@@ -265,6 +278,21 @@ Two distinct context services exist in `packages/api/src/`:
 - `POST /api/chunks/suppress-duplicate` — permanently suppress a duplicate pair
 - `POST /api/chunks/stale/scan-age` — trigger age-based staleness scan (body: `codebaseId?`, `thresholdDays?`)
 
+### Features
+- `GET /api/features` — list (filters: `codebaseId`, `status`, `search`), includes delta count
+- `POST /api/features` — create (body: `name`, `description?`, `priority?`, `color?`, `codebaseIds?`)
+- `GET /api/features/:id` — detail with codebases and deltas
+- `PATCH /api/features/:id` — update
+- `DELETE /api/features/:id` — delete (cascades deltas)
+- `POST /api/features/:id/merge` — merge all deltas into base chunks permanently
+- `POST /api/features/:id/reorder` — change priority
+- `GET /api/features/active` — get user's active feature IDs
+- `PUT /api/features/active` — set active features (body: `featureIds`)
+- `GET /api/features/:id/deltas` — all deltas for a feature
+- `GET /api/chunks/:id/deltas` — all deltas across features for a chunk
+- `PUT /api/chunks/:id/deltas/:featureId` — upsert delta (body: `delta`)
+- `DELETE /api/chunks/:id/deltas/:featureId` — delete delta
+
 ### Other
 - `GET /api/graph` — graph data (nodes + edges + tags, supports `codebaseId`, `workspaceId`)
 - `POST/DELETE /api/connections` — manage chunk connections
@@ -280,8 +308,9 @@ The server exposes Swagger/OpenAPI at `/docs` (e.g., `http://localhost:3000/docs
 - `/dashboard` — overview with clickable stats, recent chunks, favorites, recently viewed, health summary, "Attention Needed" staleness widget
 - `/chunks` — chunk list with infinite scroll, filters, grouping, search, kanban view, inline row actions, quick review status toggle
 - `/chunks/new` — create chunk (with template selector, duplicate detection, autosave)
-- `/chunks/:id` — chunk detail with collapsible sections, inline tag editor, health badge, connection arrows, dependency tree (grouped by relation type), related chunk suggestions (embedding-based), staleness banners
-- `/chunks/:id/edit` — edit chunk (with autosave, glob validation)
+- `/chunks/:id` — chunk detail with collapsible sections, inline tag editor, health badge, connection arrows, dependency tree (grouped by relation type), related chunk suggestions (embedding-based), staleness banners, feature overlay indicators
+- `/chunks/:id/edit` — edit chunk (with autosave, glob validation, save-to-feature dialog when features are active)
+- `/features` — feature management (create, activate/deactivate, merge into base, archive, delete)
 - `/graph` — knowledge graph visualization (force-directed, hierarchical, radial layouts; tag grouping with clickable legend filters; path finding; workspace view with cross-codebase edge styling; focus mode via double-click; saveable filter presets)
 - `/requirements` — tabbed page: Requirements list | Plans list | Traceability dashboard
 - `/requirements/:id` — requirement detail with plan coverage, BDD steps, export
