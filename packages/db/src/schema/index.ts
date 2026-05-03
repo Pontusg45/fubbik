@@ -28,3 +28,4 @@ export * from "./chunk-proposal";
 export * from "./context-snapshot";
 export * from "./chunk-type";
 export * from "./connection-relation";
+export * from "./feature";
