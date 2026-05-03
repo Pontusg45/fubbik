@@ -1,5 +1,6 @@
 import {
     archiveChunk as archiveChunkRepo,
+    batchFetchDeltas,
     createChunk as createChunkRepo,
     createVersion,
     deleteChunk as deleteChunkRepo,
@@ -13,6 +14,7 @@ import {
     getCodebasesForChunk,
     getCodebasesForChunks,
     getFileRefsForChunk,
+    getDeltasForChunk as getDeltasForChunkRepo,
     getNextVersionNumber,
     getRequirementsForChunks,
     getTagsForChunk,
@@ -31,6 +33,7 @@ import { Effect } from "effect";
 
 import { importDocument } from "../documents/service";
 import { enrichChunk } from "../enrich/service";
+import { resolveChunks } from "../features/resolve";
 import { NotFoundError, ValidationError } from "../errors";
 import { events, EVENTS } from "../events/bus";
 import { generateQueryEmbedding } from "../ollama/client";
@@ -62,7 +65,8 @@ export function listChunks(
         origin?: string;
         reviewStatus?: string;
         allCodebases?: string;
-    }
+    },
+    activeFeatureIds: string[] = []
 ) {
     const limit = Math.min(Number(query.limit ?? 50), 100);
     const offset = Number(query.offset ?? 0);
@@ -124,10 +128,23 @@ export function listChunks(
                 })
             );
         })
+    ).pipe(
+        Effect.flatMap(result => {
+            if (activeFeatureIds.length === 0 || result.chunks.length === 0) {
+                return Effect.succeed(result);
+            }
+            const chunkIds = result.chunks.map((c: { id: string }) => c.id);
+            return batchFetchDeltas(chunkIds, activeFeatureIds).pipe(
+                Effect.map(deltas => ({
+                    ...result,
+                    chunks: resolveChunks(result.chunks, activeFeatureIds, deltas as any)
+                }))
+            );
+        })
     );
 }
 
-export function getChunkDetail(chunkId: string, userId?: string) {
+export function getChunkDetail(chunkId: string, userId?: string, activeFeatureIds: string[] = []) {
     return getChunkById(chunkId, userId).pipe(
         Effect.flatMap(found => (found ? Effect.succeed(found) : Effect.fail(new NotFoundError({ resource: "Chunk" })))),
         Effect.flatMap(found =>
@@ -138,7 +155,8 @@ export function getChunkDetail(chunkId: string, userId?: string) {
                 appliesTo: getAppliesToForChunk(chunkId),
                 fileReferences: getFileRefsForChunk(chunkId),
                 tags: getTagsForChunk(chunkId),
-                requirements: getRequirementsForChunks([chunkId])
+                requirements: getRequirementsForChunks([chunkId]),
+                allDeltas: getDeltasForChunkRepo(chunkId)
             })
         ),
         Effect.map(result => {
@@ -158,7 +176,29 @@ export function getChunkDetail(chunkId: string, userId?: string) {
                 allRequirementsPassing,
                 referencedInSession: false
             });
-            return { ...result, healthScore };
+
+            // Resolve chunk through active features
+            let resolvedChunk = result.chunk as Record<string, unknown>;
+            const _appliedFeatures: string[] = [];
+            const _hasDeltas = result.allDeltas.length > 0;
+            if (activeFeatureIds.length > 0 && result.allDeltas.length > 0) {
+                const activeDeltas = result.allDeltas
+                    .filter(d => activeFeatureIds.includes(d.featureId))
+                    .sort((a, b) => a.featurePriority - b.featurePriority);
+                for (const d of activeDeltas) {
+                    resolvedChunk = { ...resolvedChunk, ...(d.delta as Record<string, unknown>) };
+                    _appliedFeatures.push(d.featureId);
+                }
+            }
+
+            return {
+                ...result,
+                chunk: resolvedChunk,
+                healthScore,
+                _appliedFeatures,
+                _hasDeltas,
+                deltas: result.allDeltas
+            };
         })
     );
 }

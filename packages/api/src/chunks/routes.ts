@@ -13,7 +13,7 @@ import { getConnectionSuggestions } from "./suggestions";
 export const chunkRoutes = new Elysia()
     .get(
         "/chunks",
-        ctx => Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(session => chunkService.listChunks(session.user.id, ctx.query)))),
+        ctx => Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(session => chunkService.listChunks(session.user.id, ctx.query, (ctx as any).activeFeatureIds ?? [])))),
         {
             query: t.Object({
                 type: t.Optional(t.String()),
@@ -252,7 +252,7 @@ export const chunkRoutes = new Elysia()
         }
     )
     .get("/chunks/:id", ctx =>
-        Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(session => chunkService.getChunkDetail(ctx.params.id, session.user.id))))
+        Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(session => chunkService.getChunkDetail(ctx.params.id, session.user.id, (ctx as any).activeFeatureIds ?? []))))
     )
     .post("/chunks/:id/archive", ctx =>
         Effect.runPromise(
