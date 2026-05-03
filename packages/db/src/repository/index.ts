@@ -40,3 +40,4 @@ export * from "./context-snapshot";
 export * from "./timeline";
 export * from "./density";
 export * from "./vocabulary-catalog";
+export * from "./feature";
