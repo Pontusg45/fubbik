@@ -7,10 +7,19 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardPanel } from "@/components/ui/card";
+import {
+    Dialog,
+    DialogPopup,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+    DialogPanel,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { DraftIndicator } from "@/features/chunks/draft-indicator";
 import { loadDraft, useAutosave } from "@/features/chunks/use-autosave";
+import { useActiveFeatures } from "@/features/feature-flags/use-active-features";
 import { MarkdownEditor } from "@/features/editor/markdown-editor";
 import { getUser } from "@/functions/get-user";
 import { api } from "@/utils/api";
@@ -58,6 +67,56 @@ interface EditChunkDraft {
     consequences: string;
 }
 
+function SaveTargetDialog({
+    open,
+    onOpenChange,
+    activeFeatures,
+    onSave,
+}: {
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    activeFeatures: Array<{ id: string; name: string; color: string | null }>;
+    onSave: (target: "base" | string) => void;
+}) {
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogPopup showCloseButton={false}>
+                <DialogHeader>
+                    <DialogTitle>Save to</DialogTitle>
+                    <DialogDescription>
+                        You have active features. Save changes to the base chunk or as a feature overlay.
+                    </DialogDescription>
+                </DialogHeader>
+                <DialogPanel>
+                    <div className="space-y-2">
+                        <Button
+                            variant="outline"
+                            className="w-full justify-start"
+                            onClick={() => onSave("base")}
+                        >
+                            Base chunk
+                        </Button>
+                        {activeFeatures.map(f => (
+                            <Button
+                                key={f.id}
+                                variant="outline"
+                                className="w-full justify-start gap-2"
+                                onClick={() => onSave(f.id)}
+                            >
+                                <span
+                                    className="size-2 rounded-full"
+                                    style={{ backgroundColor: f.color ?? "#8b5cf6" }}
+                                />
+                                Feature: {f.name}
+                            </Button>
+                        ))}
+                    </div>
+                </DialogPanel>
+            </DialogPopup>
+        </Dialog>
+    );
+}
+
 function EditChunk() {
     const { chunkId } = Route.useParams();
     const navigate = useNavigate();
@@ -71,6 +130,7 @@ function EditChunk() {
     const [tags, setTags] = useState<string[]>([]);
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [initialized, setInitialized] = useState(false);
+    const [saveDialogOpen, setSaveDialogOpen] = useState(false);
 
     // New fields
     const [appliesTo, setAppliesTo] = useState<ApplyToRow[]>([]);
@@ -81,6 +141,14 @@ function EditChunk() {
     const [consequences, setConsequences] = useState("");
 
     const draftRef = useRef(loadDraft<EditChunkDraft>(draftKey));
+
+    const { activeFeatureIds } = useActiveFeatures();
+
+    const { data: featuresData } = useQuery({
+        queryKey: ["features"],
+        queryFn: async () => unwrapEden(await api.api.features.get({ query: {} })),
+        staleTime: 60_000,
+    });
 
     const { data, isLoading, error } = useQuery({
         queryKey: ["chunk", chunkId],
@@ -233,6 +301,46 @@ function EditChunk() {
             toast.error("Failed to update chunk");
         }
     });
+
+    const deltasMutation = useMutation({
+        mutationFn: async (featureId: string) => {
+            const originalChunk = data?.chunk as Record<string, unknown> | undefined;
+            if (!originalChunk) throw new Error("Original chunk data not available");
+            const delta: Record<string, unknown> = {};
+            if (title !== originalChunk.title) delta.title = title;
+            if (content !== originalChunk.content) delta.content = content;
+            if (type !== originalChunk.type) delta.type = type;
+            const originalRationale = (originalChunk.rationale as string | null | undefined) ?? "";
+            if (rationale !== originalRationale) delta.rationale = rationale;
+            const originalConsequences = (originalChunk.consequences as string | null | undefined) ?? "";
+            if (consequences !== originalConsequences) delta.consequences = consequences;
+            if (Object.keys(delta).length === 0) {
+                throw new Error("No changes to save as feature overlay");
+            }
+            await unwrapEden(
+                await (api.api.chunks({ id: chunkId }) as any).deltas({ featureId }).put({ delta })
+            );
+        },
+        onSuccess: () => {
+            clearDraft();
+            queryClient.invalidateQueries({ queryKey: ["chunk", chunkId] });
+            toast.success("Saved as feature overlay");
+            navigate({ to: "/chunks/$chunkId", params: { chunkId } });
+        },
+        onError: (err: unknown) => {
+            const msg = err instanceof Error ? err.message : "Failed to save feature overlay";
+            toast.error(msg);
+        }
+    });
+
+    function handleSaveTarget(target: "base" | string) {
+        setSaveDialogOpen(false);
+        if (target === "base") {
+            updateMutation.mutate();
+        } else {
+            deltasMutation.mutate(target);
+        }
+    }
 
     const addTag = () => {
         const tag = tagInput.trim().toLowerCase();
@@ -520,15 +628,29 @@ function EditChunk() {
                         </Button>
                         <Button
                             onClick={() => {
-                                if (validate()) updateMutation.mutate();
+                                if (!validate()) return;
+                                if ((activeFeatureIds as string[]).length > 0) {
+                                    setSaveDialogOpen(true);
+                                } else {
+                                    updateMutation.mutate();
+                                }
                             }}
-                            disabled={updateMutation.isPending}
+                            disabled={updateMutation.isPending || deltasMutation.isPending}
                         >
-                            {updateMutation.isPending ? "Saving..." : "Save Changes"}
+                            {updateMutation.isPending || deltasMutation.isPending ? "Saving..." : "Save Changes"}
                         </Button>
                     </div>
                 </CardPanel>
             </Card>
+
+            <SaveTargetDialog
+                open={saveDialogOpen}
+                onOpenChange={setSaveDialogOpen}
+                activeFeatures={(featuresData as Array<{ id: string; name: string; color: string | null }> | undefined ?? []).filter(
+                    f => (activeFeatureIds as string[]).includes(f.id)
+                )}
+                onSave={handleSaveTarget}
+            />
         </div>
     );
 }
