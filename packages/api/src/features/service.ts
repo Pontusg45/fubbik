@@ -17,14 +17,12 @@ import {
     deleteDeltasForFeature,
     getDeltasForChunk as getDeltasForChunkRepo,
     getDeltasForFeature as getDeltasForFeatureRepo,
+    mergeFeatureDeltas,
     upsertDelta as upsertDeltaRepo,
     deleteDelta as deleteDeltaRepo
 } from "@fubbik/db/repository";
 import {
-    getChunkById,
-    getNextVersionNumber,
-    createVersion,
-    updateChunk as updateChunkRepo
+    getChunkById
 } from "@fubbik/db/repository";
 import { Effect } from "effect";
 
@@ -141,7 +139,20 @@ export function getActiveFeatures(userId: string) {
 }
 
 export function setActiveFeatures(userId: string, featureIds: string[]) {
-    return setActiveFeaturesRepo(userId, featureIds);
+    if (featureIds.length === 0) {
+        return setActiveFeaturesRepo(userId, []);
+    }
+    // Verify all features belong to the user
+    return listFeaturesRepo(userId).pipe(
+        Effect.flatMap(userFeatures => {
+            const ownedIds = new Set(userFeatures.map(f => f.id));
+            const invalid = featureIds.filter(id => !ownedIds.has(id));
+            if (invalid.length > 0) {
+                return Effect.fail(new ValidationError({ message: `Features not found: ${invalid.join(", ")}` }));
+            }
+            return setActiveFeaturesRepo(userId, featureIds);
+        })
+    );
 }
 
 export function getDeltasForChunk(chunkId: string) {
@@ -185,39 +196,16 @@ export function mergeFeature(featureId: string, userId: string) {
                 return updateFeatureRepo(featureId, userId, { status: "merged" }).pipe(Effect.asVoid);
             }
 
-            const applyAll = deltas.map(deltaRow =>
-                getChunkById(deltaRow.chunkId, userId).pipe(
-                    Effect.flatMap(existing => {
-                        if (!existing) return Effect.void as Effect.Effect<void>;
-                        return getNextVersionNumber(deltaRow.chunkId).pipe(
-                            Effect.flatMap(version =>
-                                createVersion({
-                                    id: crypto.randomUUID(),
-                                    chunkId: deltaRow.chunkId,
-                                    version,
-                                    title: existing.title,
-                                    content: existing.content,
-                                    type: existing.type,
-                                    tags: []
-                                })
-                            ),
-                            Effect.flatMap(() => {
-                                const updateData = deltaRow.delta as Parameters<typeof updateChunkRepo>[1];
-                                return updateChunkRepo(deltaRow.chunkId, updateData);
-                            }),
-                            Effect.asVoid
-                        );
-                    })
-                )
-            );
-
-            return Effect.all(applyAll, { concurrency: 3 }).pipe(
-                Effect.flatMap(() => deleteDeltasForFeature(featureId)),
-                Effect.flatMap(() => updateFeatureRepo(featureId, userId, { status: "merged" })),
-                Effect.tap(() => {
-                    for (const deltaRow of deltas) {
-                        Effect.runPromise(enrichChunk(deltaRow.chunkId)).catch(err => {
-                            logger.error(`[merge] Failed to re-enrich chunk ${deltaRow.chunkId}:`, { err });
+            // Atomic merge: version snapshots + delta application + cleanup in one transaction
+            return mergeFeatureDeltas(featureId, userId, deltas.map(d => ({
+                chunkId: d.chunkId,
+                delta: d.delta as Record<string, unknown>
+            }))).pipe(
+                Effect.tap(affectedChunkIds => {
+                    // Fire-and-forget re-enrichment for affected chunks
+                    for (const chunkId of affectedChunkIds) {
+                        Effect.runPromise(enrichChunk(chunkId)).catch(err => {
+                            logger.error(`[merge] Failed to re-enrich chunk ${chunkId}:`, { err });
                         });
                     }
                     return Effect.void;

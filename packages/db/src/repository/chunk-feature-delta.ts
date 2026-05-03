@@ -2,6 +2,7 @@ import { and, eq, inArray } from "drizzle-orm";
 
 import { db, dbEffect } from "../index";
 import { chunk } from "../schema/chunk";
+import { chunkVersion } from "../schema/chunk-version";
 import { chunkFeatureDelta, feature } from "../schema/feature";
 
 export function upsertDelta(params: {
@@ -108,5 +109,74 @@ export function deleteDeltasForFeature(featureId: string) {
         await db
             .delete(chunkFeatureDelta)
             .where(eq(chunkFeatureDelta.featureId, featureId));
+    });
+}
+
+export function mergeFeatureDeltas(
+    featureId: string,
+    userId: string,
+    deltas: Array<{ chunkId: string; delta: Record<string, unknown> }>
+) {
+    return dbEffect(async () => {
+        return await db.transaction(async tx => {
+            const affectedChunkIds: string[] = [];
+
+            for (const deltaRow of deltas) {
+                // Fetch base chunk
+                const [existing] = await tx
+                    .select()
+                    .from(chunk)
+                    .where(eq(chunk.id, deltaRow.chunkId));
+                if (!existing) continue;
+
+                // Create version snapshot
+                const [maxVersion] = await tx
+                    .select({
+                        max: eq(chunkVersion.chunkId, deltaRow.chunkId)
+                    })
+                    .from(chunkVersion)
+                    .where(eq(chunkVersion.chunkId, deltaRow.chunkId));
+
+                // Count existing versions for next version number
+                const versionRows = await tx
+                    .select({ version: chunkVersion.version })
+                    .from(chunkVersion)
+                    .where(eq(chunkVersion.chunkId, deltaRow.chunkId));
+                const nextVersion = versionRows.length > 0
+                    ? Math.max(...versionRows.map(v => v.version)) + 1
+                    : 1;
+
+                await tx.insert(chunkVersion).values({
+                    id: crypto.randomUUID(),
+                    chunkId: deltaRow.chunkId,
+                    version: nextVersion,
+                    title: existing.title,
+                    content: existing.content,
+                    type: existing.type,
+                    tags: []
+                });
+
+                // Apply delta to base chunk
+                await tx
+                    .update(chunk)
+                    .set(deltaRow.delta as Record<string, unknown>)
+                    .where(eq(chunk.id, deltaRow.chunkId));
+
+                affectedChunkIds.push(deltaRow.chunkId);
+            }
+
+            // Delete all deltas for this feature
+            await tx
+                .delete(chunkFeatureDelta)
+                .where(eq(chunkFeatureDelta.featureId, featureId));
+
+            // Update feature status
+            await tx
+                .update(feature)
+                .set({ status: "merged" })
+                .where(and(eq(feature.id, featureId), eq(feature.userId, userId)));
+
+            return affectedChunkIds;
+        });
     });
 }

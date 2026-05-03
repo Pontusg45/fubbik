@@ -4,8 +4,12 @@ interface Delta {
     priority: number;
 }
 
-interface DeltaWithChunk extends Delta {
+interface DeltaWithChunk {
     chunkId: string;
+    featureId: string;
+    delta: Record<string, unknown>;
+    priority?: number;
+    featurePriority?: number;
 }
 
 export interface ResolvedMeta {
@@ -42,7 +46,7 @@ export function resolveChunks<T extends Record<string, unknown>>(
     const deltasByChunk = new Map<string, Delta[]>();
     for (const d of allDeltas) {
         const existing = deltasByChunk.get(d.chunkId) ?? [];
-        existing.push({ featureId: d.featureId, delta: d.delta, priority: d.priority });
+        existing.push({ featureId: d.featureId, delta: d.delta, priority: d.featurePriority ?? d.priority ?? 0 });
         deltasByChunk.set(d.chunkId, existing);
     }
 

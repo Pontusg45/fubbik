@@ -137,7 +137,7 @@ export function listChunks(
             return batchFetchDeltas(chunkIds, activeFeatureIds).pipe(
                 Effect.map(deltas => ({
                     ...result,
-                    chunks: resolveChunks(result.chunks, activeFeatureIds, deltas as any)
+                    chunks: resolveChunks(result.chunks, activeFeatureIds, deltas)
                 }))
             );
         })
