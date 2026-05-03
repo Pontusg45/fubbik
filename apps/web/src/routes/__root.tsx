@@ -22,6 +22,7 @@ import { usePendingProposalCount } from "@/features/proposals/use-pending-propos
 import { KeyboardShortcutsHelp, useGlobalShortcuts } from "@/features/nav/keyboard-shortcuts";
 import { MobileNav } from "@/features/nav/mobile-nav";
 import { CodebaseSwitcher } from "@/features/codebases/codebase-switcher";
+import { FeatureSwitcher } from "@/features/feature-flags/feature-switcher";
 import { CommandPalette } from "@/features/command-palette/command-palette";
 import { NotificationBell } from "@/features/nav/notification-bell";
 import { RecentlyViewed } from "@/features/nav/recently-viewed";
@@ -89,6 +90,7 @@ function RootDocument() {
                                         <span className="font-bold">fubbik</span>
                                     </Link>
                                     <CodebaseSwitcher />
+                                    <FeatureSwitcher />
                                     <nav aria-label="Main navigation" className="hidden items-center gap-1 md:flex">
                                         <Link
                                             to="/dashboard"
