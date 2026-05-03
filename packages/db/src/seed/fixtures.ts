@@ -22,7 +22,7 @@ import { chunk, chunkConnection } from "../schema/chunk";
 import { chunkCodebase } from "../schema/codebase";
 import { chunkTag, tag } from "../schema/tag";
 import { eq, and } from "drizzle-orm";
-import { makeChunk, makeConnection, uuid } from "./factories";
+import { makeChunk, makeConnection } from "./factories";
 import type { SeedContext } from "./context";
 
 export interface ChunkFixture {

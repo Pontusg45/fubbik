@@ -17,6 +17,7 @@
         "@fubbik/api": "workspace:*",
         "@fubbik/auth": "workspace:*",
         "@fubbik/env": "workspace:*",
+        "drizzle-kit": "^0.31.9",
         "@opentelemetry/api": "^1.9.0",
         "@opentelemetry/auto-instrumentations-node": "^0.70.1",
         "@opentelemetry/exporter-metrics-otlp-http": "^0.212.0",

@@ -74,6 +74,9 @@ function mockFeature(overrides?: Record<string, unknown>) {
         status: "inactive",
         color: null,
         userId,
+        createdAt: new Date("2024-01-01"),
+        updatedAt: new Date("2024-01-01"),
+        deltaCount: 0,
         ...overrides,
     };
 }
@@ -85,6 +88,30 @@ function mockChunk(id = chunkId) {
         content: "Content",
         type: "note",
         userId,
+        createdAt: new Date("2024-01-01"),
+        updatedAt: new Date("2024-01-01"),
+        summary: null,
+        aliases: [] as string[],
+        notAbout: [] as string[],
+        scope: {} as Record<string, string>,
+        rationale: null,
+        alternatives: null,
+        consequences: null,
+        embedding: null,
+        embeddingUpdatedAt: null,
+        reviewStatus: "draft",
+        reviewedAt: null,
+        reviewedBy: null,
+        favoritedAt: null,
+        viewedAt: null,
+        archivedAt: null,
+        tags: [] as string[],
+        version: 1,
+        parentId: null,
+        isEntryPoint: false,
+        origin: null,
+        documentId: null,
+        documentOrder: null,
     };
 }
 
@@ -166,7 +193,7 @@ describe("setActiveFeatures", () => {
 
     it("rejects feature IDs that don't belong to the user (ValidationError)", async () => {
         vi.mocked(listFeaturesRepo).mockReturnValue(
-            Effect.succeed([mockFeature({ id: "feature-owned" })])
+            Effect.succeed([mockFeature({ id: "feature-owned" })]) as any
         );
 
         await expect(
@@ -181,7 +208,7 @@ describe("setActiveFeatures", () => {
             Effect.succeed([
                 mockFeature({ id: "feature-a" }),
                 mockFeature({ id: "feature-b" }),
-            ])
+            ]) as any
         );
         vi.mocked(setActiveFeaturesRepo).mockReturnValue(Effect.succeed(undefined as any));
 
@@ -294,7 +321,7 @@ describe("upsertDelta", () => {
     describe("validateDelta (via upsertDelta)", () => {
         it("rejects empty delta", async () => {
             vi.mocked(getFeatureById).mockReturnValue(Effect.succeed(mockFeature()));
-            vi.mocked(getChunkById).mockReturnValue(Effect.succeed(mockChunk()));
+            vi.mocked(getChunkById).mockReturnValue(Effect.succeed(mockChunk()) as any);
 
             await expect(
                 Effect.runPromise(upsertDelta(chunkId, featureId, userId, {}))
@@ -303,7 +330,7 @@ describe("upsertDelta", () => {
 
         it("rejects invalid fields (tags)", async () => {
             vi.mocked(getFeatureById).mockReturnValue(Effect.succeed(mockFeature()));
-            vi.mocked(getChunkById).mockReturnValue(Effect.succeed(mockChunk()));
+            vi.mocked(getChunkById).mockReturnValue(Effect.succeed(mockChunk()) as any);
 
             await expect(
                 Effect.runPromise(upsertDelta(chunkId, featureId, userId, { tags: ["foo"] } as any))
@@ -312,7 +339,7 @@ describe("upsertDelta", () => {
 
         it("rejects invalid fields (embedding)", async () => {
             vi.mocked(getFeatureById).mockReturnValue(Effect.succeed(mockFeature()));
-            vi.mocked(getChunkById).mockReturnValue(Effect.succeed(mockChunk()));
+            vi.mocked(getChunkById).mockReturnValue(Effect.succeed(mockChunk()) as any);
 
             await expect(
                 Effect.runPromise(upsertDelta(chunkId, featureId, userId, { embedding: "vec" } as any))
@@ -321,7 +348,7 @@ describe("upsertDelta", () => {
 
         it("accepts all valid allowed fields", async () => {
             vi.mocked(getFeatureById).mockReturnValue(Effect.succeed(mockFeature()));
-            vi.mocked(getChunkById).mockReturnValue(Effect.succeed(mockChunk()));
+            vi.mocked(getChunkById).mockReturnValue(Effect.succeed(mockChunk()) as any);
             vi.mocked(upsertDeltaRepo).mockReturnValue(Effect.succeed({ id: "delta-1" } as any));
 
             const validDelta = {
@@ -343,7 +370,7 @@ describe("upsertDelta", () => {
 
         it("accepts a subset of valid fields", async () => {
             vi.mocked(getFeatureById).mockReturnValue(Effect.succeed(mockFeature()));
-            vi.mocked(getChunkById).mockReturnValue(Effect.succeed(mockChunk()));
+            vi.mocked(getChunkById).mockReturnValue(Effect.succeed(mockChunk()) as any);
             vi.mocked(upsertDeltaRepo).mockReturnValue(Effect.succeed({ id: "delta-1" } as any));
 
             await Effect.runPromise(
@@ -380,7 +407,7 @@ describe("upsertDelta", () => {
 
     it("succeeds when both feature and chunk exist and delta is valid", async () => {
         vi.mocked(getFeatureById).mockReturnValue(Effect.succeed(mockFeature()));
-        vi.mocked(getChunkById).mockReturnValue(Effect.succeed(mockChunk()));
+        vi.mocked(getChunkById).mockReturnValue(Effect.succeed(mockChunk()) as any);
         vi.mocked(upsertDeltaRepo).mockReturnValue(Effect.succeed({ id: "delta-1" } as any));
 
         const result = await Effect.runPromise(

@@ -44,9 +44,9 @@ export function ChunkLink({ chunkId, children }: { chunkId: string; children: Re
             {showPreview && previewData?.chunk && (
                 <ChunkPreviewCard
                     data={{
-                        title: previewData.chunk.title,
-                        type: previewData.chunk.type,
-                        content: previewData.chunk.content,
+                        title: previewData.chunk.title as string,
+                        type: previewData.chunk.type as string,
+                        content: previewData.chunk.content as string,
                         tags: (previewData as Record<string, unknown>).tags as
                             | Array<{ id: string; name: string }>
                             | undefined,

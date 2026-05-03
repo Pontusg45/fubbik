@@ -449,7 +449,7 @@ export function CommandPalette() {
             const recentChunks = recentChunksQuery.data ?? [];
             for (const item of recentChunks) {
                 if (!item) continue;
-                const c = item.chunk;
+                const c = item.chunk as { id: string; title: string };
                 result.push({
                     id: `recent-${c.id}`,
                     title: c.title ?? `Chunk ${c.id.slice(0, 8)}`,

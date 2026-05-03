@@ -155,7 +155,7 @@ export function UnifiedFeed() {
     const staleQuery = useQuery({
         queryKey: ["stale-flags-feed"],
         queryFn: async () =>
-            unwrapEden(await api.api.chunks.stale.get({ query: { limit: "10" } })),
+            unwrapEden(await api.api.chunks.stale.get({ query: { limit: 10 } })),
     });
 
     const activityQuery = useQuery({

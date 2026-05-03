@@ -129,14 +129,6 @@ export function mergeFeatureDeltas(
                     .where(eq(chunk.id, deltaRow.chunkId));
                 if (!existing) continue;
 
-                // Create version snapshot
-                const [maxVersion] = await tx
-                    .select({
-                        max: eq(chunkVersion.chunkId, deltaRow.chunkId)
-                    })
-                    .from(chunkVersion)
-                    .where(eq(chunkVersion.chunkId, deltaRow.chunkId));
-
                 // Count existing versions for next version number
                 const versionRows = await tx
                     .select({ version: chunkVersion.version })

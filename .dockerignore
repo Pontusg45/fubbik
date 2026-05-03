@@ -1,6 +1,6 @@
-node_modules
-.pnpm-store
-dist
+**/node_modules
+**/.pnpm-store
+**/dist
 .output
 .env*.local
 .env.development*
@@ -23,3 +23,10 @@ README.md
 .claude
 .agents
 .kiro
+docs/
+apps/vscode/src/
+apps/vscode/esbuild.mjs
+apps/vscode/tsconfig.json
+**/*.test.ts
+**/*.spec.ts
+**/__tests__

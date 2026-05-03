@@ -28,7 +28,7 @@ describe("validateSteps", () => {
     it("rejects empty steps", () => {
         const errors = validateSteps([]);
         expect(errors).toHaveLength(1);
-        expect(errors[0].error).toMatch(/at least one step/);
+        expect(errors[0]!.error).toMatch(/at least one step/);
     });
 
     it("rejects wrong first keyword", () => {

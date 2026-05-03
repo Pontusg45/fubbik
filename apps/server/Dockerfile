@@ -20,7 +20,8 @@ COPY packages/db/package.json ./packages/db/
 COPY packages/env/package.json ./packages/env/
 COPY packages/mcp/package.json ./packages/mcp/
 
-RUN PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 pnpm install --frozen-lockfile --shamefully-hoist
+RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store \
+    PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 pnpm install --frozen-lockfile
 
 # 2. Copy only source needed for the server build
 COPY packages/config/ ./packages/config/
@@ -34,6 +35,9 @@ COPY turbo.json ./
 # 3. Build the server (tsdown bundles workspace deps)
 RUN pnpm run build --filter=server
 
+# 4. Deploy: creates flat node_modules with only server's deps (no symlinks)
+RUN pnpm --filter=server deploy --legacy /app/deploy
+
 # Production stage
 FROM oven/bun:1.3.10-slim AS runner
 
@@ -42,26 +46,30 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3000
 
-# Copy full node_modules (pnpm symlinks resolved by bun)
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/package.json ./package.json
+# Create non-root user (portable: works on any base image)
+RUN echo "fubbik:x:1001:1001:fubbik:/app:/bin/sh" >> /etc/passwd && \
+    echo "fubbik:x:1001:" >> /etc/group && \
+    mkdir -p /app && chown 1001:1001 /app
+
+# Copy the deployed flat node_modules (no pnpm symlinks)
+COPY --from=builder --chown=fubbik:fubbik /app/deploy/node_modules ./node_modules
 
 # Copy built application
-COPY --from=builder /app/apps/server/dist ./dist
-COPY --from=builder /app/apps/server/package.json ./apps/server/package.json
-COPY --from=builder /app/apps/server/entrypoint.sh ./entrypoint.sh
-
-# Copy workspace packages needed at runtime
-COPY --from=builder /app/packages/api/package.json ./packages/api/package.json
-COPY --from=builder /app/packages/auth/package.json ./packages/auth/package.json
+COPY --from=builder --chown=fubbik:fubbik /app/apps/server/dist ./dist
+COPY --from=builder --chown=fubbik:fubbik /app/apps/server/package.json ./package.json
+COPY --from=builder --chown=fubbik:fubbik /app/apps/server/entrypoint.sh ./entrypoint.sh
 
 # Copy db package for migrations and seeding
-COPY --from=builder /app/packages/db/src ./packages/db/src
-COPY --from=builder /app/packages/db/package.json ./packages/db/package.json
-COPY --from=builder /app/packages/db/drizzle.config.ts ./packages/db/drizzle.config.ts
-COPY --from=builder /app/packages/env/src ./packages/env/src
-COPY --from=builder /app/packages/env/package.json ./packages/env/package.json
+COPY --from=builder --chown=fubbik:fubbik /app/packages/db/src ./packages/db/src
+COPY --from=builder --chown=fubbik:fubbik /app/packages/db/package.json ./packages/db/package.json
+COPY --from=builder --chown=fubbik:fubbik /app/packages/db/drizzle.config.ts ./packages/db/drizzle.config.ts
+COPY --from=builder --chown=fubbik:fubbik /app/packages/env/src ./packages/env/src
+COPY --from=builder --chown=fubbik:fubbik /app/packages/env/package.json ./packages/env/package.json
 
 EXPOSE 3000
+
+# Note: entrypoint runs migrations which may need write access,
+# but the migration tool writes to the database, not filesystem.
+USER fubbik
 
 ENTRYPOINT ["sh", "entrypoint.sh"]

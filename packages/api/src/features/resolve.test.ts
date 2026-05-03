@@ -76,9 +76,9 @@ describe("resolveChunks", () => {
             { chunkId: "c1", featureId: "f1", delta: { title: "Modified 1" }, priority: 1 }
         ];
         const result = resolveChunks(chunks, ["f1"], deltas);
-        expect(result[0].title).toBe("Modified 1");
-        expect(result[0]._hasDeltas).toBe(true);
-        expect(result[1].title).toBe("Chunk 2");
-        expect(result[1]._hasDeltas).toBe(false);
+        expect(result[0]!.title).toBe("Modified 1");
+        expect(result[0]!._hasDeltas).toBe(true);
+        expect(result[1]!.title).toBe("Chunk 2");
+        expect(result[1]!._hasDeltas).toBe(false);
     });
 });

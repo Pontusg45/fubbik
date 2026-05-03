@@ -33,6 +33,7 @@ import { config } from "dotenv";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { eq } from "drizzle-orm";
 
+import * as schema from "../schema/index";
 import { user } from "../schema/auth";
 import { createContext, trySeed, type ScenarioName, type SeedContext } from "./context";
 import { verifySeed } from "./verify";
@@ -58,7 +59,7 @@ config({ path: resolve(import.meta.dirname, "../../../../apps/server/.env") });
 const DATABASE_URL = process.env.DATABASE_URL;
 if (!DATABASE_URL) throw new Error("DATABASE_URL not set");
 
-const db = drizzle(DATABASE_URL);
+const db = drizzle(DATABASE_URL, { schema });
 
 const DEV_USER_ID = "dev-user";
 

@@ -4,7 +4,7 @@ import { Effect } from "effect";
 import { AiError } from "../errors";
 import { generateJson, isOllamaAvailable } from "../ollama/client";
 
-interface Step {
+export interface Step {
     keyword: "given" | "when" | "then" | "and";
     text: string;
 }

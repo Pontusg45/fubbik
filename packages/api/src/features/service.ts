@@ -14,7 +14,6 @@ import {
 } from "@fubbik/db/repository";
 import {
     batchFetchDeltas,
-    deleteDeltasForFeature,
     getDeltasForChunk as getDeltasForChunkRepo,
     getDeltasForFeature as getDeltasForFeatureRepo,
     mergeFeatureDeltas,
@@ -26,6 +25,7 @@ import {
 } from "@fubbik/db/repository";
 import { Effect } from "effect";
 
+import { DatabaseError } from "@fubbik/db/errors";
 import { NotFoundError, ValidationError } from "../errors";
 import { enrichChunk } from "../enrich/service";
 import { logger } from "../logger";
@@ -144,7 +144,7 @@ export function setActiveFeatures(userId: string, featureIds: string[]) {
     }
     // Verify all features belong to the user
     return listFeaturesRepo(userId).pipe(
-        Effect.flatMap(userFeatures => {
+        Effect.flatMap((userFeatures): Effect.Effect<{ featureId: string; userId: string }[], ValidationError | DatabaseError, never> => {
             const ownedIds = new Set(userFeatures.map(f => f.id));
             const invalid = featureIds.filter(id => !ownedIds.has(id));
             if (invalid.length > 0) {

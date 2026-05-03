@@ -40,7 +40,7 @@ describe("parseStepText", () => {
         const result = parseStepText("click the foobar button", vocab);
         const unknownWarnings = result.warnings.filter(w => w.type === "unknown_word");
         expect(unknownWarnings).toHaveLength(1);
-        expect(unknownWarnings[0].word).toBe("foobar");
+        expect(unknownWarnings[0]!.word).toBe("foobar");
     });
 
     it("produces warning for unexpected category after action", () => {

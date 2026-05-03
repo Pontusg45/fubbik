@@ -29,7 +29,7 @@ export function NotificationBell() {
         queryKey: ["notifications", "list"],
         queryFn: async () => {
             try {
-                return unwrapEden(await api.api.notifications.get({ query: { limit: "10" } }));
+                return unwrapEden(await api.api.notifications.get({ query: { limit: 10 } }));
             } catch {
                 return [];
             }

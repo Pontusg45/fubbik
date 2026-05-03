@@ -32,7 +32,7 @@ export const enrichRoutes = new Elysia()
     .post("/chunks/enrich-all", ctx =>
         Effect.runPromise(
             requireSession(ctx).pipe(
-                Effect.flatMap(session => listChunks({ userId: session.user.id, limit: 1000, offset: 0 })),
+                Effect.flatMap(session => listChunks(session.user.id, { limit: "1000", offset: "0" })),
                 Effect.flatMap(result =>
                     Effect.forEach(result.chunks, c => enrichChunk(c.id).pipe(Effect.catchAll(() => Effect.succeed(null))), {
                         concurrency: 3

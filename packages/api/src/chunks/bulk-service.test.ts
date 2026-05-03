@@ -35,9 +35,9 @@ function mockChunk(id: string) {
 beforeEach(() => {
     vi.clearAllMocks();
     // Default: ownership check passes
-    vi.mocked(getChunkById).mockImplementation((id: string) =>
+    vi.mocked(getChunkById).mockImplementation(((id: string) =>
         Effect.succeed(mockChunk(id))
-    );
+    ) as any);
 });
 
 describe("bulkUpdate", () => {
@@ -55,13 +55,13 @@ describe("bulkUpdate", () => {
 
     describe("add_tags", () => {
         it("adds tags to chunks, merging with existing", async () => {
-            vi.mocked(findOrCreateTag).mockImplementation((name: string) =>
+            vi.mocked(findOrCreateTag).mockImplementation(((name: string) =>
                 Effect.succeed({ id: `tag-${name}`, name })
-            );
+            ) as any);
             vi.mocked(getTagsForChunks).mockReturnValue(
                 Effect.succeed([
                     { chunkId: "chunk-1", tagId: "tag-existing" },
-                ])
+                ]) as any
             );
             vi.mocked(setChunkTags).mockReturnValue(Effect.succeed(undefined as any));
 
@@ -90,15 +90,15 @@ describe("bulkUpdate", () => {
 
     describe("remove_tags", () => {
         it("removes specified tags from chunks", async () => {
-            vi.mocked(findOrCreateTag).mockImplementation((name: string) =>
+            vi.mocked(findOrCreateTag).mockImplementation(((name: string) =>
                 Effect.succeed({ id: `tag-${name}`, name })
-            );
+            ) as any);
             vi.mocked(getTagsForChunks).mockReturnValue(
                 Effect.succeed([
                     { chunkId: "chunk-1", tagId: "tag-foo" },
                     { chunkId: "chunk-1", tagId: "tag-keep" },
                     { chunkId: "chunk-2", tagId: "tag-foo" },
-                ])
+                ]) as any
             );
             vi.mocked(setChunkTags).mockReturnValue(Effect.succeed(undefined as any));
 

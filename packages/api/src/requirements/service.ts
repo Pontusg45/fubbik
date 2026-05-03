@@ -24,7 +24,7 @@ import { validateSteps } from "./validator";
 import { crossReferenceSteps, type CrossRefWarning } from "./cross-ref";
 import { toGherkin, toVitest, toMarkdown } from "./export";
 
-interface StepVocabularyWarning extends VocabularyWarning {
+export interface StepVocabularyWarning extends VocabularyWarning {
     step: number;
 }
 

@@ -150,8 +150,9 @@ function ChunkDetail() {
     // Track in recently viewed (with title/type) once data loads
     useEffect(() => {
         if (data?.chunk) {
-            addRecentlyViewed({ id: data.chunk.id, title: data.chunk.title, type: data.chunk.type });
-            addVisit({ id: data.chunk.id, title: data.chunk.title, type: data.chunk.type });
+            const c = data.chunk as { id: string; title: string; type: string };
+            addRecentlyViewed({ id: c.id, title: c.title, type: c.type });
+            addVisit({ id: c.id, title: c.title, type: c.type });
         }
     }, [data?.chunk?.id, data?.chunk?.title, data?.chunk?.type, addRecentlyViewed, addVisit]);
 
@@ -284,9 +285,9 @@ function ChunkDetail() {
         );
     }
 
-    const chunk = data.chunk;
-    const origin = (chunk as Record<string, unknown>).origin as string | undefined;
-    const reviewStatus = (chunk as Record<string, unknown>).reviewStatus as string | undefined;
+    const chunk = data.chunk as { id: string; title: string; type: string; content: string; createdAt: string; updatedAt: string; [key: string]: unknown };
+    const origin = chunk.origin as string | undefined;
+    const reviewStatus = chunk.reviewStatus as string | undefined;
     const isAi = origin === "ai";
     const connections = data.connections ?? [];
     const outgoing = connections.filter(c => c.sourceId === chunkId);
@@ -301,13 +302,13 @@ function ChunkDetail() {
         | Array<{ id: string; path: string; anchor?: string | null; relation: string }>
         | undefined;
     const tags = ((data as Record<string, unknown>).tags as Array<{ id: string; name: string }> | undefined) ?? [];
-    const rationale = (chunk as Record<string, unknown>).rationale as string | null | undefined;
-    const alternatives = (chunk as Record<string, unknown>).alternatives as string[] | null | undefined;
-    const consequences = (chunk as Record<string, unknown>).consequences as string | null | undefined;
+    const rationale = chunk.rationale as string | null | undefined;
+    const alternatives = chunk.alternatives as string[] | null | undefined;
+    const consequences = chunk.consequences as string | null | undefined;
     const healthScore = (data as Record<string, unknown>).healthScore as
         | { total: number; breakdown: { freshness: number; completeness: number; richness: number; connectivity: number }; issues: string[] }
         | undefined;
-    const isEntryPoint = (chunk as Record<string, unknown>).isEntryPoint as boolean | undefined;
+    const isEntryPoint = chunk.isEntryPoint as boolean | undefined;
     const deltas = (data as Record<string, unknown>).deltas as
         | Array<{
               id: string;

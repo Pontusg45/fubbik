@@ -62,7 +62,6 @@ interface Feature {
     updatedAt: string;
 }
 
-type FeatureStatus = "active" | "inactive" | "archived" | "merged";
 
 function statusBadgeVariant(status: string): "success" | "secondary" | "warning" | "outline" {
     switch (status) {
@@ -114,7 +113,7 @@ function FeaturesPage() {
     });
 
     const patchMutation = useMutation({
-        mutationFn: async ({ id, body }: { id: string; body: { status?: FeatureStatus; name?: string } }) =>
+        mutationFn: async ({ id, body }: { id: string; body: { status?: "active" | "inactive" | "archived"; name?: string } }) =>
             unwrapEden(await api.api.features({ id }).patch(body)),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["features"] });

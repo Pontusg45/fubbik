@@ -65,23 +65,23 @@ export function Breadcrumbs() {
             if (parentPart === "chunks") {
                 // Try to find chunk title from the matching route's loader data
                 const chunkMatch = matches.find(
-                    m => m.loaderData && typeof m.loaderData === "object" && "chunk" in (m.loaderData as Record<string, unknown>)
+                    (m: any) => m.loaderData && typeof m.loaderData === "object" && "chunk" in m.loaderData
                 );
                 if (chunkMatch) {
-                    const loaderData = chunkMatch.loaderData as unknown as { chunk?: { title?: string } };
+                    const loaderData = (chunkMatch as any).loaderData as { chunk?: { title?: string } };
                     if (loaderData.chunk?.title) {
                         dynamicLabel = truncate(loaderData.chunk.title, 30);
                     }
                 }
             } else if (parentPart === "requirements_" || parentPart === "requirements") {
                 const reqMatch = matches.find(
-                    m =>
+                    (m: any) =>
                         m.loaderData &&
                         typeof m.loaderData === "object" &&
-                        "requirement" in (m.loaderData as Record<string, unknown>)
+                        "requirement" in m.loaderData
                 );
                 if (reqMatch) {
-                    const loaderData = reqMatch.loaderData as unknown as { requirement?: { title?: string } };
+                    const loaderData = (reqMatch as any).loaderData as { requirement?: { title?: string } };
                     if (loaderData.requirement?.title) {
                         dynamicLabel = truncate(loaderData.requirement.title, 30);
                     }

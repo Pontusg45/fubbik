@@ -95,7 +95,7 @@ describe("exportContext", () => {
 
         expect(result.format).toBe("json");
         expect(result.chunks).toBeDefined();
-        expect(result.chunks![0].title).toBe("JSON Chunk");
+        expect(result.chunks![0]!.title).toBe("JSON Chunk");
     });
 
     it("respects token budget and excludes chunks that exceed it", async () => {
@@ -159,8 +159,8 @@ describe("exportContext", () => {
         const result = await Effect.runPromise(exportContext("user-1", { format: "json", maxTokens: 5000 }));
 
         // Document should appear before note due to higher type score
-        expect(result.chunks![0].title).toBe("A Doc");
-        expect(result.chunks![1].title).toBe("A Note");
+        expect(result.chunks![0]!.title).toBe("A Doc");
+        expect(result.chunks![1]!.title).toBe("A Note");
     });
 
     it("boosts score for chunks matching forPath context", async () => {
@@ -176,7 +176,7 @@ describe("exportContext", () => {
         );
 
         // The file-relevant chunk should be boosted to first position
-        expect(result.chunks![0].title).toBe("Relevant");
+        expect(result.chunks![0]!.title).toBe("Relevant");
     });
 
     it("includes tags in json output", async () => {
@@ -188,7 +188,7 @@ describe("exportContext", () => {
 
         const result = await Effect.runPromise(exportContext("user-1", { format: "json", maxTokens: 5000 }));
 
-        expect(result.chunks![0].tags).toEqual(["architecture", "backend"]);
+        expect(result.chunks![0]!.tags).toEqual(["architecture", "backend"]);
     });
 
     it("approved chunks are scored higher via reviewStatus", async () => {
@@ -200,7 +200,7 @@ describe("exportContext", () => {
 
         const result = await Effect.runPromise(exportContext("user-1", { format: "json", maxTokens: 5000 }));
 
-        expect(result.chunks![0].title).toBe("Approved");
+        expect(result.chunks![0]!.title).toBe("Approved");
     });
 });
 

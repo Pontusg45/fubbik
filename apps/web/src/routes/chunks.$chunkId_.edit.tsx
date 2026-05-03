@@ -180,7 +180,7 @@ function EditChunk() {
                 return;
             }
 
-            const chunk = data.chunk;
+            const chunk = data.chunk as { title: string; content: string; type: string; [key: string]: unknown };
             setTitle(chunk.title);
             setContent(chunk.content);
             setType(chunk.type);

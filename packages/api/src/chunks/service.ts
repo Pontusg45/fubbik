@@ -342,7 +342,7 @@ interface NeighborItem {
     distance: number;
 }
 
-interface NeighborsResult {
+export interface NeighborsResult {
     neighbors: NeighborItem[];
     note: string | null;
 }

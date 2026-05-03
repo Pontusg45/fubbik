@@ -56,7 +56,7 @@ export function GraphDetailPanel({
 
                 {data?.chunk &&
                     (() => {
-                        const chunk = data.chunk;
+                        const chunk = data.chunk as { id: string; title: string; type: string; content: string; createdAt: string; updatedAt: string };
                         const connections = data.connections ?? [];
                         const outgoing = connections.filter(c => c.sourceId === chunkId);
                         const incoming = connections.filter(c => c.sourceId !== chunkId);
