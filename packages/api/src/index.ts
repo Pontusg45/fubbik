@@ -54,6 +54,8 @@ import { proposalRoutes } from "./proposals/routes";
 import { taskQueueRoutes } from "./tasks/routes";
 import { vocabularyRoutes } from "./vocabulary/routes";
 import { workspaceRoutes } from "./workspaces/routes";
+import { featureRoutes } from "./features/routes";
+import { getActiveFeatureIds } from "@fubbik/db/repository";
 
 const FiberFailureCauseSymbol = Symbol.for("effect/Runtime/FiberFailure/Cause");
 
@@ -132,7 +134,16 @@ export const api = new Elysia({ prefix: "/api" })
     })
     .resolve(async ({ headers }) => {
         const session = await getSession(new Headers(headers as Record<string, string>));
-        return { session: session ?? undefined };
+        let activeFeatureIds: string[] = [];
+        if (session) {
+            try {
+                const rows = await Effect.runPromise(getActiveFeatureIds(session.user.id));
+                activeFeatureIds = rows.map(r => r.featureId);
+            } catch {
+                // Non-critical — proceed without feature resolution
+            }
+        }
+        return { session: session ?? undefined, activeFeatureIds };
     })
     .get("/me", ctx =>
         Effect.runPromise(requireSession(ctx).pipe(Effect.map(session => ({ message: "This is private" as const, user: session.user }))))
@@ -173,6 +184,7 @@ export const api = new Elysia({ prefix: "/api" })
     .use(proposalRoutes)
     .use(taskQueueRoutes)
     .use(workspaceRoutes)
+    .use(featureRoutes)
     .use(stalenessRoutes)
     .use(savedGraphRoutes)
     .use(searchRoutes)
