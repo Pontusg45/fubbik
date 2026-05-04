@@ -20,6 +20,12 @@ services:
       POSTGRES_DB: fubbik
       POSTGRES_USER: fubbik
       POSTGRES_PASSWORD: fubbik
+    entrypoint:
+      - sh
+      - -c
+      - |
+        echo "CREATE EXTENSION IF NOT EXISTS vector; CREATE EXTENSION IF NOT EXISTS pg_trgm;" > /docker-entrypoint-initdb.d/01-extensions.sql
+        exec docker-entrypoint.sh postgres
     volumes:
       - fubbik_data:/var/lib/postgresql
     healthcheck:

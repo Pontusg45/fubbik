@@ -1,21 +1,10 @@
 #!/bin/sh
 
-echo "Enabling PostgreSQL extensions..."
-# Extensions must be created before schema migration (vector type used in tables)
-if [ -n "$DATABASE_URL" ]; then
-    bun -e "
-const pg = require('pg');
-const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
-(async () => {
-    try {
-        await pool.query('CREATE EXTENSION IF NOT EXISTS vector');
-        await pool.query('CREATE EXTENSION IF NOT EXISTS pg_trgm');
-        console.log('  Extensions enabled');
-    } catch(e) { console.log('  Extension warning:', e.message); }
-    await pool.end();
-})();
-" 2>&1 || echo "Warning: extension setup failed. Continuing..."
-fi
+# Extensions (vector, pg_trgm) are created by the PostgreSQL container's init scripts:
+#   - docker-compose.yml: mounts docker/init-extensions.sql into /docker-entrypoint-initdb.d/
+#   - docker-compose.selfhost.yml: creates the init script via entrypoint override
+#   - Local dev: create extensions manually or via pnpm db:push
+# They must exist before drizzle-kit migrate (the chunk table uses vector(768)).
 
 echo "Running database migrations..."
 cd /app/packages/db
