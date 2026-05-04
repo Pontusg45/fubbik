@@ -15,13 +15,13 @@
 
 services:
   db:
-    image: pgvector/pgvector:0.8.0-pg16
+    image: pgvector/pgvector:0.8.2-pg18
     environment:
       POSTGRES_DB: fubbik
       POSTGRES_USER: fubbik
       POSTGRES_PASSWORD: fubbik
     volumes:
-      - fubbik_data:/var/lib/postgresql/data
+      - fubbik_data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U fubbik"]
       interval: 5s
