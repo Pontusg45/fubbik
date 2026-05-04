@@ -28,9 +28,9 @@ This file provides context about the project for AI assistants.
 
 ### Database
 
-- Database: postgres
+- Database: postgres (v18)
 - ORM: drizzle
-- Extensions: pgvector (embeddings), pg_trgm (fuzzy text search)
+- Extensions: pgvector 0.8.2 (embeddings), pg_trgm (fuzzy text search)
 
 ### Authentication
 

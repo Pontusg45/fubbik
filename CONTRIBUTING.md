@@ -5,7 +5,7 @@
 - Node.js v22+
 - Bun runtime
 - pnpm package manager
-- PostgreSQL with pgvector extension
+- PostgreSQL 18+ with pgvector extension
 - (Optional) Ollama for AI features
 
 ## Setup
