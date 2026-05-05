@@ -14,7 +14,8 @@ export const env = createEnv({
         PORT: type("string >= 1"),
         RATE_LIMIT_DURATION_MS: type("string | undefined"),
         RATE_LIMIT_MAX: type("string | undefined"),
-        OLLAMA_URL: type("string | undefined")
+        OLLAMA_URL: type("string | undefined"),
+        STALENESS_SCAN_INTERVAL_HOURS: type("string | undefined")
     },
     runtimeEnv: {
         ...process.env,
@@ -24,7 +25,8 @@ export const env = createEnv({
         PORT: process.env.PORT ?? "3000",
         RATE_LIMIT_DURATION_MS: process.env.RATE_LIMIT_DURATION_MS,
         RATE_LIMIT_MAX: process.env.RATE_LIMIT_MAX,
-        OLLAMA_URL: process.env.OLLAMA_URL
+        OLLAMA_URL: process.env.OLLAMA_URL,
+        STALENESS_SCAN_INTERVAL_HOURS: process.env.STALENESS_SCAN_INTERVAL_HOURS
     },
     emptyStringAsUndefined: true
 });

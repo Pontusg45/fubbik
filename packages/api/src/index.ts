@@ -193,4 +193,9 @@ export const api = new Elysia({ prefix: "/api" })
     .use(densityRoutes)
     .use(vocabularyCatalogRoutes);
 
+import { initStartupTasks } from "./startup";
+
+// Fire-and-forget startup tasks (staleness scan, etc.)
+initStartupTasks();
+
 export type Api = typeof api;
