@@ -142,31 +142,53 @@ export const contextDirCommand = new Command("dir")
             process.exit(1);
         }
 
-        const seenChunkIds = new Set<string>();
+        const relativePaths = files.map(f => relative(process.cwd(), f));
         const allChunks: ContextChunk[] = [];
 
-        for (const file of files) {
-            const relativePath = relative(process.cwd(), file);
-            const params = new URLSearchParams();
-            params.set("path", relativePath);
-            if (opts.codebase) {
-                params.set("codebaseId", opts.codebase);
-            }
+        // Batch fetch — single HTTP call for all files
+        const params = new URLSearchParams();
+        params.set("paths", relativePaths.join(","));
+        params.set("format", "structured-json");
+        if (opts.codebase) params.set("codebaseId", opts.codebase);
 
-            try {
-                const res = await fetch(`${serverUrl}/api/context/for-file?${params.toString()}`);
-                if (!res.ok) continue;
-
-                const chunks = (await res.json()) as ContextChunk[];
-                for (const chunk of chunks) {
-                    if (!seenChunkIds.has(chunk.id)) {
-                        seenChunkIds.add(chunk.id);
-                        allChunks.push(chunk);
+        try {
+            const res = await fetch(`${serverUrl}/api/context/for-files?${params.toString()}`);
+            if (res.ok) {
+                const data = (await res.json()) as {
+                    sections?: Array<{
+                        title: string;
+                        chunks: Array<{
+                            id: string;
+                            title: string;
+                            type: string;
+                            content: string;
+                            summary?: string | null;
+                            rationale?: string | null;
+                        }>;
+                    }>;
+                };
+                if (data.sections) {
+                    const seenIds = new Set<string>();
+                    for (const section of data.sections) {
+                        for (const chunk of section.chunks) {
+                            if (!seenIds.has(chunk.id)) {
+                                seenIds.add(chunk.id);
+                                allChunks.push({
+                                    id: chunk.id,
+                                    title: chunk.title,
+                                    type: chunk.type,
+                                    content: chunk.content,
+                                    summary: chunk.summary ?? null,
+                                    matchReason: "file-ref",
+                                });
+                            }
+                        }
                     }
                 }
-            } catch {
-                // skip files that fail to fetch
             }
+        } catch {
+            outputError("Failed to fetch context for directory");
+            process.exit(1);
         }
 
         const markdown = formatDirectoryMarkdown(allChunks, directory);
