@@ -1,6 +1,6 @@
 import { cors } from "@elysiajs/cors";
 import { swagger } from "@elysiajs/swagger";
-import { api } from "@fubbik/api";
+import { api, awaitImplicitDevUserBootstrap, initStartupTasks } from "@fubbik/api";
 import { auth } from "@fubbik/auth";
 import { env } from "@fubbik/env/server";
 import { Elysia } from "elysia";
@@ -13,6 +13,8 @@ import { startTracing, shutdownTracing } from "./lib/tracing";
 if (process.env.OTEL_EXPORTER_OTLP_ENDPOINT) {
     startTracing();
 }
+
+await awaitImplicitDevUserBootstrap();
 
 new Elysia()
     .use(
@@ -49,14 +51,17 @@ new Elysia()
     })
     .onError(({ error, request }) => {
         const pathname = new URL(request.url).pathname;
-        logger.error(`${request.method} ${pathname}`, {
-            error: "message" in error ? error.message : String(error)
-        });
+        const message = "message" in error ? String(error.message) : String(error);
+        // Effect.runPromise throws FiberFailure with generic message — log full string for context.
+        const errorLog =
+            message === "An error has occurred" ? `${(error as Error).name}: ${String(error)}` : message;
+        logger.error(`${request.method} ${pathname}`, { error: errorLog });
     })
     .use(api)
     .get("/", () => "OK")
     .listen(Number(env.PORT), () => {
         logger.info(`Server is running on http://localhost:${env.PORT}`);
+        initStartupTasks();
     });
 
 process.on("SIGTERM", async () => {

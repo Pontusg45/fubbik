@@ -1,4 +1,5 @@
 import { auth } from "@fubbik/auth";
+import { env } from "@fubbik/env/server";
 import { Cause, Effect, Option } from "effect";
 import { Elysia } from "elysia";
 
@@ -68,8 +69,8 @@ function extractEffectError(error: unknown): Record<string, unknown> | null {
     return Option.isSome(option) ? option.value : null;
 }
 
-// DEV_SESSION is used as a fallback in non-production environments only.
-// In production, unauthenticated requests receive null and are rejected by requireSession.
+// DEV_SESSION is injected when NODE_ENV≠production or when self-host sets FUBBIK_IMPLICIT_DEV_SESSION=true.
+// Otherwise unauthenticated requests receive null and are rejected by requireSession.
 const DEV_USER_ID = "dev-user";
 const DEV_SESSION: Session = {
     session: {
@@ -100,7 +101,8 @@ async function getSession(headers: Headers): Promise<Session | null> {
     } catch {
         // auth.api.getSession can throw on invalid/expired tokens
     }
-    if (process.env.NODE_ENV !== "production") return DEV_SESSION;
+    const implicitFallback = env.NODE_ENV !== "production" || env.FUBBIK_IMPLICIT_DEV_SESSION === "true";
+    if (implicitFallback) return DEV_SESSION;
     return null;
 }
 
@@ -204,9 +206,6 @@ export const api = new Elysia({ prefix: "/api" })
     .use(coreRoutes)
     .use(extendedRoutes);
 
-import { initStartupTasks } from "./startup";
-
-// Fire-and-forget startup tasks (staleness scan, etc.)
-initStartupTasks();
+export { awaitImplicitDevUserBootstrap, initStartupTasks } from "./startup";
 
 export type Api = typeof api;

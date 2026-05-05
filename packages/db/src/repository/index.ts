@@ -31,6 +31,7 @@ export * from "./saved-graph";
 export * from "./saved-query";
 export * from "./document";
 export * from "./staleness";
+export * from "./implicit-dev-user";
 export * from "./learning-path";
 export * from "./clusters";
 export * from "../age/query";

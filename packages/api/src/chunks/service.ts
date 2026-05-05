@@ -15,6 +15,7 @@ import {
     getCodebasesForChunks,
     getFileRefsForChunk,
     getDeltasForChunk as getDeltasForChunkRepo,
+    getDocumentById,
     getNextVersionNumber,
     getRequirementsForChunks,
     getTagsForChunk,
@@ -31,6 +32,7 @@ import {
 } from "@fubbik/db/repository";
 import { Effect } from "effect";
 
+import type { DatabaseError } from "@fubbik/db/errors";
 import { importDocument } from "../documents/service";
 import { enrichChunk } from "../enrich/service";
 import { resolveChunks } from "../features/resolve";
@@ -205,6 +207,39 @@ export function getChunkDetail(chunkId: string, userId?: string, activeFeatureId
     );
 }
 
+type ResolvedDocumentLinkage = {
+    documentId: string | undefined;
+    documentOrder: number | undefined;
+};
+
+function resolveDocumentLinkageForNewChunk(
+    userId: string,
+    rawDocumentId?: string,
+    rawOrder?: number
+): Effect.Effect<ResolvedDocumentLinkage, DatabaseError | ValidationError> {
+    const trimmed =
+        typeof rawDocumentId === "string" && rawDocumentId.trim().length > 0 ? rawDocumentId.trim() : undefined;
+
+    if (!trimmed) {
+        return Effect.succeed<ResolvedDocumentLinkage>({
+            documentId: undefined,
+            documentOrder: undefined
+        });
+    }
+
+    return getDocumentById(trimmed).pipe(
+        Effect.flatMap(doc => {
+            if (!doc || doc.userId !== userId) {
+                return Effect.fail(new ValidationError({ message: "Invalid or unknown document for documentId" }));
+            }
+            return Effect.succeed<ResolvedDocumentLinkage>({
+                documentId: trimmed,
+                documentOrder: rawOrder
+            });
+        })
+    );
+}
+
 export function createChunk(
     userId: string,
     body: {
@@ -223,20 +258,23 @@ export function createChunk(
 ) {
     const id = crypto.randomUUID();
     const origin = body.origin ?? "human";
-    return createChunkRepo({
-        id,
-        title: body.title,
-        content: body.content ?? "",
-        type: body.type ?? "note",
-        userId,
-        rationale: body.rationale,
-        alternatives: body.alternatives,
-        consequences: body.consequences,
-        origin,
-        reviewStatus: origin === "ai" ? "draft" : "approved",
-        documentId: body.documentId,
-        documentOrder: body.documentOrder
-    }).pipe(
+    return resolveDocumentLinkageForNewChunk(userId, body.documentId, body.documentOrder).pipe(
+        Effect.flatMap(({ documentId, documentOrder }) =>
+            createChunkRepo({
+                id,
+                title: body.title,
+                content: body.content ?? "",
+                type: body.type ?? "note",
+                userId,
+                rationale: body.rationale,
+                alternatives: body.alternatives,
+                consequences: body.consequences,
+                origin,
+                reviewStatus: origin === "ai" ? "draft" : "approved",
+                documentId,
+                documentOrder
+            })
+        ),
         Effect.tap(() => {
             if (body.tags && body.tags.length > 0) {
                 return Effect.all(body.tags.map(name => findOrCreateTag(name, userId)), { concurrency: 5 }).pipe(

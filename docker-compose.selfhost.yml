@@ -12,10 +12,16 @@
 #
 # No external network calls. All data stays local.
 # Ollama (optional, local): set OLLAMA_URL to your local Ollama instance.
+#
+# Auth: FUBBIK_IMPLICIT_DEV_SESSION + VITE_FUBBIK_IMPLICIT_DEV_SESSION expose a dev user in the
+# UI without Sign In. Do not enable on an internet-exposed host.
 
 services:
   db:
-    image: pgvector/pgvector:0.8.2-pg18
+    build:
+      context: .
+      dockerfile: docker/postgres/Dockerfile
+    image: fubbik-postgres:pg18-vector-age
     environment:
       POSTGRES_DB: fubbik
       POSTGRES_USER: fubbik
@@ -24,7 +30,7 @@ services:
       - sh
       - -c
       - |
-        echo "CREATE EXTENSION IF NOT EXISTS vector; CREATE EXTENSION IF NOT EXISTS pg_trgm;" > /docker-entrypoint-initdb.d/01-extensions.sql
+        echo "CREATE EXTENSION IF NOT EXISTS vector; CREATE EXTENSION IF NOT EXISTS pg_trgm; CREATE EXTENSION IF NOT EXISTS age;" > /docker-entrypoint-initdb.d/01-extensions.sql
         exec docker-entrypoint.sh postgres
     volumes:
       - fubbik_data:/var/lib/postgresql
@@ -37,7 +43,7 @@ services:
   server:
     build:
       context: .
-      dockerfile: apps/server/Dockerfile
+      dockerfile: docker/build/server.Dockerfile
     image: pontusg45/fubbik-server:latest
     ports:
       - "${FUBBIK_API_PORT:-4717}:3000"
@@ -46,6 +52,8 @@ services:
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-change-this-to-a-random-string-32ch}
       BETTER_AUTH_URL: http://localhost:${FUBBIK_API_PORT:-4717}
       CORS_ORIGIN: http://localhost:${FUBBIK_WEB_PORT:-4718}
+      # Match NODE_ENV=production container: API injects implicit dev-user for unauthenticated /api routes
+      FUBBIK_IMPLICIT_DEV_SESSION: "true"
       OLLAMA_URL: ${OLLAMA_URL:-http://host.docker.internal:11434}
       # Explicitly disable external services
       OPENAI_API_KEY: ""
@@ -59,9 +67,10 @@ services:
   web:
     build:
       context: .
-      dockerfile: apps/web/Dockerfile
+      dockerfile: docker/build/web.Dockerfile
       args:
         VITE_SERVER_URL: http://localhost:${FUBBIK_API_PORT:-4717}
+        VITE_FUBBIK_IMPLICIT_DEV_SESSION: "true"
     image: pontusg45/fubbik-web:latest
     ports:
       - "${FUBBIK_WEB_PORT:-4718}:3001"

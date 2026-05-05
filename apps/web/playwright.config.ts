@@ -26,7 +26,10 @@ export default defineConfig({
             command: "bun run vite dev",
             port: 3001,
             reuseExistingServer: !process.env.CI,
-            timeout: 30_000
+            timeout: 30_000,
+            env: {
+                VITE_FUBBIK_DISABLE_IMPLICIT_DEV_UX: "true"
+            }
         }
     ]
 });

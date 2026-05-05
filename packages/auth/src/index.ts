@@ -4,7 +4,7 @@ import { env } from "@fubbik/env/server";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 
-const isDev = process.env.NODE_ENV !== "production";
+const relaxedHttpAuth = env.NODE_ENV !== "production" || env.FUBBIK_IMPLICIT_DEV_SESSION === "true";
 
 export const auth = betterAuth({
     database: drizzleAdapter(db, {
@@ -18,8 +18,8 @@ export const auth = betterAuth({
     },
     advanced: {
         defaultCookieAttributes: {
-            sameSite: isDev ? "lax" : "none",
-            secure: !isDev,
+            sameSite: relaxedHttpAuth ? "lax" : "none",
+            secure: !relaxedHttpAuth,
             httpOnly: true
         }
     },

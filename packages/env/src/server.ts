@@ -15,7 +15,9 @@ export const env = createEnv({
         RATE_LIMIT_DURATION_MS: type("string | undefined"),
         RATE_LIMIT_MAX: type("string | undefined"),
         OLLAMA_URL: type("string | undefined"),
-        STALENESS_SCAN_INTERVAL_HOURS: type("string | undefined")
+        STALENESS_SCAN_INTERVAL_HOURS: type("string | undefined"),
+        /** `"true"` = treat like local dev for API/session (implicit dev-user when unauthenticated); use for compose self-host only */
+        FUBBIK_IMPLICIT_DEV_SESSION: type("string | undefined")
     },
     runtimeEnv: {
         ...process.env,
@@ -26,7 +28,8 @@ export const env = createEnv({
         RATE_LIMIT_DURATION_MS: process.env.RATE_LIMIT_DURATION_MS,
         RATE_LIMIT_MAX: process.env.RATE_LIMIT_MAX,
         OLLAMA_URL: process.env.OLLAMA_URL,
-        STALENESS_SCAN_INTERVAL_HOURS: process.env.STALENESS_SCAN_INTERVAL_HOURS
+        STALENESS_SCAN_INTERVAL_HOURS: process.env.STALENESS_SCAN_INTERVAL_HOURS,
+        FUBBIK_IMPLICIT_DEV_SESSION: process.env.FUBBIK_IMPLICIT_DEV_SESSION
     },
     emptyStringAsUndefined: true
 });

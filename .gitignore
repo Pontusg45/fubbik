@@ -5,7 +5,7 @@ node_modules
 
 # Build outputs
 dist
-build
+/build
 *.tsbuildinfo
 
 # Environment variables
@@ -55,7 +55,9 @@ temp
 .playwright-mcp/
 .claude/worktrees/
 
-# Compiled artifacts that shouldn't land in src/ (CLI is pure TS)
+# Compiled artifacts that shouldn't land in src/
+packages/env/src/**/*.js
+packages/env/src/**/*.d.ts
 apps/cli/src/**/*.js
 apps/cli/src/**/*.js.map
 apps/cli/src/**/*.d.ts

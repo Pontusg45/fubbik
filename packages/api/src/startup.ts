@@ -1,15 +1,29 @@
-import { detectAgeStaleChunks } from "@fubbik/db/repository";
+import { IMPLICIT_DEV_USER_ID, detectAgeStaleChunks, ensureImplicitDevUserRow } from "@fubbik/db/repository";
 import { env } from "@fubbik/env/server";
 import { Effect } from "effect";
 
 import { logger } from "./logger";
 
-const DEV_USER_ID = "dev-user";
+export function apiUsesImplicitDevUser(): boolean {
+    return env.NODE_ENV !== "production" || env.FUBBIK_IMPLICIT_DEV_SESSION === "true";
+}
+
+/** Await once before accepting traffic so FKs to `dev-user` never race an empty DB. */
+export async function awaitImplicitDevUserBootstrap(): Promise<void> {
+    if (!apiUsesImplicitDevUser()) return;
+    try {
+        const inserted = await ensureImplicitDevUserRow();
+        if (inserted) logger.info("Created implicit dev user row (dev-user)");
+    } catch (err) {
+        logger.error("Failed to ensure implicit dev user row", { error: err });
+        throw err;
+    }
+}
 
 async function runStaleScan() {
     const start = Date.now();
     try {
-        const result = await Effect.runPromise(detectAgeStaleChunks(DEV_USER_ID));
+        const result = await Effect.runPromise(detectAgeStaleChunks(IMPLICIT_DEV_USER_ID));
         const duration = Date.now() - start;
         logger.info("Staleness scan completed", {
             flagged: result.flagged,

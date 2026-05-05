@@ -7,7 +7,7 @@ services:
     web:
         build:
             context: .
-            dockerfile: apps/web/Dockerfile
+            dockerfile: docker/build/web.Dockerfile
         container_name: fubbik-web
         ports:
             - "3001:3000"
@@ -37,7 +37,7 @@ services:
     server:
         build:
             context: .
-            dockerfile: apps/server/Dockerfile
+            dockerfile: docker/build/server.Dockerfile
         container_name: fubbik-server
         ports:
             - "3000:3000"
@@ -68,7 +68,10 @@ services:
             - fubbik-network
 
     db:
-        image: pgvector/pgvector:0.8.2-pg18
+        build:
+            context: .
+            dockerfile: docker/postgres/Dockerfile
+        image: fubbik-postgres:pg18-vector-age
         container_name: fubbik-postgres
         environment:
             POSTGRES_DB: ${POSTGRES_DB:-fubbik}

@@ -16,9 +16,6 @@ export PATH="/app/node_modules/.bin:$PATH"
 echo "Running drizzle-kit migrate..."
 drizzle-kit migrate 2>&1 || { echo "ERROR: drizzle-kit migrate failed. Aborting."; exit 1; }
 
-echo "Running SQL extensions and seeds..."
-bun run src/run-sql-migrations.ts 2>&1 || echo "Warning: some SQL migrations may have failed. Continuing..."
-
 if [ "$SEED_DATABASE" = "true" ]; then
     echo "Seeding database..."
     bun run src/seed.ts 2>&1
