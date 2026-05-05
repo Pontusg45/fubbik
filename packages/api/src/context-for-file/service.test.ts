@@ -12,11 +12,9 @@ vi.mock("@fubbik/db/repository", () => ({
 
 import {
     getAppliesToForChunks,
-    getChunkById,
     listChunks,
     lookupChunksByFilePath,
     getRequirementsForChunks,
-    listCodebases,
 } from "@fubbik/db/repository";
 import { getContextForFile } from "./service";
 
