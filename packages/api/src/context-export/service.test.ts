@@ -1,5 +1,5 @@
 import { Effect } from "effect";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi, beforeEach } from "vitest";
 
 // Mock repository modules before importing the modules under test
 vi.mock("@fubbik/db/repository", () => ({
@@ -20,19 +20,25 @@ vi.mock("@fubbik/db/repository/plan", () => ({
     listTasks: vi.fn(() => Effect.succeed([])),
 }));
 
-vi.mock("../context-for-file/service", () => ({
-    getContextForFile: vi.fn(),
+vi.mock("../context/resolvers", () => ({
+    enrichChunks: vi.fn(),
+    resolveForFiles: vi.fn(),
+}));
+
+vi.mock("../context/formatter", () => ({
+    formatStructured: vi.fn(),
+    formatStructuredMarkdown: vi.fn(),
 }));
 
 import {
-    getChunkConnections,
-    getTagsForChunks,
     listChunks,
     listChunksByTag,
 } from "@fubbik/db/repository";
-import { getContextForFile } from "../context-for-file/service";
+import { enrichChunks, resolveForFiles } from "../context/resolvers";
+import { formatStructured, formatStructuredMarkdown } from "../context/formatter";
 import { exportContext } from "./service";
 import { generateClaudeMd } from "./claude-md";
+import type { ChunkWithMetadata } from "../context/formatter";
 
 // ── Helpers ─────────────────────────────────────────────────────────
 
@@ -60,25 +66,52 @@ function makeChunk(overrides: Record<string, unknown> = {}) {
     };
 }
 
-function setupMocks(chunks: ReturnType<typeof makeChunk>[], tags: { chunkId: string; tagName: string }[] = []) {
+function makeEnrichedChunk(overrides: Record<string, unknown> = {}): ChunkWithMetadata {
+    return {
+        id: (overrides.id as string) ?? "chunk-1",
+        title: (overrides.title as string) ?? "Test Chunk",
+        content: (overrides.content as string) ?? "Some content here that is reasonably long for testing purposes.",
+        type: (overrides.type as string) ?? "document",
+        rationale: (overrides.rationale as string | null) ?? null,
+        tags: (overrides.tags as string[]) ?? [],
+        score: (overrides.score as number) ?? 10,
+        healthScore: (overrides.healthScore as number) ?? 50,
+        isStale: (overrides.isStale as boolean) ?? false,
+        hasPendingProposal: (overrides.hasPendingProposal as boolean) ?? false,
+    };
+}
+
+function setupListChunksMock(chunks: ReturnType<typeof makeChunk>[]) {
     const listChunksMock = listChunks as ReturnType<typeof vi.fn>;
     listChunksMock.mockReturnValue(
         Effect.succeed({ chunks, total: chunks.length })
     );
+}
 
-    const getTagsMock = getTagsForChunks as ReturnType<typeof vi.fn>;
-    getTagsMock.mockReturnValue(Effect.succeed(tags));
-
-    const getConnMock = getChunkConnections as ReturnType<typeof vi.fn>;
-    getConnMock.mockReturnValue(Effect.succeed([]));
+function setupEnrichChunksMock(enriched: ChunkWithMetadata[]) {
+    const enrichChunksMock = enrichChunks as ReturnType<typeof vi.fn>;
+    enrichChunksMock.mockReturnValue(Effect.succeed(enriched));
 }
 
 // ── exportContext tests ─────────────────────────────────────────────
 
 describe("exportContext", () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
     it("returns markdown format by default with header", async () => {
         const chunks = [makeChunk({ id: "c1", title: "My Doc", content: "Hello world" })];
-        setupMocks(chunks);
+        setupListChunksMock(chunks);
+
+        const enriched = [makeEnrichedChunk({ id: "c1", title: "My Doc", content: "Hello world" })];
+        setupEnrichChunksMock(enriched);
+
+        const fmtStructuredMock = formatStructured as ReturnType<typeof vi.fn>;
+        fmtStructuredMock.mockReturnValue({ sections: [{ title: "Architecture", chunks: enriched }], totalChunks: 1 });
+
+        const fmtMarkdownMock = formatStructuredMarkdown as ReturnType<typeof vi.fn>;
+        fmtMarkdownMock.mockReturnValue("# Project Context\n\n## Architecture\n\n### My Doc [health: 50]\n\nHello world");
 
         const result = await Effect.runPromise(exportContext("user-1", {}));
 
@@ -89,7 +122,10 @@ describe("exportContext", () => {
 
     it("returns json format when requested", async () => {
         const chunks = [makeChunk({ id: "c1", title: "JSON Chunk" })];
-        setupMocks(chunks);
+        setupListChunksMock(chunks);
+
+        const enriched = [makeEnrichedChunk({ id: "c1", title: "JSON Chunk" })];
+        setupEnrichChunksMock(enriched);
 
         const result = await Effect.runPromise(exportContext("user-1", { format: "json" }));
 
@@ -105,7 +141,23 @@ describe("exportContext", () => {
             makeChunk({ id: "c2", title: "Second", content: longContent, type: "document" }),
             makeChunk({ id: "c3", title: "Third", content: "Also short", type: "document" }),
         ];
-        setupMocks(chunks);
+        setupListChunksMock(chunks);
+
+        const enriched = [
+            makeEnrichedChunk({ id: "c1", title: "First", content: "Short content", score: 10 }),
+            makeEnrichedChunk({ id: "c2", title: "Second", content: longContent, score: 10 }),
+            makeEnrichedChunk({ id: "c3", title: "Third", content: "Also short", score: 10 }),
+        ];
+        setupEnrichChunksMock(enriched);
+
+        const fmtStructuredMock = formatStructured as ReturnType<typeof vi.fn>;
+        fmtStructuredMock.mockImplementation((budgetedChunks: ChunkWithMetadata[]) => ({
+            sections: [{ title: "Architecture", chunks: budgetedChunks }],
+            totalChunks: budgetedChunks.length,
+        }));
+
+        const fmtMarkdownMock = formatStructuredMarkdown as ReturnType<typeof vi.fn>;
+        fmtMarkdownMock.mockImplementation(() => "# Project Context\n\n## Architecture\n\n### First [health: 50]\n\nShort content\n\n### Third [health: 50]\n\nAlso short");
 
         // Very tight budget — should only fit small chunks
         const result = await Effect.runPromise(exportContext("user-1", { maxTokens: 100 }));
@@ -117,7 +169,14 @@ describe("exportContext", () => {
     });
 
     it("produces minimal output for empty chunk list", async () => {
-        setupMocks([]);
+        setupListChunksMock([]);
+        setupEnrichChunksMock([]);
+
+        const fmtStructuredMock = formatStructured as ReturnType<typeof vi.fn>;
+        fmtStructuredMock.mockReturnValue({ sections: [], totalChunks: 0 });
+
+        const fmtMarkdownMock = formatStructuredMarkdown as ReturnType<typeof vi.fn>;
+        fmtMarkdownMock.mockReturnValue("# Project Context\n\n");
 
         const result = await Effect.runPromise(exportContext("user-1", {}));
 
@@ -128,11 +187,23 @@ describe("exportContext", () => {
 
     it("formats document type as 'Architecture' label", async () => {
         const chunks = [makeChunk({ id: "c1", title: "DB Design", type: "document" })];
-        setupMocks(chunks);
+        setupListChunksMock(chunks);
+
+        const enriched = [makeEnrichedChunk({ id: "c1", title: "DB Design", type: "document" })];
+        setupEnrichChunksMock(enriched);
+
+        const fmtStructuredMock = formatStructured as ReturnType<typeof vi.fn>;
+        fmtStructuredMock.mockReturnValue({
+            sections: [{ title: "Architecture", chunks: enriched }],
+            totalChunks: 1,
+        });
+
+        const fmtMarkdownMock = formatStructuredMarkdown as ReturnType<typeof vi.fn>;
+        fmtMarkdownMock.mockReturnValue("# Project Context\n\n## Architecture\n\n### DB Design [health: 50]\n\nSome content");
 
         const result = await Effect.runPromise(exportContext("user-1", { maxTokens: 5000 }));
 
-        expect(result.content).toContain("## Architecture: DB Design");
+        expect(result.content).toContain("## Architecture");
     });
 
     it("includes rationale in formatted output when present", async () => {
@@ -142,7 +213,24 @@ describe("exportContext", () => {
             content: "We chose X.",
             rationale: "Because Y is better than Z.",
         })];
-        setupMocks(chunks);
+        setupListChunksMock(chunks);
+
+        const enriched = [makeEnrichedChunk({
+            id: "c1",
+            title: "Decision",
+            content: "We chose X.",
+            rationale: "Because Y is better than Z.",
+        })];
+        setupEnrichChunksMock(enriched);
+
+        const fmtStructuredMock = formatStructured as ReturnType<typeof vi.fn>;
+        fmtStructuredMock.mockReturnValue({
+            sections: [{ title: "Architecture", chunks: enriched }],
+            totalChunks: 1,
+        });
+
+        const fmtMarkdownMock = formatStructuredMarkdown as ReturnType<typeof vi.fn>;
+        fmtMarkdownMock.mockReturnValue("# Project Context\n\n## Architecture\n\n### Decision [health: 50]\n\nWe chose X.\n\n**Rationale:** Because Y is better than Z.");
 
         const result = await Effect.runPromise(exportContext("user-1", { maxTokens: 5000 }));
 
@@ -154,37 +242,56 @@ describe("exportContext", () => {
             makeChunk({ id: "c1", title: "A Note", type: "note", content: "note content" }),
             makeChunk({ id: "c2", title: "A Doc", type: "document", content: "doc content" }),
         ];
-        setupMocks(chunks);
+        setupListChunksMock(chunks);
+
+        // enrichChunks returns docs with higher score than notes
+        const enriched = [
+            makeEnrichedChunk({ id: "c1", title: "A Note", type: "note", content: "note content", score: 5 }),
+            makeEnrichedChunk({ id: "c2", title: "A Doc", type: "document", content: "doc content", score: 10 }),
+        ];
+        setupEnrichChunksMock(enriched);
 
         const result = await Effect.runPromise(exportContext("user-1", { format: "json", maxTokens: 5000 }));
 
-        // Document should appear before note due to higher type score
+        // Document should appear before note due to higher score (budgetChunks sorts by score desc)
         expect(result.chunks![0]!.title).toBe("A Doc");
         expect(result.chunks![1]!.title).toBe("A Note");
     });
 
     it("boosts score for chunks matching forPath context", async () => {
-        const fileContextChunk = makeChunk({ id: "c2", title: "Relevant", type: "note", content: "relevant" });
         const otherChunk = makeChunk({ id: "c1", title: "Generic", type: "document", content: "generic doc content that is quite detailed" });
-        setupMocks([otherChunk, fileContextChunk]);
+        const fileContextChunk = makeChunk({ id: "c2", title: "Relevant", type: "note", content: "relevant" });
+        setupListChunksMock([otherChunk, fileContextChunk]);
 
-        const getContextMock = getContextForFile as ReturnType<typeof vi.fn>;
-        getContextMock.mockReturnValue(Effect.succeed({ chunks: [{ id: "c2" }], requirements: [] }));
+        // enrichChunks returns Generic with higher base score, Relevant with lower
+        const enriched = [
+            makeEnrichedChunk({ id: "c1", title: "Generic", type: "document", content: "generic doc content that is quite detailed", score: 10 }),
+            makeEnrichedChunk({ id: "c2", title: "Relevant", type: "note", content: "relevant", score: 5 }),
+        ];
+        setupEnrichChunksMock(enriched);
+
+        // resolveForFiles returns c2 as file-relevant
+        const resolveForFilesMock = resolveForFiles as ReturnType<typeof vi.fn>;
+        resolveForFilesMock.mockReturnValue(Effect.succeed(["c2"]));
 
         const result = await Effect.runPromise(
             exportContext("user-1", { forPath: "src/index.ts", format: "json", maxTokens: 5000 })
         );
 
-        // The file-relevant chunk should be boosted to first position
+        // The file-relevant chunk should be boosted to first position (5 + 15 = 20 > 10)
         expect(result.chunks![0]!.title).toBe("Relevant");
     });
 
     it("includes tags in json output", async () => {
         const chunks = [makeChunk({ id: "c1", title: "Tagged" })];
-        setupMocks(chunks, [
-            { chunkId: "c1", tagName: "architecture" },
-            { chunkId: "c1", tagName: "backend" },
-        ]);
+        setupListChunksMock(chunks);
+
+        const enriched = [makeEnrichedChunk({
+            id: "c1",
+            title: "Tagged",
+            tags: ["architecture", "backend"],
+        })];
+        setupEnrichChunksMock(enriched);
 
         const result = await Effect.runPromise(exportContext("user-1", { format: "json", maxTokens: 5000 }));
 
@@ -196,7 +303,14 @@ describe("exportContext", () => {
             makeChunk({ id: "c1", title: "Unapproved", type: "note", reviewStatus: null }),
             makeChunk({ id: "c2", title: "Approved", type: "note", reviewStatus: "approved" }),
         ];
-        setupMocks(chunks);
+        setupListChunksMock(chunks);
+
+        // enrichChunks returns approved with higher score
+        const enriched = [
+            makeEnrichedChunk({ id: "c1", title: "Unapproved", type: "note", score: 5 }),
+            makeEnrichedChunk({ id: "c2", title: "Approved", type: "note", score: 10 }),
+        ];
+        setupEnrichChunksMock(enriched);
 
         const result = await Effect.runPromise(exportContext("user-1", { format: "json", maxTokens: 5000 }));
 

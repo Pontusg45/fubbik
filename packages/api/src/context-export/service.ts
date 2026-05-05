@@ -1,12 +1,11 @@
 import {
-    getChunkConnections,
-    getTagsForChunks,
-    listChunks as listChunksRepo
+    listChunks as listChunksRepo,
 } from "@fubbik/db/repository";
 import { Effect } from "effect";
 
-import { getContextForFile } from "../context-for-file/service";
-import { scoreChunk, estimateTokens, formatChunkText, type ScoredChunk } from "../context/utils";
+import { enrichChunks, resolveForFiles } from "../context/resolvers";
+import { formatStructured, formatStructuredMarkdown } from "../context/formatter";
+import { budgetChunks, estimateTokens, formatChunkText, type ScoredChunk } from "../context/utils";
 
 interface ContextExportQuery {
     codebaseId?: string;
@@ -19,122 +18,78 @@ export function exportContext(userId: string, query: ContextExportQuery) {
     const maxTokens = query.maxTokens ?? 4000;
     const format = query.format ?? "markdown";
 
-    // Fetch approved chunks first, then others
     const fetchApproved = listChunksRepo({
         userId,
         reviewStatus: "approved",
         codebaseId: query.codebaseId,
         limit: 500,
-        offset: 0
+        offset: 0,
     });
 
     const fetchOthers = listChunksRepo({
         userId,
         codebaseId: query.codebaseId,
         limit: 500,
-        offset: 0
+        offset: 0,
     });
 
     return Effect.all({ approved: fetchApproved, all: fetchOthers }).pipe(
         Effect.flatMap(({ approved, all }) => {
-            // Deduplicate: approved first, then non-approved from the "all" set
             const approvedIds = new Set(approved.chunks.map(c => c.id));
             const otherChunks = all.chunks.filter(c => !approvedIds.has(c.id));
             const combined = [...approved.chunks, ...otherChunks];
             const chunkIds = combined.map(c => c.id);
 
-            return Effect.all({
-                chunks: Effect.succeed(combined),
-                tags: getTagsForChunks(chunkIds),
-                connections: Effect.all(
-                    chunkIds.map(id => getChunkConnections(id).pipe(Effect.map(conns => ({ chunkId: id, count: conns.length })))),
-                    { concurrency: 10 }
-                )
-            });
+            return enrichChunks(chunkIds, userId).pipe(
+                Effect.flatMap(enriched =>
+                    Effect.gen(function* () {
+                        if (query.forPath) {
+                            const fileIds = yield* resolveForFiles(
+                                [query.forPath],
+                                userId,
+                                query.codebaseId,
+                            );
+                            const fileIdSet = new Set(fileIds);
+                            for (const item of enriched) {
+                                if (fileIdSet.has(item.id)) {
+                                    item.score += 15;
+                                }
+                            }
+                        }
+
+                        const budgeted = budgetChunks(enriched, maxTokens);
+
+                        if (format === "json") {
+                            return {
+                                format: "json" as const,
+                                tokens: budgeted.reduce(
+                                    (sum, c) => sum + estimateTokens(formatChunkText(c)),
+                                    estimateTokens("# Project Context\n\n"),
+                                ),
+                                chunks: budgeted.map(c => ({
+                                    title: c.title,
+                                    content: c.content,
+                                    type: c.type,
+                                    tags: c.tags,
+                                })),
+                                content: undefined as string | undefined,
+                            };
+                        }
+
+                        const structured = formatStructured(budgeted);
+                        const content = formatStructuredMarkdown(structured);
+
+                        return {
+                            format: "markdown" as const,
+                            tokens: estimateTokens(content),
+                            chunks: undefined as
+                                | { title: string; content: string; type: string; tags: string[] }[]
+                                | undefined,
+                            content,
+                        };
+                    }),
+                ),
+            );
         }),
-        Effect.flatMap(({ chunks, tags, connections }) => Effect.gen(function* () {
-            // Build tag map
-            const tagMap = new Map<string, string[]>();
-            for (const t of tags) {
-                const existing = tagMap.get(t.chunkId) ?? [];
-                existing.push(t.tagName);
-                tagMap.set(t.chunkId, existing);
-            }
-
-            // Build connection count map
-            const connMap = new Map<string, number>();
-            for (const c of connections) {
-                connMap.set(c.chunkId, c.count);
-            }
-
-            // Score chunks using multi-factor scoring
-            const scored: ScoredChunk[] = chunks.map(c => {
-                const connectionCount = connMap.get(c.id) ?? 0;
-                const score = scoreChunk(c, connectionCount);
-
-                return {
-                    id: c.id,
-                    title: c.title,
-                    content: c.content,
-                    type: c.type,
-                    rationale: c.rationale,
-                    tags: tagMap.get(c.id) ?? [],
-                    score
-                };
-            });
-
-            // File-path relevance boost
-            if (query.forPath) {
-                const fileContext = yield* getContextForFile(userId, query.forPath, query.codebaseId);
-                const fileContextIds = new Set(fileContext.chunks.map((c: { id: string }) => c.id));
-                for (const item of scored) {
-                    if (fileContextIds.has(item.id)) {
-                        item.score += 15;
-                    }
-                }
-            }
-
-            // Sort by score descending
-            scored.sort((a, b) => b.score - a.score);
-
-            // Greedily fill budget
-            const selected: ScoredChunk[] = [];
-            let usedTokens = 0;
-            const headerTokens = estimateTokens("# Project Context\n\n");
-
-            usedTokens += headerTokens;
-            for (const chunk of scored) {
-                const chunkText = formatChunkText(chunk);
-                const tokens = estimateTokens(chunkText);
-                if (usedTokens + tokens > maxTokens) continue;
-                selected.push(chunk);
-                usedTokens += tokens;
-            }
-
-            if (format === "json") {
-                return {
-                    format: "json" as const,
-                    tokens: usedTokens,
-                    chunks: selected.map(c => ({
-                        title: c.title,
-                        content: c.content,
-                        type: c.type,
-                        tags: c.tags
-                    })),
-                    content: undefined as string | undefined
-                };
-            }
-
-            // Markdown format
-            const sections = selected.map(c => formatChunkText(c));
-            const markdown = `# Project Context\n\n${sections.join("\n\n")}`;
-
-            return {
-                format: "markdown" as const,
-                tokens: usedTokens,
-                chunks: undefined as { title: string; content: string; type: string; tags: string[] }[] | undefined,
-                content: markdown
-            };
-        }))
     );
 }
