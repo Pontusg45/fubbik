@@ -2,7 +2,7 @@
 
 This file provides context about the project for AI assistants.
 
-> **New to this codebase?** Read [AGENTS.md](./AGENTS.md) first — it has code patterns, examples, and pitfalls that will save you time.
+> **New to this codebase?** Use the `fubbik-dev` skill — it has code patterns for every layer and pitfalls that will save you time.
 
 ## Project Overview
 
