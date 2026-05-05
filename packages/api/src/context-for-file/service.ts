@@ -65,7 +65,7 @@ export function getContextForFile(
         const chunkRows = new Map<string, ChunkRow>();
 
         // 1. Direct file-ref matches
-        const fileRefMatches = yield* lookupChunksByFilePath(filePath, userId);
+        const fileRefMatches = yield* lookupChunksByFilePath(filePath, userId, codebaseId);
         for (const match of fileRefMatches) {
             if (results.has(match.chunkId)) continue;
             const full = yield* getChunkById(match.chunkId, userId);
@@ -181,6 +181,56 @@ export function getContextForFile(
             }
         }
 
+        // 5. Connection expansion — add tightly-coupled chunks
+        const currentIds = Array.from(results.keys());
+        if (currentIds.length > 0) {
+            const allConnections = yield* getConnectionsForChunks(currentIds).pipe(
+                Effect.catchAll(() => Effect.succeed([] as Array<{ id: string; sourceId: string; targetId: string; relation: string }>)),
+            );
+
+            // Prioritize by relation type
+            const RELATION_PRIORITY: Record<string, number> = {
+                part_of: 4,
+                depends_on: 3,
+                extends: 2,
+                references: 1,
+                related_to: 0,
+            };
+
+            // Collect candidate connected chunk IDs
+            const candidates: Array<{ chunkId: string; priority: number }> = [];
+            for (const conn of allConnections) {
+                const connectedId = currentIds.includes(conn.sourceId) ? conn.targetId : conn.sourceId;
+                if (!results.has(connectedId)) {
+                    candidates.push({
+                        chunkId: connectedId,
+                        priority: RELATION_PRIORITY[conn.relation] ?? 0,
+                    });
+                }
+            }
+
+            // Sort by priority descending, take top 5
+            candidates.sort((a, b) => b.priority - a.priority);
+            const topCandidates = candidates.slice(0, 5);
+
+            for (const candidate of topCandidates) {
+                const full = yield* getChunkById(candidate.chunkId, userId).pipe(
+                    Effect.catchAll(() => Effect.succeed(null)),
+                );
+                if (!full) continue;
+                results.set(candidate.chunkId, {
+                    id: full.id,
+                    title: full.title,
+                    type: full.type,
+                    content: full.content,
+                    summary: full.summary,
+                    matchReason: "connected",
+                    score: 0,
+                });
+                chunkRows.set(full.id, full);
+            }
+        }
+
         // Score and sort results
         const matchedChunks = Array.from(results.values());
 
@@ -215,7 +265,7 @@ export function getContextForFile(
 
         matchedChunks.sort((a, b) => b.score - a.score);
 
-        // 5. Find requirements linked to matched chunks
+        // 6. Find requirements linked to matched chunks
         const matchedChunkIds = matchedChunks.map(c => c.id);
         const requirements: ContextRequirement[] = [];
 

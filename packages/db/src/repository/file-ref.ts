@@ -1,7 +1,8 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 
 import { db, dbEffect } from "../index";
 import { chunk } from "../schema/chunk";
+import { chunkCodebase } from "../schema/codebase";
 import { chunkFileRef } from "../schema/file-ref";
 
 export function getFileRefsForChunk(chunkId: string) {
@@ -47,21 +48,37 @@ export function setFileRefsForChunk(
         });
 }
 
-export function lookupChunksByFilePath(path: string, userId: string) {
-    return dbEffect(() =>
-            db
-                .select({
-                    chunkId: chunk.id,
-                    chunkTitle: chunk.title,
-                    chunkType: chunk.type,
-                    refId: chunkFileRef.id,
-                    path: chunkFileRef.path,
-                    anchor: chunkFileRef.anchor,
-                    relation: chunkFileRef.relation
-                })
-                .from(chunkFileRef)
-                .innerJoin(chunk, eq(chunkFileRef.chunkId, chunk.id))
-                .where(and(eq(chunkFileRef.path, path), eq(chunk.userId, userId))));
+export function lookupChunksByFilePath(path: string, userId: string, codebaseId?: string) {
+    return dbEffect(() => {
+        const conditions = [eq(chunkFileRef.path, path), eq(chunk.userId, userId)];
+
+        if (codebaseId) {
+            const inCodebase = db
+                .select({ chunkId: chunkCodebase.chunkId })
+                .from(chunkCodebase)
+                .where(eq(chunkCodebase.codebaseId, codebaseId));
+            const inAnyCodebase = db
+                .select({ chunkId: chunkCodebase.chunkId })
+                .from(chunkCodebase);
+            conditions.push(
+                sql`(${chunk.id} IN (${inCodebase}) OR ${chunk.id} NOT IN (${inAnyCodebase}))`
+            );
+        }
+
+        return db
+            .select({
+                chunkId: chunk.id,
+                chunkTitle: chunk.title,
+                chunkType: chunk.type,
+                refId: chunkFileRef.id,
+                path: chunkFileRef.path,
+                anchor: chunkFileRef.anchor,
+                relation: chunkFileRef.relation
+            })
+            .from(chunkFileRef)
+            .innerJoin(chunk, eq(chunkFileRef.chunkId, chunk.id))
+            .where(and(...conditions));
+    });
 }
 
 export function listAllFileRefs(userId: string) {
