@@ -39,7 +39,8 @@ export const contextExportRoutes = new Elysia()
                         generateClaudeMd({
                             userId: session.user.id,
                             codebaseId: ctx.query.codebaseId,
-                            tag: ctx.query.tag
+                            tag: ctx.query.tag,
+                            maxTokens: ctx.query.maxTokens ? Number(ctx.query.maxTokens) : undefined
                         })
                     )
                 )
@@ -47,7 +48,8 @@ export const contextExportRoutes = new Elysia()
         {
             query: t.Object({
                 codebaseId: t.Optional(t.String()),
-                tag: t.Optional(t.String())
+                tag: t.Optional(t.String()),
+                maxTokens: t.Optional(t.String())
             })
         }
     );

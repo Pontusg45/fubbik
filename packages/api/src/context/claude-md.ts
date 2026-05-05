@@ -2,10 +2,13 @@ import { listChunksByTag, listRequirements, listPlans, getChunksForRequirement }
 import { listTasks } from "@fubbik/db/repository/plan";
 import { Effect } from "effect";
 
+import { estimateTokens } from "./utils";
+
 interface GenerateClaudeMdParams {
     userId: string;
     codebaseId?: string;
     tag?: string;
+    maxTokens?: number;
 }
 
 interface ChunkRow {
@@ -137,6 +140,60 @@ export function generateClaudeMd(params: GenerateClaudeMdParams) {
             }
         }
 
-        return { content: parts.join("\n\n"), chunks: chunks.length };
+        const maxTokens = params.maxTokens ?? 32000;
+        let content = parts.join("\n\n");
+        const totalTokens = estimateTokens(content);
+
+        if (totalTokens > maxTokens) {
+            // Rebuild with budget — include chunks greedily until budget exhausted
+            const budgetedParts: string[] = ["# Project Context\n"];
+            let usedTokens = estimateTokens(budgetedParts[0]!);
+            let omittedChunks = 0;
+
+            if (chunks.length > 0) {
+                const sections = new Map<string, ChunkRow[]>();
+                for (const c of chunks) {
+                    const label = sectionLabel(c.type);
+                    const group = sections.get(label) ?? [];
+                    group.push(c);
+                    sections.set(label, group);
+                }
+
+                const sectionOrder = ["Conventions", "Architecture", "References", "Other"];
+                for (const sectionName of sectionOrder) {
+                    const group = sections.get(sectionName);
+                    if (!group || group.length === 0) continue;
+                    const sectionHeader = `## ${sectionName}\n`;
+                    const sectionTokens = estimateTokens(sectionHeader);
+                    if (usedTokens + sectionTokens > maxTokens) {
+                        omittedChunks += group.length;
+                        continue;
+                    }
+                    budgetedParts.push(sectionHeader);
+                    usedTokens += sectionTokens;
+
+                    for (const c of group) {
+                        const entry = formatChunkEntry(c);
+                        const entryTokens = estimateTokens(entry);
+                        if (usedTokens + entryTokens > maxTokens) {
+                            omittedChunks++;
+                            continue;
+                        }
+                        budgetedParts.push(entry);
+                        usedTokens += entryTokens;
+                    }
+                }
+            }
+
+            if (omittedChunks > 0) {
+                budgetedParts.push(
+                    `<!-- Truncated: ${omittedChunks} chunks omitted due to token budget. Increase maxTokens or narrow the tag filter. -->`
+                );
+            }
+
+            content = budgetedParts.join("\n\n");
+        }
+
+        return { content, chunks: chunks.length };
     });
 }
