@@ -16,6 +16,7 @@ export interface ListChunksParams {
     scope?: Record<string, string>;
     alias?: string;
     tags?: string[];
+    tagMode?: "any" | "all";
     sort?: "newest" | "oldest" | "alpha" | "updated";
     after?: Date;
     enrichment?: "missing" | "complete";
@@ -61,12 +62,25 @@ export function listChunks(params: ListChunksParams) {
                 conditions.push(sql`${chunk.aliases} @> ${JSON.stringify([params.alias])}::jsonb`);
             }
             if (params.tags && params.tags.length > 0) {
-                const tagSubquery = db
-                    .select({ chunkId: chunkTag.chunkId })
-                    .from(chunkTag)
-                    .innerJoin(tag, eq(chunkTag.tagId, tag.id))
-                    .where(inArray(tag.name, params.tags));
-                conditions.push(sql`${chunk.id} IN (${tagSubquery})`);
+                if (params.tagMode === "all") {
+                    // AND semantics: chunk must have ALL specified tags
+                    const tagSubquery = db
+                        .select({ chunkId: chunkTag.chunkId })
+                        .from(chunkTag)
+                        .innerJoin(tag, eq(chunkTag.tagId, tag.id))
+                        .where(inArray(tag.name, params.tags))
+                        .groupBy(chunkTag.chunkId)
+                        .having(sql`COUNT(DISTINCT ${tag.name}) = ${params.tags.length}`);
+                    conditions.push(sql`${chunk.id} IN (${tagSubquery})`);
+                } else {
+                    // OR semantics (default): chunk has at least one of the tags
+                    const tagSubquery = db
+                        .select({ chunkId: chunkTag.chunkId })
+                        .from(chunkTag)
+                        .innerJoin(tag, eq(chunkTag.tagId, tag.id))
+                        .where(inArray(tag.name, params.tags));
+                    conditions.push(sql`${chunk.id} IN (${tagSubquery})`);
+                }
             }
             if (params.after) {
                 conditions.push(gte(chunk.updatedAt, params.after));

@@ -56,6 +56,7 @@ export function listChunks(
         alias?: string;
         sort?: "newest" | "oldest" | "alpha" | "updated";
         tags?: string;
+        tagMode?: "any" | "all";
         after?: string;
         enrichment?: "missing" | "complete";
         minConnections?: string;
@@ -97,6 +98,7 @@ export function listChunks(
         alias: query.alias,
         sort: query.sort,
         tags,
+        tagMode: query.tagMode,
         after,
         enrichment: query.enrichment,
         minConnections,
