@@ -154,6 +154,10 @@ Proactive detection of chunks that may need attention:
 - Flags are dismissable (soft-delete with timestamp) or permanently suppressible (for duplicate pairs)
 - Surfaced across the UI: dashboard "Attention Needed" widget, nav badge on Dashboard link, amber banners on chunk detail pages
 
+### Scope Schema Registry
+
+Optional registry for chunk scope keys. The `scope_key` table defines expected keys with types (string, number, boolean, enum) and allowed values. Used for UI autocomplete and optional validation. Scope remains free-form JSONB — the registry is opt-in.
+
 ## Architecture Patterns
 
 ### Backend: Repository -> Service -> Route
@@ -182,11 +186,22 @@ Proactive detection of chunks that may need attention:
 - Status bar showing chunk count
 - Commands: search, quick-add note, open graph/dashboard in browser
 
-### Context Modules (context-export vs context-for-file)
+### Context Pipeline (Unified)
 
-Two distinct context services exist in `packages/api/src/`:
-- **context-for-file** (`GET /api/context/for-file`): Given a file path, finds relevant chunks via three strategies: direct file-ref matches, appliesTo glob patterns, and dependency-based codebase matching. Returns a flat list of chunks with `matchReason`.
-- **context-export** (`GET /api/chunks/export/context`): Token-budgeted export for AI consumption. Scores all chunks by health, type, connections, and review status, optionally boosting file-relevant chunks (delegates to context-for-file internally), then greedily fills a token budget. Also powers CLAUDE.md generation (`GET /api/chunks/export/claude-md`).
+All context retrieval flows through a single pipeline in `packages/api/src/context/`:
+
+```
+Input Source → Chunk Resolver → Enrichment (health, stale, features) → Scorer + Budgeter → Formatter → Output
+```
+
+- **Resolvers** (`context/resolvers.ts`): `resolveForPlan`, `resolveForConcept`, `resolveForFiles`. Each produces candidate chunk IDs.
+- **Enrichment** (`enrichChunks`): Fetches full rows, connections, tags, stale flags, proposals, active feature overlays. Computes health scores.
+- **Feature Overlays** (`resolveFeatureOverlays`): Applies active feature deltas to chunks in the enrichment pipeline. All context paths get overlays automatically.
+- **Scoring** (`context/utils.ts`): `scoreChunk` combines health, type, rationale, connections, review status. `budgetChunks` greedily fills a token budget. Token estimation uses `js-tiktoken` (cl200k_base encoding) with char/4 fallback.
+- **Formatting** (`context/formatter.ts`): Groups by section, adds `[health: N]`, `⚠ STALE`, `⚠ PENDING PROPOSAL` annotations.
+- **Low-level retrieval** (`context-for-file/service.ts`): Five strategies — file-ref (+20 bonus), applies-to (+10), dependency (+3), semantic (+5, requires Ollama), connected (+2). Results scored and sorted by relevance.
+- **CLAUDE.md generation** (`context/claude-md.ts`): Tag-based export with requirements and active plans. Supports `maxTokens` budget (default 32000).
+- **Snapshots** (`context/snapshot-service.ts`): Frozen context persisted as JSONB. User-scoped (auth-checked on retrieval).
 
 ### MCP Server
 
@@ -204,7 +219,7 @@ Two distinct context services exist in `packages/api/src/`:
 - `GET /api/stats` — aggregate stats
 
 ### Chunks
-- `GET /api/chunks` — list (supports `codebaseId`, `workspaceId`, `global`, `allCodebases`, `search`, `type`, `tags`, `sort`, etc.)
+- `GET /api/chunks` — list (supports `codebaseId`, `workspaceId`, `global`, `allCodebases`, `search`, `type`, `tags`, `tagMode=any|all`, `sort`, etc.)
 - `POST /api/chunks` — create (with optional `codebaseIds`, `rationale`, `alternatives`, `consequences`)
 - `GET /api/chunks/:id` — detail (includes connections, codebases, appliesTo, fileReferences, healthScore)
 - `PATCH /api/chunks/:id` — update (auto-re-enriches on title/content change)
@@ -214,7 +229,7 @@ Two distinct context services exist in `packages/api/src/`:
 - `GET /api/chunks/search/federated` — cross-codebase search with codebase names
 - `POST /api/chunks/check-similar` — duplicate detection (requires Ollama)
 - `GET /api/chunks/export/context` — token-budgeted context export (supports `forPath` relevance boost)
-- `GET /api/chunks/export/claude-md` — CLAUDE.md generation from tagged chunks
+- `GET /api/chunks/export/claude-md` — CLAUDE.md generation from tagged chunks (supports `maxTokens` budget)
 - `POST /api/chunks/import-docs` — bulk import from markdown files with frontmatter parsing
 
 ### Chunk Sub-resources
@@ -269,7 +284,14 @@ Two distinct context services exist in `packages/api/src/`:
 - `GET /api/requirements/traceability` — requirement → plan → session traceability
 
 ### Context
-- `GET /api/context/for-file?path=<path>&deps=<deps>` — chunks relevant to a file (file-refs + appliesTo + dependency matching)
+- `GET /api/context/for-file?path=<path>&codebaseId=<id>&deps=<csv>&format=<fmt>&maxTokens=<n>` — chunks relevant to a file (five strategies: file-ref, applies-to, dependency, semantic, connected). Formats: `structured-md` (default), `structured-json`, `json-legacy`
+- `GET /api/context/for-plan?planId=<id>&maxTokens=<n>&format=<fmt>` — chunks linked to a plan
+- `GET /api/context/about?q=<concept>&maxTokens=<n>&codebaseId=<id>&format=<fmt>` — semantic + text search for a concept
+- `GET /api/context/for-files?paths=<csv>&maxTokens=<n>&codebaseId=<id>&format=<fmt>` — chunks for multiple files
+- `POST /api/context/snapshot` — create frozen context snapshot
+- `GET /api/context/snapshot/:id` — retrieve snapshot (user-scoped, auth-checked)
+- `GET /api/context/snapshots` — list user's snapshots
+- `DELETE /api/context/snapshot/:id` — delete snapshot (user-scoped)
 
 ### Staleness
 - `GET /api/chunks/stale` — list undismissed staleness flags (supports `reason`, `codebaseId`, `limit`)
@@ -299,6 +321,9 @@ Two distinct context services exist in `packages/api/src/`:
 - `GET/POST/PATCH/DELETE /api/tags` — tag management
 - `GET/POST/PATCH/DELETE /api/tag-types` — tag type management
 - `POST /api/chunks/:id/enrich` — AI enrichment
+- `GET /api/scope-keys` — list registered scope keys
+- `POST /api/scope-keys` — register a scope key (key, description, valueType, allowedValues)
+- `DELETE /api/scope-keys/:id` — delete a scope key
 
 The server exposes Swagger/OpenAPI at `/docs` (e.g., `http://localhost:3000/docs`).
 
@@ -391,6 +416,7 @@ Required for chunk enrichment (summary, aliases, not_about generation), semantic
 - `BETTER_AUTH_SECRET` — Auth secret (min 32 chars)
 - `BETTER_AUTH_URL` — Auth server URL
 - `OLLAMA_URL` — Ollama server URL (default: `http://localhost:11434`)
+- `STALENESS_SCAN_INTERVAL_HOURS` — Hours between automatic staleness scans (default: `24`, set to `0` to disable)
 
 ## Common Commands
 
