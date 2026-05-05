@@ -1,4 +1,4 @@
-import { getAppliesToForChunk, getChunkById, getRequirementsForChunks, listChunks, listCodebases, lookupChunksByFilePath } from "@fubbik/db/repository";
+import { getAppliesToForChunks, getChunkById, getRequirementsForChunks, listChunks, listCodebases, lookupChunksByFilePath } from "@fubbik/db/repository";
 import { Effect } from "effect";
 
 import { globMatch } from "./glob-match";
@@ -72,21 +72,34 @@ export function getContextForFile(
             offset: 0
         });
 
-        for (const c of chunks) {
-            if (results.has(c.id)) continue;
-            const patterns = yield* getAppliesToForChunk(c.id);
-            if (patterns.length === 0) continue;
+        const uncheckedIds = chunks.filter(c => !results.has(c.id)).map(c => c.id);
+        if (uncheckedIds.length > 0) {
+            const allPatterns = yield* getAppliesToForChunks(uncheckedIds);
 
-            const matches = patterns.some(p => globMatch(p.pattern, filePath));
-            if (matches) {
-                results.set(c.id, {
-                    id: c.id,
-                    title: c.title,
-                    type: c.type,
-                    content: c.content,
-                    summary: c.summary,
-                    matchReason: "applies-to"
-                });
+            // Group patterns by chunkId
+            const patternsByChunk = new Map<string, Array<{ pattern: string }>>();
+            for (const p of allPatterns) {
+                const existing = patternsByChunk.get(p.chunkId) ?? [];
+                existing.push(p);
+                patternsByChunk.set(p.chunkId, existing);
+            }
+
+            for (const c of chunks) {
+                if (results.has(c.id)) continue;
+                const patterns = patternsByChunk.get(c.id);
+                if (!patterns || patterns.length === 0) continue;
+
+                const matches = patterns.some(p => globMatch(p.pattern, filePath));
+                if (matches) {
+                    results.set(c.id, {
+                        id: c.id,
+                        title: c.title,
+                        type: c.type,
+                        content: c.content,
+                        summary: c.summary,
+                        matchReason: "applies-to"
+                    });
+                }
             }
         }
 
