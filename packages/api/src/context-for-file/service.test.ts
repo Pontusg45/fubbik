@@ -8,10 +8,12 @@ vi.mock("@fubbik/db/repository", () => ({
     getAppliesToForChunks: vi.fn(),
     getRequirementsForChunks: vi.fn(),
     listCodebases: vi.fn(),
+    getConnectionsForChunks: vi.fn(),
 }));
 
 import {
     getAppliesToForChunks,
+    getConnectionsForChunks,
     listChunks,
     lookupChunksByFilePath,
     getRequirementsForChunks,
@@ -53,6 +55,9 @@ describe("getContextForFile", () => {
             ])
         );
 
+        const connMock = getConnectionsForChunks as ReturnType<typeof vi.fn>;
+        connMock.mockReturnValue(Effect.succeed([]));
+
         const reqMock = getRequirementsForChunks as ReturnType<typeof vi.fn>;
         reqMock.mockReturnValue(Effect.succeed([]));
 
@@ -68,5 +73,140 @@ describe("getContextForFile", () => {
         expect(result.chunks).toHaveLength(1);
         expect(result.chunks[0]!.id).toBe("c1");
         expect(result.chunks[0]!.matchReason).toBe("applies-to");
+    });
+});
+
+describe("getContextForFile scoring", () => {
+    it("returns chunks with score property and sorted by score descending", async () => {
+        const now = new Date();
+
+        const lookupMock = lookupChunksByFilePath as ReturnType<typeof vi.fn>;
+        lookupMock.mockReturnValue(Effect.succeed([]));
+
+        const listMock = listChunks as ReturnType<typeof vi.fn>;
+        listMock.mockReturnValue(
+            Effect.succeed({
+                chunks: [
+                    {
+                        ...makeChunk("c1", "Simple Note"),
+                        type: "note",
+                        rationale: null,
+                        alternatives: null,
+                        consequences: null,
+                        embedding: null,
+                        reviewStatus: null,
+                        updatedAt: now,
+                    },
+                    {
+                        ...makeChunk("c2", "Important Doc"),
+                        type: "document",
+                        rationale: "Well-reasoned",
+                        alternatives: null,
+                        consequences: null,
+                        embedding: null,
+                        reviewStatus: "approved",
+                        updatedAt: now,
+                    },
+                ],
+                total: 2,
+            })
+        );
+
+        const batchMock = getAppliesToForChunks as ReturnType<typeof vi.fn>;
+        batchMock.mockReturnValue(
+            Effect.succeed([
+                { chunkId: "c1", pattern: "src/**/*.ts", note: null },
+                { chunkId: "c2", pattern: "src/**/*.ts", note: null },
+            ])
+        );
+
+        const connMock = getConnectionsForChunks as ReturnType<typeof vi.fn>;
+        connMock.mockReturnValue(Effect.succeed([]));
+
+        const reqMock = getRequirementsForChunks as ReturnType<typeof vi.fn>;
+        reqMock.mockReturnValue(Effect.succeed([]));
+
+        const result = await Effect.runPromise(
+            getContextForFile("user-1", "src/auth/service.ts")
+        );
+
+        expect(result.chunks).toHaveLength(2);
+
+        // Both chunks should have a numeric score
+        for (const chunk of result.chunks) {
+            expect(typeof chunk.score).toBe("number");
+            expect(chunk.score).toBeGreaterThan(0);
+        }
+
+        // c2 (document type + rationale + approved review) should score higher than c1 (note, no rationale)
+        expect(result.chunks[0]!.id).toBe("c2");
+        expect(result.chunks[1]!.id).toBe("c1");
+        expect(result.chunks[0]!.score).toBeGreaterThanOrEqual(result.chunks[1]!.score);
+    });
+
+    it("gives file-ref matches a higher strategy bonus than applies-to", async () => {
+        const now = new Date();
+        const baseFields = {
+            rationale: null,
+            alternatives: null,
+            consequences: null,
+            embedding: null,
+            reviewStatus: null,
+            updatedAt: now,
+        };
+
+        const lookupMock = lookupChunksByFilePath as ReturnType<typeof vi.fn>;
+        lookupMock.mockReturnValue(
+            Effect.succeed([{ chunkId: "c-ref" }])
+        );
+
+        const { getChunkById } = await import("@fubbik/db/repository");
+        const getByIdMock = getChunkById as ReturnType<typeof vi.fn>;
+        getByIdMock.mockReturnValue(
+            Effect.succeed({
+                ...makeChunk("c-ref", "File Ref Chunk"),
+                ...baseFields,
+            })
+        );
+
+        const listMock = listChunks as ReturnType<typeof vi.fn>;
+        listMock.mockReturnValue(
+            Effect.succeed({
+                chunks: [
+                    {
+                        ...makeChunk("c-glob", "Glob Chunk"),
+                        ...baseFields,
+                    },
+                ],
+                total: 1,
+            })
+        );
+
+        const batchMock = getAppliesToForChunks as ReturnType<typeof vi.fn>;
+        batchMock.mockReturnValue(
+            Effect.succeed([
+                { chunkId: "c-glob", pattern: "src/**/*.ts", note: null },
+            ])
+        );
+
+        const connMock = getConnectionsForChunks as ReturnType<typeof vi.fn>;
+        connMock.mockReturnValue(Effect.succeed([]));
+
+        const reqMock = getRequirementsForChunks as ReturnType<typeof vi.fn>;
+        reqMock.mockReturnValue(Effect.succeed([]));
+
+        const result = await Effect.runPromise(
+            getContextForFile("user-1", "src/auth/service.ts")
+        );
+
+        expect(result.chunks).toHaveLength(2);
+
+        const fileRefChunk = result.chunks.find(c => c.id === "c-ref")!;
+        const globChunk = result.chunks.find(c => c.id === "c-glob")!;
+
+        // file-ref bonus (20) > applies-to bonus (10)
+        expect(fileRefChunk.score).toBeGreaterThan(globChunk.score);
+        // file-ref chunk should be first (sorted)
+        expect(result.chunks[0]!.id).toBe("c-ref");
     });
 });

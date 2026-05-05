@@ -1,6 +1,8 @@
-import { getAppliesToForChunks, getChunkById, getRequirementsForChunks, listChunks, listCodebases, lookupChunksByFilePath } from "@fubbik/db/repository";
+import { getAppliesToForChunks, getChunkById, getConnectionsForChunks, getRequirementsForChunks, listChunks, listCodebases, lookupChunksByFilePath } from "@fubbik/db/repository";
+import { chunk as chunkTable } from "@fubbik/db/schema/chunk";
 import { Effect } from "effect";
 
+import { scoreChunk } from "../context/utils";
 import { globMatch } from "./glob-match";
 
 export interface ContextChunk {
@@ -9,7 +11,8 @@ export interface ContextChunk {
     type: string;
     content: string;
     summary: string | null;
-    matchReason: "file-ref" | "applies-to" | "dependency";
+    matchReason: "file-ref" | "applies-to" | "dependency" | "semantic" | "connected";
+    score: number;
 }
 
 export interface ContextRequirement {
@@ -47,6 +50,8 @@ export function getContextForFile(
 ) {
     return Effect.gen(function* () {
         const results = new Map<string, ContextChunk>();
+        type ChunkRow = typeof chunkTable.$inferSelect;
+        const chunkRows = new Map<string, ChunkRow>();
 
         // 1. Direct file-ref matches
         const fileRefMatches = yield* lookupChunksByFilePath(filePath, userId);
@@ -54,13 +59,15 @@ export function getContextForFile(
             if (results.has(match.chunkId)) continue;
             const full = yield* getChunkById(match.chunkId, userId);
             if (!full) continue;
+            chunkRows.set(full.id, full);
             results.set(match.chunkId, {
                 id: full.id,
                 title: full.title,
                 type: full.type,
                 content: full.content,
                 summary: full.summary,
-                matchReason: "file-ref"
+                matchReason: "file-ref",
+                score: 0
             });
         }
 
@@ -91,13 +98,15 @@ export function getContextForFile(
 
                 const matches = patterns.some(p => globMatch(p.pattern, filePath));
                 if (matches) {
+                    chunkRows.set(c.id, c);
                     results.set(c.id, {
                         id: c.id,
                         title: c.title,
                         type: c.type,
                         content: c.content,
                         summary: c.summary,
-                        matchReason: "applies-to"
+                        matchReason: "applies-to",
+                        score: 0
                     });
                 }
             }
@@ -123,19 +132,53 @@ export function getContextForFile(
                 });
                 for (const c of depChunks) {
                     if (results.has(c.id)) continue;
+                    chunkRows.set(c.id, c);
                     results.set(c.id, {
                         id: c.id,
                         title: c.title,
                         type: c.type,
                         content: c.content,
                         summary: c.summary,
-                        matchReason: "dependency"
+                        matchReason: "dependency",
+                        score: 0
                     });
                 }
             }
         }
 
+        // Score and sort results
         const matchedChunks = Array.from(results.values());
+
+        // Fetch connection counts for scoring
+        const chunkIdsForScoring = matchedChunks.map(c => c.id);
+        const connections = chunkIdsForScoring.length > 0
+            ? yield* getConnectionsForChunks(chunkIdsForScoring).pipe(
+                  Effect.catchAll(() => Effect.succeed([] as Array<{ sourceId: string; targetId: string }>)),
+              )
+            : [];
+
+        const connCountMap = new Map<string, number>();
+        for (const conn of connections) {
+            connCountMap.set(conn.sourceId, (connCountMap.get(conn.sourceId) ?? 0) + 1);
+            connCountMap.set(conn.targetId, (connCountMap.get(conn.targetId) ?? 0) + 1);
+        }
+
+        const STRATEGY_BONUS: Record<string, number> = {
+            "file-ref": 20,
+            "applies-to": 10,
+            "dependency": 3,
+            "semantic": 5,
+            "connected": 2,
+        };
+
+        for (const chunk of matchedChunks) {
+            const rawRow = chunkRows.get(chunk.id);
+            const connectionCount = connCountMap.get(chunk.id) ?? 0;
+            const baseScore = rawRow ? scoreChunk(rawRow, connectionCount) : 0;
+            chunk.score = baseScore + (STRATEGY_BONUS[chunk.matchReason] ?? 0);
+        }
+
+        matchedChunks.sort((a, b) => b.score - a.score);
 
         // 4. Find requirements linked to matched chunks
         const matchedChunkIds = matchedChunks.map(c => c.id);
