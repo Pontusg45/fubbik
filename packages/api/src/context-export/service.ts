@@ -5,7 +5,7 @@ import { Effect } from "effect";
 
 import { enrichChunks, resolveForFiles } from "../context/resolvers";
 import { formatStructured, formatStructuredMarkdown } from "../context/formatter";
-import { budgetChunks, estimateTokens, formatChunkText, type ScoredChunk } from "../context/utils";
+import { budgetChunks, estimateTokens, formatChunkText } from "../context/utils";
 
 interface ContextExportQuery {
     codebaseId?: string;

@@ -78,6 +78,7 @@ export function semanticSearch(params: SemanticSearchParams) {
                 .select({
                     id: chunk.id,
                     title: chunk.title,
+                    content: chunk.content,
                     summary: chunk.summary,
                     type: chunk.type,
                     aliases: chunk.aliases,
