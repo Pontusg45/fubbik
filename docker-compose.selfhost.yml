@@ -35,6 +35,9 @@ services:
       retries: 10
 
   server:
+    build:
+      context: .
+      dockerfile: apps/server/Dockerfile
     image: pontusg45/fubbik-server:latest
     ports:
       - "${FUBBIK_API_PORT:-4717}:3000"
@@ -54,6 +57,11 @@ services:
         condition: service_healthy
 
   web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        VITE_SERVER_URL: http://localhost:${FUBBIK_API_PORT:-4717}
     image: pontusg45/fubbik-web:latest
     ports:
       - "${FUBBIK_WEB_PORT:-4718}:3001"
