@@ -1,4 +1,6 @@
 import {
+    batchFetchDeltas,
+    getActiveFeatureIds,
     getChunkById,
     getChunkConnections,
     getChunksForRequirement,
@@ -91,7 +93,62 @@ export function enrichChunks(
         { concurrency: 8 },
     ).pipe(
         Effect.map(results => results.filter((r): r is ChunkWithMetadata => r !== null)),
+        Effect.flatMap(chunks => userId ? resolveFeatureOverlays(chunks, userId) : Effect.succeed(chunks)),
     );
+}
+
+// ---------------------------------------------------------------------------
+// resolveFeatureOverlays — apply active feature deltas to enriched chunks
+// ---------------------------------------------------------------------------
+
+export function resolveFeatureOverlays(
+    chunks: ChunkWithMetadata[],
+    userId: string,
+): Effect.Effect<ChunkWithMetadata[], never> {
+    if (chunks.length === 0) return Effect.succeed(chunks);
+
+    return Effect.gen(function* () {
+        const activeRows = yield* getActiveFeatureIds(userId).pipe(
+            Effect.catchAll(() => Effect.succeed([])),
+        );
+        const activeFeatureIds = activeRows.map((r: { featureId: string }) => r.featureId);
+
+        if (activeFeatureIds.length === 0) return chunks;
+
+        const chunkIds = chunks.map(c => c.id);
+        const deltas = yield* batchFetchDeltas(chunkIds, activeFeatureIds).pipe(
+            Effect.catchAll(() => Effect.succeed([])),
+        );
+
+        if (deltas.length === 0) return chunks;
+
+        // Group deltas by chunkId, already sorted by priority from DB query
+        const deltasByChunk = new Map<string, Array<{ delta: Record<string, unknown> }>>();
+        for (const d of deltas) {
+            const existing = deltasByChunk.get(d.chunkId) ?? [];
+            existing.push(d);
+            deltasByChunk.set(d.chunkId, existing);
+        }
+
+        // Apply deltas to chunks
+        return chunks.map(chunk => {
+            const chunkDeltas = deltasByChunk.get(chunk.id);
+            if (!chunkDeltas || chunkDeltas.length === 0) return chunk;
+
+            const overlay: Record<string, unknown> = {};
+            for (const d of chunkDeltas) {
+                Object.assign(overlay, d.delta);
+            }
+
+            return {
+                ...chunk,
+                ...(overlay.title != null && { title: overlay.title as string }),
+                ...(overlay.content != null && { content: overlay.content as string }),
+                ...(overlay.type != null && { type: overlay.type as string }),
+                ...(overlay.rationale != null && { rationale: overlay.rationale as string | null }),
+            };
+        });
+    });
 }
 
 // ---------------------------------------------------------------------------
