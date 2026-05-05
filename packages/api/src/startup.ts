@@ -27,10 +27,10 @@ export function initStartupTasks() {
         return;
     }
 
-    // Run initial scan after a short delay (don't block startup)
+    // Run initial scan after a delay (give migrations time to complete in Docker)
     setTimeout(() => {
         runStaleScan();
-    }, 5000);
+    }, 30000);
 
     // Schedule recurring scans
     const intervalMs = intervalHours * 60 * 60 * 1000;
