@@ -2,6 +2,37 @@
 
 This file provides context about the project for AI assistants.
 
+## Quick Start for Agents
+
+**What this is:** A knowledge management system for codebases. Chunks = units of knowledge. Connections = links between them. Codebases = projects. Plans = work items.
+
+**Before changing anything:**
+
+```bash
+pnpm install          # install deps
+pnpm dev              # start API (port 3000) + web (port 3001)
+pnpm test             # run vitest across all packages
+pnpm run check-types  # typecheck (uses tsgo)
+```
+
+**Where to put things for a new backend feature:**
+
+1. Schema → `packages/db/src/schema/<name>.ts` (Drizzle pgTable)
+2. Repository → `packages/db/src/repository/<name>.ts` (wrap queries in `dbEffect`)
+3. Export → add `export * from "./<name>"` to `packages/db/src/repository/index.ts`
+4. Service → `packages/api/src/<name>/service.ts` (compose Effects, add business logic)
+5. Routes → `packages/api/src/<name>/routes.ts` (Elysia + requireSession)
+6. Register → add `.use(<name>Routes)` in `packages/api/src/index.ts`
+7. Frontend → `apps/web/src/routes/<name>.tsx` + `apps/web/src/features/<name>/`
+
+**Key conventions to follow:**
+- All DB functions return `Effect<T, DatabaseError>` via `dbEffect`
+- All service functions return `Effect<T, SomeError>` — never throw
+- Routes always start with `requireSession(ctx).pipe(...)`
+- Use Elysia `t` for validation (NOT arktype, NOT zod on the API side)
+- Tests use `vi.mock` BEFORE imports, mock returns are `Effect.succeed(...)` / `Effect.fail(...)`
+- Frontend uses `render` prop (base-ui), NOT `asChild` (Radix)
+
 ## Project Overview
 
 - **Ecosystem**: Typescript
@@ -210,6 +241,186 @@ Input Source → Chunk Resolver → Enrichment (health, stale, features) → Sco
 - Each file exports `registerXTools(server: McpServer)` function
 - Uses `apiFetch` helper for server communication
 - Key tools: `create_plan`, `create_plan_from_requirements`, `import_plan_markdown`, `begin_implementation`, `mark_plan_step`, `sync_claude_md`
+
+## Code Patterns (with examples)
+
+### Adding a Repository Function
+
+Every DB function wraps its Drizzle query in `dbEffect` (from `packages/db/src/effect.ts`):
+
+```typescript
+import { eq } from "drizzle-orm";
+import { db, dbEffect } from "../index";
+import { myTable } from "../schema/my-table";
+
+// Simple select
+export function getById(id: string) {
+    return dbEffect(() =>
+        db.select().from(myTable).where(eq(myTable.id, id))
+    );
+}
+
+// Insert with returning
+export function create(params: { id: string; name: string }) {
+    return dbEffect(async () => {
+        const [created] = await db.insert(myTable).values(params).returning();
+        return created!;
+    });
+}
+
+// IMPORTANT: guard empty arrays to avoid invalid SQL `IN ()`
+export function getByIds(ids: string[]) {
+    if (ids.length === 0) return Effect.succeed([]);
+    return dbEffect(() =>
+        db.select().from(myTable).where(inArray(myTable.id, ids))
+    );
+}
+```
+
+### Adding a Service Function
+
+Services compose repository Effects and introduce business errors:
+
+```typescript
+import { Effect } from "effect";
+import { getById, update } from "@fubbik/db/repository";
+import { NotFoundError, ValidationError } from "../errors";
+
+export function updateThing(id: string, userId: string, body: { name?: string }) {
+    return getById(id).pipe(
+        Effect.flatMap(found =>
+            found
+                ? Effect.succeed(found)
+                : Effect.fail(new NotFoundError({ resource: "Thing" }))
+        ),
+        Effect.flatMap(existing => update(id, userId, body))
+    );
+}
+```
+
+Error classes (from `packages/api/src/errors.ts`):
+
+```typescript
+import { Data } from "effect";
+export class NotFoundError extends Data.TaggedError("NotFoundError")<{ resource: string }> {}
+export class ValidationError extends Data.TaggedError("ValidationError")<{ message: string }> {}
+export class AuthError extends Data.TaggedError("AuthError")<{}> {}
+export class AiError extends Data.TaggedError("AiError")<{ cause?: unknown }> {}
+```
+
+### Adding a Route
+
+Routes use Elysia with `requireSession` and `Effect.runPromise`:
+
+```typescript
+import { Effect } from "effect";
+import { Elysia, t } from "elysia";
+import { requireSession } from "../require-session";
+import * as service from "./service";
+
+export const myRoutes = new Elysia()
+    .get("/things", ctx =>
+        Effect.runPromise(
+            requireSession(ctx).pipe(
+                Effect.flatMap(session => service.list(session.user.id))
+            )
+        )
+    )
+    .post("/things", ctx =>
+        Effect.runPromise(
+            requireSession(ctx).pipe(
+                Effect.flatMap(session => service.create(session.user.id, ctx.body)),
+                Effect.tap(() => Effect.sync(() => { ctx.set.status = 201; }))
+            )
+        ),
+        { body: t.Object({ name: t.String() }) }
+    );
+```
+
+### Writing Tests
+
+Tests use vitest with `vi.mock` (must be before imports) and Effect:
+
+```typescript
+import { Effect } from "effect";
+import { describe, expect, it, vi } from "vitest";
+
+// Mocks MUST be before imports of mocked modules
+vi.mock("@fubbik/db/repository", () => ({
+    getById: vi.fn(),
+    create: vi.fn(),
+}));
+
+import { getById, create } from "@fubbik/db/repository";
+import { myService } from "./service";
+
+describe("myService", () => {
+    it("returns item when found", async () => {
+        const mock = getById as ReturnType<typeof vi.fn>;
+        mock.mockReturnValue(Effect.succeed({ id: "1", name: "test" }));
+
+        const result = await Effect.runPromise(myService.getById("1"));
+        expect(result.name).toBe("test");
+    });
+
+    it("fails with NotFoundError when missing", async () => {
+        const mock = getById as ReturnType<typeof vi.fn>;
+        mock.mockReturnValue(Effect.succeed(null));
+
+        await expect(
+            Effect.runPromise(myService.getById("missing"))
+        ).rejects.toThrow();
+    });
+});
+```
+
+### Frontend Page Pattern
+
+```tsx
+import { createFileRoute } from "@tanstack/react-router";
+import { useApiQuery, api, unwrapEden } from "~/lib/api";
+import { PageContainer, PageHeader, PageLoading, PageEmpty } from "~/components/ui/page";
+
+export const Route = createFileRoute("/things")({
+    component: ThingsPage,
+    beforeLoad: async () => {
+        let session = null;
+        try { session = await getUser(); } catch {}
+        return { session };
+    },
+});
+
+function ThingsPage() {
+    const query = useApiQuery<Thing[]>({
+        queryKey: ["things"],
+        queryFn: () => api.api.things.get(),
+        fallback: [],
+    });
+
+    if (query.isLoading) return <PageLoading />;
+    if (query.data.length === 0) return <PageEmpty title="No things yet" />;
+
+    return (
+        <PageContainer>
+            <PageHeader title="Things" />
+            {/* render data */}
+        </PageContainer>
+    );
+}
+```
+
+## Pitfalls & Gotchas
+
+- **base-ui uses `render` prop, NOT `asChild`**: `<DropdownMenuTrigger render={<button>...</button>} />` — NOT `asChild={true}`
+- **Elysia `t` for validation, NOT arktype**: Arktype was removed. Route body/query schemas use `t.Object`, `t.String`, etc.
+- **Empty array guard in repositories**: Always check `if (ids.length === 0) return Effect.succeed([])` before `inArray()` queries — Drizzle generates invalid SQL for empty `IN ()` clauses
+- **vi.mock must come before imports**: Vitest hoists `vi.mock` calls but only if they appear before the import statements in source order
+- **Effect errors are not exceptions**: Service functions fail via `Effect.fail(new SomeError(...))`, not `throw`. The global error handler in `index.ts` extracts these from `FiberFailure` and maps `_tag` to HTTP status codes
+- **Embeddings require Ollama**: Semantic search, enrichment, and duplicate detection need Ollama running locally. All Ollama-dependent code must gracefully fall back (use `Effect.catchAll` to return empty results)
+- **`DropdownMenuSeparator` and `DropdownMenuLabel`**: Use plain HTML elements (NOT base-ui primitives) to avoid Menu.Group context requirement
+- **Schema uses `text` for IDs**: The project uses `text("id")` for primary keys (NOT `uuid`) — IDs are generated via `crypto.randomUUID()` at the application layer
+- **Token estimation uses js-tiktoken**: `estimateTokens()` in `context/utils.ts` uses BPE tokenization with `chars/4` fallback — don't implement your own
+- **Active features affect context**: The context pipeline applies feature deltas automatically via `resolveFeatureOverlays` in the enrichment step — you don't need to handle this manually
 
 ## API Endpoints
 
