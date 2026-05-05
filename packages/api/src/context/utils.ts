@@ -1,3 +1,5 @@
+import { encodingForModel } from "js-tiktoken";
+
 import { chunk as chunkTable } from "@fubbik/db/schema/chunk";
 
 import { computeHealthScore } from "../chunks/health-score";
@@ -14,7 +16,24 @@ export interface ScoredChunk {
     score: number;
 }
 
+let encoder: ReturnType<typeof encodingForModel> | null = null;
+
+function getEncoder() {
+    if (!encoder) {
+        try {
+            encoder = encodingForModel("gpt-4o");
+        } catch {
+            return null;
+        }
+    }
+    return encoder;
+}
+
 export function estimateTokens(text: string): number {
+    const enc = getEncoder();
+    if (enc) {
+        return enc.encode(text).length;
+    }
     return Math.ceil(text.length / 4);
 }
 

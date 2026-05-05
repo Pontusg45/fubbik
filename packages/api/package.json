@@ -20,6 +20,7 @@
         "ai": "^6.0.116",
         "effect": "^3.21.0",
         "elysia": "catalog:",
+        "js-tiktoken": "^1.0.21",
         "winston": "^3.19.0"
     },
     "devDependencies": {
