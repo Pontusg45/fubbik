@@ -42,3 +42,4 @@ export * from "./density";
 export * from "./vocabulary-catalog";
 export * from "./feature";
 export * from "./chunk-feature-delta";
+export * from "./scope-key";

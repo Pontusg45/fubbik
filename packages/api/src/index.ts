@@ -55,6 +55,7 @@ import { taskQueueRoutes } from "./tasks/routes";
 import { vocabularyRoutes } from "./vocabulary/routes";
 import { workspaceRoutes } from "./workspaces/routes";
 import { featureRoutes } from "./features/routes";
+import { scopeKeyRoutes } from "./scope-keys/routes";
 import { getActiveFeatureIds } from "@fubbik/db/repository";
 
 const FiberFailureCauseSymbol = Symbol.for("effect/Runtime/FiberFailure/Cause");
@@ -103,6 +104,58 @@ async function getSession(headers: Headers): Promise<Session | null> {
     return null;
 }
 
+// Split route registration into two groups to stay within tsgo type-instantiation depth limit.
+// The core routes group handles the primary API surface.
+const coreRoutes = new Elysia()
+    .use(contextExportRoutes)
+    .use(contextForFileRoutes)
+    .use(contextRoutes)
+    .use(snapshotRoutes)
+    .use(chunkRoutes)
+    .use(clusterRoutes)
+    .use(appliesToRoutes)
+    .use(statsRoutes)
+    .use(connectionRoutes)
+    .use(graphRoutes)
+    .use(aiRoutes)
+    .use(enrichRoutes)
+    .use(tagRoutes)
+    .use(tagTypeRoutes)
+    .use(codebaseRoutes)
+    .use(generateInstructionsRoutes)
+    .use(fileRefRoutes)
+    .use(templateRoutes)
+    .use(knowledgeHealthRoutes)
+    .use(requirementRoutes)
+    .use(dependencyRoutes)
+    .use(useCaseRoutes)
+    .use(vocabularyRoutes);
+
+// The extended routes group handles additional features.
+const extendedRoutes = new Elysia()
+    .use(favoriteRoutes)
+    .use(collectionRoutes)
+    .use(notificationRoutes)
+    .use(activityRoutes)
+    .use(settingsRoutes)
+    .use(commentRoutes)
+    .use(coverageRoutes)
+    .use(diagramRoutes)
+    .use(documentRoutes)
+    .use(planRoutes)
+    .use(proposalRoutes)
+    .use(taskQueueRoutes)
+    .use(workspaceRoutes)
+    .use(featureRoutes)
+    .use(scopeKeyRoutes)
+    .use(stalenessRoutes)
+    .use(savedGraphRoutes)
+    .use(searchRoutes)
+    .use(learningPathRoutes)
+    .use(timelineRoutes)
+    .use(densityRoutes)
+    .use(vocabularyCatalogRoutes);
+
 export const api = new Elysia({ prefix: "/api" })
     .use(healthRoutes)
     .onError(({ error, set }) => {
@@ -148,50 +201,8 @@ export const api = new Elysia({ prefix: "/api" })
     .get("/me", ctx =>
         Effect.runPromise(requireSession(ctx).pipe(Effect.map(session => ({ message: "This is private" as const, user: session.user }))))
     )
-    .use(contextExportRoutes)
-    .use(contextForFileRoutes)
-    .use(contextRoutes)
-    .use(snapshotRoutes)
-    .use(chunkRoutes)
-    .use(clusterRoutes)
-    .use(appliesToRoutes)
-    .use(statsRoutes)
-    .use(connectionRoutes)
-    .use(graphRoutes)
-    .use(aiRoutes)
-    .use(enrichRoutes)
-    .use(tagRoutes)
-    .use(tagTypeRoutes)
-    .use(codebaseRoutes)
-    .use(generateInstructionsRoutes)
-    .use(fileRefRoutes)
-    .use(templateRoutes)
-    .use(knowledgeHealthRoutes)
-    .use(requirementRoutes)
-    .use(dependencyRoutes)
-    .use(useCaseRoutes)
-    .use(vocabularyRoutes)
-    .use(favoriteRoutes)
-    .use(collectionRoutes)
-    .use(notificationRoutes)
-    .use(activityRoutes)
-    .use(settingsRoutes)
-    .use(commentRoutes)
-    .use(coverageRoutes)
-    .use(diagramRoutes)
-    .use(documentRoutes)
-    .use(planRoutes)
-    .use(proposalRoutes)
-    .use(taskQueueRoutes)
-    .use(workspaceRoutes)
-    .use(featureRoutes)
-    .use(stalenessRoutes)
-    .use(savedGraphRoutes)
-    .use(searchRoutes)
-    .use(learningPathRoutes)
-    .use(timelineRoutes)
-    .use(densityRoutes)
-    .use(vocabularyCatalogRoutes);
+    .use(coreRoutes)
+    .use(extendedRoutes);
 
 import { initStartupTasks } from "./startup";
 
