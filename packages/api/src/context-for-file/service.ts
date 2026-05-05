@@ -1,8 +1,9 @@
-import { getAppliesToForChunks, getChunkById, getConnectionsForChunks, getRequirementsForChunks, listChunks, listCodebases, lookupChunksByFilePath } from "@fubbik/db/repository";
+import { getAppliesToForChunks, getChunkById, getConnectionsForChunks, getRequirementsForChunks, listChunks, listCodebases, lookupChunksByFilePath, semanticSearch as semanticSearchRepo } from "@fubbik/db/repository";
 import { chunk as chunkTable } from "@fubbik/db/schema/chunk";
 import { Effect } from "effect";
 
 import { scoreChunk } from "../context/utils";
+import { generateQueryEmbedding } from "../ollama/client";
 import { globMatch } from "./glob-match";
 
 export interface ContextChunk {
@@ -27,6 +28,16 @@ export interface ContextRequirement {
 export interface FileContext {
     chunks: ContextChunk[];
     requirements: ContextRequirement[];
+}
+
+const IGNORED_SEGMENTS = new Set(["src", "lib", "dist", "build", "index", "node_modules", "packages", "apps"]);
+const IGNORED_EXTENSIONS = new Set(["ts", "tsx", "js", "jsx", "mjs", "cjs", "json", "md"]);
+
+function pathToSearchText(filePath: string): string {
+    return filePath
+        .split(/[/.]/)
+        .filter(seg => seg.length > 0 && !IGNORED_SEGMENTS.has(seg) && !IGNORED_EXTENSIONS.has(seg))
+        .join(" ");
 }
 
 /**
@@ -146,6 +157,30 @@ export function getContextForFile(
             }
         }
 
+        // 4. Semantic similarity (requires Ollama; skip silently if unavailable)
+        const searchText = pathToSearchText(filePath);
+        if (searchText.length > 0) {
+            const semanticChunks = yield* generateQueryEmbedding(searchText).pipe(
+                Effect.flatMap(embedding =>
+                    semanticSearchRepo({ embedding, userId, limit: 10 }),
+                ),
+                Effect.catchAll(() => Effect.succeed([] as Array<{ id: string; title: string; type: string; content: string; summary: string | null; similarity: number }>)),
+            );
+
+            for (const sc of semanticChunks) {
+                if (results.has(sc.id)) continue;
+                results.set(sc.id, {
+                    id: sc.id,
+                    title: sc.title,
+                    type: sc.type,
+                    content: sc.content,
+                    summary: sc.summary,
+                    matchReason: "semantic",
+                    score: 0,
+                });
+            }
+        }
+
         // Score and sort results
         const matchedChunks = Array.from(results.values());
 
@@ -180,7 +215,7 @@ export function getContextForFile(
 
         matchedChunks.sort((a, b) => b.score - a.score);
 
-        // 4. Find requirements linked to matched chunks
+        // 5. Find requirements linked to matched chunks
         const matchedChunkIds = matchedChunks.map(c => c.id);
         const requirements: ContextRequirement[] = [];
 
