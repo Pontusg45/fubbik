@@ -45,7 +45,7 @@ export const snapshotRoutes = new Elysia()
         ctx =>
             Effect.runPromise(
                 requireSession(ctx).pipe(
-                    Effect.flatMap(() => getSnapshot(ctx.params.id)),
+                    Effect.flatMap(session => getSnapshot(ctx.params.id, session.user.id)),
                 ),
             ),
         {
@@ -68,7 +68,11 @@ export const snapshotRoutes = new Elysia()
         ctx =>
             Effect.runPromise(
                 requireSession(ctx).pipe(
-                    Effect.flatMap(() => deleteSnapshot(ctx.params.id)),
+                    Effect.flatMap(session =>
+                        getSnapshot(ctx.params.id, session.user.id).pipe(
+                            Effect.flatMap(() => deleteSnapshot(ctx.params.id)),
+                        ),
+                    ),
                 ),
             ),
         {

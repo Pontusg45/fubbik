@@ -67,10 +67,10 @@ export function createSnapshot(userId: string, input: SnapshotInput) {
     });
 }
 
-export function getSnapshot(id: string) {
+export function getSnapshot(id: string, userId: string) {
     return Effect.gen(function* () {
         const snapshot = yield* getSnapshotById(id);
-        if (!snapshot) {
+        if (!snapshot || snapshot.userId !== userId) {
             return yield* Effect.fail(new NotFoundError({ resource: "ContextSnapshot" }));
         }
         return snapshot;
