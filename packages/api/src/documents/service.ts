@@ -21,6 +21,7 @@ import { parseDocFile } from "../chunks/parse-docs";
 import { NotFoundError } from "../errors";
 import { extractFields } from "../templates/field-extraction";
 import type { FieldMapping } from "../templates/types";
+import { renderMarkdown } from "./render-markdown";
 import { splitMarkdown } from "./split-markdown";
 
 function hashContent(content: string): string {
@@ -253,17 +254,38 @@ export function renderDocument(documentId: string, userId: string) {
         if (!doc || doc.userId !== userId) return yield* Effect.fail(new NotFoundError({ resource: "document" }));
 
         const chunks = yield* getDocumentChunks(documentId);
-
-        let markdown = `# ${doc.title}\n\n`;
-        for (const c of chunks) {
-            if (c.title.endsWith("\u2014 Introduction")) {
-                markdown += `${c.content}\n\n`;
-            } else {
-                markdown += `## ${c.title}\n\n${c.content}\n\n`;
-            }
+        if (chunks.length === 0) {
+            return { document: doc, markdown: `# ${doc.title}\n` };
         }
 
-        return { document: doc, markdown: markdown.trim() };
+        const tags = yield* getTagsForChunk(chunks[0]!.id);
+        const tagNames = tags.map((t: { name: string }) => t.name);
+
+        const firstChunk = chunks[0]!;
+        const scope = firstChunk.scope && Object.keys(firstChunk.scope).length > 0
+            ? firstChunk.scope
+            : undefined;
+
+        const sections = chunks.map((c, i) => ({
+            title: c.title,
+            content: c.content ?? "",
+            order: c.documentOrder ?? i,
+            rationale: c.rationale ?? undefined,
+            alternatives: c.alternatives ?? undefined,
+            consequences: c.consequences ?? undefined,
+        }));
+
+        const markdown = renderMarkdown({
+            title: doc.title,
+            type: firstChunk.type,
+            tags: tagNames,
+            scope,
+            splitLevel: doc.splitLevel ?? 2,
+            sections,
+            sourcePath: doc.sourcePath,
+        });
+
+        return { document: doc, markdown };
     });
 }
 
