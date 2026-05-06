@@ -78,15 +78,15 @@ function CopyButton({ code }: { code: string }) {
     return (
         <button
             onClick={handleCopy}
-            className="absolute right-2 top-2 rounded-md border border-border/50 bg-background/80 p-1.5 text-muted-foreground opacity-0 backdrop-blur transition-opacity hover:text-foreground group-hover:opacity-100"
+            className="rounded p-0.5 text-muted-foreground/60 opacity-0 transition-all hover:text-foreground group-hover:opacity-100"
             aria-label="Copy code"
         >
             {copied ? (
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <polyline points="20 6 9 17 4 12" />
                 </svg>
             ) : (
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
                     <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
                 </svg>
@@ -95,12 +95,37 @@ function CopyButton({ code }: { code: string }) {
     );
 }
 
+/* ─── Language label mapping ─── */
+
+const LANG_LABELS: Record<string, string> = {
+    ts: "TypeScript", typescript: "TypeScript",
+    js: "JavaScript", javascript: "JavaScript",
+    tsx: "TSX", jsx: "JSX",
+    py: "Python", python: "Python",
+    rb: "Ruby", ruby: "Ruby",
+    rs: "Rust", rust: "Rust",
+    go: "Go", sh: "Shell", bash: "Bash", zsh: "Shell",
+    sql: "SQL", json: "JSON", yaml: "YAML", yml: "YAML",
+    html: "HTML", css: "CSS", scss: "SCSS",
+    md: "Markdown", markdown: "Markdown",
+    toml: "TOML", xml: "XML", graphql: "GraphQL",
+    dockerfile: "Dockerfile", docker: "Docker",
+    text: "Plain Text",
+};
+
+function langLabel(lang: string): string | null {
+    if (!lang) return null;
+    return LANG_LABELS[lang.toLowerCase()] ?? lang;
+}
+
 /* ─── Syntax-highlighted code block ─── */
 
 function CodeBlock({ className, children }: { className?: string; children: string }) {
     const [html, setHtml] = useState<string | null>(null);
     const code = String(children).replace(/\n$/, "");
     const lang = className?.replace(/^language-/, "") ?? "";
+    const label = langLabel(lang);
+    const lineCount = code.split("\n").length;
 
     useEffect(() => {
         if (lang === "mermaid") return;
@@ -117,7 +142,6 @@ function CodeBlock({ className, children }: { className?: string; children: stri
                 if (!cancelled) setHtml(result);
             })
             .catch(() => {
-                // Unknown language — fall back to plain
                 if (!cancelled) setHtml(null);
             });
 
@@ -128,24 +152,33 @@ function CodeBlock({ className, children }: { className?: string; children: stri
         return <MermaidBlock>{code}</MermaidBlock>;
     }
 
+    const header = label ? (
+        <div className="flex items-center justify-between border-b border-border/20 bg-muted/30 px-4 py-1.5">
+            <span className="text-[10px] font-medium text-muted-foreground">{label}</span>
+            <div className="flex items-center gap-2">
+                <span className="text-[10px] text-muted-foreground/60">{lineCount} lines</span>
+                <CopyButton code={code} />
+            </div>
+        </div>
+    ) : null;
+
     if (html) {
         return (
-            <div className="group relative">
-                <CopyButton code={code} />
+            <div className="group relative my-3 overflow-hidden rounded-lg border border-border/30 bg-[#f6f8fa] dark:bg-[#22272e]">
+                {header}
                 <div
-                    className="my-3 overflow-x-auto rounded-lg border border-border/30 bg-[#f6f8fa] text-sm dark:bg-[#22272e] [&_pre]:!p-4 [&_pre]:!rounded-lg [&_.shiki]:!bg-transparent"
+                    className="overflow-x-auto font-mono text-sm [&_pre]:!p-4 [&_pre]:!m-0 [&_pre]:!rounded-none [&_.shiki]:!bg-transparent"
                     dangerouslySetInnerHTML={{ __html: html }}
                 />
             </div>
         );
     }
 
-    // Fallback while shiki is loading or for unknown langs
     return (
-        <div className="group relative">
-            <CopyButton code={code} />
-            <pre className="my-3 overflow-x-auto rounded-lg border border-border/30 bg-[#f6f8fa] p-4 text-sm dark:bg-[#22272e]">
-                <code>{code}</code>
+        <div className="group relative my-3 overflow-hidden rounded-lg border border-border/30 bg-[#f6f8fa] dark:bg-[#22272e]">
+            {header}
+            <pre className="overflow-x-auto p-4 font-mono text-sm">
+                <code className="text-muted-foreground">{code}</code>
             </pre>
         </div>
     );
@@ -207,7 +240,7 @@ function SmartCode({ children, className, ...props }: {
     }
 
     return (
-        <code className="rounded bg-muted px-1.5 py-0.5 text-sm font-mono" {...props}>
+        <code className="rounded bg-muted/80 border border-border/40 px-1.5 py-0.5 text-[0.85em] font-mono" {...props}>
             {children}
         </code>
     );

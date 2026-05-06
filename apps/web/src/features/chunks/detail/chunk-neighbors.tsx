@@ -2,7 +2,6 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { Compass } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
@@ -34,27 +33,15 @@ export function ChunkNeighbors({ chunkId }: ChunkNeighborsProps) {
     const note = data.note;
     const neighbors = (data.neighbors ?? []) as Neighbor[];
 
-    if (note) {
-        return (
-            <section className="mt-10 border-t pt-6">
-                <header className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    <Compass className="size-3.5" />
-                    Semantic neighbors
-                </header>
-                <p className="text-sm text-muted-foreground">{note}</p>
-            </section>
-        );
-    }
-
-    if (neighbors.length === 0) return null;
+    if (note || neighbors.length === 0) return null;
 
     return (
-        <section className="mt-10 border-t pt-6">
-            <header className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                <Compass className="size-3.5" />
-                Semantic neighbors
-            </header>
-            <ul className="space-y-1.5">
+        <div className="border-t pt-4">
+            <div className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1">
+                <Compass className="size-3" />
+                Neighbors
+            </div>
+            <ul className="space-y-0.5">
                 {neighbors.map(n => {
                     const pct = similarityBar(n.distance);
                     return (
@@ -62,20 +49,17 @@ export function ChunkNeighbors({ chunkId }: ChunkNeighborsProps) {
                             <Link
                                 to="/chunks/$chunkId"
                                 params={{ chunkId: n.id }}
-                                className="hover:bg-muted/60 flex items-center gap-3 rounded px-2 py-1.5 text-sm"
+                                className="hover:bg-muted/60 group flex items-center gap-1.5 rounded px-1 py-1 text-[11px]"
                             >
-                                <span className="w-10 shrink-0 font-mono text-xs text-muted-foreground tabular-nums">
+                                <span className="shrink-0 font-mono text-[10px] text-muted-foreground tabular-nums w-7">
                                     {pct}%
                                 </span>
-                                <span className="truncate font-medium">{n.title}</span>
-                                <Badge variant="secondary" size="sm" className="ml-auto shrink-0">
-                                    {n.type}
-                                </Badge>
+                                <span className="min-w-0 truncate">{n.title}</span>
                             </Link>
                         </li>
                     );
                 })}
             </ul>
-        </section>
+        </div>
     );
 }

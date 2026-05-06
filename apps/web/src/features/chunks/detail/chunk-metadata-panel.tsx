@@ -2,11 +2,13 @@ import { Link } from "@tanstack/react-router";
 
 import { Badge } from "@/components/ui/badge";
 import { ChunkHealthBadge } from "@/features/chunks/chunk-health-badge";
+import { ChunkNeighbors } from "@/features/chunks/detail/chunk-neighbors";
 import { ChunkToc } from "@/features/chunks/chunk-toc";
 import { getChunkSize } from "@/features/chunks/chunk-size";
 import { InlineTagEditor } from "@/features/chunks/inline-tag-editor";
 
 export interface ChunkMetadataPanelProps {
+    chunkId: string;
     content: string;
     tags: Array<{ id: string; name: string }>;
     onTagsUpdate: (tags: string[]) => void;
@@ -27,6 +29,7 @@ export interface ChunkMetadataPanelProps {
 }
 
 export function ChunkMetadataPanel({
+    chunkId,
     content,
     tags,
     onTagsUpdate,
@@ -126,6 +129,8 @@ export function ChunkMetadataPanel({
                         )}
                     </dl>
                 </div>
+
+                <ChunkNeighbors chunkId={chunkId} />
             </div>
         </aside>
     );
