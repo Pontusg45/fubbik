@@ -231,7 +231,7 @@ function SmartCode({ children, className, ...props }: {
 
     if (match?.type === "vocabulary") {
         return (
-            <VocabularyPopover word={match.word} category={match.category} expects={match.expects}>
+            <VocabularyPopover word={match.word} definition={match.definition} category={match.category} expects={match.expects}>
                 <code className="rounded bg-muted px-1.5 py-0.5 text-sm font-mono" {...props}>
                     {children}
                 </code>
@@ -268,6 +268,7 @@ const SmartText = memo(function SmartText({ children }: { children: string }) {
             <VocabularyPopover
                 key={match.start}
                 word={match.word}
+                definition={match.definition}
                 category={match.category}
                 expects={match.expects}
             >

@@ -6,12 +6,13 @@ import { Badge } from "@/components/ui/badge";
 
 interface VocabularyPopoverProps {
     word: string;
+    definition?: string | null;
     category: string;
     expects: string[] | null;
     children: ReactNode;
 }
 
-export function VocabularyPopover({ word, category, expects, children }: VocabularyPopoverProps) {
+export function VocabularyPopover({ word, definition, category, expects, children }: VocabularyPopoverProps) {
     const triggerRef = useRef<HTMLSpanElement>(null);
     const popoverRef = useRef<HTMLDivElement>(null);
     const [open, setOpen] = useState(false);
@@ -80,6 +81,9 @@ export function VocabularyPopover({ word, category, expects, children }: Vocabul
                             {category}
                         </Badge>
                     </div>
+                    {definition && (
+                        <p className="text-xs text-muted-foreground mb-2">{definition}</p>
+                    )}
                     {expects && expects.length > 0 && (
                         <p className="text-xs text-muted-foreground mb-2">
                             Expects: {expects.join(", ")}

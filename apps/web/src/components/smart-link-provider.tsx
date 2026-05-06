@@ -14,6 +14,7 @@ export interface ChunkMatch {
 
 export interface VocabularyMatch {
     word: string;
+    definition: string | null;
     category: string;
     expects: string[] | null;
 }
@@ -54,11 +55,11 @@ export function buildChunkIndex(
 }
 
 export function buildVocabularyIndex(
-    entries: { word: string; category: string; expects: string[] | null }[]
+    entries: { word: string; definition?: string | null; category: string; expects: string[] | null }[]
 ): Map<string, VocabularyMatch> {
     const map = new Map<string, VocabularyMatch>();
     for (const e of entries) {
-        map.set(e.word.toLowerCase(), { word: e.word, category: e.category, expects: e.expects ?? null });
+        map.set(e.word.toLowerCase(), { word: e.word, definition: e.definition ?? null, category: e.category, expects: e.expects ?? null });
     }
     return map;
 }

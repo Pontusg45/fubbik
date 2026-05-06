@@ -8,6 +8,7 @@ export const vocabularyEntry = pgTable(
     {
         id: text("id").primaryKey(),
         word: text("word").notNull(),
+        definition: text("definition"),
         category: text("category").notNull(),
         expects: jsonb("expects").$type<string[]>(),
         codebaseId: text("codebase_id")
