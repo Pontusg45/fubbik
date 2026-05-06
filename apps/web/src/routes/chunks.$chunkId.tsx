@@ -10,7 +10,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ChunkDetailContent } from "@/features/chunks/detail/chunk-detail-content";
 import { ChunkDetailTopBar } from "@/features/chunks/detail/chunk-detail-top-bar";
 import { ChunkMetadataPanel } from "@/features/chunks/detail/chunk-metadata-panel";
-import { ChunkSiblingNavigator } from "@/features/chunks/detail/chunk-sibling-navigator";
 import { MoreContextDrawer, type DrawerTab } from "@/features/chunks/detail/more-context-drawer";
 import { ChunkProposalsSection } from "@/features/proposals/chunk-proposals-section";
 import { useFavorites } from "@/features/chunks/use-favorites";
@@ -350,12 +349,6 @@ function ChunkDetail() {
                 />
 
                 <div className="flex gap-8">
-                    <ChunkSiblingNavigator
-                        currentChunkId={chunkId}
-                        codebaseId={currentCodebases?.[0]?.id}
-                        codebaseName={currentCodebases?.[0]?.name}
-                    />
-
                     <ChunkDetailContent
                         chunkId={chunkId}
                         type={chunk.type}
