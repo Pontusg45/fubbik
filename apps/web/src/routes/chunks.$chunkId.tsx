@@ -47,49 +47,6 @@ export const Route = createFileRoute("/chunks/$chunkId")({
     },
 });
 
-function FeatureOverlaysSection({
-    deltas,
-    appliedFeatures,
-}: {
-    deltas: Array<{
-        id: string;
-        featureId: string;
-        featureName: string;
-        featureColor: string | null;
-        featureStatus: string;
-        delta: Record<string, unknown>;
-    }>;
-    appliedFeatures: string[];
-}) {
-    if (!deltas || deltas.length === 0) return null;
-
-    return (
-        <section className="space-y-3">
-            <h3 className="text-sm font-medium">Feature Overlays</h3>
-            <div className="space-y-2">
-                {deltas.map(d => (
-                    <div key={d.id} className="border-border flex items-center justify-between rounded-md border px-3 py-2">
-                        <div className="flex items-center gap-2">
-                            <span
-                                className="size-2 rounded-full"
-                                style={{ backgroundColor: d.featureColor ?? "#8b5cf6" }}
-                            />
-                            <span className="text-sm font-medium">{d.featureName}</span>
-                            {appliedFeatures.includes(d.featureId) && (
-                                <span className="rounded bg-blue-100 px-1.5 py-0.5 text-xs text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                                    active
-                                </span>
-                            )}
-                        </div>
-                        <span className="text-muted-foreground text-xs">
-                            {Object.keys(d.delta).join(", ")}
-                        </span>
-                    </div>
-                ))}
-            </div>
-        </section>
-    );
-}
 
 function ChunkDetail() {
     const { chunkId } = Route.useParams();
@@ -362,11 +319,6 @@ function ChunkDetail() {
                         readerClasses={readerClasses}
                     />
 
-                    <FeatureOverlaysSection
-                        deltas={deltas ?? []}
-                        appliedFeatures={appliedFeatures ?? []}
-                    />
-
                     <ChunkMetadataPanel
                         chunkId={chunkId}
                         content={chunk.content}
@@ -415,6 +367,8 @@ function ChunkDetail() {
                     rationale={rationale}
                     alternatives={alternatives}
                     consequences={consequences}
+                    deltas={deltas}
+                    appliedFeatures={appliedFeatures}
                     initialTab={drawerTab}
                 />
 

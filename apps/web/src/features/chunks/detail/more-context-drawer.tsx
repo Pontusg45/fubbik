@@ -28,6 +28,15 @@ export interface MoreContextDrawerProps {
     rationale?: string | null;
     alternatives?: string[] | null;
     consequences?: string | null;
+    deltas?: Array<{
+        id: string;
+        featureId: string;
+        featureName: string;
+        featureColor: string | null;
+        featureStatus: string;
+        delta: Record<string, unknown>;
+    }>;
+    appliedFeatures?: string[];
     initialTab?: DrawerTab;
 }
 
@@ -43,6 +52,8 @@ export function MoreContextDrawer({
     rationale,
     alternatives,
     consequences,
+    deltas,
+    appliedFeatures,
     initialTab,
 }: MoreContextDrawerProps) {
     const [tab, setTab] = useState<DrawerTab>(initialTab ?? "links");
@@ -126,6 +137,8 @@ export function MoreContextDrawer({
                             rationale={rationale}
                             alternatives={alternatives}
                             consequences={consequences}
+                            deltas={deltas}
+                            appliedFeatures={appliedFeatures}
                         />
                     )}
                     {tab === "comments" && <ChunkComments chunkId={chunkId} />}

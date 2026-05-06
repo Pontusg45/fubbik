@@ -1,6 +1,7 @@
-import { Code, FileCode, Scale } from "lucide-react";
+import { Code, FileCode, Layers, Scale } from "lucide-react";
 
 import { MarkdownRenderer } from "@/components/markdown-renderer";
+import { Badge } from "@/components/ui/badge";
 import { AiSection } from "@/features/chunks/ai-section";
 
 export interface AppliesTo {
@@ -23,9 +24,18 @@ export interface MoreContextContextTabProps {
     rationale?: string | null;
     alternatives?: string[] | null;
     consequences?: string | null;
+    deltas?: Array<{
+        id: string;
+        featureId: string;
+        featureName: string;
+        featureColor: string | null;
+        featureStatus: string;
+        delta: Record<string, unknown>;
+    }>;
+    appliedFeatures?: string[];
 }
 
-export function MoreContextContextTab({ chunkId, appliesTo, fileReferences, rationale, alternatives, consequences }: MoreContextContextTabProps) {
+export function MoreContextContextTab({ chunkId, appliesTo, fileReferences, rationale, alternatives, consequences, deltas, appliedFeatures }: MoreContextContextTabProps) {
     return (
         <div className="space-y-6 px-1 pb-4">
             {(rationale || (alternatives && alternatives.length > 0) || consequences) && (
@@ -113,6 +123,34 @@ export function MoreContextContextTab({ chunkId, appliesTo, fileReferences, rati
                 </h3>
                 <AiSection chunkId={chunkId} />
             </section>
+
+            {deltas && deltas.length > 0 && (
+                <section>
+                    <h3 className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                        <Layers className="size-3.5" />
+                        Feature overlays
+                    </h3>
+                    <div className="space-y-1">
+                        {deltas.map(d => (
+                            <div key={d.id} className="flex items-center justify-between rounded border px-3 py-2 text-sm">
+                                <div className="flex items-center gap-2">
+                                    <span
+                                        className="size-2 rounded-full"
+                                        style={{ backgroundColor: d.featureColor ?? "#8b5cf6" }}
+                                    />
+                                    <span className="font-medium">{d.featureName}</span>
+                                    {appliedFeatures?.includes(d.featureId) && (
+                                        <Badge variant="secondary" size="sm">active</Badge>
+                                    )}
+                                </div>
+                                <span className="text-xs text-muted-foreground">
+                                    {Object.keys(d.delta).join(", ")}
+                                </span>
+                            </div>
+                        ))}
+                    </div>
+                </section>
+            )}
         </div>
     );
 }
