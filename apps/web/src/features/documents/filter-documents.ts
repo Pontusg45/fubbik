@@ -5,7 +5,6 @@ export interface EnrichedDocument {
     tags: string[];
     type: string;
     chunkCount: number;
-    [key: string]: unknown;
 }
 
 export interface DocFilters {
