@@ -33,6 +33,7 @@ import { syncCommand } from "./commands/sync";
 import { setupCommand } from "./commands/setup";
 import { syncClaudeMdCommand } from "./commands/sync-claude-md";
 import { taskCommand } from "./commands/task";
+import { updatesCommand } from "./commands/updates";
 import { watchCommand } from "./commands/watch";
 import { whyCommand } from "./commands/why";
 
@@ -80,6 +81,7 @@ program.addCommand(suggestCommand);
 program.addCommand(syncCommand);
 program.addCommand(syncClaudeMdCommand);
 program.addCommand(taskCommand);
+program.addCommand(updatesCommand);
 program.addCommand(watchCommand);
 program.addCommand(whyCommand);
 

@@ -15,12 +15,14 @@ export const quickCommand = new Command("quick")
     .option("--tags <tags>", "comma-separated tags", "")
     .option("--global", "skip codebase scoping")
     .option("--codebase <name>", "scope to a specific codebase by name")
+    .option("--tag <tag>", "label this creation with an update tag")
     .action(async (titleWords: string[], opts: {
         title?: string;
         type: string;
         tags: string;
         global?: boolean;
         codebase?: string;
+        tag?: string;
     }, cmd: Command) => {
         const title = opts.title || titleWords.join(" ");
         if (!title) {
@@ -56,6 +58,9 @@ export const quickCommand = new Command("quick")
             };
             if (codebaseId) {
                 body.codebaseIds = [codebaseId];
+            }
+            if (opts.tag) {
+                body.updateTag = opts.tag;
             }
 
             try {

@@ -12,10 +12,11 @@ export const updateCommand = new Command("update")
     .option("--type <type>", "new type")
     .option("--tags <tags>", "new comma-separated tags")
     .option("--content-file <path>", "read content from file (use - for stdin)")
+    .option("--tag <tag>", "label this update with a tag (e.g. feature-x)")
     .action(
         async (
             id: string,
-            opts: { title?: string; content?: string; type?: string; tags?: string; contentFile?: string },
+            opts: { title?: string; content?: string; type?: string; tags?: string; contentFile?: string; tag?: string },
             cmd: Command
         ) => {
             const updates: Record<string, unknown> = {};
@@ -33,6 +34,8 @@ export const updateCommand = new Command("update")
             } else if (opts.content !== undefined) {
                 updates.content = opts.content;
             }
+
+            if (opts.tag !== undefined) updates.updateTag = opts.tag;
 
             if (Object.keys(updates).length === 0) {
                 outputError("No updates provided. Use --title, --content, --type, --tags, or --content-file.");
