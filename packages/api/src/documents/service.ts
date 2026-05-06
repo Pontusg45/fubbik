@@ -52,11 +52,15 @@ export function importDocument(
 
         const existing = yield* getDocumentBySourcePath(sourcePath, codebaseId, userId);
         if (existing && existing.contentHash === contentHash) {
-            return { document: existing, created: 0, updated: 0, status: "unchanged" as const };
+            const existingChunks = yield* getDocumentChunks(existing.id);
+            const firstChunkId = existingChunks[0]?.id ?? null;
+            return { document: existing, created: 0, updated: 0, status: "unchanged" as const, firstChunkId };
         }
 
         if (existing) {
-            return yield* syncDocument(existing.id, rawContent, userId, codebaseId);
+            const syncResult = yield* syncDocument(existing.id, rawContent, userId, codebaseId);
+            const syncChunks = yield* getDocumentChunks(existing.id);
+            return { ...syncResult, firstChunkId: syncChunks[0]?.id ?? null };
         }
 
         // Template-aware import path
@@ -113,7 +117,7 @@ export function importDocument(
                     yield* setChunkCodebases(chunkId, [codebaseId]);
                 }
 
-                return { document: doc, created: 1, updated: 0, status: "created" as const };
+                return { document: doc, created: 1, updated: 0, status: "created" as const, firstChunkId: chunkId };
             }
         }
 
@@ -133,8 +137,10 @@ export function importDocument(
 
         const tagIds = split.tags.length > 0 ? yield* resolveTagIds(split.tags, userId) : [];
 
+        let firstChunkId: string | null = null;
         for (const section of split.sections) {
             const chunkId = crypto.randomUUID();
+            if (firstChunkId === null) firstChunkId = chunkId;
             yield* createChunkRepo({
                 id: chunkId,
                 title: section.title,
@@ -153,7 +159,7 @@ export function importDocument(
             }
         }
 
-        return { document: doc, created: split.sections.length, updated: 0, status: "created" as const };
+        return { document: doc, created: split.sections.length, updated: 0, status: "created" as const, firstChunkId };
     });
 }
 

@@ -7,7 +7,7 @@ describe("document import flow", () => {
         const result = splitMarkdown(md, "docs/getting-started.md");
 
         expect(result.title).toBe("Getting Started");
-        expect(result.tags).toEqual(["guide"]);
+        expect(result.tags).toEqual(["guide", "docs", "getting started"]);
         expect(result.sections).toHaveLength(4);
         expect(result.sections[0]!.title).toBe("Getting Started \u2014 Introduction");
         expect(result.sections[0]!.order).toBe(0);

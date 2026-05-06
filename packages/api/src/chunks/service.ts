@@ -2,6 +2,7 @@ import {
     archiveChunk as archiveChunkRepo,
     batchFetchDeltas,
     createChunk as createChunkRepo,
+    createConnectionIfNotExists,
     createVersion,
     deleteChunk as deleteChunkRepo,
     deleteMany as deleteManyRepo,
@@ -415,17 +416,37 @@ export function importChunks(userId: string, chunks: { title: string; content?: 
     );
 }
 
+const INDEX_FILE_NAMES = new Set(["index.md", "readme.md", "_index.md"]);
+
+function dirOf(filePath: string): string {
+    const parts = filePath.split("/");
+    parts.pop();
+    return parts.join("/") || ".";
+}
+
+function filenameOf(filePath: string): string {
+    return (filePath.split("/").pop() ?? filePath).toLowerCase();
+}
+
+function folderLabel(dir: string): string {
+    const last = dir.split("/").pop() ?? dir;
+    return last.replace(/[-_]/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+}
+
 export function importDocs(
     userId: string,
     files: { path: string; content: string }[],
     codebaseId: string,
     templateOverrides?: Record<string, string | null>
 ) {
-    const results: { created: number; skipped: number; errors: { path: string; error: string }[] } = {
+    const results: { created: number; skipped: number; connections: number; errors: { path: string; error: string }[] } = {
         created: 0,
         skipped: 0,
+        connections: 0,
         errors: []
     };
+
+    const fileChunks = new Map<string, string>();
 
     return Effect.forEach(
         files,
@@ -438,6 +459,9 @@ export function importDocs(
                     } else {
                         results.created += result.created;
                     }
+                    if (result.firstChunkId) {
+                        fileChunks.set(file.path, result.firstChunkId);
+                    }
                 }),
                 Effect.catchAll(err => {
                     results.errors.push({ path: file.path, error: String(err) });
@@ -446,7 +470,105 @@ export function importDocs(
             );
         },
         { concurrency: 5 }
-    ).pipe(Effect.map(() => results));
+    ).pipe(
+        Effect.flatMap(() => createFolderConnections(userId, fileChunks, codebaseId)),
+        Effect.map(connectionsCreated => {
+            results.connections = connectionsCreated;
+            return results;
+        })
+    );
+}
+
+function createFolderConnections(
+    userId: string,
+    fileChunks: Map<string, string>,
+    codebaseId: string
+) {
+    return Effect.gen(function* () {
+        const byDir = new Map<string, { path: string; chunkId: string; isIndex: boolean }[]>();
+        for (const [path, chunkId] of fileChunks) {
+            const dir = dirOf(path);
+            if (!byDir.has(dir)) byDir.set(dir, []);
+            byDir.get(dir)!.push({ path, chunkId, isIndex: INDEX_FILE_NAMES.has(filenameOf(path)) });
+        }
+
+        let connectionsCreated = 0;
+        const dirParentChunks = new Map<string, string>();
+
+        for (const [dir, entries] of byDir) {
+            const indexEntry = entries.find(e => e.isIndex);
+            const nonIndexEntries = entries.filter(e => !e.isIndex);
+
+            if (entries.length === 1) {
+                dirParentChunks.set(dir, entries[0]!.chunkId);
+                continue;
+            }
+
+            let parentChunkId: string;
+
+            if (indexEntry) {
+                parentChunkId = indexEntry.chunkId;
+            } else {
+                const folderId = crypto.randomUUID();
+                yield* createChunkRepo({
+                    id: folderId,
+                    title: folderLabel(dir),
+                    content: `Overview for the ${folderLabel(dir)} section.`,
+                    type: "document",
+                    userId,
+                });
+                if (codebaseId) {
+                    yield* setChunkCodebases(folderId, [codebaseId]);
+                }
+                const folderTags = dir.split("/").filter(Boolean);
+                if (folderTags.length > 0) {
+                    const tagIds: string[] = [];
+                    for (const name of folderTags) {
+                        const tag = yield* findOrCreateTag(name, userId);
+                        if (tag) tagIds.push(tag.id);
+                    }
+                    if (tagIds.length > 0) yield* setChunkTags(folderId, tagIds);
+                }
+                parentChunkId = folderId;
+            }
+
+            dirParentChunks.set(dir, parentChunkId);
+
+            for (const entry of nonIndexEntries) {
+                const created = yield* createConnectionIfNotExists({
+                    id: crypto.randomUUID(),
+                    sourceId: entry.chunkId,
+                    targetId: parentChunkId,
+                    relation: "part_of",
+                    origin: "import",
+                    reviewStatus: "approved"
+                });
+                if (created) connectionsCreated++;
+            }
+        }
+
+        const allDirs = [...byDir.keys()].sort();
+        for (const dir of allDirs) {
+            const parentDir = dirOf(dir);
+            if (parentDir === dir) continue;
+
+            const childParentId = dirParentChunks.get(dir);
+            const parentParentId = dirParentChunks.get(parentDir);
+            if (!childParentId || !parentParentId || childParentId === parentParentId) continue;
+
+            const created = yield* createConnectionIfNotExists({
+                id: crypto.randomUUID(),
+                sourceId: childParentId,
+                targetId: parentParentId,
+                relation: "part_of",
+                origin: "import",
+                reviewStatus: "approved"
+            });
+            if (created) connectionsCreated++;
+        }
+
+        return connectionsCreated;
+    });
 }
 
 export function deleteChunk(chunkId: string, userId: string) {

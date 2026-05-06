@@ -45,10 +45,17 @@ export function parseDocFile(path: string, raw: string): ParsedDoc {
     return { title, content: content.trim(), type, tags, ...(scope ? { scope } : {}) };
 }
 
-function tagsFromPath(path: string): string[] {
+export function tagsFromPath(path: string): string[] {
     const parts = path.split("/");
-    parts.pop(); // remove filename
-    return parts.filter(Boolean);
+    const filename = parts.pop();
+    const folders = parts.filter(Boolean);
+    if (filename) {
+        const stem = filename.replace(/\.md$/i, "").replace(/[-_]/g, " ").trim();
+        if (stem && stem.toLowerCase() !== "index" && stem.toLowerCase() !== "readme") {
+            folders.push(stem);
+        }
+    }
+    return folders;
 }
 
 export function extractFrontmatter(raw: string): { frontmatter: Record<string, unknown>; body: string } {

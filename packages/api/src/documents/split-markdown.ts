@@ -1,4 +1,4 @@
-import { extractFrontmatter } from "../chunks/parse-docs";
+import { extractFrontmatter, tagsFromPath } from "../chunks/parse-docs";
 
 export interface MarkdownSection {
     title: string;
@@ -30,7 +30,9 @@ export function splitMarkdown(raw: string, filePath: string): SplitResult {
         title = filename.replace(/\.md$/i, "").replace(/[-_]/g, " ");
     }
 
-    const tags = Array.isArray(frontmatter.tags) ? frontmatter.tags.map(String) : [];
+    const fmTags = Array.isArray(frontmatter.tags) ? frontmatter.tags.map(String) : [];
+    const pathTags = tagsFromPath(filePath);
+    const tags = [...new Set([...fmTags, ...pathTags])];
     const description = (frontmatter.description as string) ?? undefined;
 
     const h2Regex = /^## (.+)$/gm;

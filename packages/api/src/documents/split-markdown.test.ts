@@ -38,7 +38,7 @@ describe("splitMarkdown", () => {
         const md = `---\ntags:\n  - backend\n  - auth\ndescription: A guide to auth\n---\n\n# Auth Guide\n\n## Setup\n\nSteps here.\n`;
         const result = splitMarkdown(md, "docs/auth.md");
         expect(result.title).toBe("Auth Guide");
-        expect(result.tags).toEqual(["backend", "auth"]);
+        expect(result.tags).toEqual(["backend", "auth", "docs"]);
         expect(result.description).toBe("A guide to auth");
     });
 
