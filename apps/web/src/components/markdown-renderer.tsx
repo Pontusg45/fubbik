@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useId, useMemo, useState } from "react";
+import { createContext, memo, useContext, useEffect, useId, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import Markdown, { type Components } from "react-markdown";
 import rehypeRaw from "rehype-raw";
@@ -215,9 +215,12 @@ function SmartCode({ children, className, ...props }: {
 
 /* ─── Smart text (vocabulary matching in prose) ─── */
 
-function SmartText({ children }: { children: string }) {
-    const { vocabIndex } = useSmartLinks();
-    const matches = matchVocabularyInText(children, vocabIndex);
+const SmartText = memo(function SmartText({ children }: { children: string }) {
+    const { vocabIndex, vocabPattern } = useSmartLinks();
+    const matches = useMemo(
+        () => matchVocabularyInText(children, vocabIndex, vocabPattern),
+        [children, vocabIndex, vocabPattern]
+    );
 
     if (matches.length === 0) return <>{children}</>;
 
@@ -246,17 +249,17 @@ function SmartText({ children }: { children: string }) {
     }
 
     return <>{parts}</>;
-}
+});
 
 /* ─── Smart paragraph (wraps text children with vocab matching) ─── */
 
-function SmartParagraph({ children }: { children: React.ReactNode }) {
+const SmartParagraph = memo(function SmartParagraph({ children }: { children: React.ReactNode }) {
     return <p>{processChildren(children)}</p>;
-}
+});
 
-function SmartListItem({ children }: { children: React.ReactNode }) {
+const SmartListItem = memo(function SmartListItem({ children }: { children: React.ReactNode }) {
     return <li>{processChildren(children)}</li>;
-}
+});
 
 function processChildren(children: React.ReactNode): React.ReactNode {
     if (typeof children === "string") {
