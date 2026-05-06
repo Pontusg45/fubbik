@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useId, useState } from "react";
+import { createContext, useContext, useEffect, useId, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import Markdown, { type Components } from "react-markdown";
 import rehypeRaw from "rehype-raw";
@@ -6,14 +6,12 @@ import remarkGfm from "remark-gfm";
 import { matchInCode, matchVocabularyInText, useSmartLinks } from "./smart-link-provider";
 import { VocabularyPopover } from "./vocabulary-popover";
 
-let mermaidReady: typeof import("mermaid").default | null = null;
-
-if (typeof window !== "undefined") {
-    import("mermaid").then(m => {
-        mermaidReady = m.default;
-        mermaidReady.initialize({ startOnLoad: false, theme: "dark" });
-    });
-}
+const mermaidPromise = typeof window !== "undefined"
+    ? import("mermaid").then(m => {
+        m.default.initialize({ startOnLoad: false, theme: "dark" });
+        return m.default;
+    })
+    : null;
 
 const remarkPlugins = [remarkGfm];
 const rehypePlugins = [rehypeRaw];
@@ -27,23 +25,16 @@ function MermaidBlock({ children }: { children: string }) {
 
     useEffect(() => {
         let cancelled = false;
+        if (!mermaidPromise) return;
 
-        function tryRender() {
-            if (!mermaidReady) {
-                // Mermaid still loading — retry shortly
-                setTimeout(tryRender, 100);
-                return;
-            }
-            mermaidReady
-                .render(`mermaid-${id}`, children.trim())
-                .then(({ svg: rendered }) => {
-                    if (!cancelled) setSvg(rendered);
-                })
-                .catch(err => {
-                    if (!cancelled) setError(String(err));
-                });
-        }
-        tryRender();
+        mermaidPromise
+            .then(mermaid => mermaid.render(`mermaid-${id}`, children.trim()))
+            .then(({ svg: rendered }) => {
+                if (!cancelled) setSvg(rendered);
+            })
+            .catch(err => {
+                if (!cancelled) setError(String(err));
+            });
 
         return () => { cancelled = true; };
     }, [children, id]);
@@ -69,6 +60,38 @@ function MermaidBlock({ children }: { children: string }) {
             className="my-4 flex justify-center overflow-x-auto [&_svg]:max-w-full"
             dangerouslySetInnerHTML={{ __html: svg }}
         />
+    );
+}
+
+/* ─── Copy button ─── */
+
+function CopyButton({ code }: { code: string }) {
+    const [copied, setCopied] = useState(false);
+
+    const handleCopy = () => {
+        navigator.clipboard.writeText(code).then(() => {
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        });
+    };
+
+    return (
+        <button
+            onClick={handleCopy}
+            className="absolute right-2 top-2 rounded-md border border-border/50 bg-background/80 p-1.5 text-muted-foreground opacity-0 backdrop-blur transition-opacity hover:text-foreground group-hover:opacity-100"
+            aria-label="Copy code"
+        >
+            {copied ? (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12" />
+                </svg>
+            ) : (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                </svg>
+            )}
+        </button>
     );
 }
 
@@ -107,18 +130,24 @@ function CodeBlock({ className, children }: { className?: string; children: stri
 
     if (html) {
         return (
-            <div
-                className="my-3 overflow-x-auto rounded-lg border border-border/30 bg-[#f6f8fa] text-sm dark:bg-[#22272e] [&_pre]:!p-4 [&_pre]:!rounded-lg [&_.shiki]:!bg-transparent"
-                dangerouslySetInnerHTML={{ __html: html }}
-            />
+            <div className="group relative">
+                <CopyButton code={code} />
+                <div
+                    className="my-3 overflow-x-auto rounded-lg border border-border/30 bg-[#f6f8fa] text-sm dark:bg-[#22272e] [&_pre]:!p-4 [&_pre]:!rounded-lg [&_.shiki]:!bg-transparent"
+                    dangerouslySetInnerHTML={{ __html: html }}
+                />
+            </div>
         );
     }
 
     // Fallback while shiki is loading or for unknown langs
     return (
-        <pre className="my-3 overflow-x-auto rounded-lg border border-border/30 bg-[#f6f8fa] p-4 text-sm dark:bg-[#22272e]">
-            <code>{code}</code>
-        </pre>
+        <div className="group relative">
+            <CopyButton code={code} />
+            <pre className="my-3 overflow-x-auto rounded-lg border border-border/30 bg-[#f6f8fa] p-4 text-sm dark:bg-[#22272e]">
+                <code>{code}</code>
+            </pre>
+        </div>
     );
 }
 
@@ -244,6 +273,61 @@ function processChildren(children: React.ReactNode): React.ReactNode {
     return children;
 }
 
+/* ─── Table of contents helpers ─── */
+
+function slugify(text: string): string {
+    return text
+        .toLowerCase()
+        .replace(/[^\w\s-]/g, "")
+        .replace(/\s+/g, "-")
+        .replace(/-+/g, "-")
+        .trim();
+}
+
+interface TocEntry {
+    level: number;
+    text: string;
+    slug: string;
+}
+
+function extractToc(markdown: string): TocEntry[] {
+    const entries: TocEntry[] = [];
+    const regex = /^(#{1,6})\s+(.+)$/gm;
+    let match: RegExpExecArray | null;
+    while ((match = regex.exec(markdown)) !== null) {
+        entries.push({
+            level: match[1]!.length,
+            text: match[2]!.trim(),
+            slug: slugify(match[2]!.trim()),
+        });
+    }
+    return entries;
+}
+
+function TableOfContents({ entries }: { entries: TocEntry[] }) {
+    const minLevel = Math.min(...entries.map(e => e.level));
+
+    return (
+        <nav className="mb-6 rounded-lg border border-border/50 bg-muted/20 px-4 py-3">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Table of Contents
+            </p>
+            <ul className="space-y-1 text-sm">
+                {entries.map((entry, i) => (
+                    <li key={i} style={{ marginLeft: `${(entry.level - minLevel) * 16}px` }}>
+                        <a
+                            href={`#${entry.slug}`}
+                            className="text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                            {entry.text}
+                        </a>
+                    </li>
+                ))}
+            </ul>
+        </nav>
+    );
+}
+
 /* ─── Component overrides ─── */
 
 const components: Components = {
@@ -313,13 +397,40 @@ const components: Components = {
             />
         );
     },
+    h1({ children }) {
+        const text = typeof children === "string" ? children : String(children);
+        return <h1 id={slugify(text)}>{children}</h1>;
+    },
+    h2({ children }) {
+        const text = typeof children === "string" ? children : String(children);
+        return <h2 id={slugify(text)}>{children}</h2>;
+    },
+    h3({ children }) {
+        const text = typeof children === "string" ? children : String(children);
+        return <h3 id={slugify(text)}>{children}</h3>;
+    },
+    h4({ children }) {
+        const text = typeof children === "string" ? children : String(children);
+        return <h4 id={slugify(text)}>{children}</h4>;
+    },
+    h5({ children }) {
+        const text = typeof children === "string" ? children : String(children);
+        return <h5 id={slugify(text)}>{children}</h5>;
+    },
+    h6({ children }) {
+        const text = typeof children === "string" ? children : String(children);
+        return <h6 id={slugify(text)}>{children}</h6>;
+    },
 };
 
 /* ─── Renderer ─── */
 
 export function MarkdownRenderer({ children, excludeChunkId }: { children: string; excludeChunkId?: string }) {
+    const tocEntries = useMemo(() => extractToc(children), [children]);
+
     return (
         <ExcludeChunkContext.Provider value={excludeChunkId}>
+            {tocEntries.length >= 3 && <TableOfContents entries={tocEntries} />}
             <Markdown
                 remarkPlugins={remarkPlugins}
                 rehypePlugins={rehypePlugins}
