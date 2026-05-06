@@ -14,7 +14,15 @@ export const chunkVersion = pgTable(
         content: text("content").notNull(),
         type: text("type").notNull(),
         tags: jsonb("tags").$type<string[]>().notNull(),
+        rationale: text("rationale"),
+        alternatives: jsonb("alternatives").$type<string[]>(),
+        consequences: text("consequences"),
+        scope: jsonb("scope").$type<Record<string, string>>(),
+        updateTag: text("update_tag"),
         createdAt: timestamp("created_at").defaultNow().notNull()
     },
-    table => [index("chunk_version_chunkId_idx").on(table.chunkId)]
+    table => [
+        index("chunk_version_chunkId_idx").on(table.chunkId),
+        index("chunk_version_update_tag_idx").on(table.updateTag)
+    ]
 );
