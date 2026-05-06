@@ -23,6 +23,59 @@ function detectSplitLevel(content: string): number {
     return match[0].trimEnd().length;
 }
 
+interface DecisionContext {
+    rationale?: string;
+    alternatives?: string[];
+    consequences?: string;
+}
+
+function extractDecisionContext(content: string): { cleanContent: string; context: DecisionContext } {
+    const lines = content.split("\n");
+    const context: DecisionContext = {};
+
+    // Find where trailing blockquotes start (scan backwards from end)
+    let trailingStart = lines.length;
+    for (let i = lines.length - 1; i >= 0; i--) {
+        const line = lines[i]!.trim();
+        if (line === "" || line.startsWith(">")) {
+            trailingStart = i;
+        } else {
+            break;
+        }
+    }
+
+    const trailingBlock = lines.slice(trailingStart).join("\n");
+
+    // Check if trailing block contains decision context markers
+    const hasDecisionContext =
+        trailingBlock.includes("> **Rationale:**") ||
+        trailingBlock.includes("> **Alternatives:**") ||
+        trailingBlock.includes("> **Consequences:**");
+
+    if (!hasDecisionContext) {
+        return { cleanContent: content, context };
+    }
+
+    // Parse decision context from trailing blockquotes
+    const rationaleMatch = trailingBlock.match(/> \*\*Rationale:\*\*\s*(.*)/);
+    if (rationaleMatch) context.rationale = rationaleMatch[1]!.trim();
+
+    const altMatch = trailingBlock.match(/> \*\*Alternatives:\*\*\s*([\s\S]*?)(?=\n> \*\*(?:Rationale|Consequences):\*\*|\n[^>\n]|$)/);
+    if (altMatch) {
+        const altBlock = altMatch[0]!;
+        const items = altBlock.match(/^>\s*-\s+(.+)$/gm);
+        if (items) {
+            context.alternatives = items.map(item => item.replace(/^>\s*-\s+/, "").trim());
+        }
+    }
+
+    const consMatch = trailingBlock.match(/> \*\*Consequences:\*\*\s*(.*)/);
+    if (consMatch) context.consequences = consMatch[1]!.trim();
+
+    const cleanContent = lines.slice(0, trailingStart).join("\n").trimEnd();
+    return { cleanContent, context };
+}
+
 export function splitMarkdown(raw: string, filePath: string, splitLevel?: 2 | 3 | 4 | "auto"): SplitResult {
     const { frontmatter, body } = extractFrontmatter(raw);
 
@@ -80,7 +133,13 @@ export function splitMarkdown(raw: string, filePath: string, splitLevel?: 2 | 3 
         const sectionContent = content
             .slice(heading.index + `${prefix} ${heading.title}`.length + 1, nextIndex)
             .trim();
-        sections.push({ title: heading.title, content: sectionContent, order: orderCounter++ });
+        const { cleanContent, context } = extractDecisionContext(sectionContent);
+        sections.push({
+            title: heading.title,
+            content: cleanContent,
+            order: orderCounter++,
+            ...context
+        });
     }
 
     return { title, description, tags, sections, splitLevel: resolvedLevel };
