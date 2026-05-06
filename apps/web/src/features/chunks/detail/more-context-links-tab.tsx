@@ -6,6 +6,7 @@ import { DeleteConnectionButton } from "@/features/chunks/delete-connection-butt
 import { RelatedSuggestions } from "@/features/chunks/related-suggestions";
 import { relationColor } from "@/features/chunks/relation-colors";
 import { SuggestedConnections } from "@/features/chunks/suggested-connections";
+import { ChunkProposalsSection } from "@/features/proposals/chunk-proposals-section";
 import { useConnectionRelations } from "@/features/vocabularies/use-vocabularies";
 
 export interface ConnectionItem {
@@ -127,6 +128,10 @@ export function MoreContextLinksTab({ chunkId, chunkTitle, outgoing, incoming }:
                         <SuggestedConnections chunkId={chunkId} />
                     </div>
                 </div>
+            </section>
+
+            <section>
+                <ChunkProposalsSection chunkId={chunkId} />
             </section>
         </div>
     );

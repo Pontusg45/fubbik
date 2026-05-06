@@ -11,7 +11,6 @@ import { ChunkDetailContent } from "@/features/chunks/detail/chunk-detail-conten
 import { ChunkDetailTopBar } from "@/features/chunks/detail/chunk-detail-top-bar";
 import { ChunkMetadataPanel } from "@/features/chunks/detail/chunk-metadata-panel";
 import { MoreContextDrawer, type DrawerTab } from "@/features/chunks/detail/more-context-drawer";
-import { ChunkProposalsSection } from "@/features/proposals/chunk-proposals-section";
 import { useFavorites } from "@/features/chunks/use-favorites";
 import { useRecentChunks } from "@/features/chunks/use-recent-chunks";
 import { useRecentlyViewed } from "@/hooks/use-recently-viewed";
@@ -362,8 +361,6 @@ function ChunkDetail() {
                         onToggleFavorite={() => toggleFavorite(chunkId)}
                         readerClasses={readerClasses}
                     />
-
-                    <ChunkProposalsSection chunkId={chunkId} />
 
                     <FeatureOverlaysSection
                         deltas={deltas ?? []}
