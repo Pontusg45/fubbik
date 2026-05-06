@@ -2,6 +2,7 @@ import {
     archiveChunk as archiveChunkRepo,
     batchFetchDeltas,
     createChunk as createChunkRepo,
+    createConnectionIfNotExists,
     createVersion,
     deleteChunk as deleteChunkRepo,
     deleteMany as deleteManyRepo,
@@ -20,6 +21,8 @@ import {
     getRequirementsForChunks,
     getTagsForChunk,
     getVersionsByChunkId,
+    getVersionsByTag,
+    getDistinctUpdateTags,
     listArchivedChunks as listArchivedChunksRepo,
     listChunks as listChunksRepo,
     listTemplates as listTemplatesRepo,
@@ -254,6 +257,7 @@ export function createChunk(
         origin?: string;
         documentId?: string;
         documentOrder?: number;
+        updateTag?: string;
     }
 ) {
     const id = crypto.randomUUID();
@@ -292,6 +296,21 @@ export function createChunk(
         Effect.tap(() => {
             events.emit(EVENTS.CHUNK_CREATED, { chunkId: id, userId });
             return Effect.void;
+        }),
+        Effect.tap(() => {
+            if (body.updateTag) {
+                return createVersion({
+                    id: crypto.randomUUID(),
+                    chunkId: id,
+                    version: 0,
+                    title: "",
+                    content: "",
+                    type: "",
+                    tags: [],
+                    updateTag: body.updateTag
+                });
+            }
+            return Effect.void;
         })
     );
 }
@@ -315,6 +334,7 @@ export function updateChunk(
         origin?: string;
         reviewStatus?: string;
         isEntryPoint?: boolean;
+        updateTag?: string;
     }
 ) {
     return getChunkById(chunkId, userId).pipe(
@@ -328,11 +348,16 @@ export function updateChunk(
                 title: existing.title,
                 content: existing.content,
                 type: existing.type,
-                tags: []
+                tags: [],
+                rationale: existing.rationale,
+                alternatives: existing.alternatives,
+                consequences: existing.consequences,
+                scope: existing.scope,
+                updateTag: body.updateTag
             })
         ),
         Effect.flatMap(() => {
-            const { tags: _tags, codebaseIds: _codebaseIds, ...repoBody } = body;
+            const { tags: _tags, codebaseIds: _codebaseIds, updateTag: _updateTag, ...repoBody } = body;
             const updateData: Record<string, unknown> = { ...repoBody };
             if (body.reviewStatus !== undefined) {
                 updateData.reviewedBy = userId;
@@ -415,17 +440,37 @@ export function importChunks(userId: string, chunks: { title: string; content?: 
     );
 }
 
+const INDEX_FILE_NAMES = new Set(["index.md", "readme.md", "_index.md"]);
+
+function dirOf(filePath: string): string {
+    const parts = filePath.split("/");
+    parts.pop();
+    return parts.join("/") || ".";
+}
+
+function filenameOf(filePath: string): string {
+    return (filePath.split("/").pop() ?? filePath).toLowerCase();
+}
+
+function folderLabel(dir: string): string {
+    const last = dir.split("/").pop() ?? dir;
+    return last.replace(/[-_]/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+}
+
 export function importDocs(
     userId: string,
     files: { path: string; content: string }[],
     codebaseId: string,
     templateOverrides?: Record<string, string | null>
 ) {
-    const results: { created: number; skipped: number; errors: { path: string; error: string }[] } = {
+    const results: { created: number; skipped: number; connections: number; errors: { path: string; error: string }[] } = {
         created: 0,
         skipped: 0,
+        connections: 0,
         errors: []
     };
+
+    const fileChunks = new Map<string, string>();
 
     return Effect.forEach(
         files,
@@ -438,6 +483,9 @@ export function importDocs(
                     } else {
                         results.created += result.created;
                     }
+                    if (result.firstChunkId) {
+                        fileChunks.set(file.path, result.firstChunkId);
+                    }
                 }),
                 Effect.catchAll(err => {
                     results.errors.push({ path: file.path, error: String(err) });
@@ -446,7 +494,105 @@ export function importDocs(
             );
         },
         { concurrency: 5 }
-    ).pipe(Effect.map(() => results));
+    ).pipe(
+        Effect.flatMap(() => createFolderConnections(userId, fileChunks, codebaseId)),
+        Effect.map(connectionsCreated => {
+            results.connections = connectionsCreated;
+            return results;
+        })
+    );
+}
+
+function createFolderConnections(
+    userId: string,
+    fileChunks: Map<string, string>,
+    codebaseId: string
+) {
+    return Effect.gen(function* () {
+        const byDir = new Map<string, { path: string; chunkId: string; isIndex: boolean }[]>();
+        for (const [path, chunkId] of fileChunks) {
+            const dir = dirOf(path);
+            if (!byDir.has(dir)) byDir.set(dir, []);
+            byDir.get(dir)!.push({ path, chunkId, isIndex: INDEX_FILE_NAMES.has(filenameOf(path)) });
+        }
+
+        let connectionsCreated = 0;
+        const dirParentChunks = new Map<string, string>();
+
+        for (const [dir, entries] of byDir) {
+            const indexEntry = entries.find(e => e.isIndex);
+            const nonIndexEntries = entries.filter(e => !e.isIndex);
+
+            if (entries.length === 1) {
+                dirParentChunks.set(dir, entries[0]!.chunkId);
+                continue;
+            }
+
+            let parentChunkId: string;
+
+            if (indexEntry) {
+                parentChunkId = indexEntry.chunkId;
+            } else {
+                const folderId = crypto.randomUUID();
+                yield* createChunkRepo({
+                    id: folderId,
+                    title: folderLabel(dir),
+                    content: `Overview for the ${folderLabel(dir)} section.`,
+                    type: "document",
+                    userId,
+                });
+                if (codebaseId) {
+                    yield* setChunkCodebases(folderId, [codebaseId]);
+                }
+                const folderTags = dir.split("/").filter(Boolean);
+                if (folderTags.length > 0) {
+                    const tagIds: string[] = [];
+                    for (const name of folderTags) {
+                        const tag = yield* findOrCreateTag(name, userId);
+                        if (tag) tagIds.push(tag.id);
+                    }
+                    if (tagIds.length > 0) yield* setChunkTags(folderId, tagIds);
+                }
+                parentChunkId = folderId;
+            }
+
+            dirParentChunks.set(dir, parentChunkId);
+
+            for (const entry of nonIndexEntries) {
+                const created = yield* createConnectionIfNotExists({
+                    id: crypto.randomUUID(),
+                    sourceId: entry.chunkId,
+                    targetId: parentChunkId,
+                    relation: "part_of",
+                    origin: "import",
+                    reviewStatus: "approved"
+                });
+                if (created) connectionsCreated++;
+            }
+        }
+
+        const allDirs = [...byDir.keys()].sort();
+        for (const dir of allDirs) {
+            const parentDir = dirOf(dir);
+            if (parentDir === dir) continue;
+
+            const childParentId = dirParentChunks.get(dir);
+            const parentParentId = dirParentChunks.get(parentDir);
+            if (!childParentId || !parentParentId || childParentId === parentParentId) continue;
+
+            const created = yield* createConnectionIfNotExists({
+                id: crypto.randomUUID(),
+                sourceId: childParentId,
+                targetId: parentParentId,
+                relation: "part_of",
+                origin: "import",
+                reviewStatus: "approved"
+            });
+            if (created) connectionsCreated++;
+        }
+
+        return connectionsCreated;
+    });
 }
 
 export function deleteChunk(chunkId: string, userId: string) {
@@ -602,4 +748,33 @@ export function mergeChunks(userId: string, sourceId: string, targetId: string) 
         }
         return yield* mergeChunksRepo(sourceId, targetId, userId);
     });
+}
+
+export function listUpdatesByTag(userId: string, tag: string, codebaseId?: string) {
+    return getVersionsByTag(tag, userId, codebaseId).pipe(
+        Effect.map(versions => versions.map(v => ({
+            versionId: v.versionId,
+            chunkId: v.chunkId,
+            chunkTitle: v.chunkTitle,
+            updateTag: v.updateTag,
+            version: v.version,
+            createdAt: v.createdAt,
+            before: v.version === 0
+                ? { title: null, content: null, type: null, rationale: null, alternatives: null, consequences: null, scope: null }
+                : { title: v.title, content: v.content, type: v.type, rationale: v.rationale, alternatives: v.alternatives, consequences: v.consequences, scope: v.scope },
+            after: {
+                title: v.chunkTitle,
+                content: v.chunkContent,
+                type: v.chunkType,
+                rationale: v.chunkRationale,
+                alternatives: v.chunkAlternatives,
+                consequences: v.chunkConsequences,
+                scope: v.chunkScope,
+            }
+        })))
+    );
+}
+
+export function listUpdateTags(userId: string, codebaseId?: string) {
+    return getDistinctUpdateTags(userId, codebaseId);
 }

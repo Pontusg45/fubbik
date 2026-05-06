@@ -9,7 +9,6 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ChunkDetailContent } from "@/features/chunks/detail/chunk-detail-content";
 import { ChunkDetailTopBar } from "@/features/chunks/detail/chunk-detail-top-bar";
-import { ChunkNeighbors } from "@/features/chunks/detail/chunk-neighbors";
 import { ChunkMetadataPanel } from "@/features/chunks/detail/chunk-metadata-panel";
 import { ChunkSiblingNavigator } from "@/features/chunks/detail/chunk-sibling-navigator";
 import { MoreContextDrawer, type DrawerTab } from "@/features/chunks/detail/more-context-drawer";
@@ -374,10 +373,6 @@ function ChunkDetail() {
                         readerClasses={readerClasses}
                     />
 
-                    <div className="max-w-[760px] mx-auto">
-                        <ChunkNeighbors chunkId={chunkId} />
-                    </div>
-
                     <ChunkProposalsSection chunkId={chunkId} />
 
                     <FeatureOverlaysSection
@@ -386,6 +381,7 @@ function ChunkDetail() {
                     />
 
                     <ChunkMetadataPanel
+                        chunkId={chunkId}
                         content={chunk.content}
                         tags={tags}
                         onTagsUpdate={(newTags) => tagMutation.mutate(newTags)}

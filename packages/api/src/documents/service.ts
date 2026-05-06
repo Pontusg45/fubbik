@@ -9,6 +9,7 @@ import {
     getTagsForChunk,
     getTemplateById,
     listDocuments as listDocumentsRepo,
+    listDocumentsWithTags as listDocumentsWithTagsRepo,
     searchDocumentChunks,
     setChunkCodebases,
     setChunkTags,
@@ -21,6 +22,7 @@ import { parseDocFile } from "../chunks/parse-docs";
 import { NotFoundError } from "../errors";
 import { extractFields } from "../templates/field-extraction";
 import type { FieldMapping } from "../templates/types";
+import { renderMarkdown } from "./render-markdown";
 import { splitMarkdown } from "./split-markdown";
 
 function hashContent(content: string): string {
@@ -52,11 +54,15 @@ export function importDocument(
 
         const existing = yield* getDocumentBySourcePath(sourcePath, codebaseId, userId);
         if (existing && existing.contentHash === contentHash) {
-            return { document: existing, created: 0, updated: 0, status: "unchanged" as const };
+            const existingChunks = yield* getDocumentChunks(existing.id);
+            const firstChunkId = existingChunks[0]?.id ?? null;
+            return { document: existing, created: 0, updated: 0, status: "unchanged" as const, firstChunkId };
         }
 
         if (existing) {
-            return yield* syncDocument(existing.id, rawContent, userId, codebaseId);
+            const syncResult = yield* syncDocument(existing.id, rawContent, userId, codebaseId);
+            const syncChunks = yield* getDocumentChunks(existing.id);
+            return { ...syncResult, firstChunkId: syncChunks[0]?.id ?? null };
         }
 
         // Template-aware import path
@@ -113,7 +119,7 @@ export function importDocument(
                     yield* setChunkCodebases(chunkId, [codebaseId]);
                 }
 
-                return { document: doc, created: 1, updated: 0, status: "created" as const };
+                return { document: doc, created: 1, updated: 0, status: "created" as const, firstChunkId: chunkId };
             }
         }
 
@@ -128,13 +134,16 @@ export function importDocument(
             contentHash,
             description: split.description,
             codebaseId,
-            userId
+            userId,
+            splitLevel: split.splitLevel
         });
 
         const tagIds = split.tags.length > 0 ? yield* resolveTagIds(split.tags, userId) : [];
 
+        let firstChunkId: string | null = null;
         for (const section of split.sections) {
             const chunkId = crypto.randomUUID();
+            if (firstChunkId === null) firstChunkId = chunkId;
             yield* createChunkRepo({
                 id: chunkId,
                 title: section.title,
@@ -153,7 +162,7 @@ export function importDocument(
             }
         }
 
-        return { document: doc, created: split.sections.length, updated: 0, status: "created" as const };
+        return { document: doc, created: split.sections.length, updated: 0, status: "created" as const, firstChunkId };
     });
 }
 
@@ -234,7 +243,8 @@ export function syncDocument(
         yield* updateDocumentRepo(documentId, {
             title: split.title,
             contentHash,
-            description: split.description
+            description: split.description,
+            splitLevel: split.splitLevel
         });
 
         return { document: doc, created, updated, status: "synced" as const };
@@ -247,22 +257,47 @@ export function renderDocument(documentId: string, userId: string) {
         if (!doc || doc.userId !== userId) return yield* Effect.fail(new NotFoundError({ resource: "document" }));
 
         const chunks = yield* getDocumentChunks(documentId);
-
-        let markdown = `# ${doc.title}\n\n`;
-        for (const c of chunks) {
-            if (c.title.endsWith("\u2014 Introduction")) {
-                markdown += `${c.content}\n\n`;
-            } else {
-                markdown += `## ${c.title}\n\n${c.content}\n\n`;
-            }
+        if (chunks.length === 0) {
+            return { document: doc, markdown: `# ${doc.title}\n` };
         }
 
-        return { document: doc, markdown: markdown.trim() };
+        const tags = yield* getTagsForChunk(chunks[0]!.id);
+        const tagNames = tags.map((t: { name: string }) => t.name);
+
+        const firstChunk = chunks[0]!;
+        const scope = firstChunk.scope && Object.keys(firstChunk.scope).length > 0
+            ? firstChunk.scope
+            : undefined;
+
+        const sections = chunks.map((c, i) => ({
+            title: c.title,
+            content: c.content ?? "",
+            order: c.documentOrder ?? i,
+            rationale: c.rationale ?? undefined,
+            alternatives: c.alternatives ?? undefined,
+            consequences: c.consequences ?? undefined,
+        }));
+
+        const markdown = renderMarkdown({
+            title: doc.title,
+            type: firstChunk.type,
+            tags: tagNames,
+            scope,
+            splitLevel: doc.splitLevel ?? 2,
+            sections,
+            sourcePath: doc.sourcePath,
+        });
+
+        return { document: doc, markdown };
     });
 }
 
 export function listDocuments(userId: string, codebaseId?: string) {
     return listDocumentsRepo(userId, codebaseId);
+}
+
+export function listDocumentsWithTags(userId: string, codebaseId?: string) {
+    return listDocumentsWithTagsRepo(userId, codebaseId);
 }
 
 export function getDocument(documentId: string, userId: string) {

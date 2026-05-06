@@ -49,3 +49,23 @@ export function getConnectionById(connectionId: string) {
             return found ?? null;
         });
 }
+
+export function createConnectionIfNotExists(params: { id: string; sourceId: string; targetId: string; relation: string; origin?: string; reviewStatus?: string }) {
+    return dbEffect(async () => {
+        const [created] = await db
+            .insert(chunkConnection)
+            .values(params)
+            .onConflictDoNothing({ target: [chunkConnection.sourceId, chunkConnection.targetId, chunkConnection.relation] })
+            .returning();
+        if (created) {
+            await Effect.runPromise(
+                ensureVertex("chunk", params.sourceId).pipe(
+                    Effect.flatMap(() => ensureVertex("chunk", params.targetId)),
+                    Effect.flatMap(() => createEdge("connects", "chunk", params.sourceId, "chunk", params.targetId, { id: params.id, relation: params.relation })),
+                    Effect.catchAll(() => Effect.succeed(undefined))
+                )
+            );
+        }
+        return created ?? null;
+    });
+}

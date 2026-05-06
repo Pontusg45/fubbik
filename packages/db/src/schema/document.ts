@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm";
-import { index, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import { index, integer, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 
 import { chunk } from "./chunk";
 import { codebase } from "./codebase";
@@ -13,6 +13,7 @@ export const document = pgTable(
         sourcePath: text("source_path").notNull(),
         contentHash: text("content_hash").notNull(),
         description: text("description"),
+        splitLevel: integer("split_level"),
         codebaseId: text("codebase_id").references(() => codebase.id, { onDelete: "set null" }),
         userId: text("user_id")
             .notNull()

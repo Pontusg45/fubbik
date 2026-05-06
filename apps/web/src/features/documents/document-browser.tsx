@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Check, ChevronDown, ChevronLeft, ChevronRight, Eye, FileText, FolderOpen, Link2, Menu, Pencil, Plus, Printer, Search, X } from "lucide-react";
+import { Check, ChevronDown, ChevronLeft, ChevronRight, Eye, FileText, FolderOpen, Link2, Menu, Pencil, Plus, Printer, Search, Tag, X } from "lucide-react";
 import { Fragment, useEffect, useMemo, useState } from "react";
 
 import { MarkdownRenderer } from "@/components/markdown-renderer";
@@ -8,6 +8,9 @@ import { Badge } from "@/components/ui/badge";
 import { PageEmpty } from "@/components/ui/page";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useActiveCodebase } from "@/features/codebases/use-active-codebase";
+import { DocumentFilterBar } from "./document-filter-bar";
+import { filterDocuments, groupDocuments, collectAllTags, collectAllTypes, type EnrichedDocument } from "./filter-documents";
+import type { DocPresetFilters } from "./document-filter-presets";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
@@ -22,6 +25,8 @@ interface DocumentListItem {
     updatedAt: Date;
     lastChunkUpdatedAt: Date | null;
     oldestChunkUpdatedAt: Date | null;
+    tags: string[];
+    type: string;
 }
 
 interface DocumentChunk {
@@ -288,14 +293,72 @@ function IndexTree({ node, depth, onSelect }: { node: FolderNode; depth: number;
     );
 }
 
+/* ─── Tag Group Sidebar Node ─── */
+
+function TagGroupNode({
+    name,
+    docs,
+    selectedId,
+    onSelect,
+}: {
+    name: string;
+    docs: DocumentListItem[];
+    selectedId: string | null;
+    onSelect: (id: string) => void;
+}) {
+    const [open, setOpen] = useState(true);
+
+    return (
+        <div>
+            <button
+                type="button"
+                onClick={() => setOpen(o => !o)}
+                className="text-muted-foreground hover:text-foreground mb-0.5 flex w-full items-center gap-1 px-2 py-1 text-xs font-medium transition-colors"
+            >
+                {open ? <ChevronDown className="size-3" /> : <ChevronRight className="size-3" />}
+                <Tag className="size-3.5" />
+                <span className="truncate">{name}</span>
+                <Badge variant="secondary" size="sm" className="ml-auto shrink-0 font-mono text-[9px]">
+                    {docs.length}
+                </Badge>
+            </button>
+            {open && (
+                <div>
+                    {docs.map(doc => (
+                        <button
+                            key={doc.id}
+                            onClick={() => onSelect(doc.id)}
+                            className={`flex w-full items-center gap-2 rounded-md py-1.5 text-left text-sm transition-colors ${
+                                selectedId === doc.id
+                                    ? "bg-muted text-foreground font-medium"
+                                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                            }`}
+                            style={{ paddingLeft: 32 }}
+                        >
+                            <FileText className="size-3.5 shrink-0" />
+                            <span className="min-w-0 flex-1 truncate">{doc.title || doc.sourcePath.split("/").pop()}</span>
+                            <Badge variant="secondary" size="sm" className="shrink-0 font-mono text-[9px] mr-2">
+                                {doc.chunkCount}
+                            </Badge>
+                        </button>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
 /* ─── Document Browser ─── */
 
 interface DocumentBrowserProps {
     initialDocId?: string;
     initialSection?: string;
+    initialGroupBy?: "folder" | "tag";
+    initialTags?: string[];
+    initialTypes?: string[];
 }
 
-export function DocumentBrowser({ initialDocId, initialSection }: DocumentBrowserProps) {
+export function DocumentBrowser({ initialDocId, initialSection, initialGroupBy, initialTags, initialTypes }: DocumentBrowserProps) {
     useActiveCodebase();
     const navigate = useNavigate();
     const [selectedId, setSelectedIdState] = useState<string | null>(initialDocId ?? null);
@@ -310,6 +373,9 @@ export function DocumentBrowser({ initialDocId, initialSection }: DocumentBrowse
     const [addingAfter, setAddingAfter] = useState<number | null>(null);
     const [newSectionTitle, setNewSectionTitle] = useState("");
     const [newSectionContent, setNewSectionContent] = useState("");
+    const [activeTags, setActiveTags] = useState<string[]>(initialTags ?? []);
+    const [activeTypes, setActiveTypes] = useState<string[]>(initialTypes ?? []);
+    const [groupBy, setGroupBy] = useState<"folder" | "tag">(initialGroupBy ?? "folder");
     const queryClient = useQueryClient();
 
     const saveMutation = useMutation({
@@ -406,6 +472,20 @@ export function DocumentBrowser({ initialDocId, initialSection }: DocumentBrowse
     });
 
     const documents = listQuery.data ?? [];
+
+    const allTags = useMemo(() => collectAllTags(documents as EnrichedDocument[]), [documents]);
+    const allTypes = useMemo(() => collectAllTypes(documents as EnrichedDocument[]), [documents]);
+
+    const filteredDocuments = useMemo(
+        () => filterDocuments(documents as EnrichedDocument[], { activeTags, activeTypes }),
+        [documents, activeTags, activeTypes]
+    );
+
+    const groupedDocuments = useMemo(
+        () => groupDocuments(filteredDocuments, groupBy),
+        [filteredDocuments, groupBy]
+    );
+
     const detail = detailQuery.data;
     const selectedListItem = documents.find(d => d.id === selectedId);
 
@@ -492,6 +572,37 @@ export function DocumentBrowser({ initialDocId, initialSection }: DocumentBrowse
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
     }, [prevDoc, nextDoc, isSearching]);
+
+    // Sync filter state to URL
+    useEffect(() => {
+        navigate({
+            to: "/docs",
+            search: (prev: Record<string, unknown>) => ({
+                ...prev,
+                groupBy: groupBy !== "folder" ? groupBy : undefined,
+                tags: activeTags.length > 0 ? activeTags.join(",") : undefined,
+                types: activeTypes.length > 0 ? activeTypes.join(",") : undefined,
+            }),
+            replace: true,
+        });
+    }, [activeTags, activeTypes, groupBy]);
+
+    // Filter action handlers
+    const toggleTag = (tag: string) => {
+        setActiveTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]);
+    };
+    const toggleType = (type: string) => {
+        setActiveTypes(prev => prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type]);
+    };
+    const clearFilters = () => {
+        setActiveTags([]);
+        setActiveTypes([]);
+    };
+    const applyPreset = (preset: DocPresetFilters) => {
+        setActiveTags(preset.activeTags);
+        setActiveTypes(preset.activeTypes);
+        setGroupBy(preset.groupBy);
+    };
 
     // Reading progress
     useEffect(() => {
@@ -613,12 +724,15 @@ export function DocumentBrowser({ initialDocId, initialSection }: DocumentBrowse
 
     // Sidebar filtering (by document title/path when not in full search mode)
     const sidebarFiltered = useMemo(() => {
-        if (!searchQuery || isSearching) return documents;
-        const q = searchQuery.toLowerCase();
-        return documents.filter(
-            d => d.title.toLowerCase().includes(q) || d.sourcePath.toLowerCase().includes(q)
-        );
-    }, [documents, searchQuery, isSearching]);
+        let docs = filteredDocuments as DocumentListItem[];
+        if (searchQuery && !isSearching) {
+            const q = searchQuery.toLowerCase();
+            docs = docs.filter(
+                d => d.title.toLowerCase().includes(q) || d.sourcePath.toLowerCase().includes(q)
+            );
+        }
+        return docs;
+    }, [filteredDocuments, searchQuery, isSearching]);
 
     const folderTree = useMemo(() => buildFolderTree(sidebarFiltered), [sidebarFiltered]);
 
@@ -690,6 +804,21 @@ export function DocumentBrowser({ initialDocId, initialSection }: DocumentBrowse
                     )}
                 </div>
 
+                <DocumentFilterBar
+                    allTags={allTags}
+                    allTypes={allTypes}
+                    activeTags={activeTags}
+                    activeTypes={activeTypes}
+                    groupBy={groupBy}
+                    totalCount={documents.length}
+                    filteredCount={filteredDocuments.length}
+                    onToggleTag={toggleTag}
+                    onToggleType={toggleType}
+                    onSetGroupBy={setGroupBy}
+                    onClearAll={clearFilters}
+                    onApplyPreset={applyPreset}
+                />
+
                 {/* Search results */}
                 {isSearching && (
                     <div className="max-h-[calc(100vh-280px)] space-y-1 overflow-y-auto">
@@ -744,35 +873,51 @@ export function DocumentBrowser({ initialDocId, initialSection }: DocumentBrowse
                             <FolderOpen className="size-4" />
                             <span>All Documents</span>
                         </button>
-                        {/* Root-level docs (no folder) */}
-                        {folderTree.docs.map(doc => (
-                            <button
-                                key={doc.id}
-                                onClick={() => handleDocClick(doc.id)}
-                                className={`flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-left text-sm transition-colors ${
-                                    selectedId === doc.id
-                                        ? "bg-muted text-foreground font-medium"
-                                        : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                                }`}
-                            >
-                                <FileText className="size-3.5 shrink-0" />
-                                <span className="min-w-0 flex-1 truncate">{doc.title || filenameFromPath(doc.sourcePath)}</span>
-                                <Badge variant="secondary" size="sm" className="shrink-0 font-mono text-[9px]">
-                                    {doc.chunkCount}
-                                </Badge>
-                            </button>
-                        ))}
-                        {/* Folder tree */}
-                        {folderTree.children.map(child => (
-                            <FolderTreeNode
-                                key={child.fullPath}
-                                node={child}
-                                depth={0}
-                                selectedId={selectedId}
-                                onSelect={handleDocClick}
-                                defaultOpen={folderTree.children.length <= 5}
-                            />
-                        ))}
+                        {groupBy === "folder" ? (
+                            <>
+                                {/* Root-level docs (no folder) */}
+                                {folderTree.docs.map(doc => (
+                                    <button
+                                        key={doc.id}
+                                        onClick={() => handleDocClick(doc.id)}
+                                        className={`flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-left text-sm transition-colors ${
+                                            selectedId === doc.id
+                                                ? "bg-muted text-foreground font-medium"
+                                                : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                                        }`}
+                                    >
+                                        <FileText className="size-3.5 shrink-0" />
+                                        <span className="min-w-0 flex-1 truncate">{doc.title || filenameFromPath(doc.sourcePath)}</span>
+                                        <Badge variant="secondary" size="sm" className="shrink-0 font-mono text-[9px]">
+                                            {doc.chunkCount}
+                                        </Badge>
+                                    </button>
+                                ))}
+                                {/* Folder tree */}
+                                {folderTree.children.map(child => (
+                                    <FolderTreeNode
+                                        key={child.fullPath}
+                                        node={child}
+                                        depth={0}
+                                        selectedId={selectedId}
+                                        onSelect={handleDocClick}
+                                        defaultOpen={folderTree.children.length <= 5}
+                                    />
+                                ))}
+                            </>
+                        ) : (
+                            <div className="px-1 py-1">
+                                {[...groupedDocuments.entries()].map(([groupName, groupDocs]) => (
+                                    <TagGroupNode
+                                        key={groupName}
+                                        name={groupName}
+                                        docs={groupDocs as DocumentListItem[]}
+                                        selectedId={selectedId}
+                                        onSelect={handleDocClick}
+                                    />
+                                ))}
+                            </div>
+                        )}
                     </nav>
                 )}
             </div>
@@ -817,7 +962,41 @@ export function DocumentBrowser({ initialDocId, initialSection }: DocumentBrowse
                 {!selectedId && (
                     <div>
                         <h2 className="text-xl font-bold mb-6">All Documents</h2>
-                        <IndexTree node={folderTree} depth={0} onSelect={setSelectedId} />
+                        {groupBy === "folder" ? (
+                            <IndexTree node={folderTree} depth={0} onSelect={setSelectedId} />
+                        ) : (
+                            <div className="space-y-4">
+                                {[...groupedDocuments.entries()].map(([groupName, groupDocs]) => (
+                                    <div key={groupName}>
+                                        <h3 className="text-sm font-semibold text-muted-foreground mb-2 flex items-center gap-1.5">
+                                            <Tag className="size-3.5" />
+                                            {groupName}
+                                        </h3>
+                                        <div className="space-y-1 pl-5">
+                                            {(groupDocs as DocumentListItem[]).map(doc => {
+                                                const staleness = getStaleness(doc);
+                                                return (
+                                                    <button
+                                                        key={doc.id}
+                                                        onClick={() => setSelectedId(doc.id)}
+                                                        className="text-foreground hover:text-foreground/80 flex items-center gap-2 text-sm w-full text-left"
+                                                    >
+                                                        <FileText className="size-3.5 text-muted-foreground shrink-0" />
+                                                        <span>{doc.title}</span>
+                                                        {doc.description && (
+                                                            <span className="text-muted-foreground text-xs truncate">— {doc.description}</span>
+                                                        )}
+                                                        <span className={`text-xs ml-auto shrink-0 ${staleness.color}`} title={staleness.tooltip}>
+                                                            {staleness.label}
+                                                        </span>
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 )}
 

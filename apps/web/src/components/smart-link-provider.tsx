@@ -118,17 +118,22 @@ export function matchInCode(
  */
 export function matchVocabularyInText(
     text: string,
-    vocabIndex: Map<string, VocabularyMatch>
+    vocabIndex: Map<string, VocabularyMatch>,
+    pattern?: RegExp | null
 ): VocabularyTextMatch[] {
     if (vocabIndex.size === 0) return [];
 
-    const words = Array.from(vocabIndex.keys()).sort((a, b) => b.length - a.length);
-    const escaped = words.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
-    const pattern = new RegExp(`\\b(${escaped.join("|")})\\b`, "gi");
+    const regex = pattern
+        ? new RegExp(pattern.source, pattern.flags)  // clone to reset lastIndex
+        : (() => {
+            const words = Array.from(vocabIndex.keys()).sort((a, b) => b.length - a.length);
+            const escaped = words.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+            return new RegExp(`\\b(${escaped.join("|")})\\b`, "gi");
+        })();
 
     const matches: VocabularyTextMatch[] = [];
     let m: RegExpExecArray | null;
-    while ((m = pattern.exec(text)) !== null) {
+    while ((m = regex.exec(text)) !== null) {
         const vocab = vocabIndex.get(m[1]!.toLowerCase());
         if (vocab) {
             matches.push({ start: m.index, end: m.index + m[0].length, ...vocab });
@@ -138,18 +143,27 @@ export function matchVocabularyInText(
     return matches;
 }
 
+export function buildVocabPattern(vocabIndex: Map<string, VocabularyMatch>): RegExp | null {
+    if (vocabIndex.size === 0) return null;
+    const words = Array.from(vocabIndex.keys()).sort((a, b) => b.length - a.length);
+    const escaped = words.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+    return new RegExp(`\\b(${escaped.join("|")})\\b`, "gi");
+}
+
 /* ─── Context ─── */
 
 interface SmartLinkContextValue {
     chunkIndex: Map<string, ChunkMatch>;
     vocabIndex: Map<string, VocabularyMatch>;
     fileRefIndex: Map<string, FileRefMatch>;
+    vocabPattern: RegExp | null;
 }
 
 const SmartLinkContext = createContext<SmartLinkContextValue>({
     chunkIndex: new Map(),
     vocabIndex: new Map(),
-    fileRefIndex: new Map()
+    fileRefIndex: new Map(),
+    vocabPattern: null
 });
 
 export function useSmartLinks() {
@@ -210,7 +224,8 @@ export function SmartLinkProvider({ children }: { children: ReactNode }) {
         const chunkIndex = buildChunkIndex(chunksQuery.data ?? []);
         const vocabIndex = buildVocabularyIndex(vocabQuery.data ?? []);
         const fileRefIndex = buildFileRefIndex(fileRefsQuery.data ?? []);
-        return { chunkIndex, vocabIndex, fileRefIndex };
+        const vocabPattern = buildVocabPattern(vocabIndex);
+        return { chunkIndex, vocabIndex, fileRefIndex, vocabPattern };
     }, [chunksQuery.data, vocabQuery.data, fileRefsQuery.data]);
 
     return (

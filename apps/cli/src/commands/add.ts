@@ -19,6 +19,7 @@ export const addCommand = new Command("add")
     .option("--list-templates", "list available templates")
     .option("--global", "skip codebase scoping")
     .option("--codebase <name>", "scope to a specific codebase by name")
+    .option("--tag <tag>", "label this addition with an update tag")
     .action(async (opts: {
         title?: string;
         content: string;
@@ -30,6 +31,7 @@ export const addCommand = new Command("add")
         listTemplates?: boolean;
         global?: boolean;
         codebase?: string;
+        tag?: string;
     }, cmd: Command) => {
         const config = loadConfig();
 
