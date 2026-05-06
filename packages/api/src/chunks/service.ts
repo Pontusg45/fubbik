@@ -21,6 +21,8 @@ import {
     getRequirementsForChunks,
     getTagsForChunk,
     getVersionsByChunkId,
+    getVersionsByTag,
+    getDistinctUpdateTags,
     listArchivedChunks as listArchivedChunksRepo,
     listChunks as listChunksRepo,
     listTemplates as listTemplatesRepo,
@@ -255,6 +257,7 @@ export function createChunk(
         origin?: string;
         documentId?: string;
         documentOrder?: number;
+        updateTag?: string;
     }
 ) {
     const id = crypto.randomUUID();
@@ -293,6 +296,21 @@ export function createChunk(
         Effect.tap(() => {
             events.emit(EVENTS.CHUNK_CREATED, { chunkId: id, userId });
             return Effect.void;
+        }),
+        Effect.tap(() => {
+            if (body.updateTag) {
+                return createVersion({
+                    id: crypto.randomUUID(),
+                    chunkId: id,
+                    version: 0,
+                    title: "",
+                    content: "",
+                    type: "",
+                    tags: [],
+                    updateTag: body.updateTag
+                });
+            }
+            return Effect.void;
         })
     );
 }
@@ -316,6 +334,7 @@ export function updateChunk(
         origin?: string;
         reviewStatus?: string;
         isEntryPoint?: boolean;
+        updateTag?: string;
     }
 ) {
     return getChunkById(chunkId, userId).pipe(
@@ -329,11 +348,16 @@ export function updateChunk(
                 title: existing.title,
                 content: existing.content,
                 type: existing.type,
-                tags: []
+                tags: [],
+                rationale: existing.rationale,
+                alternatives: existing.alternatives,
+                consequences: existing.consequences,
+                scope: existing.scope,
+                updateTag: body.updateTag
             })
         ),
         Effect.flatMap(() => {
-            const { tags: _tags, codebaseIds: _codebaseIds, ...repoBody } = body;
+            const { tags: _tags, codebaseIds: _codebaseIds, updateTag: _updateTag, ...repoBody } = body;
             const updateData: Record<string, unknown> = { ...repoBody };
             if (body.reviewStatus !== undefined) {
                 updateData.reviewedBy = userId;
@@ -724,4 +748,33 @@ export function mergeChunks(userId: string, sourceId: string, targetId: string) 
         }
         return yield* mergeChunksRepo(sourceId, targetId, userId);
     });
+}
+
+export function listUpdatesByTag(userId: string, tag: string, codebaseId?: string) {
+    return getVersionsByTag(tag, userId, codebaseId).pipe(
+        Effect.map(versions => versions.map(v => ({
+            versionId: v.versionId,
+            chunkId: v.chunkId,
+            chunkTitle: v.chunkTitle,
+            updateTag: v.updateTag,
+            version: v.version,
+            createdAt: v.createdAt,
+            before: v.version === 0
+                ? { title: null, content: null, type: null, rationale: null, alternatives: null, consequences: null, scope: null }
+                : { title: v.title, content: v.content, type: v.type, rationale: v.rationale, alternatives: v.alternatives, consequences: v.consequences, scope: v.scope },
+            after: {
+                title: v.chunkTitle,
+                content: v.chunkContent,
+                type: v.chunkType,
+                rationale: v.chunkRationale,
+                alternatives: v.chunkAlternatives,
+                consequences: v.chunkConsequences,
+                scope: v.chunkScope,
+            }
+        })))
+    );
+}
+
+export function listUpdateTags(userId: string, codebaseId?: string) {
+    return getDistinctUpdateTags(userId, codebaseId);
 }
