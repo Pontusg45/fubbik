@@ -360,9 +360,6 @@ function ChunkDetail() {
                         reviewStatus={reviewStatus}
                         isFavorite={isFavorite(chunkId)}
                         onToggleFavorite={() => toggleFavorite(chunkId)}
-                        rationale={rationale}
-                        alternatives={alternatives ?? null}
-                        consequences={consequences}
                         readerClasses={readerClasses}
                     />
 
@@ -418,6 +415,9 @@ function ChunkDetail() {
                     incoming={incoming}
                     appliesTo={appliesTo}
                     fileReferences={fileReferences}
+                    rationale={rationale}
+                    alternatives={alternatives}
+                    consequences={consequences}
                     initialTab={drawerTab}
                 />
 

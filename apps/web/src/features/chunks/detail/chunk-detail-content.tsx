@@ -1,4 +1,4 @@
-import { Bot, Clock, Scale, Star } from "lucide-react";
+import { Bot, Clock, Star } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { MarkdownRenderer } from "@/components/markdown-renderer";
@@ -17,9 +17,6 @@ export interface ChunkDetailContentProps {
     reviewStatus?: string;
     isFavorite?: boolean;
     onToggleFavorite?: () => void;
-    rationale?: string | null;
-    alternatives?: string[] | null;
-    consequences?: string | null;
     readerClasses: string;
 }
 
@@ -45,14 +42,10 @@ export function ChunkDetailContent({
     reviewStatus,
     isFavorite,
     onToggleFavorite,
-    rationale,
-    alternatives,
-    consequences,
     readerClasses,
 }: ChunkDetailContentProps) {
     const updated = new Date(updatedAt);
     const reading = estimateReadingTime(content);
-    const hasDecisionContext = !!rationale || (alternatives && alternatives.length > 0) || !!consequences;
 
     return (
         <div className="flex-1 min-w-0 max-w-[760px] mx-auto" data-focus-main="true">
@@ -117,42 +110,6 @@ export function ChunkDetailContent({
             <div className={`prose dark:prose-invert max-w-none ${readerClasses}`}>
                 <MarkdownRenderer excludeChunkId={chunkId}>{content}</MarkdownRenderer>
             </div>
-
-            {/* Decision context callout */}
-            {hasDecisionContext && (
-                <aside className="mt-10 rounded-md border-l-2 border-amber-500/40 bg-amber-500/5 px-5 py-4">
-                    <div className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400">
-                        <Scale className="size-3.5" />
-                        Decision context
-                    </div>
-                    {rationale && (
-                        <div className="mb-4">
-                            <div className="mb-1 text-xs font-semibold text-muted-foreground">Rationale</div>
-                            <div className="prose prose-sm dark:prose-invert max-w-none text-muted-foreground">
-                                <MarkdownRenderer>{rationale}</MarkdownRenderer>
-                            </div>
-                        </div>
-                    )}
-                    {alternatives && alternatives.length > 0 && (
-                        <div className="mb-4">
-                            <div className="mb-1 text-xs font-semibold text-muted-foreground">Alternatives considered</div>
-                            <ul className="text-sm text-muted-foreground list-disc pl-5 space-y-1">
-                                {alternatives.map((alt, i) => (
-                                    <li key={i}>{alt}</li>
-                                ))}
-                            </ul>
-                        </div>
-                    )}
-                    {consequences && (
-                        <div>
-                            <div className="mb-1 text-xs font-semibold text-muted-foreground">Consequences</div>
-                            <div className="prose prose-sm dark:prose-invert max-w-none text-muted-foreground">
-                                <MarkdownRenderer>{consequences}</MarkdownRenderer>
-                            </div>
-                        </div>
-                    )}
-                </aside>
-            )}
         </div>
     );
 }

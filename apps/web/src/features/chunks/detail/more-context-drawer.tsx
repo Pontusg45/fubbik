@@ -25,6 +25,9 @@ export interface MoreContextDrawerProps {
     incoming: ConnectionItem[];
     appliesTo?: AppliesTo[];
     fileReferences?: FileReference[];
+    rationale?: string | null;
+    alternatives?: string[] | null;
+    consequences?: string | null;
     initialTab?: DrawerTab;
 }
 
@@ -37,6 +40,9 @@ export function MoreContextDrawer({
     incoming,
     appliesTo,
     fileReferences,
+    rationale,
+    alternatives,
+    consequences,
     initialTab,
 }: MoreContextDrawerProps) {
     const [tab, setTab] = useState<DrawerTab>(initialTab ?? "links");
@@ -117,6 +123,9 @@ export function MoreContextDrawer({
                             chunkId={chunkId}
                             appliesTo={appliesTo}
                             fileReferences={fileReferences}
+                            rationale={rationale}
+                            alternatives={alternatives}
+                            consequences={consequences}
                         />
                     )}
                     {tab === "comments" && <ChunkComments chunkId={chunkId} />}
