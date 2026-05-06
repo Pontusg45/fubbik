@@ -11,7 +11,7 @@ export const documentRoutes = new Elysia()
             Effect.runPromise(
                 requireSession(ctx).pipe(
                     Effect.flatMap(session =>
-                        documentService.listDocuments(session.user.id, ctx.query.codebaseId)
+                        documentService.listDocumentsWithTags(session.user.id, ctx.query.codebaseId)
                     )
                 )
             ),

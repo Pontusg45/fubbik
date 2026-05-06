@@ -9,6 +9,7 @@ import {
     getTagsForChunk,
     getTemplateById,
     listDocuments as listDocumentsRepo,
+    listDocumentsWithTags as listDocumentsWithTagsRepo,
     searchDocumentChunks,
     setChunkCodebases,
     setChunkTags,
@@ -293,6 +294,10 @@ export function renderDocument(documentId: string, userId: string) {
 
 export function listDocuments(userId: string, codebaseId?: string) {
     return listDocumentsRepo(userId, codebaseId);
+}
+
+export function listDocumentsWithTags(userId: string, codebaseId?: string) {
+    return listDocumentsWithTagsRepo(userId, codebaseId);
 }
 
 export function getDocument(documentId: string, userId: string) {

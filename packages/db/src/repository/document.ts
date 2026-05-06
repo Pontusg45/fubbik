@@ -3,6 +3,7 @@ import { and, eq, ilike, isNull, or, sql } from "drizzle-orm";
 import { db, dbEffect } from "../index";
 import { chunk } from "../schema/chunk";
 import { document } from "../schema/document";
+import { chunkTag, tag } from "../schema/tag";
 
 export interface CreateDocumentParams {
     id: string;
@@ -67,6 +68,44 @@ export function listDocuments(userId: string, codebaseId?: string) {
                 .orderBy(document.title);
             return docs;
         });
+}
+
+export function listDocumentsWithTags(userId: string, codebaseId?: string) {
+    return dbEffect(async () => {
+        const conditions = [eq(document.userId, userId)];
+        if (codebaseId) conditions.push(eq(document.codebaseId, codebaseId));
+
+        const docs = await db
+            .select({
+                id: document.id,
+                title: document.title,
+                sourcePath: document.sourcePath,
+                contentHash: document.contentHash,
+                description: document.description,
+                codebaseId: document.codebaseId,
+                createdAt: document.createdAt,
+                updatedAt: document.updatedAt,
+                chunkCount: sql<number>`count(distinct ${chunk.id})`.as("chunk_count"),
+                lastChunkUpdatedAt: sql<Date>`max(${chunk.updatedAt})`.as("last_chunk_updated_at"),
+                oldestChunkUpdatedAt: sql<Date>`min(${chunk.updatedAt})`.as("oldest_chunk_updated_at"),
+                type: sql<string>`min(case when ${chunk.documentOrder} = 0 then ${chunk.type} end)`.as("type"),
+                tagsRaw: sql<string>`string_agg(distinct ${tag.name}, ',')`.as("tags_raw"),
+            })
+            .from(document)
+            .leftJoin(chunk, eq(chunk.documentId, document.id))
+            .leftJoin(chunkTag, eq(chunkTag.chunkId, chunk.id))
+            .leftJoin(tag, eq(tag.id, chunkTag.tagId))
+            .where(and(...conditions))
+            .groupBy(document.id)
+            .orderBy(document.title);
+
+        return docs.map(d => ({
+            ...d,
+            type: d.type ?? "document",
+            tags: d.tagsRaw ? d.tagsRaw.split(",").filter(Boolean) : [],
+            tagsRaw: undefined,
+        }));
+    });
 }
 
 export function updateDocument(id: string, params: { title?: string; contentHash?: string; description?: string; splitLevel?: number }) {
