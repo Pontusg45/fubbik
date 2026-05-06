@@ -229,6 +229,41 @@ export const chunkRoutes = new Elysia()
             })
         }
     )
+    .get(
+        "/chunks/updates",
+        ctx =>
+            Effect.runPromise(
+                requireSession(ctx).pipe(
+                    Effect.flatMap(session =>
+                        chunkService.listUpdatesByTag(session.user.id, ctx.query.tag, ctx.query.codebaseId)
+                    ),
+                    Effect.map(updates => ({ updates }))
+                )
+            ),
+        {
+            query: t.Object({
+                tag: t.String({ minLength: 1, maxLength: 100 }),
+                codebaseId: t.Optional(t.String())
+            })
+        }
+    )
+    .get(
+        "/chunks/updates/tags",
+        ctx =>
+            Effect.runPromise(
+                requireSession(ctx).pipe(
+                    Effect.flatMap(session =>
+                        chunkService.listUpdateTags(session.user.id, ctx.query.codebaseId)
+                    ),
+                    Effect.map(tags => ({ tags }))
+                )
+            ),
+        {
+            query: t.Object({
+                codebaseId: t.Optional(t.String())
+            })
+        }
+    )
     .get("/chunks/:id/suggestions", ctx =>
         Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(session => getConnectionSuggestions(ctx.params.id, session.user.id))))
     )
@@ -297,7 +332,8 @@ export const chunkRoutes = new Elysia()
                 consequences: t.Optional(t.String({ maxLength: 5000 })),
                 origin: t.Optional(t.Union([t.Literal("human"), t.Literal("ai")])),
                 documentId: t.Optional(t.String()),
-                documentOrder: t.Optional(t.Number())
+                documentOrder: t.Optional(t.Number()),
+                updateTag: t.Optional(t.String({ maxLength: 100 }))
             })
         }
     )
@@ -323,7 +359,8 @@ export const chunkRoutes = new Elysia()
                 consequences: t.Optional(t.String({ maxLength: 5000 })),
                 origin: t.Optional(t.Union([t.Literal("human"), t.Literal("ai")])),
                 reviewStatus: t.Optional(t.Union([t.Literal("draft"), t.Literal("reviewed"), t.Literal("approved")])),
-                isEntryPoint: t.Optional(t.Boolean())
+                isEntryPoint: t.Optional(t.Boolean()),
+                updateTag: t.Optional(t.String({ maxLength: 100 }))
             })
         }
     )
