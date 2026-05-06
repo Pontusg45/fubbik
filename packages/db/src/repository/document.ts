@@ -12,6 +12,7 @@ export interface CreateDocumentParams {
     description?: string;
     codebaseId?: string;
     userId: string;
+    splitLevel?: number;
 }
 
 export function createDocument(params: CreateDocumentParams) {
@@ -68,14 +69,15 @@ export function listDocuments(userId: string, codebaseId?: string) {
         });
 }
 
-export function updateDocument(id: string, params: { title?: string; contentHash?: string; description?: string }) {
+export function updateDocument(id: string, params: { title?: string; contentHash?: string; description?: string; splitLevel?: number }) {
     return dbEffect(async () => {
             const [updated] = await db
                 .update(document)
                 .set({
                     ...(params.title !== undefined && { title: params.title }),
                     ...(params.contentHash !== undefined && { contentHash: params.contentHash }),
-                    ...(params.description !== undefined && { description: params.description })
+                    ...(params.description !== undefined && { description: params.description }),
+                    ...(params.splitLevel !== undefined && { splitLevel: params.splitLevel })
                 })
                 .where(eq(document.id, id))
                 .returning();

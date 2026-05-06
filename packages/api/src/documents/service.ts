@@ -133,7 +133,8 @@ export function importDocument(
             contentHash,
             description: split.description,
             codebaseId,
-            userId
+            userId,
+            splitLevel: split.splitLevel
         });
 
         const tagIds = split.tags.length > 0 ? yield* resolveTagIds(split.tags, userId) : [];
@@ -241,7 +242,8 @@ export function syncDocument(
         yield* updateDocumentRepo(documentId, {
             title: split.title,
             contentHash,
-            description: split.description
+            description: split.description,
+            splitLevel: split.splitLevel
         });
 
         return { document: doc, created, updated, status: "synced" as const };
