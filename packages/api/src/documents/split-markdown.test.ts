@@ -49,4 +49,35 @@ describe("splitMarkdown", () => {
         expect(result.sections[0]!.title).toBe("Simple Note \u2014 Introduction");
         expect(result.sections[0]!.content).toBe("Just some content with no H2 headings.");
     });
+
+    it("auto-detects H3 as split level when no H2s exist", () => {
+        const md = `# Title\n\n### First\n\nContent one.\n\n### Second\n\nContent two.\n`;
+        const result = splitMarkdown(md, "test.md");
+        expect(result.splitLevel).toBe(3);
+        expect(result.sections).toHaveLength(2);
+        expect(result.sections[0]!.title).toBe("First");
+        expect(result.sections[1]!.title).toBe("Second");
+    });
+
+    it("uses explicit splitLevel override", () => {
+        const md = `# Title\n\n## H2 Section\n\nContent.\n\n### H3 Section\n\nMore.\n`;
+        const result = splitMarkdown(md, "test.md", 3);
+        expect(result.splitLevel).toBe(3);
+        expect(result.sections).toHaveLength(1);
+        expect(result.sections[0]!.title).toBe("H3 Section");
+    });
+
+    it("returns splitLevel 2 for existing H2 documents", () => {
+        const md = `# My Document\n\nIntro.\n\n## First Section\n\nFirst content.\n`;
+        const result = splitMarkdown(md, "test.md");
+        expect(result.splitLevel).toBe(2);
+    });
+
+    it("defaults splitLevel to 2 when no headings found", () => {
+        const md = `# Title\n\nJust content with no sub-headings.\n`;
+        const result = splitMarkdown(md, "test.md");
+        expect(result.splitLevel).toBe(2);
+        expect(result.sections).toHaveLength(1);
+        expect(result.sections[0]!.title).toBe("Title \u2014 Introduction");
+    });
 });
