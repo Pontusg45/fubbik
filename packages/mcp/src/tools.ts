@@ -92,13 +92,15 @@ export function registerTools(server: McpServer): void {
             content: z.string().describe("Chunk content"),
             type: z.string().optional().describe("Chunk type (e.g. note, decision, pattern)"),
             tags: z.array(z.string()).optional().describe("Tags to apply"),
-            codebaseId: z.string().optional().describe("Codebase ID to associate with")
+            codebaseId: z.string().optional().describe("Codebase ID to associate with"),
+            updateTag: z.string().optional().describe("Label this creation with an update tag (e.g. feature-x)")
         },
-        async ({ title, content, type, tags, codebaseId }) => {
+        async ({ title, content, type, tags, codebaseId, updateTag }) => {
             const body: Record<string, unknown> = { title, content };
             if (type) body.type = type;
             if (tags) body.tags = tags;
             if (codebaseId) body.codebaseIds = [codebaseId];
+            if (updateTag) body.updateTag = updateTag;
 
             const data = (await apiFetch("/chunks", {
                 method: "POST",
@@ -237,14 +239,16 @@ export function registerTools(server: McpServer): void {
             title: z.string().optional().describe("New title"),
             content: z.string().optional().describe("New content"),
             type: z.string().optional().describe("New type"),
-            rationale: z.string().optional().describe("New rationale")
+            rationale: z.string().optional().describe("New rationale"),
+            updateTag: z.string().optional().describe("Label this update with a tag (e.g. feature-x)")
         },
-        async ({ id, title, content, type, rationale }) => {
+        async ({ id, title, content, type, rationale, updateTag }) => {
             const body: Record<string, unknown> = {};
             if (title) body.title = title;
             if (content) body.content = content;
             if (type) body.type = type;
             if (rationale) body.rationale = rationale;
+            if (updateTag) body.updateTag = updateTag;
 
             const data = (await apiFetch(`/chunks/${id}`, {
                 method: "PATCH",
@@ -262,7 +266,48 @@ export function registerTools(server: McpServer): void {
         }
     );
 
-    // 7. propose_chunk_update
+    // 7. list_updates
+    server.tool(
+        "list_updates",
+        "List chunk updates labeled with a specific tag. Returns before/after diffs for each change.",
+        {
+            tag: z.string().describe("Update tag to filter by (e.g. feature-x)"),
+            codebaseId: z.string().optional().describe("Codebase ID to scope results")
+        },
+        async ({ tag, codebaseId }) => {
+            const params = new URLSearchParams({ tag });
+            if (codebaseId) params.set("codebaseId", codebaseId);
+
+            const data = (await apiFetch(`/chunks/updates?${params}`)) as {
+                updates: Array<{
+                    chunkId: string;
+                    chunkTitle: string;
+                    version: number;
+                    createdAt: string;
+                    before: Record<string, unknown>;
+                    after: Record<string, unknown>;
+                }>;
+            };
+
+            if (data.updates.length === 0) {
+                return { content: [{ type: "text" as const, text: `No updates found for tag "${tag}".` }] };
+            }
+
+            const summary = data.updates.map(u => {
+                const action = u.version === 0 ? "CREATED" : "UPDATED";
+                return `${action}: ${u.chunkTitle} (${u.chunkId}) — ${new Date(u.createdAt).toLocaleDateString()}`;
+            }).join("\n");
+
+            return {
+                content: [{
+                    type: "text" as const,
+                    text: `${data.updates.length} update(s) tagged "${tag}":\n\n${summary}`
+                }]
+            };
+        }
+    );
+
+    // 8. propose_chunk_update
     server.tool(
         "propose_chunk_update",
         "Propose changes to an existing chunk for human review. Changes are staged as a pending proposal — the chunk is NOT modified until a human approves.",
