@@ -300,29 +300,46 @@ function TagGroupNode({
     name,
     docs,
     selectedId,
+    selectedGroup,
     onSelect,
+    onGroupSelect,
 }: {
     name: string;
     docs: DocumentListItem[];
     selectedId: string | null;
+    selectedGroup: string | null;
     onSelect: (id: string) => void;
+    onGroupSelect: (name: string) => void;
 }) {
     const [open, setOpen] = useState(true);
+    const isGroupSelected = selectedGroup === name;
 
     return (
         <div>
-            <button
-                type="button"
-                onClick={() => setOpen(o => !o)}
-                className="text-muted-foreground hover:text-foreground mb-0.5 flex w-full items-center gap-1 px-2 py-1 text-xs font-medium transition-colors"
-            >
-                {open ? <ChevronDown className="size-3" /> : <ChevronRight className="size-3" />}
-                <Tag className="size-3.5" />
-                <span className="truncate">{name}</span>
-                <Badge variant="secondary" size="sm" className="ml-auto shrink-0 font-mono text-[9px]">
-                    {docs.length}
-                </Badge>
-            </button>
+            <div className="mb-0.5 flex items-center gap-0">
+                <button
+                    type="button"
+                    onClick={() => setOpen(o => !o)}
+                    className="text-muted-foreground hover:text-foreground flex items-center py-1 pl-2 transition-colors"
+                >
+                    {open ? <ChevronDown className="size-3" /> : <ChevronRight className="size-3" />}
+                </button>
+                <button
+                    type="button"
+                    onClick={() => onGroupSelect(name)}
+                    className={`flex flex-1 items-center gap-1 rounded-md px-1 py-1 text-xs font-medium transition-colors ${
+                        isGroupSelected
+                            ? "bg-muted text-foreground"
+                            : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                    }`}
+                >
+                    <Tag className="size-3.5" />
+                    <span className="truncate">{name}</span>
+                    <Badge variant="secondary" size="sm" className="ml-auto shrink-0 font-mono text-[9px]">
+                        {docs.length}
+                    </Badge>
+                </button>
+            </div>
             {open && (
                 <div>
                     {docs.map(doc => (
@@ -363,6 +380,7 @@ export function DocumentBrowser({ initialDocId, initialSection, initialGroupBy, 
     const { codebaseId: activeCodebaseId } = useActiveCodebase();
     const navigate = useNavigate();
     const [selectedId, setSelectedIdState] = useState<string | null>(initialDocId ?? null);
+    const [selectedGroup, setSelectedGroupState] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState("");
     const [isSearching, setIsSearching] = useState(false);
     const [mobileOpen, setMobileOpen] = useState(false);
@@ -411,9 +429,21 @@ export function DocumentBrowser({ initialDocId, initialSection, initialGroupBy, 
 
     const setSelectedId = (id: string | null) => {
         setSelectedIdState(id);
+        setSelectedGroupState(null);
         navigate({
             to: "/docs",
             search: (prev: Record<string, unknown>) => ({ ...prev, id: id ?? undefined, section: undefined }),
+            replace: true
+        });
+        window.scrollTo({ top: 0, behavior: "smooth" });
+    };
+
+    const setSelectedGroup = (name: string | null) => {
+        setSelectedGroupState(name);
+        setSelectedIdState(null);
+        navigate({
+            to: "/docs",
+            search: (prev: Record<string, unknown>) => ({ ...prev, id: undefined, section: undefined }),
             replace: true
         });
         window.scrollTo({ top: 0, behavior: "smooth" });
@@ -490,6 +520,28 @@ export function DocumentBrowser({ initialDocId, initialSection, initialGroupBy, 
         () => groupDocuments(filteredDocuments, groupBy),
         [filteredDocuments, groupBy]
     );
+
+    // Fetch all document chunks for a selected tag group (combined view)
+    const groupDocIds = useMemo(() => {
+        if (!selectedGroup || groupBy !== "tag") return [];
+        return (groupedDocuments.get(selectedGroup) ?? []).map(d => d.id);
+    }, [selectedGroup, groupBy, groupedDocuments]);
+
+    const groupDetailQuery = useQuery({
+        queryKey: ["documents-group", selectedGroup, groupDocIds],
+        queryFn: async () => {
+            const details: DocumentDetail[] = [];
+            for (const id of groupDocIds) {
+                try {
+                    const d = unwrapEden(await api.api.documents({ id }).get()) as DocumentDetail;
+                    details.push(d);
+                } catch {}
+            }
+            return details;
+        },
+        enabled: groupDocIds.length > 0,
+        staleTime: 60_000,
+    });
 
     const detail = detailQuery.data;
     const selectedListItem = documents.find(d => d.id === selectedId);
@@ -879,7 +931,9 @@ export function DocumentBrowser({ initialDocId, initialSection, initialGroupBy, 
                                         name={groupName}
                                         docs={groupDocs as DocumentListItem[]}
                                         selectedId={selectedId}
+                                        selectedGroup={selectedGroup}
                                         onSelect={handleDocClick}
+                                        onGroupSelect={(name) => { setSelectedGroup(name); onDocSelect?.(); }}
                                     />
                                 ))}
                             </div>
@@ -925,7 +979,71 @@ export function DocumentBrowser({ initialDocId, initialSection, initialGroupBy, 
                     </div>
                 )}
 
-                {!selectedId && (
+                {/* Combined group view */}
+                {selectedGroup && !selectedId && (
+                    <div>
+                        <div className="mb-6">
+                            <div className="text-muted-foreground mb-2 flex items-center gap-1 text-xs">
+                                <span>Docs</span>
+                                <ChevronRight className="size-3" />
+                                <span className="text-foreground font-medium flex items-center gap-1">
+                                    <Tag className="size-3" />
+                                    {selectedGroup}
+                                </span>
+                            </div>
+                            <h2 className="text-xl font-bold">{selectedGroup}</h2>
+                            <p className="text-muted-foreground text-sm mt-1">
+                                {groupDocIds.length} document{groupDocIds.length !== 1 ? "s" : ""} in this group
+                            </p>
+                        </div>
+
+                        {groupDetailQuery.isLoading && (
+                            <p className="text-muted-foreground py-8 text-center text-sm">Loading documents...</p>
+                        )}
+
+                        {groupDetailQuery.data && (
+                            <div className="space-y-8">
+                                {groupDetailQuery.data.map(doc => (
+                                    <div key={doc.id}>
+                                        <div className="mb-3 flex items-center gap-2 border-b pb-2">
+                                            <FileText className="text-muted-foreground size-4 shrink-0" />
+                                            <h3 className="text-base font-semibold">{doc.title}</h3>
+                                            <span className="text-muted-foreground text-xs font-mono">{doc.sourcePath}</span>
+                                        </div>
+                                        <div className="space-y-2">
+                                            {doc.chunks.map(chunk => (
+                                                <section key={chunk.id} id={`section-${chunk.id}`} className="scroll-mt-24">
+                                                    <div className="group mb-1.5 flex items-center gap-2">
+                                                        <Link
+                                                            to="/chunks/$chunkId"
+                                                            params={{ chunkId: chunk.id }}
+                                                            className="text-lg font-semibold hover:underline underline-offset-2"
+                                                        >
+                                                            <h4 className="inline">{chunk.title}</h4>
+                                                        </Link>
+                                                        <Link
+                                                            to="/chunks/$chunkId"
+                                                            params={{ chunkId: chunk.id }}
+                                                            className="text-muted-foreground hover:text-foreground opacity-0 transition-opacity group-hover:opacity-100"
+                                                            title="Open chunk detail"
+                                                        >
+                                                            <Eye className="size-3.5" />
+                                                        </Link>
+                                                    </div>
+                                                    <div className="prose prose-sm dark:prose-invert max-w-none">
+                                                        <MarkdownRenderer>{chunk.content}</MarkdownRenderer>
+                                                    </div>
+                                                </section>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {!selectedId && !selectedGroup && (
                     <div>
                         <h2 className="text-xl font-bold mb-6">All Documents</h2>
                         {groupBy === "folder" ? (
