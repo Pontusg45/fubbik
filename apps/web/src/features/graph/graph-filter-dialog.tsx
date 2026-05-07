@@ -21,6 +21,7 @@ interface GraphFilterDialogProps {
     onApply: (values: GraphFilterValues) => void;
     onShowEverything: () => void;
     previewData?: GraphFilterPreviewData;
+    availableTagTypeIds?: Set<string>;
 }
 
 /**
@@ -34,7 +35,8 @@ export function GraphFilterDialog({
     initial,
     onApply,
     onShowEverything,
-    previewData
+    previewData,
+    availableTagTypeIds
 }: GraphFilterDialogProps) {
     const [draft, setDraft] = useState<GraphFilterValues>(initial);
 
@@ -78,7 +80,7 @@ export function GraphFilterDialog({
                 </DialogHeader>
 
                 <div className="space-y-5 px-6 pb-6">
-                    <GraphFilterForm values={draft} onChange={setDraft} previewData={previewData} />
+                    <GraphFilterForm values={draft} onChange={setDraft} previewData={previewData} availableTagTypeIds={availableTagTypeIds} />
 
                     <div className="flex items-center justify-end gap-2 border-t pt-4">
                         <Button variant="ghost" size="sm" onClick={handleShowEverything}>

@@ -37,6 +37,7 @@ interface GraphFiltersProps {
     activeTypes?: Set<string>;
     activeRelations?: Set<string>;
     activeTagTypeIds?: Set<string>;
+    availableTagTypeIds?: Set<string>;
 }
 
 export function GraphFilters({
@@ -52,7 +53,8 @@ export function GraphFilters({
     onApplyPreset,
     activeTypes,
     activeRelations,
-    activeTagTypeIds
+    activeTagTypeIds,
+    availableTagTypeIds
 }: GraphFiltersProps) {
     const [collapsed, setCollapsed] = useState(false);
 
@@ -76,6 +78,7 @@ export function GraphFilters({
                         previewData={previewData}
                         compact
                         initialFocusTitle={initialFocusTitle}
+                        availableTagTypeIds={availableTagTypeIds}
                     />
 
                     {onToggleUngrouped && hasActiveGrouping && (

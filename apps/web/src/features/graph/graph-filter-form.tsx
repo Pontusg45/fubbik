@@ -48,6 +48,8 @@ interface GraphFilterFormProps {
     /** Initial state of the focus-chunk title so editing a persisted focus doesn't
      *  require a round-trip to re-resolve its label. */
     initialFocusTitle?: string;
+    /** When set, only show tag types that have tags in the current graph data. */
+    availableTagTypeIds?: Set<string>;
 }
 
 /**
@@ -57,7 +59,7 @@ interface GraphFilterFormProps {
  * when to commit (the dialog buffers until Apply; the top-left panel commits
  * immediately to URL params).
  */
-export function GraphFilterForm({ values, onChange, previewData, compact, initialFocusTitle }: GraphFilterFormProps) {
+export function GraphFilterForm({ values, onChange, previewData, compact, initialFocusTitle, availableTagTypeIds }: GraphFilterFormProps) {
     const { tags, types, focusChunkId, depth, groupBy, tagTypeId, subGroupBy } = values;
     const [focusChunkTitle, setFocusChunkTitle] = useState(initialFocusTitle ?? "");
     const [search, setSearch] = useState("");
@@ -89,8 +91,10 @@ export function GraphFilterForm({ values, onChange, previewData, compact, initia
     const tagTypesList = useMemo(() => {
         const data = tagTypesQuery.data;
         if (!Array.isArray(data)) return [] as Array<{ id: string; name: string; color: string }>;
-        return data as Array<{ id: string; name: string; color: string }>;
-    }, [tagTypesQuery.data]);
+        const all = data as Array<{ id: string; name: string; color: string }>;
+        if (!availableTagTypeIds) return all;
+        return all.filter(tt => availableTagTypeIds.has(tt.id));
+    }, [tagTypesQuery.data, availableTagTypeIds]);
 
     const chunkSearchQuery = useQuery({
         queryKey: ["chunks-search-for-focus", search],

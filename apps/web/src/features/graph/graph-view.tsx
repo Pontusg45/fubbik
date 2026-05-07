@@ -252,6 +252,15 @@ function GraphViewInner() {
     const hasAnyFilterParams = !!(search.tags || search.types || search.focus || search.groupBy || search.all);
     const [filterDialogOpen, setFilterDialogOpen] = useState(!hasAnyFilterParams);
 
+    const availableTagTypeIds = useMemo(() => {
+        if (!data?.chunkTags) return new Set<string>();
+        const ids = new Set<string>();
+        for (const ct of data.chunkTags as Array<{ tagTypeId?: string | null }>) {
+            if (ct.tagTypeId) ids.add(ct.tagTypeId);
+        }
+        return ids;
+    }, [data?.chunkTags]);
+
     // Apply groupBy from prefilter once graph data is available
     useEffect(() => {
         if (!data?.tagTypes) return;
@@ -1789,6 +1798,7 @@ function GraphViewInner() {
                         activeTypes={filterTypes}
                         activeRelations={filterRelations}
                         activeTagTypeIds={activeTagTypeIds}
+                        availableTagTypeIds={availableTagTypeIds}
                         onApplyPreset={(filters) => {
                             dispatch({ type: "SET_FILTER_TYPES", types: new Set(filters.activeTypes) });
                             dispatch({ type: "SET_FILTER_RELATIONS", relations: new Set(filters.activeRelations) });
@@ -2058,6 +2068,7 @@ function GraphViewInner() {
                 }
                 onApply={handleFilterApply}
                 onShowEverything={handleShowEverything}
+                availableTagTypeIds={availableTagTypeIds}
             />
         </div>
     );
