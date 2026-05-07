@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { PageEmpty } from "@/components/ui/page";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useActiveCodebase } from "@/features/codebases/use-active-codebase";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { DocumentFilterBar } from "./document-filter-bar";
 import { filterDocuments, groupDocuments, collectAllTags, collectAllTypes, type EnrichedDocument } from "./filter-documents";
 import type { DocPresetFilters } from "./document-filter-presets";
@@ -449,26 +450,28 @@ export function DocumentBrowser({ initialDocId, initialSection, initialGroupBy, 
         enabled: !!selectedId
     });
 
-    // Fetch all document details for search and inter-document linking
-    const allDocsQuery = useQuery({
-        queryKey: ["documents-all-details"],
+    // Server-side document search — only when user types 2+ chars
+    const debouncedSearch = useDebouncedValue(searchQuery, 300);
+    const searchServerQuery = useQuery({
+        queryKey: ["documents-search", debouncedSearch],
         queryFn: async () => {
-            const docs = listQuery.data ?? [];
-            const details: DocumentDetail[] = [];
-            for (const doc of docs) {
-                try {
-                    const detail = unwrapEden(
-                        await api.api.documents({ id: doc.id }).get()
-                    ) as DocumentDetail;
-                    details.push(detail);
-                } catch {
-                    // skip failed fetches
-                }
+            try {
+                const results = unwrapEden(
+                    await api.api.documents.search.get({ query: { q: debouncedSearch } })
+                ) as { chunkId: string; chunkTitle: string; chunkContent: string; documentOrder: number | null; documentId: string; documentTitle: string; sourcePath: string }[];
+                return results.map(r => ({
+                    documentId: r.documentId,
+                    documentTitle: r.documentTitle,
+                    sourcePath: r.sourcePath,
+                    chunk: { id: r.chunkId, title: r.chunkTitle, content: r.chunkContent, documentOrder: r.documentOrder },
+                    snippet: extractSnippet(r.chunkContent, debouncedSearch),
+                })) as SearchResult[];
+            } catch {
+                return [];
             }
-            return details;
         },
-        enabled: (listQuery.data?.length ?? 0) > 0,
-        staleTime: 60_000
+        enabled: debouncedSearch.trim().length >= 2,
+        staleTime: 30_000,
     });
 
     const documents = listQuery.data ?? [];
@@ -665,46 +668,7 @@ export function DocumentBrowser({ initialDocId, initialSection, initialGroupBy, 
         return () => clearTimeout(timer);
     }, [highlightQuery, detail]);
 
-    // Full-text search across all documents
-    const searchResults = useMemo((): SearchResult[] => {
-        if (!searchQuery.trim() || !allDocsQuery.data) return [];
-        const q = searchQuery.toLowerCase();
-        const results: SearchResult[] = [];
-
-        for (const doc of allDocsQuery.data) {
-            for (const chunk of doc.chunks) {
-                const inTitle = chunk.title.toLowerCase().includes(q);
-                const inContent = chunk.content.toLowerCase().includes(q);
-                if (inTitle || inContent) {
-                    results.push({
-                        documentId: doc.id,
-                        documentTitle: doc.title,
-                        sourcePath: doc.sourcePath,
-                        chunk,
-                        snippet: extractSnippet(chunk.content, searchQuery)
-                    });
-                }
-            }
-        }
-
-        // Also match document titles
-        for (const doc of allDocsQuery.data) {
-            if (doc.title.toLowerCase().includes(q) && !results.some(r => r.documentId === doc.id)) {
-                const firstChunk = doc.chunks[0];
-                if (firstChunk) {
-                    results.push({
-                        documentId: doc.id,
-                        documentTitle: doc.title,
-                        sourcePath: doc.sourcePath,
-                        chunk: firstChunk,
-                        snippet: firstChunk.content.slice(0, 200) + (firstChunk.content.length > 200 ? "..." : "")
-                    });
-                }
-            }
-        }
-
-        return results;
-    }, [searchQuery, allDocsQuery.data]);
+    const searchResults = searchServerQuery.data ?? [];
 
     const groupedSearchResults = useMemo(() => {
         const map = new Map<string, { doc: { id: string; title: string }; results: SearchResult[] }>();
@@ -822,10 +786,10 @@ export function DocumentBrowser({ initialDocId, initialSection, initialGroupBy, 
                 {/* Search results */}
                 {isSearching && (
                     <div className="max-h-[calc(100vh-280px)] space-y-1 overflow-y-auto">
-                        {allDocsQuery.isLoading && (
+                        {searchServerQuery.isLoading && (
                             <p className="text-muted-foreground px-2 py-4 text-center text-xs">Searching...</p>
                         )}
-                        {!allDocsQuery.isLoading && searchResults.length === 0 && searchQuery.length >= 2 && (
+                        {!searchServerQuery.isLoading && searchResults.length === 0 && searchQuery.length >= 2 && (
                             <p className="text-muted-foreground px-2 py-4 text-center text-xs">No results for "{searchQuery}"</p>
                         )}
                         {groupedSearchResults.map(group => (
