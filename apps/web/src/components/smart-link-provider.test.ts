@@ -44,6 +44,7 @@ describe("buildVocabularyIndex", () => {
         expect(index.get("userservice")).toEqual({
             word: "UserService",
             category: "actor",
+            definition: null,
             expects: ["class"]
         });
     });
@@ -83,7 +84,7 @@ describe("matchInCode", () => {
 
     it("returns vocabulary match as fallback", () => {
         const result = matchInCode("Repository", chunks, fileRefs, vocab);
-        expect(result).toEqual({ type: "vocabulary", word: "Repository", category: "actor", expects: ["class"] });
+        expect(result).toEqual({ type: "vocabulary", word: "Repository", category: "actor", definition: null, expects: ["class"] });
     });
 
     it("returns null when nothing matches", () => {
@@ -101,8 +102,8 @@ describe("matchVocabularyInText", () => {
     it("finds vocabulary terms in plain text", () => {
         const matches = matchVocabularyInText("The UserService handles deploy requests", vocab);
         expect(matches).toHaveLength(2);
-        expect(matches[0]).toEqual({ start: 4, end: 15, word: "UserService", category: "actor", expects: ["class"] });
-        expect(matches[1]).toEqual({ start: 24, end: 30, word: "deploy", category: "action", expects: null });
+        expect(matches[0]).toEqual({ start: 4, end: 15, word: "UserService", category: "actor", definition: null, expects: ["class"] });
+        expect(matches[1]).toEqual({ start: 24, end: 30, word: "deploy", category: "action", definition: null, expects: null });
     });
 
     it("returns empty for no matches", () => {
