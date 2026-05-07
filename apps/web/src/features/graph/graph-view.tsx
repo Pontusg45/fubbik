@@ -310,13 +310,21 @@ function GraphViewInner() {
     // Resolve active grouping strategy from prefilter + existing tag-type toggles.
     // prefilter.groupBy explicitly wins when set to something other than "tag" (its default).
     // "tag" falls back to activeTagTypeIds (the in-graph toggle).
+    // When groupBy is "tag" but activeTagTypeIds hasn't been set yet (first render),
+    // use availableTagTypeIds so groups render immediately without a useEffect gap.
+    const effectiveTagTypeIds = useMemo(() => {
+        if (activeTagTypeIds.size > 0) return activeTagTypeIds;
+        if (prefilter.groupBy === "tag" && availableTagTypeIds.size > 0) return availableTagTypeIds;
+        return activeTagTypeIds;
+    }, [activeTagTypeIds, prefilter.groupBy, availableTagTypeIds]);
+
     const groupingMode: Exclude<GroupBy, "none"> | null = useMemo(() => {
         if (prefilter.groupBy === "type") return "type";
         if (prefilter.groupBy === "codebase") return "codebase";
         if (prefilter.groupBy === "none") return null;
-        if (activeTagTypeIds.size > 0) return "tag";
+        if (effectiveTagTypeIds.size > 0) return "tag";
         return null;
-    }, [prefilter.groupBy, activeTagTypeIds]);
+    }, [prefilter.groupBy, effectiveTagTypeIds]);
 
     const groupResult = useMemo(() => {
         if (!groupingMode || !data) return null;
@@ -325,11 +333,11 @@ function GraphViewInner() {
         return GROUP_STRATEGIES[groupingMode].build({
             chunks: data.chunks,
             chunkTags: data.chunkTags,
-            activeTagTypeIds,
+            activeTagTypeIds: effectiveTagTypeIds,
             chunkCodebases: data.chunkCodebases,
             typeColorMap
         });
-    }, [groupingMode, data, activeTagTypeIds, TYPE_COLORS]);
+    }, [groupingMode, data, effectiveTagTypeIds, TYPE_COLORS]);
 
     // Keep `tagGroups` variable name — downstream pipeline references it by this name.
     const tagGroups = groupResult?.groups ?? null;
