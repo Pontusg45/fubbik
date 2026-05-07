@@ -249,13 +249,7 @@ function GraphViewInner() {
         };
     }, [search.tags, search.types, search.focus, search.depth, search.groupBy, search.tagTypeId]);
 
-    const hasAnyFilterParams = !!(search.tags || search.types || search.focus || search.groupBy || search.all);
-    const [filterDialogOpen, setFilterDialogOpen] = useState(!hasAnyFilterParams);
-
-    useEffect(() => {
-        // Re-open dialog if user navigates back to /graph with no params (e.g., clear)
-        if (!hasAnyFilterParams) setFilterDialogOpen(true);
-    }, [hasAnyFilterParams]);
+    const [filterDialogOpen, setFilterDialogOpen] = useState(false);
 
     // Apply groupBy from prefilter once graph data is available
     useEffect(() => {
@@ -270,15 +264,8 @@ function GraphViewInner() {
         }
     }, [prefilter.groupBy, prefilter.tagTypeId, data?.tagTypes, dispatch]);
 
-    useEffect(() => {
-        if (typeof window !== "undefined" && !localStorage.getItem("fubbik-graph-welcomed")) {
-            dispatch({ type: "SET_SHOW_WELCOME", show: true });
-        }
-    }, [dispatch]);
-
     const dismissWelcome = () => {
         dispatch({ type: "SET_SHOW_WELCOME", show: false });
-        localStorage.setItem("fubbik-graph-welcomed", "true");
     };
 
     // Saved views
@@ -1474,7 +1461,7 @@ function GraphViewInner() {
     // Gate the heavy graph render until the user has committed to a filter.
     // Keeps the data query alive (dialog still shows live preview) but skips
     // ReactFlow mount + layout worker until the user clicks Apply or Show everything.
-    const graphGated = filterDialogOpen && !hasAnyFilterParams;
+    const graphGated = false;
     if (graphGated) {
         const previewData = data?.chunks
             ? {
