@@ -38,6 +38,9 @@ export interface GraphState {
     timelineCutoff: Date | null;
     panelWidth: number;
     edgeAnimated: boolean;
+
+    // Clustering
+    expandedClusters: Set<string>;
 }
 
 // --- Actions ---
@@ -85,6 +88,9 @@ export type GraphAction =
     | { type: "SET_PANEL_WIDTH"; width: number }
     | { type: "TOGGLE_EDGE_ANIMATED" }
 
+    // Clustering
+    | { type: "TOGGLE_CLUSTER"; groupName: string }
+
     // Compound
     | { type: "SELECT_AND_FOCUS_NODE"; id: string }
     | { type: "DESELECT_ALL" }
@@ -119,6 +125,7 @@ export const initialGraphState: GraphState = {
     timelineCutoff: null,
     panelWidth: 380,
     edgeAnimated: true,
+    expandedClusters: new Set(),
 };
 
 // --- Reducer ---
@@ -216,6 +223,10 @@ export function graphReducer(state: GraphState, action: GraphAction): GraphState
             return { ...state, panelWidth: action.width };
         case "TOGGLE_EDGE_ANIMATED":
             return { ...state, edgeAnimated: !state.edgeAnimated };
+
+        // Clustering
+        case "TOGGLE_CLUSTER":
+            return { ...state, expandedClusters: toggleSetItem(state.expandedClusters, action.groupName) };
 
         // Compound
         case "SELECT_AND_FOCUS_NODE":

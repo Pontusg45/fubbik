@@ -36,6 +36,8 @@ import { GraphFilters } from "@/features/graph/graph-filters";
 import { GraphSettingsPanel } from "@/features/graph/graph-settings-panel";
 import { GraphFilterDialog, EMPTY_FILTER, type GraphFilterValues } from "@/features/graph/graph-filter-dialog";
 import { GROUP_NODE_ID_PREFIX, GROUP_STRATEGIES, UNGROUPED_NODE_ID, isGroupNodeId, type GroupBy } from "@/features/graph/group-strategies";
+import { buildClusterNodes, getVisibleChunkIds as getClusterVisibleChunkIds } from "@/features/graph/cluster-strategy";
+import { GraphClusterNode } from "@/features/graph/graph-cluster-node";
 import { applyPrefilter } from "@/features/graph/apply-prefilter";
 import { mark, measure } from "@/features/graph/graph-timings";
 import { MermaidExportModal } from "@/features/graph/mermaid-export-modal";
@@ -64,7 +66,7 @@ import { useSavedGraphViews } from "./use-saved-views";
 
 
 const EDGE_TYPES = { floating: FloatingEdge };
-const NODE_TYPES = { chunk: GraphNode, group: GraphGroupNode };
+const NODE_TYPES = { chunk: GraphNode, group: GraphGroupNode, cluster: GraphClusterNode };
 
 const TYPE_COLORS_DARK: Record<string, { bg: string; border: string }> = {
     note: { bg: "#1e293b", border: "#475569" },
@@ -104,6 +106,7 @@ function GraphViewInner() {
         collapsedParents, showPathPanel, showSaveDialog, viewName,
         filterTypes, filterRelations, searchQuery, activeTagTypeIds, showUngrouped,
         layoutAlgorithm, bundleEdges, useMainThread, timelineCutoff, panelWidth, edgeAnimated,
+        expandedClusters,
     } = gs;
 
     const createConnectionMutation = useMutation({
@@ -218,6 +221,7 @@ function GraphViewInner() {
         focus?: string;
         depth?: number;
         groupBy?: "tag" | "type" | "codebase" | "none";
+        tagTypeId?: string;
         all?: number;
     };
     useEffect(() => {
@@ -239,9 +243,10 @@ function GraphViewInner() {
             types: search.types ? search.types.split(",").filter(Boolean) : [],
             focusChunkId: search.focus ?? null,
             depth: typeof search.depth === "number" && search.depth >= 1 && search.depth <= 3 ? search.depth : 2,
-            groupBy: search.groupBy ?? "tag"
+            groupBy: search.groupBy ?? "tag",
+            tagTypeId: search.tagTypeId ?? null
         };
-    }, [search.tags, search.types, search.focus, search.depth, search.groupBy]);
+    }, [search.tags, search.types, search.focus, search.depth, search.groupBy, search.tagTypeId]);
 
     const hasAnyFilterParams = !!(search.tags || search.types || search.focus || search.groupBy || search.all);
     const [filterDialogOpen, setFilterDialogOpen] = useState(!hasAnyFilterParams);
@@ -254,15 +259,15 @@ function GraphViewInner() {
     // Apply groupBy from prefilter once graph data is available
     useEffect(() => {
         if (!data?.tagTypes) return;
-        if (prefilter.groupBy === "tag") {
+        if (prefilter.groupBy === "tag" && prefilter.tagTypeId) {
+            dispatch({ type: "SET_ACTIVE_TAG_TYPE_IDS", ids: new Set([prefilter.tagTypeId]) });
+        } else if (prefilter.groupBy === "tag") {
             const ids = new Set(data.tagTypes.map(tt => tt.id));
             if (ids.size > 0) dispatch({ type: "SET_ACTIVE_TAG_TYPE_IDS", ids });
-        } else if (prefilter.groupBy === "none") {
+        } else {
             dispatch({ type: "SET_ACTIVE_TAG_TYPE_IDS", ids: new Set() });
         }
-        // "type" grouping is handled via the filteredGraph pre-filter (types narrow the set);
-        // visual grouping-by-type is a future addition.
-    }, [prefilter.groupBy, data?.tagTypes, dispatch]);
+    }, [prefilter.groupBy, prefilter.tagTypeId, data?.tagTypes, dispatch]);
 
     useEffect(() => {
         if (typeof window !== "undefined" && !localStorage.getItem("fubbik-graph-welcomed")) {
@@ -330,6 +335,17 @@ function GraphViewInner() {
 
     // Keep `tagGroups` variable name — downstream pipeline references it by this name.
     const tagGroups = groupResult?.groups ?? null;
+
+    // --- Cluster aggregation for large graphs ---
+    const { clusters, shouldCluster } = useMemo(() => {
+        if (!groupResult) return { clusters: [], shouldCluster: false };
+        return buildClusterNodes(groupResult, expandedClusters);
+    }, [groupResult, expandedClusters]);
+
+    const clusterVisibleChunkIds = useMemo(() => {
+        if (!groupResult) return null;
+        return getClusterVisibleChunkIds(groupResult, expandedClusters, shouldCluster);
+    }, [groupResult, expandedClusters, shouldCluster]);
 
     // Build chunk-to-tag-group lookup for edge opacity
     const chunkTagGroupMap = useMemo(() => {
@@ -614,7 +630,7 @@ function GraphViewInner() {
 
         let rawNodes: Node[] = [
             ...chunks
-                .filter(c => !hiddenIds.has(c.id))
+                .filter(c => !hiddenIds.has(c.id) && (!shouldCluster || !clusterVisibleChunkIds || clusterVisibleChunkIds.has(c.id)))
                 .map(c => {
                     const typeColor = TYPE_COLORS[c.type] ?? TYPE_COLORS.note;
                     const count = connectionCounts.get(c.id) ?? 0;
@@ -655,7 +671,35 @@ function GraphViewInner() {
                 })
         ];
 
-        const rawEdges: Edge[] = connections.map(conn => {
+        // Add cluster nodes when clustering is active
+        if (shouldCluster && clusters.length > 0) {
+            for (const cluster of clusters) {
+                if (!cluster.expanded) {
+                    rawNodes.push({
+                        id: cluster.id,
+                        type: "cluster",
+                        data: {
+                            label: cluster.groupName,
+                            count: cluster.count,
+                            color: cluster.color ?? (isDark ? "#475569" : "#94a3b8"),
+                            expanded: cluster.expanded,
+                            onToggle: () => dispatch({ type: "TOGGLE_CLUSTER", groupName: cluster.groupName }),
+                        },
+                        position: { x: 0, y: 0 },
+                        selectable: false,
+                        draggable: true,
+                        style: { cursor: "pointer" },
+                    });
+                }
+            }
+        }
+
+        // When clustering, filter out edges to/from non-visible chunks
+        const visibleConnections = shouldCluster && clusterVisibleChunkIds
+            ? connections.filter(c => clusterVisibleChunkIds.has(c.sourceId) && clusterVisibleChunkIds.has(c.targetId))
+            : connections;
+
+        const rawEdges: Edge[] = visibleConnections.map(conn => {
             const color = relationColor(conn.relation);
             const sourceCb = chunkCodebaseMap.get(conn.sourceId);
             const targetCb = chunkCodebaseMap.get(conn.targetId);
@@ -904,9 +948,30 @@ function GraphViewInner() {
             }
         }
 
+        // Compute grid positions for collapsed cluster nodes
+        const clusterPositions = new Map<string, { x: number; y: number }>();
+        if (shouldCluster) {
+            const collapsedClusters = clusters.filter(c => !c.expanded);
+            const cols = Math.max(1, Math.ceil(Math.sqrt(collapsedClusters.length)));
+            const CLUSTER_GAP_X = 220;
+            const CLUSTER_GAP_Y = 140;
+            for (let i = 0; i < collapsedClusters.length; i++) {
+                const col = i % cols;
+                const row = Math.floor(i / cols);
+                clusterPositions.set(collapsedClusters[i]!.id, { x: col * CLUSTER_GAP_X, y: row * CLUSTER_GAP_Y });
+            }
+        }
+
         // Apply positions from worker (or fallback to origin)
         const layoutNodes = rawNodes.map(node => {
             const p = layoutPositions?.[node.id] ?? { x: 0, y: 0 };
+
+            // Cluster nodes: use grid position
+            if (node.type === "cluster") {
+                const dragged = draggedPositions.get(node.id);
+                const gridPos = clusterPositions.get(node.id) ?? { x: 0, y: 0 };
+                return { ...node, position: dragged ?? gridPos };
+            }
 
             // Group nodes: compute size from child bounds. Hide groups with no positioned children.
             if (tagGroupNodeIds.has(node.id)) {
@@ -983,7 +1048,7 @@ function GraphViewInner() {
         }
 
         return { layoutNodes, layoutEdges: rawEdges, groupToChunkIds };
-    }, [filteredGraph, layoutPositions, draggedPositions, isDark, TYPE_COLORS, collapsedParents, bundleEdges, tagGroups, data, edgeAnimated, measuredSizesVersion, showUngrouped]);
+    }, [filteredGraph, layoutPositions, draggedPositions, isDark, TYPE_COLORS, collapsedParents, bundleEdges, tagGroups, data, edgeAnimated, measuredSizesVersion, showUngrouped, shouldCluster, clusters, clusterVisibleChunkIds, dispatch]);
 
     // Search match IDs — shared between styling effect, auto-center, and match count display
     const searchMatchIds = useMemo(() => {
@@ -1376,6 +1441,7 @@ function GraphViewInner() {
                 focus: values.focusChunkId ?? undefined,
                 depth: values.focusChunkId ? values.depth : undefined,
                 groupBy: values.groupBy,
+                tagTypeId: values.tagTypeId ?? undefined,
                 all: undefined
             })
         });
@@ -1390,6 +1456,7 @@ function GraphViewInner() {
                 focus: undefined,
                 depth: undefined,
                 groupBy: undefined,
+                tagTypeId: undefined,
                 all: 1
             })
         });
@@ -1520,6 +1587,7 @@ function GraphViewInner() {
                         onlyRenderVisibleElements
                         onNodeClick={(event, node) => {
                             if (isGroupNodeId(node.id)) return;
+                            if (node.type === "cluster") return; // handled by cluster node's own onClick
                             if (event.shiftKey) {
                                 dispatch({ type: "TOGGLE_MULTI_SELECT", id: node.id });
                                 return;
@@ -1560,6 +1628,7 @@ function GraphViewInner() {
                         }}
                         onNodeDoubleClick={(_, node) => {
                             if (isGroupNodeId(node.id)) return;
+                            if (node.type === "cluster") return;
                             // Toggle focus mode: dims everything beyond 2 hops
                             if (focusModeNodeId === node.id) {
                                 setFocusModeNodeId(null);
@@ -1630,6 +1699,7 @@ function GraphViewInner() {
                         onNodeContextMenu={(event, node) => {
                             event.preventDefault();
                             if (isGroupNodeId(node.id)) return;
+                            if (node.type === "cluster") return;
                             setContextMenu({ x: event.clientX, y: event.clientY, nodeId: node.id });
                         }}
                         onPaneContextMenu={(event) => {
@@ -1795,7 +1865,7 @@ function GraphViewInner() {
                     </div>
                     {debouncedSearchQuery.trim() && (
                         <span className="bg-background/80 text-muted-foreground whitespace-nowrap rounded-md border px-2 py-1.5 text-[10px] backdrop-blur-sm">
-                            {searchMatchIds.size} of {layoutNodes.filter(n => !isGroupNodeId(n.id)).length}
+                            {searchMatchIds.size} of {layoutNodes.filter(n => !isGroupNodeId(n.id) && n.type !== "cluster").length}
                         </span>
                     )}
                     <Popover open={showPathPanel} onOpenChange={(v) => dispatch({ type: "SET_SHOW_PATH_PANEL", show: v })}>
