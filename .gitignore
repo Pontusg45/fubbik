@@ -68,3 +68,4 @@ apps/web/node-server.js
 
 # Per-machine CLI config
 apps/cli/fubbik.config.json
+.superpowers/

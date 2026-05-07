@@ -14,6 +14,7 @@ export interface GraphSearch {
     focus?: string;
     depth?: number;
     groupBy?: "tag" | "type" | "codebase" | "none";
+    tagTypeId?: string;
     all?: number;
 }
 
@@ -29,6 +30,7 @@ export const Route = createFileRoute("/graph")({
             search.groupBy === "tag" || search.groupBy === "type" || search.groupBy === "codebase" || search.groupBy === "none"
                 ? (search.groupBy as "tag" | "type" | "codebase" | "none")
                 : undefined,
+        tagTypeId: typeof search.tagTypeId === "string" ? search.tagTypeId : undefined,
         all: typeof search.all === "number" ? search.all : undefined
     }),
     component: () => (
