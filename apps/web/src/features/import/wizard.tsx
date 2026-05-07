@@ -92,6 +92,7 @@ export function ImportWizard() {
     const [overrides, setOverrides] = useState<Map<string, FileConfig>>(new Map());
     const [importStatus, setImportStatus] = useState<Map<string, ImportFileStatus>>(new Map());
     const [existingHashes, setExistingHashes] = useState<Record<string, string>>({});
+    const [previewActivePath, setPreviewActivePath] = useState<string>("");
 
     const { data: codebases } = useApiQuery<{ id: string; name: string }[]>({
         queryKey: ["codebases"],
@@ -110,6 +111,7 @@ export function ImportWizard() {
               : true;
 
     const handleNext = () => {
+        if (step === 2) setPreviewActivePath("");
         if (step < 4) setStep((step + 1) as WizardStep);
     };
 
@@ -126,6 +128,7 @@ export function ImportWizard() {
         setOverrides(new Map());
         setImportStatus(new Map());
         setExistingHashes({});
+        setPreviewActivePath("");
     };
 
     const nextLabel =
@@ -159,6 +162,7 @@ export function ImportWizard() {
                         }}
                         overrides={overrides}
                         onOverridesChange={setOverrides}
+                        initialActivePath={previewActivePath}
                     />
                 )}
                 {step === 3 && (
@@ -169,7 +173,8 @@ export function ImportWizard() {
                         overrides={overrides}
                         existingHashes={existingHashes}
                         codebaseName={codebaseName}
-                        onGoToFile={_path => {
+                        onGoToFile={(path) => {
+                            setPreviewActivePath(path);
                             setStep(2);
                         }}
                     />

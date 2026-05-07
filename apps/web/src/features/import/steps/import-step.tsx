@@ -213,6 +213,14 @@ export function StepImport({
                 </div>
             )}
 
+            {/* Connection lost warning banner */}
+            {Array.from(importStatus.values()).some(s => s.error?.includes("Connection lost")) && (
+                <div className="mb-4 rounded-lg border border-amber-500/20 bg-amber-500/5 px-4 py-3 text-sm text-amber-500">
+                    Connection lost — some files may have been imported. Check{" "}
+                    <Link to="/chunks" className="underline">chunks</Link> for results.
+                </div>
+            )}
+
             {/* Pipeline table */}
             <div className="rounded-md border overflow-hidden">
                 <div className="overflow-x-auto">

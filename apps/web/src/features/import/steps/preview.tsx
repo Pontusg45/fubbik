@@ -41,6 +41,7 @@ interface StepPreviewProps {
     onPreviewLoaded: (results: PreviewFileResult[], hashes: Record<string, string>) => void;
     overrides: Map<string, FileConfig>;
     onOverridesChange: (overrides: Map<string, FileConfig>) => void;
+    initialActivePath?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -54,11 +55,12 @@ export function StepPreview({
     preview,
     onPreviewLoaded,
     overrides,
-    onOverridesChange
+    onOverridesChange,
+    initialActivePath
 }: StepPreviewProps) {
     const [loading, setLoading] = useState(false);
     const [filter, setFilter] = useState("");
-    const [activePath, setActivePath] = useState<string | null>(null);
+    const [activePath, setActivePath] = useState<string>(initialActivePath ?? "");
 
     const { data: rawTemplates } = useApiQuery<any[]>({
         queryKey: ["templates"],
@@ -104,12 +106,22 @@ export function StepPreview({
                 }
                 onOverridesChange(next);
 
-                // Auto-select first file
-                if (result.files.length > 0 && result.files[0]) {
+                // Auto-select first file (only if no initialActivePath was given)
+                if (!initialActivePath && result.files.length > 0 && result.files[0]) {
                     setActivePath(result.files[0].path);
                 }
             } catch {
                 toast.error("Failed to load preview");
+                // Fallback: initialize overrides from client-side file parsing
+                const fallbackOverrides = new Map<string, FileConfig>();
+                for (const file of selectedFiles) {
+                    const folderTags = deriveFolderTags(file.path);
+                    const title = extractTitle(file.path, file.content);
+                    const type = extractType(file.content);
+                    const tags = [...new Set([...extractFrontmatterTags(file.content), ...folderTags])];
+                    fallbackOverrides.set(file.path, { title, type, tags, templateId: null, folderTags });
+                }
+                onOverridesChange(fallbackOverrides);
             } finally {
                 setLoading(false);
             }
@@ -119,12 +131,12 @@ export function StepPreview({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    // Auto-select first file once preview loads (if activated externally)
+    // Auto-select first file once preview loads (if activated externally and no path set)
     useEffect(() => {
-        if (preview.length > 0 && activePath === null && preview[0]) {
+        if (preview.length > 0 && activePath === "" && !initialActivePath && preview[0]) {
             setActivePath(preview[0].path);
         }
-    }, [preview, activePath]);
+    }, [preview, activePath, initialActivePath]);
 
     // ----- Tree -----
     const selectedFiles = useMemo(
@@ -241,7 +253,7 @@ export function StepPreview({
             <div className="flex-1 overflow-hidden">
                 {activePreview && activeConfig ? (
                     <FileDetailPanel
-                        filePath={activePath!}
+                        filePath={activePath}
                         preview={activePreview}
                         config={activeConfig}
                         onConfigChange={handleConfigChange}
@@ -257,4 +269,35 @@ export function StepPreview({
             </div>
         </div>
     );
+}
+
+// ---------------------------------------------------------------------------
+// Fallback parsing helpers (used when preview API fails)
+// ---------------------------------------------------------------------------
+
+function extractTitle(path: string, content: string): string {
+    const fmMatch = content.match(/^---\n[\s\S]*?title:\s*(.+)\n[\s\S]*?---/);
+    if (fmMatch?.[1]) return fmMatch[1].replace(/^["']|["']$/g, "");
+    const h1Match = content.match(/^#\s+(.+)$/m);
+    if (h1Match?.[1]) return h1Match[1];
+    return path.split("/").pop()?.replace(/\.md$/, "").replace(/-/g, " ") ?? path;
+}
+
+function extractType(content: string): string {
+    const fmMatch = content.match(/^---\n[\s\S]*?type:\s*(.+)\n[\s\S]*?---/);
+    return fmMatch?.[1]?.trim() ?? "document";
+}
+
+function extractFrontmatterTags(content: string): string[] {
+    const fmMatch = content.match(/^---\n([\s\S]*?)---/);
+    if (!fmMatch) return [];
+    const tagsMatch = fmMatch[1]?.match(/tags:\s*\n((?:\s+-\s+.+\n)*)/);
+    if (tagsMatch?.[1]) {
+        return tagsMatch[1].split("\n").map(l => l.replace(/^\s+-\s+/, "").trim()).filter(Boolean);
+    }
+    const inlineMatch = fmMatch[1]?.match(/tags:\s*\[(.+)\]/);
+    if (inlineMatch?.[1]) {
+        return inlineMatch[1].split(",").map(t => t.trim().replace(/^["']|["']$/g, ""));
+    }
+    return [];
 }
