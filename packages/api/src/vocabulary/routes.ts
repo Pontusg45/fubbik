@@ -27,12 +27,13 @@ export const vocabularyRoutes = new Elysia()
             Effect.runPromise(
                 Effect.gen(function* () {
                     const session = yield* requireSession(ctx);
+                    if (!ctx.query.codebaseId) return [];
                     return yield* vocabularyService.listVocabulary(session.user.id, ctx.query.codebaseId);
                 })
             ),
         {
             query: t.Object({
-                codebaseId: t.String()
+                codebaseId: t.Optional(t.String())
             })
         }
     )
