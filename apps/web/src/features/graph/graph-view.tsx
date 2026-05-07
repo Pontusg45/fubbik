@@ -249,7 +249,8 @@ function GraphViewInner() {
         };
     }, [search.tags, search.types, search.focus, search.depth, search.groupBy, search.tagTypeId]);
 
-    const [filterDialogOpen, setFilterDialogOpen] = useState(false);
+    const hasAnyFilterParams = !!(search.tags || search.types || search.focus || search.groupBy || search.all);
+    const [filterDialogOpen, setFilterDialogOpen] = useState(!hasAnyFilterParams);
 
     // Apply groupBy from prefilter once graph data is available
     useEffect(() => {
