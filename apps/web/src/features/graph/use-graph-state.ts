@@ -118,7 +118,7 @@ export const initialGraphState: GraphState = {
     filterRelations: new Set(),
     searchQuery: "",
     activeTagTypeIds: new Set(),
-    showUngrouped: true,
+    showUngrouped: false,
     layoutAlgorithm: "force",
     bundleEdges: false,
     useMainThread: false,
