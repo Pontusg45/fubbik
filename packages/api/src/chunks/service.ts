@@ -25,6 +25,7 @@ import {
     getDistinctUpdateTags,
     listArchivedChunks as listArchivedChunksRepo,
     listChunks as listChunksRepo,
+    listDocuments as listDocumentsRepo,
     listTemplates as listTemplatesRepo,
     mergeChunks as mergeChunksRepo,
     restoreChunk as restoreChunkRepo,
@@ -452,11 +453,6 @@ function filenameOf(filePath: string): string {
     return (filePath.split("/").pop() ?? filePath).toLowerCase();
 }
 
-function folderLabel(dir: string): string {
-    const last = dir.split("/").pop() ?? dir;
-    return last.replace(/[-_]/g, " ").replace(/\b\w/g, c => c.toUpperCase());
-}
-
 export function importDocs(
     userId: string,
     files: { path: string; content: string }[],
@@ -504,9 +500,9 @@ export function importDocs(
 }
 
 function createFolderConnections(
-    userId: string,
+    _userId: string,
     fileChunks: Map<string, string>,
-    codebaseId: string
+    _codebaseId: string
 ) {
     return Effect.gen(function* () {
         const byDir = new Map<string, { path: string; chunkId: string; isIndex: boolean }[]>();
@@ -517,78 +513,23 @@ function createFolderConnections(
         }
 
         let connectionsCreated = 0;
-        const dirParentChunks = new Map<string, string>();
 
-        for (const [dir, entries] of byDir) {
+        for (const [, entries] of byDir) {
             const indexEntry = entries.find(e => e.isIndex);
+            if (!indexEntry) continue;
+
             const nonIndexEntries = entries.filter(e => !e.isIndex);
-
-            if (entries.length === 1) {
-                dirParentChunks.set(dir, entries[0]!.chunkId);
-                continue;
-            }
-
-            let parentChunkId: string;
-
-            if (indexEntry) {
-                parentChunkId = indexEntry.chunkId;
-            } else {
-                const folderId = crypto.randomUUID();
-                yield* createChunkRepo({
-                    id: folderId,
-                    title: folderLabel(dir),
-                    content: `Overview for the ${folderLabel(dir)} section.`,
-                    type: "document",
-                    userId,
-                });
-                if (codebaseId) {
-                    yield* setChunkCodebases(folderId, [codebaseId]);
-                }
-                const folderTags = dir.split("/").filter(Boolean);
-                if (folderTags.length > 0) {
-                    const tagIds: string[] = [];
-                    for (const name of folderTags) {
-                        const tag = yield* findOrCreateTag(name, userId);
-                        if (tag) tagIds.push(tag.id);
-                    }
-                    if (tagIds.length > 0) yield* setChunkTags(folderId, tagIds);
-                }
-                parentChunkId = folderId;
-            }
-
-            dirParentChunks.set(dir, parentChunkId);
-
             for (const entry of nonIndexEntries) {
                 const created = yield* createConnectionIfNotExists({
                     id: crypto.randomUUID(),
                     sourceId: entry.chunkId,
-                    targetId: parentChunkId,
+                    targetId: indexEntry.chunkId,
                     relation: "part_of",
                     origin: "import",
                     reviewStatus: "approved"
                 });
                 if (created) connectionsCreated++;
             }
-        }
-
-        const allDirs = [...byDir.keys()].sort();
-        for (const dir of allDirs) {
-            const parentDir = dirOf(dir);
-            if (parentDir === dir) continue;
-
-            const childParentId = dirParentChunks.get(dir);
-            const parentParentId = dirParentChunks.get(parentDir);
-            if (!childParentId || !parentParentId || childParentId === parentParentId) continue;
-
-            const created = yield* createConnectionIfNotExists({
-                id: crypto.randomUUID(),
-                sourceId: childParentId,
-                targetId: parentParentId,
-                relation: "part_of",
-                origin: "import",
-                reviewStatus: "approved"
-            });
-            if (created) connectionsCreated++;
         }
 
         return connectionsCreated;
@@ -663,12 +604,26 @@ export interface PreviewFileResult {
     };
 }
 
+export function getExistingHashes(codebaseId: string, userId: string) {
+    return Effect.gen(function* () {
+        const docs = yield* listDocumentsRepo(userId, codebaseId);
+        const hashes: Record<string, string> = {};
+        for (const doc of docs) {
+            if (doc.sourcePath && doc.contentHash) {
+                hashes[doc.sourcePath] = doc.contentHash;
+            }
+        }
+        return hashes;
+    });
+}
+
 export function previewImportDocs(
     userId: string,
     files: { path: string; content: string }[],
-    _codebaseId: string
+    codebaseId: string
 ) {
     return Effect.gen(function* () {
+        const existingHashes = yield* getExistingHashes(codebaseId, userId);
         const allTemplates = yield* listTemplatesRepo(userId);
 
         const templatesWithRules: TemplateWithRules[] = allTemplates
@@ -732,7 +687,7 @@ export function previewImportDocs(
             });
         }
 
-        return results;
+        return { files: results, existingHashes };
     });
 }
 
