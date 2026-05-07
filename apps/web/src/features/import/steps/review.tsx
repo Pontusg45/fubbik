@@ -1,4 +1,3 @@
-"use client";
 
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -142,11 +141,8 @@ export function StepReview({
     }, [newFiles, overrides]);
 
     const connections = useMemo(() => {
-        const selectedList = files
-            .filter(f => selectedPaths.has(f.path))
-            .map(f => f.path);
-        return computeFolderConnections(selectedList);
-    }, [files, selectedPaths]);
+        return computeFolderConnections(newFiles.map(f => f.path));
+    }, [newFiles]);
 
     return (
         <div className="flex flex-col gap-6">

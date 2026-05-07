@@ -1,4 +1,4 @@
-import { createContext, useCallback, useState, type ReactNode } from "react";
+import { createContext, useCallback, useEffect, useState, type ReactNode } from "react";
 
 const STORAGE_KEY_CODEBASE = "active-codebase";
 const STORAGE_KEY_WORKSPACE = "active-workspace";
@@ -18,19 +18,15 @@ export const ActiveCodebaseContext = createContext<ActiveCodebaseContextValue>({
 });
 
 export function ActiveCodebaseProvider({ children }: { children: ReactNode }) {
-    const [codebaseId, setCodebaseIdRaw] = useState<string | null>(() => {
-        if (typeof localStorage !== "undefined") {
-            return localStorage.getItem(STORAGE_KEY_CODEBASE);
-        }
-        return null;
-    });
+    const [codebaseId, setCodebaseIdRaw] = useState<string | null>(null);
+    const [workspaceId, setWorkspaceIdRaw] = useState<string | null>(null);
 
-    const [workspaceId, setWorkspaceIdRaw] = useState<string | null>(() => {
-        if (typeof localStorage !== "undefined") {
-            return localStorage.getItem(STORAGE_KEY_WORKSPACE);
-        }
-        return null;
-    });
+    useEffect(() => {
+        const savedCodebase = localStorage.getItem(STORAGE_KEY_CODEBASE);
+        const savedWorkspace = localStorage.getItem(STORAGE_KEY_WORKSPACE);
+        if (savedWorkspace) setWorkspaceIdRaw(savedWorkspace);
+        else if (savedCodebase) setCodebaseIdRaw(savedCodebase);
+    }, []);
 
     const setCodebaseId = useCallback((id: string | null) => {
         setCodebaseIdRaw(id);

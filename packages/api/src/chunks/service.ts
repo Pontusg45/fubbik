@@ -520,6 +520,7 @@ export function importDocsStream(
             const startTime = Date.now();
 
             for (const file of files) {
+                controller.enqueue(encode("file", { type: "file", path: file.path, status: "importing" }));
                 try {
                     const templateId = templateOverrides?.[file.path] ?? undefined;
                     const result = await Effect.runPromise(

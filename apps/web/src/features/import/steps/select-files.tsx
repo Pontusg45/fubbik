@@ -1,4 +1,3 @@
-"use client";
 
 import { FolderUp } from "lucide-react";
 import { useMemo, useRef } from "react";

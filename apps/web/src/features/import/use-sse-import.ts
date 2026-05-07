@@ -53,8 +53,13 @@ export function useSSEImport() {
                 for (const line of lines) {
                     if (line.startsWith("event: ")) {
                         currentEvent = line.slice(7);
-                    } else if (line.startsWith("data: ")) {
-                        const data = JSON.parse(line.slice(6));
+                    } else if (line.startsWith("data: ") && currentEvent) {
+                        let data: any;
+                        try {
+                            data = JSON.parse(line.slice(6));
+                        } catch {
+                            continue;
+                        }
                         if (currentEvent === "file") {
                             options.onFileUpdate(data.path, {
                                 status: data.status === "unchanged" ? "skipped" : data.status,
