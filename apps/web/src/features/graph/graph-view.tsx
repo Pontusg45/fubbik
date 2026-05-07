@@ -18,7 +18,7 @@ import {
     type Viewport
 } from "@xyflow/react";
 import { toPng } from "html-to-image";
-import { Filter, Route } from "lucide-react";
+import { Route } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -1455,40 +1455,6 @@ function GraphViewInner() {
         return (
             <div className="flex h-[calc(100vh-4rem)] items-center justify-center">
                 <p className="text-muted-foreground">Loading graph...</p>
-            </div>
-        );
-    }
-
-    // Gate the heavy graph render until the user has committed to a filter.
-    // Keeps the data query alive (dialog still shows live preview) but skips
-    // ReactFlow mount + layout worker until the user clicks Apply or Show everything.
-    const graphGated = false;
-    if (graphGated) {
-        const previewData = data?.chunks
-            ? {
-                  chunks: data.chunks,
-                  connections: data.connections ?? [],
-                  chunkTags: data.chunkTags ?? []
-              }
-            : undefined;
-        return (
-            <div className="relative flex h-[calc(100vh-4rem)] items-center justify-center">
-                <div className="max-w-sm text-center text-muted-foreground">
-                    <Filter className="mx-auto size-10 opacity-30" />
-                    <p className="mt-4 text-sm font-medium text-foreground">Pick a filter first</p>
-                    <p className="mt-1 text-xs">
-                        The graph renders after you apply a filter or choose "Show everything". This keeps the layout
-                        work focused on what you actually want to see.
-                    </p>
-                </div>
-                <GraphFilterDialog
-                    open={filterDialogOpen}
-                    onOpenChange={setFilterDialogOpen}
-                    initial={prefilter}
-                    previewData={previewData}
-                    onApply={handleFilterApply}
-                    onShowEverything={handleShowEverything}
-                />
             </div>
         );
     }
