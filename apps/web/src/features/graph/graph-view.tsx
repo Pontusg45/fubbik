@@ -774,10 +774,6 @@ function GraphViewInner() {
             const ungroupedChunkIds = new Set(
                 rawNodes.filter(n => !tagGroupNodeIds.has(n.id) && !groupedChunkIds.has(n.id)).map(n => n.id)
             );
-            if (!showUngrouped && ungroupedChunkIds.size > 0) {
-                // Remove ungrouped chunks from the graph entirely
-                rawNodes = rawNodes.filter(n => !ungroupedChunkIds.has(n.id));
-            }
             if (showUngrouped && ungroupedChunkIds.size > 0) {
                 const ungroupedChunks = rawNodes.filter(n => ungroupedChunkIds.has(n.id));
                 const ungroupedId = UNGROUPED_NODE_ID;
