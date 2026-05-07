@@ -56,6 +56,7 @@ export const Route = createFileRoute("/chunks/")({
         enrichment?: string;
         minConnections?: string;
         group?: string;
+        subGroup?: string;
         collection?: string;
         view?: string;
         origin?: string;
@@ -71,6 +72,7 @@ export const Route = createFileRoute("/chunks/")({
         enrichment: (search.enrichment as string) || undefined,
         minConnections: (search.minConnections as string) || undefined,
         group: (search.group as string) || undefined,
+        subGroup: (search.subGroup as string) || undefined,
         collection: (search.collection as string) || undefined,
         view: (search.view as string) || undefined,
         origin: (search.origin as string) || undefined,
@@ -92,7 +94,7 @@ function ChunksList() {
     const navTo = useNavigate();
     const {
         type, q, sort, tags, size, after, enrichment, minConnections,
-        group, view, origin, reviewStatus, allCodebases,
+        group, subGroup, view, origin, reviewStatus, allCodebases,
         activeTags, activeFilterCount, hasActiveFilters, isFederated,
         updateSearch, clearAllFilters, toggleTag,
     } = useChunkFilters();
@@ -411,8 +413,15 @@ function ChunksList() {
                 {/* View & grouping controls */}
                 <TagTypeGroupSelect
                     value={group}
-                    onChange={v => updateSearch({ group: v || undefined })}
+                    onChange={v => updateSearch({ group: v || undefined, subGroup: undefined })}
                 />
+                {group && (
+                    <SubGroupSelect
+                        value={subGroup}
+                        primaryGroup={group}
+                        onChange={v => updateSearch({ subGroup: v || undefined })}
+                    />
+                )}
 
                 {collections.length > 0 && (
                     <Popover>
@@ -576,6 +585,7 @@ function ChunksList() {
                 <LazyGroupList
                     groupBy={group!}
                     tagTypeId={selectedTagTypeId}
+                    subGroupBy={subGroup}
                     codebaseId={codebaseId}
                     sort={sort}
                     filters={{
@@ -689,6 +699,53 @@ function ChunksList() {
                 }}
             />
         </div>
+    );
+}
+
+function SubGroupSelect({
+    value,
+    primaryGroup,
+    onChange,
+}: {
+    value?: string;
+    primaryGroup: string;
+    onChange: (v: string | undefined) => void;
+}) {
+    const tagTypesQuery = useQuery({
+        queryKey: ["tag-types"],
+        queryFn: async () => {
+            try {
+                return unwrapEden(await api.api["tag-types"].get());
+            } catch {
+                return [];
+            }
+        },
+        staleTime: 60_000
+    });
+    const tagTypes = tagTypesQuery.data ?? [];
+
+    // Exclude the primary group from the sub-group options to avoid redundancy
+    const isPrimaryTagType = primaryGroup.startsWith("tagtype:");
+
+    return (
+        <select
+            value={value ?? ""}
+            onChange={e => onChange(e.target.value || undefined)}
+            className="bg-background rounded-md border px-2 py-2 text-sm"
+        >
+            <option value="">Then by...</option>
+            {primaryGroup !== "type" && <option value="type">Type</option>}
+            {primaryGroup !== "status" && <option value="status">Status</option>}
+            {primaryGroup !== "origin" && <option value="origin">Origin</option>}
+            {primaryGroup !== "freshness" && <option value="freshness">Freshness</option>}
+            {tagTypes
+                .filter(tt => !isPrimaryTagType || primaryGroup !== `tagtype:${tt.id}`)
+                .map(tt => (
+                    <option key={tt.id} value={`tagtype:${tt.id}`}>
+                        Tag: {tt.name}
+                    </option>
+                ))}
+        </select>
     );
 }
 

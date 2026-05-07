@@ -11,7 +11,12 @@ export const chunkGroupRoutes = new Elysia()
             Effect.runPromise(
                 requireSession(ctx).pipe(
                     Effect.flatMap(session =>
-                        groupService.listGroupedCounts(session.user.id, ctx.query)
+                        ctx.query.subGroupBy
+                            ? groupService.listCompoundGroupedCounts(session.user.id, {
+                                  ...ctx.query,
+                                  subGroupBy: ctx.query.subGroupBy,
+                              })
+                            : groupService.listGroupedCounts(session.user.id, ctx.query)
                     )
                 )
             ),
@@ -19,6 +24,8 @@ export const chunkGroupRoutes = new Elysia()
             query: t.Object({
                 groupBy: t.String(),
                 tagTypeId: t.Optional(t.String()),
+                subGroupBy: t.Optional(t.String()),
+                subTagTypeId: t.Optional(t.String()),
                 codebaseId: t.Optional(t.String()),
                 workspaceId: t.Optional(t.String()),
                 global: t.Optional(t.String()),

@@ -26,6 +26,7 @@ interface LazyGroupListFilters {
 interface LazyGroupListProps {
     groupBy: string;
     tagTypeId?: string | null;
+    subGroupBy?: string;
     codebaseId?: string | null;
     workspaceId?: string;
     sort?: string;
@@ -42,6 +43,12 @@ interface LazyGroupListProps {
     onReviewCycle?: (id: string, currentStatus: string) => void;
 }
 
+interface SubGroupData {
+    groupName: string;
+    count: number;
+    subGroups?: Array<{ groupName: string; count: number }>;
+}
+
 // ---------------------------------------------------------------------------
 // Main component
 // ---------------------------------------------------------------------------
@@ -49,6 +56,7 @@ interface LazyGroupListProps {
 export function LazyGroupList({
     groupBy,
     tagTypeId,
+    subGroupBy,
     codebaseId,
     workspaceId,
     sort,
@@ -59,17 +67,22 @@ export function LazyGroupList({
     onReviewCycle,
 }: LazyGroupListProps) {
     const [expanded, setExpanded] = useState<Set<string>>(new Set());
+    const [expandedSub, setExpandedSub] = useState<Set<string>>(new Set());
 
     const queryParam = buildGroupByParam(groupBy, tagTypeId);
+    const subQueryParam = subGroupBy ? buildGroupByParam(subGroupBy, null) : undefined;
+    const subTagTypeId = subGroupBy?.startsWith("tagtype:") ? subGroupBy.slice("tagtype:".length) : undefined;
 
     const groupsQuery = useQuery({
-        queryKey: ["chunks-grouped", queryParam, tagTypeId, codebaseId, workspaceId, filters],
+        queryKey: ["chunks-grouped", queryParam, tagTypeId, subQueryParam, subTagTypeId, codebaseId, workspaceId, filters],
         queryFn: async () => {
             return unwrapEden(
                 await api.api.chunks.grouped.get({
                     query: {
                         groupBy: queryParam,
                         ...(tagTypeId ? { tagTypeId } : {}),
+                        ...(subQueryParam ? { subGroupBy: subQueryParam } : {}),
+                        ...(subTagTypeId ? { subTagTypeId } : {}),
                         ...(codebaseId && codebaseId !== "global"
                             ? { codebaseId }
                             : codebaseId === "global"
@@ -102,11 +115,20 @@ export function LazyGroupList({
         });
     }
 
+    function toggleExpandedSub(key: string) {
+        setExpandedSub(prev => {
+            const next = new Set(prev);
+            if (next.has(key)) next.delete(key);
+            else next.add(key);
+            return next;
+        });
+    }
+
     if (groupsQuery.isLoading) {
         return <SkeletonList count={5} />;
     }
 
-    const groups = groupsQuery.data?.groups ?? [];
+    const groups: SubGroupData[] = groupsQuery.data?.groups ?? [];
 
     if (groups.length === 0) {
         return (
@@ -115,6 +137,8 @@ export function LazyGroupList({
             </p>
         );
     }
+
+    const hasSubGroups = subQueryParam && groups.some(g => g.subGroups && g.subGroups.length > 0);
 
     return (
         <div className="space-y-4">
@@ -132,7 +156,53 @@ export function LazyGroupList({
                             ({g.count})
                         </span>
                     </button>
-                    {expanded.has(g.groupName) && (
+                    {expanded.has(g.groupName) && hasSubGroups && g.subGroups ? (
+                        <div className="ml-4 space-y-3">
+                            {g.subGroups.map(sub => {
+                                const subKey = `${g.groupName}::${sub.groupName}`;
+                                return (
+                                    <div key={subKey}>
+                                        <button
+                                            onClick={() => toggleExpandedSub(subKey)}
+                                            className="mb-2 flex items-center gap-2"
+                                        >
+                                            <ChevronRight
+                                                className={`size-3 transition-transform ${expandedSub.has(subKey) && "rotate-90"}`}
+                                            />
+                                            <Badge variant="outline">{sub.groupName}</Badge>
+                                            <span className="text-muted-foreground text-xs">
+                                                ({sub.count})
+                                            </span>
+                                        </button>
+                                        {expandedSub.has(subKey) && (
+                                            <div className="ml-4">
+                                                <GroupChunksList
+                                                    groupName={g.groupName}
+                                                    groupBy={queryParam}
+                                                    tagTypeId={tagTypeId}
+                                                    codebaseId={codebaseId}
+                                                    workspaceId={workspaceId}
+                                                    sort={sort}
+                                                    filters={{
+                                                        ...filters,
+                                                        // For the sub-group, add an extra constraint.
+                                                        // If sub-group is by type, filter chunks to that type
+                                                        ...(subQueryParam === "type" ? { type: sub.groupName } : {}),
+                                                        ...(subQueryParam === "origin" ? { origin: sub.groupName } : {}),
+                                                        ...(subQueryParam === "status" ? { reviewStatus: sub.groupName } : {}),
+                                                    }}
+                                                    selectedIds={selectedIds}
+                                                    onSelectionClick={onSelectionClick}
+                                                    onDelete={onDelete}
+                                                    onReviewCycle={onReviewCycle}
+                                                />
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    ) : expanded.has(g.groupName) ? (
                         <GroupChunksList
                             groupName={g.groupName}
                             groupBy={queryParam}
@@ -146,7 +216,7 @@ export function LazyGroupList({
                             onDelete={onDelete}
                             onReviewCycle={onReviewCycle}
                         />
-                    )}
+                    ) : null}
                 </div>
             ))}
         </div>

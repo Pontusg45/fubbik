@@ -18,6 +18,8 @@ export interface GraphFilterValues {
     focusChunkId: string | null;
     depth: number;
     groupBy: "tag" | "type" | "codebase" | "none";
+    tagTypeId: string | null;
+    subGroupBy: "type" | "status" | "origin" | null;
 }
 
 export const EMPTY_FILTER: GraphFilterValues = {
@@ -25,7 +27,9 @@ export const EMPTY_FILTER: GraphFilterValues = {
     types: [],
     focusChunkId: null,
     depth: 2,
-    groupBy: "tag"
+    groupBy: "tag",
+    tagTypeId: null,
+    subGroupBy: null,
 };
 
 export interface GraphFilterPreviewData {
@@ -54,7 +58,7 @@ interface GraphFilterFormProps {
  * immediately to URL params).
  */
 export function GraphFilterForm({ values, onChange, previewData, compact, initialFocusTitle }: GraphFilterFormProps) {
-    const { tags, types, focusChunkId, depth, groupBy } = values;
+    const { tags, types, focusChunkId, depth, groupBy, tagTypeId, subGroupBy } = values;
     const [focusChunkTitle, setFocusChunkTitle] = useState(initialFocusTitle ?? "");
     const [search, setSearch] = useState("");
     const [previewExpanded, setPreviewExpanded] = useState(false);
@@ -76,6 +80,17 @@ export function GraphFilterForm({ values, onChange, previewData, compact, initia
         if (loaded && loaded.length > 0) return loaded;
         return [] as ChunkTypeMeta[];
     }, [chunkTypesQuery.data]);
+
+    const tagTypesQuery = useQuery({
+        queryKey: ["tag-types"],
+        queryFn: async () => unwrapEden(await api.api["tag-types"].get()),
+        staleTime: 60_000
+    });
+    const tagTypesList = useMemo(() => {
+        const data = tagTypesQuery.data;
+        if (!Array.isArray(data)) return [] as Array<{ id: string; name: string; color: string }>;
+        return data as Array<{ id: string; name: string; color: string }>;
+    }, [tagTypesQuery.data]);
 
     const chunkSearchQuery = useQuery({
         queryKey: ["chunks-search-for-focus", search],
@@ -249,15 +264,53 @@ export function GraphFilterForm({ values, onChange, previewData, compact, initia
                     {GROUP_BY.map(g => (
                         <button
                             key={g}
-                            onClick={() => emit({ groupBy: g })}
+                            onClick={() => emit({ groupBy: g, ...(g !== "tag" ? { tagTypeId: null } : {}) })}
                             className={`rounded-md border px-2 py-0.5 text-[10px] ${
                                 groupBy === g ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
                             }`}
                         >
-                            {g === "tag" ? "Tag" : g === "type" ? "Type" : g === "codebase" ? "Codebase" : "None"}
+                            {g === "tag" ? "Tag type" : g === "type" ? "Type" : g === "codebase" ? "Codebase" : "None"}
                         </button>
                     ))}
                 </div>
+                {groupBy === "tag" && tagTypesList.length > 0 && (
+                    <div className="mt-1.5 flex flex-wrap gap-1">
+                        {tagTypesList.map(tt => (
+                            <button
+                                key={tt.id}
+                                onClick={() => emit({ tagTypeId: tagTypeId === tt.id ? null : tt.id })}
+                                className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] ${
+                                    tagTypeId === tt.id
+                                        ? "border-primary bg-primary/10 text-primary"
+                                        : "text-muted-foreground hover:text-foreground"
+                                }`}
+                            >
+                                <span className="inline-block size-2 rounded-full" style={{ backgroundColor: tt.color }} />
+                                {tt.name}
+                            </button>
+                        ))}
+                    </div>
+                )}
+                {groupBy === "tag" && tagTypeId && (
+                    <div className="mt-2 border-t pt-2">
+                        <div className="text-muted-foreground mb-1 text-[10px]">Then by (sub-group)</div>
+                        <div className="flex flex-wrap gap-1">
+                            {(["type", "status", "origin"] as const).map(opt => (
+                                <button
+                                    key={opt}
+                                    onClick={() => emit({ subGroupBy: subGroupBy === opt ? null : opt })}
+                                    className={`rounded-md border px-2 py-0.5 text-[10px] ${
+                                        subGroupBy === opt
+                                            ? "bg-primary text-primary-foreground"
+                                            : "text-muted-foreground hover:text-foreground"
+                                    }`}
+                                >
+                                    {opt === "type" ? "Type" : opt === "status" ? "Status" : "Origin"}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                )}
             </FilterSection>
 
             {preview && (

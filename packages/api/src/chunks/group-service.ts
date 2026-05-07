@@ -1,8 +1,9 @@
 import {
     getGroupedCounts as getGroupedCountsRepo,
     getChunksInGroup as getChunksInGroupRepo,
+    getCompoundGroupedCounts as getCompoundGroupedCountsRepo,
 } from "@fubbik/db/repository";
-import type { GroupedCountsParams, GroupChunksParams } from "@fubbik/db/repository";
+import type { GroupedCountsParams, GroupChunksParams, CompoundGroupedCountsParams } from "@fubbik/db/repository";
 import { Effect } from "effect";
 
 // ---------------------------------------------------------------------------
@@ -78,6 +79,53 @@ export function listGroupedCounts(
     };
 
     return getGroupedCountsRepo(params).pipe(
+        Effect.map(groups => ({
+            groups,
+            totalGroups: groups.length,
+        }))
+    );
+}
+
+export function listCompoundGroupedCounts(
+    userId: string,
+    query: {
+        groupBy: string;
+        tagTypeId?: string;
+        subGroupBy: string;
+        subTagTypeId?: string;
+        codebaseId?: string;
+        workspaceId?: string;
+        global?: string;
+        type?: string;
+        origin?: string;
+        reviewStatus?: string;
+        tags?: string;
+        tagMode?: "any" | "all";
+        search?: string;
+    }
+) {
+    const { groupBy, tagTypeId } = parseGroupBy(query.groupBy);
+    const { groupBy: subGroupBy, tagTypeId: subTagTypeIdFromParse } = parseGroupBy(query.subGroupBy);
+    const tags = parseTags(query.tags);
+    const globalOnly = query.global === "true";
+
+    const params: CompoundGroupedCountsParams = {
+        groupBy,
+        tagTypeId: query.tagTypeId ?? tagTypeId,
+        subGroupBy,
+        subTagTypeId: query.subTagTypeId ?? subTagTypeIdFromParse,
+        userId,
+        type: query.type,
+        origin: query.origin,
+        reviewStatus: query.reviewStatus,
+        codebaseId: query.codebaseId,
+        workspaceId: query.workspaceId,
+        globalOnly,
+        tags,
+        tagMode: query.tagMode,
+    };
+
+    return getCompoundGroupedCountsRepo(params).pipe(
         Effect.map(groups => ({
             groups,
             totalGroups: groups.length,

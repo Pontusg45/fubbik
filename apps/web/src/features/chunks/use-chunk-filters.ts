@@ -11,6 +11,7 @@ export type ChunkSearchParams = {
     enrichment?: string;
     minConnections?: string;
     group?: string;
+    subGroup?: string;
     collection?: string;
     view?: string;
     origin?: string;
@@ -20,7 +21,7 @@ export type ChunkSearchParams = {
 
 export function useChunkFilters() {
     const navigate = useNavigate({ from: "/chunks/" });
-    const { type, q, sort, tags, size, after, enrichment, minConnections, group, collection, view, origin, reviewStatus, allCodebases } = Route.useSearch();
+    const { type, q, sort, tags, size, after, enrichment, minConnections, group, subGroup, collection, view, origin, reviewStatus, allCodebases } = Route.useSearch();
 
     const activeTags = tags ? tags.split(",") : [];
     const activeFilterCount = [tags, size, after, enrichment, minConnections, origin, reviewStatus].filter(Boolean).length;
@@ -39,6 +40,7 @@ export function useChunkFilters() {
                 enrichment: params.enrichment !== undefined ? params.enrichment : enrichment,
                 minConnections: params.minConnections !== undefined ? params.minConnections : minConnections,
                 group: params.group !== undefined ? params.group : group,
+                subGroup: params.subGroup !== undefined ? params.subGroup : subGroup,
                 collection: params.collection !== undefined ? params.collection : collection,
                 view: params.view !== undefined ? params.view : view,
                 origin: params.origin !== undefined ? params.origin : origin,
@@ -60,6 +62,7 @@ export function useChunkFilters() {
                 enrichment: undefined,
                 minConnections: undefined,
                 group,
+                subGroup,
                 collection,
                 view,
                 origin: undefined,
@@ -85,6 +88,7 @@ export function useChunkFilters() {
         enrichment,
         minConnections,
         group,
+        subGroup,
         collection,
         view,
         origin,

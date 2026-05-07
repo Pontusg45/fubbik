@@ -244,7 +244,8 @@ function GraphViewInner() {
             focusChunkId: search.focus ?? null,
             depth: typeof search.depth === "number" && search.depth >= 1 && search.depth <= 3 ? search.depth : 2,
             groupBy: search.groupBy ?? "tag",
-            tagTypeId: search.tagTypeId ?? null
+            tagTypeId: search.tagTypeId ?? null,
+            subGroupBy: null,
         };
     }, [search.tags, search.types, search.focus, search.depth, search.groupBy, search.tagTypeId]);
 

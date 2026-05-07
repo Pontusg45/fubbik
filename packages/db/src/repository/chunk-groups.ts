@@ -1,3 +1,4 @@
+import { Effect } from "effect";
 import { and, countDistinct, eq, inArray, isNull, sql } from "drizzle-orm";
 
 import { db, dbEffect } from "../index";
@@ -13,6 +14,18 @@ import { workspaceCodebase } from "../schema/workspace";
 export interface GroupCount {
     groupName: string;
     count: number;
+}
+
+export interface CompoundGroupCount {
+    groupName: string;
+    count: number;
+    subGroups: GroupCount[];
+}
+
+export interface CompoundGroupedCountsParams extends GroupedCountsParams {
+    subGroupBy: "type" | "status" | "origin" | "freshness" | "tagtype";
+    /** Required when subGroupBy is "tagtype" */
+    subTagTypeId?: string;
 }
 
 export interface GroupedCountsParams {
@@ -275,5 +288,115 @@ export function getChunksInGroup(params: GroupChunksParams) {
             .where(whereClause);
 
         return { chunks, total: Number(total[0]?.count ?? 0) };
+    });
+}
+
+// ---------------------------------------------------------------------------
+// getCompoundGroupedCounts — two-level grouping
+// ---------------------------------------------------------------------------
+
+export function getCompoundGroupedCounts(params: CompoundGroupedCountsParams) {
+    // First get the top-level groups, then for each group run a sub-group query
+    // with an extra constraint restricting to chunks in that parent group.
+    return getGroupedCounts(params).pipe(
+        Effect.flatMap(topGroups =>
+            Effect.forEach(
+                topGroups,
+                (topGroup) => {
+                    // Build sub-group params: inherit all base filters, add a constraint
+                    // that restricts chunks to those in the parent group
+                    const subParams: GroupedCountsParams = {
+                        groupBy: params.subGroupBy,
+                        tagTypeId: params.subGroupBy === "tagtype" ? params.subTagTypeId : undefined,
+                        userId: params.userId,
+                        type: params.type,
+                        origin: params.origin,
+                        reviewStatus: params.reviewStatus,
+                        codebaseId: params.codebaseId,
+                        workspaceId: params.workspaceId,
+                        globalOnly: params.globalOnly,
+                        tags: params.tags,
+                        tagMode: params.tagMode,
+                    };
+
+                    return getSubGroupCounts(subParams, params.groupBy, topGroup.groupName, params.tagTypeId).pipe(
+                        Effect.map(subGroups => ({
+                            groupName: topGroup.groupName,
+                            count: topGroup.count,
+                            subGroups,
+                        }))
+                    );
+                },
+                { concurrency: 5 }
+            )
+        )
+    );
+}
+
+/**
+ * Get sub-group counts for chunks that belong to a specific parent group.
+ * This is like getGroupedCounts but with an additional WHERE clause constraining
+ * chunks to those in the given parent group.
+ */
+function getSubGroupCounts(
+    params: GroupedCountsParams,
+    parentGroupBy: GroupedCountsParams["groupBy"],
+    parentGroupName: string,
+    parentTagTypeId?: string,
+) {
+    return dbEffect(async () => {
+        const conditions = buildBaseConditions(params);
+        // Add the parent group constraint
+        const parentCondition = buildGroupCondition(parentGroupBy, parentGroupName, parentTagTypeId);
+        conditions.push(parentCondition);
+
+        if (params.groupBy === "tagtype") {
+            const tagTypeConditions = params.tagTypeId
+                ? [eq(tag.tagTypeId, params.tagTypeId)]
+                : [];
+
+            const rows = await db
+                .select({
+                    groupName: tag.name,
+                    count: countDistinct(chunk.id),
+                })
+                .from(chunk)
+                .innerJoin(chunkTag, eq(chunkTag.chunkId, chunk.id))
+                .innerJoin(tag, eq(chunkTag.tagId, tag.id))
+                .where(and(...conditions, ...tagTypeConditions))
+                .groupBy(tag.name);
+
+            return rows.map(r => ({
+                groupName: r.groupName,
+                count: Number(r.count),
+            }));
+        }
+
+        const groupExpr = (() => {
+            switch (params.groupBy) {
+                case "type":
+                    return chunk.type;
+                case "status":
+                    return sql<string>`COALESCE(${chunk.reviewStatus}, 'draft')`;
+                case "origin":
+                    return sql<string>`COALESCE(${chunk.origin}, 'human')`;
+                case "freshness":
+                    return freshnessBucket;
+            }
+        })();
+
+        const rows = await db
+            .select({
+                groupName: groupExpr,
+                count: sql<number>`count(*)`,
+            })
+            .from(chunk)
+            .where(and(...conditions))
+            .groupBy(groupExpr);
+
+        return rows.map(r => ({
+            groupName: String(r.groupName),
+            count: Number(r.count),
+        }));
     });
 }
