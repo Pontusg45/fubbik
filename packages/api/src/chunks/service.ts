@@ -499,53 +499,57 @@ export function importDocs(
     );
 }
 
-export async function* importDocsStream(
+export function importDocsStream(
     userId: string,
     files: { path: string; content: string }[],
     codebaseId: string,
     templateOverrides?: Record<string, string | null>
-) {
-    const fileChunks = new Map<string, string>();
-    let created = 0;
-    let skipped = 0;
-    let errors = 0;
-    const startTime = Date.now();
+): ReadableStream {
+    const encoder = new TextEncoder();
 
-    for (const file of files) {
-        try {
-            const templateId = templateOverrides?.[file.path] ?? undefined;
-            const result = await Effect.runPromise(
-                importDocument(userId, file.path, file.content, codebaseId, templateId ?? undefined)
-            );
-            if (result.status === "unchanged") {
-                skipped++;
-                yield { type: "file" as const, path: file.path, status: "unchanged" as const };
-            } else {
-                created += result.created;
-                if (result.firstChunkId) {
-                    fileChunks.set(file.path, result.firstChunkId);
-                }
-                yield { type: "file" as const, path: file.path, status: "created" as const, created: result.created };
-            }
-        } catch (err) {
-            errors++;
-            yield { type: "file" as const, path: file.path, status: "error" as const, error: String(err) };
-        }
+    function encode(eventType: string, data: Record<string, unknown>) {
+        return encoder.encode(`event: ${eventType}\ndata: ${JSON.stringify(data)}\n\n`);
     }
 
-    let connections = 0;
-    try {
-        connections = await Effect.runPromise(createFolderConnections(userId, fileChunks, codebaseId));
-    } catch {}
+    return new ReadableStream({
+        async start(controller) {
+            const fileChunks = new Map<string, string>();
+            let created = 0;
+            let skipped = 0;
+            let errors = 0;
+            const startTime = Date.now();
 
-    yield {
-        type: "done" as const,
-        created,
-        skipped,
-        errors,
-        connections,
-        elapsed: Date.now() - startTime,
-    };
+            for (const file of files) {
+                try {
+                    const templateId = templateOverrides?.[file.path] ?? undefined;
+                    const result = await Effect.runPromise(
+                        importDocument(userId, file.path, file.content, codebaseId, templateId ?? undefined)
+                    );
+                    if (result.status === "unchanged") {
+                        skipped++;
+                        controller.enqueue(encode("file", { type: "file", path: file.path, status: "unchanged" }));
+                    } else {
+                        created += result.created;
+                        if (result.firstChunkId) {
+                            fileChunks.set(file.path, result.firstChunkId);
+                        }
+                        controller.enqueue(encode("file", { type: "file", path: file.path, status: "created", created: result.created }));
+                    }
+                } catch (err) {
+                    errors++;
+                    controller.enqueue(encode("file", { type: "file", path: file.path, status: "error", error: String(err) }));
+                }
+            }
+
+            let connections = 0;
+            try {
+                connections = await Effect.runPromise(createFolderConnections(userId, fileChunks, codebaseId));
+            } catch {}
+
+            controller.enqueue(encode("done", { type: "done", created, skipped, errors, connections, elapsed: Date.now() - startTime }));
+            controller.close();
+        },
+    });
 }
 
 function createFolderConnections(
