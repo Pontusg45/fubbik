@@ -21,6 +21,7 @@ import { useStaleCount } from "@/features/staleness/use-stale-count";
 import { usePendingProposalCount } from "@/features/proposals/use-pending-proposal-count";
 import { KeyboardShortcutsHelp, useGlobalShortcuts } from "@/features/nav/keyboard-shortcuts";
 import { MobileNav } from "@/features/nav/mobile-nav";
+import { ActiveCodebaseProvider } from "@/features/codebases/active-codebase-provider";
 import { CodebaseSwitcher } from "@/features/codebases/codebase-switcher";
 import { FeatureSwitcher } from "@/features/feature-flags/feature-switcher";
 import { CommandPalette } from "@/features/command-palette/command-palette";
@@ -73,6 +74,7 @@ function RootDocument() {
             </head>
             <body>
                 <ThemeProvider>
+                    <ActiveCodebaseProvider>
                     <SmartLinkProvider>
                     <VocabularyPrimer />
                     <a
@@ -234,6 +236,7 @@ function RootDocument() {
                     <KeyboardShortcutsHelp open={helpOpen} onOpenChange={setHelpOpen} />
                     <Toaster richColors />
                     </SmartLinkProvider>
+                    </ActiveCodebaseProvider>
                 </ThemeProvider>
 
                 <TanStackRouterDevtools position="bottom-left" />
