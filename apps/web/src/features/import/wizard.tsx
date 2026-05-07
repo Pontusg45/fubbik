@@ -4,6 +4,8 @@ import { Check } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { useApiQuery } from "@/hooks/use-api-query";
+import { api } from "@/utils/api";
 import type {
     FileConfig,
     FileEntry,
@@ -13,6 +15,7 @@ import type {
 } from "./types";
 import { StepSelectFiles } from "./steps/select-files";
 import { StepPreview } from "./steps/preview";
+import { StepReview } from "./steps/review";
 
 // ---------------------------------------------------------------------------
 // Step indicator
@@ -87,7 +90,16 @@ export function ImportWizard() {
     const [preview, setPreview] = useState<PreviewFileResult[]>([]);
     const [overrides, setOverrides] = useState<Map<string, FileConfig>>(new Map());
     const [, setImportStatus] = useState<Map<string, ImportFileStatus>>(new Map());
-    const [, setExistingHashes] = useState<Record<string, string>>({});
+    const [existingHashes, setExistingHashes] = useState<Record<string, string>>({});
+
+    const { data: codebases } = useApiQuery<{ id: string; name: string }[]>({
+        queryKey: ["codebases"],
+        queryFn: () => api.api.codebases.get(),
+        fallback: []
+    });
+
+    const codebaseName =
+        codebases?.find(c => c.id === codebaseId)?.name ?? codebaseId;
 
     const canNext =
         step === 1
@@ -149,9 +161,17 @@ export function ImportWizard() {
                     />
                 )}
                 {step === 3 && (
-                    <div className="text-muted-foreground py-12 text-center text-sm">
-                        Review — coming soon
-                    </div>
+                    <StepReview
+                        files={files}
+                        selectedPaths={selectedPaths}
+                        preview={preview}
+                        overrides={overrides}
+                        existingHashes={existingHashes}
+                        codebaseName={codebaseName}
+                        onGoToFile={_path => {
+                            setStep(2);
+                        }}
+                    />
                 )}
                 {step === 4 && (
                     <div className="text-muted-foreground py-12 text-center text-sm">
