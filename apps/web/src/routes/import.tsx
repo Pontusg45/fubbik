@@ -5,6 +5,7 @@ import { useState } from "react";
 import { PageContainer, PageHeader } from "@/components/ui/page";
 import { getUser } from "@/functions/get-user";
 import { ImportQuickMode } from "@/features/import/quick-mode";
+import { ImportWizard } from "@/features/import/wizard";
 
 export const Route = createFileRoute("/import")({
     component: ImportPage,
@@ -74,11 +75,7 @@ function ImportPage() {
             />
 
             {mode === "quick" && <ImportQuickMode />}
-            {mode === "wizard" && (
-                <div className="text-muted-foreground py-12 text-center text-sm">
-                    Wizard mode coming soon
-                </div>
-            )}
+            {mode === "wizard" && <ImportWizard />}
         </PageContainer>
     );
 }
