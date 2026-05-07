@@ -63,6 +63,13 @@ export const codebaseRoutes = new Elysia()
             })
         }
     )
+    .post("/codebases/:id/reset", ctx =>
+        Effect.runPromise(
+            requireSession(ctx).pipe(
+                Effect.flatMap(session => codebaseService.resetCodebase(ctx.params.id, session.user.id))
+            )
+        )
+    )
     .delete("/codebases/:id", ctx =>
         Effect.runPromise(
             requireSession(ctx).pipe(

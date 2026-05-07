@@ -2,7 +2,11 @@ import { and, eq, inArray, sql } from "drizzle-orm";
 import { Effect } from "effect";
 
 import { db, dbEffect } from "../index";
+import { chunk } from "../schema/chunk";
 import { codebase, chunkCodebase } from "../schema/codebase";
+import { document } from "../schema/document";
+import { plan } from "../schema/plan";
+import { requirement } from "../schema/requirement";
 
 export interface CreateCodebaseParams {
     id: string;
@@ -83,6 +87,65 @@ export function updateCodebase(codebaseId: string, userId: string, params: Updat
                 .returning();
             return updated ?? null;
         });
+}
+
+export function resetCodebaseData(codebaseId: string, userId: string) {
+    return dbEffect(async () => {
+        // Find chunks exclusively in this codebase (not shared with others)
+        const exclusiveChunkIds = await db
+            .select({ id: chunkCodebase.chunkId })
+            .from(chunkCodebase)
+            .where(eq(chunkCodebase.codebaseId, codebaseId))
+            .then(rows => rows.map(r => r.id));
+
+        let chunksDeleted = 0;
+        if (exclusiveChunkIds.length > 0) {
+            const sharedChunkIds = await db
+                .select({ id: chunkCodebase.chunkId })
+                .from(chunkCodebase)
+                .where(and(
+                    inArray(chunkCodebase.chunkId, exclusiveChunkIds),
+                    sql`${chunkCodebase.codebaseId} != ${codebaseId}`
+                ))
+                .then(rows => new Set(rows.map(r => r.id)));
+
+            const toDelete = exclusiveChunkIds.filter(id => !sharedChunkIds.has(id));
+
+            if (toDelete.length > 0) {
+                await db.delete(chunk).where(and(
+                    inArray(chunk.id, toDelete),
+                    eq(chunk.userId, userId)
+                ));
+                chunksDeleted = toDelete.length;
+            }
+        }
+
+        // Unlink remaining shared chunks from this codebase
+        await db.delete(chunkCodebase).where(eq(chunkCodebase.codebaseId, codebaseId));
+
+        // Delete documents scoped to this codebase
+        const docsDeleted = await db
+            .delete(document)
+            .where(and(eq(document.codebaseId, codebaseId), eq(document.userId, userId)))
+            .returning()
+            .then(rows => rows.length);
+
+        // Delete plans scoped to this codebase
+        const plansDeleted = await db
+            .delete(plan)
+            .where(and(eq(plan.codebaseId, codebaseId), eq(plan.userId, userId)))
+            .returning()
+            .then(rows => rows.length);
+
+        // Delete requirements scoped to this codebase
+        const requirementsDeleted = await db
+            .delete(requirement)
+            .where(and(eq(requirement.codebaseId, codebaseId), eq(requirement.userId, userId)))
+            .returning()
+            .then(rows => rows.length);
+
+        return { chunksDeleted, docsDeleted, plansDeleted, requirementsDeleted };
+    });
 }
 
 export function deleteCodebase(codebaseId: string, userId: string) {

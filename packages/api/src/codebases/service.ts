@@ -6,6 +6,7 @@ import {
     getCodebaseByLocalPath,
     getCodebaseByRemoteUrl,
     listCodebases as listCodebasesRepo,
+    resetCodebaseData as resetCodebaseDataRepo,
     updateCodebase as updateCodebaseRepo
 } from "@fubbik/db/repository";
 import { Effect } from "effect";
@@ -54,9 +55,17 @@ export function updateCodebase(
     );
 }
 
+export function resetCodebase(codebaseId: string, userId: string) {
+    return getCodebaseById(codebaseId, userId).pipe(
+        Effect.flatMap(found => (found ? Effect.succeed(found) : Effect.fail(new NotFoundError({ resource: "Codebase" })))),
+        Effect.flatMap(() => resetCodebaseDataRepo(codebaseId, userId))
+    );
+}
+
 export function deleteCodebase(codebaseId: string, userId: string) {
     return getCodebaseById(codebaseId, userId).pipe(
         Effect.flatMap(found => (found ? Effect.succeed(found) : Effect.fail(new NotFoundError({ resource: "Codebase" })))),
+        Effect.flatMap(() => resetCodebaseDataRepo(codebaseId, userId)),
         Effect.flatMap(() => deleteCodebaseRepo(codebaseId, userId))
     );
 }

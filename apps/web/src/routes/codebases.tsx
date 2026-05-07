@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { FolderGit2, GitBranch, Plus, Trash2 } from "lucide-react";
+import { FolderGit2, GitBranch, Plus, RotateCcw, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -11,6 +11,7 @@ import { useApiMutation } from "@/hooks/use-api-mutation";
 import { useApiQuery } from "@/hooks/use-api-query";
 import { getUser } from "@/functions/get-user";
 import { api } from "@/utils/api";
+import { unwrapEden } from "@/utils/eden";
 
 export const Route = createFileRoute("/codebases")({
     component: CodebasesPage,
@@ -18,16 +19,21 @@ export const Route = createFileRoute("/codebases")({
         let session = null;
         try {
             session = await getUser();
-        } catch {
-            // allow guest access
-        }
+        } catch {}
         return { session };
     }
 });
 
+type ConfirmAction = {
+    type: "reset" | "delete";
+    id: string;
+    name: string;
+};
+
 function CodebasesPage() {
     const [name, setName] = useState("");
     const [remoteUrl, setRemoteUrl] = useState("");
+    const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null);
 
     const codebasesQuery = useApiQuery<any[]>({
         queryKey: ["codebases"],
@@ -47,12 +53,30 @@ function CodebasesPage() {
 
     const deleteMutation = useApiMutation<unknown, string>({
         mutationFn: id => api.api.codebases({ id }).delete(),
-        invalidate: ["codebases"],
-        successToast: false,
+        invalidate: ["codebases", "chunks", "graph", "stats"],
+        successToast: "Codebase deleted",
+    });
+
+    const resetMutation = useApiMutation<
+        { chunksDeleted: number; docsDeleted: number; plansDeleted: number; requirementsDeleted: number },
+        string
+    >({
+        mutationFn: async (id) => {
+            const result = unwrapEden(await api.api.codebases({ id }).reset.post());
+            return result as any;
+        },
+        invalidate: ["codebases", "chunks", "graph", "stats"],
+        successToast: (data) => {
+            const parts = [];
+            if (data.chunksDeleted) parts.push(`${data.chunksDeleted} chunks`);
+            if (data.docsDeleted) parts.push(`${data.docsDeleted} docs`);
+            if (data.plansDeleted) parts.push(`${data.plansDeleted} plans`);
+            if (data.requirementsDeleted) parts.push(`${data.requirementsDeleted} requirements`);
+            return parts.length > 0 ? `Reset: removed ${parts.join(", ")}` : "Codebase reset (was already empty)";
+        },
     });
 
     const codebases = Array.isArray(codebasesQuery.data) ? codebasesQuery.data : [];
-    const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
 
     function handleCreate(e: React.FormEvent) {
         e.preventDefault();
@@ -63,9 +87,17 @@ function CodebasesPage() {
         });
     }
 
-    function handleDelete(id: string, codebaseName: string) {
-        setDeleteTarget({ id, name: codebaseName });
+    function handleConfirm() {
+        if (!confirmAction) return;
+        if (confirmAction.type === "delete") {
+            deleteMutation.mutate(confirmAction.id);
+        } else {
+            resetMutation.mutate(confirmAction.id);
+        }
+        setConfirmAction(null);
     }
+
+    const isPending = deleteMutation.isPending || resetMutation.isPending;
 
     return (
         <PageContainer>
@@ -130,14 +162,26 @@ function CodebasesPage() {
                                                 </p>
                                             )}
                                     </div>
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => handleDelete(c.id, c.name)}
-                                        disabled={deleteMutation.isPending}
-                                    >
-                                        <Trash2 className="size-4" />
-                                    </Button>
+                                    <div className="flex gap-1">
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => setConfirmAction({ type: "reset", id: c.id, name: c.name })}
+                                            disabled={isPending}
+                                            title="Reset — delete all chunks, docs, plans, and requirements"
+                                        >
+                                            <RotateCcw className="size-4" />
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => setConfirmAction({ type: "delete", id: c.id, name: c.name })}
+                                            disabled={isPending}
+                                            title="Delete codebase and all its data"
+                                        >
+                                            <Trash2 className="size-4" />
+                                        </Button>
+                                    </div>
                                 </div>
                             ))}
                         </div>
@@ -146,19 +190,20 @@ function CodebasesPage() {
             </Card>
 
             <ConfirmDialog
-                open={deleteTarget !== null}
-                onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}
-                title="Delete codebase"
-                description={deleteTarget ? `Delete codebase "${deleteTarget.name}"?` : ""}
-                confirmLabel="Delete"
+                open={confirmAction !== null}
+                onOpenChange={(open) => { if (!open) setConfirmAction(null); }}
+                title={confirmAction?.type === "reset" ? "Reset codebase" : "Delete codebase"}
+                description={
+                    confirmAction?.type === "reset"
+                        ? `This will delete all chunks, documents, plans, and requirements in "${confirmAction.name}". The codebase itself will be kept.`
+                        : confirmAction
+                        ? `This will delete "${confirmAction.name}" and all its chunks, documents, plans, and requirements. This cannot be undone.`
+                        : ""
+                }
+                confirmLabel={confirmAction?.type === "reset" ? "Reset" : "Delete"}
                 confirmVariant="destructive"
-                onConfirm={() => {
-                    if (deleteTarget) {
-                        deleteMutation.mutate(deleteTarget.id);
-                        setDeleteTarget(null);
-                    }
-                }}
-                loading={deleteMutation.isPending}
+                onConfirm={handleConfirm}
+                loading={isPending}
             />
         </PageContainer>
     );
