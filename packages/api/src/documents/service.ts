@@ -309,8 +309,8 @@ export function getDocument(documentId: string, userId: string) {
     });
 }
 
-export function searchDocuments(userId: string, query: string) {
-    return searchDocumentChunks(userId, query);
+export function searchDocuments(userId: string, query: string, codebaseId?: string) {
+    return searchDocumentChunks(userId, query, 20, codebaseId);
 }
 
 export function removeDocument(documentId: string, userId: string) {

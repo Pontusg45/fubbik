@@ -132,8 +132,16 @@ export function deleteDocument(id: string) {
         });
 }
 
-export function searchDocumentChunks(userId: string, query: string, limit = 20) {
+export function searchDocumentChunks(userId: string, query: string, limit = 20, codebaseId?: string) {
     return dbEffect(async () => {
+            const conditions = [
+                eq(document.userId, userId),
+                or(
+                    ilike(chunk.title, `%${query}%`),
+                    ilike(chunk.content, `%${query}%`)
+                )
+            ];
+            if (codebaseId) conditions.push(eq(document.codebaseId, codebaseId));
             const results = await db
                 .select({
                     chunkId: chunk.id,
@@ -146,15 +154,7 @@ export function searchDocumentChunks(userId: string, query: string, limit = 20) 
                 })
                 .from(chunk)
                 .innerJoin(document, eq(chunk.documentId, document.id))
-                .where(
-                    and(
-                        eq(document.userId, userId),
-                        or(
-                            ilike(chunk.title, `%${query}%`),
-                            ilike(chunk.content, `%${query}%`)
-                        )
-                    )
-                )
+                .where(and(...conditions))
                 .orderBy(document.title, chunk.documentOrder)
                 .limit(limit);
             return results;

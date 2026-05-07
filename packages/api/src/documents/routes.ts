@@ -27,13 +27,14 @@ export const documentRoutes = new Elysia()
             Effect.runPromise(
                 requireSession(ctx).pipe(
                     Effect.flatMap(session =>
-                        documentService.searchDocuments(session.user.id, ctx.query.q)
+                        documentService.searchDocuments(session.user.id, ctx.query.q, ctx.query.codebaseId)
                     )
                 )
             ),
         {
             query: t.Object({
-                q: t.String({ minLength: 2 })
+                q: t.String({ minLength: 2 }),
+                codebaseId: t.Optional(t.String())
             })
         }
     )

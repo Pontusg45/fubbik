@@ -360,7 +360,7 @@ interface DocumentBrowserProps {
 }
 
 export function DocumentBrowser({ initialDocId, initialSection, initialGroupBy, initialTags, initialTypes }: DocumentBrowserProps) {
-    useActiveCodebase();
+    const { codebaseId: activeCodebaseId } = useActiveCodebase();
     const navigate = useNavigate();
     const [selectedId, setSelectedIdState] = useState<string | null>(initialDocId ?? null);
     const [searchQuery, setSearchQuery] = useState("");
@@ -421,11 +421,11 @@ export function DocumentBrowser({ initialDocId, initialSection, initialGroupBy, 
 
     // Fetch document list
     const listQuery = useQuery({
-        queryKey: ["documents"],
+        queryKey: ["documents", activeCodebaseId],
         queryFn: async () => {
             try {
                 const result = unwrapEden(
-                    await api.api.documents.get({ query: {} })
+                    await api.api.documents.get({ query: activeCodebaseId ? { codebaseId: activeCodebaseId } : {} })
                 );
                 return result as DocumentListItem[];
             } catch {
@@ -453,11 +453,13 @@ export function DocumentBrowser({ initialDocId, initialSection, initialGroupBy, 
     // Server-side document search — only when user types 2+ chars
     const debouncedSearch = useDebouncedValue(searchQuery, 300);
     const searchServerQuery = useQuery({
-        queryKey: ["documents-search", debouncedSearch],
+        queryKey: ["documents-search", debouncedSearch, activeCodebaseId],
         queryFn: async () => {
             try {
+                const q: Record<string, string> = { q: debouncedSearch };
+                if (activeCodebaseId) q.codebaseId = activeCodebaseId;
                 const results = unwrapEden(
-                    await api.api.documents.search.get({ query: { q: debouncedSearch } })
+                    await api.api.documents.search.get({ query: q as any })
                 ) as { chunkId: string; chunkTitle: string; chunkContent: string; documentOrder: number | null; documentId: string; documentTitle: string; sourcePath: string }[];
                 return results.map(r => ({
                     documentId: r.documentId,
