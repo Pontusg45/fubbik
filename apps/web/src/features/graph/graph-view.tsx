@@ -967,12 +967,13 @@ function GraphViewInner() {
                 return { ...node, position: dragged ?? gridPos };
             }
 
-            // Group nodes: compute size from child bounds. Hide groups with no positioned children.
+            // Group nodes: compute size from child bounds.
             if (tagGroupNodeIds.has(node.id)) {
                 const bounds = groupBounds.get(node.id);
                 if (!bounds) {
-                    // No children have positions yet — hide the group entirely
-                    return { ...node, position: { x: -9999, y: -9999 }, style: { ...node.style, display: "none" } };
+                    // No children have positions yet — keep offscreen but visible so
+                    // it appears immediately once layout positions arrive.
+                    return { ...node, position: { x: -9999, y: -9999 }, style: { ...node.style, width: 0, height: 0, opacity: 0 } };
                 }
                 const dragged = draggedPositions.get(node.id);
                 return {
