@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Upload } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { PageContainer, PageHeader } from "@/components/ui/page";
 import { getUser } from "@/functions/get-user";
@@ -22,22 +22,17 @@ type ImportMode = "quick" | "wizard";
 
 const STORAGE_KEY = "import-mode";
 
-function getInitialMode(): ImportMode {
-    if (typeof localStorage !== "undefined") {
-        const stored = localStorage.getItem(STORAGE_KEY);
-        if (stored === "quick" || stored === "wizard") return stored;
-    }
-    return "quick";
-}
-
 function ImportPage() {
-    const [mode, setMode] = useState<ImportMode>(getInitialMode);
+    const [mode, setMode] = useState<ImportMode>("quick");
+
+    useEffect(() => {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored === "quick" || stored === "wizard") setMode(stored);
+    }, []);
 
     const handleModeChange = (next: ImportMode) => {
         setMode(next);
-        if (typeof localStorage !== "undefined") {
-            localStorage.setItem(STORAGE_KEY, next);
-        }
+        localStorage.setItem(STORAGE_KEY, next);
     };
 
     return (
