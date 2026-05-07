@@ -83,18 +83,22 @@ export function StepPreview({
         const run = async () => {
             setLoading(true);
             try {
-                const result = unwrapEden(
+                const raw = unwrapEden(
                     await api.api.chunks["import-docs"].preview.post({
                         files: selectedFiles.map(f => ({ path: f.path, content: f.content })),
                         codebaseId
                     })
-                ) as { files: PreviewFileResult[]; existingHashes: Record<string, string> };
+                );
+                // Backend returns { files, existingHashes }
+                const result = raw as { files: PreviewFileResult[]; existingHashes: Record<string, string> };
+                const previewFiles = Array.isArray(result) ? result as unknown as PreviewFileResult[] : result.files;
+                const hashes = Array.isArray(result) ? {} : result.existingHashes ?? {};
 
-                onPreviewLoaded(result.files, result.existingHashes);
+                onPreviewLoaded(previewFiles, hashes);
 
                 // Initialize overrides from preview data
                 const next = new Map<string, FileConfig>();
-                for (const pf of result.files) {
+                for (const pf of previewFiles) {
                     const folderTags = deriveFolderTags(pf.path);
                     next.set(pf.path, {
                         title: pf.parsed.title,
@@ -107,8 +111,8 @@ export function StepPreview({
                 onOverridesChange(next);
 
                 // Auto-select first file (only if no initialActivePath was given)
-                if (!initialActivePath && result.files.length > 0 && result.files[0]) {
-                    setActivePath(result.files[0].path);
+                if (!initialActivePath && previewFiles.length > 0 && previewFiles[0]) {
+                    setActivePath(previewFiles[0].path);
                 }
             } catch {
                 toast.error("Failed to load preview");
