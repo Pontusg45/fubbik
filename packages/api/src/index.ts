@@ -11,6 +11,7 @@ registerEventHandlers();
 
 import { aiRoutes } from "./ai/routes";
 import { appliesToRoutes } from "./applies-to/routes";
+import { chunkGroupRoutes } from "./chunks/group-routes";
 import { chunkRoutes } from "./chunks/routes";
 import { clusterRoutes } from "./chunks/cluster-routes";
 import { commentRoutes } from "./comments/routes";
@@ -113,6 +114,7 @@ const coreRoutes = new Elysia()
     .use(contextForFileRoutes)
     .use(contextRoutes)
     .use(snapshotRoutes)
+    .use(chunkGroupRoutes)
     .use(chunkRoutes)
     .use(clusterRoutes)
     .use(appliesToRoutes)
