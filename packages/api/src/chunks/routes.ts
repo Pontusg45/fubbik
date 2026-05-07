@@ -125,6 +125,60 @@ export const chunkRoutes = new Elysia()
         }
     )
     .post(
+        "/chunks/import-docs/stream",
+        async (ctx) => {
+            const session = await Effect.runPromise(requireSession(ctx));
+            const rl = checkRateLimit(`import-docs:${session.user.id}`, 5, 60_000);
+            if (!rl.allowed) {
+                ctx.set.status = 429;
+                return new Response(JSON.stringify({
+                    error: "Rate limit exceeded",
+                    retryAfter: Math.ceil((rl.resetAt - Date.now()) / 1000)
+                }), { status: 429, headers: { "Content-Type": "application/json" } });
+            }
+
+            const generator = chunkService.importDocsStream(
+                session.user.id,
+                ctx.body.files,
+                ctx.body.codebaseId,
+                ctx.body.templateOverrides
+            );
+
+            const stream = new ReadableStream({
+                async start(controller) {
+                    const encoder = new TextEncoder();
+                    for await (const event of generator) {
+                        const eventType = event.type;
+                        const data = JSON.stringify(event);
+                        controller.enqueue(encoder.encode(`event: ${eventType}\ndata: ${data}\n\n`));
+                    }
+                    controller.close();
+                },
+            });
+
+            return new Response(stream, {
+                headers: {
+                    "Content-Type": "text/event-stream",
+                    "Cache-Control": "no-cache",
+                    "Connection": "keep-alive",
+                },
+            });
+        },
+        {
+            body: t.Object({
+                files: t.Array(
+                    t.Object({
+                        path: t.String({ maxLength: 500 }),
+                        content: t.String({ maxLength: 100000 })
+                    }),
+                    { maxItems: 500 }
+                ),
+                codebaseId: t.String(),
+                templateOverrides: t.Optional(t.Record(t.String(), t.Union([t.String(), t.Null()])))
+            })
+        }
+    )
+    .post(
         "/chunks/bulk-update",
         ctx =>
             Effect.runPromise(

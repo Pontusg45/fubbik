@@ -499,6 +499,55 @@ export function importDocs(
     );
 }
 
+export async function* importDocsStream(
+    userId: string,
+    files: { path: string; content: string }[],
+    codebaseId: string,
+    templateOverrides?: Record<string, string | null>
+) {
+    const fileChunks = new Map<string, string>();
+    let created = 0;
+    let skipped = 0;
+    let errors = 0;
+    const startTime = Date.now();
+
+    for (const file of files) {
+        try {
+            const templateId = templateOverrides?.[file.path] ?? undefined;
+            const result = await Effect.runPromise(
+                importDocument(userId, file.path, file.content, codebaseId, templateId ?? undefined)
+            );
+            if (result.status === "unchanged") {
+                skipped++;
+                yield { type: "file" as const, path: file.path, status: "unchanged" as const };
+            } else {
+                created += result.created;
+                if (result.firstChunkId) {
+                    fileChunks.set(file.path, result.firstChunkId);
+                }
+                yield { type: "file" as const, path: file.path, status: "created" as const, created: result.created };
+            }
+        } catch (err) {
+            errors++;
+            yield { type: "file" as const, path: file.path, status: "error" as const, error: String(err) };
+        }
+    }
+
+    let connections = 0;
+    try {
+        connections = await Effect.runPromise(createFolderConnections(userId, fileChunks, codebaseId));
+    } catch {}
+
+    yield {
+        type: "done" as const,
+        created,
+        skipped,
+        errors,
+        connections,
+        elapsed: Date.now() - startTime,
+    };
+}
+
 function createFolderConnections(
     _userId: string,
     fileChunks: Map<string, string>,
