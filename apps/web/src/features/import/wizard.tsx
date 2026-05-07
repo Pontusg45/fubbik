@@ -12,6 +12,7 @@ import type {
     WizardStep
 } from "./types";
 import { StepSelectFiles } from "./steps/select-files";
+import { StepPreview } from "./steps/preview";
 
 // ---------------------------------------------------------------------------
 // Step indicator
@@ -82,9 +83,9 @@ export function ImportWizard() {
     const [files, setFiles] = useState<FileEntry[]>([]);
     const [selectedPaths, setSelectedPaths] = useState<Set<string>>(new Set());
     const [codebaseId, setCodebaseId] = useState<string>("");
-    // preview, overrides, importStatus, existingHashes are consumed by steps 2-4 (not yet implemented)
-    const [, setPreview] = useState<PreviewFileResult[]>([]);
-    const [, setOverrides] = useState<Map<string, FileConfig>>(new Map());
+    // preview, overrides, importStatus, existingHashes are consumed by steps 2-4
+    const [preview, setPreview] = useState<PreviewFileResult[]>([]);
+    const [overrides, setOverrides] = useState<Map<string, FileConfig>>(new Map());
     const [, setImportStatus] = useState<Map<string, ImportFileStatus>>(new Map());
     const [, setExistingHashes] = useState<Record<string, string>>({});
 
@@ -134,9 +135,18 @@ export function ImportWizard() {
                     />
                 )}
                 {step === 2 && (
-                    <div className="text-muted-foreground py-12 text-center text-sm">
-                        Preview &amp; Configure — coming soon
-                    </div>
+                    <StepPreview
+                        files={files}
+                        selectedPaths={selectedPaths}
+                        codebaseId={codebaseId}
+                        preview={preview}
+                        onPreviewLoaded={(results, hashes) => {
+                            setPreview(results);
+                            setExistingHashes(hashes);
+                        }}
+                        overrides={overrides}
+                        onOverridesChange={setOverrides}
+                    />
                 )}
                 {step === 3 && (
                     <div className="text-muted-foreground py-12 text-center text-sm">
