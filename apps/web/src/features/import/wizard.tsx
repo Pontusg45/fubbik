@@ -16,6 +16,7 @@ import type {
 import { StepSelectFiles } from "./steps/select-files";
 import { StepPreview } from "./steps/preview";
 import { StepReview } from "./steps/review";
+import { StepImport } from "./steps/import-step";
 
 // ---------------------------------------------------------------------------
 // Step indicator
@@ -89,7 +90,7 @@ export function ImportWizard() {
     // preview, overrides, importStatus, existingHashes are consumed by steps 2-4
     const [preview, setPreview] = useState<PreviewFileResult[]>([]);
     const [overrides, setOverrides] = useState<Map<string, FileConfig>>(new Map());
-    const [, setImportStatus] = useState<Map<string, ImportFileStatus>>(new Map());
+    const [importStatus, setImportStatus] = useState<Map<string, ImportFileStatus>>(new Map());
     const [existingHashes, setExistingHashes] = useState<Record<string, string>>({});
 
     const { data: codebases } = useApiQuery<{ id: string; name: string }[]>({
@@ -174,14 +175,15 @@ export function ImportWizard() {
                     />
                 )}
                 {step === 4 && (
-                    <div className="text-muted-foreground py-12 text-center text-sm">
-                        Import — coming soon
-                        <div className="mt-4">
-                            <Button variant="outline" size="sm" onClick={handleReset}>
-                                Import more
-                            </Button>
-                        </div>
-                    </div>
+                    <StepImport
+                        files={files}
+                        selectedPaths={selectedPaths}
+                        codebaseId={codebaseId}
+                        overrides={overrides}
+                        importStatus={importStatus}
+                        onStatusChange={setImportStatus}
+                        onReset={handleReset}
+                    />
                 )}
             </div>
 
