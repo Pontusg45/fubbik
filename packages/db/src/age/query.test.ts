@@ -5,6 +5,7 @@ import { isAgeAvailable } from "./client";
 import {
     checkCircular,
     findShortestPath,
+    getConnectionDegrees,
     getNeighborhood,
     getOrphanChunkIds
 } from "./query";
@@ -152,5 +153,29 @@ describe("checkCircular", () => {
         // checkCircular(reqA, reqC) = does reqC have a depends_on path to reqA? → false
         const isCircular = await Effect.runPromise(checkCircular(uid("reqA"), uid("reqC")));
         expect(isCircular).toBe(false);
+    });
+});
+
+describe("getConnectionDegrees", () => {
+    it("returns correct degree for chain and star nodes", async () => {
+        if (!ageReady) return;
+        const ids = [uid("A"), uid("B"), uid("C"), uid("center")];
+        const map = await Effect.runPromise(getConnectionDegrees(ids));
+        expect(map.get(uid("B"))).toBe(2);
+        expect(map.get(uid("center"))).toBe(3);
+        expect(map.get(uid("A"))).toBe(1);
+        expect(map.get(uid("C"))).toBe(1);
+    });
+
+    it("omits orphan nodes with no edges", async () => {
+        if (!ageReady) return;
+        const map = await Effect.runPromise(getConnectionDegrees([uid("orphan")]));
+        expect(map.get(uid("orphan"))).toBeUndefined();
+    });
+
+    it("returns empty map for empty input", async () => {
+        if (!ageReady) return;
+        const map = await Effect.runPromise(getConnectionDegrees([]));
+        expect(map.size).toBe(0);
     });
 });

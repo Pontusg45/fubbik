@@ -1,6 +1,6 @@
 import { Effect } from "effect";
 
-import { cypher } from "./client";
+import { cypher, escCypher } from "./client";
 
 function parseAgtypeId(val: unknown): string {
     if (typeof val === "string") return val.replace(/^"|"$/g, "");
@@ -125,6 +125,28 @@ export function getHopDistances(referenceId: string, targetIds: string[]) {
                 const id = parseAgtypeId((row as any).id);
                 const hops = Number((row as any).hops);
                 map.set(id, hops);
+            }
+            return map;
+        })
+    );
+}
+
+export function getConnectionDegrees(chunkIds: string[]) {
+    if (chunkIds.length === 0) return Effect.succeed(new Map<string, number>());
+
+    const idList = chunkIds.map(id => `'${escCypher(id)}'`).join(",");
+    return cypher(
+        `MATCH (c:chunk)-[e]-()
+         WHERE c.id IN [${idList}]
+         RETURN c.id AS id, count(e) AS degree`,
+        "id agtype, degree agtype"
+    ).pipe(
+        Effect.map(rows => {
+            const map = new Map<string, number>();
+            for (const row of rows) {
+                const id = parseAgtypeId((row as any).id);
+                const degree = Number((row as any).degree);
+                map.set(id, degree);
             }
             return map;
         })
