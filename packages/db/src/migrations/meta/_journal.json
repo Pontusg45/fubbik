@@ -15,6 +15,13 @@
       "when": 1746528000000,
       "tag": "0001_seed_builtin_catalogs",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1715126400000,
+      "tag": "0002_graph_indexes",
+      "breakpoints": true
     }
   ]
 }
