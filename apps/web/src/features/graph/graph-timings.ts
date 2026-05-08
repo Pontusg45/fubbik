@@ -10,7 +10,7 @@
  */
 
 const PREFIX = "graph-perf";
-const isDev = typeof import.meta !== "undefined" && (import.meta as { env?: { DEV?: boolean } }).env?.DEV;
+export const isDev = typeof import.meta !== "undefined" && (import.meta as { env?: { DEV?: boolean } }).env?.DEV;
 
 export function mark(name: string) {
     if (!isDev || typeof performance === "undefined") return;

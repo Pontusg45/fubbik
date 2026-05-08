@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useNavigate, useSearch } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import "@xyflow/react/dist/style.css";
 import {
     Background,
@@ -27,18 +27,13 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Popover, PopoverTrigger, PopoverPopup } from "@/components/ui/popover";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Spinner } from "@/components/ui/spinner";
-import { relationColor } from "@/features/chunks/relation-colors";
 import { FloatingEdge } from "@/features/graph/floating-edge";
-import { runForceLayout, runRegroupLayout } from "@/features/graph/force-layout";
-import { getCachedLayout, layoutCacheKey, setCachedLayout } from "@/features/graph/layout-cache";
 import { GraphDetailPanel } from "@/features/graph/graph-detail-panel";
 import { GraphFilters } from "@/features/graph/graph-filters";
 import { GraphSettingsPanel } from "@/features/graph/graph-settings-panel";
-import { GraphFilterDialog, EMPTY_FILTER, type GraphFilterValues } from "@/features/graph/graph-filter-dialog";
-import { GROUP_NODE_ID_PREFIX, GROUP_STRATEGIES, UNGROUPED_NODE_ID, isGroupNodeId, type GroupBy } from "@/features/graph/group-strategies";
-import { buildClusterNodes, getVisibleChunkIds as getClusterVisibleChunkIds } from "@/features/graph/cluster-strategy";
+import { GraphFilterDialog, type GraphFilterValues } from "@/features/graph/graph-filter-dialog";
+import { isGroupNodeId } from "@/features/graph/group-strategies";
 import { GraphClusterNode } from "@/features/graph/graph-cluster-node";
-import { applyPrefilter } from "@/features/graph/apply-prefilter";
 import { mark, measure } from "@/features/graph/graph-timings";
 import { MermaidExportModal } from "@/features/graph/mermaid-export-modal";
 import { GraphLegend } from "@/features/graph/graph-legend";
@@ -47,25 +42,24 @@ import { GraphNode } from "@/features/graph/graph-node";
 import { GraphGroupNode } from "@/features/graph/graph-group-node";
 import { GraphContextMenu } from "@/features/graph/graph-context-menu";
 import { GraphWelcome } from "@/features/graph/graph-welcome";
-import type { LayoutWorkerInput, LayoutWorkerOutput } from "@/features/graph/layout.worker";
-import { type LayoutAlgorithm, hierarchicalLayout, radialLayout } from "@/features/graph/layouts";
-import { useActiveCodebase } from "@/features/codebases/use-active-codebase";
+import type { LayoutAlgorithm } from "@/features/graph/layouts";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 import { ChangeConnectionDialog, SaveViewDialog, SaveCustomGraphDialog } from "./graph-dialogs";
-import { findShortestPath, getNodesWithinHops, getMostConnected } from "./graph-utils";
 import { GraphTimeline } from "./graph-timeline";
 import { PathPanel } from "./path-panel";
 import { useGraphKeyboard } from "./use-graph-keyboard";
 import { useGraphState } from "./use-graph-state";
 import { useSavedGraphViews } from "./use-saved-views";
+import { useGraphData } from "./use-graph-data";
+import { useGraphGrouping } from "./use-graph-grouping";
+import { useGraphLayout } from "./use-graph-layout";
+import { useGraphNodes } from "./use-graph-nodes";
+import { useGraphInteractions } from "./use-graph-interactions";
+import { useGraphStyling } from "./use-graph-styling";
 
-
-
-
-const isDev = import.meta.env?.DEV ?? false;
 
 const EDGE_TYPES = { floating: FloatingEdge };
 const NODE_TYPES = { chunk: GraphNode, group: GraphGroupNode, cluster: GraphClusterNode };
@@ -134,7 +128,6 @@ function GraphViewInner() {
 
     const onConnect = useCallback((connection: Connection) => {
         if (!connection.source || !connection.target) return;
-        // Show relation picker dialog before creating the connection
         dispatch({ type: "SET_PENDING_CONNECTION", connection: { source: connection.source, target: connection.target } });
     }, [dispatch]);
 
@@ -192,919 +185,112 @@ function GraphViewInner() {
         return () => mql.removeEventListener("change", handler);
     }, []);
 
-    const { codebaseId, workspaceId } = useActiveCodebase();
+    // --- Composable hooks pipeline: data -> grouping -> layout -> nodes -> interactions -> styling ---
 
-    const { data, isLoading } = useQuery({
-        queryKey: ["graph", codebaseId, workspaceId],
-        queryFn: async () => {
-            return unwrapEden(
-                await api.api.graph.get({
-                    query: {
-                        ...(workspaceId ? { workspaceId } : {}),
-                        ...(codebaseId && codebaseId !== "global" && !workspaceId ? { codebaseId } : {})
-                    }
-                })
-            );
-        }
-    });
+    const {
+        data,
+        isLoading,
+        codebaseId,
+        prefilter,
+        filterDialogOpen,
+        setFilterDialogOpen,
+        scopedChunkTags,
+        availableTagTypeIds,
+    } = useGraphData(dispatch);
 
     const debouncedSearchQuery = useDebouncedValue(searchQuery, 150);
 
-    // Measured node sizes for group bounding box calculation (ref + counter to trigger recalc)
-    const measuredNodeSizesRef = useRef(new Map<string, { w: number; h: number }>());
-    const [measuredSizesVersion, setMeasuredSizesVersion] = useState(0);
+    const {
+        groupingMode,
+        groupResult,
+        tagGroups,
+        clusters,
+        shouldCluster,
+        clusterVisibleChunkIds,
+        chunkTagGroupMap,
+    } = useGraphGrouping({
+        data,
+        prefilter,
+        activeTagTypeIds,
+        availableTagTypeIds,
+        expandedClusters,
+        scopedChunkTags,
+        TYPE_COLORS,
+    });
 
-    // Read path params from URL search
-    const search = useSearch({ strict: false }) as {
-        pathFrom?: string;
-        pathTo?: string;
-        tags?: string;
-        types?: string;
-        focus?: string;
-        depth?: number;
-        groupBy?: "tag" | "type" | "codebase" | "none";
-        tagTypeId?: string;
-        all?: number;
-    };
-    useEffect(() => {
-        if (search.pathFrom) {
-            dispatch({ type: "SET_PATH_START", id: search.pathFrom });
-            dispatch({ type: "SET_SHOW_PATH_PANEL", show: true });
-        }
-        if (search.pathTo) {
-            dispatch({ type: "SET_PATH_END", id: search.pathTo });
-            dispatch({ type: "SET_SHOW_PATH_PANEL", show: true });
-        }
-    }, [search.pathFrom, search.pathTo, dispatch]);
-
-    // Pre-filter driven by URL params (set via GraphFilterDialog on entry)
-    const prefilter = useMemo<GraphFilterValues>(() => {
-        if (!search.tags && !search.types && !search.focus && !search.groupBy) return EMPTY_FILTER;
-        return {
-            tags: search.tags ? search.tags.split(",").filter(Boolean) : [],
-            types: search.types ? search.types.split(",").filter(Boolean) : [],
-            focusChunkId: search.focus ?? null,
-            depth: typeof search.depth === "number" && search.depth >= 1 && search.depth <= 3 ? search.depth : 2,
-            groupBy: search.groupBy ?? "tag",
-            tagTypeId: search.tagTypeId ?? null,
-            subGroupBy: null,
-        };
-    }, [search.tags, search.types, search.focus, search.depth, search.groupBy, search.tagTypeId]);
-
-    const hasAnyFilterParams = !!(search.tags || search.types || search.focus || search.groupBy || search.all);
-    const [filterDialogOpen, setFilterDialogOpen] = useState(!hasAnyFilterParams);
-
-    // chunkTags from the API are not codebase-filtered — filter to only chunks in the graph
-    const scopedChunkTags = useMemo(() => {
-        if (!data?.chunkTags || !data?.chunks) return [] as NonNullable<typeof data>["chunkTags"];
-        const chunkIds = new Set(data.chunks.map((c: { id: string }) => c.id));
-        return data.chunkTags.filter((ct: { chunkId: string }) => chunkIds.has(ct.chunkId));
-    }, [data?.chunkTags, data?.chunks]);
-
-    const availableTagTypeIds = useMemo(() => {
-        const ids = new Set<string>();
-        for (const ct of scopedChunkTags as Array<{ tagTypeId?: string | null }>) {
-            if (ct.tagTypeId) ids.add(ct.tagTypeId);
-        }
-        return ids;
-    }, [scopedChunkTags]);
-
-    // Apply groupBy from prefilter once graph data is available
-    useEffect(() => {
-        if (!data?.tagTypes) return;
-        if (prefilter.groupBy === "tag" && prefilter.tagTypeId) {
-            dispatch({ type: "SET_ACTIVE_TAG_TYPE_IDS", ids: new Set([prefilter.tagTypeId]) });
-        } else if (prefilter.groupBy === "tag") {
-            const ids = new Set(data.tagTypes.map(tt => tt.id));
-            if (ids.size > 0) dispatch({ type: "SET_ACTIVE_TAG_TYPE_IDS", ids });
-        } else {
-            dispatch({ type: "SET_ACTIVE_TAG_TYPE_IDS", ids: new Set() });
-        }
-    }, [prefilter.groupBy, prefilter.tagTypeId, data?.tagTypes, dispatch]);
-
-    const dismissWelcome = () => {
-        dispatch({ type: "SET_SHOW_WELCOME", show: false });
-    };
-
-    // Saved views
-    const { views: savedViews, saveView, deleteView: deleteSavedView } = useSavedGraphViews();
+    const {
+        filteredGraph,
+        layoutPositions,
+        isLayouting,
+    } = useGraphLayout({
+        data,
+        scopedChunkTags,
+        prefilter,
+        filterTypes,
+        filterRelations,
+        collapsedParents,
+        exploreMode,
+        exploredNodeIds,
+        timelineCutoff,
+        layoutAlgorithm,
+        useMainThread,
+        selectedChunkId,
+        tagGroups,
+        groupingMode,
+    });
 
     // Dragged node positions (persist across layout changes)
     const [draggedPositions, setDraggedPositions] = useState<Map<string, { x: number; y: number }>>(new Map());
-    // Group drag snapshot: group's own start position AND a snapshot of every
-    // child's live on-screen position at drag-start. Needed because children are
-    // rendered at `respacedPositions` (per-column variable-width grid), not at
-    // the worker's fixed-cell `layoutPositions`. Offsetting from the wrong base
-    // makes children appear to jump when the group moves.
     const groupDragStartRef = useRef<{
         groupId: string;
         startPos: { x: number; y: number };
         childStart: Map<string, { x: number; y: number }>;
     } | null>(null);
 
-    // Toggle helpers
-    function toggleRelation(r: string) {
-        dispatch({ type: "TOGGLE_FILTER_RELATION", relation: r });
-    }
-    // Legend type-pill click: add/remove from the URL-driven prefilter so the
-    // legend stays consistent with the top-left filter panel and dialog.
-    function toggleTypePrefilterFromLegend(typeId: string) {
-        const next = prefilter.types.includes(typeId)
-            ? prefilter.types.filter(t => t !== typeId)
-            : [...prefilter.types, typeId];
-        handleFilterApply({ ...prefilter, types: next });
-    }
-
-    // Resolve active grouping strategy from prefilter + existing tag-type toggles.
-    // prefilter.groupBy explicitly wins when set to something other than "tag" (its default).
-    // "tag" falls back to activeTagTypeIds (the in-graph toggle).
-    // When groupBy is "tag" but activeTagTypeIds hasn't been set yet (first render),
-    // use availableTagTypeIds so groups render immediately without a useEffect gap.
-    const effectiveTagTypeIds = useMemo(() => {
-        let result: Set<string>;
-        let source: string;
-        if (prefilter.tagTypeId) {
-            result = new Set([prefilter.tagTypeId]);
-            source = `prefilter.tagTypeId=${prefilter.tagTypeId}`;
-        } else if (activeTagTypeIds.size > 0) {
-            result = activeTagTypeIds;
-            source = `activeTagTypeIds(${activeTagTypeIds.size})`;
-        } else if (prefilter.groupBy === "tag" && availableTagTypeIds.size > 0) {
-            result = availableTagTypeIds;
-            source = `availableTagTypeIds(${availableTagTypeIds.size})`;
-        } else {
-            result = activeTagTypeIds;
-            source = "fallback-empty";
-        }
-        if (isDev) console.debug("[graph] effectiveTagTypeIds:", source, [...result]);
-        return result;
-    }, [activeTagTypeIds, prefilter.groupBy, prefilter.tagTypeId, availableTagTypeIds]);
-
-    const groupingMode: Exclude<GroupBy, "none"> | null = useMemo(() => {
-        if (prefilter.groupBy === "type") return "type";
-        if (prefilter.groupBy === "codebase") return "codebase";
-        if (prefilter.groupBy === "none") return null;
-        if (effectiveTagTypeIds.size > 0) return "tag";
-        return null;
-    }, [prefilter.groupBy, effectiveTagTypeIds]);
-
-    const groupResult = useMemo(() => {
-        if (!groupingMode || !data) {
-            if (isDev) console.debug("[graph] groupResult: null (mode=%s, hasData=%s)", groupingMode, !!data);
-            return null;
-        }
-        const typeColorMap: Record<string, string> = {};
-        for (const [name, palette] of Object.entries(TYPE_COLORS)) typeColorMap[name] = palette.border;
-        const result = GROUP_STRATEGIES[groupingMode].build({
-            chunks: data.chunks,
-            chunkTags: scopedChunkTags,
-            activeTagTypeIds: effectiveTagTypeIds,
-            chunkCodebases: data.chunkCodebases,
-            typeColorMap
-        });
-        if (isDev) console.debug("[graph] groupResult:", groupingMode, result ? `${result.groups.size} groups` : "null");
-        return result;
-    }, [groupingMode, data, effectiveTagTypeIds, TYPE_COLORS]);
-
-    // Keep `tagGroups` variable name — downstream pipeline references it by this name.
-    const tagGroups = groupResult?.groups ?? null;
-
-    // --- Cluster aggregation for large graphs ---
-    const { clusters, shouldCluster } = useMemo(() => {
-        if (!groupResult) return { clusters: [], shouldCluster: false };
-        return buildClusterNodes(groupResult, expandedClusters);
-    }, [groupResult, expandedClusters]);
-
-    const clusterVisibleChunkIds = useMemo(() => {
-        if (!groupResult) return null;
-        return getClusterVisibleChunkIds(groupResult, expandedClusters, shouldCluster);
-    }, [groupResult, expandedClusters, shouldCluster]);
-
-    // Build chunk-to-tag-group lookup for edge opacity
-    const chunkTagGroupMap = useMemo(() => {
-        if (!tagGroups) return null;
-        const map = new Map<string, Set<string>>();
-        for (const [tagName, chunkIds] of tagGroups) {
-            for (const cid of chunkIds) {
-                if (!map.has(cid)) map.set(cid, new Set());
-                map.get(cid)!.add(tagName);
-            }
-        }
-        return map;
-    }, [tagGroups]);
-
-    // --- Web Worker for force-directed layout ---
-    const workerRef = useRef<Worker | null>(null);
-    const requestIdRef = useRef<number>(0);
-    const [layoutPositions, setLayoutPositions] = useState<Record<string, { x: number; y: number }> | null>(null);
-    const [isLayouting, setIsLayouting] = useState(false);
-
-    // Mount-time marker — start of the route for time-to-first-node.
-    useEffect(() => {
-        mark("mount");
-        return () => {
-            // Clear on unmount so repeated visits don't compound.
-        };
-    }, []);
-
-    // Create / teardown the worker
-    useEffect(() => {
-        const worker = new Worker(new URL("./layout.worker.ts", import.meta.url), { type: "module" });
-        worker.onmessage = (e: MessageEvent<LayoutWorkerOutput>) => {
-            if (e.data.requestId !== requestIdRef.current) return;
-            mark("layout-end");
-            measure("layout-duration", "layout-start", "layout-end");
-            setLayoutPositions(e.data.positions);
-            lastSimulationPositionsRef.current = e.data.positions;
-            if (pendingCacheKeyRef.current) {
-                setCachedLayout(pendingCacheKeyRef.current, e.data.positions);
-                pendingCacheKeyRef.current = null;
-            }
-            setIsLayouting(false);
-        };
-        worker.onerror = err => {
-            console.error("Layout worker error:", err);
-            setIsLayouting(false);
-        };
-        workerRef.current = worker;
-        return () => {
-            worker.terminate();
-            workerRef.current = null;
-        };
-    }, []);
-
-    // Pre-compute filtered data that both the worker and the styling memo need
-    const filteredGraph = useMemo(() => {
-        if (!data?.chunks || data.chunks.length === 0) return null;
-
-        // Shared prefilter logic (see apply-prefilter.ts) — same function as the dialog preview.
-        const prefiltered = applyPrefilter(
-            { chunks: data.chunks, connections: data.connections ?? [], chunkTags: scopedChunkTags },
-            { tags: prefilter.tags, types: prefilter.types, focusChunkId: prefilter.focusChunkId, depth: prefilter.depth }
-        );
-        let chunks = prefiltered.chunks;
-        let connections = prefiltered.connections;
-
-        // Build parent-children map from part_of edges
-        const parentChildren = new Map<string, Set<string>>();
-        for (const conn of connections) {
-            if (conn.relation === "part_of") {
-                if (!parentChildren.has(conn.targetId)) parentChildren.set(conn.targetId, new Set());
-                parentChildren.get(conn.targetId)!.add(conn.sourceId);
-            }
-        }
-
-        // Collect all child IDs (nodes that are part_of a parent)
-        const childIds = new Set<string>();
-        for (const children of parentChildren.values()) {
-            for (const childId of children) childIds.add(childId);
-        }
-
-        // Hide children of collapsed parents
-        const hiddenIds = new Set<string>();
-        for (const [parentId, children] of parentChildren) {
-            if (collapsedParents.has(parentId)) {
-                for (const childId of children) hiddenIds.add(childId);
-            }
-        }
-
-        // Apply type filter
-        if (filterTypes.size > 0) {
-            chunks = chunks.filter(c => filterTypes.has(c.type));
-        }
-
-        // Apply relation filter
-        if (filterRelations.size > 0) {
-            connections = connections.filter(c => filterRelations.has(c.relation));
-        }
-
-        // Remove hidden chunks
-        const visibleChunkIds = new Set(chunks.filter(c => !hiddenIds.has(c.id)).map(c => c.id));
-
-        // Filter connections to only visible chunks
-        connections = connections.filter(c => visibleChunkIds.has(c.sourceId) && visibleChunkIds.has(c.targetId));
-
-        // Explore mode: only show explored nodes
-        if (exploreMode && exploredNodeIds.size > 0) {
-            chunks = chunks.filter(c => exploredNodeIds.has(c.id));
-            connections = connections.filter(c => exploredNodeIds.has(c.sourceId) && exploredNodeIds.has(c.targetId));
-        }
-
-        // Timeline filter
-        if (timelineCutoff) {
-            chunks = chunks.filter(c => new Date(c.createdAt) <= timelineCutoff);
-        }
-
-        if (isDev) console.debug("[graph] filteredGraph: %d chunks, %d connections", chunks.length, connections.length);
-        return { chunks, connections, parentChildren, childIds, hiddenIds };
-    }, [data, filterTypes, filterRelations, collapsedParents, exploreMode, exploredNodeIds, timelineCutoff, prefilter]);
-
-    // Live counts by type + relation for the legend — derived from the visible
-    // (filtered) dataset so pill counts always match what the user sees on screen.
-    const legendTypeCounts = useMemo(() => {
-        const m = new Map<string, number>();
-        for (const c of filteredGraph?.chunks ?? []) {
-            m.set(c.type, (m.get(c.type) ?? 0) + 1);
-        }
-        return m;
-    }, [filteredGraph]);
-    const legendRelationCounts = useMemo(() => {
-        const m = new Map<string, number>();
-        for (const conn of filteredGraph?.connections ?? []) {
-            m.set(conn.relation, (m.get(conn.relation) ?? 0) + 1);
-        }
-        return m;
-    }, [filteredGraph]);
-
-    // Signature of the last full simulation — chunk IDs + edge IDs, independent of
-    // grouping. When only grouping changes, we can skip the 200-iteration
-    // simulation entirely by re-deriving group centers from existing positions.
-    const lastSimulationSigRef = useRef<string | null>(null);
-    const lastSimulationPositionsRef = useRef<Record<string, { x: number; y: number }> | null>(null);
-    // Holds the cache key for an in-flight worker job so the onmessage handler
-    // can write completed positions to the sessionStorage cache.
-    const pendingCacheKeyRef = useRef<string | null>(null);
-
-    // Post to worker when simulation inputs change
-    useEffect(() => {
-        if (!filteredGraph) return;
-
-        const { chunks, connections, hiddenIds } = filteredGraph;
-
-        // Build worker input: nodes need id and type for clustering
-        const workerNodes: LayoutWorkerInput["nodes"] = [
-            ...chunks.filter(c => !hiddenIds.has(c.id)).map(c => ({ id: c.id, type: c.type }))
-        ];
-
-        const workerEdges: LayoutWorkerInput["edges"] = connections.map(conn => ({
-            source: conn.sourceId,
-            target: conn.targetId,
-            relation: conn.relation
-        }));
-
-        // Build a simulation-input signature (sort for order-independence). If it
-        // matches the previous run and grouping is the only axis that changed, we
-        // fast-path through runRegroupLayout.
-        const sortedNodeIds = workerNodes.map(n => n.id).sort();
-        const sortedEdgeIds = workerEdges.map(e => `${e.source}>${e.target}:${e.relation}`).sort();
-        const nodeIds = sortedNodeIds.join("|");
-        const edgeIds = sortedEdgeIds.join("|");
-        const sig = `${layoutAlgorithm}::${nodeIds}::${edgeIds}`;
-        const dataUnchanged = sig === lastSimulationSigRef.current;
-        const prevPositions = lastSimulationPositionsRef.current;
-
-        // Full structural key (includes grouping mode + membership) for the
-        // sessionStorage cache. A hit here means we've laid out this exact graph
-        // shape + grouping before in this tab — skip everything.
-        const groupingKey = groupingMode ?? "none";
-        const tagGroupMembership = tagGroups
-            ? [...tagGroups.entries()]
-                  .map(([name, ids]) => `${name}:${[...ids].sort().join(",")}`)
-                  .sort()
-                  .join(";")
-            : "";
-        const cacheKey = layoutCacheKey({
-            layoutAlgorithm,
-            groupingMode: `${groupingKey}#${tagGroupMembership}`,
-            nodeIds: sortedNodeIds,
-            edgeIds: sortedEdgeIds
-        });
-
-        mark("layout-start");
-        if (isDev) console.debug("[graph] layout: %d nodes, %d edges, grouping=%s, groups=%d, dataUnchanged=%s",
-            workerNodes.length, workerEdges.length, groupingKey, tagGroups?.size ?? 0, dataUnchanged);
-
-        const cached = getCachedLayout(cacheKey);
-        if (cached && layoutAlgorithm === "force") {
-            mark("layout-end");
-            measure("layout-cache-hit", "layout-start", "layout-end");
-            if (isDev) console.debug("[graph] layout: cache hit, %d positions", Object.keys(cached).length);
-            setLayoutPositions(cached);
-            lastSimulationSigRef.current = sig;
-            lastSimulationPositionsRef.current = cached;
-            setIsLayouting(false);
-            setTimeout(() => fitView({ padding: 0.1 }), 100);
-            return;
-        }
-        if (layoutAlgorithm === "force") {
-            // Fast path: same chunks+edges, different grouping. Skip Phase 1.
-            if (dataUnchanged && prevPositions && tagGroups && tagGroups.size > 0) {
-                if (isDev) console.debug("[graph] layout: trying regroup fast path");
-                const regroupedPositions = runRegroupLayout(workerNodes, workerEdges, tagGroups, prevPositions);
-                if (regroupedPositions) {
-                    mark("layout-end");
-                    measure("layout-regroup", "layout-start", "layout-end");
-                    if (isDev) console.debug("[graph] layout: regroup success, %d positions", Object.keys(regroupedPositions).length);
-                    setLayoutPositions(regroupedPositions);
-                    lastSimulationPositionsRef.current = regroupedPositions;
-                    setCachedLayout(cacheKey, regroupedPositions);
-                    setIsLayouting(false);
-                    setTimeout(() => fitView({ padding: 0.1 }), 100);
-                    return;
-                }
-            }
-
-            const tagGroupsObj = tagGroups ? Object.fromEntries(tagGroups) : undefined;
-            if (useMainThread) {
-                setIsLayouting(true);
-                // Run synchronously on main thread — avoids worker serialization overhead
-                const positions = runForceLayout(workerNodes, workerEdges, tagGroups ?? undefined);
-                mark("layout-end");
-                measure("layout-duration", "layout-start", "layout-end");
-                setLayoutPositions(positions);
-                lastSimulationSigRef.current = sig;
-                lastSimulationPositionsRef.current = positions;
-                setCachedLayout(cacheKey, positions);
-                setIsLayouting(false);
-            } else {
-                if (!workerRef.current) return;
-                setIsLayouting(true);
-                requestIdRef.current += 1;
-                pendingCacheKeyRef.current = cacheKey;
-                workerRef.current.postMessage({
-                    requestId: requestIdRef.current,
-                    nodes: workerNodes,
-                    edges: workerEdges,
-                    tagGroups: tagGroupsObj
-                } satisfies LayoutWorkerInput);
-                // Record the sig now so a follow-up groupBy change can match even
-                // before the worker responds. The positions ref is populated in the
-                // worker onmessage handler.
-                lastSimulationSigRef.current = sig;
-            }
-        } else {
-            let positions: Record<string, { x: number; y: number }>;
-            if (layoutAlgorithm === "hierarchical") {
-                positions = hierarchicalLayout(workerNodes, workerEdges);
-            } else {
-                // Radial: use selected node or most-connected as center
-                const center = selectedChunkId ?? getMostConnected(workerNodes, workerEdges);
-                positions = center ? radialLayout(workerNodes, workerEdges, center) : hierarchicalLayout(workerNodes, workerEdges);
-            }
-            mark("layout-end");
-            measure("layout-duration", "layout-start", "layout-end");
-            setLayoutPositions(positions);
-            setIsLayouting(false);
-        }
-    }, [filteredGraph, layoutAlgorithm, useMainThread, selectedChunkId, tagGroups]);
-
-    // Build layoutNodes and layoutEdges from positions (cheap: styling + edge creation only)
-    const { layoutNodes, layoutEdges, groupToChunkIds } = useMemo(() => {
-        if (!filteredGraph) return { layoutNodes: [] as Node[], layoutEdges: [] as Edge[], groupToChunkIds: new Map<string, string[]>() };
-
-        const { chunks, connections, parentChildren, childIds, hiddenIds } = filteredGraph;
-
-        // Build chunk→codebaseId map for cross-codebase edge styling + node labels
-        const chunkCodebaseMap = new Map<string, string>();
-        for (const cc of data?.chunkCodebases ?? []) {
-            if (!chunkCodebaseMap.has(cc.chunkId)) {
-                chunkCodebaseMap.set(cc.chunkId, cc.codebaseId);
-            }
-        }
-
-        // Connection counts for node sizing
-        const connectionCounts = new Map<string, number>();
-        for (const conn of connections) {
-            connectionCounts.set(conn.sourceId, (connectionCounts.get(conn.sourceId) ?? 0) + 1);
-            connectionCounts.set(conn.targetId, (connectionCounts.get(conn.targetId) ?? 0) + 1);
-        }
-
-        let rawNodes: Node[] = [
-            ...chunks
-                .filter(c => !hiddenIds.has(c.id) && (!shouldCluster || !clusterVisibleChunkIds || clusterVisibleChunkIds.has(c.id)))
-                .map(c => {
-                    const typeColor = TYPE_COLORS[c.type] ?? TYPE_COLORS.note;
-                    const count = connectionCounts.get(c.id) ?? 0;
-                    const isParent = parentChildren.has(c.id);
-                    const isChild = childIds.has(c.id);
-                    const childCount = collapsedParents.has(c.id) ? (parentChildren.get(c.id)?.size ?? 0) : 0;
-                    const label = childCount > 0 ? `${c.title} (${childCount})` : c.title;
-                    return {
-                        id: c.id,
-                        type: "chunk",
-                        data: {
-                            label,
-                            type: c.type,
-                            connectionCount: count,
-                            tags: [] as string[],
-                            ...(chunkCodebaseMap.size > 0 && chunkCodebaseMap.has(c.id)
-                                ? { codebaseName: (data?.chunkCodebases ?? []).find(cc => cc.chunkId === c.id)?.codebaseName }
-                                : {})
-                        },
-                        position: { x: 0, y: 0 },
-                        style: {
-                            cursor: "pointer",
-                            background: typeColor!.bg,
-                            borderColor: typeColor!.border,
-                            borderWidth: isParent ? 2 : collapsedParents.has(c.id) ? 2.5 : 1.5,
-                            borderRadius: isParent ? 12 : 10,
-                            color: isDark ? (isChild ? "#cbd5e1" : "#e2e8f0") : isChild ? "#475569" : "#1e293b",
-                            fontSize: isParent ? 13 : 12,
-                            fontWeight: isParent ? 600 : 500,
-                            padding: isParent ? "7px 12px" : "5px 10px",
-                            whiteSpace: "nowrap" as const,
-                            overflow: "hidden" as const,
-                            textOverflow: "ellipsis" as const,
-                            maxWidth: 250,
-                            letterSpacing: "0.01em"
-                        }
-                    };
-                })
-        ];
-
-        // Add cluster nodes when clustering is active
-        if (shouldCluster && clusters.length > 0) {
-            for (const cluster of clusters) {
-                if (!cluster.expanded) {
-                    rawNodes.push({
-                        id: cluster.id,
-                        type: "cluster",
-                        data: {
-                            label: cluster.groupName,
-                            count: cluster.count,
-                            color: cluster.color ?? (isDark ? "#475569" : "#94a3b8"),
-                            expanded: cluster.expanded,
-                            onToggle: () => dispatch({ type: "TOGGLE_CLUSTER", groupName: cluster.groupName }),
-                        },
-                        position: { x: 0, y: 0 },
-                        selectable: false,
-                        draggable: true,
-                        style: { cursor: "pointer" },
-                    });
-                }
-            }
-        }
-
-        // When clustering, filter out edges to/from non-visible chunks
-        const visibleConnections = shouldCluster && clusterVisibleChunkIds
-            ? connections.filter(c => clusterVisibleChunkIds.has(c.sourceId) && clusterVisibleChunkIds.has(c.targetId))
-            : connections;
-
-        const rawEdges: Edge[] = visibleConnections.map(conn => {
-            const color = relationColor(conn.relation);
-            const sourceCb = chunkCodebaseMap.get(conn.sourceId);
-            const targetCb = chunkCodebaseMap.get(conn.targetId);
-            const isCrossCodebase = sourceCb && targetCb && sourceCb !== targetCb;
-            return {
-                id: conn.id,
-                source: conn.sourceId,
-                target: conn.targetId,
-                type: "floating",
-                data: { relation: conn.relation, directed: true },
-                animated: edgeAnimated,
-                style: {
-                    stroke: color,
-                    strokeWidth: 2,
-                    transition: "opacity 0.3s ease",
-                    ...(isCrossCodebase ? { strokeDasharray: "6 3" } : {})
-                }
-            };
-        });
-
-        // Detect parallel edges between same node pairs
-        const edgeKey = (a: string, b: string) => [a, b].sort().join("::");
-        const parallelCounts = new Map<string, number>();
-        for (const edge of rawEdges) {
-            const key = edgeKey(edge.source, edge.target);
-            parallelCounts.set(key, (parallelCounts.get(key) ?? 0) + 1);
-        }
-        const parallelIndex = new Map<string, number>();
-        for (const edge of rawEdges) {
-            const key = edgeKey(edge.source, edge.target);
-            const total = parallelCounts.get(key) ?? 1;
-            if (total <= 1) continue;
-            const idx = parallelIndex.get(key) ?? 0;
-            parallelIndex.set(key, idx + 1);
-            (edge.data as Record<string, unknown>).curveOffset = (idx - (total - 1) / 2) * 40;
-        }
-
-        // Build tag group nodes (visual overlay — no parentId needed)
-        const tagGroupNodeIds = new Set<string>();
-        const chunkToGroupId = new Map<string, string>(); // chunkId -> groupNodeId
-
-        if (tagGroups && tagGroups.size > 0) {
-            const colorFor = groupResult?.colorFor;
-
-            // Build set of visible chunk IDs (nodes already in rawNodes)
-            const visibleChunkIds = new Set(rawNodes.map(n => n.id));
-
-            for (const [label, chunkIds] of tagGroups) {
-                // Only include chunks that are actually visible (not filtered out)
-                const visibleInGroup = chunkIds.filter(cid => visibleChunkIds.has(cid));
-                if (visibleInGroup.length === 0) continue; // skip empty groups
-
-                const groupId = `${GROUP_NODE_ID_PREFIX}${label}`;
-                tagGroupNodeIds.add(groupId);
-                for (const cid of visibleInGroup) {
-                    if (!chunkToGroupId.has(cid)) {
-                        chunkToGroupId.set(cid, groupId);
-                    }
-                }
-                const color = colorFor?.(label) ?? "#8b5cf6";
-                rawNodes.unshift({
-                    id: groupId,
-                    type: "group",
-                    data: { label, color },
-                    position: { x: 0, y: 0 },
-                    selectable: false,
-                    draggable: true,
-                    style: { zIndex: -1, background: "transparent", border: "none", padding: 0 }
-                });
-            }
-
-            // Add "ungrouped" group for chunks without a tag in this type
-            const groupedChunkIds = new Set(chunkToGroupId.keys());
-            const ungroupedChunkIds = new Set(
-                rawNodes.filter(n => !tagGroupNodeIds.has(n.id) && !groupedChunkIds.has(n.id)).map(n => n.id)
-            );
-            if (!showUngrouped && ungroupedChunkIds.size > 0) {
-                if (isDev) console.debug("[graph] hiding %d ungrouped nodes (grouped: %d)", ungroupedChunkIds.size, groupedChunkIds.size);
-                rawNodes = rawNodes.filter(n => !ungroupedChunkIds.has(n.id));
-            }
-            if (showUngrouped && ungroupedChunkIds.size > 0) {
-                const ungroupedChunks = rawNodes.filter(n => ungroupedChunkIds.has(n.id));
-                const ungroupedId = UNGROUPED_NODE_ID;
-                tagGroupNodeIds.add(ungroupedId);
-                for (const c of ungroupedChunks) {
-                    chunkToGroupId.set(c.id, ungroupedId);
-                }
-                rawNodes.unshift({
-                    id: ungroupedId,
-                    type: "group",
-                    data: { label: "ungrouped", color: isDark ? "#475569" : "#94a3b8" },
-                    position: { x: 0, y: 0 },
-                    selectable: false,
-                    draggable: true,
-                    style: { zIndex: -1, background: "transparent", border: "none", padding: 0 }
-                });
-            }
-        }
-
-        // Build reverse map: groupId -> chunkIds
-        const groupToChunkIds = new Map<string, string[]>();
-        for (const [chunkId, groupId] of chunkToGroupId) {
-            const arr = groupToChunkIds.get(groupId);
-            if (arr) arr.push(chunkId);
-            else groupToChunkIds.set(groupId, [chunkId]);
-        }
-
-        // Remove group nodes that ended up with zero children
-        const emptyGroupIds = new Set<string>();
-        for (const groupId of tagGroupNodeIds) {
-            const children = groupToChunkIds.get(groupId);
-            if (!children || children.length === 0) {
-                emptyGroupIds.add(groupId);
-            }
-        }
-        if (emptyGroupIds.size > 0) {
-            rawNodes = rawNodes.filter(n => !emptyGroupIds.has(n.id));
-            for (const id of emptyGroupIds) tagGroupNodeIds.delete(id);
-        }
-
-        // Pre-compute group bounding boxes from child layout positions
-        const PADDING = 14;
-        const PADDING_TOP = 40;
-        const PADDING_BOTTOM = 28;
-        const DEFAULT_NODE_W = 180;
-        const DEFAULT_NODE_H = 36;
-        const GRID_GAP_X = 16; // horizontal gap between columns
-        const GRID_GAP_Y = 12; // vertical gap between rows
-        const groupBounds = new Map<string, { minX: number; minY: number; maxX: number; maxY: number }>();
-
-        const measuredSizes = measuredNodeSizesRef.current;
-
-        // Re-space grid positions using measured node widths/heights. The worker
-        // lays chunks on a uniform grid (NODE_W=200); long titles can exceed this
-        // and cause siblings to overlap. For each group we compute a per-column
-        // max-width and per-row max-height, then re-emit each chunk's center at
-        // the cumulative offset from the group's centroid.
-        //
-        // This runs client-side where measured DOM sizes are available; the worker
-        // only provides the rough grid order, which we preserve.
-        const respacedPositions = new Map<string, { x: number; y: number }>();
-        if (tagGroupNodeIds.size > 0 && layoutPositions) {
-            // Build per-group member lists in chunkToGroupId insertion order — same
-            // order the worker used to populate the grid.
-            const groupMembers = new Map<string, string[]>();
-            for (const [chunkId, groupId] of chunkToGroupId) {
-                if (!groupMembers.has(groupId)) groupMembers.set(groupId, []);
-                groupMembers.get(groupId)!.push(chunkId);
-            }
-
-            function colsForCount(n: number) {
-                if (n <= 1) return 1;
-                // Same aspect-balanced formula the worker uses, kept in sync so row
-                // indices match the worker's row ordering when resolving ties.
-                const NODE_W = 200, NODE_H = 72;
-                return Math.max(1, Math.ceil(Math.sqrt(n * (NODE_H / NODE_W))));
-            }
-
-            for (const [, members] of groupMembers) {
-                if (members.length === 0) continue;
-                // Group centroid = average of worker positions; robust against any
-                // member being dragged away (dragged ones take their own position).
-                let cx = 0, cy = 0, centroidCount = 0;
-                for (const cid of members) {
-                    const lp = layoutPositions[cid];
-                    if (lp) { cx += lp.x; cy += lp.y; centroidCount++; }
-                }
-                if (centroidCount === 0) continue;
-                cx /= centroidCount;
-                cy /= centroidCount;
-
-                const cols = colsForCount(members.length);
-                const rows = Math.ceil(members.length / cols);
-
-                // Column widths: widest measured w in each column (fallback to default).
-                // Row heights: same for each row.
-                const colW: number[] = new Array(cols).fill(DEFAULT_NODE_W);
-                const rowH: number[] = new Array(rows).fill(DEFAULT_NODE_H);
-                for (let i = 0; i < members.length; i++) {
-                    const cid = members[i]!;
-                    const s = measuredSizes.get(cid);
-                    const w = s?.w ?? DEFAULT_NODE_W;
-                    const h = s?.h ?? DEFAULT_NODE_H;
-                    const col = i % cols;
-                    const row = Math.floor(i / cols);
-                    if (w > colW[col]!) colW[col] = w;
-                    if (h > rowH[row]!) rowH[row] = h;
-                }
-
-                // Cumulative column centers relative to the grid left edge.
-                const colCenters: number[] = [];
-                let xCursor = 0;
-                for (let c = 0; c < cols; c++) {
-                    colCenters.push(xCursor + colW[c]! / 2);
-                    xCursor += colW[c]! + GRID_GAP_X;
-                }
-                const totalW = xCursor - GRID_GAP_X;
-
-                const rowCenters: number[] = [];
-                let yCursor = 0;
-                for (let r = 0; r < rows; r++) {
-                    rowCenters.push(yCursor + rowH[r]! / 2);
-                    yCursor += rowH[r]! + GRID_GAP_Y;
-                }
-                const totalH = yCursor - GRID_GAP_Y;
-
-                // Shift so the grid is centered on (cx, cy).
-                const originX = cx - totalW / 2;
-                const originY = cy - totalH / 2;
-
-                for (let i = 0; i < members.length; i++) {
-                    const cid = members[i]!;
-                    const col = i % cols;
-                    const row = Math.floor(i / cols);
-                    respacedPositions.set(cid, {
-                        x: originX + colCenters[col]!,
-                        y: originY + rowCenters[row]!
-                    });
-                }
-            }
-
-            // Build bounds from the re-spaced positions so the group box wraps
-            // them exactly (respacing may have shifted edges by a few px).
-            for (const [chunkId, groupId] of chunkToGroupId) {
-                const dragged = draggedPositions.get(chunkId);
-                const re = respacedPositions.get(chunkId);
-                const lp = layoutPositions[chunkId];
-                if (!dragged && !re && !lp) continue;
-                const size = measuredSizes.get(chunkId);
-                const w = size?.w ?? DEFAULT_NODE_W;
-                const h = size?.h ?? DEFAULT_NODE_H;
-                // Centers: dragged positions are top-left; re-spaced + worker positions are centers.
-                const centerX = dragged ? dragged.x + w / 2 : (re?.x ?? lp!.x);
-                const centerY = dragged ? dragged.y + h / 2 : (re?.y ?? lp!.y);
-                const x = centerX - w / 2;
-                const y = centerY - h / 2;
-                const prev = groupBounds.get(groupId);
-                if (prev) {
-                    prev.minX = Math.min(prev.minX, x);
-                    prev.minY = Math.min(prev.minY, y);
-                    prev.maxX = Math.max(prev.maxX, x + w);
-                    prev.maxY = Math.max(prev.maxY, y + h);
-                } else {
-                    groupBounds.set(groupId, { minX: x, minY: y, maxX: x + w, maxY: y + h });
-                }
-            }
-        }
-
-        // Compute grid positions for collapsed cluster nodes
-        const clusterPositions = new Map<string, { x: number; y: number }>();
-        if (shouldCluster) {
-            const collapsedClusters = clusters.filter(c => !c.expanded);
-            const cols = Math.max(1, Math.ceil(Math.sqrt(collapsedClusters.length)));
-            const CLUSTER_GAP_X = 220;
-            const CLUSTER_GAP_Y = 140;
-            for (let i = 0; i < collapsedClusters.length; i++) {
-                const col = i % cols;
-                const row = Math.floor(i / cols);
-                clusterPositions.set(collapsedClusters[i]!.id, { x: col * CLUSTER_GAP_X, y: row * CLUSTER_GAP_Y });
-            }
-        }
-
-        // Apply positions from worker (or fallback to origin)
-        const layoutNodes = rawNodes.map(node => {
-            const p = layoutPositions?.[node.id] ?? { x: 0, y: 0 };
-
-            // Cluster nodes: use grid position
-            if (node.type === "cluster") {
-                const dragged = draggedPositions.get(node.id);
-                const gridPos = clusterPositions.get(node.id) ?? { x: 0, y: 0 };
-                return { ...node, position: dragged ?? gridPos };
-            }
-
-            // Group nodes: compute size from child bounds.
-            if (tagGroupNodeIds.has(node.id)) {
-                const bounds = groupBounds.get(node.id);
-                if (!bounds) {
-                    // No children have positions yet — keep offscreen but visible so
-                    // it appears immediately once layout positions arrive.
-                    return { ...node, position: { x: -9999, y: -9999 }, style: { ...node.style, width: 0, height: 0, opacity: 0 } };
-                }
-                const dragged = draggedPositions.get(node.id);
-                return {
-                    ...node,
-                    position: dragged ?? { x: bounds.minX - PADDING, y: bounds.minY - PADDING_TOP },
-                    style: {
-                        ...node.style,
-                        width: bounds.maxX - bounds.minX + PADDING * 2,
-                        height: bounds.maxY - bounds.minY + PADDING_BOTTOM + PADDING_TOP,
-                        background: "transparent",
-                        border: "none",
-                        padding: 0
-                    }
-                };
-            }
-
-            const dragged = draggedPositions.get(node.id);
-            if (dragged) return { ...node, position: dragged };
-
-            const size = measuredSizes.get(node.id);
-            const hw = (size?.w ?? DEFAULT_NODE_W) / 2;
-            const hh = (size?.h ?? DEFAULT_NODE_H) / 2;
-            // Prefer the re-spaced position (accounts for variable node widths) over
-            // the worker's fixed-cell grid position.
-            const re = respacedPositions.get(node.id);
-            const center = re ?? p;
-            return { ...node, position: { x: center.x - hw, y: center.y - hh } };
-        });
-
-        if (bundleEdges) {
-            // Build a node-type lookup from the filtered chunks
-            const nodeTypeMap = new Map<string, string>();
-            for (const c of filteredGraph.chunks) {
-                nodeTypeMap.set(c.id, c.type);
-            }
-
-            // Group edges by sorted source-type::target-type pair
-            const bundles = new Map<string, typeof rawEdges>();
-            const orphanEdges: typeof rawEdges = [];
-            for (const edge of rawEdges) {
-                if (edge.id.startsWith("main-")) {
-                    orphanEdges.push(edge);
-                    continue;
-                }
-                const st = nodeTypeMap.get(edge.source) ?? "?";
-                const tt = nodeTypeMap.get(edge.target) ?? "?";
-                const key = [st, tt].sort().join("::");
-                if (!bundles.has(key)) bundles.set(key, []);
-                bundles.get(key)!.push(edge);
-            }
-
-            // Replace bundles of 3+ with single thicker edge
-            const bundled: typeof rawEdges = [];
-            for (const [, group] of bundles) {
-                if (group.length < 3) {
-                    bundled.push(...group);
-                } else {
-                    const rep = { ...group[0]! };
-                    rep.style = { ...(rep.style as Record<string, unknown>), strokeWidth: Math.min(2 + group.length, 8) };
-                    (rep.data as Record<string, unknown>).bundleCount = group.length;
-                    bundled.push(rep);
-                }
-            }
-            bundled.push(...orphanEdges);
-
-            return { layoutNodes, layoutEdges: bundled, groupToChunkIds };
-        }
-
-        if (isDev) console.debug("[graph] render: %d nodes (%d groups), %d edges",
-            layoutNodes.length, layoutNodes.filter(n => n.type === "group").length, rawEdges.length);
-        return { layoutNodes, layoutEdges: rawEdges, groupToChunkIds };
-    }, [filteredGraph, layoutPositions, draggedPositions, isDark, TYPE_COLORS, collapsedParents, bundleEdges, tagGroups, data, edgeAnimated, measuredSizesVersion, showUngrouped, shouldCluster, clusters, clusterVisibleChunkIds, dispatch]);
-
-    // Search match IDs — shared between styling effect, auto-center, and match count display
-    const searchMatchIds = useMemo(() => {
-        const q = debouncedSearchQuery.trim().toLowerCase();
-        if (!q) return new Set<string>();
-        const ids = new Set<string>();
-        for (const node of layoutNodes) {
-            const label = typeof node.data.label === "string" ? node.data.label : "";
-            if (label.toLowerCase().includes(q)) ids.add(node.id);
-        }
-        return ids;
-    }, [debouncedSearchQuery, layoutNodes]);
+    const {
+        layoutNodes,
+        layoutEdges,
+        groupToChunkIds,
+        legendTypeCounts,
+        legendRelationCounts,
+        measuredNodeSizesRef,
+        setMeasuredSizesVersion,
+    } = useGraphNodes({
+        filteredGraph,
+        layoutPositions,
+        draggedPositions,
+        isDark,
+        TYPE_COLORS,
+        collapsedParents,
+        bundleEdges,
+        tagGroups,
+        groupResult,
+        data,
+        edgeAnimated,
+        showUngrouped,
+        shouldCluster,
+        clusters,
+        clusterVisibleChunkIds,
+        dispatch,
+    });
+
+    const {
+        searchMatchIds,
+        focusNeighbors,
+        focusModeNeighbors,
+        selectedEdgeIds,
+        selectedNeighborNodes,
+        pathResult,
+    } = useGraphInteractions({
+        layoutNodes,
+        layoutEdges,
+        debouncedSearchQuery,
+        focusedNodeId,
+        focusModeNodeId,
+        selectedChunkId,
+        pathStartId,
+        pathEndId,
+    });
 
     // Auto-center on first search match
     useEffect(() => {
@@ -1115,59 +301,6 @@ function GraphViewInner() {
             setCenter(matchNode.position.x, matchNode.position.y, { zoom: getZoom(), duration: 400 });
         }
     }, [searchMatchIds, layoutNodes, setCenter, getZoom]);
-
-    const focusNeighbors = useMemo(() => {
-        if (!focusedNodeId) return null;
-        const neighbors = new Set<string>([focusedNodeId]);
-        for (const edge of layoutEdges) {
-            if (edge.source === focusedNodeId) neighbors.add(edge.target);
-            if (edge.target === focusedNodeId) neighbors.add(edge.source);
-        }
-        return neighbors;
-    }, [focusedNodeId, layoutEdges]);
-
-    // Focus mode: nodes within 2 hops of the focus mode node
-    const focusModeNeighbors = useMemo(() => {
-        if (!focusModeNodeId) return null;
-        return getNodesWithinHops(focusModeNodeId, layoutEdges, 2);
-    }, [focusModeNodeId, layoutEdges]);
-
-    const selectedEdgeIds = useMemo(() => {
-        if (!selectedChunkId) return null;
-        const ids = new Set<string>();
-        for (const edge of layoutEdges) {
-            if (edge.source === selectedChunkId || edge.target === selectedChunkId) {
-                ids.add(edge.id);
-            }
-        }
-        return ids;
-    }, [selectedChunkId, layoutEdges]);
-
-    const selectedNeighborNodes = useMemo(() => {
-        if (!selectedChunkId) return null;
-        const neighbors = new Set<string>([selectedChunkId]);
-        for (const edge of layoutEdges) {
-            if (edge.source === selectedChunkId) neighbors.add(edge.target);
-            if (edge.target === selectedChunkId) neighbors.add(edge.source);
-        }
-        return neighbors;
-    }, [selectedChunkId, layoutEdges]);
-
-    const pathResult = useMemo(() => {
-        if (!pathStartId || !pathEndId) return null;
-        const path = findShortestPath(pathStartId, pathEndId, layoutEdges);
-        if (!path) return null;
-        const pathNodeIds = new Set(path);
-        const pathEdgeIds = new Set<string>();
-        for (let i = 0; i < path.length - 1; i++) {
-            for (const edge of layoutEdges) {
-                if ((edge.source === path[i] && edge.target === path[i + 1]) || (edge.target === path[i] && edge.source === path[i + 1])) {
-                    pathEdgeIds.add(edge.id);
-                }
-            }
-        }
-        return { pathNodeIds, pathEdgeIds, length: path.length - 1, path };
-    }, [pathStartId, pathEndId, layoutEdges]);
 
     const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
     const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
@@ -1185,7 +318,7 @@ function GraphViewInner() {
             measuredNodeSizesRef.current = sizes;
             setMeasuredSizesVersion(v => v + 1);
         }
-    }, [nodes]);
+    }, [nodes, measuredNodeSizesRef, setMeasuredSizesVersion]);
 
     /** Preserve React DOM identity so CSS transform transitions work. */
     function mergeNodes(newNodes: Node[]) {
@@ -1201,6 +334,23 @@ function GraphViewInner() {
             });
         });
     }
+
+    useGraphStyling({
+        layoutNodes,
+        layoutEdges,
+        debouncedSearchQuery,
+        focusModeNeighbors,
+        focusNeighbors,
+        selectedNeighborNodes,
+        selectedEdgeIds,
+        multiSelectedIds,
+        pathResult,
+        chunkTagGroupMap,
+        selectedChunkId,
+        mergeNodes,
+        setEdges,
+    });
+
     const [hoveredNode, setHoveredNode] = useState<{ id: string; x: number; y: number } | null>(null);
     const [contextMenu, setContextMenu] = useState<{ x: number; y: number; nodeId?: string } | null>(null);
 
@@ -1219,210 +369,6 @@ function GraphViewInner() {
         }
         return map;
     }, [data]);
-
-    // Consolidated node/edge styling effect — single source of truth to prevent cascading setState loops
-    useEffect(() => {
-        const hasSearch = debouncedSearchQuery.trim().length > 0;
-
-        // --- Compute node styles ---
-        let styledNodes: Node[];
-
-        if (pathResult) {
-            styledNodes = layoutNodes.map(node => ({
-                ...node,
-                style: {
-                    ...(node.style as Record<string, unknown>),
-                    opacity: pathResult.pathNodeIds.has(node.id) ? 1 : 0.1,
-                    boxShadow: "none",
-                    transition: "opacity 0.2s, box-shadow 0.2s"
-                }
-            }));
-        } else if (hasSearch) {
-            const q = debouncedSearchQuery.toLowerCase();
-            const matchIds = new Set<string>();
-            for (const node of layoutNodes) {
-                const label = typeof node.data.label === "string" ? node.data.label : "";
-                if (label.toLowerCase().includes(q)) matchIds.add(node.id);
-            }
-            styledNodes = layoutNodes.map(node => {
-                const isMatch = matchIds.has(node.id);
-                return {
-                    ...node,
-                    style: {
-                        ...(node.style as Record<string, unknown>),
-                        opacity: isMatch ? 1 : 0.15,
-                        boxShadow: isMatch ? `0 0 12px 2px ${(node.style as Record<string, string>)?.borderColor ?? "#475569"}` : "none",
-                        transition: "opacity 0.2s, box-shadow 0.2s"
-                    }
-                };
-            });
-        } else if (focusModeNeighbors) {
-            styledNodes = layoutNodes.map(node => ({
-                ...node,
-                style: {
-                    ...(node.style as Record<string, unknown>),
-                    opacity: focusModeNeighbors.has(node.id) ? 1 : 0.15,
-                    transition: "opacity 0.3s ease"
-                }
-            }));
-        } else if (focusNeighbors) {
-            styledNodes = layoutNodes.map(node => ({
-                ...node,
-                style: {
-                    ...(node.style as Record<string, unknown>),
-                    opacity: focusNeighbors.has(node.id) ? 1 : 0.12,
-                    transition: "opacity 0.2s"
-                }
-            }));
-        } else if (selectedNeighborNodes) {
-            styledNodes = layoutNodes.map(node => ({
-                ...node,
-                style: {
-                    ...(node.style as Record<string, unknown>),
-                    opacity: selectedNeighborNodes.has(node.id) ? 1 : 0.2,
-                    transition: "opacity 0.2s"
-                }
-            }));
-        } else if (chunkTagGroupMap && chunkTagGroupMap.size > 0) {
-            styledNodes = layoutNodes.map(node => {
-                if (isGroupNodeId(node.id)) return node;
-                const inGroup = chunkTagGroupMap.has(node.id);
-                return {
-                    ...node,
-                    style: {
-                        ...(node.style as Record<string, unknown>),
-                        opacity: inGroup ? 1 : 0.85,
-                        transition: "opacity 0.2s"
-                    }
-                };
-            });
-        } else {
-            styledNodes = layoutNodes;
-        }
-
-        // Apply multi-select outline on top
-        if (multiSelectedIds.size > 0) {
-            styledNodes = styledNodes.map(node => ({
-                ...node,
-                style: {
-                    ...(node.style as Record<string, unknown>),
-                    outline: multiSelectedIds.has(node.id) ? "2px solid #f472b6" : "none",
-                    outlineOffset: multiSelectedIds.has(node.id) ? "2px" : "0"
-                }
-            }));
-        }
-
-        mergeNodes(styledNodes);
-
-        // --- Compute edge styles ---
-        let styledEdges: Edge[];
-
-        if (pathResult) {
-            styledEdges = layoutEdges.map(edge => ({
-                ...edge,
-                style: {
-                    ...(edge.style as Record<string, unknown>),
-                    opacity: pathResult.pathEdgeIds.has(edge.id) ? 1 : 0.05,
-                    strokeWidth: pathResult.pathEdgeIds.has(edge.id) ? 3 : ((edge.style as Record<string, number>)?.strokeWidth ?? 2),
-                    transition: "opacity 0.2s"
-                }
-            }));
-        } else if (hasSearch) {
-            const q = debouncedSearchQuery.toLowerCase();
-            const matchIds = new Set<string>();
-            for (const node of layoutNodes) {
-                const label = typeof node.data.label === "string" ? node.data.label : "";
-                if (label.toLowerCase().includes(q)) matchIds.add(node.id);
-            }
-            styledEdges = layoutEdges.map(edge => ({
-                ...edge,
-                style: {
-                    ...(edge.style as Record<string, unknown>),
-                    opacity: matchIds.has(edge.source) || matchIds.has(edge.target) ? 1 : 0.1
-                }
-            }));
-        } else if (focusModeNeighbors) {
-            styledEdges = layoutEdges.map(edge => ({
-                ...edge,
-                style: {
-                    ...(edge.style as Record<string, unknown>),
-                    opacity: focusModeNeighbors.has(edge.source) && focusModeNeighbors.has(edge.target) ? 1 : 0.08,
-                    transition: "opacity 0.3s ease"
-                }
-            }));
-        } else if (focusNeighbors) {
-            styledEdges = layoutEdges.map(edge => ({
-                ...edge,
-                style: {
-                    ...(edge.style as Record<string, unknown>),
-                    opacity: focusNeighbors.has(edge.source) && focusNeighbors.has(edge.target) ? 1 : 0.06,
-                    transition: "opacity 0.2s"
-                }
-            }));
-        } else if (selectedEdgeIds) {
-            styledEdges = layoutEdges.map(edge => ({
-                ...edge,
-                style: {
-                    ...(edge.style as Record<string, unknown>),
-                    opacity: selectedEdgeIds.has(edge.id) ? 1 : 0.1,
-                    transition: "opacity 0.2s"
-                }
-            }));
-        } else if (chunkTagGroupMap && chunkTagGroupMap.size > 0) {
-            styledEdges = layoutEdges.map(edge => {
-                const sourceGroups = chunkTagGroupMap.get(edge.source);
-                const targetGroups = chunkTagGroupMap.get(edge.target);
-                let sameGroup = false;
-                if (sourceGroups && targetGroups) {
-                    for (const g of sourceGroups) {
-                        if (targetGroups.has(g)) { sameGroup = true; break; }
-                    }
-                }
-                return {
-                    ...edge,
-                    style: {
-                        ...(edge.style as Record<string, unknown>),
-                        opacity: sameGroup ? 1 : 0.15,
-                        transition: "opacity 0.3s ease"
-                    }
-                };
-            });
-        } else {
-            styledEdges = layoutEdges;
-        }
-
-        // Override: restore opacity for selected node's direct connections when tag grouping is active
-        if (chunkTagGroupMap && chunkTagGroupMap.size > 0 && selectedChunkId) {
-            const selectedDirectEdgeIds = new Set<string>();
-            for (const edge of layoutEdges) {
-                if (edge.source === selectedChunkId || edge.target === selectedChunkId) {
-                    selectedDirectEdgeIds.add(edge.id);
-                }
-            }
-            styledEdges = styledEdges.map(edge => {
-                if (selectedDirectEdgeIds.has(edge.id)) {
-                    return { ...edge, style: { ...(edge.style as Record<string, unknown>), opacity: 1 } };
-                }
-                return edge;
-            });
-        }
-
-        setEdges(styledEdges);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [
-        layoutNodes,
-        layoutEdges,
-        debouncedSearchQuery,
-        focusModeNeighbors,
-        focusNeighbors,
-        selectedNeighborNodes,
-        selectedEdgeIds,
-        multiSelectedIds,
-        pathResult,
-        chunkTagGroupMap,
-        selectedChunkId
-    ]);
-
 
     // Fit view once after first layout positions arrive
     const fitViewRef = useRef(fitView);
@@ -1459,6 +405,24 @@ function GraphViewInner() {
         dispatch,
     });
 
+    // Toggle helpers
+    function toggleRelation(r: string) {
+        dispatch({ type: "TOGGLE_FILTER_RELATION", relation: r });
+    }
+    function toggleTypePrefilterFromLegend(typeId: string) {
+        const next = prefilter.types.includes(typeId)
+            ? prefilter.types.filter(t => t !== typeId)
+            : [...prefilter.types, typeId];
+        handleFilterApply({ ...prefilter, types: next });
+    }
+
+    const dismissWelcome = () => {
+        dispatch({ type: "SET_SHOW_WELCOME", show: false });
+    };
+
+    // Saved views
+    const { views: savedViews, saveView, deleteView: deleteSavedView } = useSavedGraphViews();
+
     function handleExportImage() {
         const viewport = document.querySelector(".react-flow__viewport") as HTMLElement | null;
         if (!viewport) return;
@@ -1474,7 +438,6 @@ function GraphViewInner() {
         });
     }
 
-    // Extracted so the pre-render gate and the normal mount share identical handlers.
     function handleFilterApply(values: GraphFilterValues) {
         navigate({
             to: "/graph",
@@ -1590,19 +553,14 @@ function GraphViewInner() {
                         onEdgesChange={onEdgesChange}
                         onConnect={onConnect}
                         connectionMode={ConnectionMode.Loose}
-                        // Skip mounting DOM for off-screen nodes. MiniMap reads node
-                        // data directly from the React Flow store (not the DOM) so
-                        // it continues to show the full graph footprint. fitView
-                        // and bounds calculations are also store-based.
                         onlyRenderVisibleElements
                         onNodeClick={(event, node) => {
                             if (isGroupNodeId(node.id)) return;
-                            if (node.type === "cluster") return; // handled by cluster node's own onClick
+                            if (node.type === "cluster") return;
                             if (event.shiftKey) {
                                 dispatch({ type: "TOGGLE_MULTI_SELECT", id: node.id });
                                 return;
                             }
-                            // Clear multi-select on normal click
                             if (multiSelectedIds.size > 0) {
                                 dispatch({ type: "CLEAR_MULTI_SELECT" });
                             }
@@ -1639,7 +597,6 @@ function GraphViewInner() {
                         onNodeDoubleClick={(_, node) => {
                             if (isGroupNodeId(node.id)) return;
                             if (node.type === "cluster") return;
-                            // Toggle focus mode: dims everything beyond 2 hops
                             if (focusModeNodeId === node.id) {
                                 setFocusModeNodeId(null);
                             } else {
@@ -1651,9 +608,6 @@ function GraphViewInner() {
                         }}
                         onNodeDragStart={(_, node) => {
                             if (isGroupNodeId(node.id)) {
-                                // Snapshot each child's live rendered position so the drag
-                                // math offsets from where children actually are, not from
-                                // stale worker/layout positions.
                                 const childIds = groupToChunkIds.get(node.id) ?? [];
                                 const childStart = new Map<string, { x: number; y: number }>();
                                 for (const cid of childIds) {
@@ -1685,7 +639,6 @@ function GraphViewInner() {
                                 groupDragStartRef.current = null;
                                 const childIds = groupToChunkIds.get(node.id);
                                 if (!childIds) return;
-                                // Persist the current visual positions of children (already moved during onNodeDrag)
                                 setDraggedPositions(prev => {
                                     const next = new Map(prev);
                                     next.set(node.id, node.position);
