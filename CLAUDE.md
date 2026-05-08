@@ -4,6 +4,10 @@ This file provides context about the project for AI assistants.
 
 > **New to this codebase?** Use the `fubbik-dev` skill — it has code patterns for every layer and pitfalls that will save you time.
 
+## Git Rules
+
+- **Always ask before pushing.** Never run `git push` without explicit user confirmation.
+
 ## Project Overview
 
 - **Ecosystem**: Typescript
