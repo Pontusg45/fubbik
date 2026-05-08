@@ -34,12 +34,14 @@ export interface GroupStrategy {
 
 const TAG_STRATEGY: GroupStrategy = {
     id: "tag",
-    build({ chunkTags, activeTagTypeIds }) {
+    build({ chunks, chunkTags, activeTagTypeIds }) {
         if (!chunkTags || !activeTagTypeIds || activeTagTypeIds.size === 0) return null;
+        const visibleChunkIds = new Set(chunks.map(c => c.id));
         const groups = new Map<string, string[]>();
         const color = new Map<string, string>();
         for (const ct of chunkTags) {
             if (!ct.tagTypeId || !activeTagTypeIds.has(ct.tagTypeId)) continue;
+            if (!visibleChunkIds.has(ct.chunkId)) continue;
             if (!groups.has(ct.tagName)) groups.set(ct.tagName, []);
             groups.get(ct.tagName)!.push(ct.chunkId);
             if (ct.tagTypeColor) color.set(ct.tagName, ct.tagTypeColor);
