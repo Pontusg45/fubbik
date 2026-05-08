@@ -6,6 +6,7 @@ import {
     checkCircular,
     findShortestPath,
     getConnectionDegrees,
+    getGraphProximityBoost,
     getNeighborhood,
     getOrphanChunkIds
 } from "./query";
@@ -176,6 +177,35 @@ describe("getConnectionDegrees", () => {
     it("returns empty map for empty input", async () => {
         if (!ageReady) return;
         const map = await Effect.runPromise(getConnectionDegrees([]));
+        expect(map.size).toBe(0);
+    });
+});
+
+describe("getGraphProximityBoost", () => {
+    it("returns higher boost for closer nodes", async () => {
+        if (!ageReady) return;
+        const map = await Effect.runPromise(
+            getGraphProximityBoost(uid("A"), [uid("B"), uid("C")], 3)
+        );
+        // B is 1 hop from A → boost 1/1 = 1
+        // C is 2 hops from A → boost 1/2 = 0.5
+        expect(map.get(uid("B"))).toBeGreaterThan(map.get(uid("C"))!);
+    });
+
+    it("omits unreachable nodes", async () => {
+        if (!ageReady) return;
+        const map = await Effect.runPromise(
+            getGraphProximityBoost(uid("A"), [uid("B"), uid("orphan")], 3)
+        );
+        expect(map.has(uid("B"))).toBe(true);
+        expect(map.has(uid("orphan"))).toBe(false);
+    });
+
+    it("returns empty map when anchor has no connections", async () => {
+        if (!ageReady) return;
+        const map = await Effect.runPromise(
+            getGraphProximityBoost(uid("orphan"), [uid("A"), uid("B")], 3)
+        );
         expect(map.size).toBe(0);
     });
 });

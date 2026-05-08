@@ -153,6 +153,34 @@ export function getConnectionDegrees(chunkIds: string[]) {
     );
 }
 
+export function getGraphProximityBoost(
+    anchorId: string,
+    candidateIds: string[],
+    maxHops: number
+) {
+    if (candidateIds.length === 0) return Effect.succeed(new Map<string, number>());
+
+    const idList = candidateIds.map(id => `'${escCypher(id)}'`).join(",");
+    return cypher(
+        `MATCH (anchor:chunk {id: '${escCypher(anchorId)}'}), (target:chunk)
+         WHERE target.id IN [${idList}]
+         MATCH p = shortestPath((anchor)-[*1..${maxHops}]-(target))
+         RETURN target.id AS id, length(p) AS hops`,
+        "id agtype, hops agtype"
+    ).pipe(
+        Effect.map(rows => {
+            const map = new Map<string, number>();
+            for (const row of rows) {
+                const id = parseAgtypeId((row as any).id);
+                const hops = Number((row as any).hops);
+                map.set(id, 1 / hops);
+            }
+            return map;
+        }),
+        Effect.catchAll(() => Effect.succeed(new Map<string, number>()))
+    );
+}
+
 export function getOrphanChunkIds() {
     // AGE 1.x does not support the anonymous pattern `NOT (c)-[]-()`.
     // Use the EXISTS subquery form instead.
