@@ -254,14 +254,20 @@ function GraphViewInner() {
     const hasAnyFilterParams = !!(search.tags || search.types || search.focus || search.groupBy || search.all);
     const [filterDialogOpen, setFilterDialogOpen] = useState(!hasAnyFilterParams);
 
+    // chunkTags from the API are not codebase-filtered — filter to only chunks in the graph
+    const scopedChunkTags = useMemo(() => {
+        if (!data?.chunkTags || !data?.chunks) return [] as NonNullable<typeof data>["chunkTags"];
+        const chunkIds = new Set(data.chunks.map((c: { id: string }) => c.id));
+        return data.chunkTags.filter((ct: { chunkId: string }) => chunkIds.has(ct.chunkId));
+    }, [data?.chunkTags, data?.chunks]);
+
     const availableTagTypeIds = useMemo(() => {
-        if (!data?.chunkTags) return new Set<string>();
         const ids = new Set<string>();
-        for (const ct of data.chunkTags as Array<{ tagTypeId?: string | null }>) {
+        for (const ct of scopedChunkTags as Array<{ tagTypeId?: string | null }>) {
             if (ct.tagTypeId) ids.add(ct.tagTypeId);
         }
         return ids;
-    }, [data?.chunkTags]);
+    }, [scopedChunkTags]);
 
     // Apply groupBy from prefilter once graph data is available
     useEffect(() => {
@@ -351,7 +357,7 @@ function GraphViewInner() {
         for (const [name, palette] of Object.entries(TYPE_COLORS)) typeColorMap[name] = palette.border;
         const result = GROUP_STRATEGIES[groupingMode].build({
             chunks: data.chunks,
-            chunkTags: data.chunkTags,
+            chunkTags: scopedChunkTags,
             activeTagTypeIds: effectiveTagTypeIds,
             chunkCodebases: data.chunkCodebases,
             typeColorMap
@@ -433,7 +439,7 @@ function GraphViewInner() {
 
         // Shared prefilter logic (see apply-prefilter.ts) — same function as the dialog preview.
         const prefiltered = applyPrefilter(
-            { chunks: data.chunks, connections: data.connections ?? [], chunkTags: data.chunkTags },
+            { chunks: data.chunks, connections: data.connections ?? [], chunkTags: scopedChunkTags },
             { tags: prefilter.tags, types: prefilter.types, focusChunkId: prefilter.focusChunkId, depth: prefilter.depth }
         );
         let chunks = prefiltered.chunks;
@@ -1826,7 +1832,7 @@ function GraphViewInner() {
                                 ? {
                                       chunks: data.chunks,
                                       connections: data.connections ?? [],
-                                      chunkTags: data.chunkTags ?? []
+                                      chunkTags: scopedChunkTags ?? []
                                   }
                                 : undefined
                         }
@@ -2102,7 +2108,7 @@ function GraphViewInner() {
                         ? {
                               chunks: data.chunks,
                               connections: data.connections ?? [],
-                              chunkTags: data.chunkTags ?? []
+                              chunkTags: scopedChunkTags ?? []
                           }
                         : undefined
                 }
