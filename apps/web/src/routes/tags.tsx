@@ -1,9 +1,6 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import {
     ArrowUpDown,
-    GitMerge,
-    MoreHorizontal,
     Palette,
     Pencil,
     Plus,
@@ -14,10 +11,8 @@ import {
     X,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { toast } from "sonner";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { useApiQuery } from "@/hooks/use-api-query";
 import { Button } from "@/components/ui/button";
 import {
     Dialog,
@@ -27,16 +22,6 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuSeparator,
-    DropdownMenuSub,
-    DropdownMenuSubContent,
-    DropdownMenuSubTrigger,
-    DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { PageContainer, PageEmpty, PageHeader, PageLoading } from "@/components/ui/page";
 import {
     Select,
@@ -46,8 +31,10 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { getUser } from "@/functions/get-user";
-import { api } from "@/utils/api";
-import { unwrapEden } from "@/utils/eden";
+
+import { TagPill } from "@/features/tags/tag-pill";
+import { useTagsData } from "@/features/tags/use-tags-data";
+import type { Tag, SortMode } from "@/features/tags/tag-types";
 
 export const Route = createFileRoute("/tags")({
     component: TagsPage,
@@ -60,37 +47,48 @@ export const Route = createFileRoute("/tags")({
     }
 });
 
-interface Tag {
-    id: string;
-    name: string;
-    tagTypeId: string | null;
-    tagTypeName: string | null;
-    tagTypeColor: string | null;
-    chunkCount: number;
-}
-
-interface TagType {
-    id: string;
-    name: string;
-    color: string;
-}
-
-type SortMode = "alpha" | "usage";
-
 function TagsPage() {
-    const queryClient = useQueryClient();
-    const [search, setSearch] = useState("");
-    const [sortMode, setSortMode] = useState<SortMode>("alpha");
-    const [unusedOnly, setUnusedOnly] = useState(false);
+    const {
+        tagsQuery,
+        tagTypesQuery,
+        tags,
+        tagTypes,
+        filteredTags,
+        sortedGroups,
+        unusedCount,
+        search,
+        setSearch,
+        sortMode,
+        setSortMode,
+        unusedOnly,
+        setUnusedOnly,
+        renamingId,
+        renameValue,
+        setRenameValue,
+        startRename,
+        commitRename,
+        cancelRename,
+        showTagTypeForm,
+        setShowTagTypeForm,
+        editingTagType,
+        ttName,
+        setTtName,
+        ttColor,
+        setTtColor,
+        resetTagTypeForm,
+        startEditTagType,
+        handleTagTypeSubmit,
+        createTagMutation,
+        assignTypeMutation,
+        mergeMutation,
+        deleteTagMutation,
+        deleteTagTypeMutation,
+    } = useTagsData();
 
     // Create-tag form state
     const [showCreate, setShowCreate] = useState(false);
     const [newTagName, setNewTagName] = useState("");
     const [newTagTypeId, setNewTagTypeId] = useState<string>("");
-
-    // Rename state — inline on the pill
-    const [renamingId, setRenamingId] = useState<string | null>(null);
-    const [renameValue, setRenameValue] = useState("");
 
     // Merge dialog state
     const [mergeSource, setMergeSource] = useState<Tag | null>(null);
@@ -100,170 +98,7 @@ function TagsPage() {
     const [deleteTagTarget, setDeleteTagTarget] = useState<{ id: string; name: string } | null>(null);
     const [deleteTagTypeTarget, setDeleteTagTypeTarget] = useState<{ id: string; name: string } | null>(null);
 
-    // Tag type form
-    const [showTagTypeForm, setShowTagTypeForm] = useState(false);
-    const [editingTagType, setEditingTagType] = useState<TagType | null>(null);
-    const [ttName, setTtName] = useState("");
-    const [ttColor, setTtColor] = useState("#8b5cf6");
-
     const searchRef = useRef<HTMLInputElement>(null);
-
-    const tagsQuery = useApiQuery<Tag[]>({
-        queryKey: ["tags"],
-        queryFn: () => api.api.tags.get(),
-        fallback: [],
-    });
-
-    const tagTypesQuery = useApiQuery<TagType[]>({
-        queryKey: ["tag-types"],
-        queryFn: () => api.api["tag-types"].get(),
-        fallback: [],
-    });
-
-    const createTagMutation = useMutation({
-        mutationFn: async (body: { name: string; tagTypeId?: string }) =>
-            unwrapEden(await api.api.tags.post(body)),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["tags"] });
-            setShowCreate(false);
-            setNewTagName("");
-            setNewTagTypeId("");
-            toast.success("Tag created");
-        },
-        onError: (err: unknown) => {
-            const msg = err instanceof Error ? err.message : "Failed to create tag";
-            toast.error(msg);
-        }
-    });
-
-    const renameTagMutation = useMutation({
-        mutationFn: async ({ id, name }: { id: string; name: string }) =>
-            unwrapEden(await api.api.tags({ id }).patch({ name })),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["tags"] });
-            setRenamingId(null);
-            setRenameValue("");
-            toast.success("Tag renamed");
-        },
-        onError: (err: unknown) => {
-            const msg = err instanceof Error ? err.message : "Failed to rename tag";
-            toast.error(msg);
-        }
-    });
-
-    const assignTypeMutation = useMutation({
-        mutationFn: async ({ id, tagTypeId }: { id: string; tagTypeId: string | null }) =>
-            unwrapEden(await api.api.tags({ id }).patch({ tagTypeId })),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["tags"] });
-            toast.success("Tag type updated");
-        },
-        onError: () => toast.error("Failed to update tag")
-    });
-
-    const mergeMutation = useMutation({
-        mutationFn: async ({ sourceId, targetId }: { sourceId: string; targetId: string }) =>
-            unwrapEden(await api.api.tags.merge.post({ sourceId, targetId })) as { targetId: string; chunkCount: number },
-        onSuccess: result => {
-            queryClient.invalidateQueries({ queryKey: ["tags"] });
-            setMergeSource(null);
-            setMergeTargetId("");
-            toast.success(`Merged — target now has ${result.chunkCount} chunks`);
-        },
-        onError: (err: unknown) => {
-            const msg = err instanceof Error ? err.message : "Failed to merge tags";
-            toast.error(msg);
-        }
-    });
-
-    const deleteTagMutation = useMutation({
-        mutationFn: async (id: string) => unwrapEden(await api.api.tags({ id }).delete()),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["tags"] });
-            toast.success("Tag deleted");
-        },
-        onError: () => toast.error("Failed to delete tag")
-    });
-
-    const createTagTypeMutation = useMutation({
-        mutationFn: async (body: { name: string; color: string }) => unwrapEden(await api.api["tag-types"].post(body)),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["tag-types"] });
-            resetTagTypeForm();
-            toast.success("Tag type created");
-        },
-        onError: () => toast.error("Failed to create tag type")
-    });
-
-    const updateTagTypeMutation = useMutation({
-        mutationFn: async ({ id, body }: { id: string; body: { name?: string; color?: string } }) =>
-            unwrapEden(await api.api["tag-types"]({ id }).patch(body)),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["tag-types"] });
-            queryClient.invalidateQueries({ queryKey: ["tags"] });
-            resetTagTypeForm();
-            toast.success("Tag type updated");
-        },
-        onError: () => toast.error("Failed to update tag type")
-    });
-
-    const deleteTagTypeMutation = useMutation({
-        mutationFn: async (id: string) => unwrapEden(await api.api["tag-types"]({ id }).delete()),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["tag-types"] });
-            queryClient.invalidateQueries({ queryKey: ["tags"] });
-            toast.success("Tag type deleted");
-        },
-        onError: () => toast.error("Failed to delete tag type")
-    });
-
-    function resetTagTypeForm() {
-        setShowTagTypeForm(false);
-        setEditingTagType(null);
-        setTtName("");
-        setTtColor("#8b5cf6");
-    }
-
-    function startEditTagType(tt: TagType) {
-        setEditingTagType(tt);
-        setTtName(tt.name);
-        setTtColor(tt.color);
-        setShowTagTypeForm(true);
-    }
-
-    function handleTagTypeSubmit(e: React.FormEvent) {
-        e.preventDefault();
-        if (!ttName.trim()) return;
-        if (editingTagType) {
-            updateTagTypeMutation.mutate({ id: editingTagType.id, body: { name: ttName.trim(), color: ttColor } });
-        } else {
-            createTagTypeMutation.mutate({ name: ttName.trim(), color: ttColor });
-        }
-    }
-
-    function handleCreateTagSubmit(e: React.FormEvent) {
-        e.preventDefault();
-        if (!newTagName.trim()) return;
-        createTagMutation.mutate({
-            name: newTagName.trim(),
-            ...(newTagTypeId ? { tagTypeId: newTagTypeId } : {})
-        });
-    }
-
-    function startRename(tag: Tag) {
-        setRenamingId(tag.id);
-        setRenameValue(tag.name);
-    }
-
-    function commitRename(tag: Tag) {
-        const next = renameValue.trim();
-        if (!next || next === tag.name) {
-            setRenamingId(null);
-            setRenameValue("");
-            return;
-        }
-        renameTagMutation.mutate({ id: tag.id, name: next });
-    }
 
     // `/` to focus search — skip when typing in an input.
     useEffect(() => {
@@ -279,49 +114,20 @@ function TagsPage() {
         return () => window.removeEventListener("keydown", onKey);
     }, []);
 
-    const tags = Array.isArray(tagsQuery.data) ? tagsQuery.data : [];
-    const tagTypes = Array.isArray(tagTypesQuery.data) ? tagTypesQuery.data : [];
-
-    const filteredTags = useMemo(() => {
-        const q = search.trim().toLowerCase();
-        let list = tags;
-        if (unusedOnly) list = list.filter(t => t.chunkCount === 0);
-        if (!q) return list;
-        // Search matches either tag name OR its tag-type name
-        return list.filter(
-            t =>
-                t.name.toLowerCase().includes(q) ||
-                (t.tagTypeName?.toLowerCase().includes(q) ?? false)
-        );
-    }, [tags, search, unusedOnly]);
-
-    // Group tags by tag type, applying the active sort within each group
-    const sortedGroups = useMemo(() => {
-        const grouped = new Map<string, { tagType: TagType | null; tags: Tag[] }>();
-        for (const t of filteredTags) {
-            const key = t.tagTypeId ?? "__none__";
-            if (!grouped.has(key)) {
-                grouped.set(key, {
-                    tagType: t.tagTypeId
-                        ? { id: t.tagTypeId, name: t.tagTypeName ?? "Unknown", color: t.tagTypeColor ?? "#888" }
-                        : null,
-                    tags: []
-                });
+    function handleCreateTagSubmit(e: React.FormEvent) {
+        e.preventDefault();
+        if (!newTagName.trim()) return;
+        createTagMutation.mutate(
+            { name: newTagName.trim(), ...(newTagTypeId ? { tagTypeId: newTagTypeId } : {}) },
+            {
+                onSuccess: () => {
+                    setShowCreate(false);
+                    setNewTagName("");
+                    setNewTagTypeId("");
+                }
             }
-            grouped.get(key)!.tags.push(t);
-        }
-        const cmp = sortMode === "usage"
-            ? (a: Tag, b: Tag) => b.chunkCount - a.chunkCount || a.name.localeCompare(b.name)
-            : (a: Tag, b: Tag) => a.name.localeCompare(b.name);
-        for (const group of grouped.values()) group.tags.sort(cmp);
-        return [...grouped.entries()].sort((a, b) => {
-            if (!a[1].tagType) return 1;
-            if (!b[1].tagType) return -1;
-            return a[1].tagType.name.localeCompare(b[1].tagType.name);
-        });
-    }, [filteredTags, sortMode]);
-
-    const unusedCount = useMemo(() => tags.filter(t => t.chunkCount === 0).length, [tags]);
+        );
+    }
 
     const mergeCandidates = useMemo(
         () => tags.filter(t => t.id !== mergeSource?.id),
@@ -479,7 +285,7 @@ function TagsPage() {
                                                 setRenameValue={setRenameValue}
                                                 onStartRename={() => startRename(t)}
                                                 onCommitRename={() => commitRename(t)}
-                                                onCancelRename={() => { setRenamingId(null); setRenameValue(""); }}
+                                                onCancelRename={cancelRename}
                                                 onAssignType={typeId => assignTypeMutation.mutate({ id: t.id, tagTypeId: typeId })}
                                                 onMerge={() => setMergeSource(t)}
                                                 onDelete={() => setDeleteTagTarget({ id: t.id, name: t.name })}
@@ -612,7 +418,10 @@ function TagsPage() {
                             disabled={!mergeTargetId || mergeMutation.isPending}
                             onClick={() => {
                                 if (mergeSource && mergeTargetId) {
-                                    mergeMutation.mutate({ sourceId: mergeSource.id, targetId: mergeTargetId });
+                                    mergeMutation.mutate(
+                                        { sourceId: mergeSource.id, targetId: mergeTargetId },
+                                        { onSuccess: () => { setMergeSource(null); setMergeTargetId(""); } }
+                                    );
                                 }
                             }}
                         >
@@ -654,116 +463,5 @@ function TagsPage() {
                 loading={deleteTagTypeMutation.isPending}
             />
         </PageContainer>
-    );
-}
-
-interface TagPillProps {
-    tag: Tag;
-    tagTypes: TagType[];
-    isRenaming: boolean;
-    renameValue: string;
-    setRenameValue: (v: string) => void;
-    onStartRename: () => void;
-    onCommitRename: () => void;
-    onCancelRename: () => void;
-    onAssignType: (tagTypeId: string | null) => void;
-    onMerge: () => void;
-    onDelete: () => void;
-}
-
-function TagPill({
-    tag,
-    tagTypes,
-    isRenaming,
-    renameValue,
-    setRenameValue,
-    onStartRename,
-    onCommitRename,
-    onCancelRename,
-    onAssignType,
-    onMerge,
-    onDelete,
-}: TagPillProps) {
-    return (
-        <div className="group flex items-center gap-1.5 rounded-lg border px-3 py-1.5 transition-colors hover:bg-muted/50">
-            {tag.tagTypeColor && (
-                <div
-                    className="size-2 rounded-full shrink-0"
-                    style={{ backgroundColor: tag.tagTypeColor }}
-                />
-            )}
-            {isRenaming ? (
-                <input
-                    value={renameValue}
-                    onChange={e => setRenameValue(e.target.value)}
-                    onBlur={onCommitRename}
-                    onKeyDown={e => {
-                        if (e.key === "Enter") { e.preventDefault(); onCommitRename(); }
-                        if (e.key === "Escape") { e.preventDefault(); onCancelRename(); }
-                    }}
-                    autoFocus
-                    className="bg-background w-24 rounded border px-1 text-sm outline-none focus:ring-1 focus:ring-ring"
-                />
-            ) : (
-                <Link
-                    to="/chunks"
-                    search={{ tags: tag.name }}
-                    className="text-sm hover:underline"
-                >
-                    {tag.name}
-                </Link>
-            )}
-            {tag.chunkCount > 0 && (
-                <span className="text-muted-foreground ml-0.5 text-xs tabular-nums">{tag.chunkCount}</span>
-            )}
-            {!isRenaming && (
-                <DropdownMenu>
-                    <DropdownMenuTrigger
-                        render={
-                            <button
-                                aria-label={`Tag actions for ${tag.name}`}
-                                className="text-muted-foreground/0 group-hover:text-muted-foreground hover:text-foreground pointer-coarse:text-muted-foreground ml-1 transition-colors"
-                            >
-                                <MoreHorizontal className="size-3.5" />
-                            </button>
-                        }
-                    />
-                    <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={onStartRename}>
-                            <Pencil className="size-3.5" />
-                            Rename
-                        </DropdownMenuItem>
-                        <DropdownMenuSub>
-                            <DropdownMenuSubTrigger>
-                                <Palette className="size-3.5" />
-                                Assign type
-                            </DropdownMenuSubTrigger>
-                            <DropdownMenuSubContent>
-                                <DropdownMenuItem onClick={() => onAssignType(null)}>
-                                    <div className="border-muted-foreground/50 size-2.5 rounded-full border" />
-                                    None
-                                </DropdownMenuItem>
-                                {tagTypes.length > 0 && <DropdownMenuSeparator />}
-                                {tagTypes.map(tt => (
-                                    <DropdownMenuItem key={tt.id} onClick={() => onAssignType(tt.id)}>
-                                        <div className="size-2.5 rounded-full" style={{ backgroundColor: tt.color }} />
-                                        {tt.name}
-                                    </DropdownMenuItem>
-                                ))}
-                            </DropdownMenuSubContent>
-                        </DropdownMenuSub>
-                        <DropdownMenuItem onClick={onMerge}>
-                            <GitMerge className="size-3.5" />
-                            Merge into…
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={onDelete} className="text-destructive">
-                            <Trash2 className="size-3.5" />
-                            Delete
-                        </DropdownMenuItem>
-                    </DropdownMenuContent>
-                </DropdownMenu>
-            )}
-        </div>
     );
 }
