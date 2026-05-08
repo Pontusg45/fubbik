@@ -4,6 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { isAgeAvailable } from "./client";
 import {
     checkCircular,
+    detectCommunities,
     findShortestPath,
     getConnectionDegrees,
     getDownstreamChunks,
@@ -230,5 +231,49 @@ describe("getDownstreamChunks", () => {
         if (!ageReady) return;
         const downstream = await Effect.runPromise(getDownstreamChunks(uid("orphan"), 3));
         expect(downstream.length).toBe(0);
+    });
+});
+
+describe("detectCommunities", () => {
+    it("finds at least 2 communities among all test chunks", async () => {
+        if (!ageReady) return;
+        const allIds = [
+            uid("A"), uid("B"), uid("C"),
+            uid("center"), uid("spoke1"), uid("spoke2"), uid("spoke3"),
+            uid("orphan")
+        ];
+        const communities = await Effect.runPromise(detectCommunities(allIds, 3));
+        expect(communities.length).toBeGreaterThanOrEqual(2);
+    });
+
+    it("star cluster has 4 members", async () => {
+        if (!ageReady) return;
+        const allIds = [
+            uid("A"), uid("B"), uid("C"),
+            uid("center"), uid("spoke1"), uid("spoke2"), uid("spoke3"),
+            uid("orphan")
+        ];
+        const communities = await Effect.runPromise(detectCommunities(allIds, 3));
+        const starCluster = communities.find(c => c.members.includes(uid("center")));
+        expect(starCluster).toBeDefined();
+        expect(starCluster!.members.length).toBe(4);
+    });
+
+    it("excludes orphan from all communities (singleton)", async () => {
+        if (!ageReady) return;
+        const allIds = [
+            uid("A"), uid("B"), uid("C"),
+            uid("center"), uid("spoke1"), uid("spoke2"), uid("spoke3"),
+            uid("orphan")
+        ];
+        const communities = await Effect.runPromise(detectCommunities(allIds, 3));
+        const orphanCommunity = communities.find(c => c.members.includes(uid("orphan")));
+        expect(orphanCommunity).toBeUndefined();
+    });
+
+    it("returns empty array for empty input", async () => {
+        if (!ageReady) return;
+        const communities = await Effect.runPromise(detectCommunities([], 3));
+        expect(communities.length).toBe(0);
     });
 });

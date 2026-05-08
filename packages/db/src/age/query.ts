@@ -192,6 +192,57 @@ export function getDownstreamChunks(chunkId: string, maxHops: number) {
     );
 }
 
+export interface Community {
+    id: string;
+    members: string[];
+}
+
+export function detectCommunities(chunkIds: string[], maxHops: number) {
+    if (chunkIds.length === 0) return Effect.succeed([] as Community[]);
+
+    const idList = chunkIds.map(id => `'${escCypher(id)}'`).join(",");
+    return cypher(
+        `MATCH (a:chunk)-[e:connects]-(b:chunk)
+         WHERE a.id IN [${idList}] AND b.id IN [${idList}]
+         RETURN DISTINCT a.id AS source, b.id AS target`,
+        "source agtype, target agtype"
+    ).pipe(
+        Effect.map(rows => {
+            const adj = new Map<string, Set<string>>();
+            for (const id of chunkIds) adj.set(id, new Set());
+            for (const row of rows) {
+                const source = parseAgtypeId((row as any).source);
+                const target = parseAgtypeId((row as any).target);
+                adj.get(source)?.add(target);
+                adj.get(target)?.add(source);
+            }
+
+            const visited = new Set<string>();
+            const communities: Community[] = [];
+
+            for (const id of chunkIds) {
+                if (visited.has(id)) continue;
+                const members: string[] = [];
+                const queue = [id];
+                while (queue.length > 0) {
+                    const current = queue.shift()!;
+                    if (visited.has(current)) continue;
+                    visited.add(current);
+                    members.push(current);
+                    for (const neighbor of adj.get(current) ?? []) {
+                        if (!visited.has(neighbor)) queue.push(neighbor);
+                    }
+                }
+                if (members.length > 1) {
+                    communities.push({ id: members[0], members });
+                }
+            }
+
+            return communities.sort((a, b) => b.members.length - a.members.length);
+        })
+    );
+}
+
 export function getOrphanChunkIds() {
     // AGE 1.x does not support the anonymous pattern `NOT (c)-[]-()`.
     // Use the EXISTS subquery form instead.
