@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Check, ChevronDown, ChevronLeft, ChevronRight, Eye, FileText, FolderOpen, Link2, Menu, Pencil, Plus, Printer, Search, Tag, X } from "lucide-react";
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { ChevronRight, Eye, FileText, FolderOpen, Menu, Search, Tag, X } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 
 import { MarkdownRenderer } from "@/components/markdown-renderer";
 import { Badge } from "@/components/ui/badge";
@@ -15,366 +15,11 @@ import type { DocPresetFilters } from "./document-filter-presets";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
-/* ─── Types ─── */
-
-interface DocumentListItem {
-    id: string;
-    title: string;
-    sourcePath: string;
-    description: string | null;
-    chunkCount: number;
-    updatedAt: Date;
-    lastChunkUpdatedAt: Date | null;
-    oldestChunkUpdatedAt: Date | null;
-    tags: string[];
-    type: string;
-}
-
-interface DocumentChunk {
-    id: string;
-    title: string;
-    content: string;
-    documentOrder: number | null;
-}
-
-interface DocumentDetail {
-    id: string;
-    title: string;
-    sourcePath: string;
-    description: string | null;
-    chunks: DocumentChunk[];
-}
-
-interface SearchResult {
-    documentId: string;
-    documentTitle: string;
-    sourcePath: string;
-    chunk: DocumentChunk;
-    snippet: string;
-}
-
-/* ─── Helpers ─── */
-
-function folderFromPath(sourcePath: string): string {
-    const parts = sourcePath.split("/");
-    if (parts.length <= 1) return "/";
-    return parts.slice(0, -1).join("/");
-}
-
-function filenameFromPath(sourcePath: string): string {
-    return sourcePath.split("/").pop() ?? sourcePath;
-}
-
-/* ─── Folder tree ─── */
-
-interface FolderNode {
-    name: string;
-    fullPath: string;
-    docs: DocumentListItem[];
-    children: FolderNode[];
-}
-
-function buildFolderTree(documents: DocumentListItem[]): FolderNode {
-    const root: FolderNode = { name: "/", fullPath: "", docs: [], children: [] };
-
-    for (const doc of documents) {
-        const folder = folderFromPath(doc.sourcePath);
-        const parts = folder === "/" ? [] : folder.split("/").filter(Boolean);
-
-        let node = root;
-        let path = "";
-        for (const part of parts) {
-            path = path ? `${path}/${part}` : part;
-            let child = node.children.find(c => c.name === part);
-            if (!child) {
-                child = { name: part, fullPath: path, docs: [], children: [] };
-                node.children.push(child);
-            }
-            node = child;
-        }
-        node.docs.push(doc);
-    }
-
-    // Sort children and docs at each level
-    function sortNode(node: FolderNode) {
-        node.children.sort((a, b) => a.name.localeCompare(b.name));
-        node.docs.sort((a, b) => a.title.localeCompare(b.title));
-        for (const child of node.children) sortNode(child);
-    }
-    sortNode(root);
-
-    return root;
-}
-
-function extractSnippet(content: string, query: string, contextChars = 120): string {
-    const lower = content.toLowerCase();
-    const idx = lower.indexOf(query.toLowerCase());
-    if (idx === -1) return content.slice(0, contextChars * 2) + (content.length > contextChars * 2 ? "..." : "");
-
-    const start = Math.max(0, idx - contextChars);
-    const end = Math.min(content.length, idx + query.length + contextChars);
-    let snippet = content.slice(start, end);
-    if (start > 0) snippet = "..." + snippet;
-    if (end < content.length) snippet = snippet + "...";
-    return snippet;
-}
-
-function highlightMatches(text: string, query: string): React.ReactNode[] {
-    if (!query) return [text];
-    const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`, "gi");
-    const parts = text.split(regex);
-    return parts.map((part, i) =>
-        regex.test(part) ? (
-            <mark key={i} className="bg-yellow-200 dark:bg-yellow-800 rounded px-0.5">
-                {part}
-            </mark>
-        ) : (
-            part
-        )
-    );
-}
-
-function mdToHtml(md: string): string {
-    return md
-        .replace(/^```(\w*)\n([\s\S]*?)```$/gm, "<pre><code>$2</code></pre>")
-        .replace(/^### (.+)$/gm, "<h3>$1</h3>")
-        .replace(/^## (.+)$/gm, "<h2>$1</h2>")
-        .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-        .replace(/`([^`]+)`/g, "<code>$1</code>")
-        .replace(/^\| (.+) \|$/gm, row => {
-            const cells = row.split("|").filter(c => c.trim()).map(c => c.trim());
-            if (cells.every(c => /^-+$/.test(c))) return "";
-            return `<tr>${cells.map(c => `<td>${c}</td>`).join("")}</tr>`;
-        })
-        .replace(/^- (.+)$/gm, "<li>$1</li>")
-        .replace(/^\d+\. (.+)$/gm, "<li>$1</li>")
-        .replace(/\n{2,}/g, "<br><br>");
-}
-
-function getStaleness(doc: DocumentListItem): { label: string; color: string; tooltip: string } {
-    // Use the oldest chunk's updatedAt to represent overall content freshness
-    const contentDate = doc.oldestChunkUpdatedAt ?? doc.lastChunkUpdatedAt ?? doc.updatedAt;
-    const days = Math.floor((Date.now() - new Date(contentDate).getTime()) / (1000 * 60 * 60 * 24));
-
-    // If newest and oldest chunk differ significantly, some sections are stale
-    const newestDate = doc.lastChunkUpdatedAt ?? doc.updatedAt;
-    const oldestDate = doc.oldestChunkUpdatedAt ?? doc.updatedAt;
-    const spread = Math.floor(
-        (new Date(newestDate).getTime() - new Date(oldestDate).getTime()) / (1000 * 60 * 60 * 24)
-    );
-
-    if (days <= 7) {
-        return { label: "Fresh", color: "text-green-600 dark:text-green-400", tooltip: "All sections updated within the last week" };
-    }
-    if (days <= 30) {
-        const tip = spread > 14
-            ? `Some sections updated recently, oldest section is ${days} days old`
-            : `Last content update ${days} days ago`;
-        return { label: "Recent", color: "text-yellow-600 dark:text-yellow-400", tooltip: tip };
-    }
-    const tip = spread > 30
-        ? `Oldest section is ${days} days old, newest is ${Math.floor((Date.now() - new Date(newestDate).getTime()) / (1000 * 60 * 60 * 24))} days old`
-        : `Content last updated ${days} days ago`;
-    return { label: "May be outdated", color: "text-orange-600 dark:text-orange-400", tooltip: tip };
-}
-
-function estimateReadingTime(chunks: DocumentChunk[]): number {
-    const words = chunks.reduce((sum, c) => sum + c.content.split(/\s+/).length, 0);
-    return Math.max(1, Math.ceil(words / 200));
-}
-
-/* ─── Folder Tree Sidebar Node ─── */
-
-function FolderTreeNode({
-    node,
-    depth,
-    selectedId,
-    onSelect,
-    defaultOpen,
-}: {
-    node: FolderNode;
-    depth: number;
-    selectedId: string | null;
-    onSelect: (id: string) => void;
-    defaultOpen: boolean;
-}) {
-    const [open, setOpen] = useState(defaultOpen);
-    const hasContent = node.docs.length > 0 || node.children.length > 0;
-    if (!hasContent) return null;
-
-    const paddingLeft = depth * 12;
-
-    return (
-        <div>
-            <button
-                type="button"
-                onClick={() => setOpen(o => !o)}
-                className="text-muted-foreground hover:text-foreground mb-0.5 flex w-full items-center gap-1 px-2 py-1 text-xs font-medium transition-colors"
-                style={{ paddingLeft }}
-            >
-                {open ? <ChevronDown className="size-3" /> : <ChevronRight className="size-3" />}
-                <FolderOpen className="size-3.5" />
-                <span className="truncate">{node.name}</span>
-            </button>
-            {open && (
-                <div>
-                    {node.docs.map(doc => (
-                        <button
-                            key={doc.id}
-                            onClick={() => onSelect(doc.id)}
-                            className={`flex w-full items-center gap-2 rounded-md py-1.5 text-left text-sm transition-colors ${
-                                selectedId === doc.id
-                                    ? "bg-muted text-foreground font-medium"
-                                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                            }`}
-                            style={{ paddingLeft: paddingLeft + 20 }}
-                        >
-                            <FileText className="size-3.5 shrink-0" />
-                            <span className="min-w-0 flex-1 truncate">{doc.title || filenameFromPath(doc.sourcePath)}</span>
-                            <Badge variant="secondary" size="sm" className="shrink-0 font-mono text-[9px] mr-2">
-                                {doc.chunkCount}
-                            </Badge>
-                        </button>
-                    ))}
-                    {node.children.map(child => (
-                        <FolderTreeNode
-                            key={child.fullPath}
-                            node={child}
-                            depth={depth + 1}
-                            selectedId={selectedId}
-                            onSelect={onSelect}
-                            defaultOpen={defaultOpen}
-                        />
-                    ))}
-                </div>
-            )}
-        </div>
-    );
-}
-
-/* ─── Index Tree (main content "All Documents" view) ─── */
-
-function IndexTree({ node, depth, onSelect }: { node: FolderNode; depth: number; onSelect: (id: string) => void }) {
-    return (
-        <>
-            {depth > 0 && (
-                <h3
-                    className="text-sm font-semibold text-muted-foreground mb-2 mt-4 flex items-center gap-1.5"
-                    style={{ paddingLeft: (depth - 1) * 16 }}
-                >
-                    <FolderOpen className="size-3.5" />
-                    {node.name}
-                </h3>
-            )}
-            <div className="space-y-1" style={{ paddingLeft: depth > 0 ? (depth - 1) * 16 + 20 : 0 }}>
-                {node.docs.map(doc => {
-                    const staleness = getStaleness(doc);
-                    return (
-                        <button
-                            key={doc.id}
-                            onClick={() => onSelect(doc.id)}
-                            className="text-foreground hover:text-foreground/80 flex items-center gap-2 text-sm w-full text-left"
-                        >
-                            <FileText className="size-3.5 text-muted-foreground shrink-0" />
-                            <span>{doc.title}</span>
-                            {doc.description && (
-                                <span className="text-muted-foreground text-xs truncate">— {doc.description}</span>
-                            )}
-                            <span className={`text-xs ml-auto shrink-0 ${staleness.color}`} title={staleness.tooltip}>
-                                {staleness.label}
-                            </span>
-                        </button>
-                    );
-                })}
-            </div>
-            {node.children.map(child => (
-                <IndexTree key={child.fullPath} node={child} depth={depth + 1} onSelect={onSelect} />
-            ))}
-        </>
-    );
-}
-
-/* ─── Tag Group Sidebar Node ─── */
-
-function TagGroupNode({
-    name,
-    docs,
-    selectedId,
-    selectedGroup,
-    onSelect,
-    onGroupSelect,
-}: {
-    name: string;
-    docs: DocumentListItem[];
-    selectedId: string | null;
-    selectedGroup: string | null;
-    onSelect: (id: string) => void;
-    onGroupSelect: (name: string) => void;
-}) {
-    const [open, setOpen] = useState(true);
-    const isGroupSelected = selectedGroup === name;
-
-    return (
-        <div>
-            <div className="mb-0.5 flex items-center gap-0">
-                <button
-                    type="button"
-                    onClick={() => setOpen(o => !o)}
-                    className="text-muted-foreground hover:text-foreground flex items-center py-1 pl-2 transition-colors"
-                >
-                    {open ? <ChevronDown className="size-3" /> : <ChevronRight className="size-3" />}
-                </button>
-                <button
-                    type="button"
-                    onClick={() => onGroupSelect(name)}
-                    className={`flex flex-1 items-center gap-1 rounded-md px-1 py-1 text-xs font-medium transition-colors ${
-                        isGroupSelected
-                            ? "bg-muted text-foreground"
-                            : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                    }`}
-                >
-                    <Tag className="size-3.5" />
-                    <span className="truncate">{name}</span>
-                    <Badge variant="secondary" size="sm" className="ml-auto shrink-0 font-mono text-[9px]">
-                        {docs.length}
-                    </Badge>
-                </button>
-            </div>
-            {open && (
-                <div>
-                    {docs.map(doc => (
-                        <button
-                            key={doc.id}
-                            onClick={() => onSelect(doc.id)}
-                            className={`flex w-full items-center gap-2 rounded-md py-1.5 text-left text-sm transition-colors ${
-                                selectedId === doc.id
-                                    ? "bg-muted text-foreground font-medium"
-                                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                            }`}
-                            style={{ paddingLeft: 32 }}
-                        >
-                            <FileText className="size-3.5 shrink-0" />
-                            <span className="min-w-0 flex-1 truncate">{doc.title || doc.sourcePath.split("/").pop()}</span>
-                            <Badge variant="secondary" size="sm" className="shrink-0 font-mono text-[9px] mr-2">
-                                {doc.chunkCount}
-                            </Badge>
-                        </button>
-                    ))}
-                </div>
-            )}
-        </div>
-    );
-}
-
-/* ─── Document Browser ─── */
-
-interface DocumentBrowserProps {
-    initialDocId?: string;
-    initialSection?: string;
-    initialGroupBy?: "folder" | "tag";
-    initialTags?: string[];
-    initialTypes?: string[];
-}
+import type { DocumentBrowserProps, DocumentDetail, DocumentListItem, SearchResult } from "./document-types";
+import { buildFolderTree, extractSnippet, getStaleness } from "./document-utils";
+import { highlightMatches } from "./document-highlight";
+import { FolderTreeNode, IndexTree, TagGroupNode } from "./document-tree";
+import { DocumentDetailView } from "./document-detail";
 
 export function DocumentBrowser({ initialDocId, initialSection, initialGroupBy, initialTags, initialTypes }: DocumentBrowserProps) {
     const { codebaseId: activeCodebaseId } = useActiveCodebase();
@@ -679,7 +324,6 @@ export function DocumentBrowser({ initialDocId, initialSection, initialGroupBy, 
     useEffect(() => {
         const content = document.querySelector("[data-doc-content]");
         if (content) {
-            // Clean previous highlights
             content.querySelectorAll("mark.search-highlight").forEach(m => {
                 const parent = m.parentNode;
                 if (parent) {
@@ -708,7 +352,6 @@ export function DocumentBrowser({ initialDocId, initialSection, initialGroupBy, 
                 }
             }
 
-            // Apply highlights in reverse to preserve indices
             for (const match of matches.reverse()) {
                 const range = document.createRange();
                 range.setStart(match.node, match.index);
@@ -773,7 +416,6 @@ export function DocumentBrowser({ initialDocId, initialSection, initialGroupBy, 
         setSelectedId(result.documentId);
         setIsSearching(false);
         setSearchQuery("");
-        // Scroll to section after a brief delay for the detail to load
         setTimeout(() => {
             const el = document.getElementById(`section-${result.chunk.id}`);
             el?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -905,7 +547,7 @@ export function DocumentBrowser({ initialDocId, initialSection, initialGroupBy, 
                                         }`}
                                     >
                                         <FileText className="size-3.5 shrink-0" />
-                                        <span className="min-w-0 flex-1 truncate">{doc.title || filenameFromPath(doc.sourcePath)}</span>
+                                        <span className="min-w-0 flex-1 truncate">{doc.title || doc.sourcePath.split("/").pop()}</span>
                                         <Badge variant="secondary" size="sm" className="shrink-0 font-mono text-[9px]">
                                             {doc.chunkCount}
                                         </Badge>
@@ -970,15 +612,6 @@ export function DocumentBrowser({ initialDocId, initialSection, initialGroupBy, 
 
             {/* ─── Main content ─── */}
             <div className="min-w-0">
-                {selectedId && detail && (
-                    <div className="bg-muted mb-4 h-0.5 w-full overflow-hidden rounded-full">
-                        <div
-                            className="bg-foreground/30 h-full transition-all duration-150"
-                            style={{ width: `${readProgress}%` }}
-                        />
-                    </div>
-                )}
-
                 {/* Combined group view */}
                 {selectedGroup && !selectedId && (
                     <div>
@@ -1089,261 +722,30 @@ export function DocumentBrowser({ initialDocId, initialSection, initialGroupBy, 
                 )}
 
                 {selectedId && detail && (
-                    <div>
-                        {/* Document header */}
-                        <div className="mb-6">
-                            <div className="text-muted-foreground mb-2 flex items-center gap-1 text-xs">
-                                <span>Docs</span>
-                                {folderFromPath(detail.sourcePath) !== "/" && (
-                                    <>
-                                        <ChevronRight className="size-3" />
-                                        <span>{folderFromPath(detail.sourcePath)}</span>
-                                    </>
-                                )}
-                                <ChevronRight className="size-3" />
-                                <span className="text-foreground font-medium">{detail.title}</span>
-                            </div>
-                            <div className="flex items-center gap-3">
-                                <h2 className="text-xl font-bold">{detail.title}</h2>
-                                <button
-                                    onClick={() => {
-                                        const printWindow = window.open("", "_blank");
-                                        if (!printWindow) return;
-                                        const chunks = detail.chunks;
-                                        const html = `<!DOCTYPE html>
-<html>
-<head>
-    <title>${detail.title}</title>
-    <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 700px; margin: 40px auto; padding: 0 20px; line-height: 1.6; color: #1a1a1a; }
-        h1 { font-size: 28px; margin-bottom: 8px; }
-        h2 { font-size: 20px; margin-top: 32px; border-bottom: 1px solid #e5e7eb; padding-bottom: 8px; }
-        h3 { font-size: 16px; margin-top: 24px; }
-        code { background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-size: 14px; }
-        pre { background: #f3f4f6; padding: 16px; border-radius: 8px; overflow-x: auto; }
-        pre code { background: none; padding: 0; }
-        table { border-collapse: collapse; width: 100%; margin: 16px 0; }
-        th, td { border: 1px solid #e5e7eb; padding: 8px 12px; text-align: left; font-size: 14px; }
-        th { background: #f9fafb; }
-        li { margin: 4px 0; }
-        .meta { color: #6b7280; font-size: 14px; margin-bottom: 32px; }
-        @media print { body { margin: 0; } }
-    </style>
-</head>
-<body>
-    <h1>${detail.title}</h1>
-    <p class="meta">${detail.sourcePath}</p>
-    ${chunks.map(c => {
-                                            const isIntro = c.title.includes("-- Introduction") || c.title.endsWith(" Introduction");
-                                            const contentHtml = mdToHtml(c.content);
-                                            return isIntro ? contentHtml : `<h2>${c.title}</h2>\n${contentHtml}`;
-                                        }).join("\n\n")}
-</body>
-</html>`;
-                                        printWindow.document.write(html);
-                                        printWindow.document.close();
-                                        printWindow.print();
-                                    }}
-                                    className="text-muted-foreground hover:text-foreground transition-colors"
-                                    title="Print document"
-                                >
-                                    <Printer className="size-4" />
-                                </button>
-                            </div>
-                            {detail.description && (
-                                <p className="text-muted-foreground mt-1 text-sm">{detail.description}</p>
-                            )}
-                            <p className="text-muted-foreground mt-1 font-mono text-xs">{detail.sourcePath}</p>
-                            {selectedListItem && (() => {
-                                const staleness = getStaleness(selectedListItem);
-                                const contentDate = selectedListItem.lastChunkUpdatedAt ?? selectedListItem.updatedAt;
-                                return (
-                                    <p className="text-muted-foreground mt-1 flex items-center gap-2 text-xs" title={staleness.tooltip}>
-                                        Last updated {new Date(contentDate).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}
-                                        <span className={`font-medium ${staleness.color}`}>{staleness.label}</span>
-                                    </p>
-                                );
-                            })()}
-                            <p className="text-muted-foreground mt-1 text-xs">
-                                ~{estimateReadingTime(detail.chunks)} min read
-                            </p>
-                        </div>
-
-                        {/* Search highlight banner */}
-                        {highlightQuery && (
-                            <div className="bg-muted mb-4 flex items-center justify-between rounded-md px-3 py-2 text-sm">
-                                <span className="text-muted-foreground">Showing results for "<strong>{highlightQuery}</strong>"</span>
-                                <button onClick={() => setHighlightQuery(null)} className="text-muted-foreground hover:text-foreground">
-                                    <X className="size-4" />
-                                </button>
-                            </div>
-                        )}
-
-                        {/* Sections */}
-                        <div className="space-y-2" data-doc-content>
-                            {detail.chunks.map((chunk, idx) => (
-                                <Fragment key={chunk.id}>
-                                    <section id={`section-${chunk.id}`} className="scroll-mt-24">
-                                        <div className="group mb-1.5 flex items-center gap-2">
-                                            <Link
-                                                to="/chunks/$chunkId"
-                                                params={{ chunkId: chunk.id }}
-                                                className="text-lg font-semibold hover:underline underline-offset-2"
-                                            >
-                                                <h3 className="inline">{chunk.title}</h3>
-                                            </Link>
-                                            <Link
-                                                to="/chunks/$chunkId"
-                                                params={{ chunkId: chunk.id }}
-                                                className="text-muted-foreground hover:text-foreground opacity-0 transition-opacity group-hover:opacity-100"
-                                                title="Open chunk detail"
-                                            >
-                                                <Eye className="size-3.5" />
-                                            </Link>
-                                            <button
-                                                onClick={() => {
-                                                    const url = `${window.location.origin}/docs?id=${detail.id}&section=${chunk.id}`;
-                                                    navigator.clipboard.writeText(url);
-                                                    setCopiedId(chunk.id);
-                                                    setTimeout(() => setCopiedId(null), 1500);
-                                                }}
-                                                className="text-muted-foreground hover:text-foreground opacity-0 transition-opacity group-hover:opacity-100"
-                                                title="Copy link to section"
-                                            >
-                                                {copiedId === chunk.id ? (
-                                                    <Check className="size-3.5 text-green-500" />
-                                                ) : (
-                                                    <Link2 className="size-3.5" />
-                                                )}
-                                            </button>
-                                            <button
-                                                onClick={() => {
-                                                    if (editingChunkId === chunk.id) {
-                                                        setEditingChunkId(null);
-                                                    } else {
-                                                        setEditingChunkId(chunk.id);
-                                                        setEditContent(chunk.content);
-                                                    }
-                                                }}
-                                                className={`text-muted-foreground hover:text-foreground opacity-0 transition-opacity group-hover:opacity-100 ${editingChunkId === chunk.id ? "!opacity-100 text-foreground" : ""}`}
-                                                title={editingChunkId === chunk.id ? "Cancel editing" : "Edit this section"}
-                                            >
-                                                <Pencil className="size-3.5" />
-                                            </button>
-                                        </div>
-                                        {editingChunkId === chunk.id ? (
-                                            <div className="space-y-3">
-                                                <textarea
-                                                    value={editContent}
-                                                    onChange={e => setEditContent(e.target.value)}
-                                                    className="border-input bg-background w-full min-h-[200px] rounded-md border p-3 font-mono text-sm leading-relaxed focus:ring-2 focus:ring-ring outline-none resize-y"
-                                                    autoFocus
-                                                />
-                                                <div className="flex items-center gap-2">
-                                                    <button
-                                                        onClick={() => saveMutation.mutate({ id: chunk.id, content: editContent })}
-                                                        disabled={saveMutation.isPending || editContent === chunk.content}
-                                                        className="bg-foreground text-background hover:bg-foreground/90 rounded-md px-3 py-1.5 text-sm font-medium disabled:opacity-50"
-                                                    >
-                                                        {saveMutation.isPending ? "Saving..." : "Save"}
-                                                    </button>
-                                                    <button
-                                                        onClick={() => { setEditingChunkId(null); setEditContent(""); }}
-                                                        className="text-muted-foreground hover:text-foreground text-sm"
-                                                    >
-                                                        Cancel
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        ) : (
-                                            <div className="prose prose-sm dark:prose-invert max-w-none">
-                                                <MarkdownRenderer>{chunk.content}</MarkdownRenderer>
-                                            </div>
-                                        )}
-                                    </section>
-
-                                    {/* Add section button */}
-                                    <div className="flex justify-center py-0.5">
-                                        {addingAfter === (chunk.documentOrder ?? idx) ? (
-                                            <div className="border-border w-full rounded-lg border p-4 space-y-3">
-                                                <input
-                                                    type="text"
-                                                    placeholder="Section title"
-                                                    value={newSectionTitle}
-                                                    onChange={e => setNewSectionTitle(e.target.value)}
-                                                    className="border-input bg-background w-full rounded-md border px-3 py-2 text-sm"
-                                                    autoFocus
-                                                />
-                                                <textarea
-                                                    placeholder="Section content (markdown)"
-                                                    value={newSectionContent}
-                                                    onChange={e => setNewSectionContent(e.target.value)}
-                                                    className="border-input bg-background w-full min-h-[100px] rounded-md border p-3 font-mono text-sm resize-y"
-                                                />
-                                                <div className="flex gap-2">
-                                                    <button
-                                                        onClick={() => addSectionMutation.mutate({
-                                                            title: newSectionTitle,
-                                                            content: newSectionContent,
-                                                            afterOrder: chunk.documentOrder ?? idx
-                                                        })}
-                                                        disabled={!newSectionTitle.trim() || addSectionMutation.isPending}
-                                                        className="bg-foreground text-background rounded-md px-3 py-1.5 text-sm font-medium disabled:opacity-50"
-                                                    >
-                                                        {addSectionMutation.isPending ? "Adding..." : "Add Section"}
-                                                    </button>
-                                                    <button
-                                                        onClick={() => { setAddingAfter(null); setNewSectionTitle(""); setNewSectionContent(""); }}
-                                                        className="text-muted-foreground hover:text-foreground text-sm"
-                                                    >
-                                                        Cancel
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        ) : (
-                                            <button
-                                                onClick={() => setAddingAfter(chunk.documentOrder ?? idx)}
-                                                className="text-muted-foreground/0 hover:text-muted-foreground group flex items-center gap-1 w-full transition-colors"
-                                            >
-                                                <div className="bg-border/0 group-hover:bg-border h-px flex-1 transition-colors" />
-                                                <Plus className="size-4" />
-                                                <div className="bg-border/0 group-hover:bg-border h-px flex-1 transition-colors" />
-                                            </button>
-                                        )}
-                                    </div>
-                                </Fragment>
-                            ))}
-                        </div>
-
-                        {(prevDoc || nextDoc) && (
-                            <div className="border-border mt-10 flex items-center justify-between border-t pt-6">
-                                {prevDoc ? (
-                                    <button
-                                        onClick={() => setSelectedId(prevDoc.id)}
-                                        className="text-muted-foreground hover:text-foreground group flex items-center gap-2 text-sm transition-colors"
-                                    >
-                                        <ChevronLeft className="size-4 transition-transform group-hover:-translate-x-0.5" />
-                                        <div className="text-left">
-                                            <p className="text-xs text-muted-foreground">Previous</p>
-                                            <p className="font-medium">{prevDoc.title}</p>
-                                        </div>
-                                    </button>
-                                ) : <div />}
-                                {nextDoc ? (
-                                    <button
-                                        onClick={() => setSelectedId(nextDoc.id)}
-                                        className="text-muted-foreground hover:text-foreground group flex items-center gap-2 text-sm transition-colors"
-                                    >
-                                        <div className="text-right">
-                                            <p className="text-xs text-muted-foreground">Next</p>
-                                            <p className="font-medium">{nextDoc.title}</p>
-                                        </div>
-                                        <ChevronRight className="size-4 transition-transform group-hover:translate-x-0.5" />
-                                    </button>
-                                ) : <div />}
-                            </div>
-                        )}
-                    </div>
+                    <DocumentDetailView
+                        detail={detail}
+                        selectedListItem={selectedListItem}
+                        prevDoc={prevDoc ?? null}
+                        nextDoc={nextDoc ?? null}
+                        readProgress={readProgress}
+                        highlightQuery={highlightQuery}
+                        copiedId={copiedId}
+                        editingChunkId={editingChunkId}
+                        editContent={editContent}
+                        addingAfter={addingAfter}
+                        newSectionTitle={newSectionTitle}
+                        newSectionContent={newSectionContent}
+                        saveMutation={saveMutation}
+                        addSectionMutation={addSectionMutation}
+                        onSetHighlightQuery={setHighlightQuery}
+                        onSetCopiedId={setCopiedId}
+                        onSetEditingChunkId={setEditingChunkId}
+                        onSetEditContent={setEditContent}
+                        onSetAddingAfter={setAddingAfter}
+                        onSetNewSectionTitle={setNewSectionTitle}
+                        onSetNewSectionContent={setNewSectionContent}
+                        onSelectDoc={setSelectedId}
+                    />
                 )}
             </div>
 
