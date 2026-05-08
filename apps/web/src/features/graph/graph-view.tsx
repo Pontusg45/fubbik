@@ -306,18 +306,30 @@ function GraphViewInner() {
     const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
     const [mermaidModalOpen, setMermaidModalOpen] = useState(false);
 
-    // Keep measured sizes ref in sync for group bounding box calculation
+    // Keep measured sizes ref in sync for group bounding box calculation.
+    // Only bump version when a node's measured size actually changed — prevents
+    // re-render cascades where nodes memo → styling → setNodes → this effect → version bump → nodes memo.
     useEffect(() => {
+        const prev = measuredNodeSizesRef.current;
+        let changed = false;
+        for (const n of nodes) {
+            if (n.measured?.width && n.measured?.height) {
+                const old = prev.get(n.id);
+                if (!old || old.w !== n.measured.width || old.h !== n.measured.height) {
+                    changed = true;
+                    break;
+                }
+            }
+        }
+        if (!changed) return;
         const sizes = new Map<string, { w: number; h: number }>();
         for (const n of nodes) {
             if (n.measured?.width && n.measured?.height) {
                 sizes.set(n.id, { w: n.measured.width, h: n.measured.height });
             }
         }
-        if (sizes.size > 0 && sizes.size !== measuredNodeSizesRef.current.size) {
-            measuredNodeSizesRef.current = sizes;
-            setMeasuredSizesVersion(v => v + 1);
-        }
+        measuredNodeSizesRef.current = sizes;
+        setMeasuredSizesVersion(v => v + 1);
     }, [nodes, measuredNodeSizesRef, setMeasuredSizesVersion]);
 
     /** Preserve React DOM identity so CSS transform transitions work. */
