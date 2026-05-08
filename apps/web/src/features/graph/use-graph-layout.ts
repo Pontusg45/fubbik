@@ -5,7 +5,7 @@
  * force-directed / hierarchical / radial layouts, and caches results.
  */
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useReactFlow } from "@xyflow/react";
 
 import { applyPrefilter } from "@/features/graph/apply-prefilter";
@@ -59,7 +59,24 @@ export function useGraphLayout({
     tagGroups,
     groupingMode,
 }: UseGraphLayoutParams) {
-    const { fitView } = useReactFlow();
+    const { fitView: fitViewRaw } = useReactFlow();
+    const fitViewRef = useRef(fitViewRaw);
+    fitViewRef.current = fitViewRaw;
+    const fitView = useCallback((...args: Parameters<typeof fitViewRaw>) => fitViewRef.current(...args), []);
+
+    // Stabilize tagGroups reference — only change when content changes
+    const tagGroupsRef = useRef(tagGroups);
+    const tagGroupsKey = useMemo(() => {
+        if (!tagGroups) return "";
+        return [...tagGroups.entries()].map(([k, v]) => `${k}:${v.length}`).sort().join(";");
+    }, [tagGroups]);
+    if (tagGroups !== tagGroupsRef.current) {
+        const prevKey = tagGroupsRef.current
+            ? [...tagGroupsRef.current.entries()].map(([k, v]) => `${k}:${v.length}`).sort().join(";")
+            : "";
+        if (tagGroupsKey !== prevKey) tagGroupsRef.current = tagGroups;
+    }
+    const stableTagGroups = tagGroupsRef.current;
 
     // --- Web Worker for force-directed layout ---
     const workerRef = useRef<Worker | null>(null);
@@ -193,8 +210,8 @@ export function useGraphLayout({
         const prevPositions = lastSimulationPositionsRef.current;
 
         const groupingKey = groupingMode ?? "none";
-        const tagGroupMembership = tagGroups
-            ? [...tagGroups.entries()]
+        const tagGroupMembership = stableTagGroups
+            ? [...stableTagGroups.entries()]
                   .map(([name, ids]) => `${name}:${[...ids].sort().join(",")}`)
                   .sort()
                   .join(";")
@@ -208,7 +225,7 @@ export function useGraphLayout({
 
         mark("layout-start");
         if (isDev) console.debug("[graph] layout: %d nodes, %d edges, grouping=%s, groups=%d, dataUnchanged=%s",
-            workerNodes.length, workerEdges.length, groupingKey, tagGroups?.size ?? 0, dataUnchanged);
+            workerNodes.length, workerEdges.length, groupingKey, stableTagGroups?.size ?? 0, dataUnchanged);
 
         const cached = getCachedLayout(cacheKey);
         if (cached && layoutAlgorithm === "force") {
@@ -223,10 +240,9 @@ export function useGraphLayout({
             return;
         }
         if (layoutAlgorithm === "force") {
-            // Fast path: same chunks+edges, different grouping. Skip Phase 1.
-            if (dataUnchanged && prevPositions && tagGroups && tagGroups.size > 0) {
+            if (dataUnchanged && prevPositions && stableTagGroups && stableTagGroups.size > 0) {
                 if (isDev) console.debug("[graph] layout: trying regroup fast path");
-                const regroupedPositions = runRegroupLayout(workerNodes, workerEdges, tagGroups, prevPositions);
+                const regroupedPositions = runRegroupLayout(workerNodes, workerEdges, stableTagGroups, prevPositions);
                 if (regroupedPositions) {
                     mark("layout-end");
                     measure("layout-regroup", "layout-start", "layout-end");
@@ -240,10 +256,10 @@ export function useGraphLayout({
                 }
             }
 
-            const tagGroupsObj = tagGroups ? Object.fromEntries(tagGroups) : undefined;
+            const tagGroupsObj = stableTagGroups ? Object.fromEntries(stableTagGroups) : undefined;
             if (useMainThread) {
                 setIsLayouting(true);
-                const positions = runForceLayout(workerNodes, workerEdges, tagGroups ?? undefined);
+                const positions = runForceLayout(workerNodes, workerEdges, stableTagGroups ?? undefined);
                 mark("layout-end");
                 measure("layout-duration", "layout-start", "layout-end");
                 setLayoutPositions(positions);
@@ -277,7 +293,7 @@ export function useGraphLayout({
             setLayoutPositions(positions);
             setIsLayouting(false);
         }
-    }, [filteredGraph, layoutAlgorithm, useMainThread, selectedChunkId, tagGroups, groupingMode, fitView]);
+    }, [filteredGraph, layoutAlgorithm, useMainThread, selectedChunkId, stableTagGroups, groupingMode, fitView]);
 
     return {
         filteredGraph,
