@@ -552,6 +552,7 @@ function GraphViewInner() {
             lastSimulationSigRef.current = sig;
             lastSimulationPositionsRef.current = cached;
             setIsLayouting(false);
+            setTimeout(() => fitView({ padding: 0.1 }), 100);
             return;
         }
         if (layoutAlgorithm === "force") {
@@ -565,6 +566,7 @@ function GraphViewInner() {
                     lastSimulationPositionsRef.current = regroupedPositions;
                     setCachedLayout(cacheKey, regroupedPositions);
                     setIsLayouting(false);
+                    setTimeout(() => fitView({ padding: 0.1 }), 100);
                     return;
                 }
             }
