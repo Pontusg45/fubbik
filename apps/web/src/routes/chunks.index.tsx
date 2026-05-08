@@ -1,48 +1,20 @@
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import {
-    Archive,
-    Columns3,
-    FileText,
-    Filter,
-    FolderPlus,
-    Globe,
-    LayoutGrid,
-    List,
-    Plus,
-    Search,
-    X
-} from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Archive, Plus } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { PromptDialog } from "@/components/prompt-dialog";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { PageEmpty } from "@/components/ui/page";
-import { SkeletonList } from "@/components/ui/skeleton-list";
-import { ChunkFilterPills } from "@/features/chunks/chunk-filter-pills";
-import { ChunkFiltersPopover } from "@/features/chunks/chunk-filters-popover";
-import { getChunkSize } from "@/features/chunks/chunk-size";
-import { ChunkBulkActionBar } from "@/features/chunks/chunk-bulk-action-bar";
-import { ChunkRow } from "@/features/chunks/chunk-row";
-import { LazyGroupList } from "@/features/chunks/lazy-group-list";
+import { ChunksResults } from "@/features/chunks/chunks-results";
+import { ChunksToolbar } from "@/features/chunks/chunks-toolbar";
+import { useChunksData } from "@/features/chunks/use-chunks-data";
 import { useBulkChunkOperations } from "@/features/chunks/use-bulk-chunk-operations";
 import { useChunkFilters } from "@/features/chunks/use-chunk-filters";
-import { KanbanView } from "@/features/chunks/kanban-view";
-import { ChunkCardGrid } from "@/features/chunks/chunk-card-grid";
-import { useCollections } from "@/features/chunks/use-collections";
-import { usePinnedChunks } from "@/features/chunks/use-pinned-chunks";
 import { useSavedFilters } from "@/features/chunks/use-saved-filters";
 import { useActiveCodebase } from "@/features/codebases/use-active-codebase";
 import { ImportDocsDialog } from "@/features/import/import-dialog";
 import { ShortcutHint } from "@/features/nav/shortcut-hint";
-import { useIntersectionObserver } from "@/hooks/use-intersection-observer";
 import { getUser } from "@/functions/get-user";
-import { api } from "@/utils/api";
-import { unwrapEden } from "@/utils/eden";
 
 export const Route = createFileRoute("/chunks/")({
     component: ChunksList,
@@ -103,149 +75,46 @@ function ChunksList() {
         bulkUpdateMutation, singleDeleteMutation, reviewMutation,
         handleSelectionClick, toggleAll,
     } = useBulkChunkOperations();
-    const queryClient = useQueryClient();
     const [searchInput, setSearchInput] = useState(q ?? "");
     const handleClearAllFilters = () => {
         clearAllFilters();
         setSearchInput("");
     };
 
-    // Inline title editing (Item 9)
-    const [editingChunkId, setEditingChunkId] = useState<string | null>(null);
-    const [editTitle, setEditTitle] = useState("");
-    const editMutation = useMutation({
-        mutationFn: async ({ id, title }: { id: string; title: string }) =>
-            unwrapEden(await api.api.chunks({ id }).patch({ title })),
-        onSuccess: () => queryClient.invalidateQueries({ queryKey: ["chunks-list"] })
-    });
-    const startEditing = (chunkId: string, currentTitle: string) => {
-        setEditingChunkId(chunkId);
-        setEditTitle(currentTitle);
-    };
-    const commitEdit = () => {
-        if (editingChunkId && editTitle.trim() && editTitle.trim() !== "") {
-            editMutation.mutate({ id: editingChunkId, title: editTitle.trim() });
-        }
-        setEditingChunkId(null);
-    };
-    const cancelEdit = () => {
-        setEditingChunkId(null);
-    };
-
-    // Prefetch chunk detail on hover (Item 10)
-    const handleChunkHover = (chunkId: string) => {
-        queryClient.prefetchQuery({
-            queryKey: ["chunk", chunkId],
-            queryFn: async () => unwrapEden(await api.api.chunks({ id: chunkId }).get()),
-            staleTime: 30_000
-        });
-    };
-    const { filters: savedFilters, saveFilter, deleteFilter } = useSavedFilters();
     const { codebaseId } = useActiveCodebase();
-    const limit = 20;
+    const { saveFilter } = useSavedFilters();
 
-    const chunksQuery = useInfiniteQuery({
-        queryKey: ["chunks-list", type, q, sort, tags, after, enrichment, minConnections, codebaseId, origin, reviewStatus],
-        queryFn: async ({ pageParam = 1 }) => {
-            try {
-                return unwrapEden(
-                    await api.api.chunks.get({
-                        query: {
-                            type,
-                            search: q,
-                            sort: sort as "newest" | "oldest" | "alpha" | "updated" | undefined,
-                            tags,
-                            after,
-                            enrichment: enrichment as "missing" | "complete" | undefined,
-                            minConnections,
-                            limit: String(limit),
-                            offset: String((pageParam - 1) * limit),
-                            ...(codebaseId === "global" ? { global: "true" } : codebaseId ? { codebaseId } : {}),
-                            origin: origin as "human" | "ai" | undefined,
-                            reviewStatus: reviewStatus as "draft" | "reviewed" | "approved" | undefined
-                        }
-                    })
-                );
-            } catch {
-                return null;
-            }
-        },
-        enabled: !isFederated,
-        initialPageParam: 1,
-        getNextPageParam: (lastPage, allPages) => {
-            if (!lastPage) return undefined;
-            const loaded = allPages.reduce((sum, p) => sum + (p?.chunks?.length ?? 0), 0);
-            return loaded < lastPage.total ? allPages.length + 1 : undefined;
-        }
+    const {
+        activeQuery,
+        tagsQuery,
+        allChunks,
+        processedChunks,
+        editingChunkId,
+        editTitle,
+        setEditTitle,
+        startEditing,
+        commitEdit,
+        cancelEdit,
+        handleChunkHover,
+        togglePin,
+        isPinned,
+    } = useChunksData({
+        type,
+        q,
+        sort,
+        tags,
+        size,
+        after,
+        enrichment,
+        minConnections,
+        codebaseId,
+        origin,
+        reviewStatus,
+        isFederated,
     });
 
-    const federatedQuery = useInfiniteQuery({
-        queryKey: ["chunks-federated", type, q, sort, tags, origin, reviewStatus],
-        queryFn: async ({ pageParam = 1 }) => {
-            try {
-                const res = await api.api.chunks.search.federated.get({
-                    query: {
-                        type,
-                        search: q,
-                        sort: sort as "newest" | "oldest" | "alpha" | "updated" | undefined,
-                        tags,
-                        limit: String(limit),
-                        offset: String((pageParam - 1) * limit),
-                    }
-                });
-                return unwrapEden(res);
-            } catch {
-                return null;
-            }
-        },
-        enabled: isFederated,
-        initialPageParam: 1,
-        getNextPageParam: (lastPage, allPages) => {
-            if (!lastPage) return undefined;
-            const loaded = allPages.reduce((sum, p) => sum + (p?.chunks?.length ?? 0), 0);
-            return loaded < lastPage.total ? allPages.length + 1 : undefined;
-        }
-    });
-
-    const activeQuery = isFederated ? federatedQuery : chunksQuery;
-
-    const tagsQuery = useQuery({
-        queryKey: ["tags"],
-        queryFn: async () => {
-            try {
-                return unwrapEden(await api.api.tags.get());
-            } catch {
-                return [];
-            }
-        },
-        staleTime: 60_000
-    });
-
-    // Fetch chunk-tag mappings (with tag type info) for grouping
-    const isTagTypeGroup = group?.startsWith("tagtype:");
-    const selectedTagTypeId = isTagTypeGroup ? group!.slice("tagtype:".length) : null;
-
-    const allChunks = activeQuery.data?.pages.flatMap(p => p?.chunks ?? []) ?? [];
     const chunks = allChunks;
-    const { pinnedIds, togglePin, isPinned } = usePinnedChunks();
-    const { collections, createCollection, deleteCollection: deleteCol } = useCollections();
-
-    const processedChunks = useMemo(() => {
-        const source = allChunks;
-        const filtered = size ? source.filter(c => getChunkSize(c.content).level === size) : source;
-        const pinnedSet = new Set(pinnedIds);
-        return [...filtered].sort((a, b) => {
-            const aPinned = pinnedSet.has(a.id) ? 0 : 1;
-            const bPinned = pinnedSet.has(b.id) ? 0 : 1;
-            return aPinned - bPinned;
-        });
-        // eslint-disable-next-line react-hooks/exhaustive-deps -- allChunks is stable per fetch
-    }, [activeQuery.data, size, pinnedIds]);
-
-    const collectionFilteredChunks = processedChunks;
-    const allChunkIds = useMemo(() => collectionFilteredChunks.map(c => c.id), [collectionFilteredChunks]);
-
-    const hasGrouping = !!group;
+    const total = activeQuery.data?.pages[0]?.total ?? 0;
 
     const chunksRef = useRef(chunks);
     chunksRef.current = chunks;
@@ -299,7 +168,7 @@ function ChunksList() {
             if (!/^[1-9]$/.test(e.key)) return;
 
             const n = Number(e.key) - 1;
-            const chunksArray = collectionFilteredChunks ?? [];
+            const chunksArray = processedChunks ?? [];
             if (n >= chunksArray.length) return;
 
             e.preventDefault();
@@ -310,21 +179,14 @@ function ChunksList() {
         }
         window.addEventListener("keydown", handleKey);
         return () => window.removeEventListener("keydown", handleKey);
-    }, [collectionFilteredChunks, navTo]);
-
-    const total = activeQuery.data?.pages[0]?.total ?? 0;
-
-    const fetchNextPageCb = useCallback(() => {
-        activeQuery.fetchNextPage();
-    }, [activeQuery]);
-    const loadMoreRef = useIntersectionObserver(
-        fetchNextPageCb,
-        !!activeQuery.hasNextPage && !activeQuery.isFetchingNextPage
-    );
+    }, [processedChunks, navTo]);
 
     const [confirmAction, setConfirmAction] = useState<{ title: string; description: string; action: () => void } | null>(null);
     const [showSaveFilter, setShowSaveFilter] = useState(false);
 
+    const handleDeleteChunk = useCallback((id: string, _title: string) => {
+        singleDeleteMutation.mutate(id);
+    }, [singleDeleteMutation]);
 
     return (
         <div className="container mx-auto max-w-5xl px-4 py-8">
@@ -361,316 +223,96 @@ function ChunksList() {
                 </div>
             </div>
 
-            {/* Search bar + controls */}
-            <div className="mb-4 flex flex-wrap items-center gap-2">
-                <div className="relative flex-1">
-                    <Search className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
-                    <input
-                        ref={searchInputRef}
-                        type="text"
-                        value={searchInput}
-                        onChange={e => setSearchInput(e.target.value)}
-                        onKeyDown={e => {
-                            if (e.key === "Enter") updateSearch({ q: searchInput || undefined });
-                        }}
-                        placeholder="Search chunks..."
-                        className="bg-background focus:ring-ring w-full rounded-md border py-2 pr-24 pl-9 text-sm focus:ring-2 focus:outline-none"
-                    />
-                    {total > 0 && (
-                        <span className="text-muted-foreground absolute top-1/2 right-3 -translate-y-1/2 text-xs tabular-nums">
-                            {total} {total === 1 ? "chunk" : "chunks"}
-                        </span>
-                    )}
-                </div>
-
-                {/* All codebases toggle */}
-                <Button
-                    variant={isFederated ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => updateSearch({ allCodebases: isFederated ? undefined : "true" })}
-                    className="gap-1.5"
-                    title="Search across all codebases"
-                >
-                    <Globe className="size-3.5" />
-                    All
-                </Button>
-
-                {/* Filters popover */}
-                <ChunkFiltersPopover
-                    filters={{ type, q, sort, tags, size, after, enrichment, minConnections, origin, reviewStatus }}
-                    activeFilterCount={activeFilterCount}
-                    hasActiveFilters={hasActiveFilters}
-                    activeTags={activeTags}
-                    availableTags={tagsQuery.data ?? []}
-                    codebaseId={codebaseId}
-                    onUpdateSearch={updateSearch}
-                    onToggleTag={toggleTag}
-                    onClearAllFilters={handleClearAllFilters}
-                    onShowSaveFilter={() => setShowSaveFilter(true)}
-                    onCreateCollection={createCollection}
-                />
-
-                {/* View & grouping controls */}
-                <TagTypeGroupSelect
-                    value={group}
-                    onChange={v => updateSearch({ group: v || undefined, subGroup: undefined })}
-                />
-                {group && (
-                    <SubGroupSelect
-                        value={subGroup}
-                        primaryGroup={group}
-                        onChange={v => updateSearch({ subGroup: v || undefined })}
-                    />
-                )}
-
-                {collections.length > 0 && (
-                    <Popover>
-                        <PopoverTrigger className="hover:bg-muted inline-flex items-center gap-1.5 rounded-md border px-3 py-2 text-sm font-medium transition-colors">
-                            <FolderPlus className="size-3.5" />
-                            Collections
-                        </PopoverTrigger>
-                        <PopoverContent side="bottom" align="end" className="w-56">
-                            <div className="space-y-1">
-                                {collections.map(c => (
-                                    <div key={c.id} className="flex items-center justify-between gap-1 rounded px-2 py-1.5 text-sm">
-                                        <button
-                                            className="hover:text-foreground text-muted-foreground flex-1 truncate text-left"
-                                            onClick={() => {
-                                                const f = c.filter as Record<string, string | undefined>;
-                                                navTo({ from: "/chunks/",
-                                                    search: {
-                                                        type: f.type,
-                                                        q: f.search,
-                                                        sort: f.sort,
-                                                        tags: f.tags,
-                                                        after: f.after,
-                                                        enrichment: f.enrichment,
-                                                        minConnections: f.minConnections,
-                                                        origin: f.origin,
-                                                        reviewStatus: f.reviewStatus,
-                                                        size: undefined,
-                                                        group,
-                                                        collection: undefined,
-                                                        view
-                                                    }
-                                                });
-                                            }}
-                                        >
-                                            {c.name}
-                                        </button>
-                                        <button
-                                            onClick={() => deleteCol(c.id)}
-                                            className="text-muted-foreground hover:text-destructive shrink-0"
-                                        >
-                                            <X className="size-3" />
-                                        </button>
-                                    </div>
-                                ))}
-                            </div>
-                        </PopoverContent>
-                    </Popover>
-                )}
-
-                <div className="flex rounded-md border">
-                    <button onClick={() => updateSearch({ view: undefined })} className={`px-2 py-1.5 text-xs ${!view ? "bg-muted" : ""}`}>
-                        <List className="size-3.5" />
-                    </button>
-                    <button
-                        onClick={() => updateSearch({ view: "grid" })}
-                        className={`px-2 py-1.5 text-xs ${view === "grid" ? "bg-muted" : ""}`}
-                    >
-                        <LayoutGrid className="size-3.5" />
-                    </button>
-                    <button
-                        onClick={() => updateSearch({ view: "kanban" })}
-                        className={`px-2 py-1.5 text-xs ${view === "kanban" ? "bg-muted" : ""}`}
-                    >
-                        <Columns3 className="size-3.5" />
-                    </button>
-                </div>
-            </div>
-
-            {/* Active filter pills + clear all (shown below toolbar when filters active) */}
-            <ChunkFilterPills
+            <ChunksToolbar
+                searchInput={searchInput}
+                onSearchInputChange={setSearchInput}
                 type={type}
                 q={q}
+                sort={sort}
                 tags={tags}
+                size={size}
                 after={after}
                 enrichment={enrichment}
                 minConnections={minConnections}
+                group={group}
+                subGroup={subGroup}
+                view={view}
                 origin={origin}
                 reviewStatus={reviewStatus}
                 allCodebases={allCodebases}
                 activeTags={activeTags}
-                onRemoveFilter={(key) => {
-                    if (key.startsWith("tag:")) {
-                        const tagToRemove = key.slice(4);
-                        const remaining = activeTags.filter(t => t !== tagToRemove);
-                        updateSearch({ tags: remaining.length > 0 ? remaining.join(",") : undefined });
-                    } else if (key === "q") {
-                        setSearchInput("");
-                        updateSearch({ q: undefined });
-                    } else {
-                        updateSearch({ [key]: undefined });
-                    }
-                }}
-                onClearAll={handleClearAllFilters}
+                activeFilterCount={activeFilterCount}
+                hasActiveFilters={hasActiveFilters}
+                isFederated={isFederated}
+                total={total}
+                availableTags={tagsQuery.data ?? []}
+                codebaseId={codebaseId}
+                onUpdateSearch={updateSearch}
+                onToggleTag={toggleTag}
+                onClearAllFilters={handleClearAllFilters}
+                onShowSaveFilter={() => setShowSaveFilter(true)}
+                searchInputRef={searchInputRef}
             />
-
-            {/* Saved filter presets */}
-            {savedFilters.length > 0 && (
-                <div className="mb-3 flex flex-wrap items-center gap-1.5">
-                    <Filter className="text-muted-foreground size-3" />
-                    {savedFilters.map(f => (
-                        <Badge
-                            key={f.name}
-                            variant="outline"
-                            className="cursor-pointer gap-1"
-                            onClick={() => navTo({ from: "/chunks/", search: { ...f.params } })}
-                        >
-                            {f.name}
-                            <button
-                                onClick={e => {
-                                    e.stopPropagation();
-                                    deleteFilter(f.name);
-                                }}
-                            >
-                                <X className="size-2.5" />
-                            </button>
-                        </Badge>
-                    ))}
-                </div>
-            )}
 
             <div className="mb-3">
                 <ShortcutHint />
             </div>
 
-            {/* Results */}
-            {view === "kanban" ? (
-                <KanbanView
-                    chunks={collectionFilteredChunks}
-                    onBulkDelete={(ids) => {
-                        setConfirmAction({
-                            title: "Delete chunks",
-                            description: `Delete ${ids.size} chunks permanently?`,
-                            action: () => bulkUpdateMutation.mutate({ ids: [...ids], action: "delete" }),
-                        });
-                    }}
-                    onBulkArchive={(ids) => {
-                        setConfirmAction({
-                            title: "Archive chunks",
-                            description: `Archive ${ids.size} chunks?`,
-                            action: () => bulkUpdateMutation.mutate({ ids: [...ids], action: "archive" }),
-                        });
-                    }}
-                />
-            ) : activeQuery.isLoading ? (
-                <SkeletonList count={10} />
-            ) : view === "grid" ? (
-                <ChunkCardGrid chunks={collectionFilteredChunks} />
-            ) : collectionFilteredChunks.length === 0 && !hasGrouping ? (
-                <PageEmpty
-                    icon={FileText}
-                    title="No chunks yet"
-                    description="Create your first chunk to start building your knowledge base"
-                    action={
-                        <Button size="sm" render={<Link to="/chunks/new" />}>
-                            <Plus className="mr-1 size-4" />
-                            New Chunk
-                        </Button>
-                    }
-                />
-            ) : hasGrouping ? (
-                <LazyGroupList
-                    groupBy={group!}
-                    tagTypeId={selectedTagTypeId}
-                    subGroupBy={subGroup}
-                    codebaseId={codebaseId}
-                    sort={sort}
-                    filters={{
-                        type,
-                        tags,
-                        origin,
-                        reviewStatus,
-                        search: q,
-                    }}
-                    selectedIds={selectedIds}
-                    onSelectionClick={handleSelectionClick}
-                    onDelete={(id, title) =>
-                        setConfirmAction({
-                            title: "Delete chunk",
-                            description: `Delete "${title}" permanently?`,
-                            action: () => singleDeleteMutation.mutate(id),
-                        })
-                    }
-                    onReviewCycle={(id, next) => reviewMutation.mutate({ id, status: next })}
-                />
-            ) : (
-                <Card>
-                    {collectionFilteredChunks.map((chunk, i) => (
-                        <ChunkRow
-                            key={chunk.id}
-                            chunk={chunk}
-                            index={i}
-                            allChunkIds={allChunkIds}
-                            isSelected={selectedIds.has(chunk.id)}
-                            isPinned={isPinned(chunk.id)}
-                            isKeyboardSelected={selectedIndex === i}
-                            showExtendedBadges
-                            isFederated={isFederated}
-                            showSeparator={i > 0}
-                            editingChunkId={editingChunkId}
-                            editTitle={editTitle}
-                            onStartEditing={startEditing}
-                            onCommitEdit={commitEdit}
-                            onCancelEdit={cancelEdit}
-                            onEditTitleChange={setEditTitle}
-                            onHover={handleChunkHover}
-                            onTogglePin={togglePin}
-                            onSelectionClick={handleSelectionClick}
-                            onDelete={(id, title) =>
-                                setConfirmAction({
-                                    title: "Delete chunk",
-                                    description: `Delete "${title}" permanently?`,
-                                    action: () => singleDeleteMutation.mutate(id),
-                                })
-                            }
-                            onReviewCycle={(id, next) => reviewMutation.mutate({ id, status: next })}
-                        />
-                    ))}
-                </Card>
-            )}
-
-            {/* Load more trigger */}
-            {view !== "kanban" && activeQuery.hasNextPage && (
-                <div ref={loadMoreRef} className="mt-4 flex justify-center">
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => activeQuery.fetchNextPage()}
-                        disabled={activeQuery.isFetchingNextPage}
-                    >
-                        {activeQuery.isFetchingNextPage ? "Loading..." : "Load more"}
-                    </Button>
-                </div>
-            )}
-            {view !== "kanban" && total > 0 && (
-                <p className="text-muted-foreground mt-2 text-center text-xs">
-                    Showing {allChunks.length} of {total} chunks
-                </p>
-            )}
+            <ChunksResults
+                view={view}
+                group={group}
+                subGroup={subGroup}
+                sort={sort}
+                type={type}
+                q={q}
+                tags={tags}
+                origin={origin}
+                reviewStatus={reviewStatus}
+                codebaseId={codebaseId}
+                isFederated={isFederated}
+                isLoading={activeQuery.isLoading}
+                hasNextPage={!!activeQuery.hasNextPage}
+                isFetchingNextPage={activeQuery.isFetchingNextPage}
+                allChunks={allChunks}
+                processedChunks={processedChunks}
+                total={total}
+                selectedIds={selectedIds}
+                setSelectedIds={setSelectedIds}
+                selectedIndex={selectedIndex}
+                editingChunkId={editingChunkId}
+                editTitle={editTitle}
+                onStartEditing={startEditing}
+                onCommitEdit={commitEdit}
+                onCancelEdit={cancelEdit}
+                onEditTitleChange={setEditTitle}
+                onHover={handleChunkHover}
+                onTogglePin={togglePin}
+                isPinned={isPinned}
+                onSelectionClick={handleSelectionClick}
+                onDeleteChunk={handleDeleteChunk}
+                onReviewCycle={(id, next) => reviewMutation.mutate({ id, status: next })}
+                onBulkDeleteChunks={(ids) => {
+                    setConfirmAction({
+                        title: "Delete chunks",
+                        description: `Delete ${ids.size} chunks permanently?`,
+                        action: () => bulkUpdateMutation.mutate({ ids: [...ids], action: "delete" }),
+                    });
+                }}
+                onBulkArchiveChunks={(ids) => {
+                    setConfirmAction({
+                        title: "Archive chunks",
+                        description: `Archive ${ids.size} chunks?`,
+                        action: () => bulkUpdateMutation.mutate({ ids: [...ids], action: "archive" }),
+                    });
+                }}
+                bulkUpdateMutation={bulkUpdateMutation}
+                setConfirmAction={setConfirmAction}
+                onFetchNextPage={() => activeQuery.fetchNextPage()}
+            />
 
             <p className="text-muted-foreground mt-4 text-center text-xs">
                 Press <kbd className="bg-muted rounded px-1 py-0.5 font-mono text-[10px]">?</kbd> for keyboard shortcuts
             </p>
-
-            <ChunkBulkActionBar
-                selectedIds={selectedIds}
-                setSelectedIds={setSelectedIds}
-                bulkUpdateMutation={bulkUpdateMutation}
-                setConfirmAction={setConfirmAction}
-            />
 
             <ConfirmDialog
                 open={confirmAction !== null}
@@ -699,87 +341,5 @@ function ChunksList() {
                 }}
             />
         </div>
-    );
-}
-
-function SubGroupSelect({
-    value,
-    primaryGroup,
-    onChange,
-}: {
-    value?: string;
-    primaryGroup: string;
-    onChange: (v: string | undefined) => void;
-}) {
-    const tagTypesQuery = useQuery({
-        queryKey: ["tag-types"],
-        queryFn: async () => {
-            try {
-                return unwrapEden(await api.api["tag-types"].get());
-            } catch {
-                return [];
-            }
-        },
-        staleTime: 60_000
-    });
-    const tagTypes = tagTypesQuery.data ?? [];
-
-    // Exclude the primary group from the sub-group options to avoid redundancy
-    const isPrimaryTagType = primaryGroup.startsWith("tagtype:");
-
-    return (
-        <select
-            value={value ?? ""}
-            onChange={e => onChange(e.target.value || undefined)}
-            className="bg-background rounded-md border px-2 py-2 text-sm"
-        >
-            <option value="">Then by...</option>
-            {primaryGroup !== "type" && <option value="type">Type</option>}
-            {primaryGroup !== "status" && <option value="status">Status</option>}
-            {primaryGroup !== "origin" && <option value="origin">Origin</option>}
-            {primaryGroup !== "freshness" && <option value="freshness">Freshness</option>}
-            {tagTypes
-                .filter(tt => !isPrimaryTagType || primaryGroup !== `tagtype:${tt.id}`)
-                .map(tt => (
-                    <option key={tt.id} value={`tagtype:${tt.id}`}>
-                        Tag: {tt.name}
-                    </option>
-                ))}
-        </select>
-    );
-}
-
-function TagTypeGroupSelect({ value, onChange }: { value?: string; onChange: (v: string | undefined) => void }) {
-    const tagTypesQuery = useQuery({
-        queryKey: ["tag-types"],
-        queryFn: async () => {
-            try {
-                return unwrapEden(await api.api["tag-types"].get());
-            } catch {
-                return [];
-            }
-        },
-        staleTime: 60_000
-    });
-
-    const tagTypes = tagTypesQuery.data ?? [];
-
-    return (
-        <select
-            value={value ?? ""}
-            onChange={e => onChange(e.target.value || undefined)}
-            className="bg-background rounded-md border px-2 py-2 text-sm"
-        >
-            <option value="">No grouping</option>
-            <option value="type">Group by type</option>
-            {tagTypes.map(tt => (
-                <option key={tt.id} value={`tagtype:${tt.id}`}>
-                    Group by tag: {tt.name}
-                </option>
-            ))}
-            <option value="status">Group by status</option>
-            <option value="origin">Group by origin</option>
-            <option value="freshness">Group by freshness</option>
-        </select>
     );
 }
