@@ -35,7 +35,7 @@ export const EMPTY_FILTER: GraphFilterValues = {
 export interface GraphFilterPreviewData {
     chunks: Array<{ id: string; type: string; title: string }>;
     connections: Array<{ sourceId: string; targetId: string; relation: string }>;
-    chunkTags: Array<{ chunkId: string; tagName: string }>;
+    chunkTags: Array<{ chunkId: string; tagName: string; tagTypeId?: string | null }>;
 }
 
 interface GraphFilterFormProps {
@@ -278,21 +278,41 @@ export function GraphFilterForm({ values, onChange, previewData, compact, initia
                     ))}
                 </div>
                 {groupBy === "tag" && tagTypesList.length > 0 && (
-                    <div className="mt-1.5 flex flex-wrap gap-1">
-                        {tagTypesList.map(tt => (
-                            <button
-                                key={tt.id}
-                                onClick={() => emit({ tagTypeId: tagTypeId === tt.id ? null : tt.id })}
-                                className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] ${
-                                    tagTypeId === tt.id
-                                        ? "border-primary bg-primary/10 text-primary"
-                                        : "text-muted-foreground hover:text-foreground"
-                                }`}
-                            >
-                                <span className="inline-block size-2 rounded-full" style={{ backgroundColor: tt.color }} />
-                                {tt.name}
-                            </button>
-                        ))}
+                    <div className="mt-1.5">
+                        <div className="flex flex-wrap gap-1">
+                            {tagTypesList.map(tt => {
+                                const count = previewData
+                                    ? new Set(previewData.chunkTags.filter(ct => ct.tagTypeId === tt.id).map(ct => ct.chunkId)).size
+                                    : 0;
+                                return (
+                                    <button
+                                        key={tt.id}
+                                        onClick={() => emit({ tagTypeId: tagTypeId === tt.id ? null : tt.id })}
+                                        className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] ${
+                                            tagTypeId === tt.id
+                                                ? "border-primary bg-primary/10 text-primary"
+                                                : "text-muted-foreground hover:text-foreground"
+                                        }`}
+                                    >
+                                        <span className="inline-block size-2 rounded-full" style={{ backgroundColor: tt.color }} />
+                                        {tt.name}
+                                        {count > 0 && <span className="opacity-60">({count})</span>}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                        {previewData && (() => {
+                            const typedChunks = new Set(previewData.chunkTags.filter(ct => ct.tagTypeId).map(ct => ct.chunkId)).size;
+                            const totalChunks = previewData.chunks.length;
+                            if (typedChunks < totalChunks) {
+                                return (
+                                    <p className="text-[10px] text-muted-foreground mt-1.5">
+                                        {typedChunks} of {totalChunks} chunks have typed tags. Untyped chunks are hidden unless "Show ungrouped" is on.
+                                    </p>
+                                );
+                            }
+                            return null;
+                        })()}
                     </div>
                 )}
                 {groupBy === "tag" && tagTypeId && (
