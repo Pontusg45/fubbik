@@ -313,10 +313,11 @@ function GraphViewInner() {
     // When groupBy is "tag" but activeTagTypeIds hasn't been set yet (first render),
     // use availableTagTypeIds so groups render immediately without a useEffect gap.
     const effectiveTagTypeIds = useMemo(() => {
+        if (prefilter.tagTypeId) return new Set([prefilter.tagTypeId]);
         if (activeTagTypeIds.size > 0) return activeTagTypeIds;
         if (prefilter.groupBy === "tag" && availableTagTypeIds.size > 0) return availableTagTypeIds;
         return activeTagTypeIds;
-    }, [activeTagTypeIds, prefilter.groupBy, availableTagTypeIds]);
+    }, [activeTagTypeIds, prefilter.groupBy, prefilter.tagTypeId, availableTagTypeIds]);
 
     const groupingMode: Exclude<GroupBy, "none"> | null = useMemo(() => {
         if (prefilter.groupBy === "type") return "type";
