@@ -6,6 +6,7 @@ import {
     checkCircular,
     findShortestPath,
     getConnectionDegrees,
+    getDownstreamChunks,
     getGraphProximityBoost,
     getNeighborhood,
     getOrphanChunkIds
@@ -207,5 +208,27 @@ describe("getGraphProximityBoost", () => {
             getGraphProximityBoost(uid("orphan"), [uid("A"), uid("B")], 3)
         );
         expect(map.size).toBe(0);
+    });
+});
+
+describe("getDownstreamChunks", () => {
+    it("returns downstream nodes following directed edges", async () => {
+        if (!ageReady) return;
+        // Chain: A → B → C (directed connects edges)
+        const downstream = await Effect.runPromise(getDownstreamChunks(uid("A"), 3));
+        expect(downstream).toContain(uid("B"));
+        expect(downstream).toContain(uid("C"));
+    });
+
+    it("returns empty array for leaf node with no outgoing edges", async () => {
+        if (!ageReady) return;
+        const downstream = await Effect.runPromise(getDownstreamChunks(uid("C"), 3));
+        expect(downstream.length).toBe(0);
+    });
+
+    it("returns empty array for orphan node", async () => {
+        if (!ageReady) return;
+        const downstream = await Effect.runPromise(getDownstreamChunks(uid("orphan"), 3));
+        expect(downstream.length).toBe(0);
     });
 });

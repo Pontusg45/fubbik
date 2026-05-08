@@ -181,6 +181,17 @@ export function getGraphProximityBoost(
     );
 }
 
+export function getDownstreamChunks(chunkId: string, maxHops: number) {
+    return cypher(
+        `MATCH (source:chunk {id: '${escCypher(chunkId)}'})-[:connects*1..${maxHops}]->(downstream:chunk)
+         RETURN DISTINCT downstream.id AS id`,
+        "id agtype"
+    ).pipe(
+        Effect.map(rows => rows.map((r: any) => parseAgtypeId(r.id))),
+        Effect.catchAll(() => Effect.succeed([] as string[]))
+    );
+}
+
 export function getOrphanChunkIds() {
     // AGE 1.x does not support the anonymous pattern `NOT (c)-[]-()`.
     // Use the EXISTS subquery form instead.
