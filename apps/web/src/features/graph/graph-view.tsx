@@ -65,6 +65,8 @@ import { useSavedGraphViews } from "./use-saved-views";
 
 
 
+const isDev = import.meta.env?.DEV ?? false;
+
 const EDGE_TYPES = { floating: FloatingEdge };
 const NODE_TYPES = { chunk: GraphNode, group: GraphGroupNode, cluster: GraphClusterNode };
 
@@ -313,10 +315,23 @@ function GraphViewInner() {
     // When groupBy is "tag" but activeTagTypeIds hasn't been set yet (first render),
     // use availableTagTypeIds so groups render immediately without a useEffect gap.
     const effectiveTagTypeIds = useMemo(() => {
-        if (prefilter.tagTypeId) return new Set([prefilter.tagTypeId]);
-        if (activeTagTypeIds.size > 0) return activeTagTypeIds;
-        if (prefilter.groupBy === "tag" && availableTagTypeIds.size > 0) return availableTagTypeIds;
-        return activeTagTypeIds;
+        let result: Set<string>;
+        let source: string;
+        if (prefilter.tagTypeId) {
+            result = new Set([prefilter.tagTypeId]);
+            source = `prefilter.tagTypeId=${prefilter.tagTypeId}`;
+        } else if (activeTagTypeIds.size > 0) {
+            result = activeTagTypeIds;
+            source = `activeTagTypeIds(${activeTagTypeIds.size})`;
+        } else if (prefilter.groupBy === "tag" && availableTagTypeIds.size > 0) {
+            result = availableTagTypeIds;
+            source = `availableTagTypeIds(${availableTagTypeIds.size})`;
+        } else {
+            result = activeTagTypeIds;
+            source = "fallback-empty";
+        }
+        if (isDev) console.debug("[graph] effectiveTagTypeIds:", source, [...result]);
+        return result;
     }, [activeTagTypeIds, prefilter.groupBy, prefilter.tagTypeId, availableTagTypeIds]);
 
     const groupingMode: Exclude<GroupBy, "none"> | null = useMemo(() => {
@@ -328,16 +343,21 @@ function GraphViewInner() {
     }, [prefilter.groupBy, effectiveTagTypeIds]);
 
     const groupResult = useMemo(() => {
-        if (!groupingMode || !data) return null;
+        if (!groupingMode || !data) {
+            if (isDev) console.debug("[graph] groupResult: null (mode=%s, hasData=%s)", groupingMode, !!data);
+            return null;
+        }
         const typeColorMap: Record<string, string> = {};
         for (const [name, palette] of Object.entries(TYPE_COLORS)) typeColorMap[name] = palette.border;
-        return GROUP_STRATEGIES[groupingMode].build({
+        const result = GROUP_STRATEGIES[groupingMode].build({
             chunks: data.chunks,
             chunkTags: data.chunkTags,
             activeTagTypeIds: effectiveTagTypeIds,
             chunkCodebases: data.chunkCodebases,
             typeColorMap
         });
+        if (isDev) console.debug("[graph] groupResult:", groupingMode, result ? `${result.groups.size} groups` : "null");
+        return result;
     }, [groupingMode, data, effectiveTagTypeIds, TYPE_COLORS]);
 
     // Keep `tagGroups` variable name — downstream pipeline references it by this name.
@@ -469,6 +489,7 @@ function GraphViewInner() {
             chunks = chunks.filter(c => new Date(c.createdAt) <= timelineCutoff);
         }
 
+        if (isDev) console.debug("[graph] filteredGraph: %d chunks, %d connections", chunks.length, connections.length);
         return { chunks, connections, parentChildren, childIds, hiddenIds };
     }, [data, filterTypes, filterRelations, collapsedParents, exploreMode, exploredNodeIds, timelineCutoff, prefilter]);
 
@@ -544,11 +565,14 @@ function GraphViewInner() {
         });
 
         mark("layout-start");
+        if (isDev) console.debug("[graph] layout: %d nodes, %d edges, grouping=%s, groups=%d, dataUnchanged=%s",
+            workerNodes.length, workerEdges.length, groupingKey, tagGroups?.size ?? 0, dataUnchanged);
 
         const cached = getCachedLayout(cacheKey);
         if (cached && layoutAlgorithm === "force") {
             mark("layout-end");
             measure("layout-cache-hit", "layout-start", "layout-end");
+            if (isDev) console.debug("[graph] layout: cache hit, %d positions", Object.keys(cached).length);
             setLayoutPositions(cached);
             lastSimulationSigRef.current = sig;
             lastSimulationPositionsRef.current = cached;
@@ -559,10 +583,12 @@ function GraphViewInner() {
         if (layoutAlgorithm === "force") {
             // Fast path: same chunks+edges, different grouping. Skip Phase 1.
             if (dataUnchanged && prevPositions && tagGroups && tagGroups.size > 0) {
+                if (isDev) console.debug("[graph] layout: trying regroup fast path");
                 const regroupedPositions = runRegroupLayout(workerNodes, workerEdges, tagGroups, prevPositions);
                 if (regroupedPositions) {
                     mark("layout-end");
                     measure("layout-regroup", "layout-start", "layout-end");
+                    if (isDev) console.debug("[graph] layout: regroup success, %d positions", Object.keys(regroupedPositions).length);
                     setLayoutPositions(regroupedPositions);
                     lastSimulationPositionsRef.current = regroupedPositions;
                     setCachedLayout(cacheKey, regroupedPositions);
@@ -786,6 +812,7 @@ function GraphViewInner() {
                 rawNodes.filter(n => !tagGroupNodeIds.has(n.id) && !groupedChunkIds.has(n.id)).map(n => n.id)
             );
             if (!showUngrouped && ungroupedChunkIds.size > 0) {
+                if (isDev) console.debug("[graph] hiding %d ungrouped nodes (grouped: %d)", ungroupedChunkIds.size, groupedChunkIds.size);
                 rawNodes = rawNodes.filter(n => !ungroupedChunkIds.has(n.id));
             }
             if (showUngrouped && ungroupedChunkIds.size > 0) {
@@ -1056,6 +1083,8 @@ function GraphViewInner() {
             return { layoutNodes, layoutEdges: bundled, groupToChunkIds };
         }
 
+        if (isDev) console.debug("[graph] render: %d nodes (%d groups), %d edges",
+            layoutNodes.length, layoutNodes.filter(n => n.type === "group").length, rawEdges.length);
         return { layoutNodes, layoutEdges: rawEdges, groupToChunkIds };
     }, [filteredGraph, layoutPositions, draggedPositions, isDark, TYPE_COLORS, collapsedParents, bundleEdges, tagGroups, data, edgeAnimated, measuredSizesVersion, showUngrouped, shouldCluster, clusters, clusterVisibleChunkIds, dispatch]);
 
