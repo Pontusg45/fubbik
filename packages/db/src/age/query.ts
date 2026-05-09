@@ -243,6 +243,68 @@ export function detectCommunities(chunkIds: string[], _maxHops: number) {
     );
 }
 
+export function findBridgeChunks(chunkIds: string[]) {
+    if (chunkIds.length === 0) return Effect.succeed([] as string[]);
+
+    const idList = chunkIds.map(id => `'${escCypher(id)}'`).join(",");
+    return cypher(
+        `MATCH (a:chunk)-[e:connects]-(b:chunk)
+         WHERE a.id IN [${idList}] AND b.id IN [${idList}]
+         RETURN DISTINCT a.id AS source, b.id AS target`,
+        "source agtype, target agtype"
+    ).pipe(
+        Effect.map(rows => {
+            const adj = new Map<string, Set<string>>();
+            for (const id of chunkIds) adj.set(id, new Set());
+            for (const row of rows) {
+                const source = parseAgtypeId((row as any).source);
+                const target = parseAgtypeId((row as any).target);
+                adj.get(source)?.add(target);
+                adj.get(target)?.add(source);
+            }
+
+            const visited = new Set<string>();
+            const disc = new Map<string, number>();
+            const low = new Map<string, number>();
+            const parent = new Map<string, string | null>();
+            const bridges: string[] = [];
+            let timer = 0;
+
+            function dfs(u: string) {
+                visited.add(u);
+                disc.set(u, timer);
+                low.set(u, timer);
+                timer++;
+                let children = 0;
+                let isArticulation = false;
+
+                for (const v of adj.get(u) ?? []) {
+                    if (!visited.has(v)) {
+                        children++;
+                        parent.set(v, u);
+                        dfs(v);
+                        low.set(u, Math.min(low.get(u)!, low.get(v)!));
+                        if (parent.get(u) === null && children > 1) isArticulation = true;
+                        if (parent.get(u) !== null && low.get(v)! >= disc.get(u)!) isArticulation = true;
+                    } else if (v !== parent.get(u)) {
+                        low.set(u, Math.min(low.get(u)!, disc.get(v)!));
+                    }
+                }
+                if (isArticulation) bridges.push(u);
+            }
+
+            for (const id of chunkIds) {
+                if (!visited.has(id) && (adj.get(id)?.size ?? 0) > 0) {
+                    parent.set(id, null);
+                    dfs(id);
+                }
+            }
+
+            return bridges;
+        })
+    );
+}
+
 export function getOrphanChunkIds() {
     // AGE 1.x does not support the anonymous pattern `NOT (c)-[]-()`.
     // Use the EXISTS subquery form instead.

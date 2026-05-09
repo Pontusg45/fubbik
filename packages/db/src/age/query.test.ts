@@ -5,6 +5,7 @@ import { isAgeAvailable } from "./client";
 import {
     checkCircular,
     detectCommunities,
+    findBridgeChunks,
     findShortestPath,
     getConnectionDegrees,
     getDownstreamChunks,
@@ -275,5 +276,38 @@ describe("detectCommunities", () => {
         if (!ageReady) return;
         const communities = await Effect.runPromise(detectCommunities([], 3));
         expect(communities.length).toBe(0);
+    });
+});
+
+describe("findBridgeChunks", () => {
+    it("identifies B as a bridge in chain A-B-C", async () => {
+        if (!ageReady) return;
+        const bridges = await Effect.runPromise(
+            findBridgeChunks([uid("A"), uid("B"), uid("C")])
+        );
+        expect(bridges).toContain(uid("B"));
+    });
+
+    it("identifies center as a bridge in star topology", async () => {
+        if (!ageReady) return;
+        const bridges = await Effect.runPromise(
+            findBridgeChunks([uid("center"), uid("spoke1"), uid("spoke2"), uid("spoke3")])
+        );
+        expect(bridges).toContain(uid("center"));
+    });
+
+    it("does not identify leaf nodes as bridges", async () => {
+        if (!ageReady) return;
+        const bridges = await Effect.runPromise(
+            findBridgeChunks([uid("A"), uid("B"), uid("C")])
+        );
+        expect(bridges).not.toContain(uid("A"));
+        expect(bridges).not.toContain(uid("C"));
+    });
+
+    it("returns empty array for empty input", async () => {
+        if (!ageReady) return;
+        const bridges = await Effect.runPromise(findBridgeChunks([]));
+        expect(bridges.length).toBe(0);
     });
 });
