@@ -4,6 +4,7 @@ import {
     getChunkConnections,
     getTagsForUser,
     findShortestPath,
+    findShortestPathWithDetails,
     getNeighborhood,
     getHopDistances,
     getChunksAffectedByRequirement,
@@ -101,12 +102,17 @@ export function executeSearch(userId: string | undefined, searchQuery: SearchQue
             } else if (clause.field === "path") {
                 const [chunkA, chunkB] = clause.value.split(",").map(s => s.trim());
                 if (chunkA && chunkB) {
-                    const path = yield* findShortestPath(chunkA, chunkB).pipe(
-                        Effect.orElse(() => Effect.succeed(null as string[] | null))
+                    const detailedPath = yield* findShortestPathWithDetails(chunkA, chunkB).pipe(
+                        Effect.orElse(() => Effect.succeed(null))
                     );
-                    const ids = path ?? [];
+                    const ids = detailedPath?.nodes ?? [];
                     graphIds = graphIds ? graphIds.filter(id => ids.includes(id)) : ids;
-                    graphMeta = { type: "path", pathChunks: ids };
+                    graphMeta = {
+                        type: "path",
+                        pathChunks: ids,
+                        pathEdges: detailedPath?.edges ?? [],
+                        hops: detailedPath?.hops ?? 0
+                    };
                 }
             } else if (clause.field === "affected-by") {
                 const hops = clause.params?.hops ? Number(clause.params.hops) : 2;

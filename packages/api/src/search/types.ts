@@ -39,6 +39,12 @@ export interface DuplicateHint {
     similarity: number; // 0-1
 }
 
+export interface PathEdgeInfo {
+    source: string;
+    target: string;
+    relation: string;
+}
+
 export interface SearchResult {
     chunks: SearchResultChunk[];
     total: number;
@@ -46,6 +52,8 @@ export interface SearchResult {
         type: "neighborhood" | "path" | "requirement-reach";
         referenceChunk?: string;
         pathChunks?: string[];
+        pathEdges?: PathEdgeInfo[];
+        hops?: number;
     };
     duplicateHints?: DuplicateHint[];
 }
