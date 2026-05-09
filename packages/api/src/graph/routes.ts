@@ -15,4 +15,16 @@ export const graphRoutes = new Elysia().get(
             )
         ),
     { query: t.Object({ codebaseId: t.Optional(t.String()), workspaceId: t.Optional(t.String()) }) }
+).get(
+    "/graph/communities",
+    ctx =>
+        Effect.runPromise(
+            requireSession(ctx).pipe(
+                Effect.flatMap(session =>
+                    graphService.getUserGraph(session.user.id, ctx.query.codebaseId, ctx.query.workspaceId)
+                ),
+                Effect.map(result => result.communities)
+            )
+        ),
+    { query: t.Object({ codebaseId: t.Optional(t.String()), workspaceId: t.Optional(t.String()) }) }
 );

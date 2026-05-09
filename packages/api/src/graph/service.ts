@@ -1,4 +1,4 @@
-import { getAllChunksMeta, getAllConnectionsForUser, getAllTagsWithTypes, getChunkCodebaseMappings, getTagTypesForGraph } from "@fubbik/db/repository";
+import { detectCommunities, getAllChunksMeta, getAllConnectionsForUser, getAllTagsWithTypes, getChunkCodebaseMappings, getTagTypesForGraph } from "@fubbik/db/repository";
 import { Effect } from "effect";
 
 export function getUserGraph(userId?: string, codebaseId?: string, workspaceId?: string) {
@@ -11,5 +11,16 @@ export function getUserGraph(userId?: string, codebaseId?: string, workspaceId?:
             chunkCodebases: workspaceId ? getChunkCodebaseMappings(userId) : Effect.succeed([] as { chunkId: string; codebaseId: string; codebaseName: string }[])
         },
         { concurrency: "unbounded" }
+    ).pipe(
+        Effect.flatMap(result => {
+            const chunkIds = result.chunks.map(c => c.id);
+            return detectCommunities(chunkIds, 1).pipe(
+                Effect.catchAll(() => Effect.succeed([])),
+                Effect.map(communities => ({
+                    ...result,
+                    communities
+                }))
+            );
+        })
     );
 }
