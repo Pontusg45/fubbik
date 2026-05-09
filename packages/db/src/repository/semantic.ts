@@ -1,6 +1,8 @@
+import { Effect } from "effect";
 import { and, eq, sql } from "drizzle-orm";
 
 import { db, dbEffect } from "../index";
+import { getNeighborhood } from "../age/query";
 import { chunk } from "../schema/chunk";
 
 export interface SemanticSearchParams {
@@ -92,4 +94,35 @@ export function semanticSearch(params: SemanticSearchParams) {
 
             return results;
         });
+}
+
+export function findRelatedChunksHybrid(
+    chunkId: string,
+    userId: string,
+    k: number,
+    graphHops = 2
+) {
+    return Effect.gen(function* () {
+        const embeddingNeighbors = yield* findNeighborsByChunkId(chunkId, userId, k * 2);
+
+        const graphNeighborIds = yield* getNeighborhood(chunkId, graphHops).pipe(
+            Effect.catchAll(() => Effect.succeed([] as string[]))
+        );
+        const graphSet = new Set(graphNeighborIds);
+
+        const scored = embeddingNeighbors.map(n => {
+            const embeddingSimilarity = 1 - n.distance;
+            const graphBonus = graphSet.has(n.id) ? 0.15 : 0;
+            return {
+                ...n,
+                embeddingSimilarity,
+                graphConnected: graphSet.has(n.id),
+                combinedScore: embeddingSimilarity + graphBonus
+            };
+        });
+
+        return scored
+            .sort((a, b) => b.combinedScore - a.combinedScore)
+            .slice(0, k);
+    });
 }
