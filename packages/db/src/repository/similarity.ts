@@ -1,6 +1,7 @@
 import { and, eq, ne, sql } from "drizzle-orm";
 import { Effect } from "effect";
 
+import { getSubgraph } from "../age/query";
 import { DatabaseError } from "../errors";
 import { db, dbEffect } from "../index";
 import { chunk } from "../schema/chunk";
@@ -80,4 +81,60 @@ export function findSimilarByEmbedding(params: {
 
             return results.filter(r => r.similarity >= threshold);
         });
+}
+
+export function findDuplicatePairsWithGraphSignal(params: {
+    chunkIds: string[];
+    embeddingThreshold?: number;
+    limit?: number;
+}) {
+    const embeddingThreshold = params.embeddingThreshold ?? 0.85;
+    const limit = params.limit ?? 10;
+
+    return findDuplicatePairs({
+        chunkIds: params.chunkIds,
+        threshold: embeddingThreshold,
+        limit: limit * 2,
+    }).pipe(
+        Effect.flatMap((pairs) => {
+            if (pairs.length === 0) return Effect.succeed([]);
+            const allIds = [
+                ...new Set(pairs.flatMap((p) => [p.idA, p.idB])),
+            ];
+            return getSubgraph(allIds).pipe(
+                Effect.map((edges) => {
+                    const edgeSet = new Set(
+                        edges.map((e) =>
+                            [e.source, e.target].sort().join(":")
+                        )
+                    );
+                    return pairs
+                        .map((p) => {
+                            const pairKey = [p.idA, p.idB]
+                                .sort()
+                                .join(":");
+                            const graphConnected = edgeSet.has(pairKey);
+                            return {
+                                ...p,
+                                graphConnected,
+                                combinedScore: graphConnected
+                                    ? p.similarity * 1.15
+                                    : p.similarity,
+                            };
+                        })
+                        .sort((a, b) => b.combinedScore - a.combinedScore)
+                        .slice(0, limit);
+                }),
+                Effect.catchAll(() =>
+                    Effect.succeed(
+                        pairs.slice(0, limit).map((p) => ({
+                            ...p,
+                            graphConnected: false,
+                            combinedScore: p.similarity,
+                        }))
+                    )
+                )
+            );
+        })
+    );
 }
