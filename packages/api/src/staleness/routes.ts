@@ -3,6 +3,7 @@ import { Elysia, t } from "elysia";
 
 import { requireSession } from "../require-session";
 import { detectAgeStaleChunks } from "./detect-age";
+import { flagDownstreamStale } from "./detect-impact";
 import * as stalenessService from "./service";
 
 export const stalenessRoutes = new Elysia()
@@ -106,5 +107,24 @@ export const stalenessRoutes = new Elysia()
                 codebaseId: t.Optional(t.String()),
                 thresholdDays: t.Optional(t.Number())
             })
+        }
+    )
+    .post(
+        "/chunks/:id/scan-impact",
+        ctx =>
+            Effect.runPromise(
+                requireSession(ctx).pipe(
+                    Effect.flatMap(session =>
+                        flagDownstreamStale(
+                            ctx.params.id,
+                            ctx.body.title ?? "Unknown",
+                            session.user.id
+                        )
+                    )
+                )
+            ),
+        {
+            params: t.Object({ id: t.String() }),
+            body: t.Object({ title: t.Optional(t.String()) })
         }
     );

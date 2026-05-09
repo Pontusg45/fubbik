@@ -22,6 +22,7 @@ import { enrichChunk } from "../enrich/service";
 import { NotFoundError, ValidationError } from "../errors";
 import { events, EVENTS } from "../events/bus";
 import { logger } from "../logger";
+import { flagDownstreamStale } from "../staleness/detect-impact";
 
 type ResolvedDocumentLinkage = {
     documentId: string | undefined;
@@ -198,6 +199,10 @@ export function updateChunk(
                 Effect.runPromise(enrichChunk(chunkId)).catch(err => {
                     logger.error(`[enrich] Failed to re-enrich chunk ${chunkId}:`, { err });
                 });
+                // Fire-and-forget: flag downstream chunks as potentially stale
+                Effect.runPromise(
+                    flagDownstreamStale(chunkId, body.title ?? "Unknown", userId)
+                ).catch(() => {});
             }
             events.emit(EVENTS.CHUNK_UPDATED, { chunkId, userId });
             return Effect.void;
