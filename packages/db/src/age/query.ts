@@ -390,6 +390,17 @@ export function findShortestPathWithDetails(chunkIdA: string, chunkIdB: string) 
     );
 }
 
+export function getUpstreamChunks(chunkId: string, maxHops: number) {
+    return cypher(
+        `MATCH (upstream:chunk)-[:connects*1..${maxHops}]->(target:chunk {id: '${escCypher(chunkId)}'})
+         RETURN DISTINCT upstream.id AS id`,
+        "id agtype"
+    ).pipe(
+        Effect.map(rows => rows.map((r: any) => parseAgtypeId(r.id))),
+        Effect.catchAll(() => Effect.succeed([] as string[]))
+    );
+}
+
 export function getOrphanChunkIds() {
     // AGE 1.x does not support the anonymous pattern `NOT (c)-[]-()`.
     // Use the EXISTS subquery form instead.

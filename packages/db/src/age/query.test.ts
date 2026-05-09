@@ -12,7 +12,8 @@ import {
     getDownstreamChunks,
     getGraphProximityBoost,
     getNeighborhood,
-    getOrphanChunkIds
+    getOrphanChunkIds,
+    getUpstreamChunks
 } from "./query";
 import { createEdge, deleteVertex, ensureVertex } from "./sync";
 
@@ -346,5 +347,26 @@ describe("findShortestPathWithDetails", () => {
             findShortestPathWithDetails(uid("A"), uid("orphan"))
         );
         expect(result).toBeNull();
+    });
+});
+
+describe("getUpstreamChunks", () => {
+    it("returns upstream nodes for C (B and A point to C via chain)", async () => {
+        if (!ageReady) return;
+        const upstream = await Effect.runPromise(getUpstreamChunks(uid("C"), 3));
+        expect(upstream).toContain(uid("B"));
+        expect(upstream).toContain(uid("A"));
+    });
+
+    it("returns empty array for root node A (no incoming edges)", async () => {
+        if (!ageReady) return;
+        const upstream = await Effect.runPromise(getUpstreamChunks(uid("A"), 3));
+        expect(upstream.length).toBe(0);
+    });
+
+    it("returns empty array for orphan node", async () => {
+        if (!ageReady) return;
+        const upstream = await Effect.runPromise(getUpstreamChunks(uid("orphan"), 3));
+        expect(upstream.length).toBe(0);
     });
 });
