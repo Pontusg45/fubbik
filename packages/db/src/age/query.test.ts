@@ -7,6 +7,7 @@ import {
     detectCommunities,
     findBridgeChunks,
     findShortestPath,
+    findShortestPathWithDetails,
     getConnectionDegrees,
     getDownstreamChunks,
     getGraphProximityBoost,
@@ -309,5 +310,41 @@ describe("findBridgeChunks", () => {
         if (!ageReady) return;
         const bridges = await Effect.runPromise(findBridgeChunks([]));
         expect(bridges.length).toBe(0);
+    });
+});
+
+describe("findShortestPathWithDetails", () => {
+    it("returns full path from A to C with intermediate nodes and edges", async () => {
+        if (!ageReady) return;
+        const result = await Effect.runPromise(
+            findShortestPathWithDetails(uid("A"), uid("C"))
+        );
+        expect(result).not.toBeNull();
+        expect(result!.nodes).toHaveLength(3);
+        expect(result!.nodes[0]).toBe(uid("A"));
+        expect(result!.nodes[1]).toBe(uid("B"));
+        expect(result!.nodes[2]).toBe(uid("C"));
+        expect(result!.edges).toHaveLength(2);
+        expect(result!.edges[0]!.relation).toBe("related_to");
+        expect(result!.hops).toBe(2);
+    });
+
+    it("returns direct path from A to B", async () => {
+        if (!ageReady) return;
+        const result = await Effect.runPromise(
+            findShortestPathWithDetails(uid("A"), uid("B"))
+        );
+        expect(result).not.toBeNull();
+        expect(result!.nodes).toHaveLength(2);
+        expect(result!.edges).toHaveLength(1);
+        expect(result!.hops).toBe(1);
+    });
+
+    it("returns null when no path exists", async () => {
+        if (!ageReady) return;
+        const result = await Effect.runPromise(
+            findShortestPathWithDetails(uid("A"), uid("orphan"))
+        );
+        expect(result).toBeNull();
     });
 });

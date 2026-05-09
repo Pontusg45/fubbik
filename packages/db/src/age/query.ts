@@ -305,6 +305,91 @@ export function findBridgeChunks(chunkIds: string[]) {
     );
 }
 
+export interface PathEdge {
+    source: string;
+    target: string;
+    relation: string;
+}
+
+export interface DetailedPath {
+    nodes: string[];
+    edges: PathEdge[];
+    hops: number;
+}
+
+export function findShortestPathWithDetails(chunkIdA: string, chunkIdB: string) {
+    const escapedA = escCypher(chunkIdA);
+    const escapedB = escCypher(chunkIdB);
+
+    return cypher(
+        `MATCH (a:chunk {id: '${escapedA}'})-[*1..10]-(b:chunk {id: '${escapedB}'})
+         RETURN b.id AS found LIMIT 1`,
+        "found agtype"
+    ).pipe(
+        Effect.flatMap(rows => {
+            if (rows.length === 0) return Effect.succeed(null as DetailedPath | null);
+
+            return cypher(
+                `MATCH (x:chunk)-[e:connects]->(y:chunk)
+                 RETURN x.id AS source, y.id AS target, e.relation AS relation`,
+                "source agtype, target agtype, relation agtype"
+            ).pipe(
+                Effect.map(edgeRows => {
+                    const adj = new Map<string, Array<{ neighbor: string; relation: string }>>();
+                    const addEdge = (from: string, to: string, rel: string) => {
+                        if (!adj.has(from)) adj.set(from, []);
+                        adj.get(from)!.push({ neighbor: to, relation: rel });
+                    };
+                    for (const row of edgeRows) {
+                        const s = parseAgtypeId((row as any).source);
+                        const t = parseAgtypeId((row as any).target);
+                        const r = parseAgtypeId((row as any).relation);
+                        addEdge(s, t, r);
+                        addEdge(t, s, r);
+                    }
+
+                    const visited = new Set<string>();
+                    const parentMap = new Map<string, { from: string; relation: string } | null>();
+                    const queue = [chunkIdA];
+                    visited.add(chunkIdA);
+                    parentMap.set(chunkIdA, null);
+
+                    while (queue.length > 0) {
+                        const current = queue.shift()!;
+                        if (current === chunkIdB) break;
+                        for (const { neighbor, relation } of adj.get(current) ?? []) {
+                            if (!visited.has(neighbor)) {
+                                visited.add(neighbor);
+                                parentMap.set(neighbor, { from: current, relation });
+                                queue.push(neighbor);
+                            }
+                        }
+                    }
+
+                    if (!parentMap.has(chunkIdB)) return null;
+
+                    const nodes: string[] = [];
+                    const edges: PathEdge[] = [];
+                    let current: string | null = chunkIdB;
+                    while (current !== null) {
+                        nodes.unshift(current);
+                        const p = parentMap.get(current);
+                        if (p) {
+                            edges.unshift({ source: p.from, target: current, relation: p.relation });
+                            current = p.from;
+                        } else {
+                            current = null;
+                        }
+                    }
+
+                    return { nodes, edges, hops: edges.length } as DetailedPath;
+                })
+            );
+        }),
+        Effect.catchAll(() => Effect.succeed(null as DetailedPath | null))
+    );
+}
+
 export function getOrphanChunkIds() {
     // AGE 1.x does not support the anonymous pattern `NOT (c)-[]-()`.
     // Use the EXISTS subquery form instead.
