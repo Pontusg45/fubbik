@@ -75,6 +75,40 @@ export function budgetChunks<T extends ScoredChunk>(chunks: T[], maxTokens: numb
     return selected;
 }
 
+export interface ScoredChunkWithCommunity extends ScoredChunk {
+    communityId?: string;
+}
+
+export function budgetChunksWithCoverage<T extends ScoredChunkWithCommunity>(
+    chunks: T[],
+    maxTokens: number
+): T[] {
+    const sorted = [...chunks].sort((a, b) => b.score - a.score);
+    const selected: T[] = [];
+    let usedTokens = estimateTokens("# Project Context\n\n");
+    const communityCounts = new Map<string, number>();
+
+    for (const chunk of sorted) {
+        const chunkText = formatChunkText(chunk);
+        const tokens = estimateTokens(chunkText);
+        if (usedTokens + tokens > maxTokens) continue;
+
+        const cid = chunk.communityId;
+        if (cid) {
+            const count = communityCounts.get(cid) ?? 0;
+            if (count >= 2) {
+                const penalty = count * 3;
+                if (chunk.score - penalty <= 0) continue;
+            }
+            communityCounts.set(cid, count + 1);
+        }
+
+        selected.push(chunk);
+        usedTokens += tokens;
+    }
+    return selected;
+}
+
 export function formatChunkText(chunk: ScoredChunk): string {
     const typeLabel =
         chunk.type === "document"
