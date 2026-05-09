@@ -1,6 +1,6 @@
 import {
     exportAllChunks as exportAllChunksRepo,
-    findNeighborsByChunkId,
+    findRelatedChunksHybrid,
     getChunkById,
     getDistinctUpdateTags,
     getVersionsByTag,
@@ -18,6 +18,9 @@ interface NeighborItem {
     summary: string | null;
     type: string;
     distance: number;
+    embeddingSimilarity: number;
+    graphConnected: boolean;
+    combinedScore: number;
 }
 
 export interface NeighborsResult {
@@ -35,7 +38,7 @@ export function getChunkNeighbors(chunkId: string, userId: string, k: number) {
                     note: "Chunk has no embedding — run enrichment first."
                 });
             }
-            return findNeighborsByChunkId(chunkId, userId, k).pipe(
+            return findRelatedChunksHybrid(chunkId, userId, k).pipe(
                 Effect.map((neighbors): NeighborsResult => ({ neighbors, note: null }))
             );
         })
