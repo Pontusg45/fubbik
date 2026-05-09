@@ -75,7 +75,8 @@ export const chunkConnection = pgTable(
         origin: text("origin").notNull().default("human"),
         reviewStatus: text("review_status").notNull().default("approved"),
         reviewedBy: text("reviewed_by").references(() => user.id, { onDelete: "set null" }),
-        reviewedAt: timestamp("reviewed_at")
+        reviewedAt: timestamp("reviewed_at"),
+        weight: integer("weight").notNull().default(1)
     },
     table => [
         index("connection_sourceId_idx").on(table.sourceId),
