@@ -3,7 +3,6 @@ import {
     getTagsForChunks,
     getChunkConnections,
     getTagsForUser,
-    findShortestPath,
     findShortestPathWithDetails,
     getNeighborhood,
     getHopDistances,
