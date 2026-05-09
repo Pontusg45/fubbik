@@ -1,4 +1,4 @@
-import { detectCommunities, getAllChunksMeta, getAllConnectionsForUser, getAllTagsWithTypes, getChunkCodebaseMappings, getTagTypesForGraph } from "@fubbik/db/repository";
+import { detectCommunities, findBridgeChunks, getAllChunksMeta, getAllConnectionsForUser, getAllTagsWithTypes, getChunkCodebaseMappings, getTagTypesForGraph } from "@fubbik/db/repository";
 import { Effect } from "effect";
 
 export function getUserGraph(userId?: string, codebaseId?: string, workspaceId?: string) {
@@ -14,11 +14,18 @@ export function getUserGraph(userId?: string, codebaseId?: string, workspaceId?:
     ).pipe(
         Effect.flatMap(result => {
             const chunkIds = result.chunks.map(c => c.id);
-            return detectCommunities(chunkIds, 1).pipe(
-                Effect.catchAll(() => Effect.succeed([])),
-                Effect.map(communities => ({
+            return Effect.all({
+                communities: detectCommunities(chunkIds, 1).pipe(
+                    Effect.catchAll(() => Effect.succeed([]))
+                ),
+                bridges: findBridgeChunks(chunkIds).pipe(
+                    Effect.catchAll(() => Effect.succeed([] as string[]))
+                )
+            }).pipe(
+                Effect.map(({ communities, bridges }) => ({
                     ...result,
-                    communities
+                    communities,
+                    bridges
                 }))
             );
         })
