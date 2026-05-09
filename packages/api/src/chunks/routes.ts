@@ -9,6 +9,7 @@ import { federatedSearch } from "./federated-search";
 import * as chunkService from "./service";
 import { checkSimilar } from "./similarity";
 import { getConnectionSuggestions } from "./suggestions";
+import { suggestTagsFromGraph } from "./tag-suggestions";
 
 export const chunkRoutes = new Elysia()
     .get(
@@ -305,6 +306,16 @@ export const chunkRoutes = new Elysia()
     )
     .get("/chunks/:id/suggestions", ctx =>
         Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(session => getConnectionSuggestions(ctx.params.id, session.user.id))))
+    )
+    .get(
+        "/chunks/:id/tag-suggestions",
+        ctx =>
+            Effect.runPromise(
+                requireSession(ctx).pipe(
+                    Effect.flatMap(() => suggestTagsFromGraph(ctx.params.id))
+                )
+            ),
+        { params: t.Object({ id: t.String() }) }
     )
     .get("/chunks/:id/history", ctx =>
         Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(session => chunkService.getChunkHistory(ctx.params.id, session.user.id))))
