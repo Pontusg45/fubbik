@@ -1,4 +1,4 @@
-import { eq, inArray, or } from "drizzle-orm";
+import { and, eq, inArray, or, sql } from "drizzle-orm";
 import { Effect } from "effect";
 
 import { ensureVertex, createEdge, deleteEdge } from "../age/sync";
@@ -67,5 +67,22 @@ export function createConnectionIfNotExists(params: { id: string; sourceId: stri
             );
         }
         return created ?? null;
+    });
+}
+
+export function incrementConnectionWeights(chunkIds: string[]) {
+    if (chunkIds.length < 2) return dbEffect(() => Promise.resolve(0));
+
+    return dbEffect(async () => {
+        const result = await db
+            .update(chunkConnection)
+            .set({ weight: sql`${chunkConnection.weight} + 1` })
+            .where(
+                and(
+                    inArray(chunkConnection.sourceId, chunkIds),
+                    inArray(chunkConnection.targetId, chunkIds)
+                )
+            );
+        return result.rowCount ?? 0;
     });
 }
