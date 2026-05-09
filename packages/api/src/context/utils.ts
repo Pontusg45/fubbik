@@ -37,7 +37,7 @@ export function estimateTokens(text: string): number {
     return Math.ceil(text.length / 4);
 }
 
-export function scoreChunk(c: ChunkRow, connectionCount: number): number {
+export function scoreChunk(c: ChunkRow, connectionCount: number, centralityDegree = 0): number {
     const health = computeHealthScore({
         content: c.content,
         updatedAt: c.updatedAt,
@@ -46,6 +46,7 @@ export function scoreChunk(c: ChunkRow, connectionCount: number): number {
         alternatives: c.alternatives,
         consequences: c.consequences,
         connectionCount,
+        centralityDegree,
         hasEmbedding: c.embedding != null,
         requirementCount: 0,
         allRequirementsPassing: false,

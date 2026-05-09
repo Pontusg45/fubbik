@@ -227,6 +227,7 @@ export function executeSearch(userId: string | undefined, searchQuery: SearchQue
                 alternatives: null,
                 consequences: null,
                 connectionCount,
+                centralityDegree: 0,
                 hasEmbedding: false,
                 requirementCount: 0,
                 allRequirementsPassing: false,

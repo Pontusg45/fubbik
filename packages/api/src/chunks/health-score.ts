@@ -6,6 +6,7 @@ export interface ChunkHealthInput {
     alternatives: string[] | null;
     consequences: string | null;
     connectionCount: number;
+    centralityDegree: number;
     hasEmbedding: boolean;
     requirementCount: number;
     allRequirementsPassing: boolean;
@@ -62,15 +63,15 @@ export function computeHealthScore(input: ChunkHealthInput): HealthScore {
         issues.push("Missing embedding for semantic search");
     }
 
-    // Connectivity (0-20): 20 for 3+, 12 for 1-2, 0 for orphans
+    // Connectivity (0-20): base from connection count + bonus from centrality degree
     let connectivity: number;
-    if (input.connectionCount >= 3) {
-        connectivity = 20;
-    } else if (input.connectionCount >= 1) {
-        connectivity = 12;
-    } else {
+    if (input.connectionCount === 0) {
         connectivity = 0;
         issues.push("Orphan chunk with no connections");
+    } else {
+        const base = input.connectionCount >= 3 ? 12 : 8;
+        const centralityBonus = Math.min(Math.floor(input.centralityDegree / 2), 8);
+        connectivity = Math.min(base + centralityBonus, 20);
     }
 
     // Coverage (0-20): requirement backing

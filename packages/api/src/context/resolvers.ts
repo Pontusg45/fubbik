@@ -67,6 +67,7 @@ export function enrichChunks(
                     alternatives: row.alternatives,
                     consequences: row.consequences,
                     connectionCount,
+                    centralityDegree: 0,
                     hasEmbedding: row.embedding != null,
                     requirementCount: 0,
                     allRequirementsPassing: false,

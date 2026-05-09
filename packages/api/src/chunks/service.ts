@@ -151,6 +151,7 @@ export function getChunkDetail(chunkId: string, userId?: string, activeFeatureId
                 alternatives: result.chunk.alternatives,
                 consequences: result.chunk.consequences,
                 connectionCount: result.connections.length,
+                centralityDegree: 0,
                 hasEmbedding: result.chunk.embedding != null,
                 requirementCount,
                 allRequirementsPassing,

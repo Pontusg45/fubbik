@@ -11,6 +11,7 @@ function makeInput(overrides: Partial<ChunkHealthInput> = {}): ChunkHealthInput 
         alternatives: ["alt1", "alt2"],
         consequences: "Some consequences",
         connectionCount: 3,
+        centralityDegree: 16,
         hasEmbedding: true,
         requirementCount: 1,
         allRequirementsPassing: true,
@@ -63,9 +64,15 @@ describe("computeHealthScore", () => {
         expect(score.issues).toContain("Orphan chunk with no connections");
     });
 
-    it("gives partial connectivity for 1-2 connections", () => {
-        const score = computeHealthScore(makeInput({ connectionCount: 2 }));
-        expect(score.breakdown.connectivity).toBe(12);
+    it("gives base connectivity for 1-2 connections without centrality", () => {
+        const score = computeHealthScore(makeInput({ connectionCount: 2, centralityDegree: 0 }));
+        expect(score.breakdown.connectivity).toBe(8);
+    });
+
+    it("boosts connectivity with high centrality degree", () => {
+        const score = computeHealthScore(makeInput({ connectionCount: 2, centralityDegree: 10 }));
+        // base 8 + min(floor(10/2), 8) = 8 + 5 = 13
+        expect(score.breakdown.connectivity).toBe(13);
     });
 
     it("gives partial richness for medium content (100-199 chars)", () => {
