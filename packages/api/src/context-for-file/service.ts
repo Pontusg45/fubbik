@@ -266,7 +266,7 @@ export function getContextForFile(
 
         let graphBoosts = new Map<string, number>();
         if (anchorIds.length > 0 && semanticIds.length > 0) {
-            graphBoosts = yield* getGraphProximityBoost(anchorIds[0], semanticIds, 3).pipe(
+            graphBoosts = yield* getGraphProximityBoost(anchorIds[0]!, semanticIds, 3).pipe(
                 Effect.catchAll(() => Effect.succeed(new Map<string, number>())),
             );
         }

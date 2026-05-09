@@ -197,7 +197,7 @@ export interface Community {
     members: string[];
 }
 
-export function detectCommunities(chunkIds: string[], maxHops: number) {
+export function detectCommunities(chunkIds: string[], _maxHops: number) {
     if (chunkIds.length === 0) return Effect.succeed([] as Community[]);
 
     const idList = chunkIds.map(id => `'${escCypher(id)}'`).join(",");
@@ -234,7 +234,7 @@ export function detectCommunities(chunkIds: string[], maxHops: number) {
                     }
                 }
                 if (members.length > 1) {
-                    communities.push({ id: members[0], members });
+                    communities.push({ id: members[0]!, members });
                 }
             }
 
