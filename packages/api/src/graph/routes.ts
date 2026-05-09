@@ -2,6 +2,7 @@ import { Effect } from "effect";
 import { Elysia, t } from "elysia";
 
 import { requireSession } from "../require-session";
+import { computeCommunityRedundancy } from "./community-analysis";
 import * as graphService from "./service";
 
 export const graphRoutes = new Elysia().get(
@@ -36,6 +37,18 @@ export const graphRoutes = new Elysia().get(
                     graphService.getUserGraph(session.user.id, ctx.query.codebaseId, ctx.query.workspaceId)
                 ),
                 Effect.map(result => result.bridges)
+            )
+        ),
+    { query: t.Object({ codebaseId: t.Optional(t.String()), workspaceId: t.Optional(t.String()) }) }
+).get(
+    "/graph/redundancy",
+    ctx =>
+        Effect.runPromise(
+            requireSession(ctx).pipe(
+                Effect.flatMap(session =>
+                    graphService.getUserGraph(session.user.id, ctx.query.codebaseId, ctx.query.workspaceId)
+                ),
+                Effect.flatMap(result => computeCommunityRedundancy(result.communities))
             )
         ),
     { query: t.Object({ codebaseId: t.Optional(t.String()), workspaceId: t.Optional(t.String()) }) }
