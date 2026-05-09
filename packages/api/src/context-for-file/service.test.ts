@@ -11,6 +11,7 @@ vi.mock("@fubbik/db/repository", () => ({
     getConnectionsForChunks: vi.fn(),
     getConnectionDegrees: vi.fn().mockReturnValue(Effect.succeed(new Map())),
     getGraphProximityBoost: vi.fn().mockReturnValue(Effect.succeed(new Map())),
+    incrementConnectionWeights: vi.fn().mockReturnValue(Effect.succeed(0)),
     semanticSearch: vi.fn(),
 }));
 

@@ -1,4 +1,4 @@
-import { getAppliesToForChunks, getChunkById, getConnectionDegrees, getConnectionsForChunks, getGraphProximityBoost, getRequirementsForChunks, listChunks, listCodebases, lookupChunksByFilePath, semanticSearch as semanticSearchRepo } from "@fubbik/db/repository";
+import { getAppliesToForChunks, getChunkById, getConnectionDegrees, getConnectionsForChunks, getGraphProximityBoost, getRequirementsForChunks, incrementConnectionWeights, listChunks, listCodebases, lookupChunksByFilePath, semanticSearch as semanticSearchRepo } from "@fubbik/db/repository";
 import { chunk as chunkTable } from "@fubbik/db/schema/chunk";
 import { Effect } from "effect";
 
@@ -316,6 +316,16 @@ export function getContextForFile(
                 }
             }
             requirements.push(...reqMap.values());
+        }
+
+        // Fire-and-forget: increment edge weights for co-accessed chunks
+        if (matchedChunks.length >= 2) {
+            const coAccessedIds = matchedChunks.slice(0, 10).map(c => c.id);
+            Effect.runPromise(
+                incrementConnectionWeights(coAccessedIds).pipe(
+                    Effect.catchAll(() => Effect.succeed(0))
+                )
+            ).catch(() => {});
         }
 
         return { chunks: matchedChunks, requirements };
