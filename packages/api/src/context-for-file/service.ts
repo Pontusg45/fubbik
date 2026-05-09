@@ -1,4 +1,4 @@
-import { getAppliesToForChunks, getChunkById, getConnectionsForChunks, getRequirementsForChunks, listChunks, listCodebases, lookupChunksByFilePath, semanticSearch as semanticSearchRepo } from "@fubbik/db/repository";
+import { getAppliesToForChunks, getChunkById, getConnectionDegrees, getConnectionsForChunks, getGraphProximityBoost, getRequirementsForChunks, listChunks, listCodebases, lookupChunksByFilePath, semanticSearch as semanticSearchRepo } from "@fubbik/db/repository";
 import { chunk as chunkTable } from "@fubbik/db/schema/chunk";
 import { Effect } from "effect";
 
@@ -248,6 +248,29 @@ export function getContextForFile(
             connCountMap.set(conn.targetId, (connCountMap.get(conn.targetId) ?? 0) + 1);
         }
 
+        // Fetch centrality degrees from AGE graph
+        const degreeMap = chunkIdsForScoring.length > 0
+            ? yield* getConnectionDegrees(chunkIdsForScoring).pipe(
+                  Effect.catchAll(() => Effect.succeed(new Map<string, number>())),
+              )
+            : new Map<string, number>();
+
+        // Hybrid boost: if we have high-confidence anchors (file-ref or applies-to),
+        // boost semantic matches that are also graph-connected to them
+        const anchorIds = matchedChunks
+            .filter(c => c.matchReason === "file-ref" || c.matchReason === "applies-to")
+            .map(c => c.id);
+        const semanticIds = matchedChunks
+            .filter(c => c.matchReason === "semantic")
+            .map(c => c.id);
+
+        let graphBoosts = new Map<string, number>();
+        if (anchorIds.length > 0 && semanticIds.length > 0) {
+            graphBoosts = yield* getGraphProximityBoost(anchorIds[0], semanticIds, 3).pipe(
+                Effect.catchAll(() => Effect.succeed(new Map<string, number>())),
+            );
+        }
+
         const STRATEGY_BONUS: Record<string, number> = {
             "file-ref": 20,
             "applies-to": 10,
@@ -255,12 +278,16 @@ export function getContextForFile(
             "semantic": 5,
             "connected": 2,
         };
+        const GRAPH_PROXIMITY_WEIGHT = 5;
 
         for (const chunk of matchedChunks) {
             const rawRow = chunkRows.get(chunk.id);
             const connectionCount = connCountMap.get(chunk.id) ?? 0;
-            const baseScore = rawRow ? scoreChunk(rawRow, connectionCount) : 0;
-            chunk.score = baseScore + (STRATEGY_BONUS[chunk.matchReason] ?? 0);
+            const centralityDegree = degreeMap.get(chunk.id) ?? 0;
+            const baseScore = rawRow ? scoreChunk(rawRow, connectionCount, centralityDegree) : 0;
+            const strategyBonus = STRATEGY_BONUS[chunk.matchReason] ?? 0;
+            const proximityBonus = (graphBoosts.get(chunk.id) ?? 0) * GRAPH_PROXIMITY_WEIGHT;
+            chunk.score = baseScore + strategyBonus + proximityBonus;
         }
 
         matchedChunks.sort((a, b) => b.score - a.score);
