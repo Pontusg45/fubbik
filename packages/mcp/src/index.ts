@@ -8,12 +8,14 @@ import { suggestionPlugin } from "./suggestion-tools.js";
 import { planPlugin } from "./plan-tools.js";
 import { contextPlugin } from "./context-tools.js";
 import { taskPlugin } from "./task-tools.js";
+import { matrixPlugin } from "./matrix-tools.js";
 
 registerPlugin(corePlugin);
 registerPlugin(suggestionPlugin);
 registerPlugin(planPlugin);
 registerPlugin(contextPlugin);
 registerPlugin(taskPlugin);
+registerPlugin(matrixPlugin);
 
 const server = new McpServer({
     name: "fubbik",
