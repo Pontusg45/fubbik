@@ -30,3 +30,4 @@ export * from "./chunk-type";
 export * from "./connection-relation";
 export * from "./feature";
 export * from "./scope-key";
+export * from "./behavior-matrix";
