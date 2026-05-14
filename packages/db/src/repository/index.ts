@@ -45,3 +45,4 @@ export * from "./vocabulary-catalog";
 export * from "./feature";
 export * from "./chunk-feature-delta";
 export * from "./scope-key";
+export * from "./behavior-matrix";
