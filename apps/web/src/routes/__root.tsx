@@ -3,7 +3,7 @@ import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { HeadContent, Link, Outlet, Scripts, createRootRouteWithContext, useLocation } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 
-import { Settings, SlidersHorizontal, Tags, FileText, BookOpen, Languages, Folder, FileSearch, FolderUp, FolderTree, History, Layers, Library, Compass, ClipboardList, AlertTriangle } from "lucide-react";
+import { Settings, SlidersHorizontal, Tags, FileText, BookOpen, Languages, Folder, FileSearch, FolderUp, FolderTree, History, Layers, Library, Compass, ClipboardList, AlertTriangle, Grid3X3 } from "lucide-react";
 
 import { ErrorBoundary } from "@/components/error-boundary";
 import FubbikLogo from "@/components/fubbik-logo";
@@ -141,6 +141,10 @@ function RootDocument() {
                                                 <DropdownMenuItem render={<Link to="/requirements" />}>
                                                     <ClipboardList className="size-4" />
                                                     Requirements
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem render={<Link to="/matrices" />}>
+                                                    <Grid3X3 className="size-4" />
+                                                    Matrices
                                                 </DropdownMenuItem>
                                                 <DropdownMenuItem render={<Link to="/review" />}>
                                                     <AlertTriangle className="size-4" />

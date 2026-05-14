@@ -21,6 +21,7 @@ import { Route as RequirementsRouteImport } from "./routes/requirements";
 import { Route as LoginRouteImport } from "./routes/login";
 import { Route as LearnRouteImport } from "./routes/learn";
 import { Route as KnowledgeHealthRouteImport } from "./routes/knowledge-health";
+import { Route as MatricesRouteImport } from "./routes/matrices";
 import { Route as ImportRouteImport } from "./routes/import";
 import { Route as GraphRouteImport } from "./routes/graph";
 import { Route as FeaturesRouteImport } from "./routes/features";
@@ -49,6 +50,7 @@ import { Route as ChunksNewRouteImport } from "./routes/chunks.new";
 import { Route as ChunksArchivedRouteImport } from "./routes/chunks.archived";
 import { Route as ChunksChunkIdRouteImport } from "./routes/chunks.$chunkId";
 import { Route as BrowseClustersRouteImport } from "./routes/browse.clusters";
+import { Route as MatricesMatrixIdRouteImport } from "./routes/matrices_.$matrixId";
 import { Route as ChunksChunkIdEditRouteImport } from "./routes/chunks.$chunkId_.edit";
 
 const WorkspacesRoute = WorkspacesRouteImport.update({
@@ -109,6 +111,11 @@ const LearnRoute = LearnRouteImport.update({
 const KnowledgeHealthRoute = KnowledgeHealthRouteImport.update({
   id: "/knowledge-health",
   path: "/knowledge-health",
+  getParentRoute: () => rootRouteImport,
+} as any);
+const MatricesRoute = MatricesRouteImport.update({
+  id: "/matrices",
+  path: "/matrices",
   getParentRoute: () => rootRouteImport,
 } as any);
 const ImportRoute = ImportRouteImport.update({
@@ -252,6 +259,11 @@ const BrowseClustersRoute = BrowseClustersRouteImport.update({
   path: "/clusters",
   getParentRoute: () => BrowseRoute,
 } as any);
+const MatricesMatrixIdRoute = MatricesMatrixIdRouteImport.update({
+  id: "/matrices_/$matrixId",
+  path: "/matrices/$matrixId",
+  getParentRoute: () => rootRouteImport,
+} as any);
 const ChunksChunkIdEditRoute = ChunksChunkIdEditRouteImport.update({
   id: "/chunks/$chunkId_/edit",
   path: "/chunks/$chunkId/edit",
@@ -276,6 +288,7 @@ export interface FileRoutesByFullPath {
   "/knowledge-health": typeof KnowledgeHealthRoute;
   "/learn": typeof LearnRouteWithChildren;
   "/login": typeof LoginRoute;
+  "/matrices": typeof MatricesRoute;
   "/requirements": typeof RequirementsRoute;
   "/review": typeof ReviewRoute;
   "/search": typeof SearchRoute;
@@ -292,6 +305,7 @@ export interface FileRoutesByFullPath {
   "/codebases/$codebaseId": typeof CodebasesCodebaseIdRoute;
   "/graph/$graphId": typeof GraphGraphIdRoute;
   "/learn/$pathId": typeof LearnPathIdRoute;
+  "/matrices/$matrixId": typeof MatricesMatrixIdRoute;
   "/plans/$planId": typeof PlansPlanIdRoute;
   "/plans/new": typeof PlansNewRoute;
   "/requirements/$requirementId": typeof RequirementsRequirementIdRoute;
@@ -319,6 +333,7 @@ export interface FileRoutesByTo {
   "/knowledge-health": typeof KnowledgeHealthRoute;
   "/learn": typeof LearnRouteWithChildren;
   "/login": typeof LoginRoute;
+  "/matrices": typeof MatricesRoute;
   "/requirements": typeof RequirementsRoute;
   "/review": typeof ReviewRoute;
   "/search": typeof SearchRoute;
@@ -335,6 +350,7 @@ export interface FileRoutesByTo {
   "/codebases/$codebaseId": typeof CodebasesCodebaseIdRoute;
   "/graph/$graphId": typeof GraphGraphIdRoute;
   "/learn/$pathId": typeof LearnPathIdRoute;
+  "/matrices/$matrixId": typeof MatricesMatrixIdRoute;
   "/plans/$planId": typeof PlansPlanIdRoute;
   "/plans/new": typeof PlansNewRoute;
   "/requirements/$requirementId": typeof RequirementsRequirementIdRoute;
@@ -363,6 +379,7 @@ export interface FileRoutesById {
   "/knowledge-health": typeof KnowledgeHealthRoute;
   "/learn": typeof LearnRouteWithChildren;
   "/login": typeof LoginRoute;
+  "/matrices": typeof MatricesRoute;
   "/requirements": typeof RequirementsRoute;
   "/review": typeof ReviewRoute;
   "/search": typeof SearchRoute;
@@ -379,6 +396,7 @@ export interface FileRoutesById {
   "/codebases/$codebaseId": typeof CodebasesCodebaseIdRoute;
   "/graph_/$graphId": typeof GraphGraphIdRoute;
   "/learn/$pathId": typeof LearnPathIdRoute;
+  "/matrices_/$matrixId": typeof MatricesMatrixIdRoute;
   "/plans/$planId": typeof PlansPlanIdRoute;
   "/plans/new": typeof PlansNewRoute;
   "/requirements_/$requirementId": typeof RequirementsRequirementIdRoute;
@@ -408,6 +426,7 @@ export interface FileRouteTypes {
     | "/knowledge-health"
     | "/learn"
     | "/login"
+    | "/matrices"
     | "/requirements"
     | "/review"
     | "/search"
@@ -424,6 +443,7 @@ export interface FileRouteTypes {
     | "/codebases/$codebaseId"
     | "/graph/$graphId"
     | "/learn/$pathId"
+    | "/matrices/$matrixId"
     | "/plans/$planId"
     | "/plans/new"
     | "/requirements/$requirementId"
@@ -451,6 +471,7 @@ export interface FileRouteTypes {
     | "/knowledge-health"
     | "/learn"
     | "/login"
+    | "/matrices"
     | "/requirements"
     | "/review"
     | "/search"
@@ -467,6 +488,7 @@ export interface FileRouteTypes {
     | "/codebases/$codebaseId"
     | "/graph/$graphId"
     | "/learn/$pathId"
+    | "/matrices/$matrixId"
     | "/plans/$planId"
     | "/plans/new"
     | "/requirements/$requirementId"
@@ -494,6 +516,7 @@ export interface FileRouteTypes {
     | "/knowledge-health"
     | "/learn"
     | "/login"
+    | "/matrices"
     | "/requirements"
     | "/review"
     | "/search"
@@ -510,6 +533,7 @@ export interface FileRouteTypes {
     | "/codebases/$codebaseId"
     | "/graph_/$graphId"
     | "/learn/$pathId"
+    | "/matrices_/$matrixId"
     | "/plans/$planId"
     | "/plans/new"
     | "/requirements_/$requirementId"
@@ -538,6 +562,7 @@ export interface RootRouteChildren {
   KnowledgeHealthRoute: typeof KnowledgeHealthRoute;
   LearnRoute: typeof LearnRouteWithChildren;
   LoginRoute: typeof LoginRoute;
+  MatricesRoute: typeof MatricesRoute;
   RequirementsRoute: typeof RequirementsRoute;
   ReviewRoute: typeof ReviewRoute;
   SearchRoute: typeof SearchRoute;
@@ -551,6 +576,7 @@ export interface RootRouteChildren {
   ChunksArchivedRoute: typeof ChunksArchivedRoute;
   ChunksNewRoute: typeof ChunksNewRoute;
   GraphGraphIdRoute: typeof GraphGraphIdRoute;
+  MatricesMatrixIdRoute: typeof MatricesMatrixIdRoute;
   PlansPlanIdRoute: typeof PlansPlanIdRoute;
   PlansNewRoute: typeof PlansNewRoute;
   RequirementsRequirementIdRoute: typeof RequirementsRequirementIdRoute;
@@ -630,6 +656,13 @@ declare module "@tanstack/react-router" {
       path: "/login";
       fullPath: "/login";
       preLoaderRoute: typeof LoginRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/matrices": {
+      id: "/matrices";
+      path: "/matrices";
+      fullPath: "/matrices";
+      preLoaderRoute: typeof MatricesRouteImport;
       parentRoute: typeof rootRouteImport;
     };
     "/learn": {
@@ -807,6 +840,13 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof GraphGraphIdRouteImport;
       parentRoute: typeof rootRouteImport;
     };
+    "/matrices_/$matrixId": {
+      id: "/matrices_/$matrixId";
+      path: "/matrices/$matrixId";
+      fullPath: "/matrices/$matrixId";
+      preLoaderRoute: typeof MatricesMatrixIdRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     "/codebases/$codebaseId": {
       id: "/codebases/$codebaseId";
       path: "/$codebaseId";
@@ -915,6 +955,7 @@ const rootRouteChildren: RootRouteChildren = {
   KnowledgeHealthRoute: KnowledgeHealthRoute,
   LearnRoute: LearnRouteWithChildren,
   LoginRoute: LoginRoute,
+  MatricesRoute: MatricesRoute,
   RequirementsRoute: RequirementsRoute,
   ReviewRoute: ReviewRoute,
   SearchRoute: SearchRoute,
@@ -928,6 +969,7 @@ const rootRouteChildren: RootRouteChildren = {
   ChunksArchivedRoute: ChunksArchivedRoute,
   ChunksNewRoute: ChunksNewRoute,
   GraphGraphIdRoute: GraphGraphIdRoute,
+  MatricesMatrixIdRoute: MatricesMatrixIdRoute,
   PlansPlanIdRoute: PlansPlanIdRoute,
   PlansNewRoute: PlansNewRoute,
   RequirementsRequirementIdRoute: RequirementsRequirementIdRoute,
