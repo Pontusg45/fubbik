@@ -57,6 +57,7 @@ import { taskQueueRoutes } from "./tasks/routes";
 import { vocabularyRoutes } from "./vocabulary/routes";
 import { workspaceRoutes } from "./workspaces/routes";
 import { featureRoutes } from "./features/routes";
+import { matrixRoutes } from "./matrices/routes";
 import { scopeKeyRoutes } from "./scope-keys/routes";
 import { getActiveFeatureIds } from "@fubbik/db/repository";
 
@@ -152,6 +153,7 @@ const extendedRoutes = new Elysia()
     .use(workspaceRoutes)
     .use(featureRoutes)
     .use(scopeKeyRoutes)
+    .use(matrixRoutes)
     .use(stalenessRoutes)
     .use(savedGraphRoutes)
     .use(searchRoutes)
