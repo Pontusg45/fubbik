@@ -52,6 +52,7 @@ import * as documentsModule from "./modules/documents";
 import * as vocabularyModule from "./modules/vocabulary";
 import * as workspacesModule from "./modules/workspaces";
 import * as collectionsModule from "./modules/collections";
+import * as matricesModule from "./modules/matrices";
 import * as selfDocModule from "./modules/self-documenting";
 
 config({ path: resolve(import.meta.dirname, "../../../../apps/server/.env") });
@@ -93,6 +94,7 @@ const MODULE_REGISTRY: ModuleEntry[] = [
     { name: "vocabulary", deps: ["core", "codebases"], scenarios: ["demo", "extended"], ...vocabularyModule },
     { name: "workspaces", deps: ["core", "codebases"], scenarios: ["demo", "extended"], ...workspacesModule },
     { name: "collections", deps: ["core", "chunks"], scenarios: ["demo", "extended"], ...collectionsModule },
+    { name: "matrices", deps: ["core", "codebases", "requirements"], scenarios: ["demo", "extended"], ...matricesModule },
     { name: "self-documenting", deps: ["core", "codebases", "tags"], scenarios: ["minimal", "demo", "extended"], ...selfDocModule }
 ];
 

@@ -35,6 +35,10 @@ export interface SeedContext {
         plans: Record<string, string>;
         planTasks: Record<string, string>;
         workspaces: Record<string, string>;
+        matrices: Record<string, string>;
+        matrixDimensions: Record<string, string>;
+        matrixRules: Record<string, string>;
+        matrixCells: Record<string, string>;
     };
     /** Per-module counters the verifier can compare against expected shapes. */
     counters: Record<string, number>;
@@ -66,7 +70,11 @@ export function createContext(params: {
             useCases: {},
             plans: {},
             planTasks: {},
-            workspaces: {}
+            workspaces: {},
+            matrices: {},
+            matrixDimensions: {},
+            matrixRules: {},
+            matrixCells: {}
         },
         counters: {},
         log: params.quiet ? () => {} : (msg: string) => console.log(msg)

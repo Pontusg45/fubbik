@@ -29,7 +29,9 @@ const PROBES: Probe[] = [
     { label: "workspaces", query: "SELECT count(*)::int FROM workspace" },
     { label: "vocabulary entries", query: "SELECT count(*)::int FROM vocabulary_entry" },
     { label: "chunk_type (catalog)", query: "SELECT count(*)::int FROM chunk_type" },
-    { label: "connection_relation (catalog)", query: "SELECT count(*)::int FROM connection_relation" }
+    { label: "connection_relation (catalog)", query: "SELECT count(*)::int FROM connection_relation" },
+    { label: "behavior_matrices", query: "SELECT count(*)::int FROM behavior_matrix" },
+    { label: "behavior_cells", query: "SELECT count(*)::int FROM behavior_cell" }
 ];
 
 const INTEGRITY_PROBES: Probe[] = [
