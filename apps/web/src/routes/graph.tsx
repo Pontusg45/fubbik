@@ -9,29 +9,23 @@ const GraphView = lazy(() => import("@/features/graph/graph-view"));
 export interface GraphSearch {
     pathFrom?: string;
     pathTo?: string;
-    tags?: string;
-    types?: string;
     focus?: string;
-    depth?: number;
-    groupBy?: "tag" | "type" | "codebase" | "none";
     tagTypeId?: string;
-    all?: number;
+    zoomLevel?: "overview" | "neighborhood" | "detail";
+    island?: string;
 }
 
 export const Route = createFileRoute("/graph")({
     validateSearch: (search: Record<string, unknown>): GraphSearch => ({
         pathFrom: typeof search.pathFrom === "string" ? search.pathFrom : undefined,
         pathTo: typeof search.pathTo === "string" ? search.pathTo : undefined,
-        tags: typeof search.tags === "string" ? search.tags : undefined,
-        types: typeof search.types === "string" ? search.types : undefined,
         focus: typeof search.focus === "string" ? search.focus : undefined,
-        depth: typeof search.depth === "number" ? search.depth : undefined,
-        groupBy:
-            search.groupBy === "tag" || search.groupBy === "type" || search.groupBy === "codebase" || search.groupBy === "none"
-                ? (search.groupBy as "tag" | "type" | "codebase" | "none")
-                : undefined,
         tagTypeId: typeof search.tagTypeId === "string" ? search.tagTypeId : undefined,
-        all: typeof search.all === "number" ? search.all : undefined
+        zoomLevel:
+            search.zoomLevel === "overview" || search.zoomLevel === "neighborhood" || search.zoomLevel === "detail"
+                ? search.zoomLevel
+                : undefined,
+        island: typeof search.island === "string" ? search.island : undefined,
     }),
     component: () => (
         <RouteErrorBoundary fallbackTitle="Graph failed to render">

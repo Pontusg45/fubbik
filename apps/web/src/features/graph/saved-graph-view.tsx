@@ -20,18 +20,31 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { Spinner } from "@/components/ui/spinner";
+import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { relationColor } from "@/features/chunks/relation-colors";
-import { FloatingEdge } from "@/features/graph/floating-edge";
-import { GraphNode } from "@/features/graph/graph-node";
+import { TypedEdge } from "@/features/graph/typed-edge";
 import { GraphDetailPanel } from "@/features/graph/graph-detail-panel";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
-const EDGE_TYPES = { floating: FloatingEdge };
-const NODE_TYPES = { chunk: GraphNode };
+const EDGE_TYPES = { floating: TypedEdge };
 
-// Editable node wraps GraphNode with a remove button
-function EditableGraphNode(props: import("@xyflow/react").NodeProps) {
+/** Simple chunk node for saved graphs */
+function SavedGraphChunkNode({ data }: NodeProps) {
+    const { label } = data as { label: string };
+    return (
+        <div className="max-w-[250px] truncate rounded-[10px] border px-2.5 py-1.5 text-xs font-medium"
+            style={data as React.CSSProperties}>
+            <Handle type="source" position={Position.Top} className="!invisible" />
+            <Handle type="target" position={Position.Bottom} className="!invisible" />
+            {label as string}
+        </div>
+    );
+}
+
+const NODE_TYPES = { chunk: SavedGraphChunkNode };
+
+function EditableGraphNode(props: NodeProps) {
     const onRemove = (props.data as { onRemove?: () => void }).onRemove;
     return (
         <div className="relative">
@@ -47,7 +60,7 @@ function EditableGraphNode(props: import("@xyflow/react").NodeProps) {
                     &times;
                 </button>
             )}
-            <GraphNode {...props} />
+            <SavedGraphChunkNode {...props} />
         </div>
     );
 }

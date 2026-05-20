@@ -5,32 +5,28 @@ import type { GraphAction } from "./use-graph-state";
 
 export interface UseGraphKeyboardOptions {
     selectedChunkId: string | null;
-    focusedNodeId: string | null;
-    focusModeNodeId: string | null;
-    onExitFocusMode: () => void;
     pathStartId: string | null;
     pathEndId: string | null;
     multiSelectedIds: Set<string>;
     layoutEdges: Edge[];
     dispatch: (action: GraphAction) => void;
+    onGoBack?: () => void;
 }
 
 /**
  * Handles global keyboard shortcuts for the graph view:
  * - `?` toggles help overlay
- * - `Escape` clears multi-select, path, selection, or focus (in priority order)
+ * - `Escape` clears multi-select, path, selection, or goes back
  * - `Tab` / `Shift+Tab` cycles through connected nodes
  */
 export function useGraphKeyboard({
     selectedChunkId,
-    focusedNodeId,
-    focusModeNodeId,
-    onExitFocusMode,
     pathStartId,
     pathEndId,
     multiSelectedIds,
     layoutEdges,
     dispatch,
+    onGoBack,
 }: UseGraphKeyboardOptions) {
     useEffect(() => {
         function handleKeyDown(e: KeyboardEvent) {
@@ -42,10 +38,6 @@ export function useGraphKeyboard({
             }
 
             if (e.key === "Escape") {
-                if (focusModeNodeId) {
-                    onExitFocusMode();
-                    return;
-                }
                 if (multiSelectedIds.size > 0) {
                     dispatch({ type: "CLEAR_MULTI_SELECT" });
                     return;
@@ -56,9 +48,9 @@ export function useGraphKeyboard({
                 }
                 if (selectedChunkId) {
                     dispatch({ type: "SET_SELECTED_CHUNK", id: null });
-                } else if (focusedNodeId) {
-                    dispatch({ type: "SET_FOCUSED_NODE", id: null });
+                    return;
                 }
+                onGoBack?.();
                 return;
             }
 
@@ -75,11 +67,11 @@ export function useGraphKeyboard({
                     ? (currentIdx - 1 + connectedIds.length) % connectedIds.length
                     : (currentIdx + 1) % connectedIds.length;
                 const nextId = connectedIds[nextIdx]!;
-                dispatch({ type: "SELECT_AND_FOCUS_NODE", id: nextId });
+                dispatch({ type: "SET_SELECTED_CHUNK", id: nextId });
             }
         }
 
         document.addEventListener("keydown", handleKeyDown);
         return () => document.removeEventListener("keydown", handleKeyDown);
-    }, [selectedChunkId, focusedNodeId, focusModeNodeId, onExitFocusMode, layoutEdges, pathStartId, pathEndId, multiSelectedIds, dispatch]);
+    }, [selectedChunkId, layoutEdges, pathStartId, pathEndId, multiSelectedIds, dispatch, onGoBack]);
 }

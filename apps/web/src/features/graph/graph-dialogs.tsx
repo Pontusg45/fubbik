@@ -3,7 +3,8 @@ import type { UseMutationResult } from "@tanstack/react-query";
 import { Dialog, DialogPopup, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { relationColor } from "@/features/chunks/relation-colors";
 import type { GraphAction } from "./use-graph-state";
-import type { LayoutAlgorithm } from "./layouts";
+
+type LayoutAlgorithm = string;
 
 // ---------------------------------------------------------------------------
 // ChangeConnectionDialog
@@ -13,20 +14,20 @@ interface ChangeConnectionDialogProps {
     pendingConnection: { source: string; target: string } | null;
     chunkMap: Map<string, { title: string }>;
     createConnectionMutation: UseMutationResult<void, Error, { sourceId: string; targetId: string; relation: string }>;
-    dispatch: React.Dispatch<GraphAction>;
+    onClose: () => void;
 }
 
 export function ChangeConnectionDialog({
     pendingConnection,
     chunkMap,
     createConnectionMutation,
-    dispatch,
+    onClose,
 }: ChangeConnectionDialogProps) {
     return (
         <Dialog
             open={!!pendingConnection}
             onOpenChange={open => {
-                if (!open) dispatch({ type: "SET_PENDING_CONNECTION", connection: null });
+                if (!open) onClose();
             }}
         >
             <DialogPopup className="max-w-sm">
@@ -76,9 +77,6 @@ interface SaveViewDialogProps {
     viewName: string;
     filterTypes: Set<string>;
     filterRelations: Set<string>;
-    collapsedParents: Set<string>;
-    layoutAlgorithm: LayoutAlgorithm;
-    focusedNodeId: string | null;
     saveView: (view: {
         name: string;
         filterTypes: string[];
@@ -95,9 +93,6 @@ export function SaveViewDialog({
     viewName,
     filterTypes,
     filterRelations,
-    collapsedParents,
-    layoutAlgorithm,
-    focusedNodeId,
     saveView,
     dispatch,
 }: SaveViewDialogProps) {
@@ -109,9 +104,8 @@ export function SaveViewDialog({
             name: viewName.trim(),
             filterTypes: [...filterTypes],
             filterRelations: [...filterRelations],
-            collapsedParents: [...collapsedParents],
-            layoutAlgorithm,
-            focusNodeId: focusedNodeId ?? undefined
+            collapsedParents: [],
+            layoutAlgorithm: "island",
         });
         dispatch({ type: "SET_SHOW_SAVE_DIALOG", show: false });
         dispatch({ type: "SET_VIEW_NAME", name: "" });
@@ -165,7 +159,7 @@ interface SaveCustomGraphDialogProps {
     filteredChunkIds: string[];
     draggedPositions: Map<string, { x: number; y: number }>;
     layoutPositions: Record<string, { x: number; y: number }> | null;
-    layoutAlgorithm: LayoutAlgorithm;
+    layoutAlgorithm?: LayoutAlgorithm;
     codebaseId: string | null | undefined;
     saveCustomGraphMutation: UseMutationResult<unknown, Error, {
         name: string;
@@ -204,7 +198,7 @@ export function SaveCustomGraphDialog({
             name: customGraphName.trim(),
             chunkIds: filteredChunkIds,
             positions,
-            layoutAlgorithm,
+            layoutAlgorithm: layoutAlgorithm ?? "island",
             codebaseId: codebaseId && codebaseId !== "global" ? codebaseId : undefined
         });
         onClose();

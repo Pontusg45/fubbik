@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { layoutNeighborhood, type NeighborhoodInput } from "./neighborhood-layout";
+import { layoutNeighborhood } from "./neighborhood-layout";
 
 describe("layoutNeighborhood", () => {
     it("places focus chunk at origin", () => {

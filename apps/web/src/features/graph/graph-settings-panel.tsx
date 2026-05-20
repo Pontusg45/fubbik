@@ -1,7 +1,7 @@
 import { Download, ExternalLink, FileCode2, Save, Settings2 } from "lucide-react";
 
 import { Popover, PopoverTrigger, PopoverPopup } from "@/components/ui/popover";
-import type { LayoutAlgorithm } from "@/features/graph/layouts";
+type LayoutAlgorithm = string;
 
 interface SavedView {
     name: string;

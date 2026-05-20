@@ -14,7 +14,6 @@ import { useTheme } from "next-themes";
 import { useMemo } from "react";
 
 import { relationColor } from "@/features/chunks/relation-colors";
-import { runForceLayout } from "@/features/graph/force-layout";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
@@ -99,16 +98,16 @@ function SearchGraphInner({ chunkIds, chunks }: SearchGraphProps) {
             c => chunkIdSet.has(c.sourceId) && chunkIdSet.has(c.targetId)
         );
 
-        // Build simple node list for layout
-        const layoutNodes = chunkIds.map(id => ({ id, type: chunkMap.get(id)?.type ?? "note" }));
-        const layoutEdges = relevantEdges.map(c => ({
-            source: c.sourceId,
-            target: c.targetId,
-            relation: c.relation,
-        }));
-
-        // Run force layout
-        const positions = runForceLayout(layoutNodes, layoutEdges);
+        // Simple circle layout for search results
+        const positions: Record<string, { x: number; y: number }> = {};
+        const radius = Math.max(80, chunkIds.length * 30);
+        for (let i = 0; i < chunkIds.length; i++) {
+            const angle = (2 * Math.PI * i) / chunkIds.length;
+            positions[chunkIds[i]!] = {
+                x: Math.cos(angle) * radius,
+                y: Math.sin(angle) * radius,
+            };
+        }
 
         const rfNodes: Node[] = chunkIds.map(id => {
             const chunk = chunkMap.get(id);
