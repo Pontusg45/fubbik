@@ -243,45 +243,41 @@ function GraphViewInner() {
     }
 
     return (
-        <div className="flex h-[calc(100vh-4rem)]">
-            {/* Detail panel (desktop) */}
-            {!isMobile && (
+        <div className="flex h-[calc(100vh-4rem)] max-md:flex-col">
+            {/* Detail panel — side on desktop, bottom sheet on mobile */}
+            {gs.selectedChunkId && !isMobile && (
                 <div
-                    className={`relative shrink-0 overflow-hidden transition-[width] duration-300 ease-in-out ${gs.selectedChunkId ? "" : "w-0"}`}
-                    style={gs.selectedChunkId ? { width: gs.panelWidth } : undefined}
+                    className="relative shrink-0 overflow-hidden transition-[width] duration-300 ease-in-out"
+                    style={{ width: gs.panelWidth }}
                 >
-                    {gs.selectedChunkId && (
-                        <div className="h-full" style={{ width: gs.panelWidth }}>
-                            <GraphDetailPanel
-                                chunkId={gs.selectedChunkId}
-                                onClose={() => dispatch({ type: "SET_SELECTED_CHUNK", id: null })}
-                                onNavigateToChunk={id => {
-                                    dispatch({ type: "SET_SELECTED_CHUNK", id });
-                                    setFocusChunk(id);
-                                }}
-                            />
-                        </div>
-                    )}
-                    {gs.selectedChunkId && (
-                        <div
-                            className="hover:bg-primary/30 active:bg-primary/50 absolute top-0 right-0 h-full w-1 cursor-col-resize"
-                            onMouseDown={e => {
-                                e.preventDefault();
-                                const startX = e.clientX;
-                                const startWidth = gs.panelWidth;
-                                function onMouseMove(ev: MouseEvent) {
-                                    const newWidth = Math.max(280, Math.min(600, startWidth + ev.clientX - startX));
-                                    dispatch({ type: "SET_PANEL_WIDTH", width: newWidth });
-                                }
-                                function onMouseUp() {
-                                    document.removeEventListener("mousemove", onMouseMove);
-                                    document.removeEventListener("mouseup", onMouseUp);
-                                }
-                                document.addEventListener("mousemove", onMouseMove);
-                                document.addEventListener("mouseup", onMouseUp);
+                    <div className="h-full" style={{ width: gs.panelWidth }}>
+                        <GraphDetailPanel
+                            chunkId={gs.selectedChunkId}
+                            onClose={() => dispatch({ type: "SET_SELECTED_CHUNK", id: null })}
+                            onNavigateToChunk={id => {
+                                dispatch({ type: "SET_SELECTED_CHUNK", id });
+                                setFocusChunk(id);
                             }}
                         />
-                    )}
+                    </div>
+                    <div
+                        className="hover:bg-primary/30 active:bg-primary/50 absolute top-0 right-0 h-full w-1 cursor-col-resize"
+                        onMouseDown={e => {
+                            e.preventDefault();
+                            const startX = e.clientX;
+                            const startWidth = gs.panelWidth;
+                            function onMouseMove(ev: MouseEvent) {
+                                const newWidth = Math.max(280, Math.min(600, startWidth + ev.clientX - startX));
+                                dispatch({ type: "SET_PANEL_WIDTH", width: newWidth });
+                            }
+                            function onMouseUp() {
+                                document.removeEventListener("mousemove", onMouseMove);
+                                document.removeEventListener("mouseup", onMouseUp);
+                            }
+                            document.addEventListener("mousemove", onMouseMove);
+                            document.addEventListener("mouseup", onMouseUp);
+                        }}
+                    />
                 </div>
             )}
 
@@ -307,98 +303,107 @@ function GraphViewInner() {
                         color={isDark ? "rgba(148,163,184,0.15)" : "rgba(100,116,139,0.2)"}
                     />
                     <Controls />
-                    <MiniMap
-                        nodeColor={node => {
-                            if (node.id === gs.selectedChunkId) return "#f472b6";
-                            const style = node.style as React.CSSProperties | undefined;
-                            return style?.borderColor?.toString() ?? "#475569";
-                        }}
-                        maskColor={isDark ? "rgba(0, 0, 0, 0.7)" : "rgba(255, 255, 255, 0.7)"}
-                        pannable
-                        zoomable
-                    />
+                    {!isMobile && (
+                        <MiniMap
+                            nodeColor={node => {
+                                if (node.id === gs.selectedChunkId) return "#f472b6";
+                                const style = node.style as React.CSSProperties | undefined;
+                                return style?.borderColor?.toString() ?? "#475569";
+                            }}
+                            maskColor={isDark ? "rgba(0, 0, 0, 0.7)" : "rgba(255, 255, 255, 0.7)"}
+                            pannable
+                            zoomable
+                        />
+                    )}
                 </ReactFlow>
 
-                {/* Breadcrumb bar */}
-                <div className="absolute top-4 left-4 z-10 flex items-center gap-1 rounded-lg border bg-background/90 px-3 py-1.5 text-xs backdrop-blur-sm">
-                    {zoom.breadcrumbs.map((crumb, i) => (
-                        <span key={i} className="flex items-center gap-1">
-                            {i > 0 && <ChevronRight className="size-3 text-muted-foreground" />}
-                            <button
-                                className={`hover:text-foreground ${
-                                    i === zoom.breadcrumbs.length - 1
-                                        ? "text-foreground font-medium"
-                                        : "text-muted-foreground"
-                                }`}
-                                onClick={() => {
-                                    if (crumb.level === "overview") goToOverview();
-                                    if (crumb.level === "neighborhood" && crumb.islandId && crumb.chunkId) {
-                                        zoomToIsland(crumb.islandId, crumb.chunkId);
-                                    }
-                                }}
-                            >
-                                {crumb.label}
-                            </button>
-                        </span>
-                    ))}
-                </div>
-
-                {/* Tag type picker + heatmap toggle */}
-                {zoom.level === "overview" && availableTagTypeIds.size > 1 && (
-                    <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
-                        <button
-                            onClick={() => dispatch({ type: "TOGGLE_HEATMAP" })}
-                            className={`rounded border px-2 py-1 text-xs ${
-                                gs.heatmapMode
-                                    ? "border-amber-500 bg-amber-500/20 text-amber-300"
-                                    : "border-slate-600 bg-slate-800 text-slate-400"
-                            }`}
-                        >
-                            Health
-                        </button>
-                        <select
-                            value={groupingTagTypeId ?? ""}
-                            onChange={e => setGroupingTagTypeId(e.target.value || null)}
-                            className="rounded-md border bg-background/90 px-2 py-1.5 text-xs backdrop-blur-sm"
-                        >
-                            {[...availableTagTypeIds].map(id => (
-                                <option key={id} value={id}>
-                                    {tagTypeNames.get(id) ?? id}
-                                </option>
-                            ))}
-                        </select>
+                {/* Top bar: breadcrumbs + controls */}
+                <div className="absolute inset-x-0 top-0 z-10 flex flex-wrap items-start justify-between gap-2 p-3">
+                    {/* Breadcrumbs */}
+                    <div className="bg-background/90 flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs backdrop-blur-sm">
+                        {zoom.breadcrumbs.map((crumb, i) => (
+                            <span key={i} className="flex items-center gap-1">
+                                {i > 0 && <ChevronRight className="text-muted-foreground size-3" />}
+                                <button
+                                    className={`hover:text-foreground ${
+                                        i === zoom.breadcrumbs.length - 1
+                                            ? "text-foreground font-medium"
+                                            : "text-muted-foreground"
+                                    }`}
+                                    onClick={() => {
+                                        if (crumb.level === "overview") goToOverview();
+                                        if (crumb.level === "neighborhood" && crumb.islandId && crumb.chunkId) {
+                                            zoomToIsland(crumb.islandId, crumb.chunkId);
+                                        }
+                                    }}
+                                >
+                                    {crumb.label}
+                                </button>
+                            </span>
+                        ))}
                     </div>
-                )}
 
-                {/* Search input */}
-                <div className="absolute right-3 top-12 z-20 flex items-center gap-2">
-                    <input
-                        type="text"
-                        placeholder="Search chunks..."
-                        value={gs.searchQuery}
-                        onChange={e => dispatch({ type: "SET_SEARCH_QUERY", query: e.target.value })}
-                        className="w-48 rounded border border-slate-600 bg-slate-800/80 px-2 py-1 text-xs text-slate-300 placeholder:text-slate-500"
-                    />
-                    {gs.searchQuery && (
-                        <button onClick={() => dispatch({ type: "SET_SEARCH_QUERY", query: "" })} className="text-xs text-slate-500 hover:text-slate-300">
-                            ×
-                        </button>
-                    )}
+                    {/* Right controls */}
+                    <div className="flex flex-wrap items-center gap-2">
+                        {zoom.level === "overview" && availableTagTypeIds.size > 1 && (
+                            <>
+                                <button
+                                    onClick={() => dispatch({ type: "TOGGLE_HEATMAP" })}
+                                    className={`rounded border px-2 py-1.5 text-xs ${
+                                        gs.heatmapMode
+                                            ? "border-amber-500 bg-amber-500/20 text-amber-300"
+                                            : "bg-background/90 border backdrop-blur-sm"
+                                    }`}
+                                >
+                                    Health
+                                </button>
+                                <select
+                                    value={groupingTagTypeId ?? ""}
+                                    onChange={e => setGroupingTagTypeId(e.target.value || null)}
+                                    className="bg-background/90 rounded-md border px-2 py-1.5 text-xs backdrop-blur-sm"
+                                >
+                                    {[...availableTagTypeIds].map(id => (
+                                        <option key={id} value={id}>
+                                            {tagTypeNames.get(id) ?? id}
+                                        </option>
+                                    ))}
+                                </select>
+                            </>
+                        )}
+                        <div className="bg-background/90 flex items-center gap-1 rounded-md border backdrop-blur-sm">
+                            <input
+                                type="text"
+                                placeholder="Search..."
+                                value={gs.searchQuery}
+                                onChange={e => dispatch({ type: "SET_SEARCH_QUERY", query: e.target.value })}
+                                className="w-28 bg-transparent px-2 py-1.5 text-xs placeholder:text-muted-foreground sm:w-40"
+                            />
+                            {gs.searchQuery && (
+                                <button
+                                    onClick={() => dispatch({ type: "SET_SEARCH_QUERY", query: "" })}
+                                    className="text-muted-foreground hover:text-foreground pr-2 text-xs"
+                                >
+                                    ×
+                                </button>
+                            )}
+                        </div>
+                    </div>
                 </div>
 
-                {/* Edge legend */}
-                <div className="absolute bottom-12 right-3 z-20 flex gap-3 text-[8px] text-slate-500">
-                    <span><span className="text-blue-400">━▸</span> depends_on</span>
-                    <span><span className="text-green-400">━━</span> part_of</span>
-                    <span><span className="text-purple-400">━━</span> extends</span>
-                    <span><span className="text-red-400">╌╌</span> contradicts</span>
-                </div>
-
-                {/* Node/edge counts */}
-                <div className="absolute bottom-4 right-4 z-10">
-                    <span className="text-muted-foreground bg-background/80 rounded-lg border px-3 py-1.5 text-xs backdrop-blur-sm">
-                        {layoutNodes.length} nodes / {layoutEdges.length} edges
-                    </span>
+                {/* Bottom bar: legend + counts */}
+                <div className="absolute inset-x-0 bottom-0 z-10 flex items-end justify-between p-3">
+                    <div />
+                    <div className="flex flex-col items-end gap-1.5">
+                        <div className="text-muted-foreground hidden gap-3 text-[8px] sm:flex">
+                            <span><span className="text-blue-400">━▸</span> depends_on</span>
+                            <span><span className="text-green-400">━━</span> part_of</span>
+                            <span><span className="text-purple-400">━━</span> extends</span>
+                            <span><span className="text-red-400">╌╌</span> contradicts</span>
+                        </div>
+                        <span className="text-muted-foreground bg-background/80 rounded-lg border px-3 py-1.5 text-xs backdrop-blur-sm">
+                            {layoutNodes.length} nodes · {layoutEdges.length} edges
+                        </span>
+                    </div>
                 </div>
 
                 {/* Help overlay */}
@@ -432,6 +437,20 @@ function GraphViewInner() {
                     </div>
                 )}
             </div>
+
+            {/* Mobile bottom sheet detail panel */}
+            {gs.selectedChunkId && isMobile && (
+                <div className="border-t bg-background shrink-0 overflow-y-auto" style={{ maxHeight: "40vh" }}>
+                    <GraphDetailPanel
+                        chunkId={gs.selectedChunkId}
+                        onClose={() => dispatch({ type: "SET_SELECTED_CHUNK", id: null })}
+                        onNavigateToChunk={id => {
+                            dispatch({ type: "SET_SELECTED_CHUNK", id });
+                            setFocusChunk(id);
+                        }}
+                    />
+                </div>
+            )}
         </div>
     );
 }
