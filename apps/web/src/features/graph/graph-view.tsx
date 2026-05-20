@@ -17,6 +17,7 @@ import { useTheme } from "next-themes";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { Spinner } from "@/components/ui/spinner";
+import { GraphColumnView } from "@/features/graph/graph-column-view";
 import { GraphIslandNode } from "@/features/graph/graph-island-node";
 import { GraphChunkCard } from "@/features/graph/graph-chunk-card";
 import { GraphChunkDot } from "@/features/graph/graph-chunk-dot";
@@ -28,6 +29,8 @@ import { useGraphZoom } from "@/features/graph/use-graph-zoom";
 import { useGraphData } from "@/features/graph/use-graph-data";
 import { useGraphNodes } from "@/features/graph/use-graph-nodes";
 import { useGraphState } from "@/features/graph/use-graph-state";
+
+type ViewMode = "graph" | "columns";
 
 const NODE_TYPES = {
     island: GraphIslandNode,
@@ -221,6 +224,9 @@ function GraphViewInner() {
         return m;
     }, [data?.tagTypes]);
 
+    // --- View mode ---
+    const [viewMode, setViewMode] = useState<ViewMode>("graph");
+
     // --- Mobile detection ---
     const [isMobile, setIsMobile] = useState(false);
     useEffect(() => {
@@ -281,7 +287,47 @@ function GraphViewInner() {
                 </div>
             )}
 
-            {/* Main graph area */}
+            {/* Column view */}
+            {viewMode === "columns" ? (
+                <div className="relative flex-1 overflow-hidden">
+                    <GraphColumnView
+                        islandData={islandData}
+                        data={data}
+                        chunkHealthScores={chunkHealthScores}
+                        chunkTags={chunkTags}
+                        islandColors={islandColors}
+                        selectedChunkId={gs.selectedChunkId}
+                        onSelectChunk={id => dispatch({ type: "SET_SELECTED_CHUNK", id })}
+                    />
+                    {/* Top bar for column view */}
+                    <div className="absolute inset-x-0 top-0 z-10 flex flex-wrap items-start justify-between gap-2 p-3">
+                        <div className="bg-background/90 flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs backdrop-blur-sm">
+                            <span className="text-foreground font-medium">Columns</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            {availableTagTypeIds.size > 1 && (
+                                <select
+                                    value={groupingTagTypeId ?? ""}
+                                    onChange={e => setGroupingTagTypeId(e.target.value || null)}
+                                    className="bg-background/90 rounded-md border px-2 py-1.5 text-xs backdrop-blur-sm"
+                                >
+                                    {[...availableTagTypeIds].map(id => (
+                                        <option key={id} value={id}>{tagTypeNames.get(id) ?? id}</option>
+                                    ))}
+                                </select>
+                            )}
+                            <button
+                                onClick={() => setViewMode("graph")}
+                                className="bg-background/90 rounded-md border px-2 py-1.5 text-xs backdrop-blur-sm"
+                            >
+                                Graph
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            ) : (
+
+            /* Main graph area */
             <div className="relative flex-1 touch-manipulation [&_.react-flow__handle]:invisible [&_.react-flow__node]:transition-[transform] [&_.react-flow__node]:duration-500 [&_.react-flow__node]:ease-out">
                 <ReactFlow
                     nodes={nodes}
@@ -387,6 +433,12 @@ function GraphViewInner() {
                                 </button>
                             )}
                         </div>
+                        <button
+                            onClick={() => setViewMode("columns")}
+                            className="bg-background/90 rounded-md border px-2 py-1.5 text-xs backdrop-blur-sm"
+                        >
+                            Columns
+                        </button>
                     </div>
                 </div>
 
@@ -437,6 +489,8 @@ function GraphViewInner() {
                     </div>
                 )}
             </div>
+
+            )}
 
             {/* Mobile bottom sheet detail panel */}
             {gs.selectedChunkId && isMobile && (
