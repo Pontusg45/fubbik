@@ -71,17 +71,36 @@ export function useGraphData(dispatch: React.Dispatch<GraphAction>) {
         return ids;
     }, [scopedChunkTags]);
 
-    // Grouping tag type — auto-select first available, or from URL
+    // Pick the tag type with the best chunk coverage (most chunks tagged)
+    const bestTagTypeId = useMemo(() => {
+        if (availableTagTypeIds.size === 0) return null;
+        const counts = new Map<string, number>();
+        const seen = new Map<string, Set<string>>();
+        for (const ct of scopedChunkTags as Array<{ chunkId: string; tagTypeId?: string | null }>) {
+            if (!ct.tagTypeId) continue;
+            const s = seen.get(ct.tagTypeId) ?? new Set();
+            s.add(ct.chunkId);
+            seen.set(ct.tagTypeId, s);
+            counts.set(ct.tagTypeId, s.size);
+        }
+        let best: string | null = null;
+        let bestCount = 0;
+        for (const [id, count] of counts) {
+            if (count > bestCount) { best = id; bestCount = count; }
+        }
+        return best;
+    }, [scopedChunkTags, availableTagTypeIds]);
+
+    // Grouping tag type — URL param > best coverage > first available
     const [groupingTagTypeId, setGroupingTagTypeId] = useState<string | null>(null);
 
     useEffect(() => {
         if (search.tagTypeId && availableTagTypeIds.has(search.tagTypeId)) {
             setGroupingTagTypeId(search.tagTypeId);
-        } else if (groupingTagTypeId === null && availableTagTypeIds.size > 0) {
-            const first = [...availableTagTypeIds][0]!;
-            setGroupingTagTypeId(first);
+        } else if (groupingTagTypeId === null) {
+            setGroupingTagTypeId(bestTagTypeId);
         }
-    }, [search.tagTypeId, availableTagTypeIds, groupingTagTypeId]);
+    }, [search.tagTypeId, availableTagTypeIds, groupingTagTypeId, bestTagTypeId]);
 
     // Sync to graph state
     useEffect(() => {
