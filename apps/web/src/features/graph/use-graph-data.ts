@@ -9,6 +9,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useSearch } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 
+
 import { useActiveCodebase } from "@/features/codebases/use-active-codebase";
 import { formIslands, type IslandFormationResult } from "@/features/graph/island-formation";
 import type { GraphAction } from "@/features/graph/use-graph-state";
@@ -107,6 +108,29 @@ export function useGraphData(dispatch: React.Dispatch<GraphAction>) {
     const initialFocusChunkId = search.focus ?? null;
     const initialIslandId = search.island ?? null;
 
+    // Compute simplified health scores from chunk metadata (freshness based on createdAt)
+    const chunkHealthScores = useMemo(() => {
+        const scores = new Map<string, number>();
+        if (!data?.chunks) return scores;
+        const now = Date.now();
+        for (const chunk of data.chunks as Array<{ id: string; createdAt: Date | string }>) {
+            const age = (now - new Date(chunk.createdAt).getTime()) / (1000 * 60 * 60 * 24);
+            const freshness = Math.max(0, Math.min(100, 100 - (age / 180) * 100));
+            scores.set(chunk.id, Math.round(freshness));
+        }
+        return scores;
+    }, [data?.chunks]);
+
+    // Aggregate health scores per island
+    const islandHealthScores = useMemo(() => {
+        const map = new Map<string, number[]>();
+        if (!islandData) return map;
+        for (const island of islandData.islands) {
+            map.set(island.id, island.chunkIds.map(id => chunkHealthScores.get(id) ?? 50));
+        }
+        return map;
+    }, [islandData, chunkHealthScores]);
+
     return {
         data,
         isLoading,
@@ -119,5 +143,7 @@ export function useGraphData(dispatch: React.Dispatch<GraphAction>) {
         islandData,
         initialFocusChunkId,
         initialIslandId,
+        chunkHealthScores,
+        islandHealthScores,
     };
 }

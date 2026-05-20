@@ -4,9 +4,11 @@ interface GraphView {
     name: string;
     filterTypes: string[];
     filterRelations: string[];
-    collapsedParents: string[];
-    layoutAlgorithm: string;
+    groupingTagTypeId?: string | null;
+    heatmapMode?: boolean;
     focusNodeId?: string;
+    // Legacy fields — silently ignored
+    [key: string]: unknown;
 }
 
 const STORAGE_KEY = "fubbik-graph-views";

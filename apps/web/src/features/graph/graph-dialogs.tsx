@@ -81,8 +81,8 @@ interface SaveViewDialogProps {
         name: string;
         filterTypes: string[];
         filterRelations: string[];
-        collapsedParents: string[];
-        layoutAlgorithm: string;
+        groupingTagTypeId?: string | null;
+        heatmapMode?: boolean;
         focusNodeId?: string;
     }) => void;
     dispatch: React.Dispatch<GraphAction>;
@@ -104,8 +104,6 @@ export function SaveViewDialog({
             name: viewName.trim(),
             filterTypes: [...filterTypes],
             filterRelations: [...filterRelations],
-            collapsedParents: [],
-            layoutAlgorithm: "island",
         });
         dispatch({ type: "SET_SHOW_SAVE_DIALOG", show: false });
         dispatch({ type: "SET_VIEW_NAME", name: "" });

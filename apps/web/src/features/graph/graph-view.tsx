@@ -59,6 +59,8 @@ function GraphViewInner() {
         islandData,
         initialFocusChunkId,
         initialIslandId,
+        chunkHealthScores: computedChunkHealthScores,
+        islandHealthScores: computedIslandHealthScores,
     } = useGraphData(dispatch);
 
     const {
@@ -89,10 +91,7 @@ function GraphViewInner() {
     }, [zoom.level, zoom.focusChunkId, data?.chunks, data?.connections]);
 
     // --- Island health scores and colors ---
-    const islandHealthScores = useMemo(() => {
-        // Placeholder: empty scores for now (Task 12 will compute real health)
-        return new Map<string, number[]>();
-    }, []);
+    const islandHealthScores = computedIslandHealthScores;
 
     const islandColors = useMemo(() => {
         const m = new Map<string, string>();
@@ -111,10 +110,7 @@ function GraphViewInner() {
         return m;
     }, [data?.chunks]);
 
-    const chunkHealthScores = useMemo(() => {
-        // Placeholder: 0 for all (Task 12 will wire real scores)
-        return new Map<string, number>();
-    }, []);
+    const chunkHealthScores = computedChunkHealthScores;
 
     const chunkTags = useMemo(() => {
         const m = new Map<string, Array<{ name: string; color: string }>>();
@@ -347,9 +343,19 @@ function GraphViewInner() {
                     ))}
                 </div>
 
-                {/* Tag type picker */}
+                {/* Tag type picker + heatmap toggle */}
                 {zoom.level === "overview" && availableTagTypeIds.size > 1 && (
                     <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
+                        <button
+                            onClick={() => dispatch({ type: "TOGGLE_HEATMAP" })}
+                            className={`rounded border px-2 py-1 text-xs ${
+                                gs.heatmapMode
+                                    ? "border-amber-500 bg-amber-500/20 text-amber-300"
+                                    : "border-slate-600 bg-slate-800 text-slate-400"
+                            }`}
+                        >
+                            Health
+                        </button>
                         <select
                             value={groupingTagTypeId ?? ""}
                             onChange={e => setGroupingTagTypeId(e.target.value || null)}
@@ -363,6 +369,30 @@ function GraphViewInner() {
                         </select>
                     </div>
                 )}
+
+                {/* Search input */}
+                <div className="absolute right-3 top-12 z-20 flex items-center gap-2">
+                    <input
+                        type="text"
+                        placeholder="Search chunks..."
+                        value={gs.searchQuery}
+                        onChange={e => dispatch({ type: "SET_SEARCH_QUERY", query: e.target.value })}
+                        className="w-48 rounded border border-slate-600 bg-slate-800/80 px-2 py-1 text-xs text-slate-300 placeholder:text-slate-500"
+                    />
+                    {gs.searchQuery && (
+                        <button onClick={() => dispatch({ type: "SET_SEARCH_QUERY", query: "" })} className="text-xs text-slate-500 hover:text-slate-300">
+                            ×
+                        </button>
+                    )}
+                </div>
+
+                {/* Edge legend */}
+                <div className="absolute bottom-12 right-3 z-20 flex gap-3 text-[8px] text-slate-500">
+                    <span><span className="text-blue-400">━▸</span> depends_on</span>
+                    <span><span className="text-green-400">━━</span> part_of</span>
+                    <span><span className="text-purple-400">━━</span> extends</span>
+                    <span><span className="text-red-400">╌╌</span> contradicts</span>
+                </div>
 
                 {/* Node/edge counts */}
                 <div className="absolute bottom-4 right-4 z-10">
