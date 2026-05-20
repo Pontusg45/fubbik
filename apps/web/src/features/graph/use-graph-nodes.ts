@@ -128,14 +128,14 @@ export function useGraphNodes({
                 });
             } else {
                 // Chunk dot for 2-hop
-                const typeColor = relationColor(chunk.type) || "#6b7280";
                 nodes.push({
                     id: chunkId,
                     type: "chunkDot",
                     position: pos,
                     data: {
                         title: chunk.title,
-                        color: typeColor,
+                        chunkType: chunk.type,
+                        healthScore: chunkHealthScores.get(chunkId) ?? 50,
                     },
                 });
             }
