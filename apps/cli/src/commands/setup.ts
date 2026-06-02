@@ -2,7 +2,7 @@ import { Command } from "commander";
 
 import { formatBold, formatDim, formatSuccess } from "../lib/colors";
 import { loadConfig } from "../lib/config";
-import { getGitRemoteUrl } from "../lib/detect-codebase";
+import { getGitRemoteUrl } from "../lib/detect-space";
 import { isJson, output, outputError } from "../lib/output";
 import { confirm, promptInput } from "../lib/prompt";
 import { discover, formatPreview, formatPreviewJson, importToServer } from "../lib/setup";
@@ -37,73 +37,73 @@ export const setupCommand = new Command("setup")
             process.exit(1);
         }
 
-        // Detect or create codebase
+        // Detect or create space
         const remoteUrl = getGitRemoteUrl();
         const localPath = process.cwd();
-        let codebaseId: string | null = null;
-        let codebaseName: string = "";
+        let spaceId: string | null = null;
+        let spaceName: string = "";
 
         const detectParams = new URLSearchParams();
         if (remoteUrl) detectParams.set("remoteUrl", remoteUrl);
         else detectParams.set("localPath", localPath);
 
         try {
-            const res = await fetch(`${serverUrl}/api/codebases/detect?${detectParams}`);
+            const res = await fetch(`${serverUrl}/api/spaces/detect?${detectParams}`);
             if (res.ok) {
                 const data = (await res.json()) as { id?: string; name?: string };
                 if (data?.id) {
-                    codebaseId = data.id;
-                    codebaseName = data.name!;
+                    spaceId = data.id;
+                    spaceName = data.name!;
                 }
             }
         } catch {
             // Will create below
         }
 
-        if (!codebaseId) {
+        if (!spaceId) {
             if (!remoteUrl) {
-                codebaseName = await promptInput("No git remote detected. Codebase name", localPath.split("/").pop() ?? "my-project");
+                spaceName = await promptInput("No git remote detected. Space name", localPath.split("/").pop() ?? "my-project");
             } else {
                 const match = remoteUrl.match(/\/([^/]+?)(?:\.git)?$/);
-                codebaseName = match?.[1] ?? "my-project";
+                spaceName = match?.[1] ?? "my-project";
             }
 
             try {
-                const res = await fetch(`${serverUrl}/api/codebases`, {
+                const res = await fetch(`${serverUrl}/api/spaces`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
-                        name: codebaseName,
+                        name: spaceName,
                         remoteUrl: remoteUrl ?? undefined,
                         localPaths: [localPath],
                     }),
                 });
                 if (res.ok) {
                     const data = (await res.json()) as { id: string };
-                    codebaseId = data.id;
+                    spaceId = data.id;
                 } else {
-                    outputError(`Failed to create codebase: ${res.status} ${await res.text()}`);
+                    outputError(`Failed to create space: ${res.status} ${await res.text()}`);
                     process.exit(1);
                 }
             } catch (err) {
-                outputError(`Failed to create codebase: ${err}`);
+                outputError(`Failed to create space: ${err}`);
                 process.exit(1);
             }
         }
 
         if (!jsonMode) {
-            console.log(`\n📍 Detected codebase: ${formatBold(codebaseName)}${remoteUrl ? ` (${formatDim(remoteUrl)})` : ""}\n`);
+            console.log(`\nDetected space: ${formatBold(spaceName)}${remoteUrl ? ` (${formatDim(remoteUrl)})` : ""}\n`);
         }
 
-        // Check if codebase already has chunks
+        // Check if space already has chunks
         if (!opts.force) {
             try {
-                const res = await fetch(`${serverUrl}/api/chunks?codebaseId=${codebaseId}&limit=1`);
+                const res = await fetch(`${serverUrl}/api/chunks?spaceId=${spaceId}&limit=1`);
                 if (res.ok) {
                     const data = (await res.json()) as { total: number };
                     if (data.total > 0) {
                         if (!jsonMode) {
-                            console.log(`This codebase already has ${data.total} chunks.`);
+                            console.log(`This space already has ${data.total} chunks.`);
                         }
                         if (!opts.yes) {
                             const proceed = await confirm("Continue and add more?");
@@ -123,7 +123,7 @@ export const setupCommand = new Command("setup")
         if (!jsonMode) console.log("Scanning project...");
 
         const result = discover(localPath, {
-            name: codebaseName,
+            name: spaceName,
             remoteUrl,
             localPath,
         });
@@ -173,7 +173,7 @@ export const setupCommand = new Command("setup")
 
         const importResult = await importToServer(
             serverUrl,
-            codebaseId!,
+            spaceId!,
             result.chunks,
             result.connections,
             localPath,
