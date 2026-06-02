@@ -1,7 +1,7 @@
 import { index, jsonb, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 
 import { user } from "./auth";
-import { codebase } from "./codebase";
+import { space } from "./space";
 
 export const userSettings = pgTable(
     "user_settings",
@@ -27,9 +27,9 @@ export const codebaseSettings = pgTable(
     "codebase_settings",
     {
         id: text("id").primaryKey(),
-        codebaseId: text("codebase_id")
+        spaceId: text("space_id")
             .notNull()
-            .references(() => codebase.id, { onDelete: "cascade" }),
+            .references(() => space.id, { onDelete: "cascade" }),
         key: text("key").notNull(),
         value: jsonb("value").notNull(),
         updatedAt: timestamp("updated_at")
@@ -38,8 +38,8 @@ export const codebaseSettings = pgTable(
             .notNull()
     },
     table => [
-        uniqueIndex("codebase_settings_cb_key_idx").on(table.codebaseId, table.key),
-        index("codebase_settings_codebaseId_idx").on(table.codebaseId)
+        uniqueIndex("codebase_settings_cb_key_idx").on(table.spaceId, table.key),
+        index("codebase_settings_spaceId_idx").on(table.spaceId)
     ]
 );
 
