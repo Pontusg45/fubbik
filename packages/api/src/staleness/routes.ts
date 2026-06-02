@@ -15,7 +15,7 @@ export const stalenessRoutes = new Elysia()
                     Effect.flatMap(session =>
                         stalenessService.getStaleFlags(session.user.id, {
                             reason: ctx.query.reason,
-                            codebaseId: ctx.query.codebaseId,
+                            codebaseId: ctx.query.spaceId,
                             limit: ctx.query.limit
                         })
                     )
@@ -24,7 +24,7 @@ export const stalenessRoutes = new Elysia()
         {
             query: t.Object({
                 reason: t.Optional(t.String()),
-                codebaseId: t.Optional(t.String()),
+                spaceId: t.Optional(t.String()),
                 limit: t.Optional(t.Numeric())
             })
         }
@@ -35,13 +35,13 @@ export const stalenessRoutes = new Elysia()
             Effect.runPromise(
                 requireSession(ctx).pipe(
                     Effect.flatMap(session =>
-                        stalenessService.getStaleCount(session.user.id, ctx.query.codebaseId)
+                        stalenessService.getStaleCount(session.user.id, ctx.query.spaceId)
                     )
                 )
             ),
         {
             query: t.Object({
-                codebaseId: t.Optional(t.String())
+                spaceId: t.Optional(t.String())
             })
         }
     )
@@ -87,12 +87,12 @@ export const stalenessRoutes = new Elysia()
                         Effect.all([
                             detectAgeStaleChunks(
                                 session.user.id,
-                                ctx.body.codebaseId,
+                                ctx.body.spaceId,
                                 ctx.body.thresholdDays
                             ),
                             stalenessService.detectUncoveredChunks(
                                 session.user.id,
-                                ctx.body.codebaseId
+                                ctx.body.spaceId
                             )
                         ]).pipe(
                             Effect.map(([ageResult, uncoveredResult]) => ({
@@ -104,7 +104,7 @@ export const stalenessRoutes = new Elysia()
             ),
         {
             body: t.Object({
-                codebaseId: t.Optional(t.String()),
+                spaceId: t.Optional(t.String()),
                 thresholdDays: t.Optional(t.Number())
             })
         }
