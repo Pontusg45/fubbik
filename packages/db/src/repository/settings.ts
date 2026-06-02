@@ -46,7 +46,7 @@ export function getCodebaseSetting(codebaseId: string, key: string) {
             const [row] = await db
                 .select()
                 .from(codebaseSettings)
-                .where(and(eq(codebaseSettings.codebaseId, codebaseId), eq(codebaseSettings.key, key)))
+                .where(and(eq(codebaseSettings.spaceId, codebaseId), eq(codebaseSettings.key, key)))
                 .limit(1);
             return row ?? null;
         });
@@ -57,9 +57,9 @@ export function setCodebaseSetting(codebaseId: string, key: string, value: unkno
             const id = crypto.randomUUID();
             const [row] = await db
                 .insert(codebaseSettings)
-                .values({ id, codebaseId, key, value })
+                .values({ id, spaceId: codebaseId, key, value })
                 .onConflictDoUpdate({
-                    target: [codebaseSettings.codebaseId, codebaseSettings.key],
+                    target: [codebaseSettings.spaceId, codebaseSettings.key],
                     set: { value, updatedAt: new Date() }
                 })
                 .returning();
@@ -72,7 +72,7 @@ export function getAllCodebaseSettings(codebaseId: string) {
             db
                 .select()
                 .from(codebaseSettings)
-                .where(eq(codebaseSettings.codebaseId, codebaseId)));
+                .where(eq(codebaseSettings.spaceId, codebaseId)));
 }
 
 // --- Instance Settings ---
