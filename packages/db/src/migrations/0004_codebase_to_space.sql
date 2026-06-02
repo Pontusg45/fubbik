@@ -44,16 +44,28 @@ CREATE TABLE IF NOT EXISTS space_code_metadata (
 CREATE UNIQUE INDEX IF NOT EXISTS space_code_user_remote_idx
     ON space_code_metadata(user_id, remote_url) WHERE remote_url IS NOT NULL;
 
--- 4. Copy codebase → space + space_code_metadata
-INSERT INTO space (id, name, kind, description, user_id, created_at, updated_at)
-SELECT id, name, 'code', NULL, user_id, created_at, updated_at
-FROM codebase
-ON CONFLICT (id) DO NOTHING;
+-- 4. Copy codebase → space + space_code_metadata (guarded: codebase may already be dropped)
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'codebase'
+    ) THEN
+        INSERT INTO space (id, name, kind, description, user_id, created_at, updated_at)
+        SELECT id, name, 'code', NULL, user_id, created_at, updated_at
+        FROM codebase
+        ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO space_code_metadata (space_id, user_id, remote_url, local_paths)
-SELECT id, user_id, remote_url, COALESCE(local_paths, '[]'::jsonb)
-FROM codebase
-ON CONFLICT (space_id) DO NOTHING;
+        INSERT INTO space_code_metadata (space_id, user_id, remote_url, local_paths)
+        SELECT id, user_id, remote_url, COALESCE(local_paths, '[]'::jsonb)
+        FROM codebase
+        ON CONFLICT (space_id) DO NOTHING;
+
+        RAISE NOTICE 'Copied % codebase row(s) to space', (SELECT count(*) FROM codebase);
+    ELSE
+        RAISE NOTICE 'codebase table not present — skipping copy (already migrated)';
+    END IF;
+END $$;
 
 -- 5. chunk_space (renamed from chunk_codebase)
 CREATE TABLE IF NOT EXISTS chunk_space (
@@ -64,9 +76,20 @@ CREATE TABLE IF NOT EXISTS chunk_space (
 CREATE INDEX IF NOT EXISTS chunk_space_chunkId_idx ON chunk_space(chunk_id);
 CREATE INDEX IF NOT EXISTS chunk_space_spaceId_idx ON chunk_space(space_id);
 
-INSERT INTO chunk_space (chunk_id, space_id)
-SELECT chunk_id, codebase_id FROM chunk_codebase
-ON CONFLICT DO NOTHING;
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'chunk_codebase'
+    ) THEN
+        INSERT INTO chunk_space (chunk_id, space_id)
+        SELECT chunk_id, codebase_id FROM chunk_codebase
+        ON CONFLICT DO NOTHING;
+        RAISE NOTICE 'Copied % chunk_codebase row(s) to chunk_space', (SELECT count(*) FROM chunk_codebase);
+    ELSE
+        RAISE NOTICE 'chunk_codebase table not present — skipping copy (already migrated)';
+    END IF;
+END $$;
 
 -- 6. workspace_space (renamed from workspace_codebase)
 CREATE TABLE IF NOT EXISTS workspace_space (
@@ -77,9 +100,20 @@ CREATE TABLE IF NOT EXISTS workspace_space (
 CREATE INDEX IF NOT EXISTS workspace_space_workspaceId_idx ON workspace_space(workspace_id);
 CREATE INDEX IF NOT EXISTS workspace_space_spaceId_idx ON workspace_space(space_id);
 
-INSERT INTO workspace_space (workspace_id, space_id)
-SELECT workspace_id, codebase_id FROM workspace_codebase
-ON CONFLICT DO NOTHING;
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'workspace_codebase'
+    ) THEN
+        INSERT INTO workspace_space (workspace_id, space_id)
+        SELECT workspace_id, codebase_id FROM workspace_codebase
+        ON CONFLICT DO NOTHING;
+        RAISE NOTICE 'Copied % workspace_codebase row(s) to workspace_space', (SELECT count(*) FROM workspace_codebase);
+    ELSE
+        RAISE NOTICE 'workspace_codebase table not present — skipping copy (already migrated)';
+    END IF;
+END $$;
 
 -- 7. Rename codebase_id → space_id on every table that has it.
 --
