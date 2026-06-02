@@ -14,7 +14,7 @@ export interface CreateRequirementParams {
     steps: RequirementStep[];
     status?: string;
     priority?: string;
-    codebaseId?: string;
+    spaceId?: string;
     useCaseId?: string;
     userId: string;
     origin?: string;
@@ -48,7 +48,7 @@ export function getRequirementById(id: string, userId?: string) {
 
 export interface ListRequirementsParams {
     userId: string;
-    codebaseId?: string;
+    spaceId?: string;
     useCaseId?: string;
     status?: string;
     priority?: string;
@@ -62,7 +62,7 @@ export interface ListRequirementsParams {
 export function listRequirements(params: ListRequirementsParams) {
     return dbEffect(async () => {
             const conditions = [eq(requirement.userId, params.userId)];
-            if (params.codebaseId) conditions.push(eq(requirement.codebaseId, params.codebaseId));
+            if (params.spaceId) conditions.push(eq(requirement.spaceId, params.spaceId));
             if (params.useCaseId) conditions.push(eq(requirement.useCaseId, params.useCaseId));
             if (params.status) conditions.push(eq(requirement.status, params.status));
             if (params.priority) conditions.push(eq(requirement.priority, params.priority));
@@ -102,7 +102,7 @@ export interface UpdateRequirementParams {
     steps?: RequirementStep[];
     status?: string;
     priority?: string | null;
-    codebaseId?: string | null;
+    spaceId?: string | null;
     useCaseId?: string | null;
     origin?: string;
     reviewStatus?: string;
@@ -118,7 +118,7 @@ export function updateRequirement(id: string, userId: string, params: UpdateRequ
             if (params.steps !== undefined) setClause.steps = params.steps;
             if (params.status !== undefined) setClause.status = params.status;
             if (params.priority !== undefined) setClause.priority = params.priority;
-            if (params.codebaseId !== undefined) setClause.codebaseId = params.codebaseId;
+            if (params.spaceId !== undefined) setClause.spaceId = params.spaceId;
             if (params.useCaseId !== undefined) setClause.useCaseId = params.useCaseId;
             if (params.origin !== undefined) setClause.origin = params.origin;
             if (params.reviewStatus !== undefined) setClause.reviewStatus = params.reviewStatus;
@@ -283,10 +283,10 @@ export function getRequirementsForChunks(chunkIds: string[]) {
                 .where(inArray(requirementChunk.chunkId, chunkIds)));
 }
 
-export function getRequirementStats(userId: string, codebaseId?: string) {
+export function getRequirementStats(userId: string, spaceId?: string) {
     return dbEffect(async () => {
             const conditions = [eq(requirement.userId, userId)];
-            if (codebaseId) conditions.push(eq(requirement.codebaseId, codebaseId));
+            if (spaceId) conditions.push(eq(requirement.spaceId, spaceId));
 
             const results = await db
                 .select({
