@@ -1,7 +1,7 @@
 import { relations } from "drizzle-orm";
 import { index, integer, pgTable, text, timestamp, uniqueIndex, type AnyPgColumn } from "drizzle-orm/pg-core";
 import { user } from "./auth";
-import { codebase } from "./codebase";
+import { space } from "./space";
 
 export const useCase = pgTable(
     "use_case",
@@ -9,7 +9,7 @@ export const useCase = pgTable(
         id: text("id").primaryKey(),
         name: text("name").notNull(),
         description: text("description"),
-        codebaseId: text("codebase_id").references(() => codebase.id, { onDelete: "set null" }),
+        spaceId: text("space_id").references(() => space.id, { onDelete: "set null" }),
         userId: text("user_id")
             .notNull()
             .references(() => user.id, { onDelete: "cascade" }),
@@ -30,7 +30,7 @@ export const useCase = pgTable(
 
 export const useCaseRelations = relations(useCase, ({ one, many }) => ({
     user: one(user, { fields: [useCase.userId], references: [user.id] }),
-    codebase: one(codebase, { fields: [useCase.codebaseId], references: [codebase.id] }),
+    space: one(space, { fields: [useCase.spaceId], references: [space.id] }),
     parent: one(useCase, { fields: [useCase.parentId], references: [useCase.id], relationName: "children" }),
     children: many(useCase, { relationName: "children" })
 }));
