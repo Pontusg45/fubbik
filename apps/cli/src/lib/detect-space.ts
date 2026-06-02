@@ -16,7 +16,7 @@ export function getGitRemoteUrl(): string | null {
     }
 }
 
-export async function detectCodebase(): Promise<{ id: string; name: string } | null> {
+export async function detectSpace(): Promise<{ id: string; name: string } | null> {
     const serverUrl = getServerUrl();
     if (!serverUrl) return null;
 
@@ -28,7 +28,7 @@ export async function detectCodebase(): Promise<{ id: string; name: string } | n
     else params.set("localPath", localPath);
 
     try {
-        const res = await fetch(`${serverUrl}/api/codebases/detect?${params}`);
+        const res = await fetch(`${serverUrl}/api/spaces/detect?${params}`);
         if (!res.ok) return null;
         const data = (await res.json()) as { id?: string; name?: string };
         return data && data.id ? { id: data.id, name: data.name! } : null;
@@ -37,21 +37,23 @@ export async function detectCodebase(): Promise<{ id: string; name: string } | n
     }
 }
 
-export async function resolveCodebaseId(
+export async function resolveSpaceId(
     serverUrl: string,
-    opts: { global?: boolean; codebase?: string }
+    opts: { global?: boolean; space?: string; codebase?: string }
 ): Promise<string | null> {
     if (opts.global) return null;
 
-    if (opts.codebase) {
-        // Look up codebase by name
+    const spaceName = opts.space ?? opts.codebase;
+
+    if (spaceName) {
+        // Look up space by name
         try {
-            const res = await fetch(`${serverUrl}/api/codebases`);
+            const res = await fetch(`${serverUrl}/api/spaces`);
             if (!res.ok) return null;
             const data = (await res.json()) as { id: string; name: string }[];
-            const match = data.find(c => c.name === opts.codebase);
+            const match = data.find(c => c.name === spaceName);
             if (match) return match.id;
-            console.error(`Codebase "${opts.codebase}" not found.`);
+            console.error(`Space "${spaceName}" not found.`);
             process.exit(1);
         } catch {
             return null;
@@ -59,6 +61,10 @@ export async function resolveCodebaseId(
     }
 
     // Auto-detect from git remote / cwd
-    const detected = await detectCodebase();
+    const detected = await detectSpace();
     return detected?.id ?? null;
 }
+
+// Legacy aliases — remove after one release
+export const detectCodebase = detectSpace;
+export const resolveCodebaseId = resolveSpaceId;
