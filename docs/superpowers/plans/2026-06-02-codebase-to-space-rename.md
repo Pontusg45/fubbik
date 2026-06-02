@@ -1,12 +1,19 @@
 # Codebase → Space Rename Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to
+> implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Rename the `codebase` entity to `space`, introduce a `kind` discriminator, and move git-specific fields (`remote_url`, `local_paths`) into a 1:1 side-table `space_code_metadata`. Preserves all existing data, all code-knowledge features remain functional after kind defaults to `code`.
+**Goal:** Rename the `codebase` entity to `space`, introduce a `kind` discriminator, and move git-specific fields (`remote_url`,
+`local_paths`) into a 1:1 side-table `space_code_metadata`. Preserves all existing data, all code-knowledge features remain functional after
+kind defaults to `code`.
 
-**Architecture:** Schema-first migration via a hand-written SQL migration file (matches the existing `packages/db/src/migrations/*.sql` pattern). New `space`, `space_kind`, `space_code_metadata` tables; FK columns `codebase_id` rename to `space_id` across 17 schema files and one chunk join table. App-layer rename follows in repository → service → routes → CLI → frontend → VS Code → seed → tests order, with a backwards-compat `/api/codebases` alias kept until the VS Code extension is rebuilt.
+**Architecture:** Schema-first migration via a hand-written SQL migration file (matches the existing `packages/db/src/migrations/*.sql`
+pattern). New `space`, `space_kind`, `space_code_metadata` tables; FK columns `codebase_id` rename to `space_id` across 17 schema files and
+one chunk join table. App-layer rename follows in repository → service → routes → CLI → frontend → VS Code → seed → tests order, with a
+backwards-compat `/api/codebases` alias kept until the VS Code extension is rebuilt.
 
-**Tech Stack:** TypeScript, Drizzle ORM 0.45 (Postgres), Elysia + Eden treaty, Effect, Bun (CLI), TanStack Start (web), Commander.js, vitest.
+**Tech Stack:** TypeScript, Drizzle ORM 0.45 (Postgres), Elysia + Eden treaty, Effect, Bun (CLI), TanStack Start (web), Commander.js,
+vitest.
 
 **Spec:** `docs/superpowers/specs/2026-06-02-domain-agnostic-database-design.md` (Phase A only).
 
@@ -17,6 +24,7 @@
 ### Task 0.1: Create a worktree (optional but recommended)
 
 **Files:**
+
 - None (worktree creation)
 
 - [ ] **Step 1: Create isolated worktree**
@@ -46,6 +54,7 @@ Expected: passes. If failures are pre-existing, capture them so you can distingu
 ### Task 1.1: Add `space_kind` schema
 
 **Files:**
+
 - Create: `packages/db/src/schema/space-kind.ts`
 
 - [ ] **Step 1: Write the schema file**
@@ -78,6 +87,7 @@ git commit -m "feat(db): add space_kind schema"
 ### Task 1.2: Add `space` schema
 
 **Files:**
+
 - Create: `packages/db/src/schema/space.ts`
 
 - [ ] **Step 1: Write the schema file**
@@ -95,7 +105,9 @@ export const space = pgTable(
     {
         id: text("id").primaryKey(),
         name: text("name").notNull(),
-        kind: text("kind").notNull().references(() => spaceKind.id, { onDelete: "restrict" }),
+        kind: text("kind")
+            .notNull()
+            .references(() => spaceKind.id, { onDelete: "restrict" }),
         description: text("description"),
         userId: text("user_id")
             .notNull()
@@ -152,6 +164,7 @@ git commit -m "feat(db): add space + chunk_space schema"
 ### Task 1.3: Add `space_code_metadata` schema
 
 **Files:**
+
 - Create: `packages/db/src/schema/space-code-metadata.ts`
 
 - [ ] **Step 1: Write the schema file**
@@ -184,7 +197,8 @@ export const spaceCodeMetadataRelations = relations(spaceCodeMetadata, ({ one })
 }));
 ```
 
-Note: `userId` is denormalised here so the partial unique index works. The repository layer is responsible for keeping it in sync with `space.userId`.
+Note: `userId` is denormalised here so the partial unique index works. The repository layer is responsible for keeping it in sync with
+`space.userId`.
 
 - [ ] **Step 2: Commit**
 
@@ -196,6 +210,7 @@ git commit -m "feat(db): add space_code_metadata schema"
 ### Task 1.4: Re-export new schemas from index
 
 **Files:**
+
 - Modify: `packages/db/src/schema/index.ts`
 
 - [ ] **Step 1: Add exports**
@@ -230,6 +245,7 @@ git commit -m "feat(db): re-export space schemas"
 ### Task 2.1: Write the SQL migration
 
 **Files:**
+
 - Create: `packages/db/src/migrations/0004_codebase_to_space.sql`
 
 - [ ] **Step 1: Write the migration**
@@ -362,13 +378,16 @@ DROP TABLE IF EXISTS codebase;
 ```
 
 Notes:
+
 - `staleness_scan.last_commit_sha` stays — it's only populated for code spaces.
-- The FK delete behaviour mirrors the existing schemas (mostly `SET NULL`; `staleness_scan` was `CASCADE`). If a table uses a different `onDelete` in its schema, adjust the `CASE` clause above accordingly when you find it.
+- The FK delete behaviour mirrors the existing schemas (mostly `SET NULL`; `staleness_scan` was `CASCADE`). If a table uses a different
+  `onDelete` in its schema, adjust the `CASE` clause above accordingly when you find it.
 - `behavior_matrix` is included even though its schema file may use a different naming convention — verify before running.
 
 - [ ] **Step 2: Cross-check FK delete behaviour for each renamed table**
 
-Before running the migration, open each schema file with a `codebaseId` FK and note its `onDelete` directive. If any uses something other than `set null` or `cascade`, update the `CASE` clause in step 7 of the SQL.
+Before running the migration, open each schema file with a `codebaseId` FK and note its `onDelete` directive. If any uses something other
+than `set null` or `cascade`, update the `CASE` clause in step 7 of the SQL.
 
 ```bash
 grep -n "codebase_id\|codebaseId" packages/db/src/schema/*.ts
@@ -384,6 +403,7 @@ git commit -m "feat(db): migration 0004 — codebase to space rename"
 ### Task 2.2: Add migration runner helper to package.json
 
 **Files:**
+
 - Modify: `packages/db/package.json`
 
 - [ ] **Step 1: Add a script for running this migration**
@@ -406,6 +426,7 @@ git commit -m "chore(db): add 0004 migration script"
 ### Task 2.3: Run the migration against a fresh dev DB
 
 **Files:**
+
 - None (DB operation)
 
 - [ ] **Step 1: Reset the dev DB**
@@ -431,7 +452,8 @@ Expected: no errors. The SQL `DO $$` block silently no-ops for already-renamed t
 psql $DATABASE_URL -c "SELECT count(*) FROM space; SELECT count(*) FROM space_code_metadata; SELECT count(*) FROM chunk_space; SELECT count(*) FROM workspace_space;"
 ```
 
-Expected: counts match what `codebase`, `chunk_codebase`, and `workspace_codebase` had before (re-run `pnpm seed` and the migration if numbers look off).
+Expected: counts match what `codebase`, `chunk_codebase`, and `workspace_codebase` had before (re-run `pnpm seed` and the migration if
+numbers look off).
 
 ```bash
 psql $DATABASE_URL -c "\d staleness_scan" | grep space_id
@@ -448,6 +470,7 @@ The migration already renamed columns in the database. Now the Drizzle schema fi
 ### Task 3.1: Update `document.ts` schema
 
 **Files:**
+
 - Modify: `packages/db/src/schema/document.ts`
 
 - [ ] **Step 1: Replace codebase references**
@@ -455,9 +478,11 @@ The migration already renamed columns in the database. Now the Drizzle schema fi
 Change `import { codebase } from "./codebase";` → `import { space } from "./space";`.
 
 Rename the column:
+
 ```ts
 spaceId: text("space_id").references(() => space.id, { onDelete: "set null" }),
 ```
+
 (replacing `codebaseId: text("codebase_id").references(() => codebase.id, ...)`)
 
 Rename the index `document_codebaseId_idx` → `document_spaceId_idx`.
@@ -483,11 +508,13 @@ git commit -m "refactor(db): document references space"
 
 ### Task 3.2: Update remaining schema files
 
-For each file below, repeat the same pattern: change `codebase` import → `space`, rename `codebaseId` → `spaceId`, rename indexes, update relations. **Show your work in a single commit per file.**
+For each file below, repeat the same pattern: change `codebase` import → `space`, rename `codebaseId` → `spaceId`, rename indexes, update
+relations. **Show your work in a single commit per file.**
 
 **Files to update (one task step each):**
 
-- [ ] `packages/db/src/schema/workspace.ts` (rename `workspaceCodebase` → `workspaceSpace`; column `codebaseId` → `spaceId`; index names; relations)
+- [ ] `packages/db/src/schema/workspace.ts` (rename `workspaceCodebase` → `workspaceSpace`; column `codebaseId` → `spaceId`; index names;
+      relations)
 - [ ] `packages/db/src/schema/staleness.ts` (`staleness_scan.codebaseId` → `spaceId`; keep `last_commit_sha` as-is)
 - [ ] `packages/db/src/schema/plan.ts`
 - [ ] `packages/db/src/schema/requirement.ts`
@@ -510,11 +537,13 @@ For each file below, repeat the same pattern: change `codebase` import → `spac
 pnpm --filter @fubbik/db check-types
 ```
 
-Some errors will remain in repository/seed/api files — that's expected at this stage. Only stop if you introduce *new* errors unrelated to the rename.
+Some errors will remain in repository/seed/api files — that's expected at this stage. Only stop if you introduce _new_ errors unrelated to
+the rename.
 
 ### Task 3.3: Delete the `codebase.ts` schema file
 
 **Files:**
+
 - Delete: `packages/db/src/schema/codebase.ts`
 - Modify: `packages/db/src/schema/index.ts`
 
@@ -542,6 +571,7 @@ git commit -m "refactor(db): drop codebase schema (replaced by space)"
 ### Task 4.1: Create `space.ts` repository
 
 **Files:**
+
 - Create: `packages/db/src/repository/space.ts`
 
 - [ ] **Step 1: Write the file**
@@ -595,7 +625,10 @@ export function getSpaceById(spaceId: string, userId?: string) {
     return dbEffect(async () => {
         const conditions = [eq(space.id, spaceId)];
         if (userId) conditions.push(eq(space.userId, userId));
-        const [found] = await db.select().from(space).where(and(...conditions));
+        const [found] = await db
+            .select()
+            .from(space)
+            .where(and(...conditions));
         return found ?? null;
     });
 }
@@ -637,12 +670,7 @@ export function getCodeSpaceByLocalPath(localPath: string, userId: string) {
             .select({ space })
             .from(space)
             .innerJoin(spaceCodeMetadata, eq(spaceCodeMetadata.spaceId, space.id))
-            .where(
-                and(
-                    sql`${spaceCodeMetadata.localPaths} @> ${JSON.stringify([localPath])}::jsonb`,
-                    eq(space.userId, userId)
-                )
-            );
+            .where(and(sql`${spaceCodeMetadata.localPaths} @> ${JSON.stringify([localPath])}::jsonb`, eq(space.userId, userId)));
         return row?.space ?? null;
     });
 }
@@ -665,7 +693,10 @@ export function updateSpace(spaceId: string, userId: string, params: UpdateSpace
                   .set(setClause)
                   .where(and(eq(space.id, spaceId), eq(space.userId, userId)))
                   .returning()
-            : await db.select().from(space).where(and(eq(space.id, spaceId), eq(space.userId, userId)));
+            : await db
+                  .select()
+                  .from(space)
+                  .where(and(eq(space.id, spaceId), eq(space.userId, userId)));
 
         if (params.code) {
             await db
@@ -802,6 +833,7 @@ git commit -m "feat(db): add space repository"
 ### Task 4.2: Re-export from repository index
 
 **Files:**
+
 - Modify: `packages/db/src/repository/index.ts`
 
 - [ ] **Step 1: Add the export**
@@ -818,6 +850,7 @@ git commit -m "feat(db): re-export space repository"
 ### Task 4.3: Delete `codebase.ts` repository
 
 **Files:**
+
 - Delete: `packages/db/src/repository/codebase.ts`
 - Modify: `packages/db/src/repository/index.ts`
 
@@ -841,16 +874,19 @@ git commit -m "refactor(db): drop codebase repository"
 ### Task 4.4: Update workspace repository
 
 **Files:**
+
 - Modify: `packages/db/src/repository/workspace.ts`
 
 - [ ] **Step 1: Rewrite to use `space` + `workspaceSpace`**
 
 Replace `codebase` imports with `space`, `workspaceCodebase` with `workspaceSpace`. Rename function names:
+
 - `getCodebasesForWorkspace` → `getSpacesForWorkspace`
 - `addCodebaseToWorkspace` → `addSpaceToWorkspace`
 - `removeCodebaseFromWorkspace` → `removeSpaceFromWorkspace`
 
-Select fields: `space.id`, `space.name`, `space.kind` (drop `remote_url` / `local_paths` from the default join; callers that need them can do a follow-up join to `space_code_metadata`).
+Select fields: `space.id`, `space.name`, `space.kind` (drop `remote_url` / `local_paths` from the default join; callers that need them can
+do a follow-up join to `space_code_metadata`).
 
 - [ ] **Step 2: Type-check**
 
@@ -868,6 +904,7 @@ git commit -m "refactor(db): workspace repo uses space"
 ### Task 4.5: Update all repositories that reference `codebaseId`
 
 For each file below, mechanically rename:
+
 - import `codebase` → `space`
 - field `codebaseId` → `spaceId`
 - index/column references
@@ -923,6 +960,7 @@ Expected: both pass. Update any failing tests' fixture data (`codebaseId` → `s
 ### Task 5.1: Create new `spaces` API module
 
 **Files:**
+
 - Create: `packages/api/src/spaces/service.ts`
 - Create: `packages/api/src/spaces/routes.ts`
 - Create: `packages/api/src/spaces/normalize-url.ts` (copy from `codebases/normalize-url.ts`)
@@ -982,9 +1020,7 @@ export function createSpace(userId: string, body: CreateSpaceBody) {
         if (kind !== "code" || !remoteUrl) return Effect.void;
         return getCodeSpaceByRemoteUrl(remoteUrl, userId).pipe(
             Effect.flatMap(existing =>
-                existing
-                    ? Effect.fail(new ValidationError({ message: "A space with this remote URL already exists" }))
-                    : Effect.void
+                existing ? Effect.fail(new ValidationError({ message: "A space with this remote URL already exists" })) : Effect.void
             )
         );
     }).pipe(
@@ -1016,10 +1052,7 @@ export function updateSpace(spaceId: string, userId: string, body: UpdateSpaceBo
             updateSpaceRepo(spaceId, userId, {
                 name: body.name,
                 description: body.description,
-                code:
-                    found.kind === "code"
-                        ? { remoteUrl: remoteUrl ?? null, localPaths: body.localPaths ?? [] }
-                        : undefined
+                code: found.kind === "code" ? { remoteUrl: remoteUrl ?? null, localPaths: body.localPaths ?? [] } : undefined
             })
         )
     );
@@ -1067,10 +1100,7 @@ import * as spaceService from "./service";
 export const spaceRoutes = new Elysia()
     .get(
         "/spaces/detect",
-        ctx =>
-            Effect.runPromise(
-                requireSession(ctx).pipe(Effect.flatMap(session => spaceService.detectSpace(session.user.id, ctx.query)))
-            ),
+        ctx => Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(session => spaceService.detectSpace(session.user.id, ctx.query)))),
         {
             query: t.Object({
                 remoteUrl: t.Optional(t.String()),
@@ -1078,9 +1108,7 @@ export const spaceRoutes = new Elysia()
             })
         }
     )
-    .get("/spaces", ctx =>
-        Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(session => spaceService.listSpaces(session.user.id))))
-    )
+    .get("/spaces", ctx => Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(session => spaceService.listSpaces(session.user.id)))))
     .post(
         "/spaces",
         ctx =>
@@ -1111,9 +1139,7 @@ export const spaceRoutes = new Elysia()
         "/spaces/:id",
         ctx =>
             Effect.runPromise(
-                requireSession(ctx).pipe(
-                    Effect.flatMap(session => spaceService.updateSpace(ctx.params.id, session.user.id, ctx.body))
-                )
+                requireSession(ctx).pipe(Effect.flatMap(session => spaceService.updateSpace(ctx.params.id, session.user.id, ctx.body)))
             ),
         {
             body: t.Object({
@@ -1125,9 +1151,7 @@ export const spaceRoutes = new Elysia()
         }
     )
     .post("/spaces/:id/reset", ctx =>
-        Effect.runPromise(
-            requireSession(ctx).pipe(Effect.flatMap(session => spaceService.resetSpace(ctx.params.id, session.user.id)))
-        )
+        Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(session => spaceService.resetSpace(ctx.params.id, session.user.id))))
     )
     .delete("/spaces/:id", ctx =>
         Effect.runPromise(
@@ -1141,7 +1165,8 @@ export const spaceRoutes = new Elysia()
 
 - [ ] **Step 4: Adapt the service test**
 
-Open `packages/api/src/codebases/service.test.ts`, copy its structure into `packages/api/src/spaces/service.test.ts`, replacing every `codebase` symbol with `space`. The test should hit the new repo functions.
+Open `packages/api/src/codebases/service.test.ts`, copy its structure into `packages/api/src/spaces/service.test.ts`, replacing every
+`codebase` symbol with `space`. The test should hit the new repo functions.
 
 - [ ] **Step 5: Run tests**
 
@@ -1161,6 +1186,7 @@ git commit -m "feat(api): add /api/spaces routes + service"
 ### Task 5.2: Mount space routes + alias `/api/codebases`
 
 **Files:**
+
 - Modify: `packages/api/src/index.ts`
 
 - [ ] **Step 1: Add the import + mount**
@@ -1175,9 +1201,11 @@ In the route-mounting block, mount `spaceRoutes` next to where `codebaseRoutes` 
 
 - [ ] **Step 2: Keep `codebaseRoutes` as alias for one release**
 
-For the VS Code extension's benefit, leave `codebaseRoutes` mounted. Add a `// TODO: remove after VS Code extension v0.X+1 ships` comment above it.
+For the VS Code extension's benefit, leave `codebaseRoutes` mounted. Add a `// TODO: remove after VS Code extension v0.X+1 ships` comment
+above it.
 
-In a follow-up change, the `codebases/routes.ts` file can be rewritten to forward to `spaceService` (delete + recreate as an alias). For now, keep both routes alive so we don't block.
+In a follow-up change, the `codebases/routes.ts` file can be rewritten to forward to `spaceService` (delete + recreate as an alias). For
+now, keep both routes alive so we don't block.
 
 - [ ] **Step 3: Run API tests**
 
@@ -1185,7 +1213,8 @@ In a follow-up change, the `codebases/routes.ts` file can be rewritten to forwar
 pnpm --filter @fubbik/api test
 ```
 
-Expected: both `/spaces` and `/codebases` paths work. Some tests under `codebases/` will fail because the repository no longer exists — those need updating in the next step.
+Expected: both `/spaces` and `/codebases` paths work. Some tests under `codebases/` will fail because the repository no longer exists —
+those need updating in the next step.
 
 - [ ] **Step 4: Commit**
 
@@ -1197,6 +1226,7 @@ git commit -m "feat(api): mount /api/spaces (keep /api/codebases alias)"
 ### Task 5.3: Rewrite legacy `codebases/` module as alias
 
 **Files:**
+
 - Modify: `packages/api/src/codebases/service.ts`
 - Modify: `packages/api/src/codebases/routes.ts`
 - Delete: `packages/api/src/codebases/service.test.ts` (already covered by spaces test)
@@ -1232,10 +1262,7 @@ import * as spaceService from "../spaces/service";
 export const codebaseRoutes = new Elysia()
     .get(
         "/codebases/detect",
-        ctx =>
-            Effect.runPromise(
-                requireSession(ctx).pipe(Effect.flatMap(session => spaceService.detectSpace(session.user.id, ctx.query)))
-            ),
+        ctx => Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(session => spaceService.detectSpace(session.user.id, ctx.query)))),
         { query: t.Object({ remoteUrl: t.Optional(t.String()), localPath: t.Optional(t.String()) }) }
     )
     .get("/codebases", ctx =>
@@ -1269,9 +1296,7 @@ export const codebaseRoutes = new Elysia()
         "/codebases/:id",
         ctx =>
             Effect.runPromise(
-                requireSession(ctx).pipe(
-                    Effect.flatMap(session => spaceService.updateSpace(ctx.params.id, session.user.id, ctx.body))
-                )
+                requireSession(ctx).pipe(Effect.flatMap(session => spaceService.updateSpace(ctx.params.id, session.user.id, ctx.body)))
             ),
         {
             body: t.Object({
@@ -1319,13 +1344,16 @@ git commit -m "refactor(api): codebases routes become alias for spaces"
 
 ### Task 5.4: Update services that reference codebase fields
 
-For each file below, mechanically rename `codebaseId` → `spaceId`, `getCodebaseById` → `getSpaceById`, etc. Update imports to point at `@fubbik/db/repository` for the new symbols.
+For each file below, mechanically rename `codebaseId` → `spaceId`, `getCodebaseById` → `getSpaceById`, etc. Update imports to point at
+`@fubbik/db/repository` for the new symbols.
 
 **Files (one commit each):**
 
-- [ ] `packages/api/src/workspaces/service.ts` and `routes.ts` (rename functions + endpoints; `/workspaces/:id/codebases` becomes `/workspaces/:id/spaces`)
+- [ ] `packages/api/src/workspaces/service.ts` and `routes.ts` (rename functions + endpoints; `/workspaces/:id/codebases` becomes
+      `/workspaces/:id/spaces`)
 - [ ] `packages/api/src/documents/service.ts` and `routes.ts`
-- [ ] `packages/api/src/chunks/service.ts`, `chunk-import.ts`, `chunk-mutations.ts`, `chunk-search.ts`, `bulk-service.ts`, `federated-search.ts`, `group-service.ts`, `routes.ts`, `group-routes.ts`
+- [ ] `packages/api/src/chunks/service.ts`, `chunk-import.ts`, `chunk-mutations.ts`, `chunk-search.ts`, `bulk-service.ts`,
+      `federated-search.ts`, `group-service.ts`, `routes.ts`, `group-routes.ts`
 - [ ] `packages/api/src/plans/service.ts`, `routes.ts`, `tasks.ts`
 - [ ] `packages/api/src/requirements/service.ts`, `routes.ts`, `batch-service.ts`, `suggest-context-service.ts`
 - [ ] `packages/api/src/staleness/routes.ts` (and any related service)
@@ -1352,7 +1380,10 @@ For each file below, mechanically rename `codebaseId` → `spaceId`, `getCodebas
 - [ ] `packages/api/src/generate-instructions/service.ts`, `routes.ts`
 - [ ] `packages/api/src/tasks/routes.ts`
 
-**Public query parameters:** in route files, rename query params from `codebaseId` → `spaceId`, `workspaceId` (unchanged). For each route that accepts `codebaseId` from the client, keep accepting `codebaseId` as a deprecated alias that maps to `spaceId` internally — or do a hard cutover and update all callers. **Recommended: hard cutover. CLI and frontend are updated in subsequent phases.** This means: rename the query param and rename the field in the request schema.
+**Public query parameters:** in route files, rename query params from `codebaseId` → `spaceId`, `workspaceId` (unchanged). For each route
+that accepts `codebaseId` from the client, keep accepting `codebaseId` as a deprecated alias that maps to `spaceId` internally — or do a
+hard cutover and update all callers. **Recommended: hard cutover. CLI and frontend are updated in subsequent phases.** This means: rename
+the query param and rename the field in the request schema.
 
 After each file:
 
@@ -1378,11 +1409,13 @@ Expected: all pass.
 ### Task 6.1: Create new `space.ts` command file
 
 **Files:**
+
 - Create: `apps/cli/src/commands/space.ts`
 
 - [ ] **Step 1: Write the file**
 
 Copy `apps/cli/src/commands/codebase.ts` to `apps/cli/src/commands/space.ts`. Then transform:
+
 - `Command("codebase")` → `Command("space")`
 - `/api/codebases` → `/api/spaces`
 - `addCodebase` → `addSpace`, etc.
@@ -1406,6 +1439,7 @@ git commit -m "feat(cli): add `fubbik space` command"
 ### Task 6.2: Rewrite legacy `codebase.ts` CLI command as alias
 
 **Files:**
+
 - Modify: `apps/cli/src/commands/codebase.ts`
 
 - [ ] **Step 1: Replace with a deprecation-warning alias**
@@ -1416,11 +1450,9 @@ import { Command } from "commander";
 import { spaceCommand } from "./space";
 
 // Legacy alias — `fubbik codebase ...` forwards to `fubbik space ...`.
-export const codebaseCommand = new Command("codebase")
-    .description("[deprecated] alias of `fubbik space`")
-    .hook("preAction", () => {
-        console.warn("[fubbik] `codebase` is deprecated; use `space` instead.");
-    });
+export const codebaseCommand = new Command("codebase").description("[deprecated] alias of `fubbik space`").hook("preAction", () => {
+    console.warn("[fubbik] `codebase` is deprecated; use `space` instead.");
+});
 
 for (const sub of spaceCommand.commands) {
     codebaseCommand.addCommand(sub);
@@ -1437,6 +1469,7 @@ git commit -m "refactor(cli): codebase command becomes deprecated alias of space
 ### Task 6.3: Mount the new command
 
 **Files:**
+
 - Modify: `apps/cli/src/index.ts`
 
 - [ ] **Step 1: Wire it up**
@@ -1462,7 +1495,8 @@ git commit -m "feat(cli): register space command"
 
 ### Task 6.4: Update CLI commands that pass `--codebase`
 
-For each file below, rename the option flag `--codebase` → `--space` (keep `--codebase` accepted as a hidden alias for one release), and rename internal variables.
+For each file below, rename the option flag `--codebase` → `--space` (keep `--codebase` accepted as a hidden alias for one release), and
+rename internal variables.
 
 **Files (one commit each):**
 
@@ -1530,6 +1564,7 @@ Expected: all pass.
 ### Task 7.1: Move frontend feature folder
 
 **Files:**
+
 - Create: `apps/web/src/features/spaces/active-space-provider.tsx`
 - Create: `apps/web/src/features/spaces/space-switcher.tsx`
 - Create: `apps/web/src/features/spaces/use-active-space.ts`
@@ -1547,6 +1582,7 @@ git mv apps/web/src/features/codebases/use-active-codebase.ts apps/web/src/featu
 - [ ] **Step 2: Rename symbols inside each file**
 
 In each moved file, replace:
+
 - `ActiveCodebaseProvider` → `ActiveSpaceProvider`
 - `useActiveCodebase` → `useActiveSpace`
 - `codebase` → `space` (variable / state names)
@@ -1561,7 +1597,8 @@ git commit -m "refactor(web): move codebases feature folder to spaces"
 
 ### Task 7.2: Update all frontend imports + Eden calls
 
-The frontend has many imports of `useActiveCodebase`, `ActiveCodebaseProvider`, and direct Eden calls like `eden.api.codebases.get`. Mechanically rename each.
+The frontend has many imports of `useActiveCodebase`, `ActiveCodebaseProvider`, and direct Eden calls like `eden.api.codebases.get`.
+Mechanically rename each.
 
 - [ ] **Step 1: Find all callsites**
 
@@ -1571,9 +1608,11 @@ grep -rn "useActiveCodebase\|ActiveCodebaseProvider\|features/codebases\|codebas
 
 - [ ] **Step 2: Rename callsites file by file**
 
-Touchpoints (likely): the nav switcher mount, command palette, chunks pages, graph pages, plans pages, requirements pages, documents pages, dashboard widgets, settings page. Use the grep output as your worklist.
+Touchpoints (likely): the nav switcher mount, command palette, chunks pages, graph pages, plans pages, requirements pages, documents pages,
+dashboard widgets, settings page. Use the grep output as your worklist.
 
-For Eden: `eden.api.codebases.get` → `eden.api.spaces.get`, `?codebaseId=` query params → `?spaceId=`, request body keys `codebaseId` → `spaceId`, etc.
+For Eden: `eden.api.codebases.get` → `eden.api.spaces.get`, `?codebaseId=` query params → `?spaceId=`, request body keys `codebaseId` →
+`spaceId`, etc.
 
 - [ ] **Step 3: Regenerate route tree if needed**
 
@@ -1603,6 +1642,7 @@ git commit -m "refactor(web): codebase → space across all features"
 ### Task 7.3: Rename web routes
 
 **Files:**
+
 - Rename: `apps/web/src/routes/codebases*` → `apps/web/src/routes/spaces*` (if any)
 
 - [ ] **Step 1: Move route files**
@@ -1634,6 +1674,7 @@ git commit -m "refactor(web): codebases routes become spaces"
 ### Task 8.1: Update extension to use `/api/spaces`
 
 **Files:**
+
 - Modify: `apps/vscode/src/api.ts`
 - Modify: `apps/vscode/src/detect-codebase.ts` (rename file to `detect-space.ts`)
 - Modify: `apps/vscode/src/extension.ts`
@@ -1644,7 +1685,8 @@ git commit -m "refactor(web): codebases routes become spaces"
 
 - [ ] **Step 1: Replace endpoints**
 
-In `api.ts`, change `/api/codebases` → `/api/spaces`. Type names like `Codebase` → `Space`. Function names like `detectCodebase` → `detectSpace`.
+In `api.ts`, change `/api/codebases` → `/api/spaces`. Type names like `Codebase` → `Space`. Function names like `detectCodebase` →
+`detectSpace`.
 
 - [ ] **Step 2: Rename `detect-codebase.ts`**
 
@@ -1656,7 +1698,8 @@ Update imports in the other vscode files.
 
 - [ ] **Step 3: Update settings keys (optional, only if you want to rename them)**
 
-If you want `fubbik.activeCodebaseId` → `fubbik.activeSpaceId` in VS Code user settings, update `package.json`'s `contributes.configuration` section and read the new key in code (with a fallback to the old key for one release).
+If you want `fubbik.activeCodebaseId` → `fubbik.activeSpaceId` in VS Code user settings, update `package.json`'s `contributes.configuration`
+section and read the new key in code (with a fallback to the old key for one release).
 
 - [ ] **Step 4: Build the extension**
 
@@ -1680,6 +1723,7 @@ git commit -m "refactor(vscode): use /api/spaces"
 ### Task 9.1: Update MCP tool definitions
 
 **Files:**
+
 - Modify: `packages/mcp/src/tools.ts`
 - Modify: `packages/mcp/src/context-tools.ts`
 - Modify: `packages/mcp/src/plan-tools.ts`
@@ -1689,7 +1733,9 @@ git commit -m "refactor(vscode): use /api/spaces"
 
 - [ ] **Step 1: Mechanical rename**
 
-For each file, replace `codebaseId` → `spaceId` in tool parameter schemas; replace `/api/codebases` → `/api/spaces` in `apiFetch` calls. Tool descriptions that say "codebase" can stay as-is or be reworded to "space" — keeping the user-facing description in sync with the new vocabulary is recommended.
+For each file, replace `codebaseId` → `spaceId` in tool parameter schemas; replace `/api/codebases` → `/api/spaces` in `apiFetch` calls.
+Tool descriptions that say "codebase" can stay as-is or be reworded to "space" — keeping the user-facing description in sync with the new
+vocabulary is recommended.
 
 - [ ] **Step 2: Type-check + commit**
 
@@ -1709,6 +1755,7 @@ git commit -m "refactor(mcp): codebase → space"
 ### Task 10.1: Update seed modules
 
 **Files:**
+
 - Modify: `packages/db/src/seed.ts`
 - Modify: `packages/db/src/seed/modules/codebases.ts` (rename file to `spaces.ts`)
 - Modify: `packages/db/src/seed/modules/workspaces.ts`
@@ -1736,7 +1783,9 @@ git mv packages/db/src/seed/modules/codebases.ts packages/db/src/seed/modules/sp
 
 - [ ] **Step 2: Rewrite seed inserts**
 
-In every module, replace `db.insert(codebase)` with `db.insert(space)` (passing `kind: "code"`) plus a follow-up `db.insert(spaceCodeMetadata)` for the git fields. Replace `chunk_codebase` insertions with `chunk_space`, `workspace_codebase` with `workspace_space`.
+In every module, replace `db.insert(codebase)` with `db.insert(space)` (passing `kind: "code"`) plus a follow-up
+`db.insert(spaceCodeMetadata)` for the git fields. Replace `chunk_codebase` insertions with `chunk_space`, `workspace_codebase` with
+`workspace_space`.
 
 - [ ] **Step 3: Smoke test the seed**
 
@@ -1759,6 +1808,7 @@ git commit -m "refactor(db): seed modules use space"
 ### Task 10.2: Update DB tests
 
 **Files:**
+
 - Rename: `packages/db/src/__tests__/codebase.test.ts` → `space.test.ts`
 - Modify: `packages/db/src/__tests__/requirement.test.ts`
 - Modify: `packages/db/src/__tests__/vocabulary.test.ts`
@@ -1798,6 +1848,7 @@ git commit -m "test(db): rename codebase test → space, update fixtures"
 ### Task 11.1: Full CI
 
 **Files:**
+
 - None (verification only)
 
 - [ ] **Step 1: Run the full CI**
@@ -1817,6 +1868,7 @@ pnpm dev
 ```
 
 Walk through:
+
 1. Sign in.
 2. Visit `/spaces` (the renamed page) — your spaces should be listed, all marked as `code`.
 3. Open the space switcher in the nav — it should show the same spaces.
@@ -1834,11 +1886,13 @@ If anything broke during the smoke test, fix it and commit.
 ### Task 11.2: Update CLAUDE.md
 
 **Files:**
+
 - Modify: `CLAUDE.md`
 
 - [ ] **Step 1: Update the "Codebases & Workspaces" section**
 
-Rename the section to "Spaces & Workspaces". Replace references to `codebase` with `space`, mention the `kind` discriminator, and note `space_code_metadata` as the side-table for git fields.
+Rename the section to "Spaces & Workspaces". Replace references to `codebase` with `space`, mention the `kind` discriminator, and note
+`space_code_metadata` as the side-table for git fields.
 
 - [ ] **Step 2: Update the API endpoints listing**
 
@@ -1858,11 +1912,13 @@ git commit -m "docs: update CLAUDE.md for space rename"
 ### Task 11.3: Cleanup tracking
 
 **Files:**
+
 - None (just create reminders)
 
 - [ ] **Step 1: Open a follow-up issue or note**
 
 Capture the deprecation cleanup items so they aren't forgotten:
+
 - Remove `/api/codebases` route alias once the VS Code extension is on the new endpoints.
 - Remove `fubbik codebase` deprecation alias.
 - Drop the `userId` denormalisation on `space_code_metadata` if a trigger/check is preferred.
@@ -1877,8 +1933,35 @@ After implementing, verify:
 - [ ] `pnpm seed` succeeds from a fresh DB.
 - [ ] No file in `packages/db/src/schema/` imports `codebase`.
 - [ ] No file in `packages/db/src/repository/` imports from `./codebase`.
-- [ ] `grep -rn "codebaseId" packages/db apps/web apps/cli packages/api | grep -v "node_modules"` returns either nothing or only deprecated-alias paths.
+- [ ] `grep -rn "codebaseId" packages/db apps/web apps/cli packages/api | grep -v "node_modules"` returns either nothing or only
+      deprecated-alias paths.
 - [ ] The VS Code extension still works against both `/api/spaces` and `/api/codebases`.
 - [ ] CLI `fubbik space list` and `fubbik codebase list` return the same rows.
 - [ ] Web app: visit `/spaces`, switch a space, create a chunk.
 - [ ] Migration `0004_codebase_to_space.sql` is idempotent (re-running it twice on a fresh DB doesn't error).
+
+---
+
+## Post-rename cleanup follow-ups
+
+Items intentionally deferred — tracked here for the next cleanup pass.
+
+1. **Remove `/api/codebases` legacy route alias** once all external consumers are confirmed to use `/api/spaces`. The VS Code extension already uses `/api/spaces` (Phase 8), but unknown external tools may still target the old path.
+
+2. **Remove `fubbik codebase` deprecation alias** from the CLI once no tooling depends on it. Currently prints a deprecation warning; can be dropped in a minor version bump.
+
+3. **Remaining `codebaseId` in server endpoints** — the following API surfaces still accept `codebaseId` query params (kept for backward compat but not renamed):
+   - `/coverage` — coverage report endpoint
+   - `/requirements/coverage` — requirement coverage
+   - `/requirements/traceability` — traceability matrix
+   - `/settings/codebase/*` — settings scoped to a space
+   - Chunk list response includes a `codebases` field in some legacy shapes
+   - Graph API payload has `chunkCodebases` in some nodes (matches `group-strategies.ts` in the web)
+
+4. **`apps/web/src/features/chunks/group-strategies.ts`** — keeps a `chunkCodebases` field name to match the legacy graph API response shape. Rename both when the graph API node payload is updated.
+
+5. **`userId` denormalisation on `space_code_metadata`** — the column mirrors `space.userId` for convenience. Consider dropping it and joining through `space` instead, or enforce consistency with a trigger/check constraint.
+
+6. **`codebase_settings` table** — still named `codebase_settings` in Postgres (same Drizzle export, kept for backward compat). Rename to `space_settings` in a follow-up migration if desired.
+
+7. **Verify `feature_codebase` Drexel export** — the Drizzle export for `feature_space` (formerly `feature_codebase`) was renamed in Phase 3. Confirm no orphan imports of the old symbol remain in any package outside the already-audited paths.
