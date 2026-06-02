@@ -2,7 +2,7 @@ import { relations } from "drizzle-orm";
 import { index, integer, jsonb, pgTable, primaryKey, text, timestamp } from "drizzle-orm/pg-core";
 import { user } from "./auth";
 import { chunk } from "./chunk";
-import { codebase } from "./codebase";
+import { space } from "./space";
 import { useCase } from "./use-case";
 
 export interface RequirementStep {
@@ -21,7 +21,7 @@ export const requirement = pgTable(
         order: integer("order").notNull().default(0),
         status: text("status").notNull().default("untested"),
         priority: text("priority"),
-        codebaseId: text("codebase_id").references(() => codebase.id, { onDelete: "set null" }),
+        spaceId: text("space_id").references(() => space.id, { onDelete: "set null" }),
         userId: text("user_id")
             .notNull()
             .references(() => user.id, { onDelete: "cascade" }),
@@ -38,7 +38,7 @@ export const requirement = pgTable(
     },
     table => [
         index("requirement_userId_idx").on(table.userId),
-        index("requirement_codebaseId_idx").on(table.codebaseId),
+        index("requirement_spaceId_idx").on(table.spaceId),
         index("requirement_status_idx").on(table.status)
     ]
 );
@@ -58,7 +58,7 @@ export const requirementChunk = pgTable(
 
 export const requirementRelations = relations(requirement, ({ one, many }) => ({
     user: one(user, { fields: [requirement.userId], references: [user.id] }),
-    codebase: one(codebase, { fields: [requirement.codebaseId], references: [codebase.id] }),
+    space: one(space, { fields: [requirement.spaceId], references: [space.id] }),
     useCase: one(useCase, { fields: [requirement.useCaseId], references: [useCase.id] }),
     requirementChunks: many(requirementChunk)
 }));
