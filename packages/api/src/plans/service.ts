@@ -45,7 +45,7 @@ export function listPlans(input: ListPlansInput) {
         }
         return yield* planRepo.listPlansWithRollups({
             userId: input.userId,
-            codebaseId: input.spaceId,
+            spaceId: input.spaceId,
             status: input.status as PlanStatus | undefined,
             requirementId: input.requirementId,
             includeArchived: input.includeArchived,

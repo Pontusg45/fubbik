@@ -15,7 +15,7 @@ export const stalenessRoutes = new Elysia()
                     Effect.flatMap(session =>
                         stalenessService.getStaleFlags(session.user.id, {
                             reason: ctx.query.reason,
-                            codebaseId: ctx.query.spaceId,
+                            spaceId: ctx.query.spaceId,
                             limit: ctx.query.limit
                         })
                     )

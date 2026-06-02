@@ -10,13 +10,13 @@ export const knowledgeHealthRoutes = new Elysia().get(
         Effect.runPromise(
             requireSession(ctx).pipe(
                 Effect.flatMap(session =>
-                    knowledgeHealthService.getKnowledgeHealth(session.user.id, ctx.query.codebaseId)
+                    knowledgeHealthService.getKnowledgeHealth(session.user.id, ctx.query.spaceId)
                 )
             )
         ),
     {
         query: t.Object({
-            codebaseId: t.Optional(t.String())
+            spaceId: t.Optional(t.String())
         })
     }
 );

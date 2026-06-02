@@ -29,12 +29,12 @@ interface ChunkWithTags {
     tags: string[];
 }
 
-export function generateInstructions(userId: string, codebaseId: string, query: GenerateInstructionsQuery) {
+export function generateInstructions(userId: string, spaceId: string, query: GenerateInstructionsQuery) {
     const format = query.format ?? "claude";
 
     return listChunksRepo({
         userId,
-        codebaseId,
+        spaceId,
         limit: 500,
         offset: 0
     }).pipe(

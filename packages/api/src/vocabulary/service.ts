@@ -122,7 +122,7 @@ export function suggestFromChunks(userId: string, spaceId: string) {
         yield* verifySpaceOwnership(spaceId, userId);
         const { chunks } = yield* listChunks({
             userId,
-            codebaseId: spaceId,
+            spaceId,
             limit: 50,
             offset: 0
         });

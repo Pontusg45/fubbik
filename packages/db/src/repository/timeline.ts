@@ -14,14 +14,14 @@ export interface TimelineEvent {
 export interface TimelineParams {
     userId: string;
     from: Date;
-    codebaseId?: string;
+    spaceId?: string;
     tag?: string;
 }
 
 export function fetchTimeline(params: TimelineParams) {
     return dbEffect(async (): Promise<TimelineEvent[]> => {
-            const codebaseFilter = params.codebaseId
-                ? sql`AND c.id IN (SELECT chunk_id FROM chunk_space WHERE space_id = ${params.codebaseId})`
+            const codebaseFilter = params.spaceId
+                ? sql`AND c.id IN (SELECT chunk_id FROM chunk_space WHERE space_id = ${params.spaceId})`
                 : sql``;
             const tagFilter = params.tag
                 ? sql`AND c.id IN (

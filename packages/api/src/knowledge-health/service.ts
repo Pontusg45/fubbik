@@ -1,14 +1,14 @@
 import { getFileRefsForHealth, getOrphanChunks, getStaleChunks, getStaleEmbeddings, getThinChunks } from "@fubbik/db/repository";
 import { Effect } from "effect";
 
-export function getKnowledgeHealth(userId: string, codebaseId?: string) {
+export function getKnowledgeHealth(userId: string, spaceId?: string) {
     return Effect.all(
         {
-            orphans: getOrphanChunks(userId, codebaseId),
-            stale: getStaleChunks(userId, codebaseId),
-            thin: getThinChunks(userId, codebaseId),
-            staleEmbeddings: getStaleEmbeddings(userId, codebaseId),
-            fileRefs: getFileRefsForHealth(userId, codebaseId)
+            orphans: getOrphanChunks(userId, spaceId),
+            stale: getStaleChunks(userId, spaceId),
+            thin: getThinChunks(userId, spaceId),
+            staleEmbeddings: getStaleEmbeddings(userId, spaceId),
+            fileRefs: getFileRefsForHealth(userId, spaceId)
         },
         { concurrency: "unbounded" }
     );

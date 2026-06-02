@@ -85,7 +85,7 @@ export function getSuggestContext(
         if (focus) {
             const chunksResult = yield* listChunks({
                 userId,
-                codebaseId: spaceId,
+                spaceId,
                 search: focus,
                 limit: 20,
                 offset: 0

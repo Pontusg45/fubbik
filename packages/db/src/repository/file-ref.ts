@@ -48,15 +48,15 @@ export function setFileRefsForChunk(
         });
 }
 
-export function lookupChunksByFilePath(path: string, userId: string, codebaseId?: string) {
+export function lookupChunksByFilePath(path: string, userId: string, spaceId?: string) {
     return dbEffect(() => {
         const conditions = [eq(chunkFileRef.path, path), eq(chunk.userId, userId)];
 
-        if (codebaseId) {
+        if (spaceId) {
             const inSpace = db
                 .select({ chunkId: chunkSpace.chunkId })
                 .from(chunkSpace)
-                .where(eq(chunkSpace.spaceId, codebaseId));
+                .where(eq(chunkSpace.spaceId, spaceId));
             const inAnySpace = db
                 .select({ chunkId: chunkSpace.chunkId })
                 .from(chunkSpace);

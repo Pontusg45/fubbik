@@ -30,7 +30,7 @@ export function createCollection(params: {
     description?: string;
     filter: CollectionFilter;
     userId: string;
-    codebaseId?: string;
+    spaceId?: string;
 }) {
     return dbEffect(async () => {
             const [created] = await db

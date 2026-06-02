@@ -235,7 +235,7 @@ export function resolveForConcept(
         // Text search
         const textResults = yield* listChunks({
             userId,
-            codebaseId: spaceId,
+            spaceId,
             search: query,
             limit: 20,
             offset: 0,

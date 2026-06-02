@@ -80,7 +80,7 @@ export function listChunks(
         after,
         enrichment: query.enrichment,
         minConnections,
-        codebaseId: searchAllSpaces ? undefined : query.spaceId,
+        spaceId: searchAllSpaces ? undefined : query.spaceId,
         workspaceId: searchAllSpaces ? undefined : query.workspaceId,
         globalOnly: searchAllSpaces ? false : globalOnly,
         origin: query.origin,

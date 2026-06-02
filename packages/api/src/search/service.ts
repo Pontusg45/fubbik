@@ -43,7 +43,7 @@ function buildListChunksParams(
         userId,
         limit: query.limit ?? 50,
         offset: query.offset ?? 0,
-        codebaseId: query.codebaseId,
+        spaceId: query.spaceId,
         sort: mapSortParam(query.sort)
     };
 

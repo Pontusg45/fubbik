@@ -21,7 +21,7 @@ export function createCollection(
         name: string;
         description?: string;
         filter: CollectionFilter;
-        codebaseId?: string;
+        spaceId?: string;
     }
 ) {
     return createCollectionRepo({
@@ -30,7 +30,7 @@ export function createCollection(
         description: body.description,
         filter: body.filter,
         userId,
-        codebaseId: body.codebaseId
+        spaceId: body.spaceId
     });
 }
 

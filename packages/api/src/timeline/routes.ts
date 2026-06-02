@@ -12,7 +12,7 @@ export const timelineRoutes = new Elysia().get(
                 Effect.flatMap(session =>
                     timelineService.getTimeline(session.user.id, {
                         range: ctx.query.range,
-                        codebaseId: ctx.query.codebaseId || undefined,
+                        spaceId: ctx.query.spaceId || undefined,
                         tag: ctx.query.tag || undefined
                     })
                 )
@@ -21,7 +21,7 @@ export const timelineRoutes = new Elysia().get(
     {
         query: t.Object({
             range: t.Optional(t.String()),
-            codebaseId: t.Optional(t.String()),
+            spaceId: t.Optional(t.String()),
             tag: t.Optional(t.String())
         })
     }

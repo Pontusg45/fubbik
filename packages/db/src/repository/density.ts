@@ -14,16 +14,16 @@ export interface DensityPath {
     source: "applies_to" | "file_ref";
 }
 
-export function fetchDensityPaths(userId: string, codebaseId?: string) {
+export function fetchDensityPaths(userId: string, spaceId?: string) {
     return dbEffect(async (): Promise<DensityPath[]> => {
             const chunkFilter = [eq(chunk.userId, userId), isNull(chunk.archivedAt)];
             let chunkIds: string[];
-            if (codebaseId) {
+            if (spaceId) {
                 const rows = await db
                     .select({ id: chunk.id })
                     .from(chunk)
                     .innerJoin(chunkSpace, eq(chunkSpace.chunkId, chunk.id))
-                    .where(and(...chunkFilter, eq(chunkSpace.spaceId, codebaseId)));
+                    .where(and(...chunkFilter, eq(chunkSpace.spaceId, spaceId)));
                 chunkIds = rows.map(r => r.id);
             } else {
                 const rows = await db

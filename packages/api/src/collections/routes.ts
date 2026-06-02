@@ -44,7 +44,7 @@ export const collectionRoutes = new Elysia()
                 name: t.String({ maxLength: 100 }),
                 description: t.Optional(t.String({ maxLength: 500 })),
                 filter: CollectionFilterSchema,
-                codebaseId: t.Optional(t.String())
+                spaceId: t.Optional(t.String())
             })
         }
     )

@@ -24,8 +24,8 @@ export function setUserSetting(userId: string, key: string, value: unknown) {
     return setUserSettingRepo(userId, key, value);
 }
 
-export function getAllCodebaseSettings(codebaseId: string) {
-    return getAllCodebaseSettingsRepo(codebaseId).pipe(
+export function getAllCodebaseSettings(spaceId: string) {
+    return getAllCodebaseSettingsRepo(spaceId).pipe(
         Effect.map(rows => {
             const map: Record<string, unknown> = {};
             for (const row of rows) {
@@ -36,8 +36,8 @@ export function getAllCodebaseSettings(codebaseId: string) {
     );
 }
 
-export function setCodebaseSetting(codebaseId: string, key: string, value: unknown) {
-    return setCodebaseSettingRepo(codebaseId, key, value);
+export function setCodebaseSetting(spaceId: string, key: string, value: unknown) {
+    return setCodebaseSettingRepo(spaceId, key, value);
 }
 
 export function getAllInstanceSettings() {

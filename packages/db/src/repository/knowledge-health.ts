@@ -16,13 +16,13 @@ function spaceConditions(spaceId?: string) {
     return [sql`(${chunk.id} IN (${inSpace}) OR ${chunk.id} NOT IN (${inAnySpace}))`];
 }
 
-export function getOrphanChunks(userId: string, codebaseId?: string) {
+export function getOrphanChunks(userId: string, spaceId?: string) {
     return dbEffect(async () => {
             const conditions = [
                 eq(chunk.userId, userId),
                 sql`${chunk.id} NOT IN (SELECT ${chunkConnection.sourceId} FROM ${chunkConnection})`,
                 sql`${chunk.id} NOT IN (SELECT ${chunkConnection.targetId} FROM ${chunkConnection})`,
-                ...spaceConditions(codebaseId)
+                ...spaceConditions(spaceId)
             ];
 
             const chunks = await db
@@ -45,7 +45,7 @@ export function getOrphanChunks(userId: string, codebaseId?: string) {
         });
 }
 
-export function getStaleChunks(userId: string, codebaseId?: string) {
+export function getStaleChunks(userId: string, spaceId?: string) {
     return dbEffect(async () => {
             const thirtyDaysAgo = sql`NOW() - INTERVAL '30 days'`;
             const sevenDaysAgo = sql`NOW() - INTERVAL '7 days'`;
@@ -77,7 +77,7 @@ export function getStaleChunks(userId: string, codebaseId?: string) {
                 eq(chunk.userId, userId),
                 sql`${chunk.updatedAt} < ${thirtyDaysAgo}`,
                 neighborExists,
-                ...spaceConditions(codebaseId)
+                ...spaceConditions(spaceId)
             ];
 
             const chunks = await db
@@ -101,12 +101,12 @@ export function getStaleChunks(userId: string, codebaseId?: string) {
         });
 }
 
-export function getThinChunks(userId: string, codebaseId?: string) {
+export function getThinChunks(userId: string, spaceId?: string) {
     return dbEffect(async () => {
             const conditions = [
                 eq(chunk.userId, userId),
                 sql`LENGTH(${chunk.content}) < 100`,
-                ...spaceConditions(codebaseId)
+                ...spaceConditions(spaceId)
             ];
 
             const chunks = await db
@@ -129,13 +129,13 @@ export function getThinChunks(userId: string, codebaseId?: string) {
         });
 }
 
-export function getStaleEmbeddings(userId: string, codebaseId?: string) {
+export function getStaleEmbeddings(userId: string, spaceId?: string) {
     return dbEffect(async () => {
             const conditions = [
                 eq(chunk.userId, userId),
                 isNotNull(chunk.embedding),
                 sql`${chunk.updatedAt} > ${chunk.embeddingUpdatedAt}`,
-                ...spaceConditions(codebaseId)
+                ...spaceConditions(spaceId)
             ];
 
             const chunks = await db
@@ -163,9 +163,9 @@ export function getOrphanChunkIdsViaAge() {
     return getOrphanChunkIds();
 }
 
-export function getFileRefsForHealth(userId: string, codebaseId?: string) {
+export function getFileRefsForHealth(userId: string, spaceId?: string) {
     return dbEffect(async () => {
-            const conditions = [eq(chunk.userId, userId), ...spaceConditions(codebaseId)];
+            const conditions = [eq(chunk.userId, userId), ...spaceConditions(spaceId)];
 
             const refs = await db
                 .select({

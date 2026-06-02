@@ -21,14 +21,14 @@ const undismissedUnsuppressed = [isNull(chunkStaleness.dismissedAt), isNull(chun
 
 export function getStaleFlags(
     userId: string,
-    params?: { reason?: string; codebaseId?: string; limit?: number }
+    params?: { reason?: string; spaceId?: string; limit?: number }
 ) {
     return dbEffect(async () => {
             const conditions = [
                 eq(chunk.userId, userId),
                 ...undismissedUnsuppressed,
                 ...(params?.reason ? [eq(chunkStaleness.reason, params.reason)] : []),
-                ...spaceConditions(params?.codebaseId)
+                ...spaceConditions(params?.spaceId)
             ];
 
             return db
@@ -50,12 +50,12 @@ export function getStaleFlags(
         });
 }
 
-export function getStaleCount(userId: string, codebaseId?: string) {
+export function getStaleCount(userId: string, spaceId?: string) {
     return dbEffect(async () => {
             const conditions = [
                 eq(chunk.userId, userId),
                 ...undismissedUnsuppressed,
-                ...spaceConditions(codebaseId)
+                ...spaceConditions(spaceId)
             ];
 
             const result = await db
@@ -127,7 +127,7 @@ export function suppressDuplicatePair(chunkIdA: string, chunkIdB: string) {
                 ));
 }
 
-export function detectAgeStaleChunks(userId: string, codebaseId?: string, thresholdDays = 90) {
+export function detectAgeStaleChunks(userId: string, spaceId?: string, thresholdDays = 90) {
     return dbEffect(async () => {
             const threshold = sql`NOW() - INTERVAL '${sql.raw(String(thresholdDays))} days'`;
 
@@ -147,7 +147,7 @@ export function detectAgeStaleChunks(userId: string, codebaseId?: string, thresh
                 sql`${chunk.updatedAt} < ${threshold}`,
                 isNull(chunk.archivedAt),
                 sql`${chunk.id} NOT IN (${alreadyFlagged})`,
-                ...spaceConditions(codebaseId)
+                ...spaceConditions(spaceId)
             ];
 
             const staleChunks = await db
@@ -205,7 +205,7 @@ export function upsertScan(data: { id: string; spaceId: string; lastCommitSha: s
                 }));
 }
 
-export function detectUncoveredChunks(userId: string, codebaseId?: string, thresholdDays = 30) {
+export function detectUncoveredChunks(userId: string, spaceId?: string, thresholdDays = 30) {
     return dbEffect(async () => {
             const threshold = sql`NOW() - INTERVAL '${sql.raw(String(thresholdDays))} days'`;
 
@@ -231,7 +231,7 @@ export function detectUncoveredChunks(userId: string, codebaseId?: string, thres
                 isNull(chunk.archivedAt),
                 sql`${chunk.id} NOT IN (${alreadyFlagged})`,
                 sql`${chunk.id} NOT IN (${covered})`,
-                ...spaceConditions(codebaseId)
+                ...spaceConditions(spaceId)
             ];
 
             const uncoveredChunks = await db

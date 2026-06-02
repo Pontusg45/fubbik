@@ -31,7 +31,7 @@ import {
 
 export interface ListPlansFilter {
     userId: string;
-    codebaseId?: string;
+    spaceId?: string;
     status?: PlanStatus;
     requirementId?: string;
     includeArchived?: boolean;
@@ -40,7 +40,7 @@ export interface ListPlansFilter {
 export function listPlans(filter: ListPlansFilter): Effect.Effect<Plan[], DatabaseError> {
     return dbEffect(async () => {
             const conditions = [eq(plan.userId, filter.userId)];
-            if (filter.codebaseId) conditions.push(eq(plan.spaceId, filter.codebaseId));
+            if (filter.spaceId) conditions.push(eq(plan.spaceId, filter.spaceId));
             if (filter.status) conditions.push(eq(plan.status, filter.status));
             if (!filter.includeArchived && !filter.status) {
                 conditions.push(ne(plan.status, "archived"));
@@ -78,7 +78,7 @@ export interface PlanListRow extends Plan {
 export function listPlansWithRollups(filter: ListPlansFilter): Effect.Effect<PlanListRow[], DatabaseError> {
     return dbEffect(async () => {
             const conditions = [eq(plan.userId, filter.userId)];
-            if (filter.codebaseId) conditions.push(eq(plan.spaceId, filter.codebaseId));
+            if (filter.spaceId) conditions.push(eq(plan.spaceId, filter.spaceId));
             if (filter.status) conditions.push(eq(plan.status, filter.status));
             if (!filter.includeArchived && !filter.status) {
                 conditions.push(ne(plan.status, "archived"));

@@ -21,14 +21,14 @@ export function exportContext(userId: string, query: ContextExportQuery) {
     const fetchApproved = listChunksRepo({
         userId,
         reviewStatus: "approved",
-        codebaseId: query.spaceId,
+        spaceId: query.spaceId,
         limit: 500,
         offset: 0,
     });
 
     const fetchOthers = listChunksRepo({
         userId,
-        codebaseId: query.spaceId,
+        spaceId: query.spaceId,
         limit: 500,
         offset: 0,
     });

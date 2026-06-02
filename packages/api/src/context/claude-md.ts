@@ -115,7 +115,7 @@ export function generateClaudeMd(params: GenerateClaudeMdParams) {
         // ── Active plans section ──
         const plans = yield* listPlans({
             userId: params.userId,
-            codebaseId: params.spaceId,
+            spaceId: params.spaceId,
             status: "in_progress",
         });
 

@@ -52,7 +52,7 @@ const planBase = new Elysia({ prefix: "/plans" })
                                 entityId: created.id,
                                 entityTitle: created.title,
                                 action: "created",
-                                codebaseId: created.spaceId ?? undefined,
+                                spaceId: created.spaceId ?? undefined,
                             });
                             return created;
                         }),
@@ -94,7 +94,7 @@ const planBase = new Elysia({ prefix: "/plans" })
                                 entityId: updated.id,
                                 entityTitle: updated.title,
                                 action,
-                                codebaseId: updated.spaceId ?? undefined,
+                                spaceId: updated.spaceId ?? undefined,
                             });
                             return updated;
                         }),
@@ -125,7 +125,7 @@ const planBase = new Elysia({ prefix: "/plans" })
                             entityId: existing.id,
                             entityTitle: existing.title,
                             action: "deleted",
-                            codebaseId: existing.spaceId ?? undefined,
+                            spaceId: existing.spaceId ?? undefined,
                         });
                     }),
                 ),
@@ -145,7 +145,7 @@ const planBase = new Elysia({ prefix: "/plans" })
                             entityId: created.id,
                             entityTitle: created.title,
                             action: "duplicated",
-                            codebaseId: created.spaceId ?? undefined,
+                            spaceId: created.spaceId ?? undefined,
                         });
                         return created;
                     }),

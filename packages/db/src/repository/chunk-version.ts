@@ -42,15 +42,15 @@ export function getNextVersionNumber(chunkId: string) {
     });
 }
 
-export function getVersionsByTag(tag: string, userId: string, codebaseId?: string) {
+export function getVersionsByTag(tag: string, userId: string, spaceId?: string) {
     return dbEffect(async () => {
         const conditions = [
             eq(chunkVersion.updateTag, tag),
             eq(chunk.userId, userId)
         ];
-        if (codebaseId) {
+        if (spaceId) {
             conditions.push(
-                sql`EXISTS (SELECT 1 FROM chunk_space WHERE chunk_space.chunk_id = ${chunkVersion.chunkId} AND chunk_space.space_id = ${codebaseId})`
+                sql`EXISTS (SELECT 1 FROM chunk_space WHERE chunk_space.chunk_id = ${chunkVersion.chunkId} AND chunk_space.space_id = ${spaceId})`
             );
         }
 
@@ -85,15 +85,15 @@ export function getVersionsByTag(tag: string, userId: string, codebaseId?: strin
     });
 }
 
-export function getDistinctUpdateTags(userId: string, codebaseId?: string) {
+export function getDistinctUpdateTags(userId: string, spaceId?: string) {
     return dbEffect(async () => {
         const conditions = [
             isNotNull(chunkVersion.updateTag),
             eq(chunk.userId, userId)
         ];
-        if (codebaseId) {
+        if (spaceId) {
             conditions.push(
-                sql`EXISTS (SELECT 1 FROM chunk_space WHERE chunk_space.chunk_id = ${chunkVersion.chunkId} AND chunk_space.space_id = ${codebaseId})`
+                sql`EXISTS (SELECT 1 FROM chunk_space WHERE chunk_space.chunk_id = ${chunkVersion.chunkId} AND chunk_space.space_id = ${spaceId})`
             );
         }
 

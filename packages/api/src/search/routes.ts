@@ -26,7 +26,7 @@ export const searchRoutes = new Elysia()
                             sort: ctx.body.sort,
                             limit: ctx.body.limit,
                             offset: ctx.body.offset,
-                            codebaseId: ctx.body.spaceId
+                            spaceId: ctx.body.spaceId
                         })
                     )
                 )

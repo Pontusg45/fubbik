@@ -83,7 +83,7 @@ export const planTaskRoutes = new Elysia({ prefix: "/plans/:id/tasks" })
                                 entityId: task.id,
                                 entityTitle: task.title,
                                 action: "created",
-                                codebaseId: plan.spaceId ?? undefined,
+                                spaceId: plan.spaceId ?? undefined,
                             });
                             return task;
                         }),
@@ -132,7 +132,7 @@ export const planTaskRoutes = new Elysia({ prefix: "/plans/:id/tasks" })
                                 entityId: updated.id,
                                 entityTitle: updated.title,
                                 action: ctx.body.status !== undefined ? "status_changed" : "updated",
-                                codebaseId: plan.spaceId ?? undefined,
+                                spaceId: plan.spaceId ?? undefined,
                             });
                             return updated;
                         }),
@@ -162,7 +162,7 @@ export const planTaskRoutes = new Elysia({ prefix: "/plans/:id/tasks" })
                             entityType: "plan_task",
                             entityId: ctx.params.taskId,
                             action: "deleted",
-                            codebaseId: plan.spaceId ?? undefined,
+                            spaceId: plan.spaceId ?? undefined,
                         });
                     }),
                 ),

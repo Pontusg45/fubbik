@@ -21,7 +21,7 @@ function parseRange(range: string): number {
 
 export interface TimelineOpts {
     range?: string;
-    codebaseId?: string;
+    spaceId?: string;
     tag?: string;
 }
 
@@ -32,7 +32,7 @@ export function getTimeline(userId: string, opts: TimelineOpts) {
     return fetchTimeline({
         userId,
         from,
-        codebaseId: opts.codebaseId,
+        spaceId: opts.spaceId,
         tag: opts.tag
     }).pipe(
         Effect.map(events => {

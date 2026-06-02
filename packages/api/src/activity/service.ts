@@ -5,7 +5,7 @@ import {
 
 export function listActivity(
     userId: string,
-    opts: { codebaseId?: string; entityType?: string; entityId?: string; limit?: number; offset?: number } = {}
+    opts: { spaceId?: string; entityType?: string; entityId?: string; limit?: number; offset?: number } = {}
 ) {
     return listActivityRepo(userId, opts);
 }
@@ -16,7 +16,7 @@ export function createActivity(params: {
     entityId: string;
     entityTitle?: string;
     action: string;
-    codebaseId?: string;
+    spaceId?: string;
 }) {
     return createActivityRepo({
         id: crypto.randomUUID(),

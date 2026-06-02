@@ -11,7 +11,7 @@ export const activityRoutes = new Elysia().get(
             requireSession(ctx).pipe(
                 Effect.flatMap(session =>
                     activityService.listActivity(session.user.id, {
-                        codebaseId: ctx.query.codebaseId || undefined,
+                        spaceId: ctx.query.spaceId || undefined,
                         entityType: ctx.query.entityType || undefined,
                         limit: ctx.query.limit,
                         offset: ctx.query.offset
@@ -21,7 +21,7 @@ export const activityRoutes = new Elysia().get(
         ),
     {
         query: t.Object({
-            codebaseId: t.Optional(t.String()),
+            spaceId: t.Optional(t.String()),
             entityType: t.Optional(t.String()),
             limit: t.Optional(t.Numeric()),
             offset: t.Optional(t.Numeric())

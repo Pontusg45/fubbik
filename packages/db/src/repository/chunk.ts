@@ -21,7 +21,7 @@ export interface ListChunksParams {
     after?: Date;
     enrichment?: "missing" | "complete";
     minConnections?: number;
-    codebaseId?: string;
+    spaceId?: string;
     workspaceId?: string;
     globalOnly?: boolean;
     origin?: string;
@@ -107,11 +107,11 @@ export function listChunks(params: ListChunksParams) {
                 conditions.push(
                     or(sql`${chunk.id} IN (${inSpaces})`, sql`${chunk.id} NOT IN (${inAnySpace})`)!
                 );
-            } else if (params.codebaseId) {
+            } else if (params.spaceId) {
                 const inSpace = db
                     .select({ chunkId: chunkSpace.chunkId })
                     .from(chunkSpace)
-                    .where(eq(chunkSpace.spaceId, params.codebaseId));
+                    .where(eq(chunkSpace.spaceId, params.spaceId));
                 const inAnySpace = db.select({ chunkId: chunkSpace.chunkId }).from(chunkSpace);
                 conditions.push(
                     or(sql`${chunk.id} IN (${inSpace})`, sql`${chunk.id} NOT IN (${inAnySpace})`)!
@@ -568,14 +568,14 @@ export function restoreChunk(chunkId: string, userId: string) {
         });
 }
 
-export function listArchivedChunks(userId: string, codebaseId?: string) {
+export function listArchivedChunks(userId: string, spaceId?: string) {
     return dbEffect(async () => {
             const conditions = [eq(chunk.userId, userId), isNotNull(chunk.archivedAt)];
-            if (codebaseId) {
+            if (spaceId) {
                 const inSpace = db
                     .select({ chunkId: chunkSpace.chunkId })
                     .from(chunkSpace)
-                    .where(eq(chunkSpace.spaceId, codebaseId));
+                    .where(eq(chunkSpace.spaceId, spaceId));
                 conditions.push(sql`${chunk.id} IN (${inSpace})`);
             }
             const chunks = await db

@@ -12,7 +12,7 @@ export interface SearchQuery {
     sort?: "relevance" | "newest" | "oldest" | "updated";
     limit?: number;
     offset?: number;
-    codebaseId?: string;
+    spaceId?: string;
 }
 
 export interface GraphContext {

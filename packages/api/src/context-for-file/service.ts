@@ -89,7 +89,7 @@ export function getContextForFile(
         // 2. Applies-to glob pattern matches
         const { chunks } = yield* listChunks({
             userId,
-            codebaseId: spaceId,
+            spaceId,
             limit: 1000,
             offset: 0
         });
@@ -140,7 +140,7 @@ export function getContextForFile(
             for (const cbId of matchedCodebaseIds) {
                 const { chunks: depChunks } = yield* listChunks({
                     userId,
-                    codebaseId: cbId,
+                    spaceId: cbId,
                     limit: 5,
                     offset: 0,
                     sort: "updated"

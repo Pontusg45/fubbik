@@ -41,23 +41,23 @@ export function getAllUserSettings(userId: string) {
 
 // --- Codebase Settings ---
 
-export function getCodebaseSetting(codebaseId: string, key: string) {
+export function getCodebaseSetting(spaceId: string, key: string) {
     return dbEffect(async () => {
             const [row] = await db
                 .select()
                 .from(codebaseSettings)
-                .where(and(eq(codebaseSettings.spaceId, codebaseId), eq(codebaseSettings.key, key)))
+                .where(and(eq(codebaseSettings.spaceId, spaceId), eq(codebaseSettings.key, key)))
                 .limit(1);
             return row ?? null;
         });
 }
 
-export function setCodebaseSetting(codebaseId: string, key: string, value: unknown) {
+export function setCodebaseSetting(spaceId: string, key: string, value: unknown) {
     return dbEffect(async () => {
             const id = crypto.randomUUID();
             const [row] = await db
                 .insert(codebaseSettings)
-                .values({ id, spaceId: codebaseId, key, value })
+                .values({ id, spaceId, key, value })
                 .onConflictDoUpdate({
                     target: [codebaseSettings.spaceId, codebaseSettings.key],
                     set: { value, updatedAt: new Date() }
@@ -67,12 +67,12 @@ export function setCodebaseSetting(codebaseId: string, key: string, value: unkno
         });
 }
 
-export function getAllCodebaseSettings(codebaseId: string) {
+export function getAllCodebaseSettings(spaceId: string) {
     return dbEffect(() =>
             db
                 .select()
                 .from(codebaseSettings)
-                .where(eq(codebaseSettings.spaceId, codebaseId)));
+                .where(eq(codebaseSettings.spaceId, spaceId)));
 }
 
 // --- Instance Settings ---
