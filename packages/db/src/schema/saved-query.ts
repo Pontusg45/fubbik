@@ -2,7 +2,7 @@ import { relations } from "drizzle-orm";
 import { index, jsonb, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 
 import { user } from "./auth";
-import { codebase } from "./codebase";
+import { space } from "./space";
 
 export const savedQuery = pgTable(
     "saved_query",
@@ -13,7 +13,7 @@ export const savedQuery = pgTable(
         userId: text("user_id")
             .notNull()
             .references(() => user.id, { onDelete: "cascade" }),
-        codebaseId: text("codebase_id").references(() => codebase.id, { onDelete: "set null" }),
+        spaceId: text("space_id").references(() => space.id, { onDelete: "set null" }),
         createdAt: timestamp("created_at").defaultNow().notNull()
     },
     table => [
@@ -23,5 +23,5 @@ export const savedQuery = pgTable(
 
 export const savedQueryRelations = relations(savedQuery, ({ one }) => ({
     user: one(user, { fields: [savedQuery.userId], references: [user.id] }),
-    codebase: one(codebase, { fields: [savedQuery.codebaseId], references: [codebase.id] })
+    space: one(space, { fields: [savedQuery.spaceId], references: [space.id] })
 }));
