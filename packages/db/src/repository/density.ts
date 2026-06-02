@@ -2,7 +2,7 @@ import { and, eq, inArray, isNull } from "drizzle-orm";
 
 import { db, dbEffect } from "../index";
 import { chunk } from "../schema/chunk";
-import { chunkCodebase } from "../schema/codebase";
+import { chunkSpace } from "../schema/space";
 import { chunkAppliesTo } from "../schema/applies-to";
 import { chunkFileRef } from "../schema/file-ref";
 
@@ -22,8 +22,8 @@ export function fetchDensityPaths(userId: string, codebaseId?: string) {
                 const rows = await db
                     .select({ id: chunk.id })
                     .from(chunk)
-                    .innerJoin(chunkCodebase, eq(chunkCodebase.chunkId, chunk.id))
-                    .where(and(...chunkFilter, eq(chunkCodebase.codebaseId, codebaseId)));
+                    .innerJoin(chunkSpace, eq(chunkSpace.chunkId, chunk.id))
+                    .where(and(...chunkFilter, eq(chunkSpace.spaceId, codebaseId)));
                 chunkIds = rows.map(r => r.id);
             } else {
                 const rows = await db
