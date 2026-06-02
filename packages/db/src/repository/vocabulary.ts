@@ -4,12 +4,12 @@ import { Effect } from "effect";
 import { db, dbEffect } from "../index";
 import { vocabularyEntry } from "../schema/vocabulary";
 
-export function listVocabulary(codebaseId: string) {
+export function listVocabulary(spaceId: string) {
     return dbEffect(() =>
             db
                 .select()
                 .from(vocabularyEntry)
-                .where(eq(vocabularyEntry.codebaseId, codebaseId))
+                .where(eq(vocabularyEntry.spaceId, spaceId))
                 .orderBy(asc(vocabularyEntry.category), asc(vocabularyEntry.word)));
 }
 
@@ -18,7 +18,7 @@ export interface CreateVocabularyEntryParams {
     word: string;
     category: string;
     expects?: string[];
-    codebaseId: string;
+    spaceId: string;
     userId: string;
 }
 
@@ -31,7 +31,7 @@ export function createVocabularyEntry(params: CreateVocabularyEntryParams) {
                     word: params.word.toLowerCase(),
                     category: params.category,
                     expects: params.expects ?? null,
-                    codebaseId: params.codebaseId,
+                    spaceId: params.spaceId,
                     userId: params.userId
                 })
                 .returning();
@@ -45,7 +45,7 @@ export function createVocabularyEntries(
         word: string;
         category: string;
         expects?: string[];
-        codebaseId: string;
+        spaceId: string;
         userId: string;
     }>
 ) {
@@ -59,7 +59,7 @@ export function createVocabularyEntries(
                         word: e.word.toLowerCase(),
                         category: e.category,
                         expects: e.expects ?? null,
-                        codebaseId: e.codebaseId,
+                        spaceId: e.spaceId,
                         userId: e.userId
                     }))
                 )
@@ -111,7 +111,7 @@ const STANDARD_MODIFIERS = [
     "they", "it"
 ];
 
-export function seedModifiers(codebaseId: string, userId: string) {
+export function seedModifiers(spaceId: string, userId: string) {
     return dbEffect(() =>
             db
                 .insert(vocabularyEntry)
@@ -121,7 +121,7 @@ export function seedModifiers(codebaseId: string, userId: string) {
                         word,
                         category: "modifier",
                         expects: null,
-                        codebaseId,
+                        spaceId,
                         userId
                     }))
                 )
@@ -129,12 +129,12 @@ export function seedModifiers(codebaseId: string, userId: string) {
                 .returning());
 }
 
-export function countVocabulary(codebaseId: string) {
+export function countVocabulary(spaceId: string) {
     return dbEffect(async () => {
             const [result] = await db
                 .select({ count: sql<number>`count(*)` })
                 .from(vocabularyEntry)
-                .where(eq(vocabularyEntry.codebaseId, codebaseId));
+                .where(eq(vocabularyEntry.spaceId, spaceId));
             return Number(result?.count ?? 0);
         });
 }
