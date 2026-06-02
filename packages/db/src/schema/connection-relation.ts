@@ -2,7 +2,7 @@ import { relations } from "drizzle-orm";
 import { boolean, index, integer, pgTable, text, timestamp, type AnyPgColumn } from "drizzle-orm/pg-core";
 
 import { user } from "./auth";
-import { codebase } from "./codebase";
+import { space } from "./space";
 
 /**
  * Catalog of connection relations (the labels on chunk-to-chunk edges).
@@ -26,7 +26,7 @@ export const connectionRelation = pgTable(
         displayOrder: integer("display_order").notNull().default(100),
         builtIn: boolean("built_in").notNull().default(false),
         userId: text("user_id").references(() => user.id, { onDelete: "cascade" }),
-        codebaseId: text("codebase_id").references(() => codebase.id, { onDelete: "cascade" }),
+        spaceId: text("space_id").references(() => space.id, { onDelete: "cascade" }),
         createdAt: timestamp("created_at").defaultNow().notNull(),
         updatedAt: timestamp("updated_at")
             .defaultNow()
@@ -35,13 +35,13 @@ export const connectionRelation = pgTable(
     },
     table => [
         index("connection_relation_userId_idx").on(table.userId),
-        index("connection_relation_codebaseId_idx").on(table.codebaseId)
+        index("connection_relation_spaceId_idx").on(table.spaceId)
     ]
 );
 
 export const connectionRelationRelations = relations(connectionRelation, ({ one }) => ({
     user: one(user, { fields: [connectionRelation.userId], references: [user.id] }),
-    codebase: one(codebase, { fields: [connectionRelation.codebaseId], references: [codebase.id] }),
+    space: one(space, { fields: [connectionRelation.spaceId], references: [space.id] }),
     inverseOf: one(connectionRelation, {
         fields: [connectionRelation.inverseOfId],
         references: [connectionRelation.id],
