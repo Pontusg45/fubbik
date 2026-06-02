@@ -3,10 +3,10 @@ import { and, desc, eq } from "drizzle-orm";
 import { db, dbEffect } from "../index";
 import { savedQuery } from "../schema/saved-query";
 
-export function listSavedQueries(userId: string, codebaseId?: string) {
+export function listSavedQueries(userId: string, spaceId?: string) {
     return dbEffect(() => {
             const conditions = [eq(savedQuery.userId, userId)];
-            if (codebaseId) conditions.push(eq(savedQuery.codebaseId, codebaseId));
+            if (spaceId) conditions.push(eq(savedQuery.spaceId, spaceId));
             return db
                 .select()
                 .from(savedQuery)
@@ -20,7 +20,7 @@ export function createSavedQuery(params: {
     name: string;
     query: unknown;
     userId: string;
-    codebaseId?: string;
+    spaceId?: string;
 }) {
     return dbEffect(async () => {
             const [created] = await db.insert(savedQuery).values(params).returning();
