@@ -158,13 +158,13 @@ interface SaveCustomGraphDialogProps {
     draggedPositions: Map<string, { x: number; y: number }>;
     layoutPositions: Record<string, { x: number; y: number }> | null;
     layoutAlgorithm?: LayoutAlgorithm;
-    codebaseId: string | null | undefined;
+    spaceId: string | null | undefined;
     saveCustomGraphMutation: UseMutationResult<unknown, Error, {
         name: string;
         chunkIds: string[];
         positions: Record<string, { x: number; y: number }>;
         layoutAlgorithm: string;
-        codebaseId?: string | null;
+        spaceId?: string | null;
     }>;
 }
 
@@ -178,7 +178,7 @@ export function SaveCustomGraphDialog({
     draggedPositions,
     layoutPositions,
     layoutAlgorithm,
-    codebaseId,
+    spaceId,
     saveCustomGraphMutation,
 }: SaveCustomGraphDialogProps) {
     if (!show) return null;
@@ -197,7 +197,7 @@ export function SaveCustomGraphDialog({
             chunkIds: filteredChunkIds,
             positions,
             layoutAlgorithm: layoutAlgorithm ?? "island",
-            codebaseId: codebaseId && codebaseId !== "global" ? codebaseId : undefined
+            spaceId: spaceId && spaceId !== "global" ? spaceId : undefined
         });
         onClose();
         onNameChange("");

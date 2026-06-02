@@ -4,7 +4,7 @@ import { AlertTriangle } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardPanel } from "@/components/ui/card";
-import { useActiveCodebase } from "@/features/codebases/use-active-codebase";
+import { useActiveSpace } from "@/features/spaces/use-active-space";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
@@ -35,13 +35,13 @@ interface TraceabilityRow {
 }
 
 export function TraceabilityContent() {
-    const { codebaseId } = useActiveCodebase();
+    const { spaceId } = useActiveSpace();
 
     const traceQuery = useQuery({
-        queryKey: ["traceability", codebaseId],
+        queryKey: ["traceability", spaceId],
         queryFn: async () => {
-            const query: { codebaseId?: string } = {};
-            if (codebaseId) query.codebaseId = codebaseId;
+            const query: { spaceId?: string } = {};
+            if (spaceId) query.spaceId = spaceId;
             return unwrapEden(await api.api.requirements.traceability.get({ query })) as TraceabilityRow[];
         }
     });

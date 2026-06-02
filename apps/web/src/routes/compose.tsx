@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { MarkdownRenderer } from "@/components/markdown-renderer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { useActiveCodebase } from "@/features/codebases/use-active-codebase";
+import { useActiveSpace } from "@/features/spaces/use-active-space";
 import { getUser } from "@/functions/get-user";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
@@ -67,7 +67,7 @@ function parseSimpleQuery(q: string): Array<{ field: string; operator: string; v
 function ComposePage() {
     const { q, sort, group, limit } = Route.useSearch();
     const navigate = useNavigate();
-    const { codebaseId } = useActiveCodebase();
+    const { spaceId } = useActiveSpace();
     const [chunks, setChunks] = useState<ComposedChunk[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -97,7 +97,7 @@ function ComposePage() {
                     sort: (sort as any) ?? "updated",
                     limit: lim,
                     offset: 0,
-                    ...(codebaseId ? { codebaseId } : {}),
+                    ...(spaceId ? { spaceId } : {}),
                 } as any),
             ),
     });
@@ -155,7 +155,7 @@ function ComposePage() {
         }
         void load();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [q, codebaseId, limit]);
+    }, [q, spaceId, limit]);
 
     const sortedChunks = useMemo(() => {
         const copy = [...chunks];

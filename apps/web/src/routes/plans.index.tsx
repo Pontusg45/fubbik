@@ -28,8 +28,8 @@ interface PlanRow {
     title: string;
     description: string | null;
     status: PlanStatusValue;
-    codebaseId: string | null;
-    codebaseName: string | null;
+    spaceId: string | null;
+    spaceName: string | null;
     taskTotal: number;
     taskDone: number;
     nextAction: string | null;
@@ -38,16 +38,16 @@ interface PlanRow {
     metadata?: Record<string, unknown>;
 }
 
-interface Codebase {
+interface Space {
     id: string;
     name: string;
 }
 
 export const Route = createFileRoute("/plans/")({
     component: PlansIndexPage,
-    validateSearch: (search): { status?: StatusFilter; codebase?: string; q?: string } => ({
+    validateSearch: (search): { status?: StatusFilter; space?: string; q?: string } => ({
         status: (search.status as StatusFilter) ?? undefined,
-        codebase: (search.codebase as string) ?? undefined,
+        space: (search.space as string) ?? undefined,
         q: (search.q as string) ?? undefined,
     }),
 });
@@ -58,12 +58,12 @@ function PlansIndexPage() {
     const search = useSearch({ from: "/plans/" });
 
     const statusFilter: StatusFilter = search.status ?? "active";
-    const codebaseId = search.codebase ?? "";
+    const spaceId = search.space ?? "";
     const q = search.q ?? "";
     const [qDraft, setQDraft] = useState(q);
     const searchRef = useRef<HTMLInputElement>(null);
 
-    const setSearch = (patch: Partial<{ status?: StatusFilter; codebase?: string; q?: string }>) => {
+    const setSearch = (patch: Partial<{ status?: StatusFilter; space?: string; q?: string }>) => {
         navigate({
             to: "/plans",
             search: (prev: Record<string, unknown>) => {
@@ -100,11 +100,11 @@ function PlansIndexPage() {
         return () => window.removeEventListener("keydown", onKey);
     }, []);
 
-    const codebasesQuery = useQuery({
-        queryKey: ["codebases"],
+    const spacesQuery = useQuery({
+        queryKey: ["spaces"],
         queryFn: async () => {
             try {
-                return (unwrapEden(await api.api.codebases.get()) as Codebase[]) ?? [];
+                return (unwrapEden(await api.api.spaces.get()) as Space[]) ?? [];
             } catch {
                 return [];
             }
@@ -113,7 +113,7 @@ function PlansIndexPage() {
     });
 
     const plansQuery = useQuery({
-        queryKey: ["plans", statusFilter, codebaseId],
+        queryKey: ["plans", statusFilter, spaceId],
         queryFn: async () => {
             const query: Record<string, string> = {};
             if (statusFilter === "archived") {
@@ -126,7 +126,7 @@ function PlansIndexPage() {
             } else {
                 query.status = statusFilter;
             }
-            if (codebaseId) query.codebaseId = codebaseId;
+            if (spaceId) query.spaceId = spaceId;
             const result = unwrapEden(await api.api.plans.get({ query }));
             return (result as unknown as PlanRow[]) ?? [];
         },
@@ -143,7 +143,7 @@ function PlansIndexPage() {
                 p =>
                     p.title.toLowerCase().includes(needle) ||
                     (p.description?.toLowerCase().includes(needle) ?? false) ||
-                    (p.codebaseName?.toLowerCase().includes(needle) ?? false)
+                    (p.spaceName?.toLowerCase().includes(needle) ?? false)
             );
         }
         return list;
@@ -246,13 +246,13 @@ function PlansIndexPage() {
                     )}
                 </div>
 
-                <Select value={codebaseId || "__all__"} onValueChange={v => setSearch({ codebase: !v || v === "__all__" ? undefined : (v as string) })}>
+                <Select value={spaceId || "__all__"} onValueChange={v => setSearch({ space: !v || v === "__all__" ? undefined : (v as string) })}>
                     <SelectTrigger size="sm" className="w-[180px]">
-                        <SelectValue placeholder="All codebases" />
+                        <SelectValue placeholder="All spaces" />
                     </SelectTrigger>
                     <SelectPopup>
-                        <SelectItem value="__all__">All codebases</SelectItem>
-                        {(codebasesQuery.data ?? []).map(c => (
+                        <SelectItem value="__all__">All spaces</SelectItem>
+                        {(spacesQuery.data ?? []).map(c => (
                             <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                         ))}
                     </SelectPopup>
@@ -280,7 +280,7 @@ function PlansIndexPage() {
                     ))}
                     {filteredPlans.length === 0 && (
                         <div className="rounded-md border border-dashed p-8 text-center text-sm text-muted-foreground">
-                            {q || codebaseId || statusFilter !== "active"
+                            {q || spaceId || statusFilter !== "active"
                                 ? "No plans match the current filters."
                                 : (
                                     <>
@@ -334,9 +334,9 @@ function PlanRow({ plan, onArchiveToggle, onDuplicate, onDelete }: PlanRowProps)
                 <div className="flex flex-wrap items-center gap-2">
                     <span className="font-medium">{plan.title}</span>
                     <PlanStatusPill status={plan.status} />
-                    {plan.codebaseName && (
+                    {plan.spaceName && (
                         <span className="text-muted-foreground rounded border px-1.5 py-0.5 text-[10px]">
-                            {plan.codebaseName}
+                            {plan.spaceName}
                         </span>
                     )}
                 </div>

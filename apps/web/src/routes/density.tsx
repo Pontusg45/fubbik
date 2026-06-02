@@ -6,7 +6,7 @@ import { useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardPanel } from "@/components/ui/card";
 import { PageContainer, PageHeader } from "@/components/ui/page";
-import { useActiveCodebase } from "@/features/codebases/use-active-codebase";
+import { useActiveSpace } from "@/features/spaces/use-active-space";
 import { getUser } from "@/functions/get-user";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
@@ -44,13 +44,13 @@ function heatClass(count: number, max: number): string {
 }
 
 function DensityPage() {
-    const { codebaseId } = useActiveCodebase();
+    const { spaceId } = useActiveSpace();
 
     const densityQuery = useQuery({
-        queryKey: ["density", codebaseId],
+        queryKey: ["density", spaceId],
         queryFn: async () => {
             const query: Record<string, string> = {};
-            if (codebaseId) query.codebaseId = codebaseId;
+            if (spaceId) query.spaceId = spaceId;
             return unwrapEden(await api.api.density.get({ query }));
         }
     });

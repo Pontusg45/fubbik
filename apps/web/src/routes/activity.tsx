@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardPanel } from "@/components/ui/card";
 import { PageContainer, PageHeader } from "@/components/ui/page";
 import { Separator } from "@/components/ui/separator";
-import { useActiveCodebase } from "@/features/codebases/use-active-codebase";
+import { useActiveSpace } from "@/features/spaces/use-active-space";
 import { getUser } from "@/functions/get-user";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
@@ -32,7 +32,7 @@ const ENTITY_TYPES = [
     { value: "requirement", label: "Requirements" },
     { value: "connection", label: "Connections" },
     { value: "tag", label: "Tags" },
-    { value: "codebase", label: "Codebases" }
+    { value: "space", label: "Spaces" }
 ];
 
 function entityIcon(entityType: string) {
@@ -45,7 +45,7 @@ function entityIcon(entityType: string) {
             return Link2;
         case "tag":
             return Tags;
-        case "codebase":
+        case "space":
             return FolderGit2;
         default:
             return Network;
@@ -92,16 +92,16 @@ const ACTION_TYPES = [
 ];
 
 function ActivityPage() {
-    const { codebaseId } = useActiveCodebase();
+    const { spaceId } = useActiveSpace();
     const [entityTypeFilter, setEntityTypeFilter] = useState("");
     const [actionFilter, setActionFilter] = useState("");
     const [displayCount, setDisplayCount] = useState(20);
 
     const activityQuery = useQuery({
-        queryKey: ["activity", codebaseId, entityTypeFilter],
+        queryKey: ["activity", spaceId, entityTypeFilter],
         queryFn: async () => {
             const query: Record<string, string> = { limit: "50" };
-            if (codebaseId) query.codebaseId = codebaseId;
+            if (spaceId) query.spaceId = spaceId;
             if (entityTypeFilter) query.entityType = entityTypeFilter;
             return unwrapEden(await api.api.activity.get({ query }));
         }

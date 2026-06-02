@@ -9,7 +9,7 @@ const PILL_COLORS: Record<string, string> = {
     after: "bg-slate-500/15 border-slate-500/30 text-slate-400",
     enrichment: "bg-slate-500/15 border-slate-500/30 text-slate-400",
     minConnections: "bg-slate-500/15 border-slate-500/30 text-slate-400",
-    allCodebases: "bg-slate-500/15 border-slate-500/30 text-slate-400",
+    allSpaces: "bg-slate-500/15 border-slate-500/30 text-slate-400",
 };
 
 function Pill({ colorKey, label, onRemove }: { colorKey: string; label: string; onRemove: () => void }) {
@@ -37,7 +37,7 @@ interface ChunkFilterPillsProps {
     minConnections?: string;
     origin?: string;
     reviewStatus?: string;
-    allCodebases?: string;
+    allSpaces?: string;
     activeTags: string[];
     onRemoveFilter: (key: string) => void;
     onClearAll: () => void;
@@ -51,12 +51,12 @@ export function ChunkFilterPills({
     minConnections,
     origin,
     reviewStatus,
-    allCodebases,
+    allSpaces,
     activeTags,
     onRemoveFilter,
     onClearAll,
 }: ChunkFilterPillsProps) {
-    const hasAny = type || q || activeTags.length > 0 || after || enrichment || minConnections || origin || reviewStatus || allCodebases;
+    const hasAny = type || q || activeTags.length > 0 || after || enrichment || minConnections || origin || reviewStatus || allSpaces;
     if (!hasAny) return null;
 
     return (
@@ -85,8 +85,8 @@ export function ChunkFilterPills({
             {reviewStatus && (
                 <Pill colorKey="reviewStatus" label={`review: ${reviewStatus}`} onRemove={() => onRemoveFilter("reviewStatus")} />
             )}
-            {allCodebases && (
-                <Pill colorKey="allCodebases" label="all codebases" onRemove={() => onRemoveFilter("allCodebases")} />
+            {allSpaces && (
+                <Pill colorKey="allSpaces" label="all spaces" onRemove={() => onRemoveFilter("allSpaces")} />
             )}
             <button
                 onClick={onClearAll}

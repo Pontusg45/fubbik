@@ -15,7 +15,7 @@ import { DependencySection } from "@/features/requirements/dependency-section";
 import { RequirementPlans } from "@/features/requirements/requirement-plans";
 import { StepBuilder } from "@/features/requirements/step-builder";
 import { validateSteps, type Keyword, type StepRow, type StepError } from "@/features/requirements/validation";
-import { useActiveCodebase } from "@/features/codebases/use-active-codebase";
+import { useActiveSpace } from "@/features/spaces/use-active-space";
 import { getUser } from "@/functions/get-user";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
@@ -70,7 +70,7 @@ function RequirementDetail() {
     const [editChunkIds, setEditChunkIds] = useState<string[]>([]);
     const [editStepErrors, setEditStepErrors] = useState<StepError[]>([]);
 
-    const { codebaseId } = useActiveCodebase();
+    const { spaceId } = useActiveSpace();
 
     const { data, isLoading, error } = useQuery({
         queryKey: ["requirement", requirementId],
@@ -82,10 +82,10 @@ function RequirementDetail() {
     });
 
     const useCasesQuery = useQuery({
-        queryKey: ["use-cases", codebaseId],
+        queryKey: ["use-cases", spaceId],
         queryFn: async () => {
-            const query: { codebaseId?: string } = {};
-            if (codebaseId) query.codebaseId = codebaseId;
+            const query: { spaceId?: string } = {};
+            if (spaceId) query.spaceId = spaceId;
             return unwrapEden(await api.api["use-cases"].get({ query })) as Array<{ id: string; name: string }>;
         },
         enabled: editing
@@ -315,9 +315,9 @@ function RequirementDetail() {
                         </div>
                     </div>
                     {/* Step builder */}
-                    <StepBuilder steps={editSteps} onStepsChange={setEditSteps} codebaseId={codebaseId} stepErrors={editStepErrors} />
+                    <StepBuilder steps={editSteps} onStepsChange={setEditSteps} codebaseId={spaceId} stepErrors={editStepErrors} />
                     {/* Chunk linker */}
-                    <ChunkLinker selectedChunkIds={editChunkIds} onSelectedChunkIdsChange={setEditChunkIds} codebaseId={codebaseId} />
+                    <ChunkLinker selectedChunkIds={editChunkIds} onSelectedChunkIdsChange={setEditChunkIds} codebaseId={spaceId} />
                     {/* Save/Cancel */}
                     <div className="flex justify-end gap-2 border-t pt-4">
                         <Button variant="outline" onClick={() => setEditing(false)}>Cancel</Button>

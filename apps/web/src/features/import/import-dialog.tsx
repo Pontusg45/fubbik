@@ -44,21 +44,21 @@ export function ImportDocsDialog() {
     const queryClient = useQueryClient();
     const folderInputRef = useRef<HTMLInputElement>(null);
     const [files, setFiles] = useState<FileEntry[]>([]);
-    const [codebaseId, setCodebaseId] = useState<string>("");
+    const [spaceId, setSpaceId] = useState<string>("");
 
-    const { data: codebases } = useQuery({
-        queryKey: ["codebases"],
-        queryFn: async () => unwrapEden(await api.api.codebases.get()),
+    const { data: spaces } = useQuery({
+        queryKey: ["spaces"],
+        queryFn: async () => unwrapEden(await api.api.spaces.get()),
         staleTime: 60_000
     });
 
     type ImportResult = { created: number; skipped: number; errors: Array<{ path: string; error: string }> };
     const importMutation = useMutation({
-        mutationFn: async (payload: { files: FileEntry[]; codebaseId: string }) => {
+        mutationFn: async (payload: { files: FileEntry[]; spaceId: string }) => {
             const result = unwrapEden(
                 await api.api.chunks["import-docs"].post({
                     files: payload.files,
-                    codebaseId: payload.codebaseId
+                    spaceId: payload.spaceId
                 })
             );
             return result as ImportResult;
@@ -72,7 +72,7 @@ export function ImportDocsDialog() {
             }
             queryClient.invalidateQueries({ queryKey: ["chunks"] });
             setFiles([]);
-            setCodebaseId("");
+            setSpaceId("");
         },
         onError: () => toast.error("Failed to import docs")
     });
@@ -85,8 +85,8 @@ export function ImportDocsDialog() {
     };
 
     const handleImport = () => {
-        if (!codebaseId) {
-            toast.error("Please select a codebase");
+        if (!spaceId) {
+            toast.error("Please select a space");
             return;
         }
         if (files.length === 0) {
@@ -97,7 +97,7 @@ export function ImportDocsDialog() {
             toast.error("Too many files (max 500). Import in smaller batches.");
             return;
         }
-        importMutation.mutate({ files, codebaseId });
+        importMutation.mutate({ files, spaceId });
     };
 
     return (
@@ -105,7 +105,7 @@ export function ImportDocsDialog() {
             onOpenChange={open => {
                 if (!open) {
                     setFiles([]);
-                    setCodebaseId("");
+                    setSpaceId("");
                 }
             }}
         >
@@ -143,14 +143,14 @@ export function ImportDocsDialog() {
                     </div>
 
                     <div>
-                        <label className="text-sm font-medium">Codebase</label>
+                        <label className="text-sm font-medium">Space</label>
                         <select
                             className="border-input bg-background mt-1 block w-full rounded-md border px-3 py-2 text-sm"
-                            value={codebaseId}
-                            onChange={e => setCodebaseId(e.target.value)}
+                            value={spaceId}
+                            onChange={e => setSpaceId(e.target.value)}
                         >
-                            <option value="">Select a codebase...</option>
-                            {codebases?.map((c: { id: string; name: string }) => (
+                            <option value="">Select a space...</option>
+                            {spaces?.map((c: { id: string; name: string }) => (
                                 <option key={c.id} value={c.id}>
                                     {c.name}
                                 </option>
@@ -164,7 +164,7 @@ export function ImportDocsDialog() {
                     <Button
                         size="sm"
                         onClick={handleImport}
-                        disabled={importMutation.isPending || files.length === 0 || !codebaseId}
+                        disabled={importMutation.isPending || files.length === 0 || !spaceId}
                     >
                         <Upload className="mr-1 size-3.5" />
                         {importMutation.isPending

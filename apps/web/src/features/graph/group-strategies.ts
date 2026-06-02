@@ -12,13 +12,13 @@
  * No changes to rendering, layout worker, or bounding-box code required.
  */
 
-export type GroupBy = "tag" | "type" | "codebase" | "none";
+export type GroupBy = "tag" | "type" | "space" | "none";
 
 export interface GroupStrategyData {
     chunks: Array<{ id: string; type: string }>;
     chunkTags?: Array<{ chunkId: string; tagTypeId: string | null; tagName: string; tagTypeColor: string | null }>;
     activeTagTypeIds?: Set<string>;
-    chunkCodebases?: Array<{ chunkId: string; codebaseId: string; codebaseName: string }>;
+    chunkCodebases?: Array<{ chunkId: string; spaceId: string; spaceName: string }>;
     typeColorMap?: Record<string, string>;
 }
 
@@ -64,14 +64,14 @@ const TYPE_STRATEGY: GroupStrategy = {
     }
 };
 
-const CODEBASE_STRATEGY: GroupStrategy = {
-    id: "codebase",
+const SPACE_STRATEGY: GroupStrategy = {
+    id: "space",
     build({ chunkCodebases }) {
         if (!chunkCodebases || chunkCodebases.length === 0) return null;
         const groups = new Map<string, string[]>();
         for (const cc of chunkCodebases) {
-            if (!groups.has(cc.codebaseName)) groups.set(cc.codebaseName, []);
-            groups.get(cc.codebaseName)!.push(cc.chunkId);
+            if (!groups.has(cc.spaceName)) groups.set(cc.spaceName, []);
+            groups.get(cc.spaceName)!.push(cc.chunkId);
         }
         if (groups.size === 0) return null;
         return { groups, colorFor: () => undefined };
@@ -81,7 +81,7 @@ const CODEBASE_STRATEGY: GroupStrategy = {
 export const GROUP_STRATEGIES: Record<Exclude<GroupBy, "none">, GroupStrategy> = {
     tag: TAG_STRATEGY,
     type: TYPE_STRATEGY,
-    codebase: CODEBASE_STRATEGY
+    space: SPACE_STRATEGY
 };
 
 /** Canonical prefix for group-node IDs in React Flow (was "tag-group-"). */

@@ -67,7 +67,7 @@ interface StepReviewProps {
     preview: PreviewFileResult[];
     overrides: Map<string, FileConfig>;
     existingHashes: Record<string, string>;
-    codebaseName: string;
+    spaceName: string;
     onGoToFile: (path: string) => void;
 }
 
@@ -81,7 +81,7 @@ export function StepReview({
     preview,
     overrides,
     existingHashes,
-    codebaseName,
+    spaceName,
     onGoToFile
 }: StepReviewProps) {
     const [computedHashes, setComputedHashes] = useState<Record<string, string>>({});
@@ -328,10 +328,10 @@ export function StepReview({
                 )}
             </CollapsibleSection>
 
-            {/* Codebase reminder */}
+            {/* Space reminder */}
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <span>Importing into:</span>
-                <Badge variant="secondary">{codebaseName}</Badge>
+                <Badge variant="secondary">{spaceName}</Badge>
             </div>
         </div>
     );

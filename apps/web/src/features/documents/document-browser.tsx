@@ -7,7 +7,7 @@ import { MarkdownRenderer } from "@/components/markdown-renderer";
 import { Badge } from "@/components/ui/badge";
 import { PageEmpty } from "@/components/ui/page";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { useActiveCodebase } from "@/features/codebases/use-active-codebase";
+import { useActiveSpace } from "@/features/spaces/use-active-space";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { DocumentFilterBar } from "./document-filter-bar";
 import { filterDocuments, groupDocuments, collectAllTags, collectAllTypes } from "./filter-documents";
@@ -22,7 +22,7 @@ import { FolderTreeNode, IndexTree, TagGroupNode } from "./document-tree";
 import { DocumentDetailView } from "./document-detail";
 
 export function DocumentBrowser({ initialDocId, initialSection, initialGroupBy, initialTags, initialTypes }: DocumentBrowserProps) {
-    const { codebaseId: activeCodebaseId } = useActiveCodebase();
+    const { spaceId: activeSpaceId } = useActiveSpace();
     const navigate = useNavigate();
     const [selectedId, setSelectedIdState] = useState<string | null>(initialDocId ?? null);
     const [selectedGroup, setSelectedGroupState] = useState<string | null>(null);
@@ -96,11 +96,11 @@ export function DocumentBrowser({ initialDocId, initialSection, initialGroupBy, 
 
     // Fetch document list
     const listQuery = useQuery({
-        queryKey: ["documents", activeCodebaseId],
+        queryKey: ["documents", activeSpaceId],
         queryFn: async () => {
             try {
                 const result = unwrapEden(
-                    await api.api.documents.get({ query: activeCodebaseId ? { codebaseId: activeCodebaseId } : {} })
+                    await api.api.documents.get({ query: activeSpaceId ? { spaceId: activeSpaceId } : {} })
                 );
                 return result as DocumentListItem[];
             } catch {
@@ -128,11 +128,11 @@ export function DocumentBrowser({ initialDocId, initialSection, initialGroupBy, 
     // Server-side document search — only when user types 2+ chars
     const debouncedSearch = useDebouncedValue(searchQuery, 300);
     const searchServerQuery = useQuery({
-        queryKey: ["documents-search", debouncedSearch, activeCodebaseId],
+        queryKey: ["documents-search", debouncedSearch, activeSpaceId],
         queryFn: async () => {
             try {
                 const q: Record<string, string> = { q: debouncedSearch };
-                if (activeCodebaseId) q.codebaseId = activeCodebaseId;
+                if (activeSpaceId) q.spaceId = activeSpaceId;
                 const results = unwrapEden(
                     await api.api.documents.search.get({ query: q as any })
                 ) as { chunkId: string; chunkTitle: string; chunkContent: string; documentOrder: number | null; documentId: string; documentTitle: string; sourcePath: string }[];

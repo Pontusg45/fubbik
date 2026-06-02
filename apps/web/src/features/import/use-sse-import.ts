@@ -4,7 +4,7 @@ import type { ImportFileStatus } from "./types";
 
 interface SSEImportOptions {
     files: { path: string; content: string }[];
-    codebaseId: string;
+    spaceId: string;
     templateOverrides?: Record<string, string | null>;
     onFileUpdate: (path: string, status: ImportFileStatus) => void;
     onDone: (result: { created: number; skipped: number; errors: number; connections: number; elapsed: number }) => void;
@@ -28,7 +28,7 @@ export function useSSEImport() {
                 signal: abort.signal,
                 body: JSON.stringify({
                     files: options.files,
-                    codebaseId: options.codebaseId,
+                    spaceId: options.spaceId,
                     templateOverrides: options.templateOverrides,
                 }),
             });

@@ -6,7 +6,7 @@ import { useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardPanel, CardTitle } from "@/components/ui/card";
-import { useActiveCodebase } from "@/features/codebases/use-active-codebase";
+import { useActiveSpace } from "@/features/spaces/use-active-space";
 import { TraceabilityContent } from "@/features/coverage/traceability-content";
 import { getUser } from "@/functions/get-user";
 import { api } from "@/utils/api";
@@ -29,7 +29,7 @@ type Tab = "coverage" | "traceability";
 
 
 function CoveragePage() {
-    const { codebaseId } = useActiveCodebase();
+    const { spaceId } = useActiveSpace();
     const [tab, setTab] = useState<Tab>("coverage");
     const [showCovered, setShowCovered] = useState(false);
     const [showMatrix, setShowMatrix] = useState(false);
@@ -70,7 +70,7 @@ function CoveragePage() {
 
             {tab === "coverage" ? (
                 <ChunkCoverageTab
-                    codebaseId={codebaseId}
+                    spaceId={spaceId}
                     showCovered={showCovered}
                     setShowCovered={setShowCovered}
                     showMatrix={showMatrix}
@@ -86,23 +86,23 @@ function CoveragePage() {
 // ── Chunk Coverage Tab ──────────────────────────────────────────────
 
 function ChunkCoverageTab({
-    codebaseId,
+    spaceId,
     showCovered,
     setShowCovered,
     showMatrix,
     setShowMatrix
 }: {
-    codebaseId: string | null;
+    spaceId: string | null;
     showCovered: boolean;
     setShowCovered: (v: boolean) => void;
     showMatrix: boolean;
     setShowMatrix: (v: boolean) => void;
 }) {
     const coverageQuery = useQuery({
-        queryKey: ["coverage", codebaseId, showMatrix],
+        queryKey: ["coverage", spaceId, showMatrix],
         queryFn: async () => {
-            const query: { codebaseId?: string; detail?: string } = {};
-            if (codebaseId) query.codebaseId = codebaseId;
+            const query: { spaceId?: string; detail?: string } = {};
+            if (spaceId) query.spaceId = spaceId;
             if (showMatrix) query.detail = "true";
             return unwrapEden(await (api.api.requirements as any).coverage.get({ query }));
         }

@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardPanel } from "@/components/ui/card";
 import { PageContainer, PageHeader } from "@/components/ui/page";
 import { Separator } from "@/components/ui/separator";
-import { useActiveCodebase } from "@/features/codebases/use-active-codebase";
+import { useActiveSpace } from "@/features/spaces/use-active-space";
 import { getUser } from "@/functions/get-user";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
@@ -53,14 +53,14 @@ function formatDay(bucket: string): string {
 }
 
 function TimelinePage() {
-    const { codebaseId } = useActiveCodebase();
+    const { spaceId } = useActiveSpace();
     const [range, setRange] = useState<string>("30d");
 
     const timelineQuery = useQuery({
-        queryKey: ["timeline", range, codebaseId],
+        queryKey: ["timeline", range, spaceId],
         queryFn: async () => {
             const query: Record<string, string> = { range };
-            if (codebaseId) query.codebaseId = codebaseId;
+            if (spaceId) query.spaceId = spaceId;
             return unwrapEden(await api.api.timeline.get({ query }));
         }
     });

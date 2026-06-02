@@ -11,7 +11,7 @@ import { Card, CardPanel } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { PageContainer, PageEmpty, PageHeader, PageLoading } from "@/components/ui/page";
 import { Separator } from "@/components/ui/separator";
-import { useActiveCodebase } from "@/features/codebases/use-active-codebase";
+import { useActiveSpace } from "@/features/spaces/use-active-space";
 import { getUser } from "@/functions/get-user";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
@@ -39,7 +39,7 @@ interface VocabEntry {
     word: string;
     category: string;
     expects: string[] | null;
-    codebaseId: string;
+    spaceId: string;
     userId: string | null;
     createdAt: Date;
     updatedAt: Date;
@@ -72,7 +72,7 @@ function categoryColor(category: string): string {
 
 function VocabularyPage() {
     const queryClient = useQueryClient();
-    const { codebaseId } = useActiveCodebase();
+    const { spaceId } = useActiveSpace();
 
     // Form state
     const [showForm, setShowForm] = useState(false);
@@ -91,26 +91,26 @@ function VocabularyPage() {
     const [selectedSuggestions, setSelectedSuggestions] = useState<Set<number>>(new Set());
 
     const vocabQuery = useQuery({
-        queryKey: ["vocabulary", codebaseId],
+        queryKey: ["vocabulary", spaceId],
         queryFn: async () => {
-            if (!codebaseId) return [];
+            if (!spaceId) return [];
             try {
-                return unwrapEden(await api.api.vocabulary.get({ query: { codebaseId } })) as VocabEntry[];
+                return unwrapEden(await api.api.vocabulary.get({ query: { spaceId } })) as VocabEntry[];
             } catch {
                 return [];
             }
         },
-        enabled: !!codebaseId
+        enabled: !!spaceId
     });
 
     const entries = Array.isArray(vocabQuery.data) ? vocabQuery.data : [];
 
     const createMutation = useMutation({
-        mutationFn: async (body: { word: string; category: Category; expects?: string[]; codebaseId: string }) => {
+        mutationFn: async (body: { word: string; category: Category; expects?: string[]; spaceId: string }) => {
             return unwrapEden(await api.api.vocabulary.post(body));
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["vocabulary", codebaseId] });
+            queryClient.invalidateQueries({ queryKey: ["vocabulary", spaceId] });
             resetForm();
             toast.success("Entry added");
         },
@@ -124,7 +124,7 @@ function VocabularyPage() {
             return unwrapEden(await api.api.vocabulary({ id }).patch(body));
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["vocabulary", codebaseId] });
+            queryClient.invalidateQueries({ queryKey: ["vocabulary", spaceId] });
             resetForm();
             toast.success("Entry updated");
         },
@@ -138,7 +138,7 @@ function VocabularyPage() {
             return unwrapEden(await api.api.vocabulary({ id }).delete());
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["vocabulary", codebaseId] });
+            queryClient.invalidateQueries({ queryKey: ["vocabulary", spaceId] });
             toast.success("Entry deleted");
         },
         onError: () => {
@@ -148,8 +148,8 @@ function VocabularyPage() {
 
     const suggestMutation = useMutation({
         mutationFn: async () => {
-            if (!codebaseId) throw new Error("No codebase");
-            return unwrapEden(await api.api.vocabulary.suggest.post({ codebaseId })) as SuggestedEntry[];
+            if (!spaceId) throw new Error("No space");
+            return unwrapEden(await api.api.vocabulary.suggest.post({ spaceId })) as SuggestedEntry[];
         },
         onSuccess: (data) => {
             const suggested = Array.isArray(data) ? data : [];
@@ -166,7 +166,7 @@ function VocabularyPage() {
 
     const bulkCreateMutation = useMutation({
         mutationFn: async (entriesToAdd: SuggestedEntry[]) => {
-            if (!codebaseId) throw new Error("No codebase");
+            if (!spaceId) throw new Error("No space");
             return unwrapEden(
                 await api.api.vocabulary.bulk.post({
                     entries: entriesToAdd.map(e => ({
@@ -174,12 +174,12 @@ function VocabularyPage() {
                         category: e.category as Category,
                         ...(e.expects ? { expects: e.expects } : {})
                     })),
-                    codebaseId
+                    spaceId
                 })
             );
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["vocabulary", codebaseId] });
+            queryClient.invalidateQueries({ queryKey: ["vocabulary", spaceId] });
             setSuggestions(null);
             setSelectedSuggestions(new Set());
             toast.success("Entries added");
@@ -211,7 +211,7 @@ function VocabularyPage() {
 
     function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
-        if (!word.trim() || !codebaseId) return;
+        if (!word.trim() || !spaceId) return;
 
         if (editingId) {
             updateMutation.mutate({
@@ -226,7 +226,7 @@ function VocabularyPage() {
             createMutation.mutate({
                 word: word.trim().toLowerCase(),
                 category,
-                codebaseId,
+                spaceId,
                 expects: expects.length > 0 ? expects : undefined
             });
         }
@@ -276,13 +276,13 @@ function VocabularyPage() {
         {} as Record<Category, VocabEntry[]>
     );
 
-    if (!codebaseId) {
+    if (!spaceId) {
         return (
             <PageContainer maxWidth="5xl">
                 <PageHeader icon={BookOpen} title="Vocabulary" />
                 <Card>
                     <CardPanel className="p-6">
-                        <p className="text-muted-foreground text-sm">Select a codebase to manage vocabulary</p>
+                        <p className="text-muted-foreground text-sm">Select a space to manage vocabulary</p>
                     </CardPanel>
                 </Card>
             </PageContainer>

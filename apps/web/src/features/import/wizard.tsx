@@ -85,7 +85,7 @@ export function ImportWizard() {
     const [step, setStep] = useState<WizardStep>(1);
     const [files, setFiles] = useState<FileEntry[]>([]);
     const [selectedPaths, setSelectedPaths] = useState<Set<string>>(new Set());
-    const [codebaseId, setCodebaseId] = useState<string>("");
+    const [spaceId, setSpaceId] = useState<string>("");
     // preview, overrides, importStatus, existingHashes are consumed by steps 2-4
     const [preview, setPreview] = useState<PreviewFileResult[]>([]);
     const [overrides, setOverrides] = useState<Map<string, FileConfig>>(new Map());
@@ -93,18 +93,18 @@ export function ImportWizard() {
     const [existingHashes, setExistingHashes] = useState<Record<string, string>>({});
     const [previewActivePath, setPreviewActivePath] = useState<string>("");
 
-    const { data: codebases } = useApiQuery<{ id: string; name: string }[]>({
-        queryKey: ["codebases"],
-        queryFn: () => api.api.codebases.get(),
+    const { data: spaces } = useApiQuery<{ id: string; name: string }[]>({
+        queryKey: ["spaces"],
+        queryFn: () => api.api.spaces.get(),
         fallback: []
     });
 
-    const codebaseName =
-        codebases?.find(c => c.id === codebaseId)?.name ?? codebaseId;
+    const spaceName =
+        spaces?.find(c => c.id === spaceId)?.name ?? spaceId;
 
     const canNext =
         step === 1
-            ? selectedPaths.size > 0 && codebaseId !== ""
+            ? selectedPaths.size > 0 && spaceId !== ""
             : step === 2
               ? selectedPaths.size > 0
               : true;
@@ -122,7 +122,7 @@ export function ImportWizard() {
         setStep(1);
         setFiles([]);
         setSelectedPaths(new Set());
-        setCodebaseId("");
+        setSpaceId("");
         setPreview([]);
         setOverrides(new Map());
         setImportStatus(new Map());
@@ -145,15 +145,15 @@ export function ImportWizard() {
                         onFilesChange={setFiles}
                         selectedPaths={selectedPaths}
                         onSelectionChange={setSelectedPaths}
-                        codebaseId={codebaseId}
-                        onCodebaseChange={setCodebaseId}
+                        spaceId={spaceId}
+                        onSpaceChange={setSpaceId}
                     />
                 )}
                 {step === 2 && (
                     <StepPreview
                         files={files}
                         selectedPaths={selectedPaths}
-                        codebaseId={codebaseId}
+                        spaceId={spaceId}
                         preview={preview}
                         onPreviewLoaded={(results, hashes) => {
                             setPreview(results);
@@ -171,7 +171,7 @@ export function ImportWizard() {
                         preview={preview}
                         overrides={overrides}
                         existingHashes={existingHashes}
-                        codebaseName={codebaseName}
+                        spaceName={spaceName}
                         onGoToFile={(path) => {
                             setPreviewActivePath(path);
                             setStep(2);
@@ -182,7 +182,7 @@ export function ImportWizard() {
                     <StepImport
                         files={files}
                         selectedPaths={selectedPaths}
-                        codebaseId={codebaseId}
+                        spaceId={spaceId}
                         overrides={overrides}
                         importStatus={importStatus}
                         onStatusChange={setImportStatus}

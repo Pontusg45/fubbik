@@ -38,7 +38,7 @@ interface ChunksToolbarProps {
     view?: string;
     origin?: string;
     reviewStatus?: string;
-    allCodebases?: string;
+    allSpaces?: string;
     activeTags: string[];
     activeFilterCount: number;
     hasActiveFilters: boolean;
@@ -70,7 +70,7 @@ export function ChunksToolbar({
     view,
     origin,
     reviewStatus,
-    allCodebases,
+    allSpaces,
     activeTags,
     activeFilterCount,
     hasActiveFilters,
@@ -112,13 +112,13 @@ export function ChunksToolbar({
                     )}
                 </div>
 
-                {/* All codebases toggle */}
+                {/* All spaces toggle */}
                 <Button
                     variant={isFederated ? "default" : "outline"}
                     size="sm"
-                    onClick={() => onUpdateSearch({ allCodebases: isFederated ? undefined : "true" })}
+                    onClick={() => onUpdateSearch({ allSpaces: isFederated ? undefined : "true" })}
                     className="gap-1.5"
-                    title="Search across all codebases"
+                    title="Search across all spaces"
                 >
                     <Globe className="size-3.5" />
                     All
@@ -230,7 +230,7 @@ export function ChunksToolbar({
                 minConnections={minConnections}
                 origin={origin}
                 reviewStatus={reviewStatus}
-                allCodebases={allCodebases}
+                allSpaces={allSpaces}
                 activeTags={activeTags}
                 onRemoveFilter={(key) => {
                     if (key.startsWith("tag:")) {

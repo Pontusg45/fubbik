@@ -35,7 +35,7 @@ function deriveFolderTags(path: string): string[] {
 interface StepPreviewProps {
     files: FileEntry[];
     selectedPaths: Set<string>;
-    codebaseId: string;
+    spaceId: string;
     preview: PreviewFileResult[];
     onPreviewLoaded: (results: PreviewFileResult[], hashes: Record<string, string>) => void;
     overrides: Map<string, FileConfig>;
@@ -50,7 +50,7 @@ interface StepPreviewProps {
 export function StepPreview({
     files,
     selectedPaths,
-    codebaseId,
+    spaceId,
     preview,
     onPreviewLoaded,
     overrides,
@@ -85,7 +85,7 @@ export function StepPreview({
                 const raw = unwrapEden(
                     await api.api.chunks["import-docs"].preview.post({
                         files: selectedFiles.map(f => ({ path: f.path, content: f.content })),
-                        codebaseId
+                        spaceId
                     })
                 );
                 // Backend returns { files, existingHashes }

@@ -14,7 +14,7 @@ import { useSSEImport } from "../use-sse-import";
 interface StepImportProps {
     files: FileEntry[];
     selectedPaths: Set<string>;
-    codebaseId: string;
+    spaceId: string;
     overrides: Map<string, FileConfig>;
     importStatus: Map<string, ImportFileStatus>;
     onStatusChange: React.Dispatch<React.SetStateAction<Map<string, ImportFileStatus>>>;
@@ -28,7 +28,7 @@ interface StepImportProps {
 export function StepImport({
     files,
     selectedPaths,
-    codebaseId,
+    spaceId,
     overrides,
     importStatus,
     onStatusChange,
@@ -72,7 +72,7 @@ export function StepImport({
 
         void startImport({
             files: selectedFiles.map(f => ({ path: f.path, content: f.content })),
-            codebaseId,
+            spaceId,
             templateOverrides,
             onFileUpdate: (path, status) => {
                 onStatusChange(prev => {

@@ -30,7 +30,7 @@ export function useCollections() {
     });
 
     const createMutation = useMutation({
-        mutationFn: async (body: { name: string; description?: string; filter: CollectionFilter; codebaseId?: string }) => {
+        mutationFn: async (body: { name: string; description?: string; filter: CollectionFilter; spaceId?: string }) => {
             return unwrapEden(await api.api.collections.post(body));
         },
         onSuccess: () => {
@@ -49,8 +49,8 @@ export function useCollections() {
 
     const collections = collectionsQuery.data ?? [];
 
-    function createCollection(name: string, filter: CollectionFilter, codebaseId?: string) {
-        createMutation.mutate({ name, filter, codebaseId });
+    function createCollection(name: string, filter: CollectionFilter, spaceId?: string) {
+        createMutation.mutate({ name, filter, spaceId });
     }
 
     function deleteCollection(id: string) {

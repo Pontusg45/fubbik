@@ -48,22 +48,22 @@ export interface ConnectionRelationMeta {
     builtIn: boolean;
 }
 
-export function useChunkTypes(codebaseId?: string) {
+export function useChunkTypes(spaceId?: string) {
     return useQuery({
-        queryKey: ["chunk-types", codebaseId ?? null],
+        queryKey: ["chunk-types", spaceId ?? null],
         queryFn: async () =>
-            unwrapEden(await api.api["chunk-types"].get({ query: codebaseId ? { codebaseId } : ({} as never) })) as ChunkTypeMeta[],
+            unwrapEden(await api.api["chunk-types"].get({ query: spaceId ? { spaceId } : ({} as never) })) as ChunkTypeMeta[],
         staleTime: STALE_FOREVER,
         gcTime: STALE_FOREVER
     });
 }
 
-export function useConnectionRelations(codebaseId?: string) {
+export function useConnectionRelations(spaceId?: string) {
     return useQuery({
-        queryKey: ["connection-relations", codebaseId ?? null],
+        queryKey: ["connection-relations", spaceId ?? null],
         queryFn: async () =>
             unwrapEden(
-                await api.api["connection-relations"].get({ query: codebaseId ? { codebaseId } : ({} as never) })
+                await api.api["connection-relations"].get({ query: spaceId ? { spaceId } : ({} as never) })
             ) as ConnectionRelationMeta[],
         staleTime: STALE_FOREVER,
         gcTime: STALE_FOREVER
@@ -97,8 +97,8 @@ export function resolveChunkTypeIcon(iconName: string | null | undefined): Lucid
  * Returns metadata for a single chunk type, merging the DB catalog with a sync default
  * so the first render never shows nothing. Prefer this over prop-drilling metadata.
  */
-export function useChunkTypeMeta(typeSlug: string | null | undefined, codebaseId?: string): ChunkTypeMeta {
-    const { data } = useChunkTypes(codebaseId);
+export function useChunkTypeMeta(typeSlug: string | null | undefined, spaceId?: string): ChunkTypeMeta {
+    const { data } = useChunkTypes(spaceId);
     const slug = typeSlug ?? "note";
     const match = data?.find(t => t.id === slug);
     if (match) return match;
@@ -114,8 +114,8 @@ export function useChunkTypeMeta(typeSlug: string | null | undefined, codebaseId
     };
 }
 
-export function useRelationMeta(relationSlug: string | null | undefined, codebaseId?: string): ConnectionRelationMeta {
-    const { data } = useConnectionRelations(codebaseId);
+export function useRelationMeta(relationSlug: string | null | undefined, spaceId?: string): ConnectionRelationMeta {
+    const { data } = useConnectionRelations(spaceId);
     const slug = relationSlug ?? "related_to";
     const match = data?.find(r => r.id === slug);
     if (match) return match;
@@ -132,8 +132,8 @@ export function useRelationMeta(relationSlug: string | null | undefined, codebas
     };
 }
 
-export function useRelationColor(relationSlug: string | null | undefined, codebaseId?: string): string {
-    return useRelationMeta(relationSlug, codebaseId).color;
+export function useRelationColor(relationSlug: string | null | undefined, spaceId?: string): string {
+    return useRelationMeta(relationSlug, spaceId).color;
 }
 
 /**
@@ -144,9 +144,9 @@ export function useRelationColor(relationSlug: string | null | undefined, codeba
  */
 export function useInverseRelationMeta(
     relationSlug: string | null | undefined,
-    codebaseId?: string
+    spaceId?: string
 ): ConnectionRelationMeta | null {
-    const { data } = useConnectionRelations(codebaseId);
+    const { data } = useConnectionRelations(spaceId);
     if (!relationSlug || !data) return null;
     const forward = data.find(r => r.id === relationSlug);
     if (!forward?.inverseOfId) return null;

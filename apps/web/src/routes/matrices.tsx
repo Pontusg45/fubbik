@@ -37,7 +37,7 @@ interface Matrix {
     name: string;
     layer: string;
     description: string | null;
-    codebaseId: string | null;
+    spaceId: string | null;
     createdAt: string;
     updatedAt: string;
 }

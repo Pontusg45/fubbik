@@ -58,11 +58,11 @@ function tokenBadgeColor(category: string | null, hasWarning: boolean): string {
 interface StepBuilderProps {
     steps: StepRow[];
     onStepsChange: (steps: StepRow[]) => void;
-    codebaseId: string | null | undefined;
+    spaceId: string | null | undefined; // kept as prop name for backward compat
     stepErrors: StepError[];
 }
 
-export function StepBuilder({ steps, onStepsChange, codebaseId, stepErrors }: StepBuilderProps) {
+export function StepBuilder({ steps, onStepsChange, spaceId: spaceId, stepErrors }: StepBuilderProps) {
     const queryClient = useQueryClient();
 
     // Vocabulary parsing state
@@ -75,7 +75,7 @@ export function StepBuilder({ steps, onStepsChange, codebaseId, stepErrors }: St
     // Debounced parse function
     const triggerParse = useCallback(
         (stepIndex: number, text: string) => {
-            if (!codebaseId || !text.trim()) {
+            if (!spaceId || !text.trim()) {
                 setParseResults(prev => {
                     const next = { ...prev };
                     delete next[stepIndex];
@@ -92,7 +92,7 @@ export function StepBuilder({ steps, onStepsChange, codebaseId, stepErrors }: St
             debounceTimers.current[stepIndex] = setTimeout(async () => {
                 try {
                     const result = unwrapEden(
-                        await api.api.vocabulary.parse.post({ text, codebaseId })
+                        await api.api.vocabulary.parse.post({ text, spaceId })
                     ) as ParseResult;
                     setParseResults(prev => ({ ...prev, [stepIndex]: result }));
                 } catch {
@@ -100,7 +100,7 @@ export function StepBuilder({ steps, onStepsChange, codebaseId, stepErrors }: St
                 }
             }, 300);
         },
-        [codebaseId]
+        [spaceId]
     );
 
     // Cleanup timers on unmount
@@ -113,11 +113,11 @@ export function StepBuilder({ steps, onStepsChange, codebaseId, stepErrors }: St
     }, []);
 
     const addWordMutation = useMutation({
-        mutationFn: async (body: { word: string; category: VocabCategory; expects?: string[]; codebaseId: string }) => {
+        mutationFn: async (body: { word: string; category: VocabCategory; expects?: string[]; spaceId: string }) => {
             return unwrapEden(await api.api.vocabulary.post(body));
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["vocabulary", codebaseId] });
+            queryClient.invalidateQueries({ queryKey: ["vocabulary", spaceId] });
             toast.success("Word added to vocabulary");
             // Re-trigger parse for the step that had the word
             if (addingWordAtStep !== null) {
@@ -171,11 +171,11 @@ export function StepBuilder({ steps, onStepsChange, codebaseId, stepErrors }: St
     }
 
     function submitAddWord() {
-        if (!addingWordAtStep || !codebaseId) return;
+        if (!addingWordAtStep || !spaceId) return;
         addWordMutation.mutate({
             word: addingWordAtStep.word.toLowerCase(),
             category: addCategory,
-            codebaseId,
+            spaceId,
             ...(addExpects.length > 0 ? { expects: addExpects } : {})
         });
     }
@@ -239,7 +239,7 @@ export function StepBuilder({ steps, onStepsChange, codebaseId, stepErrors }: St
                             </div>
 
                             {/* Vocabulary parse tokens */}
-                            {codebaseId && parseResult && parseResult.tokens.length > 0 && (
+                            {spaceId && parseResult && parseResult.tokens.length > 0 && (
                                 <div className="ml-[6.5rem] mt-1 flex flex-wrap gap-1">
                                     {parseResult.tokens.map((token, ti) => {
                                         const hasWarning = warningWords.has(token.text.toLowerCase());

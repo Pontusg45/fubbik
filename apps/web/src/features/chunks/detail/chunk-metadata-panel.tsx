@@ -103,10 +103,10 @@ export function ChunkMetadataPanel({
                             </button>
                         </MetaRow>
                         {primaryCodebase && (
-                            <MetaRow label="Codebase">
+                            <MetaRow label="Space">
                                 <Link
-                                    to="/codebases/$codebaseId"
-                                    params={{ codebaseId: primaryCodebase.id }}
+                                    to="/spaces/$spaceId"
+                                    params={{ spaceId: primaryCodebase.id }}
                                     className="hover:text-foreground transition-colors truncate"
                                 >
                                     {primaryCodebase.name}

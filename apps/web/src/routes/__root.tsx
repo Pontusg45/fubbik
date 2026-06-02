@@ -21,8 +21,8 @@ import { useStaleCount } from "@/features/staleness/use-stale-count";
 import { usePendingProposalCount } from "@/features/proposals/use-pending-proposal-count";
 import { KeyboardShortcutsHelp, useGlobalShortcuts } from "@/features/nav/keyboard-shortcuts";
 import { MobileNav } from "@/features/nav/mobile-nav";
-import { ActiveCodebaseProvider } from "@/features/codebases/active-codebase-provider";
-import { CodebaseSwitcher } from "@/features/codebases/codebase-switcher";
+import { ActiveSpaceProvider } from "@/features/spaces/active-space-provider";
+import { SpaceSwitcher } from "@/features/spaces/space-switcher";
 import { FeatureSwitcher } from "@/features/feature-flags/feature-switcher";
 import { CommandPalette } from "@/features/command-palette/command-palette";
 import { NotificationBell } from "@/features/nav/notification-bell";
@@ -74,7 +74,7 @@ function RootDocument() {
             </head>
             <body>
                 <ThemeProvider>
-                    <ActiveCodebaseProvider>
+                    <ActiveSpaceProvider>
                     <SmartLinkProvider>
                     <VocabularyPrimer />
                     <a
@@ -91,7 +91,7 @@ function RootDocument() {
                                         <FubbikLogo className="size-6" />
                                         <span className="font-bold">fubbik</span>
                                     </Link>
-                                    <CodebaseSwitcher />
+                                    <SpaceSwitcher />
                                     <FeatureSwitcher />
                                     <nav aria-label="Main navigation" className="hidden items-center gap-1 md:flex">
                                         <Link
@@ -177,9 +177,9 @@ function RootDocument() {
                                                     <FileSearch className="size-4" />
                                                     Context
                                                 </DropdownMenuItem>
-                                                <DropdownMenuItem render={<Link to="/codebases" />}>
+                                                <DropdownMenuItem render={<Link to="/spaces" />}>
                                                     <Folder className="size-4" />
-                                                    Codebases
+                                                    Spaces
                                                 </DropdownMenuItem>
                                                 <DropdownMenuItem render={<Link to="/workspaces" />}>
                                                     <Layers className="size-4" />
@@ -240,7 +240,7 @@ function RootDocument() {
                     <KeyboardShortcutsHelp open={helpOpen} onOpenChange={setHelpOpen} />
                     <Toaster richColors />
                     </SmartLinkProvider>
-                    </ActiveCodebaseProvider>
+                    </ActiveSpaceProvider>
                 </ThemeProvider>
 
                 <TanStackRouterDevtools position="bottom-left" />

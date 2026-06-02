@@ -11,7 +11,7 @@ import { useChunksData } from "@/features/chunks/use-chunks-data";
 import { useBulkChunkOperations } from "@/features/chunks/use-bulk-chunk-operations";
 import { useChunkFilters } from "@/features/chunks/use-chunk-filters";
 import { useSavedFilters } from "@/features/chunks/use-saved-filters";
-import { useActiveCodebase } from "@/features/codebases/use-active-codebase";
+import { useActiveSpace } from "@/features/spaces/use-active-space";
 import { ImportDocsDialog } from "@/features/import/import-dialog";
 import { ShortcutHint } from "@/features/nav/shortcut-hint";
 import { getUser } from "@/functions/get-user";
@@ -33,7 +33,7 @@ export const Route = createFileRoute("/chunks/")({
         view?: string;
         origin?: string;
         reviewStatus?: string;
-        allCodebases?: string;
+        allSpaces?: string;
     } => ({
         type: (search.type as string) || undefined,
         q: (search.q as string) || undefined,
@@ -49,7 +49,7 @@ export const Route = createFileRoute("/chunks/")({
         view: (search.view as string) || undefined,
         origin: (search.origin as string) || undefined,
         reviewStatus: (search.reviewStatus as string) || undefined,
-        allCodebases: (search.allCodebases as string) || undefined
+        allSpaces: (search.allSpaces as string) || undefined
     }),
     beforeLoad: async () => {
         let session = null;
@@ -66,7 +66,7 @@ function ChunksList() {
     const navTo = useNavigate();
     const {
         type, q, sort, tags, size, after, enrichment, minConnections,
-        group, subGroup, view, origin, reviewStatus, allCodebases,
+        group, subGroup, view, origin, reviewStatus, allSpaces,
         activeTags, activeFilterCount, hasActiveFilters, isFederated,
         updateSearch, clearAllFilters, toggleTag,
     } = useChunkFilters();
@@ -81,7 +81,7 @@ function ChunksList() {
         setSearchInput("");
     };
 
-    const { codebaseId } = useActiveCodebase();
+    const { spaceId } = useActiveSpace();
     const { saveFilter } = useSavedFilters();
 
     const {
@@ -107,7 +107,7 @@ function ChunksList() {
         after,
         enrichment,
         minConnections,
-        codebaseId,
+        codebaseId: spaceId,
         origin,
         reviewStatus,
         isFederated,
@@ -239,14 +239,14 @@ function ChunksList() {
                 view={view}
                 origin={origin}
                 reviewStatus={reviewStatus}
-                allCodebases={allCodebases}
+                allSpaces={allSpaces}
                 activeTags={activeTags}
                 activeFilterCount={activeFilterCount}
                 hasActiveFilters={hasActiveFilters}
                 isFederated={isFederated}
                 total={total}
                 availableTags={tagsQuery.data ?? []}
-                codebaseId={codebaseId}
+                codebaseId={spaceId}
                 onUpdateSearch={updateSearch}
                 onToggleTag={toggleTag}
                 onClearAllFilters={handleClearAllFilters}
@@ -268,7 +268,7 @@ function ChunksList() {
                 tags={tags}
                 origin={origin}
                 reviewStatus={reviewStatus}
-                codebaseId={codebaseId}
+                codebaseId={spaceId}
                 isFederated={isFederated}
                 isLoading={activeQuery.isLoading}
                 hasNextPage={!!activeQuery.hasNextPage}

@@ -16,17 +16,17 @@ export type ChunkSearchParams = {
     view?: string;
     origin?: string;
     reviewStatus?: string;
-    allCodebases?: string;
+    allSpaces?: string;
 };
 
 export function useChunkFilters() {
     const navigate = useNavigate({ from: "/chunks/" });
-    const { type, q, sort, tags, size, after, enrichment, minConnections, group, subGroup, collection, view, origin, reviewStatus, allCodebases } = Route.useSearch();
+    const { type, q, sort, tags, size, after, enrichment, minConnections, group, subGroup, collection, view, origin, reviewStatus, allSpaces } = Route.useSearch();
 
     const activeTags = tags ? tags.split(",") : [];
     const activeFilterCount = [tags, size, after, enrichment, minConnections, origin, reviewStatus].filter(Boolean).length;
     const hasActiveFilters = !!(type || q || sort || tags || size || after || enrichment || minConnections || origin || reviewStatus);
-    const isFederated = allCodebases === "true";
+    const isFederated = allSpaces === "true";
 
     function updateSearch(params: Partial<ChunkSearchParams>) {
         navigate({
@@ -45,7 +45,7 @@ export function useChunkFilters() {
                 view: params.view !== undefined ? params.view : view,
                 origin: params.origin !== undefined ? params.origin : origin,
                 reviewStatus: params.reviewStatus !== undefined ? params.reviewStatus : reviewStatus,
-                allCodebases: params.allCodebases !== undefined ? params.allCodebases : allCodebases
+                allSpaces: params.allSpaces !== undefined ? params.allSpaces : allSpaces
             }
         });
     }
@@ -67,7 +67,7 @@ export function useChunkFilters() {
                 view,
                 origin: undefined,
                 reviewStatus: undefined,
-                allCodebases: undefined
+                allSpaces: undefined
             }
         });
     }
@@ -93,7 +93,7 @@ export function useChunkFilters() {
         view,
         origin,
         reviewStatus,
-        allCodebases,
+        allSpaces,
         // Derived
         activeTags,
         activeFilterCount,

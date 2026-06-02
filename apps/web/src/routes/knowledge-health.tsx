@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardPanel } from "@/components/ui/card";
 import { PageContainer, PageHeader, PageLoading } from "@/components/ui/page";
-import { useActiveCodebase } from "@/features/codebases/use-active-codebase";
+import { useActiveSpace } from "@/features/spaces/use-active-space";
 import { getUser } from "@/functions/get-user";
 import { BrokenLinkChecker } from "@/features/health/broken-link-checker";
 import { api } from "@/utils/api";
@@ -34,7 +34,7 @@ function daysAgo(date: string | Date): string {
 }
 
 function KnowledgeHealthPage() {
-    const { codebaseId } = useActiveCodebase();
+    const { spaceId } = useActiveSpace();
 
     const gapsQuery = useQuery({
         queryKey: ["knowledge-gaps"],
@@ -47,11 +47,11 @@ function KnowledgeHealthPage() {
     });
 
     const healthQuery = useQuery({
-        queryKey: ["knowledge-health", codebaseId],
+        queryKey: ["knowledge-health", spaceId],
         queryFn: async () => {
-            const query: { codebaseId?: string } = {};
-            if (codebaseId) {
-                query.codebaseId = codebaseId;
+            const query: { spaceId?: string } = {};
+            if (spaceId) {
+                query.spaceId = spaceId;
             }
             return unwrapEden(await api.api.health.knowledge.get({ query }));
         }
@@ -292,7 +292,7 @@ function KnowledgeHealthPage() {
                                 </p>
                                 <div className="divide-y">
                                     {gapsQuery.data.map((gap: any, i: number) => (
-                                        <GapRow key={i} gap={gap} codebaseId={codebaseId} />
+                                        <GapRow key={i} gap={gap} spaceId={spaceId} />
                                     ))}
                                 </div>
                             </CardPanel>
@@ -304,7 +304,7 @@ function KnowledgeHealthPage() {
     );
 }
 
-function GapRow({ gap, codebaseId }: { gap: { description: string; frequency: number; session_ids: string[] }; codebaseId: string | null }) {
+function GapRow({ gap, spaceId }: { gap: { description: string; frequency: number; session_ids: string[] }; spaceId: string | null }) {
     const queryClient = useQueryClient();
 
     const createReqMutation = useMutation({
@@ -314,7 +314,7 @@ function GapRow({ gap, codebaseId }: { gap: { description: string; frequency: nu
                 description: `Knowledge gap from ${gap.frequency} session(s).\n\n${gap.description}`,
                 priority: "should",
                 steps: [{ keyword: "given" as const, text: gap.description }],
-                codebaseId: codebaseId ?? undefined,
+                spaceId: spaceId ?? undefined,
             }));
         },
         onSuccess: () => {

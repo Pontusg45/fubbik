@@ -10,7 +10,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useActiveCodebase } from "@/features/codebases/use-active-codebase";
+import { useActiveSpace } from "@/features/spaces/use-active-space";
 import { AddFilterDropdown } from "@/features/search/add-filter-dropdown";
 import { FilterPills } from "@/features/search/filter-pills";
 import { QueryInput } from "@/features/search/query-input";
@@ -55,7 +55,7 @@ function SearchPage() {
     const { q } = Route.useSearch();
     const navigate = useNavigate();
     const queryClient = useQueryClient();
-    const { codebaseId } = useActiveCodebase();
+    const { spaceId } = useActiveSpace();
 
     const builder = useQueryBuilder();
     const [rawInput, setRawInput] = useState(q ?? "");
@@ -97,7 +97,7 @@ function SearchPage() {
                     sort: params.sort,
                     limit: 20,
                     offset: 0,
-                    codebaseId: codebaseId ?? undefined,
+                    spaceId: spaceId ?? undefined,
                 })
             );
         },
@@ -125,7 +125,7 @@ function SearchPage() {
             if (debounceRef.current) clearTimeout(debounceRef.current);
         };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [builder.clauses, builder.join, builder.sort, codebaseId]);
+    }, [builder.clauses, builder.join, builder.sort, spaceId]);
 
     // Health (AGE availability) — checked once per session with a long stale time
     const healthQuery = useQuery({
@@ -140,11 +140,11 @@ function SearchPage() {
 
     // Saved queries
     const savedQueriesQuery = useQuery({
-        queryKey: ["search-saved", codebaseId],
+        queryKey: ["search-saved", spaceId],
         queryFn: async () => {
             return unwrapEden(
                 await api.api.search.saved.get({
-                    query: { codebaseId: codebaseId ?? undefined },
+                    query: { spaceId: spaceId ?? undefined },
                 })
             );
         },
@@ -192,7 +192,7 @@ function SearchPage() {
                         join: builder.join,
                         sort: builder.sort,
                     },
-                    codebaseId: codebaseId ?? undefined,
+                    spaceId: spaceId ?? undefined,
                 })
             );
             void queryClient.invalidateQueries({ queryKey: ["search-saved"] });

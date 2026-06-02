@@ -16,7 +16,7 @@ export function useChunksData({
     after,
     enrichment,
     minConnections,
-    codebaseId,
+    spaceId,
     origin,
     reviewStatus,
     isFederated,
@@ -29,7 +29,7 @@ export function useChunksData({
     after?: string;
     enrichment?: string;
     minConnections?: string;
-    codebaseId?: string | null;
+    spaceId?: string | null;
     origin?: string;
     reviewStatus?: string;
     isFederated: boolean;
@@ -37,7 +37,7 @@ export function useChunksData({
     const queryClient = useQueryClient();
 
     const chunksQuery = useInfiniteQuery({
-        queryKey: ["chunks-list", type, q, sort, tags, after, enrichment, minConnections, codebaseId, origin, reviewStatus],
+        queryKey: ["chunks-list", type, q, sort, tags, after, enrichment, minConnections, spaceId, origin, reviewStatus],
         queryFn: async ({ pageParam = 1 }) => {
             try {
                 return unwrapEden(
@@ -52,7 +52,7 @@ export function useChunksData({
                             minConnections,
                             limit: String(LIMIT),
                             offset: String((pageParam - 1) * LIMIT),
-                            ...(codebaseId === "global" ? { global: "true" } : codebaseId ? { codebaseId } : {}),
+                            ...(spaceId === "global" ? { global: "true" } : spaceId ? { spaceId } : {}),
                             origin: origin as "human" | "ai" | undefined,
                             reviewStatus: reviewStatus as "draft" | "reviewed" | "approved" | undefined
                         }

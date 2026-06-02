@@ -42,9 +42,9 @@ function WorkspacesPage() {
         fallback: [],
     });
 
-    const codebasesQuery = useApiQuery<any[]>({
-        queryKey: ["codebases"],
-        queryFn: () => api.api.codebases.get(),
+    const spacesQuery = useApiQuery<any[]>({
+        queryKey: ["spaces"],
+        queryFn: () => api.api.spaces.get(),
         fallback: [],
     });
 
@@ -72,32 +72,32 @@ function WorkspacesPage() {
         onError: () => toast.error("Failed to delete workspace")
     });
 
-    const addCodebaseMutation = useMutation({
-        mutationFn: async ({ workspaceId, codebaseId }: { workspaceId: string; codebaseId: string }) => {
-            return unwrapEden(await api.api.workspaces({ id: workspaceId }).codebases.post({ codebaseId }));
+    const addSpaceMutation = useMutation({
+        mutationFn: async ({ workspaceId, spaceId }: { workspaceId: string; spaceId: string }) => {
+            return unwrapEden(await api.api.workspaces({ id: workspaceId }).spaces.post({ spaceId }));
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["workspaces"] });
             queryClient.invalidateQueries({ queryKey: ["workspace-detail"] });
-            toast.success("Codebase added");
+            toast.success("Space added");
         },
-        onError: () => toast.error("Failed to add codebase")
+        onError: () => toast.error("Failed to add space")
     });
 
-    const removeCodebaseMutation = useMutation({
-        mutationFn: async ({ workspaceId, codebaseId }: { workspaceId: string; codebaseId: string }) => {
-            return unwrapEden(await api.api.workspaces({ id: workspaceId }).codebases({ codebaseId }).delete());
+    const removeSpaceMutation = useMutation({
+        mutationFn: async ({ workspaceId, spaceId }: { workspaceId: string; spaceId: string }) => {
+            return unwrapEden(await api.api.workspaces({ id: workspaceId }).spaces({ spaceId }).delete());
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["workspaces"] });
             queryClient.invalidateQueries({ queryKey: ["workspace-detail"] });
-            toast.success("Codebase removed");
+            toast.success("Space removed");
         },
-        onError: () => toast.error("Failed to remove codebase")
+        onError: () => toast.error("Failed to remove space")
     });
 
     const workspaces = Array.isArray(workspacesQuery.data) ? workspacesQuery.data : [];
-    const codebases = Array.isArray(codebasesQuery.data) ? codebasesQuery.data : [];
+    const spaces = Array.isArray(spacesQuery.data) ? spacesQuery.data : [];
 
     function handleCreate(e: React.FormEvent) {
         e.preventDefault();
@@ -151,7 +151,7 @@ function WorkspacesPage() {
                         <PageEmpty
                             icon={Layers}
                             title="No workspaces"
-                            description="Create a workspace to group codebases together."
+                            description="Create a workspace to group spaces together."
                             action={
                                 <Button onClick={() => document.querySelector<HTMLInputElement>('input[placeholder="Name"]')?.focus()}>
                                     Create Workspace
@@ -167,12 +167,12 @@ function WorkspacesPage() {
                                     expanded={expandedId === ws.id}
                                     onToggle={() => setExpandedId(expandedId === ws.id ? null : ws.id)}
                                     onDelete={() => setDeleteTarget({ id: ws.id, name: ws.name })}
-                                    codebases={codebases}
-                                    onAddCodebase={(codebaseId: string) =>
-                                        addCodebaseMutation.mutate({ workspaceId: ws.id, codebaseId })
+                                    spaces={spaces}
+                                    onAddSpace={(spaceId: string) =>
+                                        addSpaceMutation.mutate({ workspaceId: ws.id, spaceId })
                                     }
-                                    onRemoveCodebase={(codebaseId: string) =>
-                                        removeCodebaseMutation.mutate({ workspaceId: ws.id, codebaseId })
+                                    onRemoveSpace={(spaceId: string) =>
+                                        removeSpaceMutation.mutate({ workspaceId: ws.id, spaceId })
                                     }
                                 />
                             ))}
@@ -205,19 +205,19 @@ function WorkspaceRow({
     expanded,
     onToggle,
     onDelete,
-    codebases,
-    onAddCodebase,
-    onRemoveCodebase
+    spaces,
+    onAddSpace,
+    onRemoveSpace
 }: {
     workspace: any;
     expanded: boolean;
     onToggle: () => void;
     onDelete: () => void;
-    codebases: any[];
-    onAddCodebase: (codebaseId: string) => void;
-    onRemoveCodebase: (codebaseId: string) => void;
+    spaces: any[];
+    onAddSpace: (spaceId: string) => void;
+    onRemoveSpace: (spaceId: string) => void;
 }) {
-    type WorkspaceDetail = { codebases?: Array<{ id: string; name?: string }> } | null;
+    type WorkspaceDetail = { spaces?: Array<{ id: string; name?: string }>; codebases?: Array<{ id: string; name?: string }> } | null;
     const detailQuery = useApiQuery<WorkspaceDetail>({
         queryKey: ["workspace-detail", workspace.id],
         queryFn: () => api.api.workspaces({ id: workspace.id }).get(),
@@ -226,9 +226,10 @@ function WorkspaceRow({
     });
 
     const detail = detailQuery.data;
-    const workspaceCodebases = detail?.codebases ?? [];
-    const workspaceCodebaseIds = new Set(workspaceCodebases.map(c => c.id));
-    const availableCodebases = codebases.filter(c => !workspaceCodebaseIds.has(c.id));
+    // Support both 'spaces' (new) and 'codebases' (legacy) field names in the response
+    const workspaceSpaces = (detail?.spaces ?? detail?.codebases) ?? [];
+    const workspaceSpaceIds = new Set(workspaceSpaces.map(c => c.id));
+    const availableSpaces = spaces.filter(c => !workspaceSpaceIds.has(c.id));
 
     return (
         <div className="py-3 first:pt-0 last:pb-0">
@@ -239,7 +240,7 @@ function WorkspaceRow({
                         <div className="flex items-center gap-2">
                             <p className="font-medium">{workspace.name}</p>
                             <Badge variant="secondary" size="sm" className="text-[10px]">
-                                {workspace.codebaseCount ?? 0} codebases
+                                {workspace.spaceCount ?? workspace.codebaseCount ?? 0} spaces
                             </Badge>
                         </div>
                         {workspace.description && (
@@ -256,18 +257,18 @@ function WorkspaceRow({
                 <div className="mt-3 ml-6 space-y-2">
                     {detailQuery.isLoading ? (
                         <p className="text-muted-foreground text-sm">Loading...</p>
-                    ) : workspaceCodebases.length === 0 ? (
-                        <p className="text-muted-foreground text-sm">No codebases in this workspace.</p>
+                    ) : workspaceSpaces.length === 0 ? (
+                        <p className="text-muted-foreground text-sm">No spaces in this workspace.</p>
                     ) : (
                         <div className="space-y-1">
-                            {workspaceCodebases.map((cb: any) => (
-                                <div key={cb.id} className="flex items-center justify-between rounded-md bg-muted/50 px-3 py-1.5">
+                            {workspaceSpaces.map((sp: any) => (
+                                <div key={sp.id} className="flex items-center justify-between rounded-md bg-muted/50 px-3 py-1.5">
                                     <div className="flex items-center gap-2">
                                         <Folder className="text-muted-foreground size-3.5" />
-                                        <span className="text-sm">{cb.name}</span>
+                                        <span className="text-sm">{sp.name}</span>
                                     </div>
                                     <button
-                                        onClick={() => onRemoveCodebase(cb.id)}
+                                        onClick={() => onRemoveSpace(sp.id)}
                                         className="text-muted-foreground hover:text-destructive"
                                     >
                                         <X className="size-3.5" />
@@ -277,23 +278,23 @@ function WorkspaceRow({
                         </div>
                     )}
 
-                    {availableCodebases.length > 0 && (
+                    {availableSpaces.length > 0 && (
                         <Popover>
                             <PopoverTrigger
                                 render={<Button variant="outline" size="sm" />}
                             >
                                 <Plus className="mr-1 size-3" />
-                                Add Codebase
+                                Add Space
                             </PopoverTrigger>
                             <PopoverContent align="start" className="w-56 p-1">
-                                {availableCodebases.map((cb: any) => (
+                                {availableSpaces.map((sp: any) => (
                                     <button
-                                        key={cb.id}
-                                        onClick={() => onAddCodebase(cb.id)}
+                                        key={sp.id}
+                                        onClick={() => onAddSpace(sp.id)}
                                         className="hover:bg-muted flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors"
                                     >
                                         <Folder className="text-muted-foreground size-3.5" />
-                                        {cb.name}
+                                        {sp.name}
                                     </button>
                                 ))}
                             </PopoverContent>

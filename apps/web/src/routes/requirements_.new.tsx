@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardPanel } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import { useActiveCodebase } from "@/features/codebases/use-active-codebase";
+import { useActiveSpace } from "@/features/spaces/use-active-space";
 import { ChunkLinker } from "@/features/requirements/chunk-linker";
 import { StepBuilder } from "@/features/requirements/step-builder";
 import { validateSteps, type Keyword, type StepRow, type StepError } from "@/features/requirements/validation";
@@ -39,7 +39,7 @@ const PRIORITIES = [
 function NewRequirement() {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
-    const { codebaseId } = useActiveCodebase();
+    const { spaceId } = useActiveSpace();
 
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
@@ -60,10 +60,10 @@ function NewRequirement() {
 
     const generateStepsMutation = useMutation({
         mutationFn: async () => {
-            const body: { description: string; codebaseId?: string } = {
+            const body: { description: string; spaceId?: string } = {
                 description: aiDescription.trim()
             };
-            if (codebaseId) body.codebaseId = codebaseId;
+            if (spaceId) body.spaceId = spaceId;
             const result = unwrapEden(await api.api.ai["structure-requirement"].post(body)) as {
                 steps: Array<{ keyword: Keyword; text: string }>;
             };
@@ -81,11 +81,11 @@ function NewRequirement() {
     });
 
     const useCasesQuery = useQuery({
-        queryKey: ["use-cases", codebaseId],
+        queryKey: ["use-cases", spaceId],
         queryFn: async () => {
             try {
-                const query: { codebaseId?: string } = {};
-                if (codebaseId) query.codebaseId = codebaseId;
+                const query: { spaceId?: string } = {};
+                if (spaceId) query.spaceId = spaceId;
                 const result = unwrapEden(await api.api["use-cases"].get({ query })) as
                     Array<{ id: string; name: string }>;
                 return result ?? [];
@@ -122,7 +122,7 @@ function NewRequirement() {
                 description?: string;
                 steps: Array<{ keyword: Keyword; text: string }>;
                 priority?: "must" | "should" | "could" | "wont";
-                codebaseId?: string;
+                spaceId?: string;
                 useCaseId?: string;
             } = {
                 title: title.trim(),
@@ -130,7 +130,7 @@ function NewRequirement() {
             };
             if (description.trim()) body.description = description.trim();
             if (priority) body.priority = priority as "must" | "should" | "could" | "wont";
-            if (codebaseId) body.codebaseId = codebaseId;
+            if (spaceId) body.spaceId = spaceId;
             if (useCaseId) body.useCaseId = useCaseId;
 
             const result = unwrapEden(await api.api.requirements.post(body)) as unknown as {
@@ -305,7 +305,7 @@ function NewRequirement() {
                     <StepBuilder
                         steps={steps}
                         onStepsChange={setSteps}
-                        codebaseId={codebaseId}
+                        spaceId={spaceId}
                         stepErrors={stepErrors}
                     />
 
@@ -315,7 +315,7 @@ function NewRequirement() {
                     <ChunkLinker
                         selectedChunkIds={selectedChunkIds}
                         onSelectedChunkIdsChange={setSelectedChunkIds}
-                        codebaseId={codebaseId}
+                        spaceId={spaceId}
                     />
 
                     <Separator />

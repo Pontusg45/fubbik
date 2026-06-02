@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardPanel } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { PageContainer, PageEmpty, PageHeader, PageLoading } from "@/components/ui/page";
-import { useActiveCodebase } from "@/features/codebases/use-active-codebase";
+import { useActiveSpace } from "@/features/spaces/use-active-space";
 import { getUser } from "@/functions/get-user";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
@@ -68,18 +68,18 @@ function ExpandableContent({ content }: { content: string }) {
 }
 
 function ContextPage() {
-    const { codebaseId } = useActiveCodebase();
+    const { spaceId } = useActiveSpace();
     const [inputValue, setInputValue] = useState("");
     const [searchPath, setSearchPath] = useState("");
 
     const contextQuery = useQuery({
-        queryKey: ["context-for-file", searchPath, codebaseId],
+        queryKey: ["context-for-file", searchPath, spaceId],
         queryFn: async () => {
             const result = unwrapEden(
                 await api.api.context["for-file"].get({
                     query: {
                         path: searchPath,
-                        ...(codebaseId && codebaseId !== "global" ? { codebaseId } : {})
+                        ...(spaceId && spaceId !== "global" ? { spaceId } : {})
                     }
                 })
             );

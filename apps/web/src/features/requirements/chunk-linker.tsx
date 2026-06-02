@@ -9,18 +9,18 @@ import { unwrapEden } from "@/utils/eden";
 interface ChunkLinkerProps {
     selectedChunkIds: string[];
     onSelectedChunkIdsChange: (ids: string[]) => void;
-    codebaseId: string | undefined | null;
+    codebaseId: string | undefined | null; // kept as prop name for backward compat
 }
 
-export function ChunkLinker({ selectedChunkIds, onSelectedChunkIdsChange, codebaseId }: ChunkLinkerProps) {
+export function ChunkLinker({ selectedChunkIds, onSelectedChunkIdsChange, codebaseId: spaceId }: ChunkLinkerProps) {
     const [chunkSearch, setChunkSearch] = useState("");
 
     const chunksQuery = useQuery({
-        queryKey: ["chunks-for-linking", codebaseId],
+        queryKey: ["chunks-for-linking", spaceId],
         queryFn: async () => {
             try {
-                const query: { codebaseId?: string; limit?: string } = { limit: "100" };
-                if (codebaseId) query.codebaseId = codebaseId;
+                const query: { spaceId?: string; limit?: string } = { limit: "100" };
+                if (spaceId) query.spaceId = spaceId;
                 const result = unwrapEden(await api.api.chunks.get({ query })) as {
                     chunks?: Array<{ id: string; title: string }>;
                 } | null;

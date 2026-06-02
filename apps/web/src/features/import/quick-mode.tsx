@@ -107,22 +107,22 @@ export function ImportQuickMode() {
     const queryClient = useQueryClient();
     const folderInputRef = useRef<HTMLInputElement>(null);
     const [previews, setPreviews] = useState<PreviewEntry[]>([]);
-    const [codebaseId, setCodebaseId] = useState<string>("");
+    const [spaceId, setSpaceId] = useState<string>("");
     const [result, setResult] = useState<ImportResult | null>(null);
     const [showErrors, setShowErrors] = useState(false);
 
-    const { data: codebases } = useApiQuery<Array<{ id: string; name: string }>>({
-        queryKey: ["codebases"],
-        queryFn: () => api.api.codebases.get(),
+    const { data: spaces } = useApiQuery<Array<{ id: string; name: string }>>({
+        queryKey: ["spaces"],
+        queryFn: () => api.api.spaces.get(),
         fallback: [],
     });
 
     const importMutation = useMutation({
-        mutationFn: async (payload: { files: FileEntry[]; codebaseId: string }) => {
+        mutationFn: async (payload: { files: FileEntry[]; spaceId: string }) => {
             const result = unwrapEden(
                 await api.api.chunks["import-docs"].post({
                     files: payload.files,
-                    codebaseId: payload.codebaseId
+                    spaceId: payload.spaceId
                 })
             );
             return result as ImportResult;
@@ -161,8 +161,8 @@ export function ImportQuickMode() {
     };
 
     const handleImport = () => {
-        if (!codebaseId) {
-            toast.error("Please select a codebase");
+        if (!spaceId) {
+            toast.error("Please select a space");
             return;
         }
         const selected = previews.filter(p => p.selected);
@@ -176,7 +176,7 @@ export function ImportQuickMode() {
         }
         importMutation.mutate({
             files: selected.map(p => ({ path: p.path, content: p.content })),
-            codebaseId
+            spaceId
         });
     };
 
@@ -204,15 +204,15 @@ export function ImportQuickMode() {
 
                 <div className="min-w-48">
                     <label className="text-sm font-medium">
-                        Codebase <span className="text-destructive">*</span>
+                        Space <span className="text-destructive">*</span>
                     </label>
                     <select
                         className="border-input bg-background mt-1 block w-full rounded-md border px-3 py-2 text-sm"
-                        value={codebaseId}
-                        onChange={e => setCodebaseId(e.target.value)}
+                        value={spaceId}
+                        onChange={e => setSpaceId(e.target.value)}
                     >
-                        <option value="">Select a codebase...</option>
-                        {codebases?.map((c: { id: string; name: string }) => (
+                        <option value="">Select a space...</option>
+                        {spaces?.map((c: { id: string; name: string }) => (
                             <option key={c.id} value={c.id}>
                                 {c.name}
                             </option>
@@ -224,7 +224,7 @@ export function ImportQuickMode() {
                     <Button
                         size="sm"
                         onClick={handleImport}
-                        disabled={importMutation.isPending || selectedCount === 0 || !codebaseId}
+                        disabled={importMutation.isPending || selectedCount === 0 || !spaceId}
                     >
                         <Upload className="mr-1 size-3.5" />
                         {importMutation.isPending

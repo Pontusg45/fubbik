@@ -10,7 +10,7 @@ import { useSearch } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 
 
-import { useActiveCodebase } from "@/features/codebases/use-active-codebase";
+import { useActiveSpace } from "@/features/spaces/use-active-space";
 import { formIslands, type IslandFormationResult } from "@/features/graph/island-formation";
 import type { GraphAction } from "@/features/graph/use-graph-state";
 import { api } from "@/utils/api";
@@ -19,16 +19,16 @@ import { unwrapEden } from "@/utils/eden";
 export type GraphData = NonNullable<ReturnType<typeof useGraphData>["data"]>;
 
 export function useGraphData(dispatch: React.Dispatch<GraphAction>) {
-    const { codebaseId, workspaceId } = useActiveCodebase();
+    const { spaceId, workspaceId } = useActiveSpace();
 
     const { data, isLoading } = useQuery({
-        queryKey: ["graph", codebaseId, workspaceId],
+        queryKey: ["graph", spaceId, workspaceId],
         queryFn: async () => {
             return unwrapEden(
                 await api.api.graph.get({
                     query: {
                         ...(workspaceId ? { workspaceId } : {}),
-                        ...(codebaseId && codebaseId !== "global" && !workspaceId ? { codebaseId } : {})
+                        ...(spaceId && spaceId !== "global" && !workspaceId ? { spaceId } : {})
                     }
                 })
             );
@@ -153,7 +153,7 @@ export function useGraphData(dispatch: React.Dispatch<GraphAction>) {
     return {
         data,
         isLoading,
-        codebaseId,
+        spaceId,
         workspaceId,
         scopedChunkTags,
         availableTagTypeIds,

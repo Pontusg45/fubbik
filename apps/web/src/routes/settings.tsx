@@ -12,7 +12,7 @@ import { PageContainer, PageHeader } from "@/components/ui/page";
 import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTab } from "@/components/ui/tabs";
-import { useActiveCodebase } from "@/features/codebases/use-active-codebase";
+import { useActiveSpace } from "@/features/spaces/use-active-space";
 import { getUser } from "@/functions/get-user";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
@@ -163,26 +163,26 @@ function UserSettingsTab() {
 
 function CodebaseSettingsTab() {
     const queryClient = useQueryClient();
-    const { codebaseId } = useActiveCodebase();
+    const { spaceId } = useActiveSpace();
 
     const { data: settings } = useQuery({
-        queryKey: ["settings", "codebase", codebaseId],
+        queryKey: ["settings", "codebase", spaceId],
         queryFn: async () => {
-            if (!codebaseId) return {};
+            if (!spaceId) return {};
             return unwrapEden(
-                await api.api.settings.codebase.get({ query: { codebaseId } })
+                await api.api.settings.codebase.get({ query: { codebaseId: spaceId } })
             ) as Record<string, unknown>;
         },
-        enabled: !!codebaseId
+        enabled: !!spaceId
     });
 
     const mutation = useMutation({
         mutationFn: async ({ key, value }: { key: string; value: unknown }) => {
-            if (!codebaseId) throw new Error("No codebase");
-            return unwrapEden(await api.api.settings.codebase.patch({ codebaseId, key, value }));
+            if (!spaceId) throw new Error("No space");
+            return unwrapEden(await api.api.settings.codebase.patch({ codebaseId: spaceId, key, value }));
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["settings", "codebase", codebaseId] });
+            queryClient.invalidateQueries({ queryKey: ["settings", "codebase", spaceId] });
         },
         onError: () => {
             toast.error("Failed to save setting");
@@ -198,11 +198,11 @@ function CodebaseSettingsTab() {
 
     const debouncedSave = useDebounce(save, 500);
 
-    if (!codebaseId) {
+    if (!spaceId) {
         return (
             <Card>
                 <CardPanel className="p-6">
-                    <p className="text-muted-foreground text-sm">Select a codebase to manage its settings.</p>
+                    <p className="text-muted-foreground text-sm">Select a space to manage its settings.</p>
                 </CardPanel>
             </Card>
         );

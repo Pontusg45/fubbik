@@ -29,7 +29,7 @@ export const PAGE_ITEMS: Array<{ id: string; title: string; path: string; icon: 
     { id: "page-chunks", title: "Chunks", path: "/chunks", icon: React.createElement(Blocks, { className: "size-4" }) },
     { id: "page-graph", title: "Graph", path: "/graph", icon: React.createElement(Network, { className: "size-4" }) },
     { id: "page-tags", title: "Tags", path: "/tags", icon: React.createElement(Tags, { className: "size-4" }) },
-    { id: "page-codebases", title: "Codebases", path: "/codebases", icon: React.createElement(Server, { className: "size-4" }) },
+    { id: "page-spaces", title: "Spaces", path: "/spaces", icon: React.createElement(Server, { className: "size-4" }) },
     { id: "page-templates", title: "Templates", path: "/templates", icon: React.createElement(FileCode, { className: "size-4" }) },
     { id: "page-health", title: "Health", path: "/knowledge-health", icon: React.createElement(Activity, { className: "size-4" }) },
     { id: "page-requirements", title: "Requirements", path: "/requirements", icon: React.createElement(FileText, { className: "size-4" }) },
@@ -50,7 +50,7 @@ export const ACTION_ITEMS: Array<{
     { id: "action-new-document", title: "New Document", path: "/chunks/new", search: { type: "document" }, icon: React.createElement(FileText, { className: "size-4" }) },
     { id: "action-new-requirement", title: "New Requirement", path: "/requirements/new", icon: React.createElement(Plus, { className: "size-4" }) },
     { id: "action-new-plan", title: "New Plan", path: "/plans/new", icon: React.createElement(Plus, { className: "size-4" }) },
-    { id: "action-switch-codebase", title: "Switch Codebase", path: "", icon: React.createElement(Settings, { className: "size-4" }), subMode: "codebase" },
+    { id: "action-switch-space", title: "Switch Space", path: "", icon: React.createElement(Settings, { className: "size-4" }), subMode: "space" },
     { id: "action-view-health", title: "View Health", path: "/knowledge-health", icon: React.createElement(Activity, { className: "size-4" }) },
 ];
 
@@ -58,21 +58,21 @@ export const ACTION_ITEMS: Array<{
 // Pure builder functions
 // ---------------------------------------------------------------------------
 
-export function buildCodebaseItems(
-    codebases: Array<{ id: string; name: string; remoteUrl: string | null }>,
+export function buildSpaceItems(
+    spaces: Array<{ id: string; name: string; remoteUrl: string | null }>,
     lowerQuery: string,
     onSelect: (id: string) => void
 ): CommandItem[] {
-    const filtered = codebases.filter(
+    const filtered = spaces.filter(
         (c) => !lowerQuery || c.name.toLowerCase().includes(lowerQuery)
     );
-    return filtered.map((cb) => ({
-        id: `cb-${cb.id}`,
-        title: cb.name,
-        group: "Codebases",
+    return filtered.map((s) => ({
+        id: `sp-${s.id}`,
+        title: s.name,
+        group: "Spaces",
         icon: React.createElement(Server, { className: "size-4" }),
-        badge: cb.remoteUrl ? "git" : undefined,
-        onSelect: () => onSelect(cb.id),
+        badge: s.remoteUrl ? "git" : undefined,
+        onSelect: () => onSelect(s.id),
     }));
 }
 
@@ -109,7 +109,7 @@ export function buildFederatedItems(
     return chunks.map((chunk) => ({
         id: `fed-${chunk.id}`,
         title: chunk.title ?? `Chunk ${chunk.id.slice(0, 8)}`,
-        group: "All Codebases",
+        group: "All Spaces",
         icon: React.createElement(Globe, { className: "size-4" }),
         badge: chunk.codebaseName ?? "Global",
         onSelect: () => onSelect(chunk.id),

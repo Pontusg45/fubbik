@@ -26,16 +26,16 @@ function NewPlanPage() {
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
     const [descTab, setDescTab] = useState<"edit" | "preview">("edit");
-    const [codebaseId, setCodebaseId] = useState<string>("");
+    const [spaceId, setSpaceId] = useState<string>("");
     const [selectedRequirementIds, setSelectedRequirementIds] = useState<string[]>([]);
     const [requirementsExpanded, setRequirementsExpanded] = useState(false);
     const [requirementsQuery, setRequirementsQueryDraft] = useState("");
     const [bootstrapTasks, setBootstrapTasks] = useState("");
     const [tasksExpanded, setTasksExpanded] = useState(false);
 
-    const codebasesQuery = useApiQuery<Array<{ id: string; name: string }>>({
-        queryKey: ["codebases"],
-        queryFn: () => api.api.codebases.get() as unknown as Promise<{ data: Array<{ id: string; name: string }>; error: unknown }>,
+    const spacesQuery = useApiQuery<Array<{ id: string; name: string }>>({
+        queryKey: ["spaces"],
+        queryFn: () => api.api.spaces.get() as unknown as Promise<{ data: Array<{ id: string; name: string }>; error: unknown }>,
         fallback: [],
     });
 
@@ -67,7 +67,7 @@ function NewPlanPage() {
         mutationFn: async () => {
             const body: any = { title: title.trim() };
             if (description.trim()) body.description = description.trim();
-            if (codebaseId) body.codebaseId = codebaseId;
+            if (spaceId) body.spaceId = spaceId;
             if (selectedRequirementIds.length > 0) body.requirementIds = selectedRequirementIds;
             const tasks = bootstrapTasks
                 .split("\n")
@@ -156,15 +156,15 @@ function NewPlanPage() {
                 </div>
 
                 <div className="space-y-2">
-                    <Label htmlFor="codebase">Codebase (optional)</Label>
+                    <Label htmlFor="space">Space (optional)</Label>
                     <select
-                        id="codebase"
-                        value={codebaseId}
-                        onChange={e => setCodebaseId(e.target.value)}
+                        id="space"
+                        value={spaceId}
+                        onChange={e => setSpaceId(e.target.value)}
                         className="w-full rounded-md border bg-background px-3 py-2 text-sm"
                     >
                         <option value="">— none —</option>
-                        {(codebasesQuery.data ?? []).map(c => (
+                        {(spacesQuery.data ?? []).map(c => (
                             <option key={c.id} value={c.id}>{c.name}</option>
                         ))}
                     </select>

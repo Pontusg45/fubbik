@@ -36,12 +36,12 @@ export interface ChunkFiltersPopoverProps {
     hasActiveFilters: boolean;
     activeTags: string[];
     availableTags: TagItem[];
-    codebaseId: string | null | undefined;
+    codebaseId: string | null | undefined; // kept as prop name for backward compat
     onUpdateSearch: (params: Partial<ChunkFilterValues>) => void;
     onToggleTag: (tag: string) => void;
     onClearAllFilters: () => void;
     onShowSaveFilter: () => void;
-    onCreateCollection: (name: string, filter: Record<string, string | undefined>, codebaseId?: string) => void;
+    onCreateCollection: (name: string, filter: Record<string, string | undefined>, spaceId?: string) => void;
 }
 
 const TYPES = ["note", "document", "reference", "schema", "checklist"];

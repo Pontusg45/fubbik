@@ -41,8 +41,8 @@ interface StepSelectFilesProps {
     onFilesChange: (files: FileEntry[]) => void;
     selectedPaths: Set<string>;
     onSelectionChange: (paths: Set<string>) => void;
-    codebaseId: string;
-    onCodebaseChange: (id: string) => void;
+    spaceId: string;
+    onSpaceChange: (id: string) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -54,14 +54,14 @@ export function StepSelectFiles({
     onFilesChange,
     selectedPaths,
     onSelectionChange,
-    codebaseId,
-    onCodebaseChange
+    spaceId,
+    onSpaceChange
 }: StepSelectFilesProps) {
     const folderInputRef = useRef<HTMLInputElement>(null);
 
-    const { data: codebases } = useApiQuery<{ id: string; name: string }[]>({
-        queryKey: ["codebases"],
-        queryFn: () => api.api.codebases.get(),
+    const { data: spaces } = useApiQuery<{ id: string; name: string }[]>({
+        queryKey: ["spaces"],
+        queryFn: () => api.api.spaces.get(),
         fallback: []
     });
 
@@ -118,11 +118,11 @@ export function StepSelectFiles({
                 <div className="ml-auto min-w-48">
                     <select
                         className="border-input bg-background block w-full rounded-md border px-3 py-1.5 text-sm"
-                        value={codebaseId}
-                        onChange={e => onCodebaseChange(e.target.value)}
+                        value={spaceId}
+                        onChange={e => onSpaceChange(e.target.value)}
                     >
-                        <option value="">Select a codebase... *</option>
-                        {codebases?.map(c => (
+                        <option value="">Select a space... *</option>
+                        {spaces?.map(c => (
                             <option key={c.id} value={c.id}>
                                 {c.name}
                             </option>

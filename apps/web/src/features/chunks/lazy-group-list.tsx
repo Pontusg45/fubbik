@@ -27,7 +27,7 @@ interface LazyGroupListProps {
     groupBy: string;
     tagTypeId?: string | null;
     subGroupBy?: string;
-    codebaseId?: string | null;
+    spaceId?: string | null;
     workspaceId?: string;
     sort?: string;
     filters: LazyGroupListFilters;
@@ -57,7 +57,7 @@ export function LazyGroupList({
     groupBy,
     tagTypeId,
     subGroupBy,
-    codebaseId,
+    spaceId,
     workspaceId,
     sort,
     filters,
@@ -74,7 +74,7 @@ export function LazyGroupList({
     const subTagTypeId = subGroupBy?.startsWith("tagtype:") ? subGroupBy.slice("tagtype:".length) : undefined;
 
     const groupsQuery = useQuery({
-        queryKey: ["chunks-grouped", queryParam, tagTypeId, subQueryParam, subTagTypeId, codebaseId, workspaceId, filters],
+        queryKey: ["chunks-grouped", queryParam, tagTypeId, subQueryParam, subTagTypeId, spaceId, workspaceId, filters],
         queryFn: async () => {
             return unwrapEden(
                 await api.api.chunks.grouped.get({
@@ -83,9 +83,9 @@ export function LazyGroupList({
                         ...(tagTypeId ? { tagTypeId } : {}),
                         ...(subQueryParam ? { subGroupBy: subQueryParam } : {}),
                         ...(subTagTypeId ? { subTagTypeId } : {}),
-                        ...(codebaseId && codebaseId !== "global"
-                            ? { codebaseId }
-                            : codebaseId === "global"
+                        ...(spaceId && spaceId !== "global"
+                            ? { spaceId }
+                            : spaceId === "global"
                               ? { global: "true" }
                               : {}),
                         ...(workspaceId ? { workspaceId } : {}),
@@ -180,7 +180,7 @@ export function LazyGroupList({
                                                     groupName={g.groupName}
                                                     groupBy={queryParam}
                                                     tagTypeId={tagTypeId}
-                                                    codebaseId={codebaseId}
+                                                    codebaseId={spaceId}
                                                     workspaceId={workspaceId}
                                                     sort={sort}
                                                     filters={{
@@ -207,7 +207,7 @@ export function LazyGroupList({
                             groupName={g.groupName}
                             groupBy={queryParam}
                             tagTypeId={tagTypeId}
-                            codebaseId={codebaseId}
+                            codebaseId={spaceId}
                             workspaceId={workspaceId}
                             sort={sort}
                             filters={filters}
@@ -234,7 +234,7 @@ interface GroupChunksListProps {
     groupName: string;
     groupBy: string;
     tagTypeId?: string | null;
-    codebaseId?: string | null;
+    codebaseId?: string | null; // kept as prop name for backward compat
     workspaceId?: string;
     sort?: string;
     filters: LazyGroupListFilters;
@@ -248,7 +248,7 @@ function GroupChunksList({
     groupName,
     groupBy,
     tagTypeId,
-    codebaseId,
+    codebaseId: spaceId,
     workspaceId,
     sort,
     filters,
@@ -278,7 +278,7 @@ function GroupChunksList({
             groupName,
             groupBy,
             tagTypeId,
-            codebaseId,
+            spaceId,
             workspaceId,
             sort,
             filters,
@@ -289,9 +289,9 @@ function GroupChunksList({
                     query: {
                         groupBy,
                         ...(tagTypeId ? { tagTypeId } : {}),
-                        ...(codebaseId && codebaseId !== "global"
-                            ? { codebaseId }
-                            : codebaseId === "global"
+                        ...(spaceId && spaceId !== "global"
+                            ? { spaceId }
+                            : spaceId === "global"
                               ? { global: "true" }
                               : {}),
                         ...(workspaceId ? { workspaceId } : {}),

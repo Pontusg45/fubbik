@@ -139,7 +139,7 @@ export function ChunksResults({
                     groupBy={group!}
                     tagTypeId={selectedTagTypeId}
                     subGroupBy={subGroup}
-                    codebaseId={codebaseId}
+                    spaceId={codebaseId}
                     sort={sort}
                     filters={{
                         type,

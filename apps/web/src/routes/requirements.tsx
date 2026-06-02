@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { SkeletonList } from "@/components/ui/skeleton-list";
 import { Button } from "@/components/ui/button";
 import { Card, CardPanel } from "@/components/ui/card";
-import { useActiveCodebase } from "@/features/codebases/use-active-codebase";
+import { useActiveSpace } from "@/features/spaces/use-active-space";
 import { TraceabilityContent } from "@/features/coverage/traceability-content";
 import { BulkActions } from "@/features/requirements/bulk-actions";
 import { SidebarFilters } from "@/features/requirements/sidebar-filters";
@@ -40,7 +40,7 @@ interface UseCase {
 type ActiveTab = "requirements" | "plans" | "traceability";
 
 function RequirementsPage() {
-    const { codebaseId } = useActiveCodebase();
+    const { spaceId } = useActiveSpace();
     const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState<ActiveTab>("requirements");
     const [selectedIndex, setSelectedIndex] = useState(-1);
@@ -64,19 +64,19 @@ function RequirementsPage() {
 
     // Queries
     const statsQuery = useQuery({
-        queryKey: ["requirements-stats", codebaseId],
+        queryKey: ["requirements-stats", spaceId],
         queryFn: async () => {
-            const query: { codebaseId?: string } = {};
-            if (codebaseId) query.codebaseId = codebaseId;
+            const query: { spaceId?: string } = {};
+            if (spaceId) query.spaceId = spaceId;
             return unwrapEden(await api.api.requirements.stats.get({ query }));
         }
     });
 
     const useCasesQuery = useQuery({
-        queryKey: ["use-cases", codebaseId],
+        queryKey: ["use-cases", spaceId],
         queryFn: async () => {
-            const query: { codebaseId?: string } = {};
-            if (codebaseId) query.codebaseId = codebaseId;
+            const query: { spaceId?: string } = {};
+            if (spaceId) query.spaceId = spaceId;
             return unwrapEden(await api.api["use-cases"].get({ query })) as UseCase[];
         }
     });
@@ -98,7 +98,7 @@ function RequirementsPage() {
     const listQuery = useQuery({
         queryKey: [
             "requirements",
-            codebaseId,
+            spaceId,
             search,
             statusFilters.length === 1 ? statusFilters[0] : "",
             priorityFilters.length === 1 ? priorityFilters[0] : "",
@@ -108,7 +108,7 @@ function RequirementsPage() {
         ],
         queryFn: async () => {
             const query: {
-                codebaseId?: string;
+                spaceId?: string;
                 search?: string;
                 status?: string;
                 priority?: string;
@@ -120,7 +120,7 @@ function RequirementsPage() {
                 limit: String(pageSize),
                 offset: String(page * pageSize)
             };
-            if (codebaseId) query.codebaseId = codebaseId;
+            if (spaceId) query.spaceId = spaceId;
             if (search) query.search = search;
             if (statusFilters.length === 1) query.status = statusFilters[0];
             if (priorityFilters.length === 1) query.priority = priorityFilters[0];

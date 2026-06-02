@@ -4,7 +4,7 @@ import { Plus } from "lucide-react";
 import React, { useCallback, useMemo } from "react";
 import { toast } from "sonner";
 
-import { useActiveCodebase } from "@/features/codebases/use-active-codebase";
+import { useActiveSpace } from "@/features/spaces/use-active-space";
 import { useRecentChunks } from "@/features/chunks/use-recent-chunks";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { api } from "@/utils/api";
@@ -14,7 +14,7 @@ import {
     buildActionItems,
     buildChunkQuickOpenItems,
     buildChunkSearchItems,
-    buildCodebaseItems,
+    buildSpaceItems,
     buildFederatedItems,
     buildPageItems,
     buildPlanItems,
@@ -48,7 +48,7 @@ export function useCommandSearch({
 }: UseCommandSearchOptions): { items: CommandItem[]; isLoading: boolean } {
     const navigate = useNavigate();
     const { recentIds } = useRecentChunks();
-    const { setCodebaseId } = useActiveCodebase();
+    const { setSpaceId } = useActiveSpace();
 
     const debouncedQuery = useDebouncedValue(query, 200);
     const isChunkMode = subMode === "chunks";
@@ -172,12 +172,12 @@ export function useCommandSearch({
         staleTime: 30_000,
     });
 
-    // Fetch codebases for Switch Codebase sub-mode
-    const codebasesQuery = useQuery({
-        queryKey: ["command-palette-codebases"],
+    // Fetch spaces for Switch Space sub-mode
+    const spacesQuery = useQuery({
+        queryKey: ["command-palette-spaces"],
         queryFn: async () => {
             try {
-                return unwrapEden(await api.api.codebases.get()) as Array<{
+                return unwrapEden(await api.api.spaces.get()) as Array<{
                     id: string;
                     name: string;
                     remoteUrl: string | null;
@@ -186,7 +186,7 @@ export function useCommandSearch({
                 return [];
             }
         },
-        enabled: open && subMode === "codebase",
+        enabled: open && subMode === "space",
         staleTime: 60_000,
     });
 
@@ -238,7 +238,7 @@ export function useCommandSearch({
         tagSearch.isFetching ||
         requirementsSearch.isFetching ||
         plansSearch.isFetching ||
-        codebasesQuery.isFetching ||
+        spacesQuery.isFetching ||
         allChunksQuery.isFetching;
 
     const handleChunkNavigate = useCallback(
@@ -269,10 +269,10 @@ export function useCommandSearch({
         const lowerQuery = query.toLowerCase();
         const result: CommandItem[] = [];
 
-        // Sub-mode: codebase switcher
-        if (subMode === "codebase") {
-            return buildCodebaseItems(codebasesQuery.data ?? [], lowerQuery, (id) => {
-                setCodebaseId(id);
+        // Sub-mode: space switcher
+        if (subMode === "space") {
+            return buildSpaceItems(spacesQuery.data ?? [], lowerQuery, (id) => {
+                setSpaceId(id);
                 close();
             });
         }
@@ -381,11 +381,11 @@ export function useCommandSearch({
         chunkSearch.data,
         requirementsSearch.data,
         plansSearch.data,
-        codebasesQuery.data,
+        spacesQuery.data,
         allChunksQuery.data,
         navigate,
         close,
-        setCodebaseId,
+        setSpaceId,
         quickNoteMutation,
         handleChunkNavigate,
         handleRequirementNavigate,
