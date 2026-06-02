@@ -2,9 +2,9 @@ import { and, eq, inArray, or, sql } from "drizzle-orm";
 
 import { db, dbEffect } from "../index";
 import { chunk, chunkConnection } from "../schema/chunk";
-import { codebase, chunkCodebase } from "../schema/codebase";
+import { space, chunkSpace } from "../schema/space";
 import { chunkTag, tag, tagType } from "../schema/tag";
-import { workspaceCodebase } from "../schema/workspace";
+import { workspaceSpace } from "../schema/workspace";
 
 export function getAllChunksMeta(userId?: string, codebaseId?: string, workspaceId?: string) {
     return dbEffect(() => {
@@ -12,25 +12,25 @@ export function getAllChunksMeta(userId?: string, codebaseId?: string, workspace
             if (userId) conditions.push(eq(chunk.userId, userId));
             if (workspaceId) {
                 const inWorkspace = db
-                    .select({ codebaseId: workspaceCodebase.codebaseId })
-                    .from(workspaceCodebase)
-                    .where(eq(workspaceCodebase.workspaceId, workspaceId));
-                const inCodebases = db
-                    .select({ chunkId: chunkCodebase.chunkId })
-                    .from(chunkCodebase)
-                    .where(inArray(chunkCodebase.codebaseId, inWorkspace));
-                const inAnyCodebase = db.select({ chunkId: chunkCodebase.chunkId }).from(chunkCodebase);
+                    .select({ spaceId: workspaceSpace.spaceId })
+                    .from(workspaceSpace)
+                    .where(eq(workspaceSpace.workspaceId, workspaceId));
+                const inSpaces = db
+                    .select({ chunkId: chunkSpace.chunkId })
+                    .from(chunkSpace)
+                    .where(inArray(chunkSpace.spaceId, inWorkspace));
+                const inAnySpace = db.select({ chunkId: chunkSpace.chunkId }).from(chunkSpace);
                 conditions.push(
-                    or(sql`${chunk.id} IN (${inCodebases})`, sql`${chunk.id} NOT IN (${inAnyCodebase})`)!
+                    or(sql`${chunk.id} IN (${inSpaces})`, sql`${chunk.id} NOT IN (${inAnySpace})`)!
                 );
             } else if (codebaseId) {
-                const inCodebase = db
-                    .select({ chunkId: chunkCodebase.chunkId })
-                    .from(chunkCodebase)
-                    .where(eq(chunkCodebase.codebaseId, codebaseId));
-                const inAnyCodebase = db.select({ chunkId: chunkCodebase.chunkId }).from(chunkCodebase);
+                const inSpace = db
+                    .select({ chunkId: chunkSpace.chunkId })
+                    .from(chunkSpace)
+                    .where(eq(chunkSpace.spaceId, codebaseId));
+                const inAnySpace = db.select({ chunkId: chunkSpace.chunkId }).from(chunkSpace);
                 conditions.push(
-                    or(sql`${chunk.id} IN (${inCodebase})`, sql`${chunk.id} NOT IN (${inAnyCodebase})`)!
+                    or(sql`${chunk.id} IN (${inSpace})`, sql`${chunk.id} NOT IN (${inAnySpace})`)!
                 );
             }
             const query = db
@@ -76,17 +76,17 @@ export function getTagTypesForGraph(userId?: string) {
         });
 }
 
-export function getChunkCodebaseMappings(userId?: string) {
+export function getChunkSpaceMappings(userId?: string) {
     return dbEffect(() => {
             const query = db
                 .select({
-                    chunkId: chunkCodebase.chunkId,
-                    codebaseId: chunkCodebase.codebaseId,
-                    codebaseName: codebase.name
+                    chunkId: chunkSpace.chunkId,
+                    spaceId: chunkSpace.spaceId,
+                    spaceName: space.name
                 })
-                .from(chunkCodebase)
-                .innerJoin(codebase, eq(chunkCodebase.codebaseId, codebase.id));
-            if (userId) return query.where(eq(codebase.userId, userId));
+                .from(chunkSpace)
+                .innerJoin(space, eq(chunkSpace.spaceId, space.id));
+            if (userId) return query.where(eq(space.userId, userId));
             return query;
         });
 }
