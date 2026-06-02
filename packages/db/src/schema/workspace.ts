@@ -2,7 +2,7 @@ import { relations } from "drizzle-orm";
 import { index, pgTable, primaryKey, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 
 import { user } from "./auth";
-import { codebase } from "./codebase";
+import { space } from "./space";
 
 export const workspace = pgTable(
     "workspace",
@@ -25,29 +25,29 @@ export const workspace = pgTable(
     ]
 );
 
-export const workspaceCodebase = pgTable(
-    "workspace_codebase",
+export const workspaceSpace = pgTable(
+    "workspace_space",
     {
         workspaceId: text("workspace_id")
             .notNull()
             .references(() => workspace.id, { onDelete: "cascade" }),
-        codebaseId: text("codebase_id")
+        spaceId: text("space_id")
             .notNull()
-            .references(() => codebase.id, { onDelete: "cascade" })
+            .references(() => space.id, { onDelete: "cascade" })
     },
     table => [
-        primaryKey({ columns: [table.workspaceId, table.codebaseId] }),
-        index("workspace_codebase_workspaceId_idx").on(table.workspaceId),
-        index("workspace_codebase_codebaseId_idx").on(table.codebaseId)
+        primaryKey({ columns: [table.workspaceId, table.spaceId] }),
+        index("workspace_space_workspaceId_idx").on(table.workspaceId),
+        index("workspace_space_spaceId_idx").on(table.spaceId)
     ]
 );
 
 export const workspaceRelations = relations(workspace, ({ one, many }) => ({
     user: one(user, { fields: [workspace.userId], references: [user.id] }),
-    workspaceCodebases: many(workspaceCodebase)
+    workspaceSpaces: many(workspaceSpace)
 }));
 
-export const workspaceCodebaseRelations = relations(workspaceCodebase, ({ one }) => ({
-    workspace: one(workspace, { fields: [workspaceCodebase.workspaceId], references: [workspace.id] }),
-    codebase: one(codebase, { fields: [workspaceCodebase.codebaseId], references: [codebase.id] })
+export const workspaceSpaceRelations = relations(workspaceSpace, ({ one }) => ({
+    workspace: one(workspace, { fields: [workspaceSpace.workspaceId], references: [workspace.id] }),
+    space: one(space, { fields: [workspaceSpace.spaceId], references: [space.id] })
 }));
