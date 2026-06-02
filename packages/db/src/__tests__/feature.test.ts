@@ -8,7 +8,7 @@ import * as chunkDeltaRepo from "../repository/chunk-feature-delta";
 import * as featureRepo from "../repository/feature";
 import { user } from "../schema/auth";
 import { chunk } from "../schema/chunk";
-import { chunkFeatureDelta, feature, featureCodebase, userActiveFeature } from "../schema/feature";
+import { chunkFeatureDelta, feature, featureSpace, userActiveFeature } from "../schema/feature";
 
 // ---------------------------------------------------------------------------
 // 1. Schema validation
@@ -29,11 +29,11 @@ describe("feature table", () => {
     });
 });
 
-describe("featureCodebase table", () => {
+describe("featureSpace table", () => {
     it("has expected columns", () => {
-        const columns = getTableColumns(featureCodebase);
+        const columns = getTableColumns(featureSpace);
         expect(columns).toHaveProperty("featureId");
-        expect(columns).toHaveProperty("codebaseId");
+        expect(columns).toHaveProperty("spaceId");
     });
 });
 

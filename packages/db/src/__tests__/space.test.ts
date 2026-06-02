@@ -1,25 +1,36 @@
 import { getTableColumns } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 
-import { codebase, chunkCodebase } from "../schema/codebase";
+import { space, chunkSpace } from "../schema/space";
+import { spaceCodeMetadata } from "../schema/space-code-metadata";
 
-describe("codebase table", () => {
+describe("space table", () => {
     it("has expected columns", () => {
-        const columns = getTableColumns(codebase);
+        const columns = getTableColumns(space);
         expect(columns).toHaveProperty("id");
         expect(columns).toHaveProperty("name");
-        expect(columns).toHaveProperty("remoteUrl");
-        expect(columns).toHaveProperty("localPaths");
+        expect(columns).toHaveProperty("kind");
+        expect(columns).toHaveProperty("description");
         expect(columns).toHaveProperty("userId");
         expect(columns).toHaveProperty("createdAt");
         expect(columns).toHaveProperty("updatedAt");
     });
 });
 
-describe("chunkCodebase table", () => {
+describe("spaceCodeMetadata table", () => {
     it("has expected columns", () => {
-        const columns = getTableColumns(chunkCodebase);
+        const columns = getTableColumns(spaceCodeMetadata);
+        expect(columns).toHaveProperty("spaceId");
+        expect(columns).toHaveProperty("userId");
+        expect(columns).toHaveProperty("remoteUrl");
+        expect(columns).toHaveProperty("localPaths");
+    });
+});
+
+describe("chunkSpace table", () => {
+    it("has expected columns", () => {
+        const columns = getTableColumns(chunkSpace);
         expect(columns).toHaveProperty("chunkId");
-        expect(columns).toHaveProperty("codebaseId");
+        expect(columns).toHaveProperty("spaceId");
     });
 });
