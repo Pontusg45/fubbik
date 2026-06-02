@@ -7,8 +7,8 @@ import { space } from "./space";
 /**
  * Catalog of chunk types.
  *
- * Builtin rows are seeded (userId = null, codebaseId = null, builtIn = true).
- * Users / codebases can add custom types scoped by userId and/or codebaseId.
+ * Builtin rows are seeded (userId = null, spaceId = null, builtIn = true).
+ * Users / spaces can add custom types scoped by userId and/or spaceId.
  * `chunk.type` is still a loose text column today; FK cutover happens in a later step.
  */
 export const chunkType = pgTable(
