@@ -31,3 +31,6 @@ export * from "./connection-relation";
 export * from "./feature";
 export * from "./scope-key";
 export * from "./behavior-matrix";
+export * from "./space";
+export * from "./space-kind";
+export * from "./space-code-metadata";
