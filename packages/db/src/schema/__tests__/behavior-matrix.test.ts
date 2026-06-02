@@ -15,7 +15,7 @@ describe("behavior-matrix schema", () => {
         expect(cols).toHaveProperty("name");
         expect(cols).toHaveProperty("layer");
         expect(cols).toHaveProperty("description");
-        expect(cols).toHaveProperty("codebaseId");
+        expect(cols).toHaveProperty("spaceId");
         expect(cols).toHaveProperty("userId");
         expect(cols).toHaveProperty("createdAt");
         expect(cols).toHaveProperty("updatedAt");
