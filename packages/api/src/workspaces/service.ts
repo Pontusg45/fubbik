@@ -1,12 +1,12 @@
 import {
-    addCodebaseToWorkspace as addCodebaseRepo,
+    addSpaceToWorkspace as addSpaceRepo,
     createWorkspace as createWorkspaceRepo,
     deleteWorkspace as deleteWorkspaceRepo,
-    getCodebaseById,
-    getCodebasesForWorkspace,
+    getSpaceById,
+    getSpacesForWorkspace,
     getWorkspaceById,
     listWorkspaces as listWorkspacesRepo,
-    removeCodebaseFromWorkspace as removeCodebaseRepo,
+    removeSpaceFromWorkspace as removeSpaceRepo,
     updateWorkspace as updateWorkspaceRepo
 } from "@fubbik/db/repository";
 import { Effect } from "effect";
@@ -22,9 +22,9 @@ export function getWorkspaceDetail(id: string, userId: string) {
         const found = yield* getWorkspaceById(id, userId);
         if (!found) return yield* Effect.fail(new NotFoundError({ resource: "Workspace" }));
 
-        const codebases = yield* getCodebasesForWorkspace(id);
+        const spaces = yield* getSpacesForWorkspace(id);
 
-        return { ...found, codebases };
+        return { ...found, spaces };
     });
 }
 
@@ -83,25 +83,25 @@ export function deleteWorkspace(id: string, userId: string) {
     );
 }
 
-export function addCodebaseToWorkspace(workspaceId: string, userId: string, codebaseId: string) {
+export function addSpaceToWorkspace(workspaceId: string, userId: string, spaceId: string) {
     return Effect.gen(function* () {
         const ws = yield* getWorkspaceById(workspaceId, userId);
         if (!ws) return yield* Effect.fail(new NotFoundError({ resource: "Workspace" }));
 
-        const cb = yield* getCodebaseById(codebaseId, userId);
-        if (!cb) return yield* Effect.fail(new NotFoundError({ resource: "Codebase" }));
+        const sp = yield* getSpaceById(spaceId, userId);
+        if (!sp) return yield* Effect.fail(new NotFoundError({ resource: "Space" }));
 
-        return yield* addCodebaseRepo(workspaceId, codebaseId);
+        return yield* addSpaceRepo(workspaceId, spaceId);
     });
 }
 
-export function removeCodebaseFromWorkspace(workspaceId: string, userId: string, codebaseId: string) {
+export function removeSpaceFromWorkspace(workspaceId: string, userId: string, spaceId: string) {
     return Effect.gen(function* () {
         const ws = yield* getWorkspaceById(workspaceId, userId);
         if (!ws) return yield* Effect.fail(new NotFoundError({ resource: "Workspace" }));
 
-        const deleted = yield* removeCodebaseRepo(workspaceId, codebaseId);
-        if (!deleted) return yield* Effect.fail(new NotFoundError({ resource: "WorkspaceCodebase" }));
+        const deleted = yield* removeSpaceRepo(workspaceId, spaceId);
+        if (!deleted) return yield* Effect.fail(new NotFoundError({ resource: "WorkspaceSpace" }));
         return deleted;
     });
 }

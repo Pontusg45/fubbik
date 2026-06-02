@@ -70,17 +70,17 @@ export const workspaceRoutes = new Elysia()
             )
         )
     )
-    // ── Workspace Codebases ─────────────────────────────────────────
+    // ── Workspace Spaces ─────────────────────────────────────────
     .post(
-        "/workspaces/:id/codebases",
+        "/workspaces/:id/spaces",
         ctx =>
             Effect.runPromise(
                 requireSession(ctx).pipe(
                     Effect.flatMap(session =>
-                        workspaceService.addCodebaseToWorkspace(
+                        workspaceService.addSpaceToWorkspace(
                             ctx.params.id,
                             session.user.id,
-                            ctx.body.codebaseId
+                            ctx.body.spaceId
                         )
                     ),
                     Effect.tap(() =>
@@ -92,18 +92,18 @@ export const workspaceRoutes = new Elysia()
             ),
         {
             body: t.Object({
-                codebaseId: t.String()
+                spaceId: t.String()
             })
         }
     )
-    .delete("/workspaces/:id/codebases/:codebaseId", ctx =>
+    .delete("/workspaces/:id/spaces/:spaceId", ctx =>
         Effect.runPromise(
             requireSession(ctx).pipe(
                 Effect.flatMap(session =>
-                    workspaceService.removeCodebaseFromWorkspace(
+                    workspaceService.removeSpaceFromWorkspace(
                         ctx.params.id,
                         session.user.id,
-                        ctx.params.codebaseId
+                        ctx.params.spaceId
                     )
                 ),
                 Effect.map(() => ({ message: "Deleted" }))
