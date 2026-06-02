@@ -2,7 +2,7 @@ import { relations } from "drizzle-orm";
 import { index, integer, jsonb, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 
 import { chunk } from "./chunk";
-import { codebase } from "./codebase";
+import { space } from "./space";
 import { requirement } from "./requirement";
 import { user } from "./auth";
 
@@ -21,7 +21,7 @@ export const plan = pgTable(
         userId: text("user_id")
             .notNull()
             .references(() => user.id, { onDelete: "cascade" }),
-        codebaseId: text("codebase_id").references(() => codebase.id, { onDelete: "set null" }),
+        spaceId: text("space_id").references(() => space.id, { onDelete: "set null" }),
         createdAt: timestamp("created_at").notNull().defaultNow(),
         updatedAt: timestamp("updated_at")
             .notNull()
@@ -38,7 +38,7 @@ export const plan = pgTable(
     },
     table => [
         index("plan_userId_idx").on(table.userId),
-        index("plan_codebaseId_idx").on(table.codebaseId),
+        index("plan_spaceId_idx").on(table.spaceId),
     ],
 );
 
@@ -194,7 +194,7 @@ export const planRelations = relations(plan, ({ many, one }) => ({
     requirements: many(planRequirement),
     analyzeItems: many(planAnalyzeItem),
     tasks: many(planTask),
-    codebase: one(codebase, { fields: [plan.codebaseId], references: [codebase.id] }),
+    space: one(space, { fields: [plan.spaceId], references: [space.id] }),
     user: one(user, { fields: [plan.userId], references: [user.id] }),
 }));
 
