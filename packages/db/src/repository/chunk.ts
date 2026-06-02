@@ -4,9 +4,9 @@ import { Effect } from "effect";
 import { ensureVertex, deleteVertex } from "../age/sync";
 import { db, dbEffect } from "../index";
 import { chunk, chunkConnection } from "../schema/chunk";
-import { codebase, chunkCodebase } from "../schema/codebase";
+import { space, chunkSpace } from "../schema/space";
 import { tag, chunkTag } from "../schema/tag";
-import { workspaceCodebase } from "../schema/workspace";
+import { workspaceSpace } from "../schema/workspace";
 
 export interface ListChunksParams {
     userId?: string;
@@ -96,30 +96,30 @@ export function listChunks(params: ListChunksParams) {
             }
             if (params.workspaceId) {
                 const inWorkspace = db
-                    .select({ codebaseId: workspaceCodebase.codebaseId })
-                    .from(workspaceCodebase)
-                    .where(eq(workspaceCodebase.workspaceId, params.workspaceId));
-                const inCodebases = db
-                    .select({ chunkId: chunkCodebase.chunkId })
-                    .from(chunkCodebase)
-                    .where(sql`${chunkCodebase.codebaseId} IN (${inWorkspace})`);
-                const inAnyCodebase = db.select({ chunkId: chunkCodebase.chunkId }).from(chunkCodebase);
+                    .select({ spaceId: workspaceSpace.spaceId })
+                    .from(workspaceSpace)
+                    .where(eq(workspaceSpace.workspaceId, params.workspaceId));
+                const inSpaces = db
+                    .select({ chunkId: chunkSpace.chunkId })
+                    .from(chunkSpace)
+                    .where(sql`${chunkSpace.spaceId} IN (${inWorkspace})`);
+                const inAnySpace = db.select({ chunkId: chunkSpace.chunkId }).from(chunkSpace);
                 conditions.push(
-                    or(sql`${chunk.id} IN (${inCodebases})`, sql`${chunk.id} NOT IN (${inAnyCodebase})`)!
+                    or(sql`${chunk.id} IN (${inSpaces})`, sql`${chunk.id} NOT IN (${inAnySpace})`)!
                 );
             } else if (params.codebaseId) {
-                const inCodebase = db
-                    .select({ chunkId: chunkCodebase.chunkId })
-                    .from(chunkCodebase)
-                    .where(eq(chunkCodebase.codebaseId, params.codebaseId));
-                const inAnyCodebase = db.select({ chunkId: chunkCodebase.chunkId }).from(chunkCodebase);
+                const inSpace = db
+                    .select({ chunkId: chunkSpace.chunkId })
+                    .from(chunkSpace)
+                    .where(eq(chunkSpace.spaceId, params.codebaseId));
+                const inAnySpace = db.select({ chunkId: chunkSpace.chunkId }).from(chunkSpace);
                 conditions.push(
-                    or(sql`${chunk.id} IN (${inCodebase})`, sql`${chunk.id} NOT IN (${inAnyCodebase})`)!
+                    or(sql`${chunk.id} IN (${inSpace})`, sql`${chunk.id} NOT IN (${inAnySpace})`)!
                 );
             }
             if (params.globalOnly) {
-                const inAnyCodebase = db.select({ chunkId: chunkCodebase.chunkId }).from(chunkCodebase);
-                conditions.push(sql`${chunk.id} NOT IN (${inAnyCodebase})`);
+                const inAnySpace = db.select({ chunkId: chunkSpace.chunkId }).from(chunkSpace);
+                conditions.push(sql`${chunk.id} NOT IN (${inAnySpace})`);
             }
             if (params.origin) {
                 conditions.push(eq(chunk.origin, params.origin));
@@ -220,16 +220,16 @@ export function listChunksWithCodebase(params: ListChunksWithCodebaseParams) {
             })();
             const whereClause = and(...conditions);
 
-            // Left join with codebase to get first codebase name per chunk
+            // Left join with space to get first space name per chunk
             const chunkCols = getTableColumns(chunk);
             const rows = await db
                 .select({
                     ...chunkCols,
-                    codebaseName: sql<string | null>`min(${codebase.name})`.as("codebase_name")
+                    codebaseName: sql<string | null>`min(${space.name})`.as("codebase_name")
                 })
                 .from(chunk)
-                .leftJoin(chunkCodebase, eq(chunkCodebase.chunkId, chunk.id))
-                .leftJoin(codebase, eq(codebase.id, chunkCodebase.codebaseId))
+                .leftJoin(chunkSpace, eq(chunkSpace.chunkId, chunk.id))
+                .leftJoin(space, eq(space.id, chunkSpace.spaceId))
                 .where(whereClause)
                 .groupBy(chunk.id)
                 .orderBy(orderClause)
@@ -272,7 +272,7 @@ export function getChunkConnections(chunkId: string) {
                     sourceId: chunkConnection.sourceId,
                     relation: chunkConnection.relation,
                     title: chunk.title,
-                    codebaseName: codebase.name
+                    codebaseName: space.name
                 })
                 .from(chunkConnection)
                 .leftJoin(
@@ -282,8 +282,8 @@ export function getChunkConnections(chunkId: string) {
                         and(eq(chunkConnection.sourceId, chunk.id), eq(chunkConnection.targetId, chunkId))
                     )
                 )
-                .leftJoin(chunkCodebase, eq(chunkCodebase.chunkId, chunk.id))
-                .leftJoin(codebase, eq(codebase.id, chunkCodebase.codebaseId))
+                .leftJoin(chunkSpace, eq(chunkSpace.chunkId, chunk.id))
+                .leftJoin(space, eq(space.id, chunkSpace.spaceId))
                 .where(or(eq(chunkConnection.sourceId, chunkId), eq(chunkConnection.targetId, chunkId))));
 }
 
@@ -445,14 +445,14 @@ export function mergeChunks(sourceId: string, targetId: string, userId: string) 
                 `);
                 await tx.execute(sql`DELETE FROM chunk_tag WHERE chunk_id = ${sourceId}`);
 
-                // --- chunk_codebase (unique on (chunk_id, codebase_id)) ---
+                // --- chunk_space (unique on (chunk_id, space_id)) ---
                 await tx.execute(sql`
-                    INSERT INTO chunk_codebase (chunk_id, codebase_id)
-                    SELECT ${targetId}, codebase_id FROM chunk_codebase
+                    INSERT INTO chunk_space (chunk_id, space_id)
+                    SELECT ${targetId}, space_id FROM chunk_space
                     WHERE chunk_id = ${sourceId}
-                    ON CONFLICT (chunk_id, codebase_id) DO NOTHING
+                    ON CONFLICT (chunk_id, space_id) DO NOTHING
                 `);
-                await tx.execute(sql`DELETE FROM chunk_codebase WHERE chunk_id = ${sourceId}`);
+                await tx.execute(sql`DELETE FROM chunk_space WHERE chunk_id = ${sourceId}`);
 
                 // --- chunk_connection: repoint sources then targets; dedupe on the
                 // (source,target,relation) unique index; drop self-loops produced
@@ -572,11 +572,11 @@ export function listArchivedChunks(userId: string, codebaseId?: string) {
     return dbEffect(async () => {
             const conditions = [eq(chunk.userId, userId), isNotNull(chunk.archivedAt)];
             if (codebaseId) {
-                const inCodebase = db
-                    .select({ chunkId: chunkCodebase.chunkId })
-                    .from(chunkCodebase)
-                    .where(eq(chunkCodebase.codebaseId, codebaseId));
-                conditions.push(sql`${chunk.id} IN (${inCodebase})`);
+                const inSpace = db
+                    .select({ chunkId: chunkSpace.chunkId })
+                    .from(chunkSpace)
+                    .where(eq(chunkSpace.spaceId, codebaseId));
+                conditions.push(sql`${chunk.id} IN (${inSpace})`);
             }
             const chunks = await db
                 .select()
