@@ -1,7 +1,7 @@
 import { index, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 
 import { user } from "./auth";
-import { codebase } from "./codebase";
+import { space } from "./space";
 
 export const activityLog = pgTable(
     "activity_log",
@@ -14,12 +14,12 @@ export const activityLog = pgTable(
         entityId: text("entity_id").notNull(),
         entityTitle: text("entity_title"),
         action: text("action").notNull(), // "created", "updated", "deleted", "archived", "restored"
-        codebaseId: text("codebase_id").references(() => codebase.id, { onDelete: "set null" }),
+        spaceId: text("space_id").references(() => space.id, { onDelete: "set null" }),
         createdAt: timestamp("created_at").defaultNow().notNull()
     },
     table => [
         index("activity_userId_idx").on(table.userId),
         index("activity_createdAt_idx").on(table.createdAt),
-        index("activity_codebaseId_idx").on(table.codebaseId)
+        index("activity_spaceId_idx").on(table.spaceId)
     ]
 );
