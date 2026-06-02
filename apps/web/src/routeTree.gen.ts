@@ -14,6 +14,7 @@ import { Route as VocabularyRouteImport } from "./routes/vocabulary";
 import { Route as TimelineRouteImport } from "./routes/timeline";
 import { Route as TemplatesRouteImport } from "./routes/templates";
 import { Route as TagsRouteImport } from "./routes/tags";
+import { Route as SpacesRouteImport } from "./routes/spaces";
 import { Route as SettingsRouteImport } from "./routes/settings";
 import { Route as SearchRouteImport } from "./routes/search";
 import { Route as ReviewRouteImport } from "./routes/review";
@@ -32,12 +33,12 @@ import { Route as CoverageRouteImport } from "./routes/coverage";
 import { Route as ContextRouteImport } from "./routes/context";
 import { Route as ComposeRouteImport } from "./routes/compose";
 import { Route as CompareRouteImport } from "./routes/compare";
-import { Route as SpacesRouteImport } from "./routes/spaces";
 import { Route as BrowseRouteImport } from "./routes/browse";
 import { Route as ActivityRouteImport } from "./routes/activity";
 import { Route as IndexRouteImport } from "./routes/index";
 import { Route as PlansIndexRouteImport } from "./routes/plans.index";
 import { Route as ChunksIndexRouteImport } from "./routes/chunks.index";
+import { Route as SpacesSpaceIdRouteImport } from "./routes/spaces.$spaceId";
 import { Route as SettingsVocabularyRouteImport } from "./routes/settings.vocabulary";
 import { Route as RequirementsNewRouteImport } from "./routes/requirements_.new";
 import { Route as RequirementsRequirementIdRouteImport } from "./routes/requirements_.$requirementId";
@@ -46,7 +47,6 @@ import { Route as PlansPlanIdRouteImport } from "./routes/plans.$planId";
 import { Route as MatricesMatrixIdRouteImport } from "./routes/matrices_.$matrixId";
 import { Route as LearnPathIdRouteImport } from "./routes/learn.$pathId";
 import { Route as GraphGraphIdRouteImport } from "./routes/graph_.$graphId";
-import { Route as SpacesSpaceIdRouteImport } from "./routes/spaces.$spaceId";
 import { Route as ChunksNewRouteImport } from "./routes/chunks.new";
 import { Route as ChunksArchivedRouteImport } from "./routes/chunks.archived";
 import { Route as ChunksChunkIdRouteImport } from "./routes/chunks.$chunkId";
@@ -76,6 +76,11 @@ const TemplatesRoute = TemplatesRouteImport.update({
 const TagsRoute = TagsRouteImport.update({
   id: "/tags",
   path: "/tags",
+  getParentRoute: () => rootRouteImport,
+} as any);
+const SpacesRoute = SpacesRouteImport.update({
+  id: "/spaces",
+  path: "/spaces",
   getParentRoute: () => rootRouteImport,
 } as any);
 const SettingsRoute = SettingsRouteImport.update({
@@ -168,11 +173,6 @@ const CompareRoute = CompareRouteImport.update({
   path: "/compare",
   getParentRoute: () => rootRouteImport,
 } as any);
-const SpacesRoute = SpacesRouteImport.update({
-  id: "/spaces",
-  path: "/spaces",
-  getParentRoute: () => rootRouteImport,
-} as any);
 const BrowseRoute = BrowseRouteImport.update({
   id: "/browse",
   path: "/browse",
@@ -197,6 +197,11 @@ const ChunksIndexRoute = ChunksIndexRouteImport.update({
   id: "/chunks/",
   path: "/chunks/",
   getParentRoute: () => rootRouteImport,
+} as any);
+const SpacesSpaceIdRoute = SpacesSpaceIdRouteImport.update({
+  id: "/$spaceId",
+  path: "/$spaceId",
+  getParentRoute: () => SpacesRoute,
 } as any);
 const SettingsVocabularyRoute = SettingsVocabularyRouteImport.update({
   id: "/vocabulary",
@@ -239,11 +244,6 @@ const GraphGraphIdRoute = GraphGraphIdRouteImport.update({
   path: "/graph/$graphId",
   getParentRoute: () => rootRouteImport,
 } as any);
-const SpacesSpaceIdRoute = SpacesSpaceIdRouteImport.update({
-  id: "/$spaceId",
-  path: "/$spaceId",
-  getParentRoute: () => SpacesRoute,
-} as any);
 const ChunksNewRoute = ChunksNewRouteImport.update({
   id: "/chunks/new",
   path: "/chunks/new",
@@ -274,7 +274,6 @@ export interface FileRoutesByFullPath {
   "/": typeof IndexRoute;
   "/activity": typeof ActivityRoute;
   "/browse": typeof BrowseRouteWithChildren;
-  "/spaces": typeof SpacesRouteWithChildren;
   "/compare": typeof CompareRoute;
   "/compose": typeof ComposeRoute;
   "/context": typeof ContextRoute;
@@ -293,6 +292,7 @@ export interface FileRoutesByFullPath {
   "/review": typeof ReviewRoute;
   "/search": typeof SearchRoute;
   "/settings": typeof SettingsRouteWithChildren;
+  "/spaces": typeof SpacesRouteWithChildren;
   "/tags": typeof TagsRoute;
   "/templates": typeof TemplatesRoute;
   "/timeline": typeof TimelineRoute;
@@ -302,7 +302,6 @@ export interface FileRoutesByFullPath {
   "/chunks/$chunkId": typeof ChunksChunkIdRoute;
   "/chunks/archived": typeof ChunksArchivedRoute;
   "/chunks/new": typeof ChunksNewRoute;
-  "/spaces/$spaceId": typeof SpacesSpaceIdRoute;
   "/graph/$graphId": typeof GraphGraphIdRoute;
   "/learn/$pathId": typeof LearnPathIdRoute;
   "/matrices/$matrixId": typeof MatricesMatrixIdRoute;
@@ -311,6 +310,7 @@ export interface FileRoutesByFullPath {
   "/requirements/$requirementId": typeof RequirementsRequirementIdRoute;
   "/requirements/new": typeof RequirementsNewRoute;
   "/settings/vocabulary": typeof SettingsVocabularyRoute;
+  "/spaces/$spaceId": typeof SpacesSpaceIdRoute;
   "/chunks/": typeof ChunksIndexRoute;
   "/plans/": typeof PlansIndexRoute;
   "/chunks/$chunkId/edit": typeof ChunksChunkIdEditRoute;
@@ -319,7 +319,6 @@ export interface FileRoutesByTo {
   "/": typeof IndexRoute;
   "/activity": typeof ActivityRoute;
   "/browse": typeof BrowseRouteWithChildren;
-  "/spaces": typeof SpacesRouteWithChildren;
   "/compare": typeof CompareRoute;
   "/compose": typeof ComposeRoute;
   "/context": typeof ContextRoute;
@@ -338,6 +337,7 @@ export interface FileRoutesByTo {
   "/review": typeof ReviewRoute;
   "/search": typeof SearchRoute;
   "/settings": typeof SettingsRouteWithChildren;
+  "/spaces": typeof SpacesRouteWithChildren;
   "/tags": typeof TagsRoute;
   "/templates": typeof TemplatesRoute;
   "/timeline": typeof TimelineRoute;
@@ -347,7 +347,6 @@ export interface FileRoutesByTo {
   "/chunks/$chunkId": typeof ChunksChunkIdRoute;
   "/chunks/archived": typeof ChunksArchivedRoute;
   "/chunks/new": typeof ChunksNewRoute;
-  "/spaces/$spaceId": typeof SpacesSpaceIdRoute;
   "/graph/$graphId": typeof GraphGraphIdRoute;
   "/learn/$pathId": typeof LearnPathIdRoute;
   "/matrices/$matrixId": typeof MatricesMatrixIdRoute;
@@ -356,6 +355,7 @@ export interface FileRoutesByTo {
   "/requirements/$requirementId": typeof RequirementsRequirementIdRoute;
   "/requirements/new": typeof RequirementsNewRoute;
   "/settings/vocabulary": typeof SettingsVocabularyRoute;
+  "/spaces/$spaceId": typeof SpacesSpaceIdRoute;
   "/chunks": typeof ChunksIndexRoute;
   "/plans": typeof PlansIndexRoute;
   "/chunks/$chunkId/edit": typeof ChunksChunkIdEditRoute;
@@ -365,7 +365,6 @@ export interface FileRoutesById {
   "/": typeof IndexRoute;
   "/activity": typeof ActivityRoute;
   "/browse": typeof BrowseRouteWithChildren;
-  "/spaces": typeof SpacesRouteWithChildren;
   "/compare": typeof CompareRoute;
   "/compose": typeof ComposeRoute;
   "/context": typeof ContextRoute;
@@ -384,6 +383,7 @@ export interface FileRoutesById {
   "/review": typeof ReviewRoute;
   "/search": typeof SearchRoute;
   "/settings": typeof SettingsRouteWithChildren;
+  "/spaces": typeof SpacesRouteWithChildren;
   "/tags": typeof TagsRoute;
   "/templates": typeof TemplatesRoute;
   "/timeline": typeof TimelineRoute;
@@ -393,7 +393,6 @@ export interface FileRoutesById {
   "/chunks/$chunkId": typeof ChunksChunkIdRoute;
   "/chunks/archived": typeof ChunksArchivedRoute;
   "/chunks/new": typeof ChunksNewRoute;
-  "/spaces/$spaceId": typeof SpacesSpaceIdRoute;
   "/graph_/$graphId": typeof GraphGraphIdRoute;
   "/learn/$pathId": typeof LearnPathIdRoute;
   "/matrices_/$matrixId": typeof MatricesMatrixIdRoute;
@@ -402,6 +401,7 @@ export interface FileRoutesById {
   "/requirements_/$requirementId": typeof RequirementsRequirementIdRoute;
   "/requirements_/new": typeof RequirementsNewRoute;
   "/settings/vocabulary": typeof SettingsVocabularyRoute;
+  "/spaces/$spaceId": typeof SpacesSpaceIdRoute;
   "/chunks/": typeof ChunksIndexRoute;
   "/plans/": typeof PlansIndexRoute;
   "/chunks/$chunkId_/edit": typeof ChunksChunkIdEditRoute;
@@ -412,7 +412,6 @@ export interface FileRouteTypes {
     | "/"
     | "/activity"
     | "/browse"
-    | "/spaces"
     | "/compare"
     | "/compose"
     | "/context"
@@ -431,6 +430,7 @@ export interface FileRouteTypes {
     | "/review"
     | "/search"
     | "/settings"
+    | "/spaces"
     | "/tags"
     | "/templates"
     | "/timeline"
@@ -440,7 +440,6 @@ export interface FileRouteTypes {
     | "/chunks/$chunkId"
     | "/chunks/archived"
     | "/chunks/new"
-    | "/spaces/$spaceId"
     | "/graph/$graphId"
     | "/learn/$pathId"
     | "/matrices/$matrixId"
@@ -449,6 +448,7 @@ export interface FileRouteTypes {
     | "/requirements/$requirementId"
     | "/requirements/new"
     | "/settings/vocabulary"
+    | "/spaces/$spaceId"
     | "/chunks/"
     | "/plans/"
     | "/chunks/$chunkId/edit";
@@ -457,7 +457,6 @@ export interface FileRouteTypes {
     | "/"
     | "/activity"
     | "/browse"
-    | "/spaces"
     | "/compare"
     | "/compose"
     | "/context"
@@ -476,6 +475,7 @@ export interface FileRouteTypes {
     | "/review"
     | "/search"
     | "/settings"
+    | "/spaces"
     | "/tags"
     | "/templates"
     | "/timeline"
@@ -485,7 +485,6 @@ export interface FileRouteTypes {
     | "/chunks/$chunkId"
     | "/chunks/archived"
     | "/chunks/new"
-    | "/spaces/$spaceId"
     | "/graph/$graphId"
     | "/learn/$pathId"
     | "/matrices/$matrixId"
@@ -494,6 +493,7 @@ export interface FileRouteTypes {
     | "/requirements/$requirementId"
     | "/requirements/new"
     | "/settings/vocabulary"
+    | "/spaces/$spaceId"
     | "/chunks"
     | "/plans"
     | "/chunks/$chunkId/edit";
@@ -502,7 +502,6 @@ export interface FileRouteTypes {
     | "/"
     | "/activity"
     | "/browse"
-    | "/spaces"
     | "/compare"
     | "/compose"
     | "/context"
@@ -521,6 +520,7 @@ export interface FileRouteTypes {
     | "/review"
     | "/search"
     | "/settings"
+    | "/spaces"
     | "/tags"
     | "/templates"
     | "/timeline"
@@ -530,7 +530,6 @@ export interface FileRouteTypes {
     | "/chunks/$chunkId"
     | "/chunks/archived"
     | "/chunks/new"
-    | "/spaces/$spaceId"
     | "/graph_/$graphId"
     | "/learn/$pathId"
     | "/matrices_/$matrixId"
@@ -539,6 +538,7 @@ export interface FileRouteTypes {
     | "/requirements_/$requirementId"
     | "/requirements_/new"
     | "/settings/vocabulary"
+    | "/spaces/$spaceId"
     | "/chunks/"
     | "/plans/"
     | "/chunks/$chunkId_/edit";
@@ -548,7 +548,6 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute;
   ActivityRoute: typeof ActivityRoute;
   BrowseRoute: typeof BrowseRouteWithChildren;
-  SpacesRoute: typeof SpacesRouteWithChildren;
   CompareRoute: typeof CompareRoute;
   ComposeRoute: typeof ComposeRoute;
   ContextRoute: typeof ContextRoute;
@@ -567,6 +566,7 @@ export interface RootRouteChildren {
   ReviewRoute: typeof ReviewRoute;
   SearchRoute: typeof SearchRoute;
   SettingsRoute: typeof SettingsRouteWithChildren;
+  SpacesRoute: typeof SpacesRouteWithChildren;
   TagsRoute: typeof TagsRoute;
   TemplatesRoute: typeof TemplatesRoute;
   TimelineRoute: typeof TimelineRoute;
@@ -621,6 +621,13 @@ declare module "@tanstack/react-router" {
       path: "/tags";
       fullPath: "/tags";
       preLoaderRoute: typeof TagsRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/spaces": {
+      id: "/spaces";
+      path: "/spaces";
+      fullPath: "/spaces";
+      preLoaderRoute: typeof SpacesRouteImport;
       parentRoute: typeof rootRouteImport;
     };
     "/settings": {
@@ -749,13 +756,6 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof CompareRouteImport;
       parentRoute: typeof rootRouteImport;
     };
-    "/spaces": {
-      id: "/spaces";
-      path: "/spaces";
-      fullPath: "/spaces";
-      preLoaderRoute: typeof SpacesRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
     "/browse": {
       id: "/browse";
       path: "/browse";
@@ -790,6 +790,13 @@ declare module "@tanstack/react-router" {
       fullPath: "/chunks/";
       preLoaderRoute: typeof ChunksIndexRouteImport;
       parentRoute: typeof rootRouteImport;
+    };
+    "/spaces/$spaceId": {
+      id: "/spaces/$spaceId";
+      path: "/$spaceId";
+      fullPath: "/spaces/$spaceId";
+      preLoaderRoute: typeof SpacesSpaceIdRouteImport;
+      parentRoute: typeof SpacesRoute;
     };
     "/settings/vocabulary": {
       id: "/settings/vocabulary";
@@ -847,13 +854,6 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof GraphGraphIdRouteImport;
       parentRoute: typeof rootRouteImport;
     };
-    "/spaces/$spaceId": {
-      id: "/spaces/$spaceId";
-      path: "/$spaceId";
-      fullPath: "/spaces/$spaceId";
-      preLoaderRoute: typeof SpacesSpaceIdRouteImport;
-      parentRoute: typeof SpacesRoute;
-    };
     "/chunks/new": {
       id: "/chunks/new";
       path: "/chunks/new";
@@ -903,18 +903,6 @@ const BrowseRouteChildren: BrowseRouteChildren = {
 const BrowseRouteWithChildren =
   BrowseRoute._addFileChildren(BrowseRouteChildren);
 
-interface SpacesRouteChildren {
-  SpacesSpaceIdRoute: typeof SpacesSpaceIdRoute;
-}
-
-const SpacesRouteChildren: SpacesRouteChildren = {
-  SpacesSpaceIdRoute: SpacesSpaceIdRoute,
-};
-
-const SpacesRouteWithChildren = SpacesRoute._addFileChildren(
-  SpacesRouteChildren,
-);
-
 interface LearnRouteChildren {
   LearnPathIdRoute: typeof LearnPathIdRoute;
 }
@@ -937,11 +925,21 @@ const SettingsRouteWithChildren = SettingsRoute._addFileChildren(
   SettingsRouteChildren,
 );
 
+interface SpacesRouteChildren {
+  SpacesSpaceIdRoute: typeof SpacesSpaceIdRoute;
+}
+
+const SpacesRouteChildren: SpacesRouteChildren = {
+  SpacesSpaceIdRoute: SpacesSpaceIdRoute,
+};
+
+const SpacesRouteWithChildren =
+  SpacesRoute._addFileChildren(SpacesRouteChildren);
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ActivityRoute: ActivityRoute,
   BrowseRoute: BrowseRouteWithChildren,
-  SpacesRoute: SpacesRouteWithChildren,
   CompareRoute: CompareRoute,
   ComposeRoute: ComposeRoute,
   ContextRoute: ContextRoute,
@@ -960,6 +958,7 @@ const rootRouteChildren: RootRouteChildren = {
   ReviewRoute: ReviewRoute,
   SearchRoute: SearchRoute,
   SettingsRoute: SettingsRouteWithChildren,
+  SpacesRoute: SpacesRouteWithChildren,
   TagsRoute: TagsRoute,
   TemplatesRoute: TemplatesRoute,
   TimelineRoute: TimelineRoute,

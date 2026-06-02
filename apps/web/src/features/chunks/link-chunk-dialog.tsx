@@ -30,16 +30,16 @@ export function LinkChunkDialog({ chunkId }: { chunkId: string }) {
     const [search, setSearch] = useState("");
     const [relation, setRelation] = useState("related_to");
     const [showRelationPicker, setShowRelationPicker] = useState(false);
-    const [searchAllCodebases, setSearchAllCodebases] = useState(false);
+    const [searchAllSpaces, setSearchAllSpaces] = useState(false);
     const queryClient = useQueryClient();
 
     const { data: searchResults } = useQuery({
-        queryKey: ["chunks", "search", search, searchAllCodebases],
+        queryKey: ["chunks", "search", search, searchAllSpaces],
         queryFn: async () => {
             if (!search.trim()) return { chunks: [] };
             const query: Record<string, string> = { search, limit: "10" };
-            if (searchAllCodebases) {
-                query.allCodebases = "true";
+            if (searchAllSpaces) {
+                query.allSpaces = "true";
             }
             const { data, error } = await api.api.chunks.get({ query: query as any });
             if (error) throw new Error("Failed to search chunks");
@@ -84,10 +84,10 @@ export function LinkChunkDialog({ chunkId }: { chunkId: string }) {
                 <div className="space-y-4 px-6 pb-6">
                     <label className="flex items-center gap-2 text-xs">
                         <Checkbox
-                            checked={searchAllCodebases}
-                            onCheckedChange={setSearchAllCodebases as (checked: boolean) => void}
+                            checked={searchAllSpaces}
+                            onCheckedChange={setSearchAllSpaces as (checked: boolean) => void}
                         />
-                        <span className="text-muted-foreground font-medium">Search all codebases</span>
+                        <span className="text-muted-foreground font-medium">Search all spaces</span>
                     </label>
                     <div className="space-y-2">
                         <label className="text-muted-foreground text-xs font-medium">Search chunks</label>
@@ -142,7 +142,7 @@ export function LinkChunkDialog({ chunkId }: { chunkId: string }) {
                     {filteredResults.length > 0 && (
                         <div className="max-h-60 space-y-1 overflow-y-auto rounded-md border p-1">
                             {filteredResults.map(result => {
-                                const codebaseNames = (result as any).codebaseNames as string[] | undefined;
+                                const spaceNames = ((result as any).spaceNames ?? (result as any).codebaseNames) as string[] | undefined;
                                 return (
                                     <button
                                         key={result.id}
@@ -153,9 +153,9 @@ export function LinkChunkDialog({ chunkId }: { chunkId: string }) {
                                     >
                                         <span className="font-medium">{result.title}</span>
                                         <div className="flex items-center gap-1.5">
-                                            {searchAllCodebases && codebaseNames && codebaseNames.length > 0 && (
+                                            {searchAllSpaces && spaceNames && spaceNames.length > 0 && (
                                                 <Badge variant="outline" size="sm" className="text-[10px]">
-                                                    {codebaseNames[0]}
+                                                    {spaceNames[0]}
                                                 </Badge>
                                             )}
                                             <Badge variant="secondary" size="sm" className="text-[10px]">

@@ -10,7 +10,7 @@ import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 const KNOWN_ROUTES = [
-    "/chunks", "/graph", "/dashboard", "/search", "/tags", "/codebases",
+    "/chunks", "/graph", "/dashboard", "/search", "/tags", "/spaces",
     "/workspaces", "/templates", "/context", "/knowledge-health", "/coverage",
     "/plans", "/requirements", "/import", "/settings", "/activity",
     "/vocabulary", "/docs", "/compare", "/login"

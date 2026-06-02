@@ -13,7 +13,7 @@ const ROUTE_LABELS: Record<string, string> = {
     graph: "Graph",
     tags: "Tags",
     "knowledge-health": "Health",
-    codebases: "Codebases",
+    spaces: "Spaces",
     requirements: "Requirements",
     vocabulary: "Vocabulary",
     templates: "Templates",

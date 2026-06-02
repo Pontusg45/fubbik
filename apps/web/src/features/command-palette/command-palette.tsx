@@ -126,7 +126,7 @@ export function CommandPalette() {
                         <Search className="text-muted-foreground size-4 shrink-0" />
                         {subMode && (
                             <Badge variant="secondary" size="sm" className="shrink-0">
-                                {subMode === "codebase" ? "Switch Codebase" : subMode === "chunks" ? "Go to Chunk" : subMode}
+                                {subMode === "space" ? "Switch Space" : subMode === "chunks" ? "Go to Chunk" : subMode}
                             </Badge>
                         )}
                         <input
@@ -138,11 +138,11 @@ export function CommandPalette() {
                                 setSelectedIndex(0);
                             }}
                             placeholder={
-                                subMode === "codebase"
-                                    ? "Filter codebases..."
+                                subMode === "space"
+                                    ? "Filter spaces..."
                                     : subMode === "chunks"
                                       ? "Fuzzy search chunks..."
-                                      : "Type a command or search... (# tags, * all codebases)"
+                                      : "Type a command or search... (# tags, * all spaces)"
                             }
                             autoFocus
                             className="placeholder:text-muted-foreground flex-1 bg-transparent text-sm outline-none"
