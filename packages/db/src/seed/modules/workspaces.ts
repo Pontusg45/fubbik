@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 
-import { workspace, workspaceCodebase } from "../../schema/workspace";
+import { workspace, workspaceSpace } from "../../schema/workspace";
 import { uuid } from "../factories";
 import type { SeedContext } from "../context";
 
@@ -16,12 +16,12 @@ export async function seed(ctx: SeedContext): Promise<void> {
 
     const pairs: Array<[string, string]> = [];
     for (const cname of Object.keys(ctx.ids.codebases)) {
-        const codebaseId = ctx.ids.codebases[cname];
-        if (codebaseId) pairs.push([id, codebaseId]);
+        const spaceId = ctx.ids.codebases[cname];
+        if (spaceId) pairs.push([id, spaceId]);
     }
     if (pairs.length > 0) {
-        await ctx.db.insert(workspaceCodebase).values(
-            pairs.map(([workspaceId, codebaseId]) => ({ workspaceId, codebaseId }))
+        await ctx.db.insert(workspaceSpace).values(
+            pairs.map(([workspaceId, spaceId]) => ({ workspaceId, spaceId }))
         );
     }
     ctx.counters["workspaces"] = 1;

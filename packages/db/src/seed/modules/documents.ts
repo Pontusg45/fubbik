@@ -5,8 +5,8 @@ import { uuid } from "../factories";
 import type { SeedContext } from "../context";
 
 export async function seed(ctx: SeedContext): Promise<void> {
-    const codebaseId = ctx.ids.codebases["fubbik"];
-    if (!codebaseId) throw new Error("documents needs fubbik codebase");
+    const spaceId = ctx.ids.codebases["fubbik"];
+    if (!spaceId) throw new Error("documents needs fubbik space");
 
     const docs = [
         {
@@ -38,7 +38,7 @@ export async function seed(ctx: SeedContext): Promise<void> {
             contentHash: "seed-placeholder",
             description: d.description,
             userId: ctx.userId,
-            codebaseId
+            spaceId
         });
         ctx.ids.documents[d.name] = id;
     }

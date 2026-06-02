@@ -9,14 +9,14 @@ export async function seed(ctx: SeedContext): Promise<void> {
         {
             id: uuid(),
             userId: ctx.userId,
-            codebaseId: ctx.ids.codebases["fubbik"],
+            spaceId: ctx.ids.codebases["fubbik"],
             name: "New team member onboarding",
             description: "A dev joins the fubbik team and wants to understand the architecture in a day."
         },
         {
             id: uuid(),
             userId: ctx.userId,
-            codebaseId: ctx.ids.codebases["fubbik"],
+            spaceId: ctx.ids.codebases["fubbik"],
             name: "Capture decisions near the code",
             description: "An engineer makes an architecture decision and wants a persistent, queryable record linked to the relevant files."
         }

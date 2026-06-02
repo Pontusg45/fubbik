@@ -16,11 +16,11 @@ interface Probe {
 const PROBES: Probe[] = [
     { label: "chunks", query: "SELECT count(*)::int FROM chunk" },
     { label: "chunk_tag links", query: "SELECT count(*)::int FROM chunk_tag" },
-    { label: "chunk_codebase links", query: "SELECT count(*)::int FROM chunk_codebase" },
+    { label: "chunk_space links", query: "SELECT count(*)::int FROM chunk_space" },
     { label: "chunk_connections", query: "SELECT count(*)::int FROM chunk_connection" },
     { label: "tag_types", query: "SELECT count(*)::int FROM tag_type" },
     { label: "tags", query: "SELECT count(*)::int FROM tag" },
-    { label: "codebases", query: "SELECT count(*)::int FROM codebase" },
+    { label: "spaces", query: "SELECT count(*)::int FROM space" },
     { label: "documents", query: "SELECT count(*)::int FROM document" },
     { label: "requirements", query: "SELECT count(*)::int FROM requirement" },
     { label: "use_cases", query: "SELECT count(*)::int FROM use_case" },

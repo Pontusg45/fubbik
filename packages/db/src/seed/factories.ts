@@ -10,14 +10,12 @@
  */
 
 import type { chunk, chunkConnection } from "../schema/chunk";
-import type { codebase } from "../schema/codebase";
 import type { tag, tagType } from "../schema/tag";
 
 type NewChunk = typeof chunk.$inferInsert;
 type NewChunkConnection = typeof chunkConnection.$inferInsert;
 type NewTagType = typeof tagType.$inferInsert;
 type NewTag = typeof tag.$inferInsert;
-type NewCodebase = typeof codebase.$inferInsert;
 
 export function uuid(): string {
     return crypto.randomUUID();
@@ -92,18 +90,3 @@ export function makeTag(input: {
     };
 }
 
-export function makeCodebase(input: {
-    id?: string;
-    userId: string;
-    name: string;
-    remoteUrl?: string | null;
-    localPaths?: string[];
-}): NewCodebase {
-    return {
-        id: input.id ?? uuid(),
-        userId: input.userId,
-        name: input.name,
-        remoteUrl: input.remoteUrl ?? null,
-        localPaths: input.localPaths ?? []
-    };
-}

@@ -44,8 +44,8 @@ async function insertCells(ctx: SeedContext, cellDefs: Array<{ key: string; rule
 }
 
 export async function seed(ctx: SeedContext): Promise<void> {
-    const codebaseId = ctx.ids.codebases["fubbik"];
-    if (!codebaseId) throw new Error("matrices needs fubbik codebase");
+    const spaceId = ctx.ids.codebases["fubbik"];
+    if (!spaceId) throw new Error("matrices needs fubbik space");
 
     let totalDims = 0;
     let totalRules = 0;
@@ -61,7 +61,7 @@ export async function seed(ctx: SeedContext): Promise<void> {
         name: "Domain Invariants",
         layer: "invariant",
         description: "Rules that must always hold across domain entities — data integrity, ownership, lifecycle, and structural constraints",
-        codebaseId,
+        spaceId,
         userId: ctx.userId
     });
     ctx.ids.matrices["invariants"] = invariantId;
@@ -230,7 +230,7 @@ export async function seed(ctx: SeedContext): Promise<void> {
         name: "API Contracts",
         layer: "contract",
         description: "Which capabilities are available to each actor — Web User, AI Agent (MCP), CLI, API Consumer, System (background)",
-        codebaseId,
+        spaceId,
         userId: ctx.userId
     });
     ctx.ids.matrices["contracts"] = contractId;

@@ -19,7 +19,7 @@
  */
 
 import { chunk, chunkConnection } from "../schema/chunk";
-import { chunkCodebase } from "../schema/codebase";
+import { chunkSpace } from "../schema/space";
 import { chunkTag, tag } from "../schema/tag";
 import { eq, and } from "drizzle-orm";
 import { makeChunk, makeConnection } from "./factories";
@@ -74,10 +74,10 @@ export async function loadChunkFixtures(
     await ctx.db.insert(chunk).values(rows);
 
     if (opts?.codebaseId) {
-        const codebaseId = opts.codebaseId;
+        const spaceId = opts.codebaseId;
         await ctx.db
-            .insert(chunkCodebase)
-            .values(rows.flatMap(r => r.id ? [{ chunkId: r.id, codebaseId }] : []));
+            .insert(chunkSpace)
+            .values(rows.flatMap(r => r.id ? [{ chunkId: r.id, spaceId }] : []));
     }
 
     // Tag associations — one query per fixture that declares tags (usually small).

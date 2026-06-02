@@ -12,7 +12,7 @@ export async function seed(ctx: SeedContext): Promise<void> {
             description: "Pinned conventions — always include in AI context",
             filter: { type: "convention" },
             userId: ctx.userId,
-            codebaseId: ctx.ids.codebases["fubbik"] ?? null
+            spaceId: ctx.ids.codebases["fubbik"] ?? null
         },
         {
             id: uuid(),
@@ -20,7 +20,7 @@ export async function seed(ctx: SeedContext): Promise<void> {
             description: "Chunks that describe fubbik itself",
             filter: { tags: "self-documenting" },
             userId: ctx.userId,
-            codebaseId: ctx.ids.codebases["fubbik"] ?? null
+            spaceId: ctx.ids.codebases["fubbik"] ?? null
         }
     ]);
     ctx.counters["collections"] = 2;

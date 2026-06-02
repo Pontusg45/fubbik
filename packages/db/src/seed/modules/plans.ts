@@ -5,8 +5,8 @@ import { uuid } from "../factories";
 import type { SeedContext } from "../context";
 
 export async function seed(ctx: SeedContext): Promise<void> {
-    const codebaseId = ctx.ids.codebases["fubbik"];
-    if (!codebaseId) throw new Error("plans needs fubbik codebase");
+    const spaceId = ctx.ids.codebases["fubbik"];
+    if (!spaceId) throw new Error("plans needs fubbik space");
 
     // Demo plan — demonstrates linking a plan to requirements, tasks, and analyze items.
     const planId = uuid();
@@ -16,7 +16,7 @@ export async function seed(ctx: SeedContext): Promise<void> {
         description: "Ship /settings/vocabulary editors for chunk types + connection relations.",
         status: "in_progress",
         userId: ctx.userId,
-        codebaseId,
+        spaceId,
         metadata: { tokenEstimate: 15000, effortHours: 6 }
     });
     ctx.ids.plans["vocab-crud"] = planId;

@@ -5,8 +5,8 @@ import { uuid } from "../factories";
 import type { SeedContext } from "../context";
 
 export async function seed(ctx: SeedContext): Promise<void> {
-    const codebaseId = ctx.ids.codebases["fubbik"];
-    if (!codebaseId) throw new Error("vocabulary needs fubbik codebase");
+    const spaceId = ctx.ids.codebases["fubbik"];
+    if (!spaceId) throw new Error("vocabulary needs fubbik space");
 
     const entries = [
         { word: "chunk", category: "noun" },
@@ -27,7 +27,7 @@ export async function seed(ctx: SeedContext): Promise<void> {
             word: e.word,
             category: e.category,
             expects: e.expects ?? null,
-            codebaseId,
+            spaceId,
             userId: ctx.userId
         }))
     );

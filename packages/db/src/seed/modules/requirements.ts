@@ -5,8 +5,8 @@ import { uuid } from "../factories";
 import type { SeedContext } from "../context";
 
 export async function seed(ctx: SeedContext): Promise<void> {
-    const codebaseId = ctx.ids.codebases["fubbik"];
-    if (!codebaseId) throw new Error("requirements needs fubbik codebase");
+    const spaceId = ctx.ids.codebases["fubbik"];
+    if (!spaceId) throw new Error("requirements needs fubbik space");
 
     const rows: Array<{
         name: string;
@@ -55,7 +55,7 @@ export async function seed(ctx: SeedContext): Promise<void> {
             priority: r.priority,
             status: "untested",
             userId: ctx.userId,
-            codebaseId,
+            spaceId,
             useCaseId: r.useCase ? (ctx.ids.useCases[r.useCase] ?? null) : null
         });
         ctx.ids.requirements[r.name] = id;
