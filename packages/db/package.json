@@ -26,6 +26,7 @@
         "db:stop": "docker compose -f ../../docker-compose.yml stop db",
         "db:down": "docker compose -f ../../docker-compose.yml down db",
         "db:migrate:trgm": "psql $DATABASE_URL -f src/migrations/0002_add_trgm.sql",
+        "db:migrate:0004": "psql $DATABASE_URL -f src/migrations/0004_codebase_to_space.sql",
         "age:setup": "bun run src/age/setup.ts",
         "test": "vitest run"
     },
