@@ -3,7 +3,7 @@ import { index, integer, jsonb, pgTable, primaryKey, text, timestamp, uniqueInde
 
 import { user } from "./auth";
 import { chunk } from "./chunk";
-import { codebase } from "./codebase";
+import { space } from "./space";
 
 export const feature = pgTable(
     "feature",
@@ -26,17 +26,17 @@ export const feature = pgTable(
     ]
 );
 
-export const featureCodebase = pgTable(
-    "feature_codebase",
+export const featureSpace = pgTable(
+    "feature_space",
     {
         featureId: text("feature_id")
             .notNull()
             .references(() => feature.id, { onDelete: "cascade" }),
-        codebaseId: text("codebase_id")
+        spaceId: text("space_id")
             .notNull()
-            .references(() => codebase.id, { onDelete: "cascade" })
+            .references(() => space.id, { onDelete: "cascade" })
     },
-    table => [primaryKey({ columns: [table.featureId, table.codebaseId] })]
+    table => [primaryKey({ columns: [table.featureId, table.spaceId] })]
 );
 
 export const chunkFeatureDelta = pgTable(
@@ -74,14 +74,14 @@ export const userActiveFeature = pgTable(
 
 export const featureRelations = relations(feature, ({ one, many }) => ({
     user: one(user, { fields: [feature.userId], references: [user.id] }),
-    codebases: many(featureCodebase),
+    spaces: many(featureSpace),
     deltas: many(chunkFeatureDelta),
     activeUsers: many(userActiveFeature)
 }));
 
-export const featureCodebaseRelations = relations(featureCodebase, ({ one }) => ({
-    feature: one(feature, { fields: [featureCodebase.featureId], references: [feature.id] }),
-    codebase: one(codebase, { fields: [featureCodebase.codebaseId], references: [codebase.id] })
+export const featureSpaceRelations = relations(featureSpace, ({ one }) => ({
+    feature: one(feature, { fields: [featureSpace.featureId], references: [feature.id] }),
+    space: one(space, { fields: [featureSpace.spaceId], references: [space.id] })
 }));
 
 export const chunkFeatureDeltaRelations = relations(chunkFeatureDelta, ({ one }) => ({
