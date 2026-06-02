@@ -11,7 +11,7 @@ export interface CreateDocumentParams {
     sourcePath: string;
     contentHash: string;
     description?: string;
-    codebaseId?: string;
+    spaceId?: string;
     userId: string;
     splitLevel?: number;
 }
@@ -30,23 +30,23 @@ export function getDocumentById(id: string) {
         });
 }
 
-export function getDocumentBySourcePath(sourcePath: string, codebaseId: string | undefined, userId: string) {
+export function getDocumentBySourcePath(sourcePath: string, spaceId: string | undefined, userId: string) {
     return dbEffect(async () => {
             const conditions = [eq(document.sourcePath, sourcePath), eq(document.userId, userId)];
-            if (codebaseId) {
-                conditions.push(eq(document.codebaseId, codebaseId));
+            if (spaceId) {
+                conditions.push(eq(document.spaceId, spaceId));
             } else {
-                conditions.push(isNull(document.codebaseId));
+                conditions.push(isNull(document.spaceId));
             }
             const [doc] = await db.select().from(document).where(and(...conditions));
             return doc ?? null;
         });
 }
 
-export function listDocuments(userId: string, codebaseId?: string) {
+export function listDocuments(userId: string, spaceId?: string) {
     return dbEffect(async () => {
             const conditions = [eq(document.userId, userId)];
-            if (codebaseId) conditions.push(eq(document.codebaseId, codebaseId));
+            if (spaceId) conditions.push(eq(document.spaceId, spaceId));
             const docs = await db
                 .select({
                     id: document.id,
@@ -54,7 +54,7 @@ export function listDocuments(userId: string, codebaseId?: string) {
                     sourcePath: document.sourcePath,
                     contentHash: document.contentHash,
                     description: document.description,
-                    codebaseId: document.codebaseId,
+                    spaceId: document.spaceId,
                     createdAt: document.createdAt,
                     updatedAt: document.updatedAt,
                     chunkCount: sql<number>`count(${chunk.id})`.as("chunk_count"),
@@ -70,10 +70,10 @@ export function listDocuments(userId: string, codebaseId?: string) {
         });
 }
 
-export function listDocumentsWithTags(userId: string, codebaseId?: string) {
+export function listDocumentsWithTags(userId: string, spaceId?: string) {
     return dbEffect(async () => {
         const conditions = [eq(document.userId, userId)];
-        if (codebaseId) conditions.push(eq(document.codebaseId, codebaseId));
+        if (spaceId) conditions.push(eq(document.spaceId, spaceId));
 
         const docs = await db
             .select({
@@ -82,7 +82,7 @@ export function listDocumentsWithTags(userId: string, codebaseId?: string) {
                 sourcePath: document.sourcePath,
                 contentHash: document.contentHash,
                 description: document.description,
-                codebaseId: document.codebaseId,
+                spaceId: document.spaceId,
                 createdAt: document.createdAt,
                 updatedAt: document.updatedAt,
                 chunkCount: sql<number>`count(distinct ${chunk.id})`.as("chunk_count"),
@@ -132,7 +132,7 @@ export function deleteDocument(id: string) {
         });
 }
 
-export function searchDocumentChunks(userId: string, query: string, limit = 20, codebaseId?: string) {
+export function searchDocumentChunks(userId: string, query: string, limit = 20, spaceId?: string) {
     return dbEffect(async () => {
             const conditions = [
                 eq(document.userId, userId),
@@ -141,7 +141,7 @@ export function searchDocumentChunks(userId: string, query: string, limit = 20, 
                     ilike(chunk.content, `%${query}%`)
                 )
             ];
-            if (codebaseId) conditions.push(eq(document.codebaseId, codebaseId));
+            if (spaceId) conditions.push(eq(document.spaceId, spaceId));
             const results = await db
                 .select({
                     chunkId: chunk.id,
