@@ -12,7 +12,7 @@ describe("requirement table", () => {
         expect(columns).toHaveProperty("steps");
         expect(columns).toHaveProperty("status");
         expect(columns).toHaveProperty("priority");
-        expect(columns).toHaveProperty("codebaseId");
+        expect(columns).toHaveProperty("spaceId");
         expect(columns).toHaveProperty("userId");
         expect(columns).toHaveProperty("createdAt");
         expect(columns).toHaveProperty("updatedAt");

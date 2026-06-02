@@ -10,7 +10,7 @@ describe("vocabularyEntry table", () => {
         expect(columns).toHaveProperty("word");
         expect(columns).toHaveProperty("category");
         expect(columns).toHaveProperty("expects");
-        expect(columns).toHaveProperty("codebaseId");
+        expect(columns).toHaveProperty("spaceId");
         expect(columns).toHaveProperty("userId");
         expect(columns).toHaveProperty("createdAt");
         expect(columns).toHaveProperty("updatedAt");
