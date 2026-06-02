@@ -2,7 +2,7 @@ import { relations } from "drizzle-orm";
 import { index, integer, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 
 import { chunk } from "./chunk";
-import { codebase } from "./codebase";
+import { space } from "./space";
 import { user } from "./auth";
 
 export const document = pgTable(
@@ -14,7 +14,7 @@ export const document = pgTable(
         contentHash: text("content_hash").notNull(),
         description: text("description"),
         splitLevel: integer("split_level"),
-        codebaseId: text("codebase_id").references(() => codebase.id, { onDelete: "set null" }),
+        spaceId: text("space_id").references(() => space.id, { onDelete: "set null" }),
         userId: text("user_id")
             .notNull()
             .references(() => user.id, { onDelete: "cascade" }),
@@ -25,14 +25,14 @@ export const document = pgTable(
             .notNull()
     },
     table => [
-        uniqueIndex("document_source_codebase_user_idx").on(table.sourcePath, table.codebaseId, table.userId),
+        uniqueIndex("document_source_space_user_idx").on(table.sourcePath, table.spaceId, table.userId),
         index("document_userId_idx").on(table.userId),
-        index("document_codebaseId_idx").on(table.codebaseId)
+        index("document_spaceId_idx").on(table.spaceId)
     ]
 );
 
 export const documentRelations = relations(document, ({ one, many }) => ({
     user: one(user, { fields: [document.userId], references: [user.id] }),
-    codebase: one(codebase, { fields: [document.codebaseId], references: [codebase.id] }),
+    space: one(space, { fields: [document.spaceId], references: [space.id] }),
     chunks: many(chunk)
 }));
