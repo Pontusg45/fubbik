@@ -7,12 +7,12 @@ vi.mock("@fubbik/db/repository", () => ({
     deleteFeature: vi.fn(),
     featureNameConflict: vi.fn(),
     getActiveFeatureIds: vi.fn(),
-    getCodebasesForFeature: vi.fn(),
+    getSpacesForFeature: vi.fn(),
     getFeatureById: vi.fn(),
     getMaxPriority: vi.fn(),
     listFeatures: vi.fn(),
     setActiveFeatures: vi.fn(),
-    setFeatureCodebases: vi.fn(),
+    setFeatureSpaces: vi.fn(),
     shiftPriorities: vi.fn(),
     updateFeature: vi.fn(),
     batchFetchDeltas: vi.fn(),
@@ -46,7 +46,7 @@ import {
     getMaxPriority,
     listFeatures as listFeaturesRepo,
     setActiveFeatures as setActiveFeaturesRepo,
-    setFeatureCodebases,
+    setFeatureSpaces,
     getDeltasForFeature as getDeltasForFeatureRepo,
     mergeFeatureDeltas,
     upsertDelta as upsertDeltaRepo,
@@ -151,30 +151,30 @@ describe("createFeature", () => {
         );
     });
 
-    it("sets codebase associations when codebaseIds provided", async () => {
+    it("sets space associations when spaceIds provided", async () => {
         vi.mocked(getMaxPriority).mockReturnValue(Effect.succeed(0));
         vi.mocked(createFeatureRepo).mockReturnValue(Effect.succeed(mockFeature()));
-        vi.mocked(setFeatureCodebases).mockReturnValue(Effect.succeed(undefined as any));
+        vi.mocked(setFeatureSpaces).mockReturnValue(Effect.succeed(undefined as any));
 
         await Effect.runPromise(
-            createFeature(userId, { name: "My Feature", codebaseIds: ["cb-1", "cb-2"] })
+            createFeature(userId, { name: "My Feature", spaceIds: ["cb-1", "cb-2"] })
         );
 
-        expect(setFeatureCodebases).toHaveBeenCalledWith(
+        expect(setFeatureSpaces).toHaveBeenCalledWith(
             expect.any(String),
             ["cb-1", "cb-2"]
         );
     });
 
-    it("does not call setFeatureCodebases when codebaseIds is empty", async () => {
+    it("does not call setFeatureSpaces when spaceIds is empty", async () => {
         vi.mocked(getMaxPriority).mockReturnValue(Effect.succeed(0));
         vi.mocked(createFeatureRepo).mockReturnValue(Effect.succeed(mockFeature()));
 
         await Effect.runPromise(
-            createFeature(userId, { name: "My Feature", codebaseIds: [] })
+            createFeature(userId, { name: "My Feature", spaceIds: [] })
         );
 
-        expect(setFeatureCodebases).not.toHaveBeenCalled();
+        expect(setFeatureSpaces).not.toHaveBeenCalled();
     });
 });
 

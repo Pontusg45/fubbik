@@ -12,7 +12,7 @@ export const featureRoutes = new Elysia()
                 requireSession(ctx).pipe(
                     Effect.flatMap(session =>
                         featureService.listFeatures(session.user.id, {
-                            codebaseId: ctx.query.codebaseId,
+                            spaceId: ctx.query.spaceId,
                             status: ctx.query.status,
                             search: ctx.query.search
                         })
@@ -21,7 +21,7 @@ export const featureRoutes = new Elysia()
             ),
         {
             query: t.Object({
-                codebaseId: t.Optional(t.String()),
+                spaceId: t.Optional(t.String()),
                 status: t.Optional(t.String()),
                 search: t.Optional(t.String())
             })
@@ -42,7 +42,7 @@ export const featureRoutes = new Elysia()
                 description: t.Optional(t.String({ maxLength: 1000 })),
                 priority: t.Optional(t.Number()),
                 color: t.Optional(t.String({ maxLength: 7 })),
-                codebaseIds: t.Optional(t.Array(t.String()))
+                spaceIds: t.Optional(t.Array(t.String()))
             })
         }
     )
@@ -90,7 +90,7 @@ export const featureRoutes = new Elysia()
                 priority: t.Optional(t.Number()),
                 status: t.Optional(t.Union([t.Literal("active"), t.Literal("inactive"), t.Literal("archived")])),
                 color: t.Optional(t.Union([t.String({ maxLength: 7 }), t.Null()])),
-                codebaseIds: t.Optional(t.Array(t.String()))
+                spaceIds: t.Optional(t.Array(t.String()))
             })
         }
     )

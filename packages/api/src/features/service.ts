@@ -3,12 +3,12 @@ import {
     deleteFeature as deleteFeatureRepo,
     featureNameConflict,
     getActiveFeatureIds as getActiveFeatureIdsRepo,
-    getCodebasesForFeature,
+    getSpacesForFeature,
     getFeatureById,
     getMaxPriority,
     listFeatures as listFeaturesRepo,
     setActiveFeatures as setActiveFeaturesRepo,
-    setFeatureCodebases,
+    setFeatureSpaces,
     shiftPriorities,
     updateFeature as updateFeatureRepo
 } from "@fubbik/db/repository";
@@ -48,7 +48,7 @@ export function createFeature(userId: string, body: {
     description?: string;
     priority?: number;
     color?: string;
-    codebaseIds?: string[];
+    spaceIds?: string[];
 }) {
     const id = crypto.randomUUID();
     return (body.priority !== undefined ? Effect.succeed(body.priority) : getMaxPriority(userId).pipe(Effect.map(max => max + 1))).pipe(
@@ -56,8 +56,8 @@ export function createFeature(userId: string, body: {
             createFeatureRepo({ id, name: body.name, description: body.description, priority, color: body.color, userId })
         ),
         Effect.tap(() => {
-            if (body.codebaseIds && body.codebaseIds.length > 0) {
-                return setFeatureCodebases(id, body.codebaseIds);
+            if (body.spaceIds && body.spaceIds.length > 0) {
+                return setFeatureSpaces(id, body.spaceIds);
             }
             return Effect.void;
         })
@@ -70,15 +70,15 @@ export function getFeatureDetail(featureId: string, userId: string) {
         Effect.flatMap(found =>
             Effect.all({
                 feature: Effect.succeed(found),
-                codebases: getCodebasesForFeature(featureId),
+                spaces: getSpacesForFeature(featureId),
                 deltas: getDeltasForFeatureRepo(featureId)
             })
         )
     );
 }
 
-export function listFeatures(userId: string, filters?: { codebaseId?: string; status?: string; search?: string }) {
-    return listFeaturesRepo(userId, filters);
+export function listFeatures(userId: string, filters?: { spaceId?: string; status?: string; search?: string }) {
+    return listFeaturesRepo(userId, filters ? { codebaseId: filters.spaceId, status: filters.status, search: filters.search } : undefined);
 }
 
 export function updateFeature(featureId: string, userId: string, body: {
@@ -87,7 +87,7 @@ export function updateFeature(featureId: string, userId: string, body: {
     priority?: number;
     status?: string;
     color?: string | null;
-    codebaseIds?: string[];
+    spaceIds?: string[];
 }) {
     const guard = body.name !== undefined
         ? featureNameConflict(featureId, userId, body.name).pipe(
@@ -99,14 +99,14 @@ export function updateFeature(featureId: string, userId: string, body: {
         )
         : Effect.succeed(undefined);
 
-    const { codebaseIds, ...repoBody } = body;
+    const { spaceIds, ...repoBody } = body;
 
     return guard.pipe(
         Effect.flatMap(() => updateFeatureRepo(featureId, userId, repoBody)),
         Effect.flatMap(updated => (updated ? Effect.succeed(updated) : Effect.fail(new NotFoundError({ resource: "Feature" })))),
         Effect.tap(() => {
-            if (codebaseIds !== undefined) {
-                return setFeatureCodebases(featureId, codebaseIds);
+            if (spaceIds !== undefined) {
+                return setFeatureSpaces(featureId, spaceIds);
             }
             return Effect.void;
         })
