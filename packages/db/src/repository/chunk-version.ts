@@ -50,7 +50,7 @@ export function getVersionsByTag(tag: string, userId: string, codebaseId?: strin
         ];
         if (codebaseId) {
             conditions.push(
-                sql`EXISTS (SELECT 1 FROM chunk_codebase WHERE chunk_codebase.chunk_id = ${chunkVersion.chunkId} AND chunk_codebase.codebase_id = ${codebaseId})`
+                sql`EXISTS (SELECT 1 FROM chunk_space WHERE chunk_space.chunk_id = ${chunkVersion.chunkId} AND chunk_space.space_id = ${codebaseId})`
             );
         }
 
@@ -93,7 +93,7 @@ export function getDistinctUpdateTags(userId: string, codebaseId?: string) {
         ];
         if (codebaseId) {
             conditions.push(
-                sql`EXISTS (SELECT 1 FROM chunk_codebase WHERE chunk_codebase.chunk_id = ${chunkVersion.chunkId} AND chunk_codebase.codebase_id = ${codebaseId})`
+                sql`EXISTS (SELECT 1 FROM chunk_space WHERE chunk_space.chunk_id = ${chunkVersion.chunkId} AND chunk_space.space_id = ${codebaseId})`
             );
         }
 

@@ -21,7 +21,7 @@ export interface TimelineParams {
 export function fetchTimeline(params: TimelineParams) {
     return dbEffect(async (): Promise<TimelineEvent[]> => {
             const codebaseFilter = params.codebaseId
-                ? sql`AND c.id IN (SELECT chunk_id FROM chunk_codebase WHERE codebase_id = ${params.codebaseId})`
+                ? sql`AND c.id IN (SELECT chunk_id FROM chunk_space WHERE space_id = ${params.codebaseId})`
                 : sql``;
             const tagFilter = params.tag
                 ? sql`AND c.id IN (
