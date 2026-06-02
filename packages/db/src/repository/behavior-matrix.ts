@@ -17,7 +17,7 @@ export function createMatrix(params: {
     name: string;
     layer: string;
     description?: string;
-    codebaseId?: string;
+    spaceId?: string;
     userId: string;
 }) {
     return dbEffect(async () => {
@@ -37,10 +37,10 @@ export function getMatrixById(id: string, userId: string) {
     });
 }
 
-export function listMatrices(userId: string, filters?: { codebaseId?: string; layer?: string }) {
+export function listMatrices(userId: string, filters?: { spaceId?: string; layer?: string }) {
     return dbEffect(async () => {
         const conditions = [eq(behaviorMatrix.userId, userId)];
-        if (filters?.codebaseId) conditions.push(eq(behaviorMatrix.codebaseId, filters.codebaseId));
+        if (filters?.spaceId) conditions.push(eq(behaviorMatrix.spaceId, filters.spaceId));
         if (filters?.layer) conditions.push(eq(behaviorMatrix.layer, filters.layer));
 
         return db
