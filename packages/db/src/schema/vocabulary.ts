@@ -1,7 +1,7 @@
 import { relations, sql } from "drizzle-orm";
 import { index, jsonb, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 import { user } from "./auth";
-import { codebase } from "./codebase";
+import { space } from "./space";
 
 export const vocabularyEntry = pgTable(
     "vocabulary_entry",
@@ -11,9 +11,9 @@ export const vocabularyEntry = pgTable(
         definition: text("definition"),
         category: text("category").notNull(),
         expects: jsonb("expects").$type<string[]>(),
-        codebaseId: text("codebase_id")
+        spaceId: text("space_id")
             .notNull()
-            .references(() => codebase.id, { onDelete: "cascade" }),
+            .references(() => space.id, { onDelete: "cascade" }),
         userId: text("user_id").references(() => user.id, { onDelete: "set null" }),
         createdAt: timestamp("created_at").defaultNow().notNull(),
         updatedAt: timestamp("updated_at")
@@ -22,16 +22,16 @@ export const vocabularyEntry = pgTable(
             .notNull()
     },
     table => [
-        uniqueIndex("vocabulary_codebase_word_cat_idx").on(
-            table.codebaseId,
+        uniqueIndex("vocabulary_space_word_cat_idx").on(
+            table.spaceId,
             table.category,
             sql`lower(${table.word})`
         ),
-        index("vocabulary_codebaseId_idx").on(table.codebaseId)
+        index("vocabulary_spaceId_idx").on(table.spaceId)
     ]
 );
 
 export const vocabularyEntryRelations = relations(vocabularyEntry, ({ one }) => ({
-    codebase: one(codebase, { fields: [vocabularyEntry.codebaseId], references: [codebase.id] }),
+    space: one(space, { fields: [vocabularyEntry.spaceId], references: [space.id] }),
     user: one(user, { fields: [vocabularyEntry.userId], references: [user.id] })
 }));
