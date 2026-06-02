@@ -47,12 +47,12 @@ export const requirementRoutes = new Elysia()
             Effect.runPromise(
                 Effect.gen(function* () {
                     const session = yield* requireSession(ctx);
-                    return yield* requirementService.getStats(session.user.id, ctx.query.codebaseId);
+                    return yield* requirementService.getStats(session.user.id, ctx.query.spaceId);
                 })
             ),
         {
             query: t.Object({
-                codebaseId: t.Optional(t.String())
+                spaceId: t.Optional(t.String())
             })
         }
     )
@@ -104,7 +104,7 @@ export const requirementRoutes = new Elysia()
                 Effect.gen(function* () {
                     const session = yield* requireSession(ctx);
                     return yield* requirementService.exportAll(session.user.id, {
-                        codebaseId: ctx.query.codebaseId,
+                        spaceId: ctx.query.spaceId,
                         format: ctx.query.format
                     });
                 })
@@ -112,7 +112,7 @@ export const requirementRoutes = new Elysia()
         {
             query: t.Object({
                 format: FormatSchema,
-                codebaseId: t.Optional(t.String())
+                spaceId: t.Optional(t.String())
             })
         }
     )
@@ -128,7 +128,7 @@ export const requirementRoutes = new Elysia()
             ),
         {
             query: t.Object({
-                codebaseId: t.Optional(t.String()),
+                spaceId: t.Optional(t.String()),
                 useCaseId: t.Optional(t.String()),
                 search: t.Optional(t.String()),
                 status: t.Optional(t.String()),
@@ -158,7 +158,7 @@ export const requirementRoutes = new Elysia()
                 description: t.Optional(t.String({ maxLength: 5000 })),
                 steps: t.Array(StepSchema, { minItems: 1 }),
                 priority: PrioritySchema,
-                codebaseId: t.Optional(t.String()),
+                spaceId: t.Optional(t.String()),
                 useCaseId: t.Optional(t.String()),
                 origin: t.Optional(t.Union([t.Literal("human"), t.Literal("ai")]))
             })
@@ -177,7 +177,7 @@ export const requirementRoutes = new Elysia()
         {
             query: t.Object({
                 focus: t.Optional(t.String()),
-                codebaseId: t.Optional(t.String())
+                spaceId: t.Optional(t.String())
             })
         }
     )
@@ -206,7 +206,7 @@ export const requirementRoutes = new Elysia()
                     }),
                     { minItems: 1, maxItems: 50 }
                 ),
-                codebaseId: t.Optional(t.String())
+                spaceId: t.Optional(t.String())
             })
         }
     )
@@ -241,7 +241,7 @@ export const requirementRoutes = new Elysia()
                     t.Literal("wont"),
                     t.Null()
                 ])),
-                codebaseId: t.Optional(t.Union([t.String(), t.Null()])),
+                spaceId: t.Optional(t.Union([t.String(), t.Null()])),
                 useCaseId: t.Optional(t.Union([t.String(), t.Null()])),
                 origin: t.Optional(t.Union([t.Literal("human"), t.Literal("ai")])),
                 reviewStatus: t.Optional(t.Union([t.Literal("draft"), t.Literal("reviewed"), t.Literal("approved")]))

@@ -12,13 +12,13 @@ import { Effect } from "effect";
 
 export function getSuggestContext(
     userId: string,
-    query: { focus?: string; codebaseId?: string }
+    query: { focus?: string; spaceId?: string }
 ) {
     return Effect.gen(function* () {
-        const { focus, codebaseId } = query;
+        const { focus, spaceId } = query;
 
         // 1. Fetch use cases with their requirements
-        const useCases = yield* listUseCases(userId, codebaseId);
+        const useCases = yield* listUseCases(userId, spaceId);
 
         const useCasesWithRequirements: Array<{
             id: string;
@@ -49,7 +49,7 @@ export function getSuggestContext(
         // Also include ungrouped requirements (useCaseId is null)
         const ungroupedResult = yield* listRequirementsRepo({
             userId,
-            codebaseId,
+            spaceId,
             limit: 200,
             offset: 0
         });
@@ -59,7 +59,7 @@ export function getSuggestContext(
             : ungrouped;
 
         // 2. Fetch coverage gaps
-        const coverageChunks = yield* getChunkCoverage(userId, codebaseId);
+        const coverageChunks = yield* getChunkCoverage(userId, spaceId);
         let uncovered = coverageChunks.filter(c => Number(c.requirementCount) === 0);
         if (focus) {
             uncovered = uncovered.filter(c => c.title.toLowerCase().includes(focus.toLowerCase()));
@@ -70,9 +70,9 @@ export function getSuggestContext(
 
         // 3. Fetch health issue counts
         const [orphans, stale, thin] = yield* Effect.all([
-            getOrphanChunks(userId, codebaseId),
-            getStaleChunks(userId, codebaseId),
-            getThinChunks(userId, codebaseId)
+            getOrphanChunks(userId, spaceId),
+            getStaleChunks(userId, spaceId),
+            getThinChunks(userId, spaceId)
         ]);
         const healthIssueCounts = {
             orphan: orphans.count,
@@ -85,7 +85,7 @@ export function getSuggestContext(
         if (focus) {
             const chunksResult = yield* listChunks({
                 userId,
-                codebaseId,
+                codebaseId: spaceId,
                 search: focus,
                 limit: 20,
                 offset: 0

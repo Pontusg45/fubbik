@@ -21,7 +21,7 @@ interface BatchRequirement {
 
 interface BatchBody {
     requirements: BatchRequirement[];
-    codebaseId?: string;
+    spaceId?: string;
 }
 
 export function batchCreateRequirements(userId: string, body: BatchBody) {
@@ -59,7 +59,7 @@ export function batchCreateRequirements(userId: string, body: BatchBody) {
                     id,
                     name,
                     userId,
-                    codebaseId: body.codebaseId,
+                    spaceId: body.spaceId,
                     parentId
                 });
                 nameToId.set(name, id);
@@ -88,7 +88,7 @@ export function batchCreateRequirements(userId: string, body: BatchBody) {
                 description: req.description,
                 steps: req.steps,
                 priority: req.priority,
-                codebaseId: body.codebaseId,
+                spaceId: body.spaceId,
                 useCaseId,
                 userId,
                 origin: "ai",

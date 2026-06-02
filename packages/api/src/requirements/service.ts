@@ -31,11 +31,11 @@ export interface StepVocabularyWarning extends VocabularyWarning {
 
 function getVocabularyWarnings(
     steps: Array<{ text: string }>,
-    codebaseId: string | undefined | null
+    spaceId: string | undefined | null
 ): Effect.Effect<StepVocabularyWarning[], never> {
-    if (!codebaseId) return Effect.succeed([]);
+    if (!spaceId) return Effect.succeed([]);
 
-    return listVocabulary(codebaseId).pipe(
+    return listVocabulary(spaceId).pipe(
         Effect.map(vocab => {
             const vocabEntries: VocabEntry[] = vocab.map(v => ({
                 word: v.word,
@@ -58,7 +58,7 @@ function getVocabularyWarnings(
 export function listRequirements(
     userId: string,
     query: {
-        codebaseId?: string;
+        spaceId?: string;
         useCaseId?: string;
         search?: string;
         status?: string;
@@ -74,7 +74,7 @@ export function listRequirements(
 
     return listRequirementsRepo({
         userId,
-        codebaseId: query.codebaseId,
+        spaceId: query.spaceId,
         useCaseId: query.useCaseId,
         search: query.search,
         status: query.status,
@@ -107,7 +107,7 @@ export function createRequirement(
         description?: string;
         steps: Array<{ keyword: "given" | "when" | "then" | "and" | "but"; text: string; params?: Record<string, string> }>;
         priority?: string;
-        codebaseId?: string;
+        spaceId?: string;
         useCaseId?: string;
         origin?: string;
     }
@@ -126,14 +126,14 @@ export function createRequirement(
             description: body.description,
             steps: body.steps,
             priority: body.priority,
-            codebaseId: body.codebaseId,
+            spaceId: body.spaceId,
             useCaseId: body.useCaseId,
             userId,
             origin,
             reviewStatus: origin === "ai" ? "draft" : "approved"
         });
         const warnings = yield* crossReferenceSteps(body.steps, userId);
-        const vocabularyWarnings = yield* getVocabularyWarnings(body.steps, body.codebaseId);
+        const vocabularyWarnings = yield* getVocabularyWarnings(body.steps, body.spaceId);
         return { requirement, warnings, vocabularyWarnings };
     });
 }
@@ -146,7 +146,7 @@ export function updateRequirement(
         description?: string | null;
         steps?: Array<{ keyword: "given" | "when" | "then" | "and" | "but"; text: string; params?: Record<string, string> }>;
         priority?: string | null;
-        codebaseId?: string | null;
+        spaceId?: string | null;
         useCaseId?: string | null;
         origin?: string;
         reviewStatus?: string;
@@ -184,10 +184,10 @@ export function updateRequirement(
             ? yield* crossReferenceSteps(body.steps, userId)
             : emptyWarnings;
 
-        const codebaseId = body.codebaseId !== undefined ? body.codebaseId : existing.codebaseId;
+        const spaceId = body.spaceId !== undefined ? body.spaceId : existing.spaceId;
         const emptyVocabWarnings: StepVocabularyWarning[] = [];
         const vocabularyWarnings = body.steps
-            ? yield* getVocabularyWarnings(body.steps, codebaseId)
+            ? yield* getVocabularyWarnings(body.steps, spaceId)
             : emptyVocabWarnings;
 
         return { requirement, warnings, vocabularyWarnings };
@@ -247,8 +247,8 @@ export function setChunks(requirementId: string, userId: string, chunkIds: strin
     );
 }
 
-export function getStats(userId: string, codebaseId?: string) {
-    return getRequirementStats(userId, codebaseId);
+export function getStats(userId: string, spaceId?: string) {
+    return getRequirementStats(userId, spaceId);
 }
 
 export function bulkAction(
@@ -316,11 +316,11 @@ export function exportRequirement(id: string, userId: string, format: string) {
 
 export function exportAll(
     userId: string,
-    query: { codebaseId?: string; format: string }
+    query: { spaceId?: string; format: string }
 ) {
     return listRequirementsRepo({
         userId,
-        codebaseId: query.codebaseId,
+        spaceId: query.spaceId,
         limit: 10000,
         offset: 0
     }).pipe(
