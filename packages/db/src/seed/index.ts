@@ -40,7 +40,7 @@ import { verifySeed } from "./verify";
 
 // Modules — import each and register below.
 import * as coreModule from "./modules/core";
-import * as codebasesModule from "./modules/codebases";
+import * as codebasesModule from "./modules/spaces";
 import * as tagsModule from "./modules/tags";
 import * as chunksModule from "./modules/chunks";
 import * as connectionsModule from "./modules/connections";
