@@ -2,7 +2,7 @@ import { and, eq, inArray, sql } from "drizzle-orm";
 
 import { db, dbEffect } from "../index";
 import { chunk } from "../schema/chunk";
-import { chunkCodebase } from "../schema/codebase";
+import { chunkSpace } from "../schema/space";
 import { chunkFileRef } from "../schema/file-ref";
 
 export function getFileRefsForChunk(chunkId: string) {
@@ -53,15 +53,15 @@ export function lookupChunksByFilePath(path: string, userId: string, codebaseId?
         const conditions = [eq(chunkFileRef.path, path), eq(chunk.userId, userId)];
 
         if (codebaseId) {
-            const inCodebase = db
-                .select({ chunkId: chunkCodebase.chunkId })
-                .from(chunkCodebase)
-                .where(eq(chunkCodebase.codebaseId, codebaseId));
-            const inAnyCodebase = db
-                .select({ chunkId: chunkCodebase.chunkId })
-                .from(chunkCodebase);
+            const inSpace = db
+                .select({ chunkId: chunkSpace.chunkId })
+                .from(chunkSpace)
+                .where(eq(chunkSpace.spaceId, codebaseId));
+            const inAnySpace = db
+                .select({ chunkId: chunkSpace.chunkId })
+                .from(chunkSpace);
             conditions.push(
-                sql`(${chunk.id} IN (${inCodebase}) OR ${chunk.id} NOT IN (${inAnyCodebase}))`
+                sql`(${chunk.id} IN (${inSpace}) OR ${chunk.id} NOT IN (${inAnySpace}))`
             );
         }
 
