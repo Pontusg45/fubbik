@@ -1,8 +1,8 @@
 import { and, eq, gte, ilike, lte, sql } from "drizzle-orm";
 
 import { db, dbEffect } from "../index";
-import { chunkFeatureDelta, feature, featureCodebase, userActiveFeature } from "../schema/feature";
-import { codebase } from "../schema/codebase";
+import { chunkFeatureDelta, feature, featureSpace, userActiveFeature } from "../schema/feature";
+import { space } from "../schema/space";
 
 export function createFeature(params: {
     id: string;
@@ -59,15 +59,15 @@ export function listFeatures(userId: string, filters?: { codebaseId?: string; st
 
         if (!filters?.codebaseId) return features;
 
-        const featureIdsInCodebase = await db
-            .select({ featureId: featureCodebase.featureId })
-            .from(featureCodebase)
-            .where(eq(featureCodebase.codebaseId, filters.codebaseId));
-        const idSet = new Set(featureIdsInCodebase.map(r => r.featureId));
+        const featureIdsInSpace = await db
+            .select({ featureId: featureSpace.featureId })
+            .from(featureSpace)
+            .where(eq(featureSpace.spaceId, filters.codebaseId));
+        const idSet = new Set(featureIdsInSpace.map(r => r.featureId));
 
         const allLinked = await db
-            .select({ featureId: featureCodebase.featureId })
-            .from(featureCodebase);
+            .select({ featureId: featureSpace.featureId })
+            .from(featureSpace);
         const linkedSet = new Set(allLinked.map(r => r.featureId));
 
         return features.filter(f => idSet.has(f.id) || !linkedSet.has(f.id));
@@ -105,24 +105,24 @@ export function deleteFeature(id: string, userId: string) {
     });
 }
 
-export function setFeatureCodebases(featureId: string, codebaseIds: string[]) {
+export function setFeatureSpaces(featureId: string, spaceIds: string[]) {
     return dbEffect(async () => {
-        await db.delete(featureCodebase).where(eq(featureCodebase.featureId, featureId));
-        if (codebaseIds.length === 0) return [];
+        await db.delete(featureSpace).where(eq(featureSpace.featureId, featureId));
+        if (spaceIds.length === 0) return [];
         return db
-            .insert(featureCodebase)
-            .values(codebaseIds.map(codebaseId => ({ featureId, codebaseId })))
+            .insert(featureSpace)
+            .values(spaceIds.map(spaceId => ({ featureId, spaceId })))
             .returning();
     });
 }
 
-export function getCodebasesForFeature(featureId: string) {
+export function getSpacesForFeature(featureId: string) {
     return dbEffect(() =>
         db
-            .select({ id: codebase.id, name: codebase.name })
-            .from(featureCodebase)
-            .innerJoin(codebase, eq(featureCodebase.codebaseId, codebase.id))
-            .where(eq(featureCodebase.featureId, featureId)),
+            .select({ id: space.id, name: space.name })
+            .from(featureSpace)
+            .innerJoin(space, eq(featureSpace.spaceId, space.id))
+            .where(eq(featureSpace.featureId, featureId)),
     );
 }
 
