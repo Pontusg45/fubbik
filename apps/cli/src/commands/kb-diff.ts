@@ -16,8 +16,9 @@ function requireServer(): string {
 export const kbDiffCommand = new Command("kb-diff")
     .description("Show knowledge base changes since a date")
     .option("--since <date>", "date (ISO or relative like '7d', '2w')", "7d")
-    .option("--codebase <name>", "scope to codebase")
-    .action(async (opts: { since: string; codebase?: string }, cmd: Command) => {
+    .option("-s, --space <name>", "scope to space")
+    .option("--codebase <name>", "alias for --space (deprecated)")
+    .action(async (opts: { since: string; space?: string; codebase?: string }, cmd: Command) => {
         const serverUrl = requireServer();
 
         // Parse date
@@ -40,7 +41,8 @@ export const kbDiffCommand = new Command("kb-diff")
                 sort: "updated",
                 limit: "100",
             });
-            if (opts.codebase) params.set("codebaseId", opts.codebase);
+            const spaceId = opts.space ?? opts.codebase;
+            if (spaceId) params.set("spaceId", spaceId);
 
             const res = await fetch(`${serverUrl}/api/chunks?${params}`);
             if (!res.ok) {

@@ -1,6 +1,6 @@
 import { Command } from "commander";
 
-import { resolveCodebaseId } from "../lib/detect-codebase";
+import { resolveSpaceId } from "../lib/detect-space";
 import { output, outputQuiet } from "../lib/output";
 import { getServerUrl } from "../lib/store";
 
@@ -28,16 +28,17 @@ function parseStep(raw: string): { keyword: string; text: string } {
 const listRequirements = new Command("list")
     .description("List requirements")
     .option("--status <status>", "filter by status (passing, failing, untested)")
-    .option("--codebase <name>", "filter by codebase name")
+    .option("-s, --space <name>", "scope to space")
+    .option("--codebase <name>", "alias for --space (deprecated)")
     .option("--priority <priority>", "filter by priority")
-    .action(async (opts: { status?: string; codebase?: string; priority?: string }, cmd: Command) => {
+    .action(async (opts: { status?: string; space?: string; codebase?: string; priority?: string }, cmd: Command) => {
         const serverUrl = requireServer();
-        const codebaseId = await resolveCodebaseId(serverUrl, { codebase: opts.codebase });
+        const spaceId = await resolveSpaceId(serverUrl, { space: opts.space ?? opts.codebase });
 
         const params = new URLSearchParams();
         if (opts.status) params.set("status", opts.status);
         if (opts.priority) params.set("priority", opts.priority);
-        if (codebaseId) params.set("codebaseId", codebaseId);
+        if (spaceId) params.set("spaceId", spaceId);
 
         const res = await fetch(`${serverUrl}/api/requirements?${params}`);
         if (!res.ok) {
@@ -70,15 +71,16 @@ const addRequirement = new Command("add")
     .description("Add a new requirement")
     .argument("<title>", "requirement title")
     .option("--step <step...>", 'step in "keyword: text" format (e.g. "given: a user is logged in")')
-    .option("--codebase <name>", "codebase name")
-    .action(async (title: string, opts: { step?: string[]; codebase?: string }, cmd: Command) => {
+    .option("-s, --space <name>", "scope to space")
+    .option("--codebase <name>", "alias for --space (deprecated)")
+    .action(async (title: string, opts: { step?: string[]; space?: string; codebase?: string }, cmd: Command) => {
         const serverUrl = requireServer();
-        const codebaseId = await resolveCodebaseId(serverUrl, { codebase: opts.codebase });
+        const spaceId = await resolveSpaceId(serverUrl, { space: opts.space ?? opts.codebase });
 
         const steps = (opts.step ?? []).map(parseStep);
 
         const body: Record<string, unknown> = { title, steps };
-        if (codebaseId) body.codebaseId = codebaseId;
+        if (spaceId) body.spaceId = spaceId;
 
         const res = await fetch(`${serverUrl}/api/requirements`, {
             method: "POST",
@@ -130,10 +132,11 @@ const statusRequirement = new Command("status")
 const exportRequirements = new Command("export")
     .description("Export requirements in a given format")
     .option("--format <format>", "export format (gherkin, vitest, markdown)", "gherkin")
-    .option("--codebase <name>", "codebase name")
-    .action(async (opts: { format: string; codebase?: string }, cmd: Command) => {
+    .option("-s, --space <name>", "scope to space")
+    .option("--codebase <name>", "alias for --space (deprecated)")
+    .action(async (opts: { format: string; space?: string; codebase?: string }, cmd: Command) => {
         const serverUrl = requireServer();
-        const codebaseId = await resolveCodebaseId(serverUrl, { codebase: opts.codebase });
+        const spaceId = await resolveSpaceId(serverUrl, { space: opts.space ?? opts.codebase });
 
         const validFormats = ["gherkin", "vitest", "markdown"];
         if (!validFormats.includes(opts.format)) {
@@ -145,7 +148,7 @@ const exportRequirements = new Command("export")
 
         const params = new URLSearchParams();
         params.set("format", opts.format);
-        if (codebaseId) params.set("codebaseId", codebaseId);
+        if (spaceId) params.set("spaceId", spaceId);
 
         const res = await fetch(`${serverUrl}/api/requirements/export?${params}`);
         if (!res.ok) {
@@ -160,13 +163,14 @@ const exportRequirements = new Command("export")
 
 const verifyRequirements = new Command("verify")
     .description("Verify requirements and check for cross-ref warnings")
-    .option("--codebase <name>", "codebase name")
-    .action(async (opts: { codebase?: string }, cmd: Command) => {
+    .option("-s, --space <name>", "scope to space")
+    .option("--codebase <name>", "alias for --space (deprecated)")
+    .action(async (opts: { space?: string; codebase?: string }, cmd: Command) => {
         const serverUrl = requireServer();
-        const codebaseId = await resolveCodebaseId(serverUrl, { codebase: opts.codebase });
+        const spaceId = await resolveSpaceId(serverUrl, { space: opts.space ?? opts.codebase });
 
         const params = new URLSearchParams();
-        if (codebaseId) params.set("codebaseId", codebaseId);
+        if (spaceId) params.set("spaceId", spaceId);
 
         const res = await fetch(`${serverUrl}/api/requirements?${params}`);
         if (!res.ok) {

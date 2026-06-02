@@ -4,7 +4,7 @@ import { basename, join, relative, resolve } from "node:path";
 import { Command } from "commander";
 
 import { formatSuccess } from "../lib/colors";
-import { resolveCodebaseId } from "../lib/detect-codebase";
+import { resolveSpaceId } from "../lib/detect-space";
 import { output, outputError, outputQuiet } from "../lib/output";
 import { addChunk, getServerUrl } from "../lib/store";
 
@@ -82,9 +82,10 @@ export const importCommand = new Command("import")
     .argument("<path>", "path to JSON file, .md file, or directory of .md files")
     .option(
         "--server",
-        "send to server (required for frontmatter parsing and codebase scoping)"
+        "send to server (required for frontmatter parsing and space scoping)"
     )
-    .option("--codebase <name>", "codebase name (implies --server)")
+    .option("-s, --space <name>", "space name (implies --server)")
+    .option("--codebase <name>", "alias for --space (deprecated)")
     .option("--type <type>", "default chunk type", "document")
     .option("--no-recursive", "do not recurse into subdirectories")
     .action(
@@ -92,13 +93,14 @@ export const importCommand = new Command("import")
             inputPath: string,
             opts: {
                 server?: boolean;
+                space?: string;
                 codebase?: string;
                 type: string;
                 recursive: boolean;
             },
             cmd: Command
         ) => {
-            const useServer = opts.server || !!opts.codebase;
+            const useServer = opts.server || !!opts.space || !!opts.codebase;
 
             let stat: ReturnType<typeof statSync>;
             try {
@@ -200,11 +202,11 @@ export const importCommand = new Command("import")
                     );
                     process.exit(1);
                 }
-                const codebaseId = await resolveCodebaseId(serverUrl, {
-                    codebase: opts.codebase
+                const spaceId = await resolveSpaceId(serverUrl, {
+                    space: opts.space ?? opts.codebase
                 });
-                if (!codebaseId) {
-                    outputError("Could not resolve codebase.");
+                if (!spaceId) {
+                    outputError("Could not resolve space.");
                     process.exit(1);
                 }
 
@@ -219,7 +221,7 @@ export const importCommand = new Command("import")
                         {
                             method: "POST",
                             headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ files, codebaseId })
+                            body: JSON.stringify({ files, spaceId })
                         }
                     );
 

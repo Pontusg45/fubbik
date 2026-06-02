@@ -152,8 +152,9 @@ ${extras}
 export const exportSiteCommand = new Command("export-site")
     .description("Generate a static HTML site from the knowledge base")
     .option("-o, --output <dir>", "output directory", "fubbik-site")
-    .option("--codebase <name>", "filter by codebase")
-    .action(async (opts: { output: string; codebase?: string }, cmd: Command) => {
+    .option("-s, --space <name>", "filter by space")
+    .option("--codebase <name>", "alias for --space (deprecated)")
+    .action(async (opts: { output: string; space?: string; codebase?: string }, cmd: Command) => {
         const serverUrl = getServerUrl();
         if (!serverUrl) {
             outputError("Server URL required. Run 'fubbik init --server <url>'.");
@@ -162,12 +163,13 @@ export const exportSiteCommand = new Command("export-site")
 
         // Fetch all chunks
         const params = new URLSearchParams({ limit: "500", sort: "alpha" });
-        if (opts.codebase) {
-            const cbRes = await fetch(`${serverUrl}/api/codebases`);
+        const spaceName = opts.space ?? opts.codebase;
+        if (spaceName) {
+            const cbRes = await fetch(`${serverUrl}/api/spaces`);
             if (cbRes.ok) {
-                const codebases = (await cbRes.json()) as { id: string; name: string }[];
-                const match = codebases.find((c) => c.name === opts.codebase);
-                if (match) params.set("codebaseId", match.id);
+                const spaces = (await cbRes.json()) as { id: string; name: string }[];
+                const match = spaces.find((c) => c.name === spaceName);
+                if (match) params.set("spaceId", match.id);
             }
         }
 

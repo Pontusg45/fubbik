@@ -3,24 +3,25 @@ import pc from "picocolors";
 import { apiFetch } from "../lib/api-fetch";
 import { output, outputError } from "../lib/output";
 import { getServerUrl } from "../lib/store";
-import { resolveCodebaseId } from "../lib/detect-codebase";
+import { resolveSpaceId } from "../lib/detect-space";
 
 export const whyCommand = new Command("why")
     .description("Show reasoning and decisions behind a file")
     .argument("<path>", "file path to explain")
-    .option("--codebase <name>", "codebase name")
-    .action(async (filePath: string, opts: { codebase?: string }, cmd: Command) => {
+    .option("-s, --space <name>", "space name")
+    .option("--codebase <name>", "alias for --space (deprecated)")
+    .action(async (filePath: string, opts: { space?: string; codebase?: string }, cmd: Command) => {
         const serverUrl = getServerUrl();
         if (!serverUrl) {
             outputError("No server URL configured. Run 'fubbik init' first.");
             process.exit(1);
         }
 
-        const codebaseId = await resolveCodebaseId(serverUrl, { codebase: opts.codebase });
+        const spaceId = await resolveSpaceId(serverUrl, { space: opts.space ?? opts.codebase });
 
         // Fetch context chunks for this file
         const params = new URLSearchParams({ path: filePath });
-        if (codebaseId) params.set("codebaseId", codebaseId);
+        if (spaceId) params.set("spaceId", spaceId);
 
         const res = await apiFetch(`${serverUrl}/api/context/for-file?${params}`);
         if (!res.ok) {

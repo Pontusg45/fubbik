@@ -61,7 +61,8 @@ function computeQualityScore(chunk: any): number {
 
 export const lintCommand = new Command("lint")
     .description("Check all chunks for quality issues")
-    .option("--codebase <name>", "scope to codebase")
+    .option("-s, --space <name>", "scope to space")
+    .option("--codebase <name>", "alias for --space (deprecated)")
     .option("--fix", "auto-fix safe issues (e.g. enrich unenriched chunks)")
     .option("--score", "compute and display quality scores per chunk")
     .action(async (opts, cmd) => {
@@ -70,7 +71,8 @@ export const lintCommand = new Command("lint")
         try {
             // Fetch all chunks
             const params = new URLSearchParams({ limit: "500" });
-            if (opts.codebase) params.set("codebaseId", opts.codebase);
+            const spaceId = opts.space ?? opts.codebase;
+            if (spaceId) params.set("spaceId", spaceId);
             const res = await fetch(`${serverUrl}/api/chunks?${params}`);
             if (!res.ok) {
                 outputError(`API error: ${res.statusText}`);
@@ -153,7 +155,7 @@ export const lintCommand = new Command("lint")
 
             // Fetch knowledge health to check for orphans and stale chunks
             const healthRes = await fetch(
-                `${serverUrl}/api/health/knowledge${opts.codebase ? `?codebaseId=${opts.codebase}` : ""}`
+                `${serverUrl}/api/health/knowledge${opts.space ?? opts.codebase ? `?spaceId=${opts.space ?? opts.codebase}` : ""}`
             );
             if (healthRes.ok) {
                 const health = (await healthRes.json()) as any;

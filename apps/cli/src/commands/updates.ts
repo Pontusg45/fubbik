@@ -8,8 +8,8 @@ export const updatesCommand = new Command("updates")
     .description("List chunk updates by tag")
     .option("--tag <tag>", "filter updates by tag")
     .option("--tags", "list all update tags with counts")
-    .option("--codebase-id <id>", "filter to a specific codebase")
-    .action(async (opts: { tag?: string; tags?: boolean; codebaseId?: string }, cmd: Command) => {
+    .option("--space-id <id>", "filter to a specific space")
+    .action(async (opts: { tag?: string; tags?: boolean; spaceId?: string }, cmd: Command) => {
         const serverUrl = getServerUrl();
         if (!serverUrl) {
             outputError("Update tags require server mode. Set FUBBIK_SERVER_URL.");
@@ -18,7 +18,7 @@ export const updatesCommand = new Command("updates")
 
         if (opts.tags) {
             const params = new URLSearchParams();
-            if (opts.codebaseId) params.set("codebaseId", opts.codebaseId);
+            if (opts.spaceId) params.set("spaceId", opts.spaceId);
 
             try {
                 const res = await fetch(`${serverUrl}/api/chunks/updates/tags?${params}`);
@@ -45,7 +45,7 @@ export const updatesCommand = new Command("updates")
         }
 
         const params = new URLSearchParams({ tag: opts.tag });
-        if (opts.codebaseId) params.set("codebaseId", opts.codebaseId);
+        if (opts.spaceId) params.set("spaceId", opts.spaceId);
 
         try {
             const res = await fetch(`${serverUrl}/api/chunks/updates?${params}`);

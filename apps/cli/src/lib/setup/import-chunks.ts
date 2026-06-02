@@ -10,7 +10,7 @@ interface ImportResult {
 
 export async function importToServer(
 	serverUrl: string,
-	codebaseId: string,
+	spaceId: string,
 	chunks: DiscoveredChunk[],
 	connections: DiscoveredConnection[],
 	dir: string,
@@ -38,7 +38,7 @@ export async function importToServer(
 				const res = await fetch(`${serverUrl}/api/chunks/import-docs`, {
 					method: "POST",
 					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({ files, codebaseId }),
+					body: JSON.stringify({ files, spaceId }),
 				});
 				if (res.ok) {
 					const data = (await res.json()) as { created: number; skipped: number; errors: { path: string; error: string }[] };
@@ -66,7 +66,7 @@ export async function importToServer(
 						content: chunk.content,
 						type: chunk.type,
 						tags: chunk.tags,
-						codebaseIds: [codebaseId],
+						spaceIds: [spaceId],
 						origin: "ai",
 					};
 					const res = await fetch(`${serverUrl}/api/chunks`, {
@@ -115,7 +115,7 @@ export async function importToServer(
 	if (connections.length > 0) {
 		onProgress?.("Resolving chunk references...");
 		try {
-			const res = await fetch(`${serverUrl}/api/chunks?codebaseId=${codebaseId}&limit=200`);
+			const res = await fetch(`${serverUrl}/api/chunks?spaceId=${spaceId}&limit=200`);
 			if (res.ok) {
 				const data = (await res.json()) as { items: { id: string; title: string }[] };
 				for (const item of data.items) {

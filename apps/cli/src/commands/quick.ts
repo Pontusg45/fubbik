@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { Command } from "commander";
 
 import { formatId, formatSuccess, formatTag, formatType } from "../lib/colors";
-import { resolveCodebaseId } from "../lib/detect-codebase";
+import { resolveSpaceId } from "../lib/detect-space";
 import { output, outputError, outputQuiet } from "../lib/output";
 import { addChunk, getServerUrl } from "../lib/store";
 
@@ -13,14 +13,16 @@ export const quickCommand = new Command("quick")
     .option("-t, --title <title>", "chunk title (alternative to positional argument)")
     .option("--type <type>", "chunk type", "note")
     .option("--tags <tags>", "comma-separated tags", "")
-    .option("--global", "skip codebase scoping")
-    .option("--codebase <name>", "scope to a specific codebase by name")
+    .option("--global", "skip space scoping")
+    .option("-s, --space <name>", "scope to a specific space by name")
+    .option("--codebase <name>", "alias for --space (deprecated)")
     .option("--tag <tag>", "label this creation with an update tag")
     .action(async (titleWords: string[], opts: {
         title?: string;
         type: string;
         tags: string;
         global?: boolean;
+        space?: string;
         codebase?: string;
         tag?: string;
     }, cmd: Command) => {
@@ -45,9 +47,9 @@ export const quickCommand = new Command("quick")
         const serverUrl = getServerUrl();
         if (serverUrl) {
             // Server mode: POST to API
-            const codebaseId = await resolveCodebaseId(serverUrl, {
+            const spaceId = await resolveSpaceId(serverUrl, {
                 global: opts.global,
-                codebase: opts.codebase,
+                space: opts.space ?? opts.codebase,
             });
 
             const body: Record<string, unknown> = {
@@ -56,8 +58,8 @@ export const quickCommand = new Command("quick")
                 type: opts.type,
                 tags,
             };
-            if (codebaseId) {
-                body.codebaseIds = [codebaseId];
+            if (spaceId) {
+                body.spaceIds = [spaceId];
             }
             if (opts.tag) {
                 body.updateTag = opts.tag;

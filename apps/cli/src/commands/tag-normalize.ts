@@ -39,14 +39,16 @@ export const tagNormalizeCommand = new Command("normalize")
     .description("Identify tag issues and optionally fix them")
     .option("--dry-run", "show what would be changed (default)", true)
     .option("--confirm", "apply changes")
-    .option("--codebase <name>", "scope to codebase")
+    .option("-s, --space <name>", "scope to space")
+    .option("--codebase <name>", "alias for --space (deprecated)")
     .action(async (opts, cmd) => {
         const serverUrl = requireServer();
 
         try {
             // Fetch all chunks to analyze tags
             const params = new URLSearchParams({ limit: "500" });
-            if (opts.codebase) params.set("codebaseId", opts.codebase);
+            const spaceId = opts.space ?? opts.codebase;
+            if (spaceId) params.set("spaceId", spaceId);
             const res = await fetch(`${serverUrl}/api/chunks?${params}`);
             if (!res.ok) {
                 outputError(`API error: ${res.statusText}`);

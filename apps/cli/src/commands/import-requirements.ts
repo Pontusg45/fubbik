@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 
 import { Command } from "commander";
 
-import { resolveCodebaseId } from "../lib/detect-codebase";
+import { resolveSpaceId } from "../lib/detect-space";
 import { output, outputError, outputQuiet } from "../lib/output";
 import { getServerUrl } from "../lib/store";
 
@@ -57,11 +57,12 @@ function requireServer(): string {
 export const importRequirementsCommand = new Command("import")
     .description("Import requirements from a Gherkin .feature file")
     .argument("<file>", "path to .feature file")
-    .option("--codebase <name>", "scope to codebase")
+    .option("-s, --space <name>", "scope to space")
+    .option("--codebase <name>", "alias for --space (deprecated)")
     .option("--priority <p>", "default priority", "should")
-    .action(async (file: string, opts: { codebase?: string; priority: string }, cmd: Command) => {
+    .action(async (file: string, opts: { space?: string; codebase?: string; priority: string }, cmd: Command) => {
         const serverUrl = requireServer();
-        const codebaseId = await resolveCodebaseId(serverUrl, { codebase: opts.codebase });
+        const spaceId = await resolveSpaceId(serverUrl, { space: opts.space ?? opts.codebase });
 
         let content: string;
         try {
@@ -88,7 +89,7 @@ export const importRequirementsCommand = new Command("import")
                 steps: req.steps,
                 priority: opts.priority,
             };
-            if (codebaseId) body.codebaseId = codebaseId;
+            if (spaceId) body.spaceId = spaceId;
 
             try {
                 const res = await fetch(`${serverUrl}/api/requirements`, {

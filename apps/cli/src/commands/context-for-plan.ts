@@ -7,15 +7,17 @@ export const contextForPlanCommand = new Command("for-plan")
     .description("Get context scoped to a plan (analyze chunks, requirements, tasks)")
     .argument("<planId>", "plan ID")
     .option("-t, --max-tokens <n>", "token budget", "8000")
-    .option("-c, --codebase <id>", "codebase ID")
-    .action(async (planId: string, opts: { maxTokens: string; codebase?: string }, cmd: Command) => {
+    .option("-s, --space <id>", "space ID")
+    .option("--codebase <id>", "alias for --space (deprecated)")
+    .action(async (planId: string, opts: { maxTokens: string; space?: string; codebase?: string }, cmd: Command) => {
         try {
             const params = new URLSearchParams({
                 planId,
                 maxTokens: opts.maxTokens,
                 format: isJson(cmd) ? "structured-json" : "structured-md",
             });
-            if (opts.codebase) params.set("codebaseId", opts.codebase);
+            const spaceId = opts.space ?? opts.codebase;
+            if (spaceId) params.set("spaceId", spaceId);
 
             const res = await fetchApi(`/context/for-plan?${params}`);
             if (!res.ok) {

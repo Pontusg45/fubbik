@@ -5,7 +5,7 @@ import { Command } from "commander";
 
 import { formatSuccess } from "../lib/colors";
 import { loadConfig } from "../lib/config";
-import { resolveCodebaseId } from "../lib/detect-codebase";
+import { resolveSpaceId } from "../lib/detect-space";
 import { output, outputError, outputQuiet } from "../lib/output";
 import { getServerUrl } from "../lib/store";
 
@@ -13,7 +13,8 @@ export const syncClaudeMdCommand = new Command("sync-claude-md")
     .description("Generate a CLAUDE.md file from chunks tagged with a specific tag")
     .option("--tag <tag>", "tag to filter chunks by", "claude-context")
     .option("--output <path>", "output file path", ".claude/CLAUDE.md")
-    .option("--codebase <name>", "scope to a specific codebase")
+    .option("-s, --space <name>", "scope to a specific space")
+    .option("--codebase <name>", "alias for --space (deprecated)")
     .option("--global", "only include global (unscoped) chunks")
     .option("--watch", "watch for changes and regenerate periodically")
     .option("--interval <seconds>", "polling interval in seconds for watch mode", "30")
@@ -22,6 +23,7 @@ export const syncClaudeMdCommand = new Command("sync-claude-md")
             opts: {
                 tag: string;
                 output: string;
+                space?: string;
                 codebase?: string;
                 global?: boolean;
                 watch?: boolean;
@@ -51,18 +53,18 @@ export const syncClaudeMdCommand = new Command("sync-claude-md")
             const outputPath = cmd.getOptionValueSource("output") === "default"
                 ? (config.claudeMd?.output ?? opts.output)
                 : opts.output;
-            const codebaseName = opts.codebase ?? config.codebase;
+            const spaceName = opts.space ?? opts.codebase ?? config.codebase;
 
-            const codebaseId = await resolveCodebaseId(serverUrl, {
+            const spaceId = await resolveSpaceId(serverUrl, {
                 global: opts.global,
-                codebase: codebaseName
+                space: spaceName
             });
 
             const generate = async () => {
                 const params = new URLSearchParams();
                 params.set("tag", tag);
-                if (codebaseId) {
-                    params.set("codebaseId", codebaseId);
+                if (spaceId) {
+                    params.set("spaceId", spaceId);
                 }
 
                 const res = await fetch(`${serverUrl}/api/chunks/export/claude-md?${params.toString()}`);

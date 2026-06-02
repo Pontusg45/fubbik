@@ -1,7 +1,7 @@
 import { Command } from "commander";
 
 import { loadConfig } from "../lib/config";
-import { resolveCodebaseId } from "../lib/detect-codebase";
+import { resolveSpaceId } from "../lib/detect-space";
 import { output, outputError, outputQuiet } from "../lib/output";
 import { listChunks, readStore } from "../lib/store";
 import { formatChunkTable } from "../lib/table";
@@ -18,8 +18,9 @@ export const listCommand = new Command("list")
     .option("--server", "fetch from server API instead of local store")
     .option("--scope <pairs>", "filter by scope (key:value,key:value) — requires server")
     .option("--exclude <terms>", "exclude chunks about these terms (comma-separated) — requires server")
-    .option("--global", "skip codebase scoping (show all chunks)")
-    .option("--codebase <name>", "scope to a specific codebase by name")
+    .option("--global", "skip space scoping (show all chunks)")
+    .option("-s, --space <name>", "scope to a specific space by name")
+    .option("--codebase <name>", "alias for --space (deprecated)")
     .action(
         async (
             opts: {
@@ -34,12 +35,13 @@ export const listCommand = new Command("list")
                 scope?: string;
                 exclude?: string;
                 global?: boolean;
+                space?: string;
                 codebase?: string;
             },
             cmd: Command
         ) => {
             const config = loadConfig();
-            const codebaseName = opts.codebase ?? config.codebase;
+            const spaceName = opts.space ?? opts.codebase ?? config.codebase;
 
             if (opts.server || opts.scope || opts.exclude) {
                 const store = readStore();
@@ -65,11 +67,11 @@ export const listCommand = new Command("list")
                 if (opts.limit) params.set("limit", opts.limit);
                 if (opts.offset) params.set("offset", opts.offset);
 
-                const codebaseId = await resolveCodebaseId(store.serverUrl, {
+                const spaceId = await resolveSpaceId(store.serverUrl, {
                     global: opts.global,
-                    codebase: codebaseName
+                    space: spaceName
                 });
-                if (codebaseId) params.set("codebaseId", codebaseId);
+                if (spaceId) params.set("spaceId", spaceId);
 
                 const res = await fetch(`${store.serverUrl}/api/chunks?${params}`);
                 if (!res.ok) {

@@ -95,21 +95,22 @@ function formatMarkdown(chunks: ContextChunk[], filePath: string): string {
 export const contextForCommand = new Command("for")
     .description("Generate focused context for a specific file")
     .argument("<path>", "file path to get context for")
-    .option("--codebase <name>", "scope to a specific codebase")
+    .option("-s, --space <name>", "scope to a specific space")
+    .option("--codebase <name>", "alias for --space (deprecated)")
     .option("--format <format>", "output format: markdown or json", "markdown")
-    .option("--include-deps", "include chunks from dependency codebases")
-    .action(async (filePath: string, opts: { codebase?: string; format: string; includeDeps?: boolean }, cmd: Command) => {
+    .option("--include-deps", "include chunks from dependency spaces")
+    .action(async (filePath: string, opts: { space?: string; codebase?: string; format: string; includeDeps?: boolean }, cmd: Command) => {
         // If the path contains glob characters, use multi-file endpoint
         if (filePath.includes("*")) {
             try {
                 const config = loadConfig();
-                const codebaseName = opts.codebase ?? config.codebase;
+                const spaceName = opts.space ?? opts.codebase ?? config.codebase;
                 const params = new URLSearchParams({
                     paths: filePath,
                     maxTokens: "8000",
                     format: isJson(cmd) ? "structured-json" : "structured-md",
                 });
-                if (codebaseName) params.set("codebaseId", codebaseName);
+                if (spaceName) params.set("spaceId", spaceName);
 
                 const res = await fetchApi(`/context/for-files?${params}`);
                 if (!res.ok) {
@@ -141,13 +142,13 @@ export const contextForCommand = new Command("for")
             process.exit(1);
         }
 
-        const codebaseName = opts.codebase ?? config.codebase;
+        const spaceName = opts.space ?? opts.codebase ?? config.codebase;
         const includeDeps = opts.includeDeps ?? config.context?.includeDeps ?? false;
 
         const params = new URLSearchParams();
         params.set("path", filePath);
-        if (codebaseName) {
-            params.set("codebaseId", codebaseName);
+        if (spaceName) {
+            params.set("spaceId", spaceName);
         }
         if (includeDeps) {
             const depFile = findNearestDepFile(filePath);

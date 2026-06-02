@@ -51,12 +51,14 @@ const createPlan = new Command("create")
     .description("Create a new plan")
     .argument("<title>", "plan title")
     .option("-d, --description <desc>", "plan description")
-    .option("-c, --codebase <codebaseId>", "codebase ID")
-    .action(async (title: string, opts: { description?: string; codebase?: string }, cmd: Command) => {
+    .option("-s, --space <spaceId>", "space ID")
+    .option("-c, --codebase <spaceId>", "alias for --space (deprecated)")
+    .action(async (title: string, opts: { description?: string; space?: string; codebase?: string }, cmd: Command) => {
         try {
             const body: Record<string, unknown> = { title };
             if (opts.description) body.description = opts.description;
-            if (opts.codebase) body.codebaseId = opts.codebase;
+            const spaceId = opts.space ?? opts.codebase;
+            if (spaceId) body.spaceId = spaceId;
 
             const res = await fetchApi("/plans", {
                 method: "POST",
@@ -80,13 +82,15 @@ const createPlan = new Command("create")
 const listPlans = new Command("list")
     .description("List plans with progress")
     .option("-s, --status <status>", "filter by status (draft, analyzing, ready, in_progress, completed, archived)")
-    .option("-c, --codebase <codebaseId>", "filter by codebase ID")
+    .option("--space <spaceId>", "filter by space ID")
+    .option("-c, --codebase <spaceId>", "alias for --space (deprecated)")
     .option("--archived", "include archived plans")
-    .action(async (opts: { status?: string; codebase?: string; archived?: boolean }, cmd: Command) => {
+    .action(async (opts: { status?: string; space?: string; codebase?: string; archived?: boolean }, cmd: Command) => {
         try {
             const params = new URLSearchParams();
             if (opts.status) params.set("status", opts.status);
-            if (opts.codebase) params.set("codebaseId", opts.codebase);
+            const spaceId = opts.space ?? opts.codebase;
+            if (spaceId) params.set("spaceId", spaceId);
             if (opts.archived) params.set("includeArchived", "true");
             const qs = params.toString();
 

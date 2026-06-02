@@ -12,7 +12,7 @@ export const taskCommand = new Command("task")
             .description("Add a task")
             .argument("<title>", "task title")
             .option("-d, --description <desc>", "description")
-            .option("--codebase <name>", "codebase")
+            .option("-s, --space <name>", "space")
             .action(async (title, opts, cmd) => {
                 try {
                     const task = (await fetchApiJson("/tasks", {

@@ -17,8 +17,9 @@ export const addCommand = new Command("add")
     .option("-i, --interactive", "interactive mode — prompt for each field")
     .option("--template <name>", "use a template (built-in or from server)")
     .option("--list-templates", "list available templates")
-    .option("--global", "skip codebase scoping")
-    .option("--codebase <name>", "scope to a specific codebase by name")
+    .option("--global", "skip space scoping")
+    .option("-s, --space <name>", "scope to a specific space by name")
+    .option("--codebase <name>", "alias for --space (deprecated)")
     .option("--tag <tag>", "label this addition with an update tag")
     .action(async (opts: {
         title?: string;
@@ -30,6 +31,7 @@ export const addCommand = new Command("add")
         template?: string;
         listTemplates?: boolean;
         global?: boolean;
+        space?: string;
         codebase?: string;
         tag?: string;
     }, cmd: Command) => {

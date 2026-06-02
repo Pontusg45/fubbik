@@ -3,7 +3,7 @@ import pc from "picocolors";
 import { formatError, formatSuccess } from "../lib/colors";
 import { output } from "../lib/output";
 import { getServerUrl, readStore, storeExists } from "../lib/store";
-import { detectCodebase } from "../lib/detect-codebase";
+import { detectSpace } from "../lib/detect-space";
 
 const warn = (msg: string) => `${pc.yellow("\u26A0")} ${msg}`;
 
@@ -70,13 +70,13 @@ export const doctorCommand = new Command("doctor")
             data.ollama = { ok: false, url: ollamaUrl };
         }
 
-        // 4. Codebase detected
-        const codebase = await detectCodebase();
+        // 4. Space detected
+        const codebase = await detectSpace();
         if (codebase) {
-            lines.push(`  ${formatSuccess(`Codebase detected (${codebase.name})`)}`);
+            lines.push(`  ${formatSuccess(`Space detected (${codebase.name})`)}`);
             data.codebase = { ok: true, name: codebase.name, id: codebase.id };
         } else {
-            lines.push(`  ${formatError("Codebase not detected")}`);
+            lines.push(`  ${formatError("Space not detected")}`);
             data.codebase = { ok: false };
         }
 

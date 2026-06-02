@@ -7,10 +7,11 @@ import { getServerUrl } from "../lib/store";
 export const contextCommand = new Command("export")
     .description("Export token-aware context for AI consumption")
     .option("--max-tokens <tokens>", "token budget", "4000")
-    .option("--codebase <id>", "scope to a specific codebase ID")
+    .option("-s, --space <id>", "scope to a specific space ID")
+    .option("--codebase <id>", "alias for --space (deprecated)")
     .option("--format <format>", "output format: markdown or json", "markdown")
     .option("--for <path>", "boost chunks relevant to this file path")
-    .action(async (opts: { maxTokens: string; codebase?: string; format: string; for?: string }, cmd: Command) => {
+    .action(async (opts: { maxTokens: string; space?: string; codebase?: string; format: string; for?: string }, cmd: Command) => {
         const config = loadConfig();
         const serverUrl = getServerUrl();
         if (!serverUrl) {
@@ -22,11 +23,12 @@ export const contextCommand = new Command("export")
             ? String(config.context?.maxTokens ?? opts.maxTokens)
             : opts.maxTokens;
 
+        const spaceId = opts.space ?? opts.codebase;
         const params = new URLSearchParams();
         params.set("maxTokens", maxTokens);
         params.set("format", opts.format);
-        if (opts.codebase) {
-            params.set("codebaseId", opts.codebase);
+        if (spaceId) {
+            params.set("spaceId", spaceId);
         }
         if (opts.for) {
             params.set("forPath", opts.for);

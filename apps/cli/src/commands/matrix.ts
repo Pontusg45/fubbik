@@ -67,12 +67,14 @@ const createMatrix = new Command("create")
     .argument("<name>", "matrix name")
     .requiredOption("--layer <layer>", "Layer: invariant or contract")
     .option("--description <desc>", "Description")
-    .option("--codebase <id>", "Codebase ID")
-    .action(async (name: string, opts: { layer: string; description?: string; codebase?: string }, cmd: Command) => {
+    .option("-s, --space <id>", "Space ID")
+    .option("--codebase <id>", "alias for --space (deprecated)")
+    .action(async (name: string, opts: { layer: string; description?: string; space?: string; codebase?: string }, cmd: Command) => {
         try {
             const body: Record<string, unknown> = { name, layer: opts.layer };
             if (opts.description) body.description = opts.description;
-            if (opts.codebase) body.codebaseId = opts.codebase;
+            const spaceId = opts.space ?? opts.codebase;
+            if (spaceId) body.spaceId = spaceId;
 
             const res = await fetchApi("/matrices", {
                 method: "POST",

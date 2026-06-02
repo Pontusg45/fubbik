@@ -26,13 +26,15 @@ export const cleanupCommand = new Command("cleanup")
     .option("--dry-run", "show what would be removed (default)", true)
     .option("--confirm", "actually remove flagged chunks")
     .option("--type <type>", "filter to specific chunk type")
-    .option("--codebase <name>", "scope to codebase")
+    .option("-s, --space <name>", "scope to space")
+    .option("--codebase <name>", "alias for --space (deprecated)")
     .action(async (opts, cmd) => {
         const serverUrl = requireServer();
 
         try {
+            const spaceName = opts.space ?? opts.codebase;
             const params = new URLSearchParams({ limit: "500" });
-            if (opts.codebase) params.set("codebaseId", opts.codebase);
+            if (spaceName) params.set("spaceId", spaceName);
             const res = await fetch(`${serverUrl}/api/chunks?${params}`);
             if (!res.ok) {
                 outputError(`API error: ${res.statusText}`);

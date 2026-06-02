@@ -7,15 +7,17 @@ export const contextAboutCommand = new Command("about")
     .description("Get context about a concept via semantic search")
     .argument("<concept>", "concept to search for (e.g. 'authentication')")
     .option("-t, --max-tokens <n>", "token budget", "8000")
-    .option("-c, --codebase <id>", "codebase ID")
-    .action(async (concept: string, opts: { maxTokens: string; codebase?: string }, cmd: Command) => {
+    .option("-s, --space <id>", "space ID")
+    .option("--codebase <id>", "alias for --space (deprecated)")
+    .action(async (concept: string, opts: { maxTokens: string; space?: string; codebase?: string }, cmd: Command) => {
         try {
             const params = new URLSearchParams({
                 q: concept,
                 maxTokens: opts.maxTokens,
                 format: isJson(cmd) ? "structured-json" : "structured-md",
             });
-            if (opts.codebase) params.set("codebaseId", opts.codebase);
+            const spaceId = opts.space ?? opts.codebase;
+            if (spaceId) params.set("spaceId", spaceId);
 
             const res = await fetchApi(`/context/about?${params}`);
             if (!res.ok) {

@@ -118,9 +118,10 @@ function formatDirectoryMarkdown(chunks: ContextChunk[], directory: string): str
 export const contextDirCommand = new Command("dir")
     .description("Generate CLAUDE.md-style context for all files in a directory")
     .argument("<directory>", "directory to generate context for")
-    .option("--codebase <name>", "scope to a specific codebase")
+    .option("-s, --space <name>", "scope to a specific space")
+    .option("--codebase <name>", "alias for --space (deprecated)")
     .option("--output <file>", "write output to a file instead of stdout")
-    .action(async (directory: string, opts: { codebase?: string; output?: string }, cmd: Command) => {
+    .action(async (directory: string, opts: { space?: string; codebase?: string; output?: string }, cmd: Command) => {
         let serverUrl: string | undefined;
         try {
             serverUrl = getServerUrl();
@@ -149,7 +150,8 @@ export const contextDirCommand = new Command("dir")
         const params = new URLSearchParams();
         params.set("paths", relativePaths.join(","));
         params.set("format", "structured-json");
-        if (opts.codebase) params.set("codebaseId", opts.codebase);
+        const spaceId = opts.space ?? opts.codebase;
+        if (spaceId) params.set("spaceId", spaceId);
 
         try {
             const res = await fetch(`${serverUrl}/api/context/for-files?${params.toString()}`);

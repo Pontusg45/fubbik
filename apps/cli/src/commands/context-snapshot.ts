@@ -10,8 +10,9 @@ const createCmd = new Command("create")
     .option("--about <concept>", "concept or topic to snapshot context about")
     .option("--files <csv>", "comma-separated file paths to snapshot context for")
     .option("--max-tokens <n>", "token budget", "8000")
-    .option("--codebase <id>", "codebase ID to scope context")
-    .action(async (opts: { plan?: string; task?: string; about?: string; files?: string; maxTokens: string; codebase?: string }, cmd: Command) => {
+    .option("-s, --space <id>", "space ID to scope context")
+    .option("--codebase <id>", "alias for --space (deprecated)")
+    .action(async (opts: { plan?: string; task?: string; about?: string; files?: string; maxTokens: string; space?: string; codebase?: string }, cmd: Command) => {
         try {
             const body: Record<string, unknown> = {
                 maxTokens: Number(opts.maxTokens),
@@ -20,7 +21,8 @@ const createCmd = new Command("create")
             if (opts.task) body.taskId = opts.task;
             if (opts.about) body.concept = opts.about;
             if (opts.files) body.filePaths = opts.files.split(",").map(f => f.trim()).filter(Boolean);
-            if (opts.codebase) body.codebaseId = opts.codebase;
+            const spaceId = opts.space ?? opts.codebase;
+            if (spaceId) body.spaceId = spaceId;
 
             const res = await fetchApi("/context/snapshot", {
                 method: "POST",

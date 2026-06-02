@@ -2,7 +2,7 @@ import { Command } from "commander";
 import { formatDim, formatError, formatSuccess } from "../lib/colors";
 import { output } from "../lib/output";
 import { getServerUrl, readStore, storeExists } from "../lib/store";
-import { detectCodebase } from "../lib/detect-codebase";
+import { detectSpace } from "../lib/detect-space";
 
 export const statusCommand = new Command("status")
     .description("Show knowledge base status overview")
@@ -45,7 +45,7 @@ export const statusCommand = new Command("status")
             }
         }
 
-        const codebase = await detectCodebase();
+        const codebase = await detectSpace();
         if (codebase) {
             lines.push(`  Codebase: ${codebase.name}`);
             data.codebase = codebase;

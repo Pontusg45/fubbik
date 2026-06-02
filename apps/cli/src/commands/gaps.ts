@@ -5,7 +5,7 @@ import pc from "picocolors";
 import { apiFetch } from "../lib/api-fetch";
 import { output, outputError } from "../lib/output";
 import { getServerUrl } from "../lib/store";
-import { resolveCodebaseId } from "../lib/detect-codebase";
+import { resolveSpaceId } from "../lib/detect-space";
 
 function collectSourceFiles(dir: string, base: string): string[] {
     const files: string[] = [];
@@ -36,16 +36,17 @@ function collectSourceFiles(dir: string, base: string): string[] {
 export const gapsCommand = new Command("gaps")
     .description("Find files with no associated knowledge chunks")
     .argument("[directory]", "directory to scan", ".")
-    .option("--codebase <name>", "codebase name")
+    .option("-s, --space <name>", "space name")
+    .option("--codebase <name>", "alias for --space (deprecated)")
     .option("--limit <n>", "max files to show", "30")
-    .action(async (directory: string, opts: { codebase?: string; limit: string }, cmd: Command) => {
+    .action(async (directory: string, opts: { space?: string; codebase?: string; limit: string }, cmd: Command) => {
         const serverUrl = getServerUrl();
         if (!serverUrl) {
             outputError("No server URL configured. Run 'fubbik init' first.");
             process.exit(1);
         }
 
-        const codebaseId = await resolveCodebaseId(serverUrl, { codebase: opts.codebase });
+        const spaceId = await resolveSpaceId(serverUrl, { space: opts.space ?? opts.codebase });
         const limit = parseInt(opts.limit, 10) || 30;
 
         // Collect all source files
@@ -64,7 +65,7 @@ export const gapsCommand = new Command("gaps")
         for (const file of allFiles) {
             try {
                 const params = new URLSearchParams({ path: file });
-                if (codebaseId) params.set("codebaseId", codebaseId);
+                if (spaceId) params.set("spaceId", spaceId);
                 const ctxRes = await apiFetch(`${serverUrl}/api/context/for-file?${params}`);
                 if (ctxRes.ok) {
                     const ctx = (await ctxRes.json()) as any[];

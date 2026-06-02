@@ -25,10 +25,10 @@ _fubbik_templates() {
     _describe 'template' templates
 }
 
-_fubbik_codebases() {
-    local -a codebases
-    codebases=(\${(f)"$(fubbik codebase list -q 2>/dev/null | head -20)"})
-    _describe 'codebase' codebases
+_fubbik_spaces() {
+    local -a spaces
+    spaces=(\${(f)"$(fubbik space list -q 2>/dev/null | head -20)"})
+    _describe 'space' spaces
 }
 
 _fubbik_open_targets() {
@@ -73,7 +73,7 @@ _fubbik() {
                 add)
                     _arguments \\
                         '--template[use template]:template:_fubbik_templates' \\
-                        '--codebase[target codebase]:codebase:_fubbik_codebases' \\
+                        '--space[target space]:space:_fubbik_spaces' \\
                         '*:arg:'
                     ;;
                 open)
@@ -81,12 +81,12 @@ _fubbik() {
                     ;;
                 list|search|export)
                     _arguments \\
-                        '--codebase[target codebase]:codebase:_fubbik_codebases' \\
+                        '--space[target space]:space:_fubbik_spaces' \\
                         '*:arg:'
                     ;;
                 *)
                     _arguments \\
-                        '--codebase[target codebase]:codebase:_fubbik_codebases' \\
+                        '--space[target space]:space:_fubbik_spaces' \\
                         '*:arg:'
                     ;;
             esac

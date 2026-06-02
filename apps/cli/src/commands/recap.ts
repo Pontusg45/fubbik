@@ -18,8 +18,9 @@ export const recapCommand = new Command("recap")
     .description("Summarize knowledge base changes since a date")
     .option("--since <date>", "date or relative (e.g., 7d, 2w, 1m)", "7d")
     .option("--local", "use local store instead of server")
-    .option("--codebase <name>", "filter by codebase")
-    .action(async (opts: { since: string; local?: boolean; codebase?: string }, cmd: Command) => {
+    .option("-s, --space <name>", "filter by space")
+    .option("--codebase <name>", "alias for --space (deprecated)")
+    .action(async (opts: { since: string; local?: boolean; space?: string; codebase?: string }, cmd: Command) => {
         const days = parseToDays(opts.since);
         const sinceDate = new Date(Date.now() - days * 86400000);
 
@@ -39,12 +40,13 @@ export const recapCommand = new Command("recap")
 
             // Fetch chunks updated since the date (API expects days as number)
             const params = new URLSearchParams({ after: String(days), sort: "updated", limit: "200" });
-            if (opts.codebase) {
-                // resolve codebase name to id
-                const cbRes = await apiFetch(`${serverUrl}/api/codebases`);
-                const codebases = (await cbRes.json()) as { id: string; name: string }[];
-                const match = codebases.find(c => c.name === opts.codebase);
-                if (match) params.set("codebaseId", match.id);
+            const spaceName = opts.space ?? opts.codebase;
+            if (spaceName) {
+                // resolve space name to id
+                const cbRes = await apiFetch(`${serverUrl}/api/spaces`);
+                const spaces = (await cbRes.json()) as { id: string; name: string }[];
+                const match = spaces.find(c => c.name === spaceName);
+                if (match) params.set("spaceId", match.id);
             }
 
             const res = await apiFetch(`${serverUrl}/api/chunks?${params}`);

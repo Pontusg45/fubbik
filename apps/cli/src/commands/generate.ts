@@ -3,18 +3,18 @@ import { Command } from "commander";
 import { output, outputQuiet } from "../lib/output";
 import { getServerUrl } from "../lib/store";
 
-async function resolveCodebaseId(serverUrl: string, nameOrId: string): Promise<string> {
+async function resolveSpaceIdLocal(serverUrl: string, nameOrId: string): Promise<string> {
     // Try to use as-is first (it might be an ID)
-    const listRes = await fetch(`${serverUrl}/api/codebases`);
+    const listRes = await fetch(`${serverUrl}/api/spaces`);
     if (!listRes.ok) {
-        console.error(`Failed to list codebases: ${listRes.status}`);
+        console.error(`Failed to list spaces: ${listRes.status}`);
         process.exit(1);
     }
 
-    const codebases = (await listRes.json()) as { id: string; name: string }[];
-    const match = codebases.find(c => c.id === nameOrId || c.name === nameOrId);
+    const spaces = (await listRes.json()) as { id: string; name: string }[];
+    const match = spaces.find(c => c.id === nameOrId || c.name === nameOrId);
     if (!match) {
-        console.error(`Codebase "${nameOrId}" not found.`);
+        console.error(`Space "${nameOrId}" not found.`);
         process.exit(1);
     }
 
@@ -23,16 +23,16 @@ async function resolveCodebaseId(serverUrl: string, nameOrId: string): Promise<s
 
 const generateClaudeMd = new Command("claude.md")
     .description("Generate a CLAUDE.md file from knowledge base")
-    .requiredOption("--codebase <name>", "codebase name or ID")
-    .action(async (opts: { codebase: string }, cmd: Command) => {
+    .requiredOption("-s, --space <name>", "space name or ID")
+    .action(async (opts: { space: string }, cmd: Command) => {
         const serverUrl = getServerUrl();
         if (!serverUrl) {
             console.error('No server URL configured. Run "fubbik init" first.');
             process.exit(1);
         }
 
-        const codebaseId = await resolveCodebaseId(serverUrl, opts.codebase);
-        const res = await fetch(`${serverUrl}/api/codebases/${codebaseId}/generate-instructions?format=claude`);
+        const spaceId = await resolveSpaceIdLocal(serverUrl, opts.space);
+        const res = await fetch(`${serverUrl}/api/spaces/${spaceId}/generate-instructions?format=claude`);
         if (!res.ok) {
             const text = await res.text();
             console.error(`Failed to generate CLAUDE.md: ${res.status} ${text}`);
@@ -46,16 +46,16 @@ const generateClaudeMd = new Command("claude.md")
 
 const generateAgentsMd = new Command("agents.md")
     .description("Generate an AGENTS.md file from knowledge base")
-    .requiredOption("--codebase <name>", "codebase name or ID")
-    .action(async (opts: { codebase: string }, cmd: Command) => {
+    .requiredOption("-s, --space <name>", "space name or ID")
+    .action(async (opts: { space: string }, cmd: Command) => {
         const serverUrl = getServerUrl();
         if (!serverUrl) {
             console.error('No server URL configured. Run "fubbik init" first.');
             process.exit(1);
         }
 
-        const codebaseId = await resolveCodebaseId(serverUrl, opts.codebase);
-        const res = await fetch(`${serverUrl}/api/codebases/${codebaseId}/generate-instructions?format=agents`);
+        const spaceId = await resolveSpaceIdLocal(serverUrl, opts.space);
+        const res = await fetch(`${serverUrl}/api/spaces/${spaceId}/generate-instructions?format=agents`);
         if (!res.ok) {
             const text = await res.text();
             console.error(`Failed to generate AGENTS.md: ${res.status} ${text}`);
@@ -69,16 +69,16 @@ const generateAgentsMd = new Command("agents.md")
 
 const generateCursorRules = new Command("cursorrules")
     .description("Generate a .cursorrules file from knowledge base")
-    .requiredOption("--codebase <name>", "codebase name or ID")
-    .action(async (opts: { codebase: string }, cmd: Command) => {
+    .requiredOption("-s, --space <name>", "space name or ID")
+    .action(async (opts: { space: string }, cmd: Command) => {
         const serverUrl = getServerUrl();
         if (!serverUrl) {
             console.error('No server URL configured. Run "fubbik init" first.');
             process.exit(1);
         }
 
-        const codebaseId = await resolveCodebaseId(serverUrl, opts.codebase);
-        const res = await fetch(`${serverUrl}/api/codebases/${codebaseId}/generate-instructions?format=cursor`);
+        const spaceId = await resolveSpaceIdLocal(serverUrl, opts.space);
+        const res = await fetch(`${serverUrl}/api/spaces/${spaceId}/generate-instructions?format=cursor`);
         if (!res.ok) {
             const text = await res.text();
             console.error(`Failed to generate .cursorrules: ${res.status} ${text}`);

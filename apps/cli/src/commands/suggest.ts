@@ -23,8 +23,9 @@ interface Suggestion {
 export const suggestCommand = new Command("suggest")
     .description("Suggest chunks to create for a file")
     .argument("<path>", "source file path")
-    .option("--codebase <name>", "scope to codebase")
-    .action(async (filePath: string, opts: { codebase?: string }, cmd: Command) => {
+    .option("-s, --space <name>", "scope to space")
+    .option("--codebase <name>", "alias for --space (deprecated)")
+    .action(async (filePath: string, opts: { space?: string; codebase?: string }, cmd: Command) => {
         let content: string;
         try {
             content = readFileSync(filePath, "utf-8");
@@ -61,8 +62,9 @@ export const suggestCommand = new Command("suggest")
         let existingChunks: ExistingChunk[] = [];
         try {
             const params = new URLSearchParams({ path: filePath });
-            if (opts.codebase) {
-                params.set("codebaseId", opts.codebase);
+            const spaceId = opts.space ?? opts.codebase;
+            if (spaceId) {
+                params.set("spaceId", spaceId);
             }
             const res = await fetch(`${serverUrl}/api/context/for-file?${params.toString()}`);
             if (res.ok) {

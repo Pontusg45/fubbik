@@ -1,7 +1,7 @@
 import { Command } from "commander";
 
 import { loadConfig } from "../lib/config";
-import { resolveCodebaseId } from "../lib/detect-codebase";
+import { resolveSpaceId } from "../lib/detect-space";
 import { output, outputError, outputQuiet } from "../lib/output";
 import { readStore, searchChunks } from "../lib/store";
 import { formatChunkTable, formatSemanticTable } from "../lib/table";
@@ -14,11 +14,12 @@ export const searchCommand = new Command("search")
     .option("--fields <fields>", "comma-separated fields to include")
     .option("--semantic", "use semantic (AI embedding) search via server")
     .option("--server", "use server text search via API")
-    .option("--global", "skip codebase scoping (search all chunks)")
-    .option("--codebase <name>", "scope to a specific codebase by name")
-    .action(async (query: string, opts: { limit?: string; offset?: string; fields?: string; semantic?: boolean; server?: boolean; global?: boolean; codebase?: string }, cmd: Command) => {
+    .option("--global", "skip space scoping (search all chunks)")
+    .option("-s, --space <name>", "scope to a specific space by name")
+    .option("--codebase <name>", "alias for --space (deprecated)")
+    .action(async (query: string, opts: { limit?: string; offset?: string; fields?: string; semantic?: boolean; server?: boolean; global?: boolean; space?: string; codebase?: string }, cmd: Command) => {
         const config = loadConfig();
-        const codebaseName = opts.codebase ?? config.codebase;
+        const spaceName = opts.space ?? opts.codebase ?? config.codebase;
 
         if (opts.semantic) {
             const store = readStore();
@@ -29,11 +30,11 @@ export const searchCommand = new Command("search")
             const params = new URLSearchParams({ q: query });
             if (opts.limit) params.set("limit", opts.limit);
 
-            const codebaseId = await resolveCodebaseId(store.serverUrl, {
+            const spaceId = await resolveSpaceId(store.serverUrl, {
                 global: opts.global,
-                codebase: codebaseName
+                space: spaceName
             });
-            if (codebaseId) params.set("codebaseId", codebaseId);
+            if (spaceId) params.set("spaceId", spaceId);
 
             const res = await fetch(`${store.serverUrl}/api/chunks/search/semantic?${params}`);
             if (!res.ok) {
@@ -60,11 +61,11 @@ export const searchCommand = new Command("search")
             if (opts.limit) params.set("limit", opts.limit);
             if (opts.offset) params.set("offset", opts.offset);
 
-            const codebaseId = await resolveCodebaseId(store.serverUrl, {
+            const spaceId = await resolveSpaceId(store.serverUrl, {
                 global: opts.global,
-                codebase: codebaseName
+                space: spaceName
             });
-            if (codebaseId) params.set("codebaseId", codebaseId);
+            if (spaceId) params.set("spaceId", spaceId);
 
             const res = await fetch(`${store.serverUrl}/api/chunks?${params}`);
             if (!res.ok) {

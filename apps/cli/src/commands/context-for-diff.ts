@@ -9,8 +9,9 @@ export const contextForDiffCommand = new Command("for-diff")
     .description("Get context for files changed in git diff")
     .option("--staged", "diff staged changes only")
     .option("-t, --max-tokens <n>", "token budget", "8000")
-    .option("-c, --codebase <id>", "codebase ID")
-    .action(async (opts: { staged?: boolean; maxTokens: string; codebase?: string }, cmd: Command) => {
+    .option("-s, --space <id>", "space ID")
+    .option("--codebase <id>", "alias for --space (deprecated)")
+    .action(async (opts: { staged?: boolean; maxTokens: string; space?: string; codebase?: string }, cmd: Command) => {
         try {
             const diffCmd = opts.staged ? "git diff --staged --name-only" : "git diff --name-only";
             const diffOutput = execSync(diffCmd, { encoding: "utf-8" }).trim();
@@ -26,7 +27,8 @@ export const contextForDiffCommand = new Command("for-diff")
                 maxTokens: opts.maxTokens,
                 format: isJson(cmd) ? "structured-json" : "structured-md",
             });
-            if (opts.codebase) params.set("codebaseId", opts.codebase);
+            const spaceId = opts.space ?? opts.codebase;
+            if (spaceId) params.set("spaceId", spaceId);
 
             const res = await fetchApi(`/context/for-files?${params}`);
             if (!res.ok) {
