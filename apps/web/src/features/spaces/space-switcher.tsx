@@ -11,15 +11,15 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
-import { useActiveCodebase } from "./use-active-codebase";
+import { useActiveSpace } from "./use-active-space";
 
-export function CodebaseSwitcher() {
-    const { codebaseId, workspaceId, setCodebaseId, setWorkspaceId } = useActiveCodebase();
+export function SpaceSwitcher() {
+    const { spaceId, workspaceId, setSpaceId, setWorkspaceId } = useActiveSpace();
 
-    const { data: codebases } = useQuery({
-        queryKey: ["codebases"],
-        queryFn: async () => unwrapEden(await api.api.codebases.get()),
-        staleTime: 60_000 // codebases rarely change
+    const { data: spaces } = useQuery({
+        queryKey: ["spaces"],
+        queryFn: async () => unwrapEden(await api.api.spaces.get()),
+        staleTime: 60_000 // spaces rarely change
     });
 
     const { data: workspaces } = useQuery({
@@ -28,18 +28,18 @@ export function CodebaseSwitcher() {
         staleTime: 60_000 // workspaces rarely change
     });
 
-    // Auto-select the first codebase if none is active
+    // Auto-select the first space if none is active
     useEffect(() => {
-        if (!codebaseId && !workspaceId && codebases && codebases.length > 0) {
-            setCodebaseId(codebases[0]!.id);
+        if (!spaceId && !workspaceId && spaces && spaces.length > 0) {
+            setSpaceId(spaces[0]!.id);
         }
-    }, [codebaseId, workspaceId, codebases, setCodebaseId]);
+    }, [spaceId, workspaceId, spaces, setSpaceId]);
 
     const activeName = workspaceId
         ? workspaces?.find((w: { id: string }) => w.id === workspaceId)?.name ?? "..."
-        : codebaseId
-          ? codebases?.find((c: { id: string }) => c.id === codebaseId)?.name ?? "..."
-          : "Select codebase";
+        : spaceId
+          ? spaces?.find((c: { id: string }) => c.id === spaceId)?.name ?? "..."
+          : "Select space";
 
     const hasWorkspaces = workspaces && workspaces.length > 0;
 
@@ -62,20 +62,20 @@ export function CodebaseSwitcher() {
                             </DropdownMenuItem>
                         ))}
                         <DropdownMenuSeparator />
-                        <DropdownMenuLabel>Codebases</DropdownMenuLabel>
+                        <DropdownMenuLabel>Spaces</DropdownMenuLabel>
                     </>
                 )}
-                {codebases?.map((c: { id: string; name: string }) => (
+                {spaces?.map((c: { id: string; name: string }) => (
                     <DropdownMenuItem
                         key={c.id}
-                        onClick={() => setCodebaseId(c.id)}
-                        className={codebaseId === c.id && !workspaceId ? "bg-accent" : ""}
+                        onClick={() => setSpaceId(c.id)}
+                        className={spaceId === c.id && !workspaceId ? "bg-accent" : ""}
                     >
                         {c.name}
                     </DropdownMenuItem>
                 ))}
-                {(!codebases || codebases.length === 0) && !hasWorkspaces && (
-                    <DropdownMenuItem disabled>No codebases registered</DropdownMenuItem>
+                {(!spaces || spaces.length === 0) && !hasWorkspaces && (
+                    <DropdownMenuItem disabled>No spaces registered</DropdownMenuItem>
                 )}
             </DropdownMenuContent>
         </DropdownMenu>
