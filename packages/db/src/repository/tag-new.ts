@@ -3,7 +3,7 @@ import { Effect } from "effect";
 
 import { db, dbEffect } from "../index";
 import { chunk } from "../schema/chunk";
-import { chunkCodebase } from "../schema/codebase";
+import { chunkSpace } from "../schema/space";
 import { tag, chunkTag, tagType } from "../schema/tag";
 
 export function createTag(params: { id: string; name: string; tagTypeId?: string; userId: string; origin?: string; reviewStatus?: string }) {
@@ -196,13 +196,13 @@ export function listChunksByTag(params: ListChunksByTagParams) {
         ];
 
         if (params.codebaseId) {
-            const inCodebase = db
-                .select({ chunkId: chunkCodebase.chunkId })
-                .from(chunkCodebase)
-                .where(eq(chunkCodebase.codebaseId, params.codebaseId));
-            const inAnyCodebase = db.select({ chunkId: chunkCodebase.chunkId }).from(chunkCodebase);
+            const inSpace = db
+                .select({ chunkId: chunkSpace.chunkId })
+                .from(chunkSpace)
+                .where(eq(chunkSpace.spaceId, params.codebaseId));
+            const inAnySpace = db.select({ chunkId: chunkSpace.chunkId }).from(chunkSpace);
             conditions.push(
-                sql`(${chunk.id} IN (${inCodebase}) OR ${chunk.id} NOT IN (${inAnyCodebase}))`,
+                sql`(${chunk.id} IN (${inSpace}) OR ${chunk.id} NOT IN (${inAnySpace}))`,
             );
         }
 
