@@ -192,6 +192,24 @@ BEGIN
     END LOOP;
 END $$;
 
+-- 7b. Rename feature_codebase → feature_space (separate from section 7's column rename loop
+-- because this is a TABLE rename, not a column rename).
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'feature_codebase'
+    ) AND NOT EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'feature_space'
+    ) THEN
+        ALTER TABLE feature_codebase RENAME TO feature_space;
+        ALTER TABLE feature_space RENAME CONSTRAINT feature_codebase_feature_id_codebase_id_pk TO feature_space_feature_id_space_id_pk;
+        ALTER TABLE feature_space RENAME CONSTRAINT feature_codebase_feature_id_feature_id_fk TO feature_space_feature_id_feature_id_fk;
+        ALTER TABLE feature_space RENAME CONSTRAINT feature_codebase_space_id_space_id_fk TO feature_space_space_id_space_id_fk;
+    END IF;
+END $$;
+
 -- 8. Drop old join tables and codebase itself (IF EXISTS for idempotency)
 DROP TABLE IF EXISTS chunk_codebase;
 DROP TABLE IF EXISTS workspace_codebase;
