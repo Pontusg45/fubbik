@@ -2,7 +2,7 @@ import { and, eq, isNull, sql } from "drizzle-orm";
 
 import { db, dbEffect } from "../index";
 import { chunk } from "../schema/chunk";
-import { chunkCodebase } from "../schema/codebase";
+import { chunkSpace } from "../schema/space";
 // TODO: removed in plans rewrite — implementationSession, sessionRequirementRef, planStep deleted (Task 7 will rewrite coverage)
 import { requirement, requirementChunk } from "../schema/requirement";
 
@@ -19,9 +19,9 @@ export function getChunkCoverage(userId: string, codebaseId?: string) {
                         requirementCount: sql<number>`count(${requirementChunk.requirementId})`
                     })
                     .from(chunk)
-                    .innerJoin(chunkCodebase, eq(chunkCodebase.chunkId, chunk.id))
+                    .innerJoin(chunkSpace, eq(chunkSpace.chunkId, chunk.id))
                     .leftJoin(requirementChunk, eq(requirementChunk.chunkId, chunk.id))
-                    .where(and(...conditions, eq(chunkCodebase.codebaseId, codebaseId)))
+                    .where(and(...conditions, eq(chunkSpace.spaceId, codebaseId)))
                     .groupBy(chunk.id, chunk.title);
             } else {
                 chunkQuery = db
@@ -54,11 +54,11 @@ export function getChunkCoverageMatrix(userId: string, codebaseId?: string) {
                     .from(requirementChunk)
                     .innerJoin(chunk, eq(requirementChunk.chunkId, chunk.id))
                     .innerJoin(requirement, eq(requirementChunk.requirementId, requirement.id))
-                    .innerJoin(chunkCodebase, eq(chunkCodebase.chunkId, chunk.id))
+                    .innerJoin(chunkSpace, eq(chunkSpace.chunkId, chunk.id))
                     .where(and(
                         eq(chunk.userId, userId),
                         isNull(chunk.archivedAt),
-                        eq(chunkCodebase.codebaseId, codebaseId)
+                        eq(chunkSpace.spaceId, codebaseId)
                     ));
             } else {
                 return db
@@ -85,7 +85,7 @@ export function getTraceabilityMatrix(userId: string, codebaseId?: string) {
     return dbEffect(async () => {
             const conditions = [eq(requirement.userId, userId)];
             if (codebaseId) {
-                conditions.push(eq(requirement.codebaseId, codebaseId));
+                conditions.push(eq(requirement.spaceId, codebaseId));
             }
             const requirements = await db
                 .select({
