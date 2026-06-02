@@ -8,12 +8,12 @@ export function registerMatrixTools(server: McpServer): void {
         "list_matrices",
         "List behavioral specification matrices",
         {
-            codebaseId: z.string().optional(),
+            spaceId: z.string().optional(),
             layer: z.enum(["invariant", "contract"]).optional()
         },
-        async ({ codebaseId, layer }) => {
+        async ({ spaceId, layer }) => {
             const query = new URLSearchParams();
-            if (codebaseId) query.set("codebaseId", codebaseId);
+            if (spaceId) query.set("spaceId", spaceId);
             if (layer) query.set("layer", layer);
             const qs = query.toString();
             const result = await apiFetch(`/matrices${qs ? `?${qs}` : ""}`);
@@ -46,12 +46,12 @@ export function registerMatrixTools(server: McpServer): void {
                     "invariant (rules x entities) or contract (capabilities x actors)"
                 ),
             description: z.string().optional(),
-            codebaseId: z.string().optional()
+            spaceId: z.string().optional()
         },
-        async ({ name, layer, description, codebaseId }) => {
+        async ({ name, layer, description, spaceId }) => {
             const result = await apiFetch("/matrices", {
                 method: "POST",
-                body: JSON.stringify({ name, layer, description, codebaseId })
+                body: JSON.stringify({ name, layer, description, spaceId })
             });
             return {
                 content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }]

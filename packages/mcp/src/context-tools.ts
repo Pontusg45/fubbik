@@ -9,12 +9,12 @@ export function registerContextTools(server: McpServer): void {
         "Generate .claude/CLAUDE.md content from chunks tagged with a specific tag (default: claude-context). Returns the markdown content that can be written to CLAUDE.md.",
         {
             tag: z.string().optional().describe("Tag to filter by (default: claude-context)"),
-            codebaseId: z.string().optional().describe("Codebase ID to scope chunks")
+            spaceId: z.string().optional().describe("Space ID to scope chunks")
         },
-        async ({ tag, codebaseId }) => {
+        async ({ tag, spaceId }) => {
             const params = new URLSearchParams();
             if (tag) params.set("tag", tag);
-            if (codebaseId) params.set("codebaseId", codebaseId);
+            if (spaceId) params.set("spaceId", spaceId);
 
             const data = (await apiFetch(`/chunks/export/claude-md?${params}`)) as {
                 content: string;
@@ -52,38 +52,38 @@ export function registerContextTools(server: McpServer): void {
             concept: z.string().optional().describe("Concept or topic to get context about"),
             filePath: z.string().optional().describe("File path to get context for"),
             maxTokens: z.number().optional().describe("Max tokens (default 8000)"),
-            codebaseId: z.string().optional().describe("Codebase ID to scope context"),
+            spaceId: z.string().optional().describe("Space ID to scope context"),
         },
-        async ({ planId, concept, filePath, maxTokens, codebaseId }) => {
+        async ({ planId, concept, filePath, maxTokens, spaceId }) => {
             const tokens = maxTokens ?? 8000;
             const parts: string[] = [];
 
             if (planId && filePath) {
                 // Make two calls and combine
                 const planParams = new URLSearchParams({ planId, maxTokens: String(tokens), format: "structured-md" });
-                if (codebaseId) planParams.set("codebaseId", codebaseId);
+                if (spaceId) planParams.set("spaceId", spaceId);
                 const planData = (await apiFetch(`/context/for-plan?${planParams}`)) as { content?: string } | string;
                 const planText = typeof planData === "string" ? planData : (planData as { content?: string }).content ?? "";
 
                 const fileParams = new URLSearchParams({ paths: filePath, maxTokens: String(tokens), format: "structured-md" });
-                if (codebaseId) fileParams.set("codebaseId", codebaseId);
+                if (spaceId) fileParams.set("spaceId", spaceId);
                 const fileData = (await apiFetch(`/context/for-files?${fileParams}`)) as { content?: string } | string;
                 const fileText = typeof fileData === "string" ? fileData : (fileData as { content?: string }).content ?? "";
 
                 parts.push(planText, fileText);
             } else if (planId) {
                 const params = new URLSearchParams({ planId, maxTokens: String(tokens), format: "structured-md" });
-                if (codebaseId) params.set("codebaseId", codebaseId);
+                if (spaceId) params.set("spaceId", spaceId);
                 const data = (await apiFetch(`/context/for-plan?${params}`)) as { content?: string } | string;
                 parts.push(typeof data === "string" ? data : (data as { content?: string }).content ?? "");
             } else if (concept) {
                 const params = new URLSearchParams({ q: concept, maxTokens: String(tokens), format: "structured-md" });
-                if (codebaseId) params.set("codebaseId", codebaseId);
+                if (spaceId) params.set("spaceId", spaceId);
                 const data = (await apiFetch(`/context/about?${params}`)) as { content?: string } | string;
                 parts.push(typeof data === "string" ? data : (data as { content?: string }).content ?? "");
             } else if (filePath) {
                 const params = new URLSearchParams({ paths: filePath, maxTokens: String(tokens), format: "structured-md" });
-                if (codebaseId) params.set("codebaseId", codebaseId);
+                if (spaceId) params.set("spaceId", spaceId);
                 const data = (await apiFetch(`/context/for-files?${params}`)) as { content?: string } | string;
                 parts.push(typeof data === "string" ? data : (data as { content?: string }).content ?? "");
             } else {
@@ -152,16 +152,16 @@ export function registerContextTools(server: McpServer): void {
             filePaths: z.array(z.string()).optional().describe("File paths to snapshot context for"),
             concept: z.string().optional().describe("Concept or topic to snapshot context about"),
             maxTokens: z.number().optional().describe("Max tokens (default 8000)"),
-            codebaseId: z.string().optional().describe("Codebase ID to scope context"),
+            spaceId: z.string().optional().describe("Space ID to scope context"),
         },
-        async ({ planId, taskId, filePaths, concept, maxTokens, codebaseId }) => {
+        async ({ planId, taskId, filePaths, concept, maxTokens, spaceId }) => {
             const body: Record<string, unknown> = {};
             if (planId) body.planId = planId;
             if (taskId) body.taskId = taskId;
             if (filePaths) body.filePaths = filePaths;
             if (concept) body.concept = concept;
             if (maxTokens) body.maxTokens = maxTokens;
-            if (codebaseId) body.codebaseId = codebaseId;
+            if (spaceId) body.spaceId = spaceId;
 
             const data = (await apiFetch("/context/snapshot", {
                 method: "POST",

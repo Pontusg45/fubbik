@@ -7,17 +7,17 @@ export function registerTools(server: McpServer): void {
     // 1. search_chunks
     server.tool(
         "search_chunks",
-        "Search the fubbik knowledge base for chunks by query, codebase, or tags",
+        "Search the fubbik knowledge base for chunks by query, space, or tags",
         {
             query: z.string().optional().describe("Search query"),
-            codebaseId: z.string().optional().describe("Codebase ID to scope search"),
+            spaceId: z.string().optional().describe("Space ID to scope search"),
             tags: z.string().optional().describe("Comma-separated tag names to filter by"),
             limit: z.number().optional().describe("Max results (default 10)")
         },
-        async ({ query, codebaseId, tags, limit }) => {
+        async ({ query, spaceId, tags, limit }) => {
             const params = new URLSearchParams();
             if (query) params.set("search", query);
-            if (codebaseId) params.set("codebaseId", codebaseId);
+            if (spaceId) params.set("spaceId", spaceId);
             if (tags) params.set("tags", tags);
             params.set("limit", String(limit ?? 10));
 
@@ -92,14 +92,14 @@ export function registerTools(server: McpServer): void {
             content: z.string().describe("Chunk content"),
             type: z.string().optional().describe("Chunk type (e.g. note, decision, pattern)"),
             tags: z.array(z.string()).optional().describe("Tags to apply"),
-            codebaseId: z.string().optional().describe("Codebase ID to associate with"),
+            spaceId: z.string().optional().describe("Space ID to associate with"),
             updateTag: z.string().optional().describe("Label this creation with an update tag (e.g. feature-x)")
         },
-        async ({ title, content, type, tags, codebaseId, updateTag }) => {
+        async ({ title, content, type, tags, spaceId, updateTag }) => {
             const body: Record<string, unknown> = { title, content };
             if (type) body.type = type;
             if (tags) body.tags = tags;
-            if (codebaseId) body.codebaseIds = [codebaseId];
+            if (spaceId) body.spaceIds = [spaceId];
             if (updateTag) body.updateTag = updateTag;
 
             const data = (await apiFetch("/chunks", {
@@ -125,13 +125,13 @@ export function registerTools(server: McpServer): void {
     // 4. get_conventions
     server.tool(
         "get_conventions",
-        "Get convention-type chunks for a codebase (chunks with rationale or convention-related tags)",
+        "Get convention-type chunks for a space (chunks with rationale or convention-related tags)",
         {
-            codebaseId: z.string().optional().describe("Codebase ID to scope search")
+            spaceId: z.string().optional().describe("Space ID to scope search")
         },
-        async ({ codebaseId }) => {
+        async ({ spaceId }) => {
             const params = new URLSearchParams();
-            if (codebaseId) params.set("codebaseId", codebaseId);
+            if (spaceId) params.set("spaceId", spaceId);
             params.set("limit", "100");
 
             const data = (await apiFetch(`/chunks?${params}`)) as {
@@ -190,17 +190,17 @@ export function registerTools(server: McpServer): void {
     // 5. get_requirements
     server.tool(
         "get_requirements",
-        "Get requirements for a codebase",
+        "Get requirements for a space",
         {
-            codebaseId: z.string().optional().describe("Codebase ID to scope search"),
+            spaceId: z.string().optional().describe("Space ID to scope search"),
             status: z
                 .string()
                 .optional()
                 .describe("Filter by status: passing, failing, or untested")
         },
-        async ({ codebaseId, status }) => {
+        async ({ spaceId, status }) => {
             const params = new URLSearchParams();
-            if (codebaseId) params.set("codebaseId", codebaseId);
+            if (spaceId) params.set("spaceId", spaceId);
             if (status) params.set("status", status);
 
             const data = (await apiFetch(`/requirements?${params}`)) as {
@@ -272,11 +272,11 @@ export function registerTools(server: McpServer): void {
         "List chunk updates labeled with a specific tag. Returns before/after diffs for each change.",
         {
             tag: z.string().describe("Update tag to filter by (e.g. feature-x)"),
-            codebaseId: z.string().optional().describe("Codebase ID to scope results")
+            spaceId: z.string().optional().describe("Space ID to scope results")
         },
-        async ({ tag, codebaseId }) => {
+        async ({ tag, spaceId }) => {
             const params = new URLSearchParams({ tag });
-            if (codebaseId) params.set("codebaseId", codebaseId);
+            if (spaceId) params.set("spaceId", spaceId);
 
             const data = (await apiFetch(`/chunks/updates?${params}`)) as {
                 updates: Array<{
@@ -353,9 +353,9 @@ export function registerTools(server: McpServer): void {
     // 8. search_vocabulary
     server.tool(
         "search_vocabulary",
-        "Search vocabulary entries for a codebase",
+        "Search vocabulary entries for a space",
         {
-            codebaseId: z.string().describe("Codebase ID (required)"),
+            spaceId: z.string().describe("Space ID (required)"),
             category: z
                 .string()
                 .optional()
@@ -363,9 +363,9 @@ export function registerTools(server: McpServer): void {
                     "Filter by category: actor, action, target, outcome, state, modifier"
                 )
         },
-        async ({ codebaseId, category }) => {
+        async ({ spaceId, category }) => {
             const params = new URLSearchParams();
-            params.set("codebaseId", codebaseId);
+            params.set("spaceId", spaceId);
 
             const data = (await apiFetch(`/vocabulary?${params}`)) as {
                 entries: Array<{

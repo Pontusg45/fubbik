@@ -10,12 +10,12 @@ export function registerSuggestionTools(server: McpServer): void {
         "Get context from the knowledge base to suggest new requirements. Returns existing requirements, coverage gaps, health issues, and relevant chunks for a focus area. Use this context to generate requirement suggestions for the developer.",
         {
             focus: z.string().optional().describe("Focus area (e.g., 'auth', 'error handling', 'testing'). Omit for broad overview."),
-            codebaseId: z.string().optional().describe("Codebase ID to scope suggestions")
+            spaceId: z.string().optional().describe("Space ID to scope suggestions")
         },
-        async ({ focus, codebaseId }) => {
+        async ({ focus, spaceId }) => {
             const params = new URLSearchParams();
             if (focus) params.set("focus", focus);
-            if (codebaseId) params.set("codebaseId", codebaseId);
+            if (spaceId) params.set("spaceId", spaceId);
 
             const data = await apiFetch(`/requirements/suggest-context?${params}`) as {
                 useCases: Array<{
@@ -91,11 +91,11 @@ export function registerSuggestionTools(server: McpServer): void {
                 useCaseName: z.string().optional().describe("Use case name (created if doesn't exist)"),
                 parentUseCaseName: z.string().optional().describe("Parent use case name (created if doesn't exist)")
             })).min(1).max(50).describe("Requirements to create"),
-            codebaseId: z.string().optional().describe("Codebase ID")
+            spaceId: z.string().optional().describe("Space ID")
         },
-        async ({ requirements, codebaseId }) => {
+        async ({ requirements, spaceId }) => {
             const body: Record<string, unknown> = { requirements };
-            if (codebaseId) body.codebaseId = codebaseId;
+            if (spaceId) body.spaceId = spaceId;
 
             const data = await apiFetch("/requirements/batch", {
                 method: "POST",

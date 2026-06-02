@@ -16,14 +16,14 @@ export function registerRequirementTools(server: McpServer): void {
                 .enum(["must", "should", "could", "wont"])
                 .optional()
                 .describe("Filter by priority"),
-            codebaseId: z.string().optional().describe("Filter by codebase ID"),
+            spaceId: z.string().optional().describe("Filter by space ID"),
             search: z.string().optional().describe("Search in title and description")
         },
-        async ({ status, priority, codebaseId, search }) => {
+        async ({ status, priority, spaceId, search }) => {
             const params = new URLSearchParams();
             if (status) params.set("status", status);
             if (priority) params.set("priority", priority);
-            if (codebaseId) params.set("codebaseId", codebaseId);
+            if (spaceId) params.set("spaceId", spaceId);
             if (search) params.set("search", search);
 
             const data = (await apiFetch(`/requirements?${params}`)) as {
@@ -76,16 +76,16 @@ export function registerRequirementTools(server: McpServer): void {
                 )
                 .optional()
                 .describe("BDD-style steps (Given/When/Then)"),
-            codebaseId: z.string().optional().describe("Codebase ID to associate with")
+            spaceId: z.string().optional().describe("Space ID to associate with")
         },
-        async ({ title, description, priority, steps, codebaseId }) => {
+        async ({ title, description, priority, steps, spaceId }) => {
             const body: Record<string, unknown> = {
                 title,
                 steps: steps ?? []
             };
             if (description) body.description = description;
             if (priority) body.priority = priority;
-            if (codebaseId) body.codebaseId = codebaseId;
+            if (spaceId) body.spaceId = spaceId;
 
             const data = (await apiFetch("/requirements", {
                 method: "POST",

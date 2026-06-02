@@ -6,17 +6,17 @@ import type { McpPlugin } from "./plugin.js";
 export function registerPlanTools(server: McpServer): void {
     server.tool(
         "create_plan",
-        "Create a new plan with title, optional description, codebase, and requirements",
+        "Create a new plan with title, optional description, space, and requirements",
         {
             title: z.string().describe("Plan title"),
             description: z.string().optional().describe("Plan description"),
-            codebaseId: z.string().optional().describe("Codebase ID to associate with"),
+            spaceId: z.string().optional().describe("Space ID to associate with"),
             requirementIds: z.array(z.string()).optional().describe("Requirement IDs to link"),
         },
-        async ({ title, description, codebaseId, requirementIds }) => {
+        async ({ title, description, spaceId, requirementIds }) => {
             const body: Record<string, unknown> = { title };
             if (description) body.description = description;
-            if (codebaseId) body.codebaseId = codebaseId;
+            if (spaceId) body.spaceId = spaceId;
             if (requirementIds) body.requirementIds = requirementIds;
 
             const plan = (await apiFetch("/plans", {
@@ -32,13 +32,13 @@ export function registerPlanTools(server: McpServer): void {
         "list_plans",
         "List plans with optional filters",
         {
-            codebaseId: z.string().optional().describe("Filter by codebase ID"),
+            spaceId: z.string().optional().describe("Filter by space ID"),
             status: z.string().optional().describe("Filter by status (draft, analyzing, ready, in_progress, completed, archived)"),
             requirementId: z.string().optional().describe("Filter by linked requirement ID"),
         },
-        async ({ codebaseId, status, requirementId }) => {
+        async ({ spaceId, status, requirementId }) => {
             const params = new URLSearchParams();
-            if (codebaseId) params.set("codebaseId", codebaseId);
+            if (spaceId) params.set("spaceId", spaceId);
             if (status) params.set("status", status);
             if (requirementId) params.set("requirementId", requirementId);
 
