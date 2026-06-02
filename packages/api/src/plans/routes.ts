@@ -15,7 +15,7 @@ const planBase = new Elysia({ prefix: "/plans" })
                     Effect.flatMap(session =>
                         planService.listPlans({
                             userId: session.user.id,
-                            codebaseId: ctx.query.codebaseId,
+                            spaceId: ctx.query.spaceId,
                             status: ctx.query.status,
                             requirementId: ctx.query.requirementId,
                             includeArchived: ctx.query.includeArchived === "true",
@@ -26,7 +26,7 @@ const planBase = new Elysia({ prefix: "/plans" })
         },
         {
             query: t.Object({
-                codebaseId: t.Optional(t.String()),
+                spaceId: t.Optional(t.String()),
                 status: t.Optional(t.String()),
                 requirementId: t.Optional(t.String()),
                 includeArchived: t.Optional(t.String()),
@@ -52,7 +52,7 @@ const planBase = new Elysia({ prefix: "/plans" })
                                 entityId: created.id,
                                 entityTitle: created.title,
                                 action: "created",
-                                codebaseId: created.codebaseId ?? undefined,
+                                codebaseId: created.spaceId ?? undefined,
                             });
                             return created;
                         }),
@@ -64,7 +64,7 @@ const planBase = new Elysia({ prefix: "/plans" })
             body: t.Object({
                 title: t.String(),
                 description: t.Optional(t.String()),
-                codebaseId: t.Optional(t.String()),
+                spaceId: t.Optional(t.String()),
                 requirementIds: t.Optional(t.Array(t.String())),
                 tasks: t.Optional(
                     t.Array(
@@ -94,7 +94,7 @@ const planBase = new Elysia({ prefix: "/plans" })
                                 entityId: updated.id,
                                 entityTitle: updated.title,
                                 action,
-                                codebaseId: updated.codebaseId ?? undefined,
+                                codebaseId: updated.spaceId ?? undefined,
                             });
                             return updated;
                         }),
@@ -107,7 +107,7 @@ const planBase = new Elysia({ prefix: "/plans" })
                 title: t.Optional(t.String()),
                 description: t.Optional(t.Union([t.String(), t.Null()])),
                 status: t.Optional(t.String()),
-                codebaseId: t.Optional(t.Union([t.String(), t.Null()])),
+                spaceId: t.Optional(t.Union([t.String(), t.Null()])),
                 metadata: t.Optional(t.Record(t.String(), t.Unknown())),
             }),
         },
@@ -125,7 +125,7 @@ const planBase = new Elysia({ prefix: "/plans" })
                             entityId: existing.id,
                             entityTitle: existing.title,
                             action: "deleted",
-                            codebaseId: existing.codebaseId ?? undefined,
+                            codebaseId: existing.spaceId ?? undefined,
                         });
                     }),
                 ),
@@ -145,7 +145,7 @@ const planBase = new Elysia({ prefix: "/plans" })
                             entityId: created.id,
                             entityTitle: created.title,
                             action: "duplicated",
-                            codebaseId: created.codebaseId ?? undefined,
+                            codebaseId: created.spaceId ?? undefined,
                         });
                         return created;
                     }),

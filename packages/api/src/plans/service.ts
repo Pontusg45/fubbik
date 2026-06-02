@@ -24,7 +24,7 @@ function isAnalyzeKind(s: string): s is PlanAnalyzeKind {
 export interface CreatePlanInput {
     title: string;
     description?: string;
-    codebaseId?: string;
+    spaceId?: string;
     requirementIds?: string[];
     tasks?: Array<{ title: string; description?: string; acceptanceCriteria?: string[] }>;
     metadata?: Record<string, unknown>;
@@ -32,7 +32,7 @@ export interface CreatePlanInput {
 
 export interface ListPlansInput {
     userId: string;
-    codebaseId?: string;
+    spaceId?: string;
     status?: string;
     requirementId?: string;
     includeArchived?: boolean;
@@ -45,7 +45,7 @@ export function listPlans(input: ListPlansInput) {
         }
         return yield* planRepo.listPlansWithRollups({
             userId: input.userId,
-            codebaseId: input.codebaseId,
+            codebaseId: input.spaceId,
             status: input.status as PlanStatus | undefined,
             requirementId: input.requirementId,
             includeArchived: input.includeArchived,
@@ -137,7 +137,7 @@ export function createPlan(userId: string, input: CreatePlanInput) {
             id: crypto.randomUUID(),
             title: input.title.trim(),
             description: input.description ?? null,
-            codebaseId: input.codebaseId ?? null,
+            spaceId: input.spaceId ?? null,
             userId,
             status: "draft",
             metadata: input.metadata ?? {},
@@ -167,7 +167,7 @@ export interface UpdatePlanInput {
     title?: string;
     description?: string | null;
     status?: string;
-    codebaseId?: string | null;
+    spaceId?: string | null;
     metadata?: Record<string, unknown>;
 }
 
@@ -180,7 +180,7 @@ export function updatePlan(id: string, input: UpdatePlanInput) {
         const patch: Parameters<typeof planRepo.updatePlan>[1] = {};
         if (input.title !== undefined) patch.title = input.title;
         if (input.description !== undefined) patch.description = input.description;
-        if (input.codebaseId !== undefined) patch.codebaseId = input.codebaseId;
+        if (input.spaceId !== undefined) patch.spaceId = input.spaceId;
         if (input.metadata !== undefined) patch.metadata = input.metadata;
         if (input.status !== undefined) {
             patch.status = input.status as PlanStatus;
