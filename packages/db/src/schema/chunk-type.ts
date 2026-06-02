@@ -2,7 +2,7 @@ import { relations } from "drizzle-orm";
 import { boolean, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 
 import { user } from "./auth";
-import { codebase } from "./codebase";
+import { space } from "./space";
 
 /**
  * Catalog of chunk types.
@@ -23,7 +23,7 @@ export const chunkType = pgTable(
         displayOrder: integer("display_order").notNull().default(100),
         builtIn: boolean("built_in").notNull().default(false),
         userId: text("user_id").references(() => user.id, { onDelete: "cascade" }),
-        codebaseId: text("codebase_id").references(() => codebase.id, { onDelete: "cascade" }),
+        spaceId: text("space_id").references(() => space.id, { onDelete: "cascade" }),
         createdAt: timestamp("created_at").defaultNow().notNull(),
         updatedAt: timestamp("updated_at")
             .defaultNow()
@@ -33,11 +33,11 @@ export const chunkType = pgTable(
     table => [
         uniqueIndex("chunk_type_scope_id_idx").on(table.id),
         index("chunk_type_userId_idx").on(table.userId),
-        index("chunk_type_codebaseId_idx").on(table.codebaseId)
+        index("chunk_type_spaceId_idx").on(table.spaceId)
     ]
 );
 
 export const chunkTypeRelations = relations(chunkType, ({ one }) => ({
     user: one(user, { fields: [chunkType.userId], references: [user.id] }),
-    codebase: one(codebase, { fields: [chunkType.codebaseId], references: [codebase.id] })
+    space: one(space, { fields: [chunkType.spaceId], references: [space.id] })
 }));
