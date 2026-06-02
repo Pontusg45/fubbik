@@ -3,17 +3,17 @@ import { and, eq, isNotNull, sql } from "drizzle-orm";
 import { getOrphanChunkIds } from "../age/query";
 import { db, dbEffect } from "../index";
 import { chunk, chunkConnection } from "../schema/chunk";
-import { chunkCodebase } from "../schema/codebase";
+import { chunkSpace } from "../schema/space";
 import { chunkFileRef } from "../schema/file-ref";
 
-function codebaseConditions(codebaseId?: string) {
-    if (!codebaseId) return [];
-    const inCodebase = db
-        .select({ chunkId: chunkCodebase.chunkId })
-        .from(chunkCodebase)
-        .where(eq(chunkCodebase.codebaseId, codebaseId));
-    const inAnyCodebase = db.select({ chunkId: chunkCodebase.chunkId }).from(chunkCodebase);
-    return [sql`(${chunk.id} IN (${inCodebase}) OR ${chunk.id} NOT IN (${inAnyCodebase}))`];
+function spaceConditions(spaceId?: string) {
+    if (!spaceId) return [];
+    const inSpace = db
+        .select({ chunkId: chunkSpace.chunkId })
+        .from(chunkSpace)
+        .where(eq(chunkSpace.spaceId, spaceId));
+    const inAnySpace = db.select({ chunkId: chunkSpace.chunkId }).from(chunkSpace);
+    return [sql`(${chunk.id} IN (${inSpace}) OR ${chunk.id} NOT IN (${inAnySpace}))`];
 }
 
 export function getOrphanChunks(userId: string, codebaseId?: string) {
@@ -22,7 +22,7 @@ export function getOrphanChunks(userId: string, codebaseId?: string) {
                 eq(chunk.userId, userId),
                 sql`${chunk.id} NOT IN (SELECT ${chunkConnection.sourceId} FROM ${chunkConnection})`,
                 sql`${chunk.id} NOT IN (SELECT ${chunkConnection.targetId} FROM ${chunkConnection})`,
-                ...codebaseConditions(codebaseId)
+                ...spaceConditions(codebaseId)
             ];
 
             const chunks = await db
@@ -77,7 +77,7 @@ export function getStaleChunks(userId: string, codebaseId?: string) {
                 eq(chunk.userId, userId),
                 sql`${chunk.updatedAt} < ${thirtyDaysAgo}`,
                 neighborExists,
-                ...codebaseConditions(codebaseId)
+                ...spaceConditions(codebaseId)
             ];
 
             const chunks = await db
@@ -106,7 +106,7 @@ export function getThinChunks(userId: string, codebaseId?: string) {
             const conditions = [
                 eq(chunk.userId, userId),
                 sql`LENGTH(${chunk.content}) < 100`,
-                ...codebaseConditions(codebaseId)
+                ...spaceConditions(codebaseId)
             ];
 
             const chunks = await db
@@ -135,7 +135,7 @@ export function getStaleEmbeddings(userId: string, codebaseId?: string) {
                 eq(chunk.userId, userId),
                 isNotNull(chunk.embedding),
                 sql`${chunk.updatedAt} > ${chunk.embeddingUpdatedAt}`,
-                ...codebaseConditions(codebaseId)
+                ...spaceConditions(codebaseId)
             ];
 
             const chunks = await db
@@ -165,7 +165,7 @@ export function getOrphanChunkIdsViaAge() {
 
 export function getFileRefsForHealth(userId: string, codebaseId?: string) {
     return dbEffect(async () => {
-            const conditions = [eq(chunk.userId, userId), ...codebaseConditions(codebaseId)];
+            const conditions = [eq(chunk.userId, userId), ...spaceConditions(codebaseId)];
 
             const refs = await db
                 .select({
