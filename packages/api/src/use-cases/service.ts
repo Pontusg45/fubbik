@@ -10,8 +10,8 @@ import { Effect } from "effect";
 
 import { NotFoundError, ValidationError } from "../errors";
 
-export function listUseCases(userId: string, codebaseId?: string) {
-    return listUseCasesRepo(userId, codebaseId);
+export function listUseCases(userId: string, spaceId?: string) {
+    return listUseCasesRepo(userId, spaceId);
 }
 
 export function getUseCase(id: string, userId: string) {
@@ -27,7 +27,7 @@ export function createUseCase(
     body: {
         name: string;
         description?: string;
-        codebaseId?: string;
+        spaceId?: string;
         parentId?: string;
     }
 ) {
@@ -41,7 +41,7 @@ export function createUseCase(
             id: crypto.randomUUID(),
             name: body.name,
             description: body.description,
-            codebaseId: body.codebaseId,
+            spaceId: body.spaceId,
             parentId: body.parentId,
             userId
         });

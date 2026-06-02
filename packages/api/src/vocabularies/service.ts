@@ -14,12 +14,12 @@ import { Effect } from "effect";
 
 import { NotFoundError, ValidationError } from "../errors";
 
-export function getChunkTypes(userId: string, codebaseId?: string) {
-    return listChunkTypes({ userId, codebaseId });
+export function getChunkTypes(userId: string, spaceId?: string) {
+    return listChunkTypes({ userId, spaceId });
 }
 
-export function getConnectionRelations(userId: string, codebaseId?: string) {
-    return listConnectionRelations({ userId, codebaseId });
+export function getConnectionRelations(userId: string, spaceId?: string) {
+    return listConnectionRelations({ userId, spaceId });
 }
 
 // --- chunk_type mutations ---------------------------------------------------

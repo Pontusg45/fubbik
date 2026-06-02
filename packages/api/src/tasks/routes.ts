@@ -15,7 +15,7 @@ export const taskQueueRoutes = new Elysia()
                         planService.createPlan(session.user.id, {
                             title: ctx.body.title,
                             description: ctx.body.description,
-                            codebaseId: ctx.body.codebaseId,
+                            spaceId: ctx.body.spaceId,
                             tasks: [{ title: ctx.body.title }],
                         }),
                     ),
@@ -31,7 +31,7 @@ export const taskQueueRoutes = new Elysia()
                 title: t.String({ maxLength: 200 }),
                 description: t.Optional(t.String()),
                 priority: t.Optional(t.String()),
-                codebaseId: t.Optional(t.String()),
+                spaceId: t.Optional(t.String()),
             }),
         },
     )

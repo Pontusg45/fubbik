@@ -27,13 +27,13 @@ export const vocabularyRoutes = new Elysia()
             Effect.runPromise(
                 Effect.gen(function* () {
                     const session = yield* requireSession(ctx);
-                    if (!ctx.query.codebaseId) return [];
-                    return yield* vocabularyService.listVocabulary(session.user.id, ctx.query.codebaseId);
+                    if (!ctx.query.spaceId) return [];
+                    return yield* vocabularyService.listVocabulary(session.user.id, ctx.query.spaceId);
                 })
             ),
         {
             query: t.Object({
-                codebaseId: t.Optional(t.String())
+                spaceId: t.Optional(t.String())
             })
         }
     )
@@ -44,12 +44,12 @@ export const vocabularyRoutes = new Elysia()
             Effect.runPromise(
                 Effect.gen(function* () {
                     const session = yield* requireSession(ctx);
-                    return yield* vocabularyService.suggestFromChunks(session.user.id, ctx.body.codebaseId);
+                    return yield* vocabularyService.suggestFromChunks(session.user.id, ctx.body.spaceId);
                 })
             ),
         {
             body: t.Object({
-                codebaseId: t.String()
+                spaceId: t.String()
             })
         }
     )
@@ -68,7 +68,7 @@ export const vocabularyRoutes = new Elysia()
         {
             body: t.Object({
                 entries: t.Array(EntrySchema),
-                codebaseId: t.String()
+                spaceId: t.String()
             })
         }
     )
@@ -85,7 +85,7 @@ export const vocabularyRoutes = new Elysia()
         {
             body: t.Object({
                 text: t.String({ maxLength: 1000 }),
-                codebaseId: t.String()
+                spaceId: t.String()
             })
         }
     )
@@ -106,7 +106,7 @@ export const vocabularyRoutes = new Elysia()
                 word: t.String({ maxLength: 100 }),
                 category: CategorySchema,
                 expects: t.Optional(t.Array(t.String())),
-                codebaseId: t.String()
+                spaceId: t.String()
             })
         }
     )

@@ -11,7 +11,7 @@ export const savedGraphRoutes = new Elysia()
                 Effect.flatMap(session =>
                     savedGraphService.listSavedGraphs(
                         session.user.id,
-                        (ctx.query as { codebaseId?: string }).codebaseId
+                        (ctx.query as { spaceId?: string }).spaceId
                     )
                 )
             )
@@ -42,7 +42,7 @@ export const savedGraphRoutes = new Elysia()
                     t.Object({ x: t.Number(), y: t.Number() })
                 ),
                 layoutAlgorithm: t.Optional(t.String()),
-                codebaseId: t.Optional(t.Union([t.String(), t.Null()]))
+                spaceId: t.Optional(t.Union([t.String(), t.Null()]))
             })
         }
     )

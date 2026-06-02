@@ -1,5 +1,5 @@
 import {
-    getCodebaseById,
+    getSpaceById,
     listVocabulary as listVocabularyRepo,
     createVocabularyEntry,
     createVocabularyEntries,
@@ -16,33 +16,33 @@ import { NotFoundError } from "../errors";
 import { parseStepText, type VocabEntry } from "./parser";
 import { suggestVocabulary } from "./suggest";
 
-function verifyCodebaseOwnership(codebaseId: string, userId: string) {
-    return getCodebaseById(codebaseId, userId).pipe(
+function verifySpaceOwnership(spaceId: string, userId: string) {
+    return getSpaceById(spaceId, userId).pipe(
         Effect.filterOrFail(
-            (cb): cb is NonNullable<typeof cb> => cb !== null,
-            () => new NotFoundError({ resource: "Codebase" })
+            (sp): sp is NonNullable<typeof sp> => sp !== null,
+            () => new NotFoundError({ resource: "Space" })
         )
     );
 }
 
-export function listVocabulary(userId: string, codebaseId: string) {
+export function listVocabulary(userId: string, spaceId: string) {
     return Effect.gen(function* () {
-        yield* verifyCodebaseOwnership(codebaseId, userId);
-        return yield* listVocabularyRepo(codebaseId);
+        yield* verifySpaceOwnership(spaceId, userId);
+        return yield* listVocabularyRepo(spaceId);
     });
 }
 
 export function createEntry(
     userId: string,
-    body: { word: string; category: string; expects?: string[]; codebaseId: string }
+    body: { word: string; category: string; expects?: string[]; spaceId: string }
 ) {
     return Effect.gen(function* () {
-        yield* verifyCodebaseOwnership(body.codebaseId, userId);
+        yield* verifySpaceOwnership(body.spaceId, userId);
 
-        // Auto-seed modifiers if this is the first entry for the codebase
-        const count = yield* countVocabulary(body.codebaseId);
+        // Auto-seed modifiers if this is the first entry for the space
+        const count = yield* countVocabulary(body.spaceId);
         if (count === 0) {
-            yield* seedModifiers(body.codebaseId, userId);
+            yield* seedModifiers(body.spaceId, userId);
         }
 
         const id = crypto.randomUUID();
@@ -51,7 +51,7 @@ export function createEntry(
             word: body.word,
             category: body.category,
             expects: body.expects,
-            codebaseId: body.codebaseId,
+            spaceId: body.spaceId,
             userId
         });
     });
@@ -61,18 +61,18 @@ export function createEntries(
     userId: string,
     body: {
         entries: Array<{ word: string; category: string; expects?: string[] }>;
-        codebaseId: string;
+        spaceId: string;
     }
 ) {
     return Effect.gen(function* () {
-        yield* verifyCodebaseOwnership(body.codebaseId, userId);
+        yield* verifySpaceOwnership(body.spaceId, userId);
         return yield* createVocabularyEntries(
             body.entries.map(e => ({
                 id: crypto.randomUUID(),
                 word: e.word,
                 category: e.category,
                 expects: e.expects,
-                codebaseId: body.codebaseId,
+                spaceId: body.spaceId,
                 userId
             }))
         );
@@ -87,7 +87,7 @@ export function updateEntry(
     return Effect.gen(function* () {
         const entry = yield* getVocabularyEntry(id);
         if (!entry) return yield* Effect.fail(new NotFoundError({ resource: "Vocabulary entry" }));
-        yield* verifyCodebaseOwnership(entry.codebaseId, userId);
+        yield* verifySpaceOwnership(entry.spaceId, userId);
         return yield* updateVocabularyEntry(id, body);
     });
 }
@@ -96,18 +96,18 @@ export function deleteEntry(id: string, userId: string) {
     return Effect.gen(function* () {
         const entry = yield* getVocabularyEntry(id);
         if (!entry) return yield* Effect.fail(new NotFoundError({ resource: "Vocabulary entry" }));
-        yield* verifyCodebaseOwnership(entry.codebaseId, userId);
+        yield* verifySpaceOwnership(entry.spaceId, userId);
         return yield* deleteVocabularyEntry(id);
     });
 }
 
 export function parseStep(
     userId: string,
-    body: { text: string; codebaseId: string }
+    body: { text: string; spaceId: string }
 ) {
     return Effect.gen(function* () {
-        yield* verifyCodebaseOwnership(body.codebaseId, userId);
-        const vocab = yield* listVocabularyRepo(body.codebaseId);
+        yield* verifySpaceOwnership(body.spaceId, userId);
+        const vocab = yield* listVocabularyRepo(body.spaceId);
         const vocabEntries: VocabEntry[] = vocab.map(v => ({
             word: v.word,
             category: v.category,
@@ -117,12 +117,12 @@ export function parseStep(
     });
 }
 
-export function suggestFromChunks(userId: string, codebaseId: string) {
+export function suggestFromChunks(userId: string, spaceId: string) {
     return Effect.gen(function* () {
-        yield* verifyCodebaseOwnership(codebaseId, userId);
+        yield* verifySpaceOwnership(spaceId, userId);
         const { chunks } = yield* listChunks({
             userId,
-            codebaseId,
+            codebaseId: spaceId,
             limit: 50,
             offset: 0
         });

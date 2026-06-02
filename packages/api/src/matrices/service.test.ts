@@ -54,7 +54,7 @@ function mockMatrix(overrides?: Record<string, unknown>) {
         name: "Domain Invariants",
         layer: "invariant",
         description: null,
-        codebaseId: null,
+        spaceId: null,
         userId: "user-1",
         createdAt: new Date(),
         updatedAt: new Date(),

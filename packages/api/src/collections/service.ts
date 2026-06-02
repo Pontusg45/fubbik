@@ -79,7 +79,7 @@ export function getCollectionChunks(id: string, userId: string) {
                 minConnections: filter.minConnections,
                 origin: filter.origin,
                 reviewStatus: filter.reviewStatus,
-                codebaseId: col.codebaseId ?? undefined
+                spaceId: col.spaceId ?? undefined
             });
         })
     );

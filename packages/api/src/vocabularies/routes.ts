@@ -51,11 +51,11 @@ export const vocabularyCatalogRoutes = new Elysia()
             Effect.runPromise(
                 requireSession(ctx).pipe(
                     Effect.flatMap(session =>
-                        vocabularyService.getChunkTypes(session.user.id, ctx.query.codebaseId || undefined)
+                        vocabularyService.getChunkTypes(session.user.id, ctx.query.spaceId || undefined)
                     )
                 )
             ),
-        { query: t.Object({ codebaseId: t.Optional(t.String()) }) }
+        { query: t.Object({ spaceId: t.Optional(t.String()) }) }
     )
     .post(
         "/chunk-types",
@@ -92,11 +92,11 @@ export const vocabularyCatalogRoutes = new Elysia()
             Effect.runPromise(
                 requireSession(ctx).pipe(
                     Effect.flatMap(session =>
-                        vocabularyService.getConnectionRelations(session.user.id, ctx.query.codebaseId || undefined)
+                        vocabularyService.getConnectionRelations(session.user.id, ctx.query.spaceId || undefined)
                     )
                 )
             ),
-        { query: t.Object({ codebaseId: t.Optional(t.String()) }) }
+        { query: t.Object({ spaceId: t.Optional(t.String()) }) }
     )
     .post(
         "/connection-relations",

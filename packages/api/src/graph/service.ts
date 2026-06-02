@@ -1,4 +1,4 @@
-import { detectCommunities, findBridgeChunks, getAllChunksMeta, getAllConnectionsForUser, getAllTagsWithTypes, getChunkCodebaseMappings, getTagTypesForGraph } from "@fubbik/db/repository";
+import { detectCommunities, findBridgeChunks, getAllChunksMeta, getAllConnectionsForUser, getAllTagsWithTypes, getChunkSpaceMappings, getTagTypesForGraph } from "@fubbik/db/repository";
 import { Effect } from "effect";
 
 export function getUserGraph(userId?: string, codebaseId?: string, workspaceId?: string) {
@@ -8,7 +8,7 @@ export function getUserGraph(userId?: string, codebaseId?: string, workspaceId?:
             connections: getAllConnectionsForUser(userId),
             chunkTags: getAllTagsWithTypes(userId),
             tagTypes: getTagTypesForGraph(userId),
-            chunkCodebases: workspaceId ? getChunkCodebaseMappings(userId) : Effect.succeed([] as { chunkId: string; codebaseId: string; codebaseName: string }[])
+            chunkCodebases: workspaceId ? getChunkSpaceMappings(userId) : Effect.succeed([] as { chunkId: string; spaceId: string; spaceName: string }[])
         },
         { concurrency: "unbounded" }
     ).pipe(

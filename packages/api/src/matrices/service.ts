@@ -36,13 +36,13 @@ export function createMatrix(userId: string, body: {
     name: string;
     layer: string;
     description?: string;
-    codebaseId?: string;
+    spaceId?: string;
 }): Effect.Effect<{
     id: string;
     name: string;
     layer: string;
     description: string | null;
-    codebaseId: string | null;
+    spaceId: string | null;
     userId: string;
     createdAt: Date;
     updatedAt: Date;
@@ -67,7 +67,7 @@ export function getMatrixDetail(matrixId: string, userId: string) {
     );
 }
 
-export function listMatrices(userId: string, filters?: { codebaseId?: string; layer?: string }) {
+export function listMatrices(userId: string, filters?: { spaceId?: string; layer?: string }) {
     return listMatricesRepo(userId, filters);
 }
 

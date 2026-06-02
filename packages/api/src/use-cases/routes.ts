@@ -11,13 +11,13 @@ export const useCaseRoutes = new Elysia()
             Effect.runPromise(
                 requireSession(ctx).pipe(
                     Effect.flatMap(session =>
-                        useCaseService.listUseCases(session.user.id, ctx.query.codebaseId)
+                        useCaseService.listUseCases(session.user.id, ctx.query.spaceId)
                     )
                 )
             ),
         {
             query: t.Object({
-                codebaseId: t.Optional(t.String())
+                spaceId: t.Optional(t.String())
             })
         }
     )
@@ -40,7 +40,7 @@ export const useCaseRoutes = new Elysia()
             body: t.Object({
                 name: t.String({ maxLength: 200 }),
                 description: t.Optional(t.String({ maxLength: 2000 })),
-                codebaseId: t.Optional(t.String()),
+                spaceId: t.Optional(t.String()),
                 parentId: t.Optional(t.String())
             })
         }

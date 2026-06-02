@@ -9,8 +9,8 @@ import { Effect } from "effect";
 
 import { NotFoundError, ValidationError } from "../errors";
 
-export function listSavedGraphs(userId: string, codebaseId?: string | null) {
-    return listSavedGraphsRepo(userId, codebaseId);
+export function listSavedGraphs(userId: string, spaceId?: string | null) {
+    return listSavedGraphsRepo(userId, spaceId);
 }
 
 export function getSavedGraphDetail(id: string, userId: string) {
@@ -29,7 +29,7 @@ export function createSavedGraph(
         chunkIds: string[];
         positions: Record<string, { x: number; y: number }>;
         layoutAlgorithm?: string;
-        codebaseId?: string | null;
+        spaceId?: string | null;
     }
 ) {
     return Effect.gen(function* () {
@@ -46,7 +46,7 @@ export function createSavedGraph(
             positions: body.positions,
             layoutAlgorithm: body.layoutAlgorithm ?? "force",
             userId,
-            codebaseId: body.codebaseId
+            spaceId: body.spaceId
         });
     });
 }

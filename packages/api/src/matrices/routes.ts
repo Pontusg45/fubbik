@@ -12,7 +12,7 @@ export const matrixRoutes = new Elysia()
                 requireSession(ctx).pipe(
                     Effect.flatMap(session =>
                         matrixService.listMatrices(session.user.id, {
-                            codebaseId: ctx.query.codebaseId,
+                            spaceId: ctx.query.spaceId,
                             layer: ctx.query.layer
                         })
                     )
@@ -20,7 +20,7 @@ export const matrixRoutes = new Elysia()
             ),
         {
             query: t.Object({
-                codebaseId: t.Optional(t.String()),
+                spaceId: t.Optional(t.String()),
                 layer: t.Optional(t.String())
             })
         }
@@ -39,7 +39,7 @@ export const matrixRoutes = new Elysia()
                 name: t.String({ maxLength: 200 }),
                 layer: t.Union([t.Literal("invariant"), t.Literal("contract")]),
                 description: t.Optional(t.String({ maxLength: 1000 })),
-                codebaseId: t.Optional(t.String())
+                spaceId: t.Optional(t.String())
             })
         }
     )

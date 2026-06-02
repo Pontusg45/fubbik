@@ -26,7 +26,7 @@ export const searchRoutes = new Elysia()
                             sort: ctx.body.sort,
                             limit: ctx.body.limit,
                             offset: ctx.body.offset,
-                            codebaseId: ctx.body.codebaseId
+                            codebaseId: ctx.body.spaceId
                         })
                     )
                 )
@@ -45,7 +45,7 @@ export const searchRoutes = new Elysia()
                 ),
                 limit: t.Optional(t.Number()),
                 offset: t.Optional(t.Number()),
-                codebaseId: t.Optional(t.String())
+                spaceId: t.Optional(t.String())
             })
         }
     )
@@ -86,13 +86,13 @@ export const searchRoutes = new Elysia()
             Effect.runPromise(
                 requireSession(ctx).pipe(
                     Effect.flatMap(session =>
-                        listSavedQueries(session.user.id, ctx.query.codebaseId)
+                        listSavedQueries(session.user.id, ctx.query.spaceId)
                     )
                 )
             ),
         {
             query: t.Object({
-                codebaseId: t.Optional(t.String())
+                spaceId: t.Optional(t.String())
             })
         }
     )
@@ -107,7 +107,7 @@ export const searchRoutes = new Elysia()
                             name: ctx.body.name,
                             query: ctx.body.query,
                             userId: session.user.id,
-                            codebaseId: ctx.body.codebaseId
+                            spaceId: ctx.body.spaceId
                         })
                     )
                 )
@@ -119,9 +119,9 @@ export const searchRoutes = new Elysia()
                     clauses: t.Array(ClauseSchema),
                     join: t.Optional(t.Union([t.Literal("and"), t.Literal("or")])),
                     sort: t.Optional(t.String()),
-                    codebaseId: t.Optional(t.String())
+                    spaceId: t.Optional(t.String())
                 }),
-                codebaseId: t.Optional(t.String())
+                spaceId: t.Optional(t.String())
             })
         }
     )
