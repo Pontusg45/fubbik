@@ -107,7 +107,7 @@ function ChunksList() {
         after,
         enrichment,
         minConnections,
-        codebaseId: spaceId,
+        spaceId,
         origin,
         reviewStatus,
         isFederated,

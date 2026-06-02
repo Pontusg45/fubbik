@@ -40,8 +40,8 @@ export function TraceabilityContent() {
     const traceQuery = useQuery({
         queryKey: ["traceability", spaceId],
         queryFn: async () => {
-            const query: { spaceId?: string } = {};
-            if (spaceId) query.spaceId = spaceId;
+            const query: { codebaseId?: string } = {};
+            if (spaceId) query.codebaseId = spaceId;
             return unwrapEden(await api.api.requirements.traceability.get({ query })) as TraceabilityRow[];
         }
     });

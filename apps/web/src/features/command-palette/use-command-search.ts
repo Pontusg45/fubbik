@@ -177,11 +177,13 @@ export function useCommandSearch({
         queryKey: ["command-palette-spaces"],
         queryFn: async () => {
             try {
-                return unwrapEden(await api.api.spaces.get()) as Array<{
+                const data = unwrapEden(await api.api.spaces.get()) as Array<{
                     id: string;
                     name: string;
-                    remoteUrl: string | null;
+                    remoteUrl?: string | null;
+                    kind?: string;
                 }>;
+                return data.map(s => ({ id: s.id, name: s.name, remoteUrl: s.remoteUrl ?? null }));
             } catch {
                 return [];
             }

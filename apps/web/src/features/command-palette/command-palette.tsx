@@ -190,10 +190,10 @@ export function CommandPalette() {
                                                 </Badge>
                                             ) : (
                                                 <Badge variant="secondary" size="sm">
-                                                    {item.group === "All Codebases"
+                                                    {item.group === "All Spaces"
                                                         ? "Global"
-                                                        : item.group === "Codebases"
-                                                          ? "Codebase"
+                                                        : item.group === "Spaces"
+                                                          ? "Space"
                                                           : item.group === "Actions"
                                                             ? "Action"
                                                             : item.group}

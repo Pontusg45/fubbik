@@ -315,7 +315,7 @@ function RequirementDetail() {
                         </div>
                     </div>
                     {/* Step builder */}
-                    <StepBuilder steps={editSteps} onStepsChange={setEditSteps} codebaseId={spaceId} stepErrors={editStepErrors} />
+                    <StepBuilder steps={editSteps} onStepsChange={setEditSteps} spaceId={spaceId} stepErrors={editStepErrors} />
                     {/* Chunk linker */}
                     <ChunkLinker selectedChunkIds={editChunkIds} onSelectedChunkIdsChange={setEditChunkIds} codebaseId={spaceId} />
                     {/* Save/Cancel */}

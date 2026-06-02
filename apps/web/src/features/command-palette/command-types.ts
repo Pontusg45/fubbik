@@ -9,9 +9,9 @@ export type CommandGroup =
     | "Chunks"
     | "Requirements"
     | "Plans"
-    | "Codebases"
+    | "Spaces"
     | "Actions"
-    | "All Codebases";
+    | "All Spaces";
 
 export interface CommandItem {
     id: string;

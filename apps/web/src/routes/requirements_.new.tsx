@@ -315,7 +315,7 @@ function NewRequirement() {
                     <ChunkLinker
                         selectedChunkIds={selectedChunkIds}
                         onSelectedChunkIdsChange={setSelectedChunkIds}
-                        spaceId={spaceId}
+                        codebaseId={spaceId}
                     />
 
                     <Separator />

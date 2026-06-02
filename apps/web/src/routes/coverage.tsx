@@ -101,8 +101,8 @@ function ChunkCoverageTab({
     const coverageQuery = useQuery({
         queryKey: ["coverage", spaceId, showMatrix],
         queryFn: async () => {
-            const query: { spaceId?: string; detail?: string } = {};
-            if (spaceId) query.spaceId = spaceId;
+            const query: { codebaseId?: string; detail?: string } = {};
+            if (spaceId) query.codebaseId = spaceId;
             if (showMatrix) query.detail = "true";
             return unwrapEden(await (api.api.requirements as any).coverage.get({ query }));
         }

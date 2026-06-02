@@ -44,7 +44,7 @@ const manageItems = [
     { label: "Templates", to: "/templates" as const, icon: FileText },
     { label: "Vocabulary", to: "/vocabulary" as const, icon: BookOpen },
     { label: "Context", to: "/context" as const, icon: FileSearch },
-    { label: "Codebases", to: "/codebases" as const, icon: FolderGit2 },
+    { label: "Spaces", to: "/spaces" as const, icon: FolderGit2 },
     { label: "Workspaces", to: "/workspaces" as const, icon: Layers },
     { label: "Import Docs", to: "/import" as const, icon: FolderUp },
     { label: "Health", to: "/knowledge-health" as const, icon: Activity },

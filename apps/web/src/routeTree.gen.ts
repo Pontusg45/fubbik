@@ -32,7 +32,7 @@ import { Route as CoverageRouteImport } from "./routes/coverage";
 import { Route as ContextRouteImport } from "./routes/context";
 import { Route as ComposeRouteImport } from "./routes/compose";
 import { Route as CompareRouteImport } from "./routes/compare";
-import { Route as CodebasesRouteImport } from "./routes/codebases";
+import { Route as SpacesRouteImport } from "./routes/spaces";
 import { Route as BrowseRouteImport } from "./routes/browse";
 import { Route as ActivityRouteImport } from "./routes/activity";
 import { Route as IndexRouteImport } from "./routes/index";
@@ -46,7 +46,7 @@ import { Route as PlansPlanIdRouteImport } from "./routes/plans.$planId";
 import { Route as MatricesMatrixIdRouteImport } from "./routes/matrices_.$matrixId";
 import { Route as LearnPathIdRouteImport } from "./routes/learn.$pathId";
 import { Route as GraphGraphIdRouteImport } from "./routes/graph_.$graphId";
-import { Route as CodebasesCodebaseIdRouteImport } from "./routes/codebases.$codebaseId";
+import { Route as SpacesSpaceIdRouteImport } from "./routes/spaces.$spaceId";
 import { Route as ChunksNewRouteImport } from "./routes/chunks.new";
 import { Route as ChunksArchivedRouteImport } from "./routes/chunks.archived";
 import { Route as ChunksChunkIdRouteImport } from "./routes/chunks.$chunkId";
@@ -168,9 +168,9 @@ const CompareRoute = CompareRouteImport.update({
   path: "/compare",
   getParentRoute: () => rootRouteImport,
 } as any);
-const CodebasesRoute = CodebasesRouteImport.update({
-  id: "/codebases",
-  path: "/codebases",
+const SpacesRoute = SpacesRouteImport.update({
+  id: "/spaces",
+  path: "/spaces",
   getParentRoute: () => rootRouteImport,
 } as any);
 const BrowseRoute = BrowseRouteImport.update({
@@ -239,10 +239,10 @@ const GraphGraphIdRoute = GraphGraphIdRouteImport.update({
   path: "/graph/$graphId",
   getParentRoute: () => rootRouteImport,
 } as any);
-const CodebasesCodebaseIdRoute = CodebasesCodebaseIdRouteImport.update({
-  id: "/$codebaseId",
-  path: "/$codebaseId",
-  getParentRoute: () => CodebasesRoute,
+const SpacesSpaceIdRoute = SpacesSpaceIdRouteImport.update({
+  id: "/$spaceId",
+  path: "/$spaceId",
+  getParentRoute: () => SpacesRoute,
 } as any);
 const ChunksNewRoute = ChunksNewRouteImport.update({
   id: "/chunks/new",
@@ -274,7 +274,7 @@ export interface FileRoutesByFullPath {
   "/": typeof IndexRoute;
   "/activity": typeof ActivityRoute;
   "/browse": typeof BrowseRouteWithChildren;
-  "/codebases": typeof CodebasesRouteWithChildren;
+  "/spaces": typeof SpacesRouteWithChildren;
   "/compare": typeof CompareRoute;
   "/compose": typeof ComposeRoute;
   "/context": typeof ContextRoute;
@@ -302,7 +302,7 @@ export interface FileRoutesByFullPath {
   "/chunks/$chunkId": typeof ChunksChunkIdRoute;
   "/chunks/archived": typeof ChunksArchivedRoute;
   "/chunks/new": typeof ChunksNewRoute;
-  "/codebases/$codebaseId": typeof CodebasesCodebaseIdRoute;
+  "/spaces/$spaceId": typeof SpacesSpaceIdRoute;
   "/graph/$graphId": typeof GraphGraphIdRoute;
   "/learn/$pathId": typeof LearnPathIdRoute;
   "/matrices/$matrixId": typeof MatricesMatrixIdRoute;
@@ -319,7 +319,7 @@ export interface FileRoutesByTo {
   "/": typeof IndexRoute;
   "/activity": typeof ActivityRoute;
   "/browse": typeof BrowseRouteWithChildren;
-  "/codebases": typeof CodebasesRouteWithChildren;
+  "/spaces": typeof SpacesRouteWithChildren;
   "/compare": typeof CompareRoute;
   "/compose": typeof ComposeRoute;
   "/context": typeof ContextRoute;
@@ -347,7 +347,7 @@ export interface FileRoutesByTo {
   "/chunks/$chunkId": typeof ChunksChunkIdRoute;
   "/chunks/archived": typeof ChunksArchivedRoute;
   "/chunks/new": typeof ChunksNewRoute;
-  "/codebases/$codebaseId": typeof CodebasesCodebaseIdRoute;
+  "/spaces/$spaceId": typeof SpacesSpaceIdRoute;
   "/graph/$graphId": typeof GraphGraphIdRoute;
   "/learn/$pathId": typeof LearnPathIdRoute;
   "/matrices/$matrixId": typeof MatricesMatrixIdRoute;
@@ -365,7 +365,7 @@ export interface FileRoutesById {
   "/": typeof IndexRoute;
   "/activity": typeof ActivityRoute;
   "/browse": typeof BrowseRouteWithChildren;
-  "/codebases": typeof CodebasesRouteWithChildren;
+  "/spaces": typeof SpacesRouteWithChildren;
   "/compare": typeof CompareRoute;
   "/compose": typeof ComposeRoute;
   "/context": typeof ContextRoute;
@@ -393,7 +393,7 @@ export interface FileRoutesById {
   "/chunks/$chunkId": typeof ChunksChunkIdRoute;
   "/chunks/archived": typeof ChunksArchivedRoute;
   "/chunks/new": typeof ChunksNewRoute;
-  "/codebases/$codebaseId": typeof CodebasesCodebaseIdRoute;
+  "/spaces/$spaceId": typeof SpacesSpaceIdRoute;
   "/graph_/$graphId": typeof GraphGraphIdRoute;
   "/learn/$pathId": typeof LearnPathIdRoute;
   "/matrices_/$matrixId": typeof MatricesMatrixIdRoute;
@@ -412,7 +412,7 @@ export interface FileRouteTypes {
     | "/"
     | "/activity"
     | "/browse"
-    | "/codebases"
+    | "/spaces"
     | "/compare"
     | "/compose"
     | "/context"
@@ -440,7 +440,7 @@ export interface FileRouteTypes {
     | "/chunks/$chunkId"
     | "/chunks/archived"
     | "/chunks/new"
-    | "/codebases/$codebaseId"
+    | "/spaces/$spaceId"
     | "/graph/$graphId"
     | "/learn/$pathId"
     | "/matrices/$matrixId"
@@ -457,7 +457,7 @@ export interface FileRouteTypes {
     | "/"
     | "/activity"
     | "/browse"
-    | "/codebases"
+    | "/spaces"
     | "/compare"
     | "/compose"
     | "/context"
@@ -485,7 +485,7 @@ export interface FileRouteTypes {
     | "/chunks/$chunkId"
     | "/chunks/archived"
     | "/chunks/new"
-    | "/codebases/$codebaseId"
+    | "/spaces/$spaceId"
     | "/graph/$graphId"
     | "/learn/$pathId"
     | "/matrices/$matrixId"
@@ -502,7 +502,7 @@ export interface FileRouteTypes {
     | "/"
     | "/activity"
     | "/browse"
-    | "/codebases"
+    | "/spaces"
     | "/compare"
     | "/compose"
     | "/context"
@@ -530,7 +530,7 @@ export interface FileRouteTypes {
     | "/chunks/$chunkId"
     | "/chunks/archived"
     | "/chunks/new"
-    | "/codebases/$codebaseId"
+    | "/spaces/$spaceId"
     | "/graph_/$graphId"
     | "/learn/$pathId"
     | "/matrices_/$matrixId"
@@ -548,7 +548,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute;
   ActivityRoute: typeof ActivityRoute;
   BrowseRoute: typeof BrowseRouteWithChildren;
-  CodebasesRoute: typeof CodebasesRouteWithChildren;
+  SpacesRoute: typeof SpacesRouteWithChildren;
   CompareRoute: typeof CompareRoute;
   ComposeRoute: typeof ComposeRoute;
   ContextRoute: typeof ContextRoute;
@@ -749,11 +749,11 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof CompareRouteImport;
       parentRoute: typeof rootRouteImport;
     };
-    "/codebases": {
-      id: "/codebases";
-      path: "/codebases";
-      fullPath: "/codebases";
-      preLoaderRoute: typeof CodebasesRouteImport;
+    "/spaces": {
+      id: "/spaces";
+      path: "/spaces";
+      fullPath: "/spaces";
+      preLoaderRoute: typeof SpacesRouteImport;
       parentRoute: typeof rootRouteImport;
     };
     "/browse": {
@@ -847,12 +847,12 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof GraphGraphIdRouteImport;
       parentRoute: typeof rootRouteImport;
     };
-    "/codebases/$codebaseId": {
-      id: "/codebases/$codebaseId";
-      path: "/$codebaseId";
-      fullPath: "/codebases/$codebaseId";
-      preLoaderRoute: typeof CodebasesCodebaseIdRouteImport;
-      parentRoute: typeof CodebasesRoute;
+    "/spaces/$spaceId": {
+      id: "/spaces/$spaceId";
+      path: "/$spaceId";
+      fullPath: "/spaces/$spaceId";
+      preLoaderRoute: typeof SpacesSpaceIdRouteImport;
+      parentRoute: typeof SpacesRoute;
     };
     "/chunks/new": {
       id: "/chunks/new";
@@ -903,16 +903,16 @@ const BrowseRouteChildren: BrowseRouteChildren = {
 const BrowseRouteWithChildren =
   BrowseRoute._addFileChildren(BrowseRouteChildren);
 
-interface CodebasesRouteChildren {
-  CodebasesCodebaseIdRoute: typeof CodebasesCodebaseIdRoute;
+interface SpacesRouteChildren {
+  SpacesSpaceIdRoute: typeof SpacesSpaceIdRoute;
 }
 
-const CodebasesRouteChildren: CodebasesRouteChildren = {
-  CodebasesCodebaseIdRoute: CodebasesCodebaseIdRoute,
+const SpacesRouteChildren: SpacesRouteChildren = {
+  SpacesSpaceIdRoute: SpacesSpaceIdRoute,
 };
 
-const CodebasesRouteWithChildren = CodebasesRoute._addFileChildren(
-  CodebasesRouteChildren,
+const SpacesRouteWithChildren = SpacesRoute._addFileChildren(
+  SpacesRouteChildren,
 );
 
 interface LearnRouteChildren {
@@ -941,7 +941,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ActivityRoute: ActivityRoute,
   BrowseRoute: BrowseRouteWithChildren,
-  CodebasesRoute: CodebasesRouteWithChildren,
+  SpacesRoute: SpacesRouteWithChildren,
   CompareRoute: CompareRoute,
   ComposeRoute: ComposeRoute,
   ContextRoute: ContextRoute,
