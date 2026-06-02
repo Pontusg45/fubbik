@@ -44,6 +44,8 @@ CREATE TABLE IF NOT EXISTS space_code_metadata (
 CREATE UNIQUE INDEX IF NOT EXISTS space_code_user_remote_idx
     ON space_code_metadata(user_id, remote_url) WHERE remote_url IS NOT NULL;
 
+BEGIN;
+
 -- 4. Copy codebase → space + space_code_metadata (guarded: codebase may already be dropped)
 DO $$
 BEGIN
@@ -179,7 +181,7 @@ BEGIN
             EXECUTE format(
                 'ALTER TABLE %I ADD CONSTRAINT %I FOREIGN KEY (space_id) REFERENCES space(id) ON DELETE %s',
                 tbl,
-                tbl || '_space_id_space_fk',
+                tbl || '_space_id_space_id_fk',
                 CASE WHEN tbl = ANY(cascade_tables) THEN 'CASCADE' ELSE 'SET NULL' END
             );
 
@@ -194,3 +196,5 @@ END $$;
 DROP TABLE IF EXISTS chunk_codebase;
 DROP TABLE IF EXISTS workspace_codebase;
 DROP TABLE IF EXISTS codebase;
+
+COMMIT;
