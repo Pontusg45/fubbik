@@ -11,7 +11,7 @@ import {
     listDocuments as listDocumentsRepo,
     listDocumentsWithTags as listDocumentsWithTagsRepo,
     searchDocumentChunks,
-    setChunkCodebases,
+    setChunkSpaces,
     setChunkTags,
     updateChunk as updateChunkRepo,
     updateDocument as updateDocumentRepo
@@ -46,13 +46,13 @@ export function importDocument(
     userId: string,
     sourcePath: string,
     rawContent: string,
-    codebaseId?: string,
+    spaceId?: string,
     templateId?: string
 ) {
     return Effect.gen(function* () {
         const contentHash = hashContent(rawContent);
 
-        const existing = yield* getDocumentBySourcePath(sourcePath, codebaseId, userId);
+        const existing = yield* getDocumentBySourcePath(sourcePath, spaceId, userId);
         if (existing && existing.contentHash === contentHash) {
             const existingChunks = yield* getDocumentChunks(existing.id);
             const firstChunkId = existingChunks[0]?.id ?? null;
@@ -60,7 +60,7 @@ export function importDocument(
         }
 
         if (existing) {
-            const syncResult = yield* syncDocument(existing.id, rawContent, userId, codebaseId);
+            const syncResult = yield* syncDocument(existing.id, rawContent, userId, spaceId);
             const syncChunks = yield* getDocumentChunks(existing.id);
             return { ...syncResult, firstChunkId: syncChunks[0]?.id ?? null };
         }
@@ -87,7 +87,7 @@ export function importDocument(
                     sourcePath,
                     contentHash,
                     description: undefined,
-                    codebaseId,
+                    spaceId,
                     userId
                 });
 
@@ -115,8 +115,8 @@ export function importDocument(
                 if (tagIds.length > 0) {
                     yield* setChunkTags(chunkId, tagIds);
                 }
-                if (codebaseId) {
-                    yield* setChunkCodebases(chunkId, [codebaseId]);
+                if (spaceId) {
+                    yield* setChunkSpaces(chunkId, [spaceId]);
                 }
 
                 return { document: doc, created: 1, updated: 0, status: "created" as const, firstChunkId: chunkId };
@@ -133,7 +133,7 @@ export function importDocument(
             sourcePath,
             contentHash,
             description: split.description,
-            codebaseId,
+            spaceId,
             userId,
             splitLevel: split.splitLevel
         });
@@ -157,8 +157,8 @@ export function importDocument(
             if (tagIds.length > 0) {
                 yield* setChunkTags(chunkId, tagIds);
             }
-            if (codebaseId) {
-                yield* setChunkCodebases(chunkId, [codebaseId]);
+            if (spaceId) {
+                yield* setChunkSpaces(chunkId, [spaceId]);
             }
         }
 
@@ -170,7 +170,7 @@ export function syncDocument(
     documentId: string,
     rawContent: string,
     userId: string,
-    codebaseId?: string
+    spaceId?: string
 ) {
     return Effect.gen(function* () {
         const doc = yield* getDocumentById(documentId);
@@ -220,8 +220,8 @@ export function syncDocument(
                 if (tagIds.length > 0) {
                     yield* setChunkTags(chunkId, tagIds);
                 }
-                if (codebaseId) {
-                    yield* setChunkCodebases(chunkId, [codebaseId]);
+                if (spaceId) {
+                    yield* setChunkSpaces(chunkId, [spaceId]);
                 }
                 created++;
             }
@@ -292,12 +292,12 @@ export function renderDocument(documentId: string, userId: string) {
     });
 }
 
-export function listDocuments(userId: string, codebaseId?: string) {
-    return listDocumentsRepo(userId, codebaseId);
+export function listDocuments(userId: string, spaceId?: string) {
+    return listDocumentsRepo(userId, spaceId);
 }
 
-export function listDocumentsWithTags(userId: string, codebaseId?: string) {
-    return listDocumentsWithTagsRepo(userId, codebaseId);
+export function listDocumentsWithTags(userId: string, spaceId?: string) {
+    return listDocumentsWithTagsRepo(userId, spaceId);
 }
 
 export function getDocument(documentId: string, userId: string) {
@@ -309,8 +309,8 @@ export function getDocument(documentId: string, userId: string) {
     });
 }
 
-export function searchDocuments(userId: string, query: string, codebaseId?: string) {
-    return searchDocumentChunks(userId, query, 20, codebaseId);
+export function searchDocuments(userId: string, query: string, spaceId?: string) {
+    return searchDocumentChunks(userId, query, 20, spaceId);
 }
 
 export function removeDocument(documentId: string, userId: string) {

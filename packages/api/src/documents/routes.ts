@@ -11,13 +11,13 @@ export const documentRoutes = new Elysia()
             Effect.runPromise(
                 requireSession(ctx).pipe(
                     Effect.flatMap(session =>
-                        documentService.listDocumentsWithTags(session.user.id, ctx.query.codebaseId)
+                        documentService.listDocumentsWithTags(session.user.id, ctx.query.spaceId)
                     )
                 )
             ),
         {
             query: t.Object({
-                codebaseId: t.Optional(t.String())
+                spaceId: t.Optional(t.String())
             })
         }
     )
@@ -27,14 +27,14 @@ export const documentRoutes = new Elysia()
             Effect.runPromise(
                 requireSession(ctx).pipe(
                     Effect.flatMap(session =>
-                        documentService.searchDocuments(session.user.id, ctx.query.q, ctx.query.codebaseId)
+                        documentService.searchDocuments(session.user.id, ctx.query.q, ctx.query.spaceId)
                     )
                 )
             ),
         {
             query: t.Object({
                 q: t.String({ minLength: 2 }),
-                codebaseId: t.Optional(t.String())
+                spaceId: t.Optional(t.String())
             })
         }
     )
@@ -60,7 +60,7 @@ export const documentRoutes = new Elysia()
                             session.user.id,
                             ctx.body.sourcePath,
                             ctx.body.content,
-                            ctx.body.codebaseId
+                            ctx.body.spaceId
                         )
                     )
                 )
@@ -69,7 +69,7 @@ export const documentRoutes = new Elysia()
             body: t.Object({
                 sourcePath: t.String({ maxLength: 500 }),
                 content: t.String({ maxLength: 200000 }),
-                codebaseId: t.Optional(t.String())
+                spaceId: t.Optional(t.String())
             })
         }
     )
@@ -84,7 +84,7 @@ export const documentRoutes = new Elysia()
                                 session.user.id,
                                 file.sourcePath,
                                 file.content,
-                                ctx.body.codebaseId
+                                ctx.body.spaceId
                             )
                         )
                     )
@@ -99,7 +99,7 @@ export const documentRoutes = new Elysia()
                     }),
                     { maxItems: 200 }
                 ),
-                codebaseId: t.Optional(t.String())
+                spaceId: t.Optional(t.String())
             })
         }
     )
@@ -113,7 +113,7 @@ export const documentRoutes = new Elysia()
                             ctx.params.id,
                             ctx.body.content,
                             session.user.id,
-                            ctx.body.codebaseId
+                            ctx.body.spaceId
                         )
                     )
                 )
@@ -122,7 +122,7 @@ export const documentRoutes = new Elysia()
             params: t.Object({ id: t.String() }),
             body: t.Object({
                 content: t.String({ maxLength: 200000 }),
-                codebaseId: t.Optional(t.String())
+                spaceId: t.Optional(t.String())
             })
         }
     )
