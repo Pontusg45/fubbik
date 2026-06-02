@@ -17,96 +17,113 @@ export const searchCommand = new Command("search")
     .option("--global", "skip space scoping (search all chunks)")
     .option("-s, --space <name>", "scope to a specific space by name")
     .option("--codebase <name>", "alias for --space (deprecated)")
-    .action(async (query: string, opts: { limit?: string; offset?: string; fields?: string; semantic?: boolean; server?: boolean; global?: boolean; space?: string; codebase?: string }, cmd: Command) => {
-        const config = loadConfig();
-        const spaceName = opts.space ?? opts.codebase ?? config.codebase;
+    .action(
+        async (
+            query: string,
+            opts: {
+                limit?: string;
+                offset?: string;
+                fields?: string;
+                semantic?: boolean;
+                server?: boolean;
+                global?: boolean;
+                space?: string;
+                codebase?: string;
+            },
+            cmd: Command
+        ) => {
+            const config = loadConfig();
+            const spaceName = opts.space ?? opts.codebase ?? config.codebase;
 
-        if (opts.semantic) {
-            const store = readStore();
-            if (!store.serverUrl) {
-                outputError("No server URL configured. Run 'fubbik init' first.");
-                process.exit(1);
+            if (opts.semantic) {
+                const store = readStore();
+                if (!store.serverUrl) {
+                    outputError("No server URL configured. Run 'fubbik init' first.");
+                    process.exit(1);
+                }
+                const params = new URLSearchParams({ q: query });
+                if (opts.limit) params.set("limit", opts.limit);
+
+                const spaceId = await resolveSpaceId(store.serverUrl, {
+                    global: opts.global,
+                    space: spaceName
+                });
+                if (spaceId) params.set("spaceId", spaceId);
+
+                const res = await fetch(`${store.serverUrl}/api/chunks/search/semantic?${params}`);
+                if (!res.ok) {
+                    outputError(`Semantic search failed: ${res.status}`);
+                    process.exit(1);
+                }
+                const results = (await res.json()) as { id: string; title: string; type: string; similarity: number }[];
+                outputQuiet(cmd, results.map(c => c.id).join("\n"));
+                if (results.length === 0) {
+                    output(cmd, results, `No semantic matches for "${query}".`);
+                } else {
+                    output(cmd, results, `${results.length} semantic result(s) for "${query}":\n\n${formatSemanticTable(results)}`);
+                }
+                return;
             }
-            const params = new URLSearchParams({ q: query });
-            if (opts.limit) params.set("limit", opts.limit);
 
-            const spaceId = await resolveSpaceId(store.serverUrl, {
-                global: opts.global,
-                space: spaceName
-            });
-            if (spaceId) params.set("spaceId", spaceId);
+            if (opts.server) {
+                const store = readStore();
+                if (!store.serverUrl) {
+                    outputError("No server URL configured. Run 'fubbik init' first.");
+                    process.exit(1);
+                }
+                const params = new URLSearchParams({ search: query });
+                if (opts.limit) params.set("limit", opts.limit);
+                if (opts.offset) params.set("offset", opts.offset);
 
-            const res = await fetch(`${store.serverUrl}/api/chunks/search/semantic?${params}`);
-            if (!res.ok) {
-                outputError(`Semantic search failed: ${res.status}`);
-                process.exit(1);
+                const spaceId = await resolveSpaceId(store.serverUrl, {
+                    global: opts.global,
+                    space: spaceName
+                });
+                if (spaceId) params.set("spaceId", spaceId);
+
+                const res = await fetch(`${store.serverUrl}/api/chunks?${params}`);
+                if (!res.ok) {
+                    outputError(`Server search failed: ${res.status}`);
+                    process.exit(1);
+                }
+                const data = (await res.json()) as {
+                    chunks: { id: string; title: string; type: string; tags: string[]; updatedAt?: string }[];
+                };
+                const chunks = data.chunks;
+                outputQuiet(cmd, chunks.map(c => c.id).join("\n"));
+                if (chunks.length === 0) {
+                    output(cmd, chunks, `No chunks matching "${query}". (from server)`);
+                } else {
+                    output(cmd, chunks, `${chunks.length} result(s) for "${query}" (from server):\n\n${formatChunkTable(chunks)}`);
+                }
+                return;
             }
-            const results = (await res.json()) as { id: string; title: string; type: string; similarity: number }[];
+
+            let results = searchChunks(query);
+
+            const offset = Number(opts.offset) || 0;
+            const limit = opts.limit ? Number(opts.limit) : undefined;
+            if (offset > 0 || limit !== undefined) {
+                results = results.slice(offset, limit !== undefined ? offset + limit : undefined);
+            }
+
+            let data: unknown = results;
+            if (opts.fields) {
+                const fields = opts.fields.split(",").map(f => f.trim());
+                data = results.map(c => {
+                    const obj: Record<string, unknown> = {};
+                    for (const f of fields) {
+                        if (f in c) obj[f] = (c as unknown as Record<string, unknown>)[f];
+                    }
+                    return obj;
+                });
+            }
+
             outputQuiet(cmd, results.map(c => c.id).join("\n"));
             if (results.length === 0) {
-                output(cmd, results, `No semantic matches for "${query}".`);
+                output(cmd, data, `No chunks matching "${query}".`);
             } else {
-                output(cmd, results, `${results.length} semantic result(s) for "${query}":\n\n${formatSemanticTable(results)}`);
+                output(cmd, data, `${results.length} result(s) for "${query}":\n\n${formatChunkTable(results)}`);
             }
-            return;
         }
-
-        if (opts.server) {
-            const store = readStore();
-            if (!store.serverUrl) {
-                outputError("No server URL configured. Run 'fubbik init' first.");
-                process.exit(1);
-            }
-            const params = new URLSearchParams({ search: query });
-            if (opts.limit) params.set("limit", opts.limit);
-            if (opts.offset) params.set("offset", opts.offset);
-
-            const spaceId = await resolveSpaceId(store.serverUrl, {
-                global: opts.global,
-                space: spaceName
-            });
-            if (spaceId) params.set("spaceId", spaceId);
-
-            const res = await fetch(`${store.serverUrl}/api/chunks?${params}`);
-            if (!res.ok) {
-                outputError(`Server search failed: ${res.status}`);
-                process.exit(1);
-            }
-            const data = (await res.json()) as { chunks: { id: string; title: string; type: string; tags: string[]; updatedAt?: string }[] };
-            const chunks = data.chunks;
-            outputQuiet(cmd, chunks.map(c => c.id).join("\n"));
-            if (chunks.length === 0) {
-                output(cmd, chunks, `No chunks matching "${query}". (from server)`);
-            } else {
-                output(cmd, chunks, `${chunks.length} result(s) for "${query}" (from server):\n\n${formatChunkTable(chunks)}`);
-            }
-            return;
-        }
-
-        let results = searchChunks(query);
-
-        const offset = Number(opts.offset) || 0;
-        const limit = opts.limit ? Number(opts.limit) : undefined;
-        if (offset > 0 || limit !== undefined) {
-            results = results.slice(offset, limit !== undefined ? offset + limit : undefined);
-        }
-
-        let data: unknown = results;
-        if (opts.fields) {
-            const fields = opts.fields.split(",").map(f => f.trim());
-            data = results.map(c => {
-                const obj: Record<string, unknown> = {};
-                for (const f of fields) {
-                    if (f in c) obj[f] = (c as unknown as Record<string, unknown>)[f];
-                }
-                return obj;
-            });
-        }
-
-        outputQuiet(cmd, results.map(c => c.id).join("\n"));
-        if (results.length === 0) {
-            output(cmd, data, `No chunks matching "${query}".`);
-        } else {
-            output(cmd, data, `${results.length} result(s) for "${query}":\n\n${formatChunkTable(results)}`);
-        }
-    });
+    );

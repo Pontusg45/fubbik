@@ -7,7 +7,9 @@ import { getUser } from "@/functions/get-user";
 
 export const Route = createFileRoute("/docs")({
     component: DocsPage,
-    validateSearch: (search: Record<string, unknown>): {
+    validateSearch: (
+        search: Record<string, unknown>
+    ): {
         tab?: string;
         id?: string;
         section?: string;
@@ -20,7 +22,7 @@ export const Route = createFileRoute("/docs")({
         section: (search.section as string) ?? undefined,
         groupBy: (search.groupBy as string) ?? undefined,
         tags: (search.tags as string) ?? undefined,
-        types: (search.types as string) ?? undefined,
+        types: (search.types as string) ?? undefined
     }),
     beforeLoad: async () => {
         let session = null;
@@ -33,9 +35,7 @@ export const Route = createFileRoute("/docs")({
 
 function DocsPage() {
     const search = useSearch({ from: "/docs" });
-    const [tab, setTab] = useState<"docs" | "api">(
-        search.tab === "api" ? "api" : "docs"
-    );
+    const [tab, setTab] = useState<"docs" | "api">(search.tab === "api" ? "api" : "docs");
 
     useEffect(() => {
         if (search.tab === "api") setTab("api");
@@ -103,12 +103,8 @@ function DocsPage() {
                             <ExternalLink className="size-3.5" />
                         </a>
                     </div>
-                    <div className="rounded-lg border overflow-hidden" style={{ height: "calc(100vh - 200px)" }}>
-                        <iframe
-                            src="http://localhost:3000/docs"
-                            className="w-full h-full border-0"
-                            title="Fubbik API Documentation"
-                        />
+                    <div className="overflow-hidden rounded-lg border" style={{ height: "calc(100vh - 200px)" }}>
+                        <iframe src="http://localhost:3000/docs" className="h-full w-full border-0" title="Fubbik API Documentation" />
                     </div>
                 </div>
             )}

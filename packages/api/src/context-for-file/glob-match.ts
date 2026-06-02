@@ -1,9 +1,9 @@
 export function normalizePath(path: string): string {
     return path
-        .replace(/^\.\//, "")   // strip leading ./
-        .replace(/^\//, "")     // strip leading /
-        .replace(/\/+/g, "/")   // collapse consecutive /
-        .replace(/\/$/, "");    // strip trailing /
+        .replace(/^\.\//, "") // strip leading ./
+        .replace(/^\//, "") // strip leading /
+        .replace(/\/+/g, "/") // collapse consecutive /
+        .replace(/\/$/, ""); // strip trailing /
 }
 
 export function globMatch(pattern: string, path: string): boolean {

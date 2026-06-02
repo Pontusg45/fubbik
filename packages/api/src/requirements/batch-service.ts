@@ -1,13 +1,9 @@
-import {
-    createRequirement,
-    createUseCase,
-    getUseCaseByName
-} from "@fubbik/db/repository";
+import { createRequirement, createUseCase, getUseCaseByName } from "@fubbik/db/repository";
+import type { RequirementStep } from "@fubbik/db/schema/requirement";
 import { Effect } from "effect";
+
 import { StepValidationError } from "../errors";
 import { validateSteps } from "./validator";
-
-import type { RequirementStep } from "@fubbik/db/schema/requirement";
 
 interface BatchRequirement {
     title: string;

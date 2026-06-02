@@ -1,9 +1,9 @@
+import * as planRepo from "@fubbik/db/repository/plan";
 import { Effect } from "effect";
 import { Elysia, t } from "elysia";
 
-import * as planRepo from "@fubbik/db/repository/plan";
-import { requireSession } from "../require-session";
 import { createActivity, listActivity } from "../activity/service";
+import { requireSession } from "../require-session";
 import * as planService from "./service";
 
 const planBase = new Elysia({ prefix: "/plans" })
@@ -18,10 +18,10 @@ const planBase = new Elysia({ prefix: "/plans" })
                             spaceId: ctx.query.spaceId,
                             status: ctx.query.status,
                             requirementId: ctx.query.requirementId,
-                            includeArchived: ctx.query.includeArchived === "true",
-                        }),
-                    ),
-                ),
+                            includeArchived: ctx.query.includeArchived === "true"
+                        })
+                    )
+                )
             );
         },
         {
@@ -29,14 +29,12 @@ const planBase = new Elysia({ prefix: "/plans" })
                 spaceId: t.Optional(t.String()),
                 status: t.Optional(t.String()),
                 requirementId: t.Optional(t.String()),
-                includeArchived: t.Optional(t.String()),
-            }),
-        },
+                includeArchived: t.Optional(t.String())
+            })
+        }
     )
     .get("/:id", async ctx => {
-        return await Effect.runPromise(
-            requireSession(ctx).pipe(Effect.flatMap(() => planService.getPlanDetail(ctx.params.id))),
-        );
+        return await Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(() => planService.getPlanDetail(ctx.params.id))));
     })
     .post(
         "/",
@@ -52,12 +50,12 @@ const planBase = new Elysia({ prefix: "/plans" })
                                 entityId: created.id,
                                 entityTitle: created.title,
                                 action: "created",
-                                spaceId: created.spaceId ?? undefined,
+                                spaceId: created.spaceId ?? undefined
                             });
                             return created;
-                        }),
-                    ),
-                ),
+                        })
+                    )
+                )
             );
         },
         {
@@ -71,13 +69,13 @@ const planBase = new Elysia({ prefix: "/plans" })
                         t.Object({
                             title: t.String(),
                             description: t.Optional(t.String()),
-                            acceptanceCriteria: t.Optional(t.Array(t.String())),
-                        }),
-                    ),
+                            acceptanceCriteria: t.Optional(t.Array(t.String()))
+                        })
+                    )
                 ),
-                metadata: t.Optional(t.Record(t.String(), t.Unknown())),
-            }),
-        },
+                metadata: t.Optional(t.Record(t.String(), t.Unknown()))
+            })
+        }
     )
     .patch(
         "/:id",
@@ -94,12 +92,12 @@ const planBase = new Elysia({ prefix: "/plans" })
                                 entityId: updated.id,
                                 entityTitle: updated.title,
                                 action,
-                                spaceId: updated.spaceId ?? undefined,
+                                spaceId: updated.spaceId ?? undefined
                             });
                             return updated;
-                        }),
-                    ),
-                ),
+                        })
+                    )
+                )
             );
         },
         {
@@ -108,9 +106,9 @@ const planBase = new Elysia({ prefix: "/plans" })
                 description: t.Optional(t.Union([t.String(), t.Null()])),
                 status: t.Optional(t.String()),
                 spaceId: t.Optional(t.Union([t.String(), t.Null()])),
-                metadata: t.Optional(t.Record(t.String(), t.Unknown())),
-            }),
-        },
+                metadata: t.Optional(t.Record(t.String(), t.Unknown()))
+            })
+        }
     )
     .delete("/:id", async ctx => {
         await Effect.runPromise(
@@ -125,11 +123,11 @@ const planBase = new Elysia({ prefix: "/plans" })
                             entityId: existing.id,
                             entityTitle: existing.title,
                             action: "deleted",
-                            spaceId: existing.spaceId ?? undefined,
+                            spaceId: existing.spaceId ?? undefined
                         });
-                    }),
-                ),
-            ),
+                    })
+                )
+            )
         );
         return { ok: true };
     })
@@ -145,12 +143,12 @@ const planBase = new Elysia({ prefix: "/plans" })
                             entityId: created.id,
                             entityTitle: created.title,
                             action: "duplicated",
-                            spaceId: created.spaceId ?? undefined,
+                            spaceId: created.spaceId ?? undefined
                         });
                         return created;
-                    }),
-                ),
-            ),
+                    })
+                )
+            )
         );
     })
     .get("/:id/activity", async ctx => {
@@ -167,22 +165,19 @@ const planBase = new Elysia({ prefix: "/plans" })
                         const planEvents = yield* listActivity(session.user.id, {
                             entityType: "plan",
                             entityId: ctx.params.id,
-                            limit: 100,
+                            limit: 100
                         });
                         const taskEvents = yield* listActivity(session.user.id, {
                             entityType: "plan_task",
-                            limit: 200,
+                            limit: 200
                         });
-                        const merged = [
-                            ...planEvents,
-                            ...taskEvents.filter(e => taskIds.has(e.entityId)),
-                        ].sort((a, b) =>
-                            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+                        const merged = [...planEvents, ...taskEvents.filter(e => taskIds.has(e.entityId))].sort(
+                            (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
                         );
                         return merged.slice(0, 100);
-                    }),
-                ),
-            ),
+                    })
+                )
+            )
         );
     })
     // External links on the plan itself
@@ -190,9 +185,9 @@ const planBase = new Elysia({ prefix: "/plans" })
         Effect.runPromise(
             requireSession(ctx).pipe(
                 Effect.flatMap(() => planService.getPlan(ctx.params.id)),
-                Effect.flatMap(() => planRepo.listPlanLinks(ctx.params.id)),
-            ),
-        ),
+                Effect.flatMap(() => planRepo.listPlanLinks(ctx.params.id))
+            )
+        )
     )
     .post(
         "/:id/links",
@@ -205,35 +200,31 @@ const planBase = new Elysia({ prefix: "/plans" })
                             planId: ctx.params.id,
                             system: ctx.body.system ?? "url",
                             url: ctx.body.url,
-                            label: ctx.body.label ?? null,
-                        }),
-                    ),
-                ),
+                            label: ctx.body.label ?? null
+                        })
+                    )
+                )
             ),
         {
             body: t.Object({
                 url: t.String({ maxLength: 2000 }),
                 system: t.Optional(t.String({ maxLength: 40 })),
-                label: t.Optional(t.String({ maxLength: 200 })),
-            }),
-        },
+                label: t.Optional(t.String({ maxLength: 200 }))
+            })
+        }
     )
     .delete("/:id/links/:linkId", async ctx => {
         await Effect.runPromise(
             requireSession(ctx).pipe(
                 Effect.flatMap(() => planService.getPlan(ctx.params.id)),
-                Effect.flatMap(() => planRepo.removePlanLink(ctx.params.linkId)),
-            ),
+                Effect.flatMap(() => planRepo.removePlanLink(ctx.params.linkId))
+            )
         );
         return { ok: true };
     });
 
-import { planRequirementRoutes } from "./requirements";
 import { planAnalyzeRoutes } from "./analyze";
+import { planRequirementRoutes } from "./requirements";
 import { planTaskRoutes } from "./tasks";
 
-export const planRoutes = new Elysia()
-    .use(planBase)
-    .use(planRequirementRoutes)
-    .use(planAnalyzeRoutes)
-    .use(planTaskRoutes);
+export const planRoutes = new Elysia().use(planBase).use(planRequirementRoutes).use(planAnalyzeRoutes).use(planTaskRoutes);

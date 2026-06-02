@@ -1,16 +1,22 @@
 # Smart Template Import — Backend Engine Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to
+> implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Extend the template system with matching rules and field extraction so the import pipeline can classify docs against templates and extract structured fields into chunk metadata.
+**Goal:** Extend the template system with matching rules and field extraction so the import pipeline can classify docs against templates and
+extract structured fields into chunk metadata.
 
-**Architecture:** Four new columns on `chunkTemplate` (matchRules, fieldMappings, priority, tags). A pure-function matching engine scores docs against templates. A field extraction module maps heading sections to chunk fields. A new preview endpoint returns template suggestions without creating chunks. The existing import-docs endpoint gains `templateOverrides` for confirmed template application.
+**Architecture:** Four new columns on `chunkTemplate` (matchRules, fieldMappings, priority, tags). A pure-function matching engine scores
+docs against templates. A field extraction module maps heading sections to chunk fields. A new preview endpoint returns template suggestions
+without creating chunks. The existing import-docs endpoint gains `templateOverrides` for confirmed template application.
 
 **Tech Stack:** Drizzle ORM (schema), Effect (services), Elysia + `t` schema (routes), vitest (tests)
 
 **Spec:** `docs/superpowers/specs/2026-04-25-smart-template-import-design.md`
 
-**Scope:** Backend only (DB, matching engine, extraction, API endpoints, seed data). Three follow-up plans needed: (1) template editor UI with match rules/field mappings/test panel, (2) import page UI with template suggestion preview, (3) CLI integration (`--dry-run` template matches, `--yes` auto-accept).
+**Scope:** Backend only (DB, matching engine, extraction, API endpoints, seed data). Three follow-up plans needed: (1) template editor UI
+with match rules/field mappings/test panel, (2) import page UI with template suggestion preview, (3) CLI integration (`--dry-run` template
+matches, `--yes` auto-accept).
 
 ---
 
@@ -43,6 +49,7 @@ packages/api/src/
 ## Task 1: Shared Types
 
 **Files:**
+
 - Create: `packages/api/src/templates/types.ts`
 
 - [ ] **Step 1: Create the types file**
@@ -53,88 +60,82 @@ packages/api/src/
 // --- Match Rules ---
 
 export interface HeadingRule {
-  /** One or more heading text patterns (alternatives — any match counts) */
-  patterns: string[];
-  /** How to match. Default: "prefix" */
-  match: "exact" | "prefix" | "contains";
-  /** Heading level (2 = ##, 3 = ###). Omit to match any level. */
-  level?: number;
-  /** If true, doc must have this heading to match. Default: true */
-  required: boolean;
+    /** One or more heading text patterns (alternatives — any match counts) */
+    patterns: string[];
+    /** How to match. Default: "prefix" */
+    match: "exact" | "prefix" | "contains";
+    /** Heading level (2 = ##, 3 = ###). Omit to match any level. */
+    level?: number;
+    /** If true, doc must have this heading to match. Default: true */
+    required: boolean;
 }
 
 export interface FrontmatterRule {
-  /** Frontmatter key to check */
-  key: string;
-  /** Match mode. Default: "exact" */
-  match: "exact" | "oneOf" | "exists";
-  /** Expected value for "exact" mode */
-  value?: string;
-  /** Expected values for "oneOf" mode */
-  values?: string[];
+    /** Frontmatter key to check */
+    key: string;
+    /** Match mode. Default: "exact" */
+    match: "exact" | "oneOf" | "exists";
+    /** Expected value for "exact" mode */
+    value?: string;
+    /** Expected values for "oneOf" mode */
+    values?: string[];
 }
 
 export interface MatchRules {
-  /** Minimum total score to qualify as a match */
-  minScore: number;
-  /** Heading patterns to look for */
-  headings: HeadingRule[];
-  /** Frontmatter field expectations */
-  frontmatter: FrontmatterRule[];
+    /** Minimum total score to qualify as a match */
+    minScore: number;
+    /** Heading patterns to look for */
+    headings: HeadingRule[];
+    /** Frontmatter field expectations */
+    frontmatter: FrontmatterRule[];
 }
 
 // --- Field Extraction ---
 
-export type ExtractionTarget =
-  | "rationale"
-  | "alternatives"
-  | "consequences"
-  | "summary"
-  | "scope"
-  | "content";
+export type ExtractionTarget = "rationale" | "alternatives" | "consequences" | "summary" | "scope" | "content";
 
 export interface FieldMapping {
-  /** Heading patterns to match (same alias approach as matchRules) */
-  headings: string[];
-  /** How to match. Default: "prefix" */
-  match: "exact" | "prefix" | "contains";
-  /** Chunk field to populate */
-  target: ExtractionTarget;
+    /** Heading patterns to match (same alias approach as matchRules) */
+    headings: string[];
+    /** How to match. Default: "prefix" */
+    match: "exact" | "prefix" | "contains";
+    /** Chunk field to populate */
+    target: ExtractionTarget;
 }
 
 // --- Matching result ---
 
 export interface ParsedHeading {
-  text: string;
-  level: number;
+    text: string;
+    level: number;
 }
 
 export interface TemplateMatch {
-  templateId: string;
-  templateName: string;
-  score: number;
-  type: string;
-  tags: string[];
-  extractedFields: ExtractedFields;
+    templateId: string;
+    templateName: string;
+    score: number;
+    type: string;
+    tags: string[];
+    extractedFields: ExtractedFields;
 }
 
 export interface ExtractedFields {
-  rationale?: string;
-  alternatives?: string[];
-  consequences?: string;
-  summary?: string;
-  scope?: Record<string, string>;
-  content?: string;
+    rationale?: string;
+    alternatives?: string[];
+    consequences?: string;
+    summary?: string;
+    scope?: Record<string, string>;
+    content?: string;
 }
 
 export interface TemplateWithRules {
-  id: string;
-  name: string;
-  type: string;
-  matchRules: MatchRules;
-  fieldMappings: FieldMapping[] | null;
-  priority: number;
-  tags: string[] | null;
+    id: string;
+    name: string;
+    type: string;
+    matchRules: MatchRules;
+    fieldMappings: FieldMapping[] | null;
+    priority: number;
+    tags: string[] | null;
 }
 ```
 
@@ -150,6 +151,7 @@ git commit -m "feat(templates): add shared types for match rules and field extra
 ## Task 2: Database Schema Changes
 
 **Files:**
+
 - Modify: `packages/db/src/schema/template.ts`
 
 - [ ] **Step 1: Read the current schema**
@@ -167,21 +169,22 @@ priority: integer("priority").notNull().default(0),
 tags: text("tags").array(),
 ```
 
-These use the existing Drizzle imports (`jsonb`, `integer`, `text` from `drizzle-orm/pg-core`). The `matchRules` and `fieldMappings` columns are nullable JSONB — null means the template has no import matching enabled.
+These use the existing Drizzle imports (`jsonb`, `integer`, `text` from `drizzle-orm/pg-core`). The `matchRules` and `fieldMappings` columns
+are nullable JSONB — null means the template has no import matching enabled.
 
 - [ ] **Step 3: Push schema**
 
-Run: `pnpm db:push`
-Expected: Schema updated successfully, 4 new columns added.
+Run: `pnpm db:push` Expected: Schema updated successfully, 4 new columns added.
 
 - [ ] **Step 4: Verify with existing tests**
 
-Run: `cd packages/db && pnpm vitest run`
-Expected: All existing tests pass. The template column test may need updating to expect the new column count.
+Run: `cd packages/db && pnpm vitest run` Expected: All existing tests pass. The template column test may need updating to expect the new
+column count.
 
 - [ ] **Step 5: Update template column test if needed**
 
-If `packages/db/src/__tests__/template.test.ts` checks column count, update the expected count from 8 to 12 (adding matchRules, fieldMappings, priority, tags).
+If `packages/db/src/__tests__/template.test.ts` checks column count, update the expected count from 8 to 12 (adding matchRules,
+fieldMappings, priority, tags).
 
 - [ ] **Step 6: Commit**
 
@@ -195,6 +198,7 @@ git commit -m "feat(db): add matchRules, fieldMappings, priority, tags to chunkT
 ## Task 3: Template Matching Engine
 
 **Files:**
+
 - Create: `packages/api/src/templates/match-engine.ts`
 - Create: `packages/api/src/templates/match-engine.test.ts`
 
@@ -229,7 +233,7 @@ describe("scoreTemplate", () => {
         { text: "Context", level: 2 },
         { text: "Decision", level: 2 },
         { text: "Alternatives Considered", level: 2 },
-        { text: "Consequences", level: 2 },
+        { text: "Consequences", level: 2 }
     ];
 
     it("scores required + optional headings correctly", () => {
@@ -238,9 +242,9 @@ describe("scoreTemplate", () => {
             headings: [
                 { patterns: ["Decision"], match: "prefix", level: 2, required: true },
                 { patterns: ["Alternatives"], match: "prefix", level: 2, required: true },
-                { patterns: ["Consequences"], match: "prefix", level: 2, required: false },
+                { patterns: ["Consequences"], match: "prefix", level: 2, required: false }
             ],
-            frontmatter: [],
+            frontmatter: []
         };
         const score = scoreTemplate(rules, headings, {});
         // 2 required (2 pts) + 1 optional (0.5 pts) = 2.5
@@ -252,9 +256,9 @@ describe("scoreTemplate", () => {
             minScore: 1,
             headings: [
                 { patterns: ["Decision"], match: "prefix", level: 2, required: true },
-                { patterns: ["Rollback"], match: "prefix", level: 2, required: true },
+                { patterns: ["Rollback"], match: "prefix", level: 2, required: true }
             ],
-            frontmatter: [],
+            frontmatter: []
         };
         expect(scoreTemplate(rules, headings, {})).toBe(0);
     });
@@ -263,7 +267,7 @@ describe("scoreTemplate", () => {
         const rules: MatchRules = {
             minScore: 1,
             headings: [],
-            frontmatter: [{ key: "type", match: "exact", value: "adr" }],
+            frontmatter: [{ key: "type", match: "exact", value: "adr" }]
         };
         expect(scoreTemplate(rules, [], { type: "adr" })).toBe(1);
         expect(scoreTemplate(rules, [], { type: "runbook" })).toBe(0);
@@ -273,7 +277,7 @@ describe("scoreTemplate", () => {
         const rules: MatchRules = {
             minScore: 1,
             headings: [],
-            frontmatter: [{ key: "type", match: "oneOf", values: ["adr", "decision"] }],
+            frontmatter: [{ key: "type", match: "oneOf", values: ["adr", "decision"] }]
         };
         expect(scoreTemplate(rules, [], { type: "decision" })).toBe(1);
     });
@@ -282,7 +286,7 @@ describe("scoreTemplate", () => {
         const rules: MatchRules = {
             minScore: 1,
             headings: [],
-            frontmatter: [{ key: "status", match: "exists" }],
+            frontmatter: [{ key: "status", match: "exists" }]
         };
         expect(scoreTemplate(rules, [], { status: "accepted" })).toBe(1);
         expect(scoreTemplate(rules, [], {})).toBe(0);
@@ -291,10 +295,8 @@ describe("scoreTemplate", () => {
     it("respects heading level filter", () => {
         const rules: MatchRules = {
             minScore: 1,
-            headings: [
-                { patterns: ["Decision"], match: "prefix", level: 3, required: true },
-            ],
-            frontmatter: [],
+            headings: [{ patterns: ["Decision"], match: "prefix", level: 3, required: true }],
+            frontmatter: []
         };
         // Heading is level 2, rule requires level 3
         expect(scoreTemplate(rules, headings, {})).toBe(0);
@@ -303,10 +305,8 @@ describe("scoreTemplate", () => {
     it("returns 0 if score below minScore", () => {
         const rules: MatchRules = {
             minScore: 5,
-            headings: [
-                { patterns: ["Decision"], match: "prefix", level: 2, required: true },
-            ],
-            frontmatter: [],
+            headings: [{ patterns: ["Decision"], match: "prefix", level: 2, required: true }],
+            frontmatter: []
         };
         // Only 1 point, minScore is 5
         expect(scoreTemplate(rules, headings, {})).toBe(0);
@@ -315,10 +315,8 @@ describe("scoreTemplate", () => {
     it("matches alternative patterns (any of the patterns list)", () => {
         const rules: MatchRules = {
             minScore: 1,
-            headings: [
-                { patterns: ["Choice", "Decision", "Selected"], match: "prefix", level: 2, required: true },
-            ],
-            frontmatter: [],
+            headings: [{ patterns: ["Choice", "Decision", "Selected"], match: "prefix", level: 2, required: true }],
+            frontmatter: []
         };
         expect(scoreTemplate(rules, headings, {})).toBe(1);
     });
@@ -332,13 +330,13 @@ describe("matchTemplates", () => {
         fieldMappings: null,
         priority: 0,
         tags: null,
-        ...overrides,
+        ...overrides
     });
 
     it("returns the highest scoring template", () => {
         const headings: ParsedHeading[] = [
             { text: "Decision", level: 2 },
-            { text: "Alternatives", level: 2 },
+            { text: "Alternatives", level: 2 }
         ];
         const templates = [
             makeTemplate({
@@ -349,10 +347,10 @@ describe("matchTemplates", () => {
                     minScore: 2,
                     headings: [
                         { patterns: ["Decision"], match: "prefix", required: true },
-                        { patterns: ["Alternatives"], match: "prefix", required: true },
+                        { patterns: ["Alternatives"], match: "prefix", required: true }
                     ],
-                    frontmatter: [],
-                },
+                    frontmatter: []
+                }
             }),
             makeTemplate({
                 id: "generic",
@@ -360,12 +358,10 @@ describe("matchTemplates", () => {
                 priority: 0,
                 matchRules: {
                     minScore: 1,
-                    headings: [
-                        { patterns: ["Decision"], match: "prefix", required: true },
-                    ],
-                    frontmatter: [],
-                },
-            }),
+                    headings: [{ patterns: ["Decision"], match: "prefix", required: true }],
+                    frontmatter: []
+                }
+            })
         ];
         const result = matchTemplates({ headings, frontmatter: {} }, templates);
         expect(result).not.toBeNull();
@@ -379,26 +375,25 @@ describe("matchTemplates", () => {
             makeTemplate({
                 id: "low",
                 priority: 0,
-                matchRules: { minScore: 1, headings: [{ patterns: ["Decision"], match: "prefix", required: true }], frontmatter: [] },
+                matchRules: { minScore: 1, headings: [{ patterns: ["Decision"], match: "prefix", required: true }], frontmatter: [] }
             }),
             makeTemplate({
                 id: "high",
                 priority: 10,
-                matchRules: { minScore: 1, headings: [{ patterns: ["Decision"], match: "prefix", required: true }], frontmatter: [] },
-            }),
+                matchRules: { minScore: 1, headings: [{ patterns: ["Decision"], match: "prefix", required: true }], frontmatter: [] }
+            })
         ];
         const result = matchTemplates({ headings, frontmatter: {} }, templates);
         expect(result!.templateId).toBe("high");
     });
 
     it("returns null when no templates match", () => {
-        const result = matchTemplates(
-            { headings: [{ text: "Introduction", level: 2 }], frontmatter: {} },
-            [makeTemplate({
+        const result = matchTemplates({ headings: [{ text: "Introduction", level: 2 }], frontmatter: {} }, [
+            makeTemplate({
                 id: "adr",
-                matchRules: { minScore: 1, headings: [{ patterns: ["Decision"], match: "prefix", required: true }], frontmatter: [] },
-            })],
-        );
+                matchRules: { minScore: 1, headings: [{ patterns: ["Decision"], match: "prefix", required: true }], frontmatter: [] }
+            })
+        ]);
         expect(result).toBeNull();
     });
 
@@ -410,32 +405,20 @@ describe("matchTemplates", () => {
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `cd packages/api && pnpm vitest run src/templates/match-engine.test.ts`
-Expected: FAIL — module does not exist.
+Run: `cd packages/api && pnpm vitest run src/templates/match-engine.test.ts` Expected: FAIL — module does not exist.
 
 - [ ] **Step 3: Implement the matching engine**
 
 ```typescript
 // packages/api/src/templates/match-engine.ts
 
-import type {
-    ExtractedFields,
-    FieldMapping,
-    MatchRules,
-    ParsedHeading,
-    TemplateMatch,
-    TemplateWithRules,
-} from "./types";
+import type { ExtractedFields, FieldMapping, MatchRules, ParsedHeading, TemplateMatch, TemplateWithRules } from "./types";
 import { extractFields } from "./field-extraction";
 
 /**
  * Check if a single pattern matches a heading's text.
  */
-export function matchHeading(
-    pattern: string,
-    heading: ParsedHeading,
-    mode: "exact" | "prefix" | "contains",
-): boolean {
+export function matchHeading(pattern: string, heading: ParsedHeading, mode: "exact" | "prefix" | "contains"): boolean {
     const p = pattern.toLowerCase();
     const h = heading.text.toLowerCase();
     switch (mode) {
@@ -452,11 +435,7 @@ export function matchHeading(
  * Score a single template's matchRules against a parsed document.
  * Returns 0 if any required rule fails or score < minScore.
  */
-export function scoreTemplate(
-    rules: MatchRules,
-    headings: ParsedHeading[],
-    frontmatter: Record<string, unknown>,
-): number {
+export function scoreTemplate(rules: MatchRules, headings: ParsedHeading[], frontmatter: Record<string, unknown>): number {
     let score = 0;
 
     // Check heading rules
@@ -503,14 +482,14 @@ export function scoreTemplate(
  */
 export function matchTemplates(
     doc: { headings: ParsedHeading[]; frontmatter: Record<string, unknown> },
-    templates: TemplateWithRules[],
+    templates: TemplateWithRules[]
 ): TemplateMatch | null {
     if (templates.length === 0) return null;
 
     const scored = templates
         .map(t => ({
             template: t,
-            score: scoreTemplate(t.matchRules, doc.headings, doc.frontmatter),
+            score: scoreTemplate(t.matchRules, doc.headings, doc.frontmatter)
         }))
         .filter(s => s.score > 0)
         .sort((a, b) => {
@@ -533,7 +512,7 @@ export function matchTemplates(
         score: best.score,
         type: best.template.type,
         tags: best.template.tags ?? [],
-        extractedFields: {},  // Populated by caller with field-extraction module
+        extractedFields: {} // Populated by caller with field-extraction module
     };
 }
 ```
@@ -542,8 +521,7 @@ Note: `extractFields` import will be used in Task 5 when we wire it up. For now 
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `cd packages/api && pnpm vitest run src/templates/match-engine.test.ts`
-Expected: PASS — all tests green.
+Run: `cd packages/api && pnpm vitest run src/templates/match-engine.test.ts` Expected: PASS — all tests green.
 
 - [ ] **Step 5: Commit**
 
@@ -557,6 +535,7 @@ git commit -m "feat(templates): add template matching engine with scoring"
 ## Task 4: Field Extraction Engine
 
 **Files:**
+
 - Create: `packages/api/src/templates/field-extraction.ts`
 - Create: `packages/api/src/templates/field-extraction.test.ts`
 
@@ -577,7 +556,7 @@ describe("parseHeadings", () => {
             { text: "Title", level: 1 },
             { text: "Context", level: 2 },
             { text: "Details", level: 3 },
-            { text: "Decision", level: 2 },
+            { text: "Decision", level: 2 }
         ]);
     });
 
@@ -602,14 +581,14 @@ describe("extractFields", () => {
         "- SQLite",
         "",
         "## Consequences",
-        "Team needs Postgres expertise.",
+        "Team needs Postgres expertise."
     ].join("\n");
 
     const mappings: FieldMapping[] = [
         { headings: ["Context", "Background"], match: "prefix", target: "content" },
         { headings: ["Decision", "Choice"], match: "prefix", target: "rationale" },
         { headings: ["Alternatives"], match: "prefix", target: "alternatives" },
-        { headings: ["Consequences"], match: "prefix", target: "consequences" },
+        { headings: ["Consequences"], match: "prefix", target: "consequences" }
     ];
 
     it("extracts rationale from Decision section", () => {
@@ -645,13 +624,11 @@ describe("extractFields", () => {
 
     it("handles scope extraction from key-value lines", () => {
         const md = "## Metadata\narea: backend\nteam: platform\npriority: high";
-        const result = extractFields(md, [
-            { headings: ["Metadata"], match: "exact", target: "scope" },
-        ]);
+        const result = extractFields(md, [{ headings: ["Metadata"], match: "exact", target: "scope" }]);
         expect(result.extracted.scope).toEqual({
             area: "backend",
             team: "platform",
-            priority: "high",
+            priority: "high"
         });
     });
 });
@@ -659,8 +636,7 @@ describe("extractFields", () => {
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `cd packages/api && pnpm vitest run src/templates/field-extraction.test.ts`
-Expected: FAIL — module does not exist.
+Run: `cd packages/api && pnpm vitest run src/templates/field-extraction.test.ts` Expected: FAIL — module does not exist.
 
 - [ ] **Step 3: Implement field extraction**
 
@@ -699,10 +675,7 @@ export function parseHeadings(markdown: string): ParsedHeading[] {
  * Extract structured fields from markdown based on field mappings.
  * Returns extracted fields and remaining content (sections not extracted).
  */
-export function extractFields(
-    markdown: string,
-    mappings: FieldMapping[],
-): ExtractionResult {
+export function extractFields(markdown: string, mappings: FieldMapping[]): ExtractionResult {
     if (mappings.length === 0) {
         return { extracted: {}, remainingContent: markdown };
     }
@@ -835,8 +808,7 @@ function parseKeyValueLines(content: string): Record<string, string> {
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `cd packages/api && pnpm vitest run src/templates/field-extraction.test.ts`
-Expected: PASS — all tests green.
+Run: `cd packages/api && pnpm vitest run src/templates/field-extraction.test.ts` Expected: PASS — all tests green.
 
 - [ ] **Step 5: Commit**
 
@@ -850,6 +822,7 @@ git commit -m "feat(templates): add field extraction engine for structured impor
 ## Task 5: Template API Extensions
 
 **Files:**
+
 - Modify: `packages/api/src/templates/routes.ts`
 - Modify: `packages/api/src/templates/service.ts`
 
@@ -868,7 +841,8 @@ priority: t.Optional(t.Number()),
 tags: t.Optional(t.Array(t.String({ maxLength: 50 }), { maxItems: 20 })),
 ```
 
-Using `t.Any()` for the JSONB fields since Elysia's `t` schema doesn't validate deeply-nested JSON structures at the route level — the matching engine validates the shape when it consumes them.
+Using `t.Any()` for the JSONB fields since Elysia's `t` schema doesn't validate deeply-nested JSON structures at the route level — the
+matching engine validates the shape when it consumes them.
 
 - [ ] **Step 3: Extend PATCH /templates body schema**
 
@@ -894,8 +868,7 @@ Same pattern — add the new fields to the update body type and pass through to 
 
 - [ ] **Step 6: Run existing tests**
 
-Run: `cd packages/api && pnpm vitest run`
-Expected: All existing tests pass.
+Run: `cd packages/api && pnpm vitest run` Expected: All existing tests pass.
 
 - [ ] **Step 7: Commit**
 
@@ -909,6 +882,7 @@ git commit -m "feat(templates): extend template API with matchRules, fieldMappin
 ## Task 6: Preview Endpoint
 
 **Files:**
+
 - Modify: `packages/api/src/chunks/routes.ts`
 - Modify: `packages/api/src/chunks/service.ts` (or create a dedicated preview service function)
 
@@ -926,11 +900,7 @@ import { matchTemplates } from "../templates/match-engine";
 import { parseDocFile, extractFrontmatter } from "./parse-docs";
 import type { TemplateWithRules } from "../templates/types";
 
-export function previewImportDocs(
-    userId: string,
-    files: { path: string; content: string }[],
-    codebaseId: string,
-) {
+export function previewImportDocs(userId: string, files: { path: string; content: string }[], codebaseId: string) {
     return Effect.gen(function* () {
         // Fetch all templates with matchRules
         const allTemplates = yield* listTemplates(userId);
@@ -943,7 +913,7 @@ export function previewImportDocs(
                 matchRules: t.matchRules,
                 fieldMappings: t.fieldMappings ?? null,
                 priority: t.priority ?? 0,
-                tags: t.tags ?? null,
+                tags: t.tags ?? null
             }));
 
         const results = files.map(file => {
@@ -971,7 +941,7 @@ export function previewImportDocs(
                     score: templateMatch.score,
                     type: templateMatch.type,
                     tags: mergedTags,
-                    extractedFields,
+                    extractedFields
                 };
             }
 
@@ -983,8 +953,8 @@ export function previewImportDocs(
                     title: parsed.title,
                     type: parsed.type,
                     tags: parsed.tags,
-                    content: parsed.content,
-                },
+                    content: parsed.content
+                }
             };
         });
 
@@ -1027,8 +997,7 @@ In `packages/api/src/chunks/routes.ts`, add the new endpoint before the existing
 
 - [ ] **Step 4: Run existing tests**
 
-Run: `cd packages/api && pnpm vitest run`
-Expected: All existing tests pass. No regressions.
+Run: `cd packages/api && pnpm vitest run` Expected: All existing tests pass. No regressions.
 
 - [ ] **Step 5: Commit**
 
@@ -1042,6 +1011,7 @@ git commit -m "feat(import): add import-docs preview endpoint with template matc
 ## Task 7: Template-Aware Import
 
 **Files:**
+
 - Modify: `packages/api/src/chunks/routes.ts` (add templateOverrides to body schema)
 - Modify: `packages/api/src/documents/service.ts` (use template matching + extraction in importDocument)
 
@@ -1053,7 +1023,8 @@ In the existing `POST /chunks/import-docs` handler in `routes.ts`, add `template
 templateOverrides: t.Optional(t.Record(t.String(), t.Union([t.String(), t.Null()]))),
 ```
 
-Pass it through to the service call: `chunkService.importDocs(session.user.id, ctx.body.files, ctx.body.codebaseId, ctx.body.templateOverrides)`
+Pass it through to the service call:
+`chunkService.importDocs(session.user.id, ctx.body.files, ctx.body.codebaseId, ctx.body.templateOverrides)`
 
 - [ ] **Step 2: Read the current importDocs service function**
 
@@ -1068,7 +1039,7 @@ export function importDocs(
     userId: string,
     files: { path: string; content: string }[],
     codebaseId: string,
-    templateOverrides?: Record<string, string | null>,
+    templateOverrides?: Record<string, string | null>
 ) {
     // ... existing logic, but pass templateOverrides to importDocument
 }
@@ -1081,17 +1052,18 @@ In `packages/api/src/documents/service.ts`, update `importDocument` to accept an
 1. Look up the template by ID
 2. Run `extractFields(rawContent, template.fieldMappings)` to get extracted fields and remaining content
 3. When creating chunks, use:
-   - `type` from template instead of hardcoded `"document"`
-   - `rationale`, `alternatives`, `consequences`, `summary`, `scope` from extracted fields
-   - `content` from `remainingContent` instead of section content
-   - Merged tags (template tags ∪ existing tags)
+    - `type` from template instead of hardcoded `"document"`
+    - `rationale`, `alternatives`, `consequences`, `summary`, `scope` from extracted fields
+    - `content` from `remainingContent` instead of section content
+    - Merged tags (template tags ∪ existing tags)
 
-For the section-based chunking that already exists: when a template is applied, create a **single chunk** from the whole document (with extracted fields) instead of splitting by H2. This is because field extraction treats the doc as a cohesive unit.
+For the section-based chunking that already exists: when a template is applied, create a **single chunk** from the whole document (with
+extracted fields) instead of splitting by H2. This is because field extraction treats the doc as a cohesive unit.
 
 - [ ] **Step 5: Run all tests**
 
-Run: `cd packages/api && pnpm vitest run`
-Expected: All tests pass. Existing import tests should still work since `templateOverrides` is optional — when not provided, behavior is unchanged.
+Run: `cd packages/api && pnpm vitest run` Expected: All tests pass. Existing import tests should still work since `templateOverrides` is
+optional — when not provided, behavior is unchanged.
 
 - [ ] **Step 6: Commit**
 
@@ -1105,6 +1077,7 @@ git commit -m "feat(import): apply template matching and field extraction during
 ## Task 8: Seed Built-in Templates with Match Rules
 
 **Files:**
+
 - Modify: `packages/db/src/seed.ts`
 
 - [ ] **Step 1: Read current seed.ts**
@@ -1113,7 +1086,8 @@ Read: `packages/db/src/seed.ts` — understand the seeding pattern (especially `
 
 - [ ] **Step 2: Add built-in template seeding**
 
-Add a new section after the existing chunk type seeding that creates/updates built-in templates with matchRules and fieldMappings. Use the same `onConflictDoUpdate` pattern for idempotency.
+Add a new section after the existing chunk type seeding that creates/updates built-in templates with matchRules and fieldMappings. Use the
+same `onConflictDoUpdate` pattern for idempotency.
 
 ```typescript
 const BUILTIN_TEMPLATES = [
@@ -1132,18 +1106,16 @@ const BUILTIN_TEMPLATES = [
                 { patterns: ["Decision", "Choice", "Selected Option"], match: "prefix", level: 2, required: true },
                 { patterns: ["Alternatives", "Options Considered"], match: "prefix", level: 2, required: true },
                 { patterns: ["Consequences", "Impact"], match: "prefix", level: 2, required: false },
-                { patterns: ["Context", "Background"], match: "prefix", level: 2, required: false },
+                { patterns: ["Context", "Background"], match: "prefix", level: 2, required: false }
             ],
-            frontmatter: [
-                { key: "type", match: "oneOf", values: ["adr", "decision", "architecture-decision"] },
-            ],
+            frontmatter: [{ key: "type", match: "oneOf", values: ["adr", "decision", "architecture-decision"] }]
         },
         fieldMappings: [
             { headings: ["Context", "Background"], match: "prefix", target: "content" },
             { headings: ["Decision", "Choice"], match: "prefix", target: "rationale" },
             { headings: ["Alternatives", "Options Considered"], match: "prefix", target: "alternatives" },
-            { headings: ["Consequences", "Impact"], match: "prefix", target: "consequences" },
-        ],
+            { headings: ["Consequences", "Impact"], match: "prefix", target: "consequences" }
+        ]
     },
     {
         id: "builtin-api-reference",
@@ -1160,13 +1132,11 @@ const BUILTIN_TEMPLATES = [
                 { patterns: ["Endpoint", "URL", "Route"], match: "prefix", level: 2, required: true },
                 { patterns: ["Request", "Parameters", "Payload"], match: "prefix", level: 2, required: true },
                 { patterns: ["Response", "Returns"], match: "prefix", level: 2, required: false },
-                { patterns: ["Errors", "Error Codes"], match: "prefix", level: 2, required: false },
+                { patterns: ["Errors", "Error Codes"], match: "prefix", level: 2, required: false }
             ],
-            frontmatter: [
-                { key: "type", match: "oneOf", values: ["api", "endpoint", "reference"] },
-            ],
+            frontmatter: [{ key: "type", match: "oneOf", values: ["api", "endpoint", "reference"] }]
         },
-        fieldMappings: null,
+        fieldMappings: null
     },
     {
         id: "builtin-meeting-notes",
@@ -1183,15 +1153,11 @@ const BUILTIN_TEMPLATES = [
                 { patterns: ["Attendees", "Participants", "Present"], match: "prefix", level: 2, required: true },
                 { patterns: ["Action Items", "Actions", "TODOs", "Next Steps"], match: "prefix", level: 2, required: true },
                 { patterns: ["Agenda"], match: "prefix", level: 2, required: false },
-                { patterns: ["Notes", "Discussion"], match: "prefix", level: 2, required: false },
+                { patterns: ["Notes", "Discussion"], match: "prefix", level: 2, required: false }
             ],
-            frontmatter: [
-                { key: "type", match: "oneOf", values: ["meeting", "meeting-notes"] },
-            ],
+            frontmatter: [{ key: "type", match: "oneOf", values: ["meeting", "meeting-notes"] }]
         },
-        fieldMappings: [
-            { headings: ["Summary", "TLDR"], match: "prefix", target: "summary" },
-        ],
+        fieldMappings: [{ headings: ["Summary", "TLDR"], match: "prefix", target: "summary" }]
     },
     {
         id: "builtin-checklist",
@@ -1205,11 +1171,9 @@ const BUILTIN_TEMPLATES = [
         matchRules: {
             minScore: 1,
             headings: [],
-            frontmatter: [
-                { key: "type", match: "oneOf", values: ["checklist", "procedure"] },
-            ],
+            frontmatter: [{ key: "type", match: "oneOf", values: ["checklist", "procedure"] }]
         },
-        fieldMappings: null,
+        fieldMappings: null
     },
     {
         id: "builtin-schema",
@@ -1223,16 +1187,15 @@ const BUILTIN_TEMPLATES = [
         matchRules: {
             minScore: 1,
             headings: [],
-            frontmatter: [
-                { key: "type", match: "oneOf", values: ["schema", "model", "data-model"] },
-            ],
+            frontmatter: [{ key: "type", match: "oneOf", values: ["schema", "model", "data-model"] }]
         },
-        fieldMappings: null,
-    },
+        fieldMappings: null
+    }
 ];
 ```
 
 Insert using:
+
 ```typescript
 for (const tmpl of BUILTIN_TEMPLATES) {
     await db
@@ -1248,16 +1211,15 @@ for (const tmpl of BUILTIN_TEMPLATES) {
                 matchRules: tmpl.matchRules,
                 fieldMappings: tmpl.fieldMappings,
                 priority: tmpl.priority,
-                tags: tmpl.tags,
-            },
+                tags: tmpl.tags
+            }
         });
 }
 ```
 
 - [ ] **Step 3: Run the seed**
 
-Run: `pnpm seed`
-Expected: Seed completes successfully. Built-in templates created with matchRules.
+Run: `pnpm seed` Expected: Seed completes successfully. Built-in templates created with matchRules.
 
 - [ ] **Step 4: Commit**
 
@@ -1274,27 +1236,24 @@ git commit -m "feat(db): seed built-in templates with match rules and field mapp
 
 - [ ] **Step 1: Run type checking**
 
-Run: `pnpm run check-types`
-Expected: No type errors.
+Run: `pnpm run check-types` Expected: No type errors.
 
 - [ ] **Step 2: Run all API tests**
 
-Run: `cd packages/api && pnpm vitest run`
-Expected: All tests pass.
+Run: `cd packages/api && pnpm vitest run` Expected: All tests pass.
 
 - [ ] **Step 3: Run all DB tests**
 
-Run: `cd packages/db && pnpm vitest run`
-Expected: All tests pass.
+Run: `cd packages/db && pnpm vitest run` Expected: All tests pass.
 
 - [ ] **Step 4: Run linting**
 
-Run: `pnpm --filter @fubbik/api lint`
-Expected: No new errors.
+Run: `pnpm --filter @fubbik/api lint` Expected: No new errors.
 
 - [ ] **Step 5: Manual API test (if server running)**
 
 Test the preview endpoint:
+
 ```bash
 curl -X POST http://localhost:3000/api/chunks/import-docs/preview \
   -H "Content-Type: application/json" \

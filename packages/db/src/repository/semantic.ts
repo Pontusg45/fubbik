@@ -1,8 +1,8 @@
-import { Effect } from "effect";
 import { and, eq, sql } from "drizzle-orm";
+import { Effect } from "effect";
 
-import { db, dbEffect } from "../index";
 import { getNeighborhood } from "../age/query";
+import { db, dbEffect } from "../index";
 import { chunk } from "../schema/chunk";
 
 export interface SemanticSearchParams {
@@ -23,7 +23,7 @@ export interface NeighborRow {
 
 export function findNeighborsByChunkId(chunkId: string, userId: string, k: number) {
     return dbEffect(async (): Promise<NeighborRow[]> => {
-            const result = await db.execute(sql`
+        const result = await db.execute(sql`
                 WITH source AS (
                     SELECT embedding
                     FROM chunk
@@ -45,69 +45,62 @@ export function findNeighborsByChunkId(chunkId: string, userId: string, k: numbe
                 ORDER BY c.embedding <=> (SELECT embedding FROM source)
                 LIMIT ${k}
             `);
-            const rows = result.rows as Array<{
-                id: string;
-                title: string;
-                summary: string | null;
-                type: string;
-                distance: string | number;
-            }>;
-            return rows.map(r => ({
-                id: r.id,
-                title: r.title,
-                summary: r.summary,
-                type: r.type,
-                distance: Number(r.distance)
-            }));
-        });
+        const rows = result.rows as Array<{
+            id: string;
+            title: string;
+            summary: string | null;
+            type: string;
+            distance: string | number;
+        }>;
+        return rows.map(r => ({
+            id: r.id,
+            title: r.title,
+            summary: r.summary,
+            type: r.type,
+            distance: Number(r.distance)
+        }));
+    });
 }
 
 export function semanticSearch(params: SemanticSearchParams) {
     return dbEffect(async () => {
-            const conditions = [sql`${chunk.embedding} IS NOT NULL`];
-            if (params.userId) conditions.push(eq(chunk.userId, params.userId));
-            if (params.exclude?.length) {
-                for (const term of params.exclude) {
-                    conditions.push(sql`NOT (${chunk.notAbout} @> ${JSON.stringify([term])}::jsonb)`);
-                }
+        const conditions = [sql`${chunk.embedding} IS NOT NULL`];
+        if (params.userId) conditions.push(eq(chunk.userId, params.userId));
+        if (params.exclude?.length) {
+            for (const term of params.exclude) {
+                conditions.push(sql`NOT (${chunk.notAbout} @> ${JSON.stringify([term])}::jsonb)`);
             }
-            if (params.scope && Object.keys(params.scope).length > 0) {
-                conditions.push(sql`${chunk.scope} @> ${JSON.stringify(params.scope)}::jsonb`);
-            }
+        }
+        if (params.scope && Object.keys(params.scope).length > 0) {
+            conditions.push(sql`${chunk.scope} @> ${JSON.stringify(params.scope)}::jsonb`);
+        }
 
-            const embeddingStr = `[${params.embedding.join(",")}]`;
-            const results = await db
-                .select({
-                    id: chunk.id,
-                    title: chunk.title,
-                    content: chunk.content,
-                    summary: chunk.summary,
-                    type: chunk.type,
-                    aliases: chunk.aliases,
-                    scope: chunk.scope,
-                    similarity: sql<number>`1 - (${chunk.embedding} <=> ${embeddingStr}::vector)`
-                })
-                .from(chunk)
-                .where(and(...conditions))
-                .orderBy(sql`${chunk.embedding} <=> ${embeddingStr}::vector`)
-                .limit(params.limit);
+        const embeddingStr = `[${params.embedding.join(",")}]`;
+        const results = await db
+            .select({
+                id: chunk.id,
+                title: chunk.title,
+                content: chunk.content,
+                summary: chunk.summary,
+                type: chunk.type,
+                aliases: chunk.aliases,
+                scope: chunk.scope,
+                similarity: sql<number>`1 - (${chunk.embedding} <=> ${embeddingStr}::vector)`
+            })
+            .from(chunk)
+            .where(and(...conditions))
+            .orderBy(sql`${chunk.embedding} <=> ${embeddingStr}::vector`)
+            .limit(params.limit);
 
-            return results;
-        });
+        return results;
+    });
 }
 
-export function findRelatedChunksHybrid(
-    chunkId: string,
-    userId: string,
-    k: number,
-    graphHops = 2
-) {
+export function findRelatedChunksHybrid(chunkId: string, userId: string, k: number, graphHops = 2) {
     return Effect.gen(function* () {
         const embeddingNeighbors = yield* findNeighborsByChunkId(chunkId, userId, k * 2);
 
-        const graphNeighborIds = yield* getNeighborhood(chunkId, graphHops).pipe(
-            Effect.catchAll(() => Effect.succeed([] as string[]))
-        );
+        const graphNeighborIds = yield* getNeighborhood(chunkId, graphHops).pipe(Effect.catchAll(() => Effect.succeed([] as string[])));
         const graphSet = new Set(graphNeighborIds);
 
         const scored = embeddingNeighbors.map(n => {
@@ -121,8 +114,6 @@ export function findRelatedChunksHybrid(
             };
         });
 
-        return scored
-            .sort((a, b) => b.combinedScore - a.combinedScore)
-            .slice(0, k);
+        return scored.sort((a, b) => b.combinedScore - a.combinedScore).slice(0, k);
     });
 }

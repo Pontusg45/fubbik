@@ -1,5 +1,6 @@
-import { Badge } from "@/components/ui/badge";
 import { Calendar } from "lucide-react";
+
+import { Badge } from "@/components/ui/badge";
 
 interface ChunkPreviewData {
     title: string;
@@ -10,11 +11,7 @@ interface ChunkPreviewData {
 }
 
 export function ChunkPreviewCard({ data }: { data: ChunkPreviewData }) {
-    const truncatedContent = data.content
-        .split("\n")
-        .slice(0, 3)
-        .join("\n")
-        .slice(0, 200);
+    const truncatedContent = data.content.split("\n").slice(0, 3).join("\n").slice(0, 200);
 
     return (
         <div className="bg-popover text-popover-foreground absolute bottom-full left-0 z-50 mb-2 w-72 rounded-lg border p-3 shadow-lg">
@@ -27,7 +24,7 @@ export function ChunkPreviewCard({ data }: { data: ChunkPreviewData }) {
                     {new Date(data.createdAt).toLocaleDateString()}
                 </span>
             </div>
-            <p className="mb-1.5 text-sm font-medium leading-tight">{data.title}</p>
+            <p className="mb-1.5 text-sm leading-tight font-medium">{data.title}</p>
             <p className="text-muted-foreground line-clamp-3 text-xs leading-relaxed">
                 {truncatedContent}
                 {data.content.length > 200 && "..."}
@@ -39,9 +36,7 @@ export function ChunkPreviewCard({ data }: { data: ChunkPreviewData }) {
                             {tag.name}
                         </Badge>
                     ))}
-                    {data.tags.length > 4 && (
-                        <span className="text-muted-foreground text-[9px]">+{data.tags.length - 4}</span>
-                    )}
+                    {data.tags.length > 4 && <span className="text-muted-foreground text-[9px]">+{data.tags.length - 4}</span>}
                 </div>
             )}
         </div>

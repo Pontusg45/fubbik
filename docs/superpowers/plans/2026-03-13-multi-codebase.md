@@ -1,10 +1,13 @@
 # Multi-Codebase Support Implementation Plan
 
-> **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to
+> implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Allow chunks to be organized per-codebase, with CLI auto-detection and a web UI codebase switcher.
 
-**Architecture:** New `codebase` table + `chunk_codebase` join table in `packages/db`. New codebase repository, service, and routes following the existing Repository → Service → Route pattern with Effect. CLI gets a `codebase` command group. Web UI gets a codebase switcher in the nav and a `/codebases` management page.
+**Architecture:** New `codebase` table + `chunk_codebase` join table in `packages/db`. New codebase repository, service, and routes
+following the existing Repository → Service → Route pattern with Effect. CLI gets a `codebase` command group. Web UI gets a codebase
+switcher in the nav and a `/codebases` management page.
 
 **Tech Stack:** Drizzle ORM, Effect, Elysia, TanStack Router/Query, Commander.js, Vitest
 
@@ -15,6 +18,7 @@
 ## File Structure
 
 ### New files
+
 - `packages/db/src/schema/codebase.ts` — codebase + chunk_codebase schema
 - `packages/db/src/repository/codebase.ts` — codebase CRUD + chunk association queries
 - `packages/db/src/__tests__/codebase.test.ts` — schema tests
@@ -30,6 +34,7 @@
 - `apps/web/src/routes/codebases.tsx` — codebase management page
 
 ### Modified files
+
 - `packages/db/src/schema/index.ts` — add codebase export
 - `packages/db/src/repository/index.ts` — add codebase export
 - `packages/db/src/repository/chunk.ts` — add `codebaseId` filtering to `listChunks`
@@ -49,6 +54,7 @@
 ### Task 1: Codebase schema
 
 **Files:**
+
 - Create: `packages/db/src/schema/codebase.ts`
 - Create: `packages/db/src/__tests__/codebase.test.ts`
 - Modify: `packages/db/src/schema/index.ts`
@@ -86,8 +92,7 @@ describe("chunkCodebase table", () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd packages/db && pnpm vitest run src/__tests__/codebase.test.ts`
-Expected: FAIL — module not found
+Run: `cd packages/db && pnpm vitest run src/__tests__/codebase.test.ts` Expected: FAIL — module not found
 
 - [ ] **Step 3: Write codebase schema**
 
@@ -134,10 +139,7 @@ export const chunkCodebase = pgTable(
             .notNull()
             .references(() => codebase.id, { onDelete: "cascade" })
     },
-    table => [
-        primaryKey({ columns: [table.chunkId, table.codebaseId] }),
-        index("chunk_codebase_chunkId_idx").on(table.chunkId)
-    ]
+    table => [primaryKey({ columns: [table.chunkId, table.codebaseId] }), index("chunk_codebase_chunkId_idx").on(table.chunkId)]
 );
 
 export const codebaseRelations = relations(codebase, ({ one, many }) => ({
@@ -151,19 +153,20 @@ export const chunkCodebaseRelations = relations(chunkCodebase, ({ one }) => ({
 }));
 ```
 
-Note: If `uniqueIndex().where()` is not supported in the project's Drizzle version, fall back to the service-layer duplicate check in `createCodebase` (which calls `getCodebaseByRemoteUrl` before insert — see Task 7).
+Note: If `uniqueIndex().where()` is not supported in the project's Drizzle version, fall back to the service-layer duplicate check in
+`createCodebase` (which calls `getCodebaseByRemoteUrl` before insert — see Task 7).
 
 - [ ] **Step 4: Export from schema index**
 
 Add to `packages/db/src/schema/index.ts`:
+
 ```typescript
 export * from "./codebase";
 ```
 
 - [ ] **Step 5: Run test to verify it passes**
 
-Run: `cd packages/db && pnpm vitest run src/__tests__/codebase.test.ts`
-Expected: PASS
+Run: `cd packages/db && pnpm vitest run src/__tests__/codebase.test.ts` Expected: PASS
 
 - [ ] **Step 6: Commit**
 
@@ -177,6 +180,7 @@ git commit -m "feat(db): add codebase and chunk_codebase schema"
 ### Task 2: URL normalization utility
 
 **Files:**
+
 - Create: `packages/api/src/codebases/normalize-url.ts`
 - Create: `packages/api/src/codebases/normalize-url.test.ts`
 
@@ -223,8 +227,7 @@ describe("normalizeGitUrl", () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd packages/api && pnpm vitest run src/codebases/normalize-url.test.ts`
-Expected: FAIL — module not found
+Run: `cd packages/api && pnpm vitest run src/codebases/normalize-url.test.ts` Expected: FAIL — module not found
 
 - [ ] **Step 3: Implement normalizeGitUrl**
 
@@ -255,8 +258,7 @@ export function normalizeGitUrl(url: string): string {
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `cd packages/api && pnpm vitest run src/codebases/normalize-url.test.ts`
-Expected: PASS
+Run: `cd packages/api && pnpm vitest run src/codebases/normalize-url.test.ts` Expected: PASS
 
 - [ ] **Step 5: Commit**
 
@@ -270,6 +272,7 @@ git commit -m "feat(api): add git remote URL normalization utility"
 ### Task 3: Codebase repository
 
 **Files:**
+
 - Create: `packages/db/src/repository/codebase.ts`
 - Modify: `packages/db/src/repository/index.ts`
 
@@ -316,7 +319,10 @@ export function getCodebaseById(codebaseId: string, userId?: string) {
         try: async () => {
             const conditions = [eq(codebase.id, codebaseId)];
             if (userId) conditions.push(eq(codebase.userId, userId));
-            const [found] = await db.select().from(codebase).where(and(...conditions));
+            const [found] = await db
+                .select()
+                .from(codebase)
+                .where(and(...conditions));
             return found ?? null;
         },
         catch: cause => new DatabaseError({ cause })
@@ -349,12 +355,7 @@ export function getCodebaseByLocalPath(localPath: string, userId: string) {
             const [found] = await db
                 .select()
                 .from(codebase)
-                .where(
-                    and(
-                        sql`${codebase.localPaths} @> ${JSON.stringify([localPath])}::jsonb`,
-                        eq(codebase.userId, userId)
-                    )
-                );
+                .where(and(sql`${codebase.localPaths} @> ${JSON.stringify([localPath])}::jsonb`, eq(codebase.userId, userId)));
             return found ?? null;
         },
         catch: cause => new DatabaseError({ cause })
@@ -462,14 +463,14 @@ export function getCodebasesForChunks(chunkIds: string[]) {
 - [ ] **Step 2: Export from repository index**
 
 Add to `packages/db/src/repository/index.ts`:
+
 ```typescript
 export * from "./codebase";
 ```
 
 - [ ] **Step 3: Run existing tests to verify nothing breaks**
 
-Run: `cd packages/db && pnpm vitest run`
-Expected: All existing tests PASS
+Run: `cd packages/db && pnpm vitest run` Expected: All existing tests PASS
 
 - [ ] **Step 4: Commit**
 
@@ -483,6 +484,7 @@ git commit -m "feat(db): add codebase repository with CRUD and chunk association
 ### Task 4: Extend chunk repository with codebase filtering
 
 **Files:**
+
 - Modify: `packages/db/src/repository/chunk.ts`
 
 - [ ] **Step 1: Read current `listChunks` implementation**
@@ -492,6 +494,7 @@ Read `packages/db/src/repository/chunk.ts` and find the `listChunks` function.
 - [ ] **Step 2: Add `codebaseId` parameter to `ListChunksParams`**
 
 Add `codebaseId?: string` to the params interface. When set, the query should return:
+
 - Chunks that have a row in `chunk_codebase` with the given `codebaseId`
 - Plus global chunks (chunks with no rows in `chunk_codebase` at all)
 
@@ -507,9 +510,13 @@ import { chunkCodebase } from "../schema/codebase";
 ```
 
 The exact implementation depends on the current query structure. Use subqueries:
+
 ```typescript
 if (params.codebaseId) {
-    const inCodebase = db.select({ chunkId: chunkCodebase.chunkId }).from(chunkCodebase).where(eq(chunkCodebase.codebaseId, params.codebaseId));
+    const inCodebase = db
+        .select({ chunkId: chunkCodebase.chunkId })
+        .from(chunkCodebase)
+        .where(eq(chunkCodebase.codebaseId, params.codebaseId));
     const inAnyCodebase = db.select({ chunkId: chunkCodebase.chunkId }).from(chunkCodebase);
     conditions.push(or(sql`${chunk.id} IN (${inCodebase})`, sql`${chunk.id} NOT IN (${inAnyCodebase})`));
 }
@@ -517,8 +524,7 @@ if (params.codebaseId) {
 
 - [ ] **Step 3: Run tests**
 
-Run: `cd packages/db && pnpm vitest run`
-Expected: PASS
+Run: `cd packages/db && pnpm vitest run` Expected: PASS
 
 - [ ] **Step 4: Commit**
 
@@ -532,11 +538,13 @@ git commit -m "feat(db): add codebaseId filtering to listChunks repository"
 ### Task 5: Extend graph repository with codebase scoping
 
 **Files:**
+
 - Modify: `packages/db/src/repository/graph.ts`
 
 - [ ] **Step 1: Add codebaseId parameter to `getAllChunksMeta`**
 
 Add optional `codebaseId` parameter. When set, return only:
+
 - Chunks in the given codebase
 - Global chunks connected to codebase chunks
 
@@ -562,7 +570,10 @@ export function getAllChunksMeta(userId?: string, codebaseId?: string) {
             const conditions = [];
             if (userId) conditions.push(eq(chunk.userId, userId));
             if (codebaseId) {
-                const inCodebase = db.select({ chunkId: chunkCodebase.chunkId }).from(chunkCodebase).where(eq(chunkCodebase.codebaseId, codebaseId));
+                const inCodebase = db
+                    .select({ chunkId: chunkCodebase.chunkId })
+                    .from(chunkCodebase)
+                    .where(eq(chunkCodebase.codebaseId, codebaseId));
                 const inAnyCodebase = db.select({ chunkId: chunkCodebase.chunkId }).from(chunkCodebase);
                 conditions.push(or(sql`${chunk.id} IN (${inCodebase})`, sql`${chunk.id} NOT IN (${inAnyCodebase})`));
             }
@@ -576,8 +587,7 @@ export function getAllChunksMeta(userId?: string, codebaseId?: string) {
 
 - [ ] **Step 2: Run tests**
 
-Run: `cd packages/db && pnpm vitest run`
-Expected: PASS
+Run: `cd packages/db && pnpm vitest run` Expected: PASS
 
 - [ ] **Step 3: Commit**
 
@@ -592,8 +602,7 @@ git commit -m "feat(db): add codebase scoping to graph repository"
 
 - [ ] **Step 1: Push schema changes**
 
-Run: `pnpm db:push`
-Expected: New tables `codebase` and `chunk_codebase` created
+Run: `pnpm db:push` Expected: New tables `codebase` and `chunk_codebase` created
 
 - [ ] **Step 2: Commit** (if drizzle generates migration files)
 
@@ -608,6 +617,7 @@ git add -A && git commit -m "chore(db): push codebase schema migration"
 ### Task 7: Codebase service
 
 **Files:**
+
 - Create: `packages/api/src/codebases/service.ts`
 
 - [ ] **Step 1: Write codebase service**
@@ -636,16 +646,11 @@ export function listCodebases(userId: string) {
 
 export function getCodebase(codebaseId: string, userId: string) {
     return getCodebaseById(codebaseId, userId).pipe(
-        Effect.flatMap(found =>
-            found ? Effect.succeed(found) : Effect.fail(new NotFoundError({ resource: "Codebase" }))
-        )
+        Effect.flatMap(found => (found ? Effect.succeed(found) : Effect.fail(new NotFoundError({ resource: "Codebase" }))))
     );
 }
 
-export function createCodebase(
-    userId: string,
-    body: { name: string; remoteUrl?: string; localPaths?: string[] }
-) {
+export function createCodebase(userId: string, body: { name: string; remoteUrl?: string; localPaths?: string[] }) {
     const id = crypto.randomUUID();
     const remoteUrl = body.remoteUrl ? normalizeGitUrl(body.remoteUrl) : undefined;
 
@@ -653,9 +658,7 @@ export function createCodebase(
         if (!remoteUrl) return Effect.void;
         return getCodebaseByRemoteUrl(remoteUrl, userId).pipe(
             Effect.flatMap(existing =>
-                existing
-                    ? Effect.fail(new ValidationError({ message: "A codebase with this remote URL already exists" }))
-                    : Effect.void
+                existing ? Effect.fail(new ValidationError({ message: "A codebase with this remote URL already exists" })) : Effect.void
             )
         );
     }).pipe(
@@ -677,15 +680,9 @@ export function updateCodebase(
     body: { name?: string; remoteUrl?: string | null; localPaths?: string[] }
 ) {
     return getCodebaseById(codebaseId, userId).pipe(
-        Effect.flatMap(found =>
-            found ? Effect.succeed(found) : Effect.fail(new NotFoundError({ resource: "Codebase" }))
-        ),
+        Effect.flatMap(found => (found ? Effect.succeed(found) : Effect.fail(new NotFoundError({ resource: "Codebase" })))),
         Effect.flatMap(() => {
-            const remoteUrl = body.remoteUrl === null
-                ? null
-                : body.remoteUrl !== undefined
-                  ? normalizeGitUrl(body.remoteUrl)
-                  : undefined;
+            const remoteUrl = body.remoteUrl === null ? null : body.remoteUrl !== undefined ? normalizeGitUrl(body.remoteUrl) : undefined;
             return updateCodebaseRepo(codebaseId, userId, {
                 name: body.name,
                 remoteUrl,
@@ -697,9 +694,7 @@ export function updateCodebase(
 
 export function deleteCodebase(codebaseId: string, userId: string) {
     return getCodebaseById(codebaseId, userId).pipe(
-        Effect.flatMap(found =>
-            found ? Effect.succeed(found) : Effect.fail(new NotFoundError({ resource: "Codebase" }))
-        ),
+        Effect.flatMap(found => (found ? Effect.succeed(found) : Effect.fail(new NotFoundError({ resource: "Codebase" })))),
         Effect.flatMap(() => deleteCodebaseRepo(codebaseId, userId))
     );
 }
@@ -717,9 +712,7 @@ export function detectCodebase(userId: string, query: { remoteUrl?: string; loca
 
 export function getCodebaseChunkCount(codebaseId: string, userId: string) {
     return getCodebaseById(codebaseId, userId).pipe(
-        Effect.flatMap(found =>
-            found ? Effect.succeed(found) : Effect.fail(new NotFoundError({ resource: "Codebase" }))
-        ),
+        Effect.flatMap(found => (found ? Effect.succeed(found) : Effect.fail(new NotFoundError({ resource: "Codebase" })))),
         Effect.flatMap(() => countChunksInCodebase(codebaseId))
     );
 }
@@ -737,6 +730,7 @@ git commit -m "feat(api): add codebase service with CRUD, detection, and URL nor
 ### Task 8: Codebase routes
 
 **Files:**
+
 - Create: `packages/api/src/codebases/routes.ts`
 - Modify: `packages/api/src/index.ts`
 
@@ -756,9 +750,7 @@ export const codebaseRoutes = new Elysia()
         "/codebases/detect",
         ctx =>
             Effect.runPromise(
-                requireSession(ctx).pipe(
-                    Effect.flatMap(session => codebaseService.detectCodebase(session.user.id, ctx.query))
-                )
+                requireSession(ctx).pipe(Effect.flatMap(session => codebaseService.detectCodebase(session.user.id, ctx.query)))
             ),
         {
             query: t.Object({
@@ -768,11 +760,7 @@ export const codebaseRoutes = new Elysia()
         }
     )
     .get("/codebases", ctx =>
-        Effect.runPromise(
-            requireSession(ctx).pipe(
-                Effect.flatMap(session => codebaseService.listCodebases(session.user.id))
-            )
-        )
+        Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(session => codebaseService.listCodebases(session.user.id))))
     )
     .post(
         "/codebases",
@@ -796,20 +784,14 @@ export const codebaseRoutes = new Elysia()
         }
     )
     .get("/codebases/:id", ctx =>
-        Effect.runPromise(
-            requireSession(ctx).pipe(
-                Effect.flatMap(session => codebaseService.getCodebase(ctx.params.id, session.user.id))
-            )
-        )
+        Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(session => codebaseService.getCodebase(ctx.params.id, session.user.id))))
     )
     .patch(
         "/codebases/:id",
         ctx =>
             Effect.runPromise(
                 requireSession(ctx).pipe(
-                    Effect.flatMap(session =>
-                        codebaseService.updateCodebase(ctx.params.id, session.user.id, ctx.body)
-                    )
+                    Effect.flatMap(session => codebaseService.updateCodebase(ctx.params.id, session.user.id, ctx.body))
                 )
             ),
         {
@@ -872,8 +854,7 @@ describe("Codebase routes", () => {
 
 - [ ] **Step 4: Run tests**
 
-Run: `cd packages/api && pnpm vitest run`
-Expected: All tests PASS
+Run: `cd packages/api && pnpm vitest run` Expected: All tests PASS
 
 - [ ] **Step 5: Commit**
 
@@ -887,17 +868,20 @@ git commit -m "feat(api): add codebase CRUD routes and register in API"
 ### Task 9: Add codebaseId to chunk routes and service
 
 **Files:**
+
 - Modify: `packages/api/src/chunks/routes.ts`
 - Modify: `packages/api/src/chunks/service.ts`
 
 - [ ] **Step 1: Add `codebaseId` to GET /chunks query param**
 
 In `packages/api/src/chunks/routes.ts`, add to the query schema:
+
 ```typescript
 codebaseId: t.Optional(t.String()),
 ```
 
 Also add `global` param for filtering to global-only chunks:
+
 ```typescript
 global: t.Optional(t.String()),
 ```
@@ -905,6 +889,7 @@ global: t.Optional(t.String()),
 - [ ] **Step 2: Add `codebaseIds` to POST /chunks and PATCH /chunks/:id body**
 
 In the POST body schema:
+
 ```typescript
 codebaseIds: t.Optional(t.Array(t.String(), { maxItems: 20 })),
 ```
@@ -920,9 +905,11 @@ In `packages/api/src/chunks/service.ts`:
 import { getCodebasesForChunk, setChunkCodebases } from "@fubbik/db/repository";
 ```
 
-For `listChunks`: pass `query.codebaseId` through to the repository call. If `query.global === "true"`, pass a `globalOnly: true` flag to the repo (filter to chunks with no rows in `chunk_codebase`).
+For `listChunks`: pass `query.codebaseId` through to the repository call. If `query.global === "true"`, pass a `globalOnly: true` flag to
+the repo (filter to chunks with no rows in `chunk_codebase`).
 
 For `createChunk`: add `codebaseIds?: string[]` to the body param. After creating the chunk, add:
+
 ```typescript
 Effect.tap(() => {
     if (body.codebaseIds && body.codebaseIds.length > 0) {
@@ -935,6 +922,7 @@ Effect.tap(() => {
 For `updateChunk`: similar pattern — if `body.codebaseIds` is provided, call `setChunkCodebases`.
 
 For `getChunkDetail`: after fetching the chunk and connections, also fetch codebase associations:
+
 ```typescript
 Effect.flatMap(found =>
     Effect.all({
@@ -942,15 +930,14 @@ Effect.flatMap(found =>
         connections: getChunkConnections(chunkId),
         codebases: getCodebasesForChunk(chunkId)
     })
-)
+);
 ```
 
 This ensures `GET /chunks/:id` returns which codebases a chunk belongs to.
 
 - [ ] **Step 4: Run tests**
 
-Run: `cd packages/api && pnpm vitest run`
-Expected: PASS
+Run: `cd packages/api && pnpm vitest run` Expected: PASS
 
 - [ ] **Step 5: Commit**
 
@@ -964,20 +951,20 @@ git commit -m "feat(api): add codebase filtering and associations to chunk endpo
 ### Task 10: Add codebaseId to graph routes and service
 
 **Files:**
+
 - Modify: `packages/api/src/graph/routes.ts`
 - Modify: `packages/api/src/graph/service.ts`
 
 - [ ] **Step 1: Add `codebaseId` to GET /graph query param**
 
 In `packages/api/src/graph/routes.ts`:
+
 ```typescript
 export const graphRoutes = new Elysia().get(
     "/graph",
     ctx =>
         Effect.runPromise(
-            requireSession(ctx).pipe(
-                Effect.flatMap(session => graphService.getUserGraph(session.user.id, ctx.query.codebaseId))
-            )
+            requireSession(ctx).pipe(Effect.flatMap(session => graphService.getUserGraph(session.user.id, ctx.query.codebaseId)))
         ),
     {
         query: t.Object({
@@ -990,6 +977,7 @@ export const graphRoutes = new Elysia().get(
 - [ ] **Step 2: Update graph service to pass `codebaseId` through to `getAllChunksMeta`**
 
 In `packages/api/src/graph/service.ts`:
+
 ```typescript
 export function getUserGraph(userId?: string, codebaseId?: string) {
     return Effect.all(
@@ -1004,12 +992,12 @@ export function getUserGraph(userId?: string, codebaseId?: string) {
 }
 ```
 
-Note: `getAllConnectionsForUser` stays unscoped — we fetch all user connections, then the frontend can filter to only show edges between visible chunks. This avoids a complex codebase-aware connection query.
+Note: `getAllConnectionsForUser` stays unscoped — we fetch all user connections, then the frontend can filter to only show edges between
+visible chunks. This avoids a complex codebase-aware connection query.
 
 - [ ] **Step 3: Run tests**
 
-Run: `cd packages/api && pnpm vitest run`
-Expected: PASS
+Run: `cd packages/api && pnpm vitest run` Expected: PASS
 
 - [ ] **Step 4: Commit**
 
@@ -1025,6 +1013,7 @@ git commit -m "feat(api): add codebase scoping to graph endpoint"
 ### Task 11: Codebase detection utility
 
 **Files:**
+
 - Create: `apps/cli/src/lib/detect-codebase.ts`
 
 - [ ] **Step 1: Write detection utility**
@@ -1077,6 +1066,7 @@ git commit -m "feat(cli): add codebase detection via git remote and local path"
 ### Task 12: CLI codebase commands
 
 **Files:**
+
 - Create: `apps/cli/src/commands/codebase.ts`
 - Modify: `apps/cli/src/index.ts`
 
@@ -1129,26 +1119,24 @@ const addCmd = new Command("add")
         output(cmd, created, `Registered codebase "${name}" (${created.id})`);
     });
 
-const listCmd = new Command("list")
-    .description("List registered codebases")
-    .action(async (_opts: unknown, cmd: Command) => {
-        const serverUrl = requireServer();
-        const res = await fetch(`${serverUrl}/api/codebases`);
-        if (!res.ok) {
-            console.error(`Failed to list codebases: ${res.statusText}`);
-            process.exit(1);
-        }
-        const codebases = await res.json();
-        outputQuiet(cmd, codebases.map((c: { id: string }) => c.id).join("\n"));
-        if (codebases.length === 0) {
-            output(cmd, codebases, "No codebases registered.");
-        } else {
-            const lines = codebases.map((c: { name: string; id: string; remoteUrl?: string }) =>
-                `  ${c.name} (${c.id})${c.remoteUrl ? ` — ${c.remoteUrl}` : ""}`
-            );
-            output(cmd, codebases, lines.join("\n"));
-        }
-    });
+const listCmd = new Command("list").description("List registered codebases").action(async (_opts: unknown, cmd: Command) => {
+    const serverUrl = requireServer();
+    const res = await fetch(`${serverUrl}/api/codebases`);
+    if (!res.ok) {
+        console.error(`Failed to list codebases: ${res.statusText}`);
+        process.exit(1);
+    }
+    const codebases = await res.json();
+    outputQuiet(cmd, codebases.map((c: { id: string }) => c.id).join("\n"));
+    if (codebases.length === 0) {
+        output(cmd, codebases, "No codebases registered.");
+    } else {
+        const lines = codebases.map(
+            (c: { name: string; id: string; remoteUrl?: string }) => `  ${c.name} (${c.id})${c.remoteUrl ? ` — ${c.remoteUrl}` : ""}`
+        );
+        output(cmd, codebases, lines.join("\n"));
+    }
+});
 
 const removeCmd = new Command("remove")
     .description("Unregister a codebase")
@@ -1228,6 +1216,7 @@ export const codebaseCommand = new Command("codebase")
 - [ ] **Step 2: Register in CLI index**
 
 In `apps/cli/src/index.ts`, add:
+
 ```typescript
 import { codebaseCommand } from "./commands/codebase";
 // ...
@@ -1236,8 +1225,7 @@ program.addCommand(codebaseCommand);
 
 - [ ] **Step 3: Verify CLI parses correctly**
 
-Run: `cd apps/cli && pnpm build && node dist/index.js codebase --help`
-Expected: Shows help for codebase command group
+Run: `cd apps/cli && pnpm build && node dist/index.js codebase --help` Expected: Shows help for codebase command group
 
 - [ ] **Step 4: Commit**
 
@@ -1251,6 +1239,7 @@ git commit -m "feat(cli): add codebase command group (add, list, remove, current
 ### Task 13: Add implicit codebase scoping to CLI commands
 
 **Files:**
+
 - Modify: `apps/cli/src/commands/list.ts`
 - Modify: `apps/cli/src/commands/add.ts`
 - Modify: `apps/cli/src/commands/search.ts`
@@ -1258,6 +1247,7 @@ git commit -m "feat(cli): add codebase command group (add, list, remove, current
 - [ ] **Step 1: Add --global and --codebase flags to list/add/search commands**
 
 For each command, add:
+
 ```typescript
 .option("--global", "ignore codebase context")
 .option("--codebase <name>", "override codebase detection")
@@ -1265,14 +1255,15 @@ For each command, add:
 
 - [ ] **Step 2: In commands that call the server API, detect codebase and pass as query param**
 
-Use `detectCodebase()` from `detect-codebase.ts` to resolve the active codebase, then pass `codebaseId` as a query param to the API. If `--global` is passed, skip detection. If `--codebase <name>` is passed, look up that codebase by name first.
+Use `detectCodebase()` from `detect-codebase.ts` to resolve the active codebase, then pass `codebaseId` as a query param to the API. If
+`--global` is passed, skip detection. If `--codebase <name>` is passed, look up that codebase by name first.
 
-The exact changes depend on how each command currently calls the API. Read each file and add the codebase resolution at the top of the action handler.
+The exact changes depend on how each command currently calls the API. Read each file and add the codebase resolution at the top of the
+action handler.
 
 - [ ] **Step 3: Verify with `fubbik list --help`**
 
-Run: `cd apps/cli && pnpm build && node dist/index.js list --help`
-Expected: Shows --global and --codebase flags
+Run: `cd apps/cli && pnpm build && node dist/index.js list --help` Expected: Shows --global and --codebase flags
 
 - [ ] **Step 4: Commit**
 
@@ -1288,6 +1279,7 @@ git commit -m "feat(cli): add implicit codebase scoping to list, add, and search
 ### Task 14: Active codebase hook
 
 **Files:**
+
 - Create: `apps/web/src/features/codebases/use-active-codebase.ts`
 
 - [ ] **Step 1: Write the hook**
@@ -1334,6 +1326,7 @@ git commit -m "feat(web): add useActiveCodebase hook for URL-based codebase stat
 ### Task 15: Codebase switcher component
 
 **Files:**
+
 - Create: `apps/web/src/features/codebases/codebase-switcher.tsx`
 - Modify: `apps/web/src/routes/__root.tsx`
 
@@ -1370,11 +1363,12 @@ export function CodebaseSwitcher() {
         }
     });
 
-    const activeName = codebaseId === "global"
-        ? "Global"
-        : codebaseId
-          ? codebases?.find((c: { id: string }) => c.id === codebaseId)?.name ?? "..."
-          : "All";
+    const activeName =
+        codebaseId === "global"
+            ? "Global"
+            : codebaseId
+              ? (codebases?.find((c: { id: string }) => c.id === codebaseId)?.name ?? "...")
+              : "All";
 
     return (
         <DropdownMenu>
@@ -1392,9 +1386,7 @@ export function CodebaseSwitcher() {
                         {c.name}
                     </DropdownMenuItem>
                 ))}
-                {(!codebases || codebases.length === 0) && (
-                    <DropdownMenuItem disabled>No codebases registered</DropdownMenuItem>
-                )}
+                {(!codebases || codebases.length === 0) && <DropdownMenuItem disabled>No codebases registered</DropdownMenuItem>}
             </DropdownMenuContent>
         </DropdownMenu>
     );
@@ -1418,8 +1410,7 @@ import { CodebaseSwitcher } from "@/features/codebases/codebase-switcher";
 
 - [ ] **Step 3: Run dev server and verify visually**
 
-Run: `pnpm dev`
-Expected: Codebase switcher dropdown visible in the nav bar
+Run: `pnpm dev` Expected: Codebase switcher dropdown visible in the nav bar
 
 - [ ] **Step 4: Commit**
 
@@ -1433,6 +1424,7 @@ git commit -m "feat(web): add codebase switcher dropdown to nav"
 ### Task 16: Wire codebase filtering into chunks page
 
 **Files:**
+
 - Modify: `apps/web/src/routes/chunks.tsx` (or wherever the chunks list route is)
 
 - [ ] **Step 1: Read the current chunks route file**
@@ -1466,8 +1458,7 @@ const chunksQuery = useQuery({
 
 - [ ] **Step 3: Verify chunks filter by codebase**
 
-Run: `pnpm dev`
-Expected: Switching codebase in dropdown refetches chunks list
+Run: `pnpm dev` Expected: Switching codebase in dropdown refetches chunks list
 
 - [ ] **Step 4: Commit**
 
@@ -1481,6 +1472,7 @@ git commit -m "feat(web): filter chunks list by active codebase"
 ### Task 17: Wire codebase filtering into graph page
 
 **Files:**
+
 - Modify: `apps/web/src/routes/graph.tsx`
 
 - [ ] **Step 1: Add codebaseId to graph query**
@@ -1489,8 +1481,7 @@ Same pattern as Task 15 — read the graph route, pass `codebaseId` to the API q
 
 - [ ] **Step 2: Verify graph scopes by codebase**
 
-Run: `pnpm dev`
-Expected: Graph shows only chunks in active codebase + global chunks
+Run: `pnpm dev` Expected: Graph shows only chunks in active codebase + global chunks
 
 - [ ] **Step 3: Commit**
 
@@ -1504,18 +1495,21 @@ git commit -m "feat(web): scope graph view to active codebase"
 ### Task 18: Codebase management page
 
 **Files:**
+
 - Create: `apps/web/src/routes/codebases.tsx`
 - Modify: `apps/web/src/routes/__root.tsx`
 
 - [ ] **Step 1: Write the codebases management page**
 
-Simple CRUD page following the pattern of existing pages (like `/tags`). List all codebases with name, remote URL, local paths. Add/edit/delete actions.
+Simple CRUD page following the pattern of existing pages (like `/tags`). List all codebases with name, remote URL, local paths.
+Add/edit/delete actions.
 
 Read `apps/web/src/routes/tags.tsx` first to follow the existing pattern for a management page.
 
 - [ ] **Step 2: Add "Codebases" link to nav in `__root.tsx`**
 
 Add a nav link between "Tags" and the right-side controls:
+
 ```tsx
 <Link
     to="/codebases"
@@ -1527,8 +1521,7 @@ Add a nav link between "Tags" and the right-side controls:
 
 - [ ] **Step 3: Verify the page works**
 
-Run: `pnpm dev`
-Expected: `/codebases` page loads and displays the management UI
+Run: `pnpm dev` Expected: `/codebases` page loads and displays the management UI
 
 - [ ] **Step 4: Commit**
 
@@ -1543,8 +1536,7 @@ git commit -m "feat(web): add codebase management page and nav link"
 
 - [ ] **Step 1: Run full CI**
 
-Run: `pnpm ci`
-Expected: Type-check, lint, test, build all pass
+Run: `pnpm ci` Expected: Type-check, lint, test, build all pass
 
 - [ ] **Step 2: Fix any issues found**
 

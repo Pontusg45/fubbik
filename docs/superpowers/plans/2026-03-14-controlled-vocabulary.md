@@ -1,10 +1,13 @@
 # Controlled Vocabulary Implementation Plan
 
-> **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to
+> implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add a per-codebase controlled vocabulary with typed slot expectations, a greedy longest-match parser, AI-suggested seeding, and real-time step validation in the requirements UI.
+**Goal:** Add a per-codebase controlled vocabulary with typed slot expectations, a greedy longest-match parser, AI-suggested seeding, and
+real-time step validation in the requirements UI.
 
-**Architecture:** `vocabulary_entry` table with word/category/expects. Parser tokenizes step text left-to-right with longest match, validates slot expectations. AI suggestion via Ollama. Parser integrated into requirements create/update flow as non-blocking warnings.
+**Architecture:** `vocabulary_entry` table with word/category/expects. Parser tokenizes step text left-to-right with longest match,
+validates slot expectations. AI suggestion via Ollama. Parser integrated into requirements create/update flow as non-blocking warnings.
 
 **Tech Stack:** Drizzle ORM, Effect, Elysia, TanStack Router/Query, Ollama (llama3.2), Vitest
 
@@ -15,6 +18,7 @@
 ## File Structure
 
 ### New files
+
 - `packages/db/src/schema/vocabulary.ts` — vocabulary_entry table
 - `packages/db/src/repository/vocabulary.ts` — CRUD + list by codebase
 - `packages/db/src/__tests__/vocabulary.test.ts` — schema test
@@ -26,6 +30,7 @@
 - `apps/web/src/routes/vocabulary.tsx` — vocabulary management page
 
 ### Modified files
+
 - `packages/db/src/schema/index.ts` — export vocabulary schema
 - `packages/db/src/repository/index.ts` — export vocabulary repository
 - `packages/api/src/index.ts` — register vocabulary routes
@@ -42,6 +47,7 @@
 ### Task 1: Vocabulary schema
 
 **Files:**
+
 - Create: `packages/db/src/schema/vocabulary.ts`
 - Create: `packages/db/src/__tests__/vocabulary.test.ts`
 - Modify: `packages/db/src/schema/index.ts`
@@ -96,8 +102,7 @@ export const vocabularyEntry = pgTable(
             .notNull()
     },
     table => [
-        uniqueIndex("vocabulary_codebase_word_cat_idx")
-            .on(table.codebaseId, table.category, sql`lower(${table.word})`),
+        uniqueIndex("vocabulary_codebase_word_cat_idx").on(table.codebaseId, table.category, sql`lower(${table.word})`),
         index("vocabulary_codebaseId_idx").on(table.codebaseId)
     ]
 );
@@ -108,7 +113,8 @@ export const vocabularyEntryRelations = relations(vocabularyEntry, ({ one }) => 
 }));
 ```
 
-Note: The unique index uses `lower(word)` for case-insensitive uniqueness. If Drizzle doesn't support `sql` in `uniqueIndex.on()`, use a raw SQL migration to add the index.
+Note: The unique index uses `lower(word)` for case-insensitive uniqueness. If Drizzle doesn't support `sql` in `uniqueIndex.on()`, use a raw
+SQL migration to add the index.
 
 - [ ] **Step 3: Export, test, push**
 
@@ -126,6 +132,7 @@ git commit -m "feat(db): add vocabulary_entry schema with case-insensitive uniqu
 ### Task 2: Vocabulary parser
 
 **Files:**
+
 - Create: `packages/api/src/vocabulary/parser.ts`
 - Create: `packages/api/src/vocabulary/parser.test.ts`
 
@@ -147,7 +154,7 @@ const vocab = [
     { word: "a", category: "modifier", expects: null },
     { word: "the", category: "modifier", expects: null },
     { word: "is", category: "modifier", expects: null },
-    { word: "they", category: "modifier", expects: null },
+    { word: "they", category: "modifier", expects: null }
 ];
 
 describe("parseStepText", () => {
@@ -238,27 +245,25 @@ export function parseStepText(text: string, vocabulary: VocabEntry[]): ParseResu
 
     // Step 1: Extract quoted literals and numbers, track their positions
     const literals: { start: number; end: number; text: string }[] = [];
-    const processed = text.replace(
-        /("[^"]*"|'[^']*'|\b\d+(?:\.\d+)?\b)/g,
-        (match, _group, offset) => {
-            literals.push({ start: offset, end: offset + match.length, text: match });
-            return " ".repeat(match.length); // preserve positions
-        }
-    );
+    const processed = text.replace(/("[^"]*"|'[^']*'|\b\d+(?:\.\d+)?\b)/g, (match, _group, offset) => {
+        literals.push({ start: offset, end: offset + match.length, text: match });
+        return " ".repeat(match.length); // preserve positions
+    });
 
     // Step 2: Lowercase for matching
     const lower = processed.toLowerCase();
 
     // Step 3: Sort vocabulary by word length descending (greedy)
-    const sorted = [...vocabulary]
-        .filter(v => v.category !== "literal")
-        .sort((a, b) => b.word.length - a.word.length);
+    const sorted = [...vocabulary].filter(v => v.category !== "literal").sort((a, b) => b.word.length - a.word.length);
 
     // Step 4: Scan left-to-right
     let pos = 0;
     while (pos < lower.length) {
         // Skip whitespace
-        if (lower[pos] === " ") { pos++; continue; }
+        if (lower[pos] === " ") {
+            pos++;
+            continue;
+        }
 
         // Check if we're at a literal placeholder position
         const literal = literals.find(l => l.start === pos);
@@ -357,8 +362,7 @@ export function parseStepText(text: string, vocabulary: VocabEntry[]): ParseResu
 
 - [ ] **Step 3: Run tests**
 
-Run: `cd packages/api && pnpm vitest run src/vocabulary/parser.test.ts`
-Expected: PASS
+Run: `cd packages/api && pnpm vitest run src/vocabulary/parser.test.ts` Expected: PASS
 
 - [ ] **Step 4: Commit**
 
@@ -374,12 +378,14 @@ git commit -m "feat(api): add vocabulary parser with greedy tokenizer and slot v
 ### Task 3: Vocabulary repository
 
 **Files:**
+
 - Create: `packages/db/src/repository/vocabulary.ts`
 - Modify: `packages/db/src/repository/index.ts`
 
 - [ ] **Step 1: Write repository**
 
 Functions (all `Effect<T, DatabaseError>`):
+
 - `listVocabulary(codebaseId)` — returns all entries for a codebase, ordered by category then word
 - `createVocabularyEntry(params: { id, word, category, expects?, codebaseId, userId })` — lowercase word on insert
 - `createVocabularyEntries(entries[])` — bulk insert with `onConflictDoNothing`
@@ -387,7 +393,8 @@ Functions (all `Effect<T, DatabaseError>`):
 - `deleteVocabularyEntry(id)`
 - `getVocabularyEntry(id)`
 
-Also a helper: `seedModifiers(codebaseId, userId)` — inserts the standard modifier set (`a`, `an`, `the`, `is`, `are`, `was`, `were`, `with`, `on`, `to`, `their`, `not`, `has`, `have`, `they`, `it`) with `onConflictDoNothing`.
+Also a helper: `seedModifiers(codebaseId, userId)` — inserts the standard modifier set (`a`, `an`, `the`, `is`, `are`, `was`, `were`,
+`with`, `on`, `to`, `their`, `not`, `has`, `have`, `they`, `it`) with `onConflictDoNothing`.
 
 - [ ] **Step 2: Export, run tests**
 
@@ -405,6 +412,7 @@ git commit -m "feat(db): add vocabulary repository with CRUD, bulk insert, and m
 ### Task 4: AI suggestion module
 
 **Files:**
+
 - Create: `packages/api/src/vocabulary/suggest.ts`
 
 - [ ] **Step 1: Write suggestion module**
@@ -421,10 +429,7 @@ interface SuggestedEntry {
     expects: string[] | null;
 }
 
-export function suggestVocabulary(
-    chunks: { title: string; content: string }[],
-    ollamaUrl: string
-): Effect.Effect<SuggestedEntry[], never> {
+export function suggestVocabulary(chunks: { title: string; content: string }[], ollamaUrl: string): Effect.Effect<SuggestedEntry[], never> {
     return Effect.tryPromise({
         try: async () => {
             // Truncate content to fit context
@@ -461,16 +466,13 @@ ${context}`;
 
             // Validate and clean entries
             const validCategories = new Set(["actor", "action", "target", "outcome", "state"]);
-            return parsed.filter(
-                (e: any) =>
-                    typeof e.word === "string" &&
-                    validCategories.has(e.category) &&
-                    e.word.trim().length > 0
-            ).map((e: any) => ({
-                word: e.word.toLowerCase().trim(),
-                category: e.category,
-                expects: Array.isArray(e.expects) ? e.expects : null
-            }));
+            return parsed
+                .filter((e: any) => typeof e.word === "string" && validCategories.has(e.category) && e.word.trim().length > 0)
+                .map((e: any) => ({
+                    word: e.word.toLowerCase().trim(),
+                    category: e.category,
+                    expects: Array.isArray(e.expects) ? e.expects : null
+                }));
         },
         catch: () => [] as SuggestedEntry[]
     }).pipe(Effect.catchAll(() => Effect.succeed([] as SuggestedEntry[])));
@@ -489,6 +491,7 @@ git commit -m "feat(api): add AI vocabulary suggestion via Ollama"
 ### Task 5: Vocabulary service and routes
 
 **Files:**
+
 - Create: `packages/api/src/vocabulary/service.ts`
 - Create: `packages/api/src/vocabulary/routes.ts`
 - Modify: `packages/api/src/index.ts`
@@ -496,17 +499,21 @@ git commit -m "feat(api): add AI vocabulary suggestion via Ollama"
 - [ ] **Step 1: Write service**
 
 Functions:
+
 - `listVocabulary(userId, codebaseId)` — verify user owns codebase, delegate to repo
-- `createEntry(userId, body: { word, category, expects?, codebaseId })` — verify codebase ownership, lowercase word, create. If this is the first entry for the codebase, auto-seed modifiers first.
+- `createEntry(userId, body: { word, category, expects?, codebaseId })` — verify codebase ownership, lowercase word, create. If this is the
+  first entry for the codebase, auto-seed modifiers first.
 - `createEntries(userId, body: { entries[], codebaseId })` — bulk version for accepting AI suggestions
 - `updateEntry(id, userId, body)` — verify entry exists, verify codebase ownership
 - `deleteEntry(id, userId)` — verify entry exists, verify codebase ownership
 - `parseStep(userId, body: { text, codebaseId })` — verify codebase ownership, fetch vocabulary, run parser, return ParseResult
-- `suggestFromChunks(userId, codebaseId)` — verify codebase ownership, fetch chunks, call AI suggestion, return suggestions (not auto-insert)
+- `suggestFromChunks(userId, codebaseId)` — verify codebase ownership, fetch chunks, call AI suggestion, return suggestions (not
+  auto-insert)
 
 - [ ] **Step 2: Write routes**
 
 Route declaration order:
+
 1. `GET /vocabulary` (`?codebaseId=`)
 2. `POST /vocabulary/suggest` (body: `{ codebaseId }`)
 3. `POST /vocabulary/bulk` (body: `{ entries[], codebaseId }`)
@@ -518,7 +525,9 @@ Route declaration order:
 All routes use `requireSession(ctx).pipe(...)`.
 
 Validation:
-- category: `t.Union([t.Literal("actor"), t.Literal("action"), t.Literal("target"), t.Literal("outcome"), t.Literal("state"), t.Literal("modifier")])`
+
+- category:
+  `t.Union([t.Literal("actor"), t.Literal("action"), t.Literal("target"), t.Literal("outcome"), t.Literal("state"), t.Literal("modifier")])`
 - expects: `t.Optional(t.Array(t.String(), { maxItems: 6 }))`
 - bulk entries: `t.Array(..., { maxItems: 200 })`
 
@@ -542,11 +551,13 @@ git commit -m "feat(api): add vocabulary service and routes with parsing and AI 
 ### Task 6: Integrate vocabulary parsing into requirements
 
 **Files:**
+
 - Modify: `packages/api/src/requirements/service.ts`
 
 - [ ] **Step 1: Add vocabulary parsing to createRequirement and updateRequirement**
 
-After step sequence validation, for each step, call the vocabulary parser. Collect all vocabulary warnings. Return alongside existing cross-ref warnings.
+After step sequence validation, for each step, call the vocabulary parser. Collect all vocabulary warnings. Return alongside existing
+cross-ref warnings.
 
 ```typescript
 import { listVocabulary } from "@fubbik/db/repository";
@@ -580,6 +591,7 @@ git commit -m "feat(api): integrate vocabulary parsing into requirements create/
 ### Task 7: Vocabulary management page
 
 **Files:**
+
 - Create: `apps/web/src/routes/vocabulary.tsx`
 - Modify: `apps/web/src/routes/__root.tsx`
 - Modify: `apps/web/src/features/nav/mobile-nav.tsx`
@@ -591,12 +603,14 @@ Read `apps/web/src/routes/templates.tsx` or `apps/web/src/routes/codebases.tsx` 
 - [ ] **Step 2: Create vocabulary page**
 
 `/vocabulary` route:
+
 - Only useful when a codebase is active (show message if none selected)
 - Fetch entries: `api.api.vocabulary.get({ query: { codebaseId } })`
 - Table grouped by category (collapsible sections), each row: word, category badge (color-coded), expects badges
 - Add entry form: word input, category dropdown, expects multi-select (checkboxes)
 - Edit inline, delete with confirmation
-- "Suggest from chunks" button → calls `api.api.vocabulary.suggest.post({ codebaseId })` → shows review list with checkboxes → "Add selected" bulk inserts via `api.api.vocabulary.bulk.post()`
+- "Suggest from chunks" button → calls `api.api.vocabulary.suggest.post({ codebaseId })` → shows review list with checkboxes → "Add
+  selected" bulk inserts via `api.api.vocabulary.bulk.post()`
 - Stats: total entries per category
 
 - [ ] **Step 3: Add nav link**
@@ -615,27 +629,32 @@ git commit -m "feat(web): add vocabulary management page with AI suggestion and 
 ### Task 8: Enhanced requirement step builder
 
 **Files:**
+
 - Modify: `apps/web/src/routes/requirements_.new.tsx`
 
 - [ ] **Step 1: Add real-time vocabulary parsing to step builder**
 
 In the requirement create form's step builder:
+
 - After each step text input, debounce (300ms) and call `POST /api/vocabulary/parse` with the step text and codebaseId
 - Display token highlights:
-  - Green background: recognized vocabulary word
-  - Yellow background: unknown word, with small "Add?" button
-  - Red underline: unexpected category violation
+    - Green background: recognized vocabulary word
+    - Yellow background: unknown word, with small "Add?" button
+    - Red underline: unexpected category violation
 - "Add?" button opens an inline mini-form: category dropdown + optional expects. On submit, `POST /api/vocabulary`, then re-parse.
 
-Implementation approach: below each step text input, render a row of colored token badges showing the parse result. This is simpler than trying to highlight within the input itself.
+Implementation approach: below each step text input, render a row of colored token badges showing the parse result. This is simpler than
+trying to highlight within the input itself.
 
 - [ ] **Step 2: Add auto-complete (optional enhancement)**
 
-If time permits: show a filtered dropdown of vocabulary entries as the user types 2+ characters. Filter by the previous token's `expects` if available. This can be a follow-up task if it adds too much complexity.
+If time permits: show a filtered dropdown of vocabulary entries as the user types 2+ characters. Filter by the previous token's `expects` if
+available. This can be a follow-up task if it adds too much complexity.
 
 - [ ] **Step 3: Show vocabulary warnings on requirement detail page**
 
-In `apps/web/src/routes/requirements_.$requirementId.tsx`, if the response includes `vocabularyWarnings`, show them alongside cross-ref warnings in the yellow alert section.
+In `apps/web/src/routes/requirements_.$requirementId.tsx`, if the response includes `vocabularyWarnings`, show them alongside cross-ref
+warnings in the yellow alert section.
 
 - [ ] **Step 4: Commit**
 

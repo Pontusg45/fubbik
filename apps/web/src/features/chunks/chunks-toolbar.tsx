@@ -1,23 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import {
-    Columns3,
-    Filter,
-    FolderPlus,
-    Globe,
-    LayoutGrid,
-    List,
-    Search,
-    X,
-} from "lucide-react";
+import { Columns3, Filter, FolderPlus, Globe, LayoutGrid, List, Search, X } from "lucide-react";
+
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ChunkFilterPills } from "@/features/chunks/chunk-filter-pills";
 import { ChunkFiltersPopover } from "@/features/chunks/chunk-filters-popover";
+import type { ChunkSearchParams } from "@/features/chunks/use-chunk-filters";
 import { useCollections } from "@/features/chunks/use-collections";
 import { useSavedFilters } from "@/features/chunks/use-saved-filters";
-import type { ChunkSearchParams } from "@/features/chunks/use-chunk-filters";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
@@ -82,7 +74,7 @@ export function ChunksToolbar({
     onToggleTag,
     onClearAllFilters,
     onShowSaveFilter,
-    searchInputRef,
+    searchInputRef
 }: ChunksToolbarProps) {
     const navTo = useNavigate();
     const { filters: savedFilters, deleteFilter } = useSavedFilters();
@@ -140,16 +132,9 @@ export function ChunksToolbar({
                 />
 
                 {/* View & grouping controls */}
-                <TagTypeGroupSelect
-                    value={group}
-                    onChange={v => onUpdateSearch({ group: v ?? undefined, subGroup: undefined })}
-                />
+                <TagTypeGroupSelect value={group} onChange={v => onUpdateSearch({ group: v ?? undefined, subGroup: undefined })} />
                 {group && (
-                    <SubGroupSelect
-                        value={subGroup}
-                        primaryGroup={group}
-                        onChange={v => onUpdateSearch({ subGroup: v ?? undefined })}
-                    />
+                    <SubGroupSelect value={subGroup} primaryGroup={group} onChange={v => onUpdateSearch({ subGroup: v ?? undefined })} />
                 )}
 
                 {collections.length > 0 && (
@@ -202,7 +187,10 @@ export function ChunksToolbar({
                 )}
 
                 <div className="flex rounded-md border">
-                    <button onClick={() => onUpdateSearch({ view: undefined })} className={`px-2 py-1.5 text-xs ${!view ? "bg-muted" : ""}`}>
+                    <button
+                        onClick={() => onUpdateSearch({ view: undefined })}
+                        className={`px-2 py-1.5 text-xs ${!view ? "bg-muted" : ""}`}
+                    >
                         <List className="size-3.5" />
                     </button>
                     <button
@@ -232,7 +220,7 @@ export function ChunksToolbar({
                 reviewStatus={reviewStatus}
                 allSpaces={allSpaces}
                 activeTags={activeTags}
-                onRemoveFilter={(key) => {
+                onRemoveFilter={key => {
                     if (key.startsWith("tag:")) {
                         const tagToRemove = key.slice(4);
                         const remaining = activeTags.filter(t => t !== tagToRemove);
@@ -278,7 +266,7 @@ export function ChunksToolbar({
 export function SubGroupSelect({
     value,
     primaryGroup,
-    onChange,
+    onChange
 }: {
     value?: string;
     primaryGroup: string;

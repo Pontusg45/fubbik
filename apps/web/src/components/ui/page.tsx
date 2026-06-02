@@ -2,8 +2,8 @@ import { AlertCircle, FileQuestion, Filter, type LucideIcon } from "lucide-react
 import type { ReactNode } from "react";
 
 import { Badge } from "@/components/ui/badge";
-import { SkeletonList } from "@/components/ui/skeleton-list";
 import { Empty, EmptyAction, EmptyDescription, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
+import { SkeletonList } from "@/components/ui/skeleton-list";
 
 // ─── Page Container ───
 
@@ -17,15 +17,11 @@ const widthMap = {
     "3xl": "max-w-3xl",
     "4xl": "max-w-4xl",
     "5xl": "max-w-5xl",
-    "6xl": "max-w-6xl",
+    "6xl": "max-w-6xl"
 };
 
 export function PageContainer({ children, maxWidth = "3xl", className }: PageContainerProps) {
-    return (
-        <div className={`container mx-auto ${widthMap[maxWidth]} px-4 py-8 ${className ?? ""}`}>
-            {children}
-        </div>
-    );
+    return <div className={`container mx-auto ${widthMap[maxWidth]} px-4 py-8 ${className ?? ""}`}>{children}</div>;
 }
 
 // ─── Page Header ───
@@ -51,9 +47,7 @@ export function PageHeader({ icon: Icon, title, description, count, actions }: P
                         </Badge>
                     )}
                 </div>
-                {description && (
-                    <p className="text-muted-foreground mt-1 text-sm">{description}</p>
-                )}
+                {description && <p className="text-muted-foreground mt-1 text-sm">{description}</p>}
             </div>
             {actions && <div className="flex items-center gap-2">{actions}</div>}
         </div>
@@ -94,15 +88,7 @@ interface PageEmptyProps {
     error?: { message?: string } | null;
 }
 
-export function PageEmpty({
-    icon,
-    title,
-    description,
-    action,
-    variant = "none",
-    onReset,
-    error,
-}: PageEmptyProps) {
+export function PageEmpty({ icon, title, description, action, variant = "none", onReset, error }: PageEmptyProps) {
     const Icon = icon ?? defaultIcon(variant);
     const t = title ?? defaultTitle(variant);
     const d = description ?? defaultDescription(variant, error);
@@ -121,36 +107,41 @@ export function PageEmpty({
 
 function defaultIcon(variant: PageEmptyVariant): LucideIcon {
     switch (variant) {
-        case "filtered": return Filter;
-        case "error": return AlertCircle;
-        default: return FileQuestion;
+        case "filtered":
+            return Filter;
+        case "error":
+            return AlertCircle;
+        default:
+            return FileQuestion;
     }
 }
 
 function defaultTitle(variant: PageEmptyVariant): string {
     switch (variant) {
-        case "filtered": return "No results";
-        case "error": return "Something went wrong";
-        default: return "Nothing here yet";
+        case "filtered":
+            return "No results";
+        case "error":
+            return "Something went wrong";
+        default:
+            return "Nothing here yet";
     }
 }
 
 function defaultDescription(variant: PageEmptyVariant, error?: { message?: string } | null): string {
     switch (variant) {
-        case "filtered": return "No items match the current filters. Try clearing them to see everything.";
-        case "error": return error?.message ?? "We couldn't load this. Try again in a moment.";
-        default: return "";
+        case "filtered":
+            return "No items match the current filters. Try clearing them to see everything.";
+        case "error":
+            return error?.message ?? "We couldn't load this. Try again in a moment.";
+        default:
+            return "";
     }
 }
 
 function defaultAction(variant: PageEmptyVariant, onReset?: () => void): ReactNode {
     if (variant === "filtered" && onReset) {
         return (
-            <button
-                type="button"
-                onClick={onReset}
-                className="text-sm underline underline-offset-2 hover:opacity-80"
-            >
+            <button type="button" onClick={onReset} className="text-sm underline underline-offset-2 hover:opacity-80">
                 Clear filters
             </button>
         );

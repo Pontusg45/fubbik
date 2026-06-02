@@ -2,16 +2,7 @@ import { useCallback } from "react";
 
 import { useLocalStorage } from "@/hooks/use-local-storage";
 
-export type CommandGroup =
-    | "Recent"
-    | "Pages"
-    | "Tags"
-    | "Chunks"
-    | "Requirements"
-    | "Plans"
-    | "Spaces"
-    | "Actions"
-    | "All Spaces";
+export type CommandGroup = "Recent" | "Pages" | "Tags" | "Chunks" | "Requirements" | "Plans" | "Spaces" | "Actions" | "All Spaces";
 
 export interface CommandItem {
     id: string;
@@ -35,8 +26,8 @@ export function useRecentPages() {
 
     const trackPage = useCallback(
         (path: string, title: string) => {
-            setPages((prev) => {
-                const filtered = prev.filter((p) => p.path !== path);
+            setPages(prev => {
+                const filtered = prev.filter(p => p.path !== path);
                 return [{ path, title, timestamp: Date.now() }, ...filtered].slice(0, MAX_RECENT_PAGES);
             });
         },

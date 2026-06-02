@@ -1,6 +1,5 @@
-import { encodingForModel } from "js-tiktoken";
-
 import { chunk as chunkTable } from "@fubbik/db/schema/chunk";
+import { encodingForModel } from "js-tiktoken";
 
 import { computeHealthScore } from "../chunks/health-score";
 
@@ -79,10 +78,7 @@ export interface ScoredChunkWithCommunity extends ScoredChunk {
     communityId?: string;
 }
 
-export function budgetChunksWithCoverage<T extends ScoredChunkWithCommunity>(
-    chunks: T[],
-    maxTokens: number
-): T[] {
+export function budgetChunksWithCoverage<T extends ScoredChunkWithCommunity>(chunks: T[], maxTokens: number): T[] {
     const sorted = [...chunks].sort((a, b) => b.score - a.score);
     const selected: T[] = [];
     let usedTokens = estimateTokens("# Project Context\n\n");

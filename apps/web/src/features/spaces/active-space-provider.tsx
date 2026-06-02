@@ -15,7 +15,7 @@ export const ActiveSpaceContext = createContext<ActiveSpaceContextValue>({
     spaceId: null,
     workspaceId: null,
     setSpaceId: () => {},
-    setWorkspaceId: () => {},
+    setWorkspaceId: () => {}
 });
 
 export function ActiveSpaceProvider({ children }: { children: ReactNode }) {
@@ -25,9 +25,7 @@ export function ActiveSpaceProvider({ children }: { children: ReactNode }) {
     useEffect(() => {
         const savedWorkspace = localStorage.getItem(STORAGE_KEY_WORKSPACE);
         // Prefer new key, fall back to legacy "active-codebase" key, then migrate
-        const savedSpace =
-            localStorage.getItem(STORAGE_KEY_SPACE) ??
-            localStorage.getItem(STORAGE_KEY_SPACE_LEGACY);
+        const savedSpace = localStorage.getItem(STORAGE_KEY_SPACE) ?? localStorage.getItem(STORAGE_KEY_SPACE_LEGACY);
         if (savedWorkspace) {
             setWorkspaceIdRaw(savedWorkspace);
         } else if (savedSpace) {
@@ -63,8 +61,6 @@ export function ActiveSpaceProvider({ children }: { children: ReactNode }) {
     }, []);
 
     return (
-        <ActiveSpaceContext.Provider value={{ spaceId, workspaceId, setSpaceId, setWorkspaceId }}>
-            {children}
-        </ActiveSpaceContext.Provider>
+        <ActiveSpaceContext.Provider value={{ spaceId, workspaceId, setSpaceId, setWorkspaceId }}>{children}</ActiveSpaceContext.Provider>
     );
 }

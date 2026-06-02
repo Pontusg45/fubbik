@@ -70,9 +70,7 @@ export function inferConnections(chunks: DiscoveredChunk[]): DiscoveredConnectio
     }
 
     // Rule 2: part_of — tier-2 tech-stack chunks → "Project Structure (Monorepo)"
-    const monorepoStructure = chunks.find(
-        c => c.tier === 2 && c.category === "structure" && c.title.includes("Monorepo"),
-    );
+    const monorepoStructure = chunks.find(c => c.tier === 2 && c.category === "structure" && c.title.includes("Monorepo"));
     if (monorepoStructure) {
         for (const chunk of tier2) {
             if (chunk.category === "tech-stack") {

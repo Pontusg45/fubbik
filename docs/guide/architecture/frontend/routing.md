@@ -1,9 +1,9 @@
 ---
 tags:
-  - guide
-  - architecture
-  - frontend
-  - routing
+    - guide
+    - architecture
+    - frontend
+    - routing
 description: File-based routing and React Query data fetching
 ---
 
@@ -24,8 +24,8 @@ API calls use Eden treaty for type-safe requests:
 
 ```typescript
 const { data } = useQuery({
-  queryKey: ["chunks", filters],
-  queryFn: () => api.chunks.index.get({ query: filters })
+    queryKey: ["chunks", filters],
+    queryFn: () => api.chunks.index.get({ query: filters })
 });
 ```
 

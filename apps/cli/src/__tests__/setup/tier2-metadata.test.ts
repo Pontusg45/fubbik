@@ -1,6 +1,6 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
@@ -24,13 +24,13 @@ describe("scanMetadata", () => {
                 name: "my-app",
                 dependencies: {
                     react: "^18.0.0",
-                    next: "^14.0.0",
+                    next: "^14.0.0"
                 },
                 devDependencies: {
                     vitest: "^1.0.0",
-                    typescript: "^5.0.0",
-                },
-            }),
+                    typescript: "^5.0.0"
+                }
+            })
         );
 
         const { chunks } = scanMetadata(tempDir);
@@ -48,20 +48,14 @@ describe("scanMetadata", () => {
         // Create workspace package directories
         mkdirSync(join(tempDir, "apps", "web"), { recursive: true });
         mkdirSync(join(tempDir, "packages", "shared"), { recursive: true });
-        writeFileSync(
-            join(tempDir, "apps", "web", "package.json"),
-            JSON.stringify({ name: "@acme/web" }),
-        );
-        writeFileSync(
-            join(tempDir, "packages", "shared", "package.json"),
-            JSON.stringify({ name: "@acme/shared" }),
-        );
+        writeFileSync(join(tempDir, "apps", "web", "package.json"), JSON.stringify({ name: "@acme/web" }));
+        writeFileSync(join(tempDir, "packages", "shared", "package.json"), JSON.stringify({ name: "@acme/shared" }));
         writeFileSync(
             join(tempDir, "package.json"),
             JSON.stringify({
                 name: "my-monorepo",
-                workspaces: ["apps/*", "packages/*"],
-            }),
+                workspaces: ["apps/*", "packages/*"]
+            })
         );
 
         const { chunks } = scanMetadata(tempDir);
@@ -79,10 +73,10 @@ describe("scanMetadata", () => {
                     strict: true,
                     target: "ES2022",
                     paths: {
-                        "@/*": ["./src/*"],
-                    },
-                },
-            }),
+                        "@/*": ["./src/*"]
+                    }
+                }
+            })
         );
 
         const { chunks } = scanMetadata(tempDir);
@@ -96,19 +90,12 @@ describe("scanMetadata", () => {
     it("extracts env vars from .env.example (never .env)", () => {
         writeFileSync(
             join(tempDir, ".env.example"),
-            [
-                "DATABASE_URL=postgres://localhost/mydb",
-                "API_KEY=your-api-key-here",
-                "PORT=3000",
-            ].join("\n"),
+            ["DATABASE_URL=postgres://localhost/mydb", "API_KEY=your-api-key-here", "PORT=3000"].join("\n")
         );
         // Write .env with secrets — must NOT be read
         writeFileSync(
             join(tempDir, ".env"),
-            [
-                "DATABASE_URL=postgres://user:secret@prod-host/db",
-                "API_KEY=actual-secret-key-12345",
-            ].join("\n"),
+            ["DATABASE_URL=postgres://user:secret@prod-host/db", "API_KEY=actual-secret-key-12345"].join("\n")
         );
 
         const { chunks } = scanMetadata(tempDir);
@@ -137,8 +124,8 @@ describe("scanMetadata", () => {
                 "  test:",
                 "    runs-on: ubuntu-latest",
                 "    steps:",
-                "      - uses: actions/checkout@v3",
-            ].join("\n"),
+                "      - uses: actions/checkout@v3"
+            ].join("\n")
         );
 
         const { chunks } = scanMetadata(tempDir);

@@ -1,3 +1,4 @@
+import { DatabaseError } from "@fubbik/db/errors";
 import {
     createFeature as createFeatureRepo,
     deleteFeature as deleteFeatureRepo,
@@ -20,14 +21,11 @@ import {
     upsertDelta as upsertDeltaRepo,
     deleteDelta as deleteDeltaRepo
 } from "@fubbik/db/repository";
-import {
-    getChunkById
-} from "@fubbik/db/repository";
+import { getChunkById } from "@fubbik/db/repository";
 import { Effect } from "effect";
 
-import { DatabaseError } from "@fubbik/db/errors";
-import { NotFoundError, ValidationError } from "../errors";
 import { enrichChunk } from "../enrich/service";
+import { NotFoundError, ValidationError } from "../errors";
 import { logger } from "../logger";
 
 const DELTA_ALLOWED_FIELDS = new Set(["title", "content", "type", "rationale", "alternatives", "consequences", "summary"]);
@@ -35,7 +33,11 @@ const DELTA_ALLOWED_FIELDS = new Set(["title", "content", "type", "rationale", "
 function validateDelta(delta: Record<string, unknown>): Effect.Effect<Record<string, unknown>, ValidationError> {
     const invalid = Object.keys(delta).filter(k => !DELTA_ALLOWED_FIELDS.has(k));
     if (invalid.length > 0) {
-        return Effect.fail(new ValidationError({ message: `Invalid delta fields: ${invalid.join(", ")}. Allowed: ${[...DELTA_ALLOWED_FIELDS].join(", ")}` }));
+        return Effect.fail(
+            new ValidationError({
+                message: `Invalid delta fields: ${invalid.join(", ")}. Allowed: ${[...DELTA_ALLOWED_FIELDS].join(", ")}`
+            })
+        );
     }
     if (Object.keys(delta).length === 0) {
         return Effect.fail(new ValidationError({ message: "Delta must contain at least one field" }));
@@ -43,13 +45,16 @@ function validateDelta(delta: Record<string, unknown>): Effect.Effect<Record<str
     return Effect.succeed(delta);
 }
 
-export function createFeature(userId: string, body: {
-    name: string;
-    description?: string;
-    priority?: number;
-    color?: string;
-    spaceIds?: string[];
-}) {
+export function createFeature(
+    userId: string,
+    body: {
+        name: string;
+        description?: string;
+        priority?: number;
+        color?: string;
+        spaceIds?: string[];
+    }
+) {
     const id = crypto.randomUUID();
     return (body.priority !== undefined ? Effect.succeed(body.priority) : getMaxPriority(userId).pipe(Effect.map(max => max + 1))).pipe(
         Effect.flatMap(priority =>
@@ -81,23 +86,28 @@ export function listFeatures(userId: string, filters?: { spaceId?: string; statu
     return listFeaturesRepo(userId, filters ? { codebaseId: filters.spaceId, status: filters.status, search: filters.search } : undefined);
 }
 
-export function updateFeature(featureId: string, userId: string, body: {
-    name?: string;
-    description?: string | null;
-    priority?: number;
-    status?: string;
-    color?: string | null;
-    spaceIds?: string[];
-}) {
-    const guard = body.name !== undefined
-        ? featureNameConflict(featureId, userId, body.name).pipe(
-            Effect.flatMap(conflict =>
-                conflict
-                    ? Effect.fail(new ValidationError({ message: `Feature "${body.name}" already exists` }))
-                    : Effect.succeed(undefined)
-            )
-        )
-        : Effect.succeed(undefined);
+export function updateFeature(
+    featureId: string,
+    userId: string,
+    body: {
+        name?: string;
+        description?: string | null;
+        priority?: number;
+        status?: string;
+        color?: string | null;
+        spaceIds?: string[];
+    }
+) {
+    const guard =
+        body.name !== undefined
+            ? featureNameConflict(featureId, userId, body.name).pipe(
+                  Effect.flatMap(conflict =>
+                      conflict
+                          ? Effect.fail(new ValidationError({ message: `Feature "${body.name}" already exists` }))
+                          : Effect.succeed(undefined)
+                  )
+              )
+            : Effect.succeed(undefined);
 
     const { spaceIds, ...repoBody } = body;
 
@@ -133,9 +143,7 @@ export function reorderFeature(featureId: string, userId: string, newPriority: n
 }
 
 export function getActiveFeatures(userId: string) {
-    return getActiveFeatureIdsRepo(userId).pipe(
-        Effect.map(rows => rows.map(r => r.featureId))
-    );
+    return getActiveFeatureIdsRepo(userId).pipe(Effect.map(rows => rows.map(r => r.featureId)));
 }
 
 export function setActiveFeatures(userId: string, featureIds: string[]) {
@@ -197,10 +205,14 @@ export function mergeFeature(featureId: string, userId: string) {
             }
 
             // Atomic merge: version snapshots + delta application + cleanup in one transaction
-            return mergeFeatureDeltas(featureId, userId, deltas.map(d => ({
-                chunkId: d.chunkId,
-                delta: d.delta
-            }))).pipe(
+            return mergeFeatureDeltas(
+                featureId,
+                userId,
+                deltas.map(d => ({
+                    chunkId: d.chunkId,
+                    delta: d.delta
+                }))
+            ).pipe(
                 Effect.tap(affectedChunkIds => {
                     // Fire-and-forget re-enrichment for affected chunks
                     for (const chunkId of affectedChunkIds) {

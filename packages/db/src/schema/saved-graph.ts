@@ -13,10 +13,7 @@ export const savedGraph = pgTable(
         // Which chunks to include
         chunkIds: jsonb("chunk_ids").$type<string[]>().notNull().default([]),
         // Node positions: { [chunkId]: { x: number, y: number } }
-        positions: jsonb("positions")
-            .$type<Record<string, { x: number; y: number }>>()
-            .notNull()
-            .default({}),
+        positions: jsonb("positions").$type<Record<string, { x: number; y: number }>>().notNull().default({}),
         // Layout settings
         layoutAlgorithm: text("layout_algorithm").notNull().default("force"),
         // Ownership

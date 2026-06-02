@@ -1,5 +1,6 @@
 import { relations } from "drizzle-orm";
 import { index, pgTable, text } from "drizzle-orm/pg-core";
+
 import { chunk } from "./chunk";
 
 export const chunkFileRef = pgTable(
@@ -13,10 +14,7 @@ export const chunkFileRef = pgTable(
         anchor: text("anchor"),
         relation: text("relation").notNull().default("documents")
     },
-    table => [
-        index("chunk_file_ref_chunkId_idx").on(table.chunkId),
-        index("chunk_file_ref_path_idx").on(table.path)
-    ]
+    table => [index("chunk_file_ref_chunkId_idx").on(table.chunkId), index("chunk_file_ref_path_idx").on(table.path)]
 );
 
 export const chunkFileRefRelations = relations(chunkFileRef, ({ one }) => ({

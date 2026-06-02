@@ -1,5 +1,5 @@
-import { memo } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
+import { memo } from "react";
 
 export interface ChunkCardData {
     title: string;
@@ -28,7 +28,7 @@ function ChunkCardComponent({ data }: NodeProps) {
                 borderWidth: isFocus ? "2px" : "1px",
                 borderColor: isFocus ? "#3b82f6" : "#334155",
                 padding: isFocus ? "10px 14px" : "7px 11px",
-                boxShadow: isFocus ? "0 0 24px rgba(59,130,246,0.25)" : "none",
+                boxShadow: isFocus ? "0 0 24px rgba(59,130,246,0.25)" : "none"
             }}
         >
             <Handle type="source" position={Position.Top} className="!invisible" />
@@ -49,7 +49,11 @@ function ChunkCardComponent({ data }: NodeProps) {
             {isFocus && tags.length > 0 && (
                 <div className="mt-1.5 flex flex-wrap gap-1">
                     {tags.slice(0, 3).map(tag => (
-                        <span key={tag.name} className="rounded-[3px] px-1 py-px text-[7px]" style={{ background: `${tag.color}20`, color: tag.color }}>
+                        <span
+                            key={tag.name}
+                            className="rounded-[3px] px-1 py-px text-[7px]"
+                            style={{ background: `${tag.color}20`, color: tag.color }}
+                        >
                             {tag.name}
                         </span>
                     ))}

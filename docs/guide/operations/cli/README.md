@@ -1,7 +1,7 @@
 ---
 tags:
-  - guide
-  - cli
+    - guide
+    - cli
 description: CLI section index — chunk management, context, plans, codebases, and documents
 ---
 

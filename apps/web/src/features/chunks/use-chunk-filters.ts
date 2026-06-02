@@ -1,4 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
+
 import { Route } from "@/routes/chunks.index";
 
 export type ChunkSearchParams = {
@@ -21,7 +22,23 @@ export type ChunkSearchParams = {
 
 export function useChunkFilters() {
     const navigate = useNavigate({ from: "/chunks/" });
-    const { type, q, sort, tags, size, after, enrichment, minConnections, group, subGroup, collection, view, origin, reviewStatus, allSpaces } = Route.useSearch();
+    const {
+        type,
+        q,
+        sort,
+        tags,
+        size,
+        after,
+        enrichment,
+        minConnections,
+        group,
+        subGroup,
+        collection,
+        view,
+        origin,
+        reviewStatus,
+        allSpaces
+    } = Route.useSearch();
 
     const activeTags = tags ? tags.split(",") : [];
     const activeFilterCount = [tags, size, after, enrichment, minConnections, origin, reviewStatus].filter(Boolean).length;
@@ -102,6 +119,6 @@ export function useChunkFilters() {
         // Actions
         updateSearch,
         clearAllFilters,
-        toggleTag,
+        toggleTag
     };
 }

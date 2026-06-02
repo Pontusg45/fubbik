@@ -23,14 +23,9 @@ async function getStagedFiles(): Promise<string[]> {
         .filter(Boolean);
 }
 
-async function lookupFileRefs(
-    serverUrl: string,
-    file: string
-): Promise<{ id: string; title: string; type: string }[]> {
+async function lookupFileRefs(serverUrl: string, file: string): Promise<{ id: string; title: string; type: string }[]> {
     try {
-        const res = await fetch(
-            `${serverUrl}/api/file-refs/lookup?path=${encodeURIComponent(file)}`
-        );
+        const res = await fetch(`${serverUrl}/api/file-refs/lookup?path=${encodeURIComponent(file)}`);
         if (!res.ok) return [];
         return (await res.json()) as { id: string; title: string; type: string }[];
     } catch {
@@ -38,10 +33,7 @@ async function lookupFileRefs(
     }
 }
 
-async function getChunkAppliesTo(
-    serverUrl: string,
-    chunkId: string
-): Promise<string[]> {
+async function getChunkAppliesTo(serverUrl: string, chunkId: string): Promise<string[]> {
     try {
         const res = await fetch(`${serverUrl}/api/chunks/${chunkId}/applies-to`);
         if (!res.ok) return [];
@@ -54,9 +46,7 @@ async function getChunkAppliesTo(
     }
 }
 
-async function getAllChunks(
-    serverUrl: string
-): Promise<{ id: string; title: string; type: string }[]> {
+async function getAllChunks(serverUrl: string): Promise<{ id: string; title: string; type: string }[]> {
     try {
         const res = await fetch(`${serverUrl}/api/chunks?limit=1000`);
         if (!res.ok) return [];
@@ -76,102 +66,89 @@ export const checkFilesCommand = new Command("check-files")
     .argument("[files...]", "files to check")
     .option("--staged", "check git staged files")
     .option("--json", "output as JSON")
-    .action(
-        async (
-            files: string[],
-            opts: { staged?: boolean; json?: boolean },
-            cmd: Command
-        ) => {
-            let serverUrl: string | undefined;
-            try {
-                serverUrl = getServerUrl();
-            } catch {
-                // No store or no server URL — silently exit (important for hook context)
-                return;
-            }
+    .action(async (files: string[], opts: { staged?: boolean; json?: boolean }, cmd: Command) => {
+        let serverUrl: string | undefined;
+        try {
+            serverUrl = getServerUrl();
+        } catch {
+            // No store or no server URL — silently exit (important for hook context)
+            return;
+        }
 
-            if (!serverUrl) return;
+        if (!serverUrl) return;
 
-            const filesToCheck =
-                opts.staged || files.length === 0
-                    ? await getStagedFiles()
-                    : files;
+        const filesToCheck = opts.staged || files.length === 0 ? await getStagedFiles() : files;
 
-            if (filesToCheck.length === 0) return;
+        if (filesToCheck.length === 0) return;
 
-            const matched = new Map<string, MatchedChunk>();
+        const matched = new Map<string, MatchedChunk>();
 
-            // 1. Check file-refs for each file
-            for (const file of filesToCheck) {
-                const refs = await lookupFileRefs(serverUrl, file);
-                for (const ref of refs) {
-                    const existing = matched.get(ref.id);
-                    if (existing) {
-                        if (!existing.matchedFiles.includes(file)) {
-                            existing.matchedFiles.push(file);
-                        }
-                    } else {
-                        matched.set(ref.id, {
-                            id: ref.id,
-                            title: ref.title,
-                            type: ref.type,
-                            matchedFiles: [file],
-                            matchReason: "file-ref",
-                        });
+        // 1. Check file-refs for each file
+        for (const file of filesToCheck) {
+            const refs = await lookupFileRefs(serverUrl, file);
+            for (const ref of refs) {
+                const existing = matched.get(ref.id);
+                if (existing) {
+                    if (!existing.matchedFiles.includes(file)) {
+                        existing.matchedFiles.push(file);
                     }
-                }
-            }
-
-            // 2. Check applies-to glob patterns
-            const allChunks = await getAllChunks(serverUrl);
-            for (const chunk of allChunks) {
-                if (matched.has(chunk.id)) continue;
-                const patterns = await getChunkAppliesTo(serverUrl, chunk.id);
-                if (patterns.length === 0) continue;
-
-                const matchingFiles: string[] = [];
-                for (const file of filesToCheck) {
-                    for (const pattern of patterns) {
-                        if (globMatch(pattern, file)) {
-                            matchingFiles.push(file);
-                            break;
-                        }
-                    }
-                }
-
-                if (matchingFiles.length > 0) {
-                    matched.set(chunk.id, {
-                        id: chunk.id,
-                        title: chunk.title,
-                        type: chunk.type,
-                        matchedFiles: matchingFiles,
-                        matchReason: "applies-to",
+                } else {
+                    matched.set(ref.id, {
+                        id: ref.id,
+                        title: ref.title,
+                        type: ref.type,
+                        matchedFiles: [file],
+                        matchReason: "file-ref"
                     });
                 }
             }
+        }
 
-            if (matched.size === 0) return;
+        // 2. Check applies-to glob patterns
+        const allChunks = await getAllChunks(serverUrl);
+        for (const chunk of allChunks) {
+            if (matched.has(chunk.id)) continue;
+            const patterns = await getChunkAppliesTo(serverUrl, chunk.id);
+            if (patterns.length === 0) continue;
 
-            const results = Array.from(matched.values());
-
-            if (opts.json || isJson(cmd)) {
-                console.log(JSON.stringify(results, null, 2));
-                return;
+            const matchingFiles: string[] = [];
+            for (const file of filesToCheck) {
+                for (const pattern of patterns) {
+                    if (globMatch(pattern, file)) {
+                        matchingFiles.push(file);
+                        break;
+                    }
+                }
             }
 
-            // Print grouped warnings to stderr
-            console.error(
-                formatBold(
-                    `\n  ${matched.size} chunk(s) related to your changes:\n`
-                )
-            );
-            for (const chunk of results) {
-                const typeStr = chunk.type ? ` ${formatType(chunk.type)}` : "";
-                console.error(`  ${formatBold(chunk.title)}${typeStr}`);
-                for (const file of chunk.matchedFiles) {
-                    console.error(`    ${formatDim(file)}`);
-                }
-                console.error("");
+            if (matchingFiles.length > 0) {
+                matched.set(chunk.id, {
+                    id: chunk.id,
+                    title: chunk.title,
+                    type: chunk.type,
+                    matchedFiles: matchingFiles,
+                    matchReason: "applies-to"
+                });
             }
         }
-    );
+
+        if (matched.size === 0) return;
+
+        const results = Array.from(matched.values());
+
+        if (opts.json || isJson(cmd)) {
+            console.log(JSON.stringify(results, null, 2));
+            return;
+        }
+
+        // Print grouped warnings to stderr
+        console.error(formatBold(`\n  ${matched.size} chunk(s) related to your changes:\n`));
+        for (const chunk of results) {
+            const typeStr = chunk.type ? ` ${formatType(chunk.type)}` : "";
+            console.error(`  ${formatBold(chunk.title)}${typeStr}`);
+            for (const file of chunk.matchedFiles) {
+                console.error(`    ${formatDim(file)}`);
+            }
+            console.error("");
+        }
+    });

@@ -1,10 +1,14 @@
 # Requirements Feature Redesign — Implementation Plan
 
-> **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to
+> implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Redesign the requirements feature with a card+sidebar list page, inline edit mode on the detail page, a coverage matrix page, and bulk operations.
+**Goal:** Redesign the requirements feature with a card+sidebar list page, inline edit mode on the detail page, a coverage matrix page, and
+bulk operations.
 
-**Architecture:** Extract shared components (StepBuilder, ChunkLinker, validation) from the create page. Add backend support for search, bulk operations, and coverage matrix data. Rebuild the list page with sidebar filters and cards. Add inline edit toggle to the detail page. Create a new coverage matrix route.
+**Architecture:** Extract shared components (StepBuilder, ChunkLinker, validation) from the create page. Add backend support for search,
+bulk operations, and coverage matrix data. Rebuild the list page with sidebar filters and cards. Add inline edit toggle to the detail page.
+Create a new coverage matrix route.
 
 **Tech Stack:** TanStack Start, React Query, shadcn-ui (Select, Checkbox), Elysia, Drizzle ORM, Effect, Tailwind CSS
 
@@ -15,6 +19,7 @@
 Extract the step validation function from the create page into a shared module so both create and detail pages can use it.
 
 **Files:**
+
 - Create: `apps/web/src/features/requirements/validation.ts`
 - Modify: `apps/web/src/routes/requirements_.new.tsx` (remove inline `validateSteps`)
 
@@ -85,6 +90,7 @@ export function validateSteps(steps: StepRow[]): StepError[] {
 - [ ] **Step 2: Update the create page to import from the shared module**
 
 In `apps/web/src/routes/requirements_.new.tsx`:
+
 - Remove the `Keyword`, `StepRow`, `StepError` type definitions (lines 29-40)
 - Remove the `validateSteps` function (lines 93-138)
 - Add import: `import { validateSteps, type Keyword, type StepRow, type StepError } from "@/features/requirements/validation";`
@@ -92,8 +98,7 @@ In `apps/web/src/routes/requirements_.new.tsx`:
 
 - [ ] **Step 3: Verify the create page still works**
 
-Run: `pnpm run check-types`
-Expected: No type errors
+Run: `pnpm run check-types` Expected: No type errors
 
 - [ ] **Step 4: Commit**
 
@@ -109,12 +114,14 @@ git commit -m "refactor: extract requirement validation into shared module"
 Extract the step builder UI (keyword selector, text input, vocab parsing, add word form) from the create page into a reusable component.
 
 **Files:**
+
 - Create: `apps/web/src/features/requirements/step-builder.tsx`
 - Modify: `apps/web/src/routes/requirements_.new.tsx` (replace inline step builder with component)
 
 - [ ] **Step 1: Create the StepBuilder component**
 
 The component should accept these props:
+
 ```typescript
 interface StepBuilderProps {
     steps: StepRow[];
@@ -125,6 +132,7 @@ interface StepBuilderProps {
 ```
 
 Extract from `requirements_.new.tsx`:
+
 - The `ParsedToken`, `VocabularyWarning`, `ParseResult` interfaces (lines 42-58)
 - The `KEYWORDS` constant (line 60)
 - The `VOCAB_CATEGORIES`, `EXPECTS_OPTIONS` constants (lines 61-62)
@@ -140,21 +148,16 @@ The component manages its own parse results and add-word state internally. Paren
 - [ ] **Step 2: Update the create page to use StepBuilder**
 
 Replace the inline step builder section in `requirements_.new.tsx` with:
+
 ```tsx
-<StepBuilder
-    steps={steps}
-    onStepsChange={setSteps}
-    codebaseId={codebaseId}
-    stepErrors={stepErrors}
-/>
+<StepBuilder steps={steps} onStepsChange={setSteps} codebaseId={codebaseId} stepErrors={stepErrors} />
 ```
 
 Remove all the extracted state, callbacks, and JSX from the create page.
 
 - [ ] **Step 3: Verify types and functionality**
 
-Run: `pnpm run check-types`
-Expected: No type errors
+Run: `pnpm run check-types` Expected: No type errors
 
 - [ ] **Step 4: Commit**
 
@@ -170,6 +173,7 @@ git commit -m "refactor: extract StepBuilder into shared component"
 Extract the chunk search-and-select UI from the create page into a reusable component.
 
 **Files:**
+
 - Create: `apps/web/src/features/requirements/chunk-linker.tsx`
 - Modify: `apps/web/src/routes/requirements_.new.tsx` (replace inline chunk linker with component)
 
@@ -184,6 +188,7 @@ interface ChunkLinkerProps {
 ```
 
 Extract from `requirements_.new.tsx`:
+
 - The `chunksQuery` (lines 274-288)
 - The `chunkSearch` state (line 155)
 - The filtering logic (lines 291-295)
@@ -194,18 +199,14 @@ The component manages its own search state and chunks query internally.
 - [ ] **Step 2: Update the create page to use ChunkLinker**
 
 Replace the chunk linking section with:
+
 ```tsx
-<ChunkLinker
-    selectedChunkIds={selectedChunkIds}
-    onSelectedChunkIdsChange={setSelectedChunkIds}
-    codebaseId={codebaseId}
-/>
+<ChunkLinker selectedChunkIds={selectedChunkIds} onSelectedChunkIdsChange={setSelectedChunkIds} codebaseId={codebaseId} />
 ```
 
 - [ ] **Step 3: Verify types**
 
-Run: `pnpm run check-types`
-Expected: No type errors
+Run: `pnpm run check-types` Expected: No type errors
 
 - [ ] **Step 4: Commit**
 
@@ -221,6 +222,7 @@ git commit -m "refactor: extract ChunkLinker into shared component"
 Add text search to the repository and wire `useCaseId` (already in repo) + `search` through the service and route layers.
 
 **Files:**
+
 - Modify: `packages/db/src/repository/requirement.ts` (add `search` to `ListRequirementsParams` and ILIKE condition)
 - Modify: `packages/api/src/requirements/service.ts` (add `search` and `useCaseId` to query type)
 - Modify: `packages/api/src/requirements/routes.ts` (add `search` and `useCaseId` to query schema)
@@ -230,6 +232,7 @@ Add text search to the repository and wire `useCaseId` (already in repo) + `sear
 In `packages/db/src/repository/requirement.ts`:
 
 Update the existing import to add `ilike` and `or`:
+
 ```typescript
 import { and, eq, ilike, or, sql } from "drizzle-orm";
 ```
@@ -237,21 +240,18 @@ import { and, eq, ilike, or, sql } from "drizzle-orm";
 Add `search?: string` to `ListRequirementsParams` (after the existing `reviewStatus` field).
 
 Add to the conditions array inside `listRequirements`, after the existing filter conditions:
+
 ```typescript
 if (params.search) {
     const pattern = `%${params.search}%`;
-    conditions.push(
-        or(
-            ilike(requirement.title, pattern),
-            ilike(requirement.description, pattern)
-        )!
-    );
+    conditions.push(or(ilike(requirement.title, pattern), ilike(requirement.description, pattern))!);
 }
 ```
 
 - [ ] **Step 2: Update the service query type and pass through new fields**
 
 In `packages/api/src/requirements/service.ts`, update the `listRequirements` function's query type:
+
 ```typescript
 export function listRequirements(
     userId: string,
@@ -288,6 +288,7 @@ export function listRequirements(
 - [ ] **Step 3: Add query params to the route schema**
 
 In `packages/api/src/requirements/routes.ts`, update the list endpoint query schema (line 88-96):
+
 ```typescript
 query: t.Object({
     codebaseId: t.Optional(t.String()),
@@ -299,13 +300,12 @@ query: t.Object({
     reviewStatus: t.Optional(t.Union([t.Literal("draft"), t.Literal("reviewed"), t.Literal("approved")])),
     limit: t.Optional(t.String()),
     offset: t.Optional(t.String())
-})
+});
 ```
 
 - [ ] **Step 4: Verify types**
 
-Run: `pnpm run check-types`
-Expected: No type errors
+Run: `pnpm run check-types` Expected: No type errors
 
 - [ ] **Step 5: Commit**
 
@@ -321,6 +321,7 @@ git commit -m "feat: add search and useCaseId filtering to requirements list API
 Add a bulk endpoint for status changes, use case assignment, and deletion.
 
 **Files:**
+
 - Modify: `packages/db/src/repository/requirement.ts` (add `bulkUpdateStatus`, `bulkSetUseCase`, `bulkDelete`)
 - Modify: `packages/api/src/requirements/service.ts` (add `bulkAction`)
 - Modify: `packages/api/src/requirements/routes.ts` (add `PATCH /requirements/bulk`)
@@ -330,6 +331,7 @@ Add a bulk endpoint for status changes, use case assignment, and deletion.
 In `packages/db/src/repository/requirement.ts`:
 
 Update the existing drizzle-orm import to also include `inArray`:
+
 ```typescript
 import { and, eq, ilike, inArray, or, sql } from "drizzle-orm";
 ```
@@ -337,11 +339,7 @@ import { and, eq, ilike, inArray, or, sql } from "drizzle-orm";
 Then add two new functions at the end of the file:
 
 ```typescript
-export function bulkUpdateRequirements(
-    ids: string[],
-    userId: string,
-    params: { status?: string; useCaseId?: string | null }
-) {
+export function bulkUpdateRequirements(ids: string[], userId: string, params: { status?: string; useCaseId?: string | null }) {
     return Effect.tryPromise({
         try: async () => {
             const setClause: Record<string, unknown> = {};
@@ -363,9 +361,7 @@ export function bulkUpdateRequirements(
 export function bulkDeleteRequirements(ids: string[], userId: string) {
     return Effect.tryPromise({
         try: async () => {
-            const result = await db
-                .delete(requirement)
-                .where(and(inArray(requirement.id, ids), eq(requirement.userId, userId)));
+            const result = await db.delete(requirement).where(and(inArray(requirement.id, ids), eq(requirement.userId, userId)));
             return result.rowCount ?? 0;
         },
         catch: cause => new DatabaseError({ cause })
@@ -406,7 +402,8 @@ export function bulkAction(
 
 - [ ] **Step 3: Add the bulk route**
 
-In `packages/api/src/requirements/routes.ts`, chain a new `.patch()` call after the stats endpoint's closing `)` and before the export endpoint's `.get()`. This must come before the `/:id` routes so Elysia doesn't match `"bulk"` as an `:id` param:
+In `packages/api/src/requirements/routes.ts`, chain a new `.patch()` call after the stats endpoint's closing `)` and before the export
+endpoint's `.get()`. This must come before the `/:id` routes so Elysia doesn't match `"bulk"` as an `:id` param:
 
 ```typescript
 // Bulk operations (chain after stats endpoint, before list/export)
@@ -440,8 +437,7 @@ Verify `packages/db/src/repository/index.ts` re-exports from `./requirement` (it
 
 - [ ] **Step 5: Verify types**
 
-Run: `pnpm run check-types`
-Expected: No type errors
+Run: `pnpm run check-types` Expected: No type errors
 
 - [ ] **Step 6: Commit**
 
@@ -457,6 +453,7 @@ git commit -m "feat: add bulk operations API for requirements"
 Add detailed requirement-chunk pair data to the coverage endpoint.
 
 **Files:**
+
 - Modify: `packages/db/src/repository/coverage.ts` (add `getChunkCoverageMatrix`)
 - Modify: `packages/api/src/coverage/service.ts` (add matrix support)
 - Modify: `packages/api/src/coverage/routes.ts` (add `detail` query param)
@@ -488,11 +485,7 @@ export function getChunkCoverageMatrix(userId: string, codebaseId?: string) {
                     .innerJoin(chunk, eq(requirementChunk.chunkId, chunk.id))
                     .innerJoin(requirement, eq(requirementChunk.requirementId, requirement.id))
                     .innerJoin(chunkCodebase, eq(chunkCodebase.chunkId, chunk.id))
-                    .where(and(
-                        eq(chunk.userId, userId),
-                        isNull(chunk.archivedAt),
-                        eq(chunkCodebase.codebaseId, codebaseId)
-                    ));
+                    .where(and(eq(chunk.userId, userId), isNull(chunk.archivedAt), eq(chunkCodebase.codebaseId, codebaseId)));
             } else {
                 pairsQuery = db
                     .select({
@@ -563,8 +556,7 @@ export const coverageRoutes = new Elysia().get(
 
 - [ ] **Step 4: Verify types**
 
-Run: `pnpm run check-types`
-Expected: No type errors
+Run: `pnpm run check-types` Expected: No type errors
 
 - [ ] **Step 5: Commit**
 
@@ -580,6 +572,7 @@ git commit -m "feat: add coverage matrix detail data to coverage API"
 Replace the current flat list with the card + sidebar layout.
 
 **Files:**
+
 - Create: `apps/web/src/features/requirements/requirement-card.tsx`
 - Create: `apps/web/src/features/requirements/sidebar-filters.tsx`
 - Create: `apps/web/src/features/requirements/bulk-actions.tsx`
@@ -638,6 +631,7 @@ export function RequirementCard({ ... }: RequirementCardProps) {
 ```
 
 Implement the full JSX following the card layout from the brainstorm mockup:
+
 - Clickable title linking to `/requirements/$requirementId`
 - Color-coded status badge
 - Condensed step preview as muted text
@@ -669,6 +663,7 @@ interface SidebarFiltersProps {
 ```
 
 Layout:
+
 - Search input at top
 - STATUS section with checkboxes (Passing, Failing, Untested)
 - PRIORITY section with checkboxes (Must, Should, Could, Won't)
@@ -696,6 +691,7 @@ interface BulkActionsProps {
 ```
 
 Renders a sticky bar at the bottom when `selectedIds.length > 0`:
+
 - "N selected" count
 - "Set Status" dropdown (passing/failing/untested) — calls `PATCH /requirements/bulk` with `action: "set_status"`
 - "Assign Use Case" dropdown — calls with `action: "set_use_case"`
@@ -708,6 +704,7 @@ Renders a sticky bar at the bottom when `selectedIds.length > 0`:
 Rewrite `apps/web/src/routes/requirements.tsx`:
 
 Structure:
+
 ```tsx
 function RequirementsPage() {
     // State
@@ -781,30 +778,40 @@ function RequirementsPage() {
 ```
 
 Move the use case CRUD from the current page into the sidebar. The `SidebarFilters` component should:
+
 - Accept `onCreateUseCase`, `onEditUseCase`, `onDeleteUseCase` callbacks
 - Show a "+" button next to the USE CASES heading that reveals an inline input for creating a new use case (name + optional description)
 - Each use case item in the list gets a hover-visible edit (pencil) and delete (trash) icon
 - Editing replaces the use case name with an inline input + save/cancel
-- All mutations (create/edit/delete use case) are handled in the parent page component and passed down as callbacks, keeping the sidebar component presentational
+- All mutations (create/edit/delete use case) are handled in the parent page component and passed down as callbacks, keeping the sidebar
+  component presentational
 - After mutation success, invalidate `["use-cases"]` and `["requirements"]` queries
 
 Add pagination controls at the bottom of the card list:
+
 ```tsx
-{data && data.total > pageSize && (
-    <div className="mt-4 flex items-center justify-between text-sm text-muted-foreground">
-        <span>Showing {page * pageSize + 1}-{Math.min((page + 1) * pageSize, data.total)} of {data.total}</span>
-        <div className="flex gap-2">
-            <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage(p => p - 1)}>Previous</Button>
-            <Button variant="outline" size="sm" disabled={(page + 1) * pageSize >= data.total} onClick={() => setPage(p => p + 1)}>Next</Button>
+{
+    data && data.total > pageSize && (
+        <div className="mt-4 flex items-center justify-between text-sm text-muted-foreground">
+            <span>
+                Showing {page * pageSize + 1}-{Math.min((page + 1) * pageSize, data.total)} of {data.total}
+            </span>
+            <div className="flex gap-2">
+                <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage(p => p - 1)}>
+                    Previous
+                </Button>
+                <Button variant="outline" size="sm" disabled={(page + 1) * pageSize >= data.total} onClick={() => setPage(p => p + 1)}>
+                    Next
+                </Button>
+            </div>
         </div>
-    </div>
-)}
+    );
+}
 ```
 
 - [ ] **Step 5: Verify types and test manually**
 
-Run: `pnpm run check-types`
-Expected: No type errors
+Run: `pnpm run check-types` Expected: No type errors
 
 Run: `pnpm dev` and navigate to `/requirements` to visually verify the new layout.
 
@@ -822,11 +829,13 @@ git commit -m "feat: redesign requirements list page with card+sidebar layout an
 Add a view/edit toggle to the requirement detail page using the shared StepBuilder and ChunkLinker components.
 
 **Files:**
+
 - Modify: `apps/web/src/routes/requirements_.$requirementId.tsx` (add edit mode)
 
 - [ ] **Step 1: Add edit mode state and mutations**
 
 At the top of the `RequirementDetail` component, add:
+
 ```typescript
 const [editing, setEditing] = useState(false);
 
@@ -841,6 +850,7 @@ const [editStepErrors, setEditStepErrors] = useState<StepError[]>([]);
 ```
 
 Add a function to enter edit mode:
+
 ```typescript
 function enterEditMode() {
     setEditTitle(title);
@@ -855,6 +865,7 @@ function enterEditMode() {
 ```
 
 Add a save mutation:
+
 ```typescript
 const updateMutation = useMutation({
     mutationFn: async () => {
@@ -896,6 +907,7 @@ import { useActiveCodebase } from "@/features/codebases/use-active-codebase";
 ```
 
 Add use case query:
+
 ```typescript
 const { codebaseId } = useActiveCodebase();
 const useCasesQuery = useQuery({
@@ -911,12 +923,11 @@ const useCasesQuery = useQuery({
 - [ ] **Step 3: Update JSX for view/edit toggle**
 
 Add an Edit button to the header (view mode):
+
 ```tsx
 <div className="mb-6 flex items-center justify-between">
     <h1 className="text-2xl font-bold tracking-tight">
-        {editing ? (
-            <Input value={editTitle} onChange={e => setEditTitle(e.target.value)} className="text-2xl font-bold" />
-        ) : title}
+        {editing ? <Input value={editTitle} onChange={e => setEditTitle(e.target.value)} className="text-2xl font-bold" /> : title}
     </h1>
     {!editing && (
         <Button variant="outline" size="sm" onClick={enterEditMode}>
@@ -927,6 +938,7 @@ Add an Edit button to the header (view mode):
 ```
 
 Replace the steps section with a conditional:
+
 ```tsx
 {editing ? (
     <>
@@ -973,8 +985,7 @@ Add `Pencil` to the lucide-react imports at the top of the file.
 
 - [ ] **Step 5: Verify types**
 
-Run: `pnpm run check-types`
-Expected: No type errors
+Run: `pnpm run check-types` Expected: No type errors
 
 - [ ] **Step 6: Commit**
 
@@ -990,6 +1001,7 @@ git commit -m "feat: add inline edit mode to requirement detail page"
 Add a new page at `/requirements/coverage` showing the chunk-requirement coverage matrix.
 
 **Files:**
+
 - Create: `apps/web/src/routes/requirements_.coverage.tsx`
 
 - [ ] **Step 1: Create the coverage matrix page**
@@ -1119,6 +1131,7 @@ function CoverageMatrix() {
 ```
 
 Build the matrix data structures from the query data:
+
 ```typescript
 // Derive unique requirements and chunks from matrix + uncovered
 const uniqueRequirements = useMemo(() => {
@@ -1165,8 +1178,7 @@ In `apps/web/src/routes/requirements.tsx`, add a "Coverage" button in the header
 
 - [ ] **Step 3: Verify types**
 
-Run: `pnpm run check-types`
-Expected: No type errors
+Run: `pnpm run check-types` Expected: No type errors
 
 - [ ] **Step 4: Commit**
 
@@ -1182,27 +1194,26 @@ git commit -m "feat: add requirement coverage matrix page"
 Wire everything together, verify the full flow, clean up unused code.
 
 **Files:**
+
 - Modify: `apps/web/src/features/nav/mobile-nav.tsx` (add coverage to nav if desired)
 - Various files for cleanup
 
 - [ ] **Step 1: Run full type check**
 
-Run: `pnpm run check-types`
-Expected: No type errors
+Run: `pnpm run check-types` Expected: No type errors
 
 - [ ] **Step 2: Run tests**
 
-Run: `pnpm test`
-Expected: All tests pass
+Run: `pnpm test` Expected: All tests pass
 
 - [ ] **Step 3: Run linting**
 
-Run: `pnpm ci`
-Expected: Clean CI run
+Run: `pnpm ci` Expected: Clean CI run
 
 - [ ] **Step 4: Manual verification checklist**
 
 Run `pnpm dev` and verify:
+
 - [ ] Requirements list page shows card+sidebar layout
 - [ ] Search works in sidebar
 - [ ] Status/priority checkbox filters work

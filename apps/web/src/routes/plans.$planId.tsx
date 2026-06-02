@@ -21,7 +21,7 @@ function PlanDetailPage() {
 
     const detailQuery = useQuery({
         queryKey: ["plan-detail", planId],
-        queryFn: async () => unwrapEden(await (api.api as any).plans[planId].get()),
+        queryFn: async () => unwrapEden(await (api.api as any).plans[planId].get())
     });
 
     // Keyboard shortcuts for the detail page:
@@ -34,7 +34,7 @@ function PlanDetailPage() {
             if (target?.tagName === "INPUT" || target?.tagName === "TEXTAREA" || target?.isContentEditable) return;
 
             if (e.key === "a" && !e.metaKey && !e.ctrlKey) {
-                const btn = document.querySelector<HTMLButtonElement>('button[data-plan-add-task]');
+                const btn = document.querySelector<HTMLButtonElement>("button[data-plan-add-task]");
                 btn?.click();
             } else if ((e.key === "d" || e.key === "D") && (e.metaKey || e.ctrlKey)) {
                 e.preventDefault();
@@ -48,7 +48,12 @@ function PlanDetailPage() {
         return () => window.removeEventListener("keydown", onKey);
     }, [navigate]);
 
-    if (detailQuery.isLoading) return <PageContainer><PageLoading /></PageContainer>;
+    if (detailQuery.isLoading)
+        return (
+            <PageContainer>
+                <PageLoading />
+            </PageContainer>
+        );
     if (!detailQuery.data) return <PageContainer>Plan not found</PageContainer>;
 
     const detail = detailQuery.data as any;
@@ -56,7 +61,9 @@ function PlanDetailPage() {
     const tasks = detail.tasks ?? [];
     const doneCount = tasks.filter((t: any) => t.status === "done").length;
 
-    const refetch = () => { void detailQuery.refetch(); };
+    const refetch = () => {
+        void detailQuery.refetch();
+    };
 
     return (
         <PageContainer>
@@ -65,7 +72,7 @@ function PlanDetailPage() {
                 taskCount={{ done: doneCount, total: tasks.length }}
                 onUpdate={refetch}
             />
-            <div className="flex gap-8 pb-12 pt-6">
+            <div className="flex gap-8 pt-6 pb-12">
                 <div className="min-w-0 flex-1 space-y-8">
                     <PlanDescriptionSection planId={plan.id} description={plan.description} onUpdate={refetch} />
                     <PlanRequirementsSection planId={plan.id} requirements={detail.requirements ?? []} onUpdate={refetch} />
@@ -74,12 +81,7 @@ function PlanDetailPage() {
                         analyze={detail.analyze ?? { chunk: [], file: [], risk: [], assumption: [], question: [] }}
                         onUpdate={refetch}
                     />
-                    <PlanTasksSection
-                        planId={plan.id}
-                        tasks={tasks}
-                        dependencies={detail.dependencies ?? []}
-                        onUpdate={refetch}
-                    />
+                    <PlanTasksSection planId={plan.id} tasks={tasks} dependencies={detail.dependencies ?? []} onUpdate={refetch} />
                 </div>
                 <PlanActivitySidebar planId={plan.id} />
             </div>

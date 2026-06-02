@@ -1,10 +1,14 @@
 # Context File Generator Implementation Plan
 
-> **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to
+> implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add `fubbik context --for <file>` CLI command that generates a focused context document with all chunks relevant to a specific file, suitable for piping into AI assistants.
+**Goal:** Add `fubbik context --for <file>` CLI command that generates a focused context document with all chunks relevant to a specific
+file, suitable for piping into AI assistants.
 
-**Architecture:** New CLI command that queries the server for chunks matching a file path via fileRef lookup + appliesTo glob matching + optional semantic search. Outputs structured markdown. Also adds a new API endpoint that aggregates these lookups server-side for efficiency.
+**Architecture:** New CLI command that queries the server for chunks matching a file path via fileRef lookup + appliesTo glob matching +
+optional semantic search. Outputs structured markdown. Also adds a new API endpoint that aggregates these lookups server-side for
+efficiency.
 
 **Tech Stack:** Commander.js, Bun, Elysia API
 
@@ -13,11 +17,13 @@
 ## File Structure
 
 ### New files:
+
 - `packages/api/src/context/routes.ts` — API endpoint for context generation
 - `packages/api/src/context/service.ts` — Service aggregating file-ref + appliesTo + semantic lookups
 - `apps/cli/src/commands/context-for.ts` — CLI command
 
 ### Files to modify:
+
 - `packages/api/src/index.ts` — Mount context routes
 - `apps/cli/src/index.ts` — Register command
 
@@ -26,6 +32,7 @@
 ## Task 1: Context API Endpoint
 
 **Files:**
+
 - Create: `packages/api/src/context/service.ts`
 - Create: `packages/api/src/context/routes.ts`
 - Modify: `packages/api/src/index.ts`
@@ -49,12 +56,7 @@ interface ContextChunk {
     matchReason: string; // "file-ref" | "applies-to" | "semantic"
 }
 
-export function getContextForFile(params: {
-    path: string;
-    userId: string;
-    codebaseId?: string;
-    format?: "markdown" | "json";
-}) {
+export function getContextForFile(params: { path: string; userId: string; codebaseId?: string; format?: "markdown" | "json" }) {
     return Effect.gen(function* () {
         const chunks: ContextChunk[] = [];
         const seenIds = new Set<string>();
@@ -74,7 +76,7 @@ export function getContextForFile(params: {
                     type: match.chunkType,
                     content: fullChunk.content,
                     summary: fullChunk.summary,
-                    matchReason: "file-ref",
+                    matchReason: "file-ref"
                 });
             }
         }
@@ -87,7 +89,7 @@ export function getContextForFile(params: {
             userId: params.userId,
             codebaseId: params.codebaseId,
             limit: 200,
-            offset: 0,
+            offset: 0
         });
 
         for (const c of allChunks.chunks) {
@@ -102,7 +104,7 @@ export function getContextForFile(params: {
                         type: c.type,
                         content: c.content,
                         summary: c.summary,
-                        matchReason: "applies-to",
+                        matchReason: "applies-to"
                     });
                     break;
                 }
@@ -124,7 +126,8 @@ function simpleGlobMatch(pattern: string, path: string): boolean {
 }
 ```
 
-**Note:** Read the actual repo function signatures first — `lookupChunksByFilePath` and `listChunksRepo` return Effect types. The above uses `Effect.gen` which should match codebase patterns. Verify the return shapes.
+**Note:** Read the actual repo function signatures first — `lookupChunksByFilePath` and `listChunksRepo` return Effect types. The above uses
+`Effect.gen` which should match codebase patterns. Verify the return shapes.
 
 - [ ] **Step 2: Create context routes**
 
@@ -135,29 +138,29 @@ import { Effect } from "effect";
 import { requireSession } from "../auth/session";
 import { getContextForFile } from "./service";
 
-export const contextForFileRoutes = new Elysia()
-    .get(
-        "/context/for-file",
-        ctx => Effect.runPromise(
+export const contextForFileRoutes = new Elysia().get(
+    "/context/for-file",
+    ctx =>
+        Effect.runPromise(
             requireSession(ctx).pipe(
                 Effect.flatMap(session =>
                     getContextForFile({
                         path: ctx.query.path,
                         userId: session.user.id,
                         codebaseId: ctx.query.codebaseId,
-                        format: (ctx.query.format as "markdown" | "json") || "markdown",
+                        format: (ctx.query.format as "markdown" | "json") || "markdown"
                     })
                 )
             )
         ),
-        {
-            query: t.Object({
-                path: t.String(),
-                codebaseId: t.Optional(t.String()),
-                format: t.Optional(t.String()),
-            }),
-        }
-    );
+    {
+        query: t.Object({
+            path: t.String(),
+            codebaseId: t.Optional(t.String()),
+            format: t.Optional(t.String())
+        })
+    }
+);
 ```
 
 - [ ] **Step 3: Mount routes**
@@ -176,6 +179,7 @@ git commit -m "feat: add /context/for-file API endpoint"
 ## Task 2: CLI context Command
 
 **Files:**
+
 - Create: `apps/cli/src/commands/context-for.ts`
 - Modify: `apps/cli/src/index.ts`
 

@@ -1,8 +1,8 @@
 import { eq } from "drizzle-orm";
 
 import { requirement, requirementChunk, type RequirementStep } from "../../schema/requirement";
-import { uuid } from "../factories";
 import type { SeedContext } from "../context";
+import { uuid } from "../factories";
 
 export async function seed(ctx: SeedContext): Promise<void> {
     const spaceId = ctx.ids.codebases["fubbik"];
@@ -23,8 +23,8 @@ export async function seed(ctx: SeedContext): Promise<void> {
             description: "A new engineer can clone, seed, and render a meaningful graph without consulting a teammate.",
             steps: [
                 { keyword: "given", text: "a fresh clone with Postgres running" },
-                { keyword: "when",  text: "the dev runs pnpm seed && pnpm dev" },
-                { keyword: "then",  text: "visiting /graph shows at least 5 chunks and 3 connections" }
+                { keyword: "when", text: "the dev runs pnpm seed && pnpm dev" },
+                { keyword: "then", text: "visiting /graph shows at least 5 chunks and 3 connections" }
             ],
             priority: "must",
             useCase: "onboarding",
@@ -33,11 +33,12 @@ export async function seed(ctx: SeedContext): Promise<void> {
         {
             name: "catalog-driven-types",
             title: "Custom chunk types land without code changes",
-            description: "A user can add a per-codebase chunk type via /settings/vocabulary and the type appears in filter/graph/legend without a deploy.",
+            description:
+                "A user can add a per-codebase chunk type via /settings/vocabulary and the type appears in filter/graph/legend without a deploy.",
             steps: [
                 { keyword: "given", text: "the user is on /settings/vocabulary" },
-                { keyword: "when",  text: "they create a chunk type \"runbook\"" },
-                { keyword: "then",  text: "the graph legend and filter dialog include \"runbook\" within 24h of cache staleness" }
+                { keyword: "when", text: 'they create a chunk type "runbook"' },
+                { keyword: "then", text: 'the graph legend and filter dialog include "runbook" within 24h of cache staleness' }
             ],
             priority: "should",
             useCase: "decisions",

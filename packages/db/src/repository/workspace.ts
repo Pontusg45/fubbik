@@ -25,7 +25,10 @@ export function getWorkspaceById(id: string, userId?: string) {
     return dbEffect(async () => {
         const conditions = [eq(workspace.id, id)];
         if (userId) conditions.push(eq(workspace.userId, userId));
-        const [found] = await db.select().from(workspace).where(and(...conditions));
+        const [found] = await db
+            .select()
+            .from(workspace)
+            .where(and(...conditions));
         return found ?? null;
     });
 }
@@ -90,11 +93,7 @@ export function getSpacesForWorkspace(workspaceId: string) {
 
 export function addSpaceToWorkspace(workspaceId: string, spaceId: string) {
     return dbEffect(async () => {
-        const [created] = await db
-            .insert(workspaceSpace)
-            .values({ workspaceId, spaceId })
-            .onConflictDoNothing()
-            .returning();
+        const [created] = await db.insert(workspaceSpace).values({ workspaceId, spaceId }).onConflictDoNothing().returning();
         return created ?? { workspaceId, spaceId };
     });
 }
@@ -103,12 +102,7 @@ export function removeSpaceFromWorkspace(workspaceId: string, spaceId: string) {
     return dbEffect(async () => {
         const [deleted] = await db
             .delete(workspaceSpace)
-            .where(
-                and(
-                    eq(workspaceSpace.workspaceId, workspaceId),
-                    eq(workspaceSpace.spaceId, spaceId)
-                )
-            )
+            .where(and(eq(workspaceSpace.workspaceId, workspaceId), eq(workspaceSpace.spaceId, spaceId)))
             .returning();
         return deleted ?? null;
     });

@@ -6,6 +6,7 @@
  */
 
 import { sql } from "drizzle-orm";
+
 import type { SeedContext } from "./context";
 
 interface Probe {
@@ -41,13 +42,11 @@ const INTEGRITY_PROBES: Probe[] = [
     },
     {
         label: "connections pointing at missing chunks",
-        query:
-            "SELECT count(*)::int FROM chunk_connection cc WHERE NOT EXISTS (SELECT 1 FROM chunk c WHERE c.id = cc.source_id) OR NOT EXISTS (SELECT 1 FROM chunk c WHERE c.id = cc.target_id)"
+        query: "SELECT count(*)::int FROM chunk_connection cc WHERE NOT EXISTS (SELECT 1 FROM chunk c WHERE c.id = cc.source_id) OR NOT EXISTS (SELECT 1 FROM chunk c WHERE c.id = cc.target_id)"
     },
     {
         label: "tasks without parent plan",
-        query:
-            "SELECT count(*)::int FROM plan_task pt WHERE NOT EXISTS (SELECT 1 FROM plan p WHERE p.id = pt.plan_id)"
+        query: "SELECT count(*)::int FROM plan_task pt WHERE NOT EXISTS (SELECT 1 FROM plan p WHERE p.id = pt.plan_id)"
     }
 ];
 

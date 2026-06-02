@@ -1,8 +1,8 @@
 ---
 tags:
-  - guide
-  - views
-  - compose
+    - guide
+    - views
+    - compose
 description: Dynamic aggregation and export of chunks
 ---
 
@@ -20,6 +20,7 @@ The compose view at `/compose` lets you dynamically aggregate chunks using searc
 ## Export Options
 
 Composed documents can be exported as:
+
 - **Markdown** — a single combined document
 - **Structured JSON** — for programmatic use
 

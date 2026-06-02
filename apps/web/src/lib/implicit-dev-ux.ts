@@ -14,8 +14,7 @@ export const IMPLICIT_DEV_USER_MENU = {
 export function isImplicitDevUxEnabled(): boolean {
     if (import.meta.env.VITE_FUBBIK_DISABLE_IMPLICIT_DEV_UX === "true") return false;
 
-    const buildImplicit =
-        env.VITE_FUBBIK_IMPLICIT_DEV_SESSION === "true" || import.meta.env.VITE_FUBBIK_IMPLICIT_DEV_SESSION === "true";
+    const buildImplicit = env.VITE_FUBBIK_IMPLICIT_DEV_SESSION === "true" || import.meta.env.VITE_FUBBIK_IMPLICIT_DEV_SESSION === "true";
 
     return Boolean(import.meta.env.DEV || buildImplicit);
 }

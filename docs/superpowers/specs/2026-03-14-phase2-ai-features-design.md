@@ -2,7 +2,8 @@
 
 ## Overview
 
-These features build on the foundation from Phase 1 (multi-codebase, richer chunks, requirements system). They are listed here as planned work — each needs its own detailed spec before implementation.
+These features build on the foundation from Phase 1 (multi-codebase, richer chunks, requirements system). They are listed here as planned
+work — each needs its own detailed spec before implementation.
 
 ## Features
 
@@ -52,12 +53,14 @@ Natural language Q&A that synthesizes answers from multiple chunks.
 ## Dependencies
 
 All Phase 2 features depend on:
+
 - Multi-codebase support (done)
 - Richer chunks with appliesTo + fileReferences (done)
 - Templates (done)
 - Requirements system (done)
 
 "Ask Fubbik" additionally depends on:
+
 - Ollama with llama3.2 (generation model)
 - Existing semantic search infrastructure
 

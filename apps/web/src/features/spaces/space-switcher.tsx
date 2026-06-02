@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
+
 import { Button } from "@/components/ui/button";
 import {
     DropdownMenu,
@@ -11,6 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
+
 import { useActiveSpace } from "./use-active-space";
 
 export function SpaceSwitcher() {
@@ -36,9 +38,9 @@ export function SpaceSwitcher() {
     }, [spaceId, workspaceId, spaces, setSpaceId]);
 
     const activeName = workspaceId
-        ? workspaces?.find((w: { id: string }) => w.id === workspaceId)?.name ?? "..."
+        ? (workspaces?.find((w: { id: string }) => w.id === workspaceId)?.name ?? "...")
         : spaceId
-          ? spaces?.find((c: { id: string }) => c.id === spaceId)?.name ?? "..."
+          ? (spaces?.find((c: { id: string }) => c.id === spaceId)?.name ?? "...")
           : "Select space";
 
     const hasWorkspaces = workspaces && workspaces.length > 0;
@@ -74,9 +76,7 @@ export function SpaceSwitcher() {
                         {c.name}
                     </DropdownMenuItem>
                 ))}
-                {(!spaces || spaces.length === 0) && !hasWorkspaces && (
-                    <DropdownMenuItem disabled>No spaces registered</DropdownMenuItem>
-                )}
+                {(!spaces || spaces.length === 0) && !hasWorkspaces && <DropdownMenuItem disabled>No spaces registered</DropdownMenuItem>}
             </DropdownMenuContent>
         </DropdownMenu>
     );

@@ -1,10 +1,12 @@
 # VS Code / Cursor Extension Implementation Plan
 
-> **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to
+> implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Build a VS Code / Cursor extension with a sidebar showing codebase chunks and a command to create chunks from selected text.
 
-**Architecture:** Standalone `apps/vscode/` package communicating with the fubbik API via HTTP. Webview sidebar for the chunk list, webview panel for the create form. Codebase detection via git remote (async exec) with local path fallback. Bundled to CJS via esbuild.
+**Architecture:** Standalone `apps/vscode/` package communicating with the fubbik API via HTTP. Webview sidebar for the chunk list, webview
+panel for the create form. Codebase detection via git remote (async exec) with local path fallback. Bundled to CJS via esbuild.
 
 **Tech Stack:** VS Code Extension API, TypeScript, esbuild, vanilla HTML/CSS/JS for webviews
 
@@ -15,6 +17,7 @@
 ## File Structure
 
 ### New files (all under `apps/vscode/`)
+
 - `package.json` — extension manifest + npm scripts
 - `tsconfig.json` — TypeScript config targeting ES2022, CJS output
 - `.vscodeignore` — excludes src/, node_modules/ from .vsix
@@ -35,6 +38,7 @@
 ### Task 1: Initialize the extension package
 
 **Files:**
+
 - Create: `apps/vscode/package.json`
 - Create: `apps/vscode/tsconfig.json`
 - Create: `apps/vscode/.vscodeignore`
@@ -46,81 +50,81 @@
 
 ```json
 {
-  "name": "fubbik-vscode",
-  "displayName": "Fubbik",
-  "description": "Fubbik knowledge base integration for VS Code and Cursor",
-  "version": "0.0.1",
-  "publisher": "fubbik",
-  "engines": {
-    "vscode": "^1.85.0"
-  },
-  "categories": ["Other"],
-  "main": "./dist/extension.js",
-  "activationEvents": ["onStartupFinished"],
-  "contributes": {
-    "viewsContainers": {
-      "activitybar": [
-        {
-          "id": "fubbik",
-          "title": "Fubbik",
-          "icon": "resources/icon.svg"
-        }
-      ]
+    "name": "fubbik-vscode",
+    "displayName": "Fubbik",
+    "description": "Fubbik knowledge base integration for VS Code and Cursor",
+    "version": "0.0.1",
+    "publisher": "fubbik",
+    "engines": {
+        "vscode": "^1.85.0"
     },
-    "views": {
-      "fubbik": [
-        {
-          "type": "webview",
-          "id": "fubbik.sidebar",
-          "name": "Chunks"
-        }
-      ]
-    },
-    "commands": [
-      {
-        "command": "fubbik.addChunk",
-        "title": "Fubbik: Add to Knowledge Base"
-      },
-      {
-        "command": "fubbik.refreshSidebar",
-        "title": "Fubbik: Refresh Chunks"
-      }
-    ],
-    "menus": {
-      "editor/context": [
-        {
-          "command": "fubbik.addChunk",
-          "when": "editorHasSelection",
-          "group": "fubbik"
-        }
-      ]
-    },
-    "configuration": {
-      "title": "Fubbik",
-      "properties": {
-        "fubbik.serverUrl": {
-          "type": "string",
-          "default": "http://localhost:3000",
-          "description": "Fubbik API server URL"
+    "categories": ["Other"],
+    "main": "./dist/extension.js",
+    "activationEvents": ["onStartupFinished"],
+    "contributes": {
+        "viewsContainers": {
+            "activitybar": [
+                {
+                    "id": "fubbik",
+                    "title": "Fubbik",
+                    "icon": "resources/icon.svg"
+                }
+            ]
         },
-        "fubbik.webAppUrl": {
-          "type": "string",
-          "default": "http://localhost:3001",
-          "description": "Fubbik web app URL (for opening chunks in browser)"
+        "views": {
+            "fubbik": [
+                {
+                    "type": "webview",
+                    "id": "fubbik.sidebar",
+                    "name": "Chunks"
+                }
+            ]
+        },
+        "commands": [
+            {
+                "command": "fubbik.addChunk",
+                "title": "Fubbik: Add to Knowledge Base"
+            },
+            {
+                "command": "fubbik.refreshSidebar",
+                "title": "Fubbik: Refresh Chunks"
+            }
+        ],
+        "menus": {
+            "editor/context": [
+                {
+                    "command": "fubbik.addChunk",
+                    "when": "editorHasSelection",
+                    "group": "fubbik"
+                }
+            ]
+        },
+        "configuration": {
+            "title": "Fubbik",
+            "properties": {
+                "fubbik.serverUrl": {
+                    "type": "string",
+                    "default": "http://localhost:3000",
+                    "description": "Fubbik API server URL"
+                },
+                "fubbik.webAppUrl": {
+                    "type": "string",
+                    "default": "http://localhost:3001",
+                    "description": "Fubbik web app URL (for opening chunks in browser)"
+                }
+            }
         }
-      }
+    },
+    "scripts": {
+        "build": "node esbuild.mjs",
+        "watch": "node esbuild.mjs --watch",
+        "package": "vsce package"
+    },
+    "devDependencies": {
+        "@types/vscode": "^1.85.0",
+        "esbuild": "^0.24.0",
+        "typescript": "^5.7.0"
     }
-  },
-  "scripts": {
-    "build": "node esbuild.mjs",
-    "watch": "node esbuild.mjs --watch",
-    "package": "vsce package"
-  },
-  "devDependencies": {
-    "@types/vscode": "^1.85.0",
-    "esbuild": "^0.24.0",
-    "typescript": "^5.7.0"
-  }
 }
 ```
 
@@ -128,19 +132,19 @@
 
 ```json
 {
-  "compilerOptions": {
-    "module": "commonjs",
-    "target": "ES2022",
-    "outDir": "dist",
-    "lib": ["ES2022"],
-    "sourceMap": true,
-    "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "rootDir": "src"
-  },
-  "include": ["src"],
-  "exclude": ["node_modules", "dist"]
+    "compilerOptions": {
+        "module": "commonjs",
+        "target": "ES2022",
+        "outDir": "dist",
+        "lib": ["ES2022"],
+        "sourceMap": true,
+        "strict": true,
+        "esModuleInterop": true,
+        "skipLibCheck": true,
+        "rootDir": "src"
+    },
+    "include": ["src"],
+    "exclude": ["node_modules", "dist"]
 }
 ```
 
@@ -188,17 +192,17 @@ if (watch) {
 
 ```json
 {
-  "version": "0.2.0",
-  "configurations": [
-    {
-      "name": "Run Extension",
-      "type": "extensionHost",
-      "request": "launch",
-      "args": ["--extensionDevelopmentPath=${workspaceFolder}/apps/vscode"],
-      "outFiles": ["${workspaceFolder}/apps/vscode/dist/**/*.js"],
-      "preLaunchTask": "build-vscode-ext"
-    }
-  ]
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Run Extension",
+            "type": "extensionHost",
+            "request": "launch",
+            "args": ["--extensionDevelopmentPath=${workspaceFolder}/apps/vscode"],
+            "outFiles": ["${workspaceFolder}/apps/vscode/dist/**/*.js"],
+            "preLaunchTask": "build-vscode-ext"
+        }
+    ]
 }
 ```
 
@@ -206,15 +210,15 @@ if (watch) {
 
 ```json
 {
-  "version": "2.0.0",
-  "tasks": [
-    {
-      "label": "build-vscode-ext",
-      "type": "shell",
-      "command": "cd apps/vscode && node esbuild.mjs",
-      "problemMatcher": ["$tsc"]
-    }
-  ]
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "build-vscode-ext",
+            "type": "shell",
+            "command": "cd apps/vscode && node esbuild.mjs",
+            "problemMatcher": ["$tsc"]
+        }
+    ]
 }
 ```
 
@@ -250,6 +254,7 @@ git commit -m "feat(vscode): scaffold VS Code extension package"
 ### Task 2: Webview utilities
 
 **Files:**
+
 - Create: `apps/vscode/src/webview-utils.ts`
 
 - [ ] **Step 1: Write the utility module**
@@ -347,6 +352,7 @@ git commit -m "feat(vscode): add webview utility helpers (nonce, base HTML)"
 ### Task 3: API client
 
 **Files:**
+
 - Create: `apps/vscode/src/api.ts`
 
 - [ ] **Step 1: Write the API client**
@@ -431,6 +437,7 @@ git commit -m "feat(vscode): add FubbikApi HTTP client"
 ### Task 4: Codebase detection
 
 **Files:**
+
 - Create: `apps/vscode/src/detect-codebase.ts`
 
 - [ ] **Step 1: Write the detection module**
@@ -487,6 +494,7 @@ git commit -m "feat(vscode): add async codebase detection with local path fallba
 ### Task 5: Sidebar webview provider
 
 **Files:**
+
 - Create: `apps/vscode/src/sidebar-provider.ts`
 
 - [ ] **Step 1: Write the sidebar provider**
@@ -509,13 +517,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
 
     constructor(private readonly _extensionUri: vscode.Uri) {}
 
-    setState(opts: {
-        codebaseName?: string | null;
-        chunks?: Chunk[];
-        total?: number;
-        error?: string | null;
-        loading?: boolean;
-    }) {
+    setState(opts: { codebaseName?: string | null; chunks?: Chunk[]; total?: number; error?: string | null; loading?: boolean }) {
         if (opts.codebaseName !== undefined) this._codebaseName = opts.codebaseName;
         if (opts.chunks !== undefined) this._chunks = opts.chunks;
         if (opts.total !== undefined) this._total = opts.total;
@@ -614,6 +616,7 @@ git commit -m "feat(vscode): add sidebar webview provider with chunk list"
 ### Task 6: "Add to Fubbik" command
 
 **Files:**
+
 - Create: `apps/vscode/src/create-chunk.ts`
 
 - [ ] **Step 1: Write the create chunk command**
@@ -636,12 +639,9 @@ export function registerCreateChunkCommand(
         const selection = editor?.document.getText(editor.selection) ?? "";
         const firstLine = selection.split("\n")[0]?.trim() ?? "";
 
-        const panel = vscode.window.createWebviewPanel(
-            "fubbik.createChunk",
-            "Add to Fubbik",
-            vscode.ViewColumn.One,
-            { enableScripts: true }
-        );
+        const panel = vscode.window.createWebviewPanel("fubbik.createChunk", "Add to Fubbik", vscode.ViewColumn.One, {
+            enableScripts: true
+        });
 
         const codebaseId = getCodebaseId();
         const nonce = getNonce();
@@ -696,25 +696,27 @@ export function registerCreateChunkCommand(
 
         panel.webview.html = getBaseHtml(panel.webview, nonce, body, script);
 
-        panel.webview.onDidReceiveMessage(async (msg: { type: string; data?: { title: string; content: string; type: string; tags: string[] } }) => {
-            if (msg.type === "cancel") {
-                panel.dispose();
-                return;
-            }
-            if (msg.type === "submit" && msg.data) {
-                try {
-                    const chunk = await api.createChunk({
-                        ...msg.data,
-                        codebaseIds: codebaseId ? [codebaseId] : undefined
-                    });
-                    vscode.window.showInformationMessage(`Chunk created: ${chunk.title}`);
+        panel.webview.onDidReceiveMessage(
+            async (msg: { type: string; data?: { title: string; content: string; type: string; tags: string[] } }) => {
+                if (msg.type === "cancel") {
                     panel.dispose();
-                    onChunkCreated();
-                } catch (err) {
-                    vscode.window.showErrorMessage(`Failed to create chunk: ${err instanceof Error ? err.message : String(err)}`);
+                    return;
+                }
+                if (msg.type === "submit" && msg.data) {
+                    try {
+                        const chunk = await api.createChunk({
+                            ...msg.data,
+                            codebaseIds: codebaseId ? [codebaseId] : undefined
+                        });
+                        vscode.window.showInformationMessage(`Chunk created: ${chunk.title}`);
+                        panel.dispose();
+                        onChunkCreated();
+                    } catch (err) {
+                        vscode.window.showErrorMessage(`Failed to create chunk: ${err instanceof Error ? err.message : String(err)}`);
+                    }
                 }
             }
-        });
+        );
     });
 }
 ```
@@ -733,6 +735,7 @@ git commit -m "feat(vscode): add 'Add to Fubbik' command with webview form"
 ### Task 7: Extension entry point
 
 **Files:**
+
 - Create: `apps/vscode/src/extension.ts`
 
 - [ ] **Step 1: Write the extension entry point**
@@ -755,9 +758,7 @@ export async function activate(context: vscode.ExtensionContext) {
     const sidebarProvider = new SidebarProvider(context.extensionUri);
 
     // Register sidebar
-    context.subscriptions.push(
-        vscode.window.registerWebviewViewProvider(SidebarProvider.viewType, sidebarProvider)
-    );
+    context.subscriptions.push(vscode.window.registerWebviewViewProvider(SidebarProvider.viewType, sidebarProvider));
 
     // Refresh command
     async function refreshChunks() {
@@ -775,14 +776,10 @@ export async function activate(context: vscode.ExtensionContext) {
         }
     }
 
-    context.subscriptions.push(
-        vscode.commands.registerCommand("fubbik.refreshSidebar", refreshChunks)
-    );
+    context.subscriptions.push(vscode.commands.registerCommand("fubbik.refreshSidebar", refreshChunks));
 
     // Create chunk command
-    context.subscriptions.push(
-        registerCreateChunkCommand(context, api, () => codebaseId, refreshChunks)
-    );
+    context.subscriptions.push(registerCreateChunkCommand(context, api, () => codebaseId, refreshChunks));
 
     // Detect codebase on activation
     try {
@@ -821,8 +818,7 @@ export function deactivate() {}
 
 - [ ] **Step 2: Build the extension**
 
-Run: `cd apps/vscode && pnpm install && node esbuild.mjs`
-Expected: `dist/extension.js` created without errors
+Run: `cd apps/vscode && pnpm install && node esbuild.mjs` Expected: `dist/extension.js` created without errors
 
 - [ ] **Step 3: Commit**
 
@@ -837,14 +833,15 @@ git commit -m "feat(vscode): add extension entry point wiring sidebar, commands,
 
 - [ ] **Step 1: Build**
 
-Run: `cd apps/vscode && node esbuild.mjs`
-Expected: Build succeeds
+Run: `cd apps/vscode && node esbuild.mjs` Expected: Build succeeds
 
 - [ ] **Step 2: Launch in Extension Development Host**
 
-Open the fubbik project in VS Code. Press F5 (or use the "Run Extension" launch config). A new VS Code window opens with the extension loaded.
+Open the fubbik project in VS Code. Press F5 (or use the "Run Extension" launch config). A new VS Code window opens with the extension
+loaded.
 
 Verify:
+
 - Fubbik icon appears in the activity bar
 - Sidebar shows chunks (or "Cannot connect" if server isn't running)
 - Right-click selected text → "Add to Fubbik" appears

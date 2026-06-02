@@ -28,9 +28,7 @@ export function MarkdownEditor({ value, onChange, placeholder, rows = 10, error 
                             type="button"
                             onClick={() => setMode("edit")}
                             className={`flex items-center gap-1 rounded px-2 py-1 text-xs font-medium transition-colors ${
-                                mode === "edit"
-                                    ? "bg-accent text-accent-foreground"
-                                    : "text-muted-foreground hover:text-foreground"
+                                mode === "edit" ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground"
                             }`}
                         >
                             <Pencil className="size-3" />
@@ -40,9 +38,7 @@ export function MarkdownEditor({ value, onChange, placeholder, rows = 10, error 
                             type="button"
                             onClick={() => setMode("preview")}
                             className={`flex items-center gap-1 rounded px-2 py-1 text-xs font-medium transition-colors ${
-                                mode === "preview"
-                                    ? "bg-accent text-accent-foreground"
-                                    : "text-muted-foreground hover:text-foreground"
+                                mode === "preview" ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground"
                             }`}
                         >
                             <Eye className="size-3" />
@@ -52,9 +48,7 @@ export function MarkdownEditor({ value, onChange, placeholder, rows = 10, error 
                             type="button"
                             onClick={() => setMode("split")}
                             className={`flex items-center gap-1 rounded px-2 py-1 text-xs font-medium transition-colors ${
-                                mode === "split"
-                                    ? "bg-accent text-accent-foreground"
-                                    : "text-muted-foreground hover:text-foreground"
+                                mode === "split" ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground"
                             }`}
                         >
                             <Columns className="size-3" />

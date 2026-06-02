@@ -1,8 +1,8 @@
 ---
 tags:
-  - guide
-  - health
-  - maintenance
+    - guide
+    - health
+    - maintenance
 description: Keeping your knowledge base healthy and up-to-date
 ---
 
@@ -23,11 +23,13 @@ Visit `/knowledge-health` for a comprehensive overview:
 ## Staleness Detection
 
 Proactive detection of chunks that may need attention:
+
 - **Age-based**: flags chunks not updated in 90+ days (configurable)
 - **File-changed**: flags chunks linked to files that have been modified
 - **Diverged duplicates**: flags chunk pairs with similar but diverging content
 
-Flags are dismissable or permanently suppressible. Surfaced as amber banners on chunk detail pages and in the dashboard "Attention Needed" widget.
+Flags are dismissable or permanently suppressible. Surfaced as amber banners on chunk detail pages and in the dashboard "Attention Needed"
+widget.
 
 ## Maintenance Workflow
 

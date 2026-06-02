@@ -18,7 +18,10 @@ export const feature = pgTable(
             .notNull()
             .references(() => user.id, { onDelete: "cascade" }),
         createdAt: timestamp("created_at").defaultNow().notNull(),
-        updatedAt: timestamp("updated_at").defaultNow().notNull().$onUpdate(() => new Date())
+        updatedAt: timestamp("updated_at")
+            .defaultNow()
+            .notNull()
+            .$onUpdate(() => new Date())
     },
     table => [
         uniqueIndex("feature_user_name_idx").on(table.userId, table.name),
@@ -51,7 +54,10 @@ export const chunkFeatureDelta = pgTable(
             .references(() => feature.id, { onDelete: "cascade" }),
         delta: jsonb("delta").notNull().$type<Record<string, unknown>>(),
         createdAt: timestamp("created_at").defaultNow().notNull(),
-        updatedAt: timestamp("updated_at").defaultNow().notNull().$onUpdate(() => new Date())
+        updatedAt: timestamp("updated_at")
+            .defaultNow()
+            .notNull()
+            .$onUpdate(() => new Date())
     },
     table => [
         uniqueIndex("chunk_feature_delta_chunk_feature_idx").on(table.chunkId, table.featureId),

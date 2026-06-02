@@ -28,11 +28,7 @@ export const coverageRoutes = new Elysia()
         "/requirements/traceability",
         ctx =>
             Effect.runPromise(
-                requireSession(ctx).pipe(
-                    Effect.flatMap(session =>
-                        coverageService.getTraceability(session.user.id, ctx.query.codebaseId)
-                    )
-                )
+                requireSession(ctx).pipe(Effect.flatMap(session => coverageService.getTraceability(session.user.id, ctx.query.codebaseId)))
             ),
         {
             query: t.Object({

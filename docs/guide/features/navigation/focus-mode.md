@@ -1,8 +1,8 @@
 ---
 tags:
-  - guide
-  - navigation
-  - focus
+    - guide
+    - navigation
+    - focus
 description: Distraction-free full-screen viewing mode
 ---
 
@@ -13,6 +13,7 @@ Press `f` to toggle focus mode — a full-screen view that hides the sidebar and
 ## Where It Works
 
 Focus mode is available on:
+
 - Chunk detail pages
 - Chunk edit pages
 - Graph view

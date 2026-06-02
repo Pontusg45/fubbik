@@ -1,18 +1,26 @@
 # Markdown Renderer Improvements Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to
+> implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Make `splitMarkdown` and `renderDocument` a symmetric codec that round-trips frontmatter and decision context, add configurable heading-level splitting, and improve the frontend MarkdownRenderer with promise-based mermaid loading, code block copy buttons, auto-generated TOC, and vocabulary matching performance.
+**Goal:** Make `splitMarkdown` and `renderDocument` a symmetric codec that round-trips frontmatter and decision context, add configurable
+heading-level splitting, and improve the frontend MarkdownRenderer with promise-based mermaid loading, code block copy buttons,
+auto-generated TOC, and vocabulary matching performance.
 
-**Architecture:** Backend changes center on `split-markdown.ts` (parsing) and `service.ts:renderDocument` (serialization) sharing heading-level detection and decision-context format. A new `splitLevel` column on the `document` table persists the detected level. Frontend changes are isolated to `markdown-renderer.tsx` (mermaid, copy, TOC, heading IDs) and `smart-link-provider.tsx` (precompiled regex). All changes are additive — no existing behavior changes unless explicitly noted.
+**Architecture:** Backend changes center on `split-markdown.ts` (parsing) and `service.ts:renderDocument` (serialization) sharing
+heading-level detection and decision-context format. A new `splitLevel` column on the `document` table persists the detected level. Frontend
+changes are isolated to `markdown-renderer.tsx` (mermaid, copy, TOC, heading IDs) and `smart-link-provider.tsx` (precompiled regex). All
+changes are additive — no existing behavior changes unless explicitly noted.
 
-**Tech Stack:** Drizzle (schema migration), Effect (service layer), react-markdown + remark-gfm + rehype-raw (frontend rendering), vitest (tests)
+**Tech Stack:** Drizzle (schema migration), Effect (service layer), react-markdown + remark-gfm + rehype-raw (frontend rendering), vitest
+(tests)
 
 ---
 
 ### Task 1: Add `splitLevel` column to document schema
 
 **Files:**
+
 - Modify: `packages/db/src/schema/document.ts:8-31`
 
 - [ ] **Step 1: Add `splitLevel` column to document table**
@@ -31,13 +39,11 @@ Add after the `description` column:
 
 - [ ] **Step 2: Push schema change to database**
 
-Run: `pnpm db:push`
-Expected: Schema updated successfully with new nullable `split_level` column on `document` table.
+Run: `pnpm db:push` Expected: Schema updated successfully with new nullable `split_level` column on `document` table.
 
 - [ ] **Step 3: Verify type-check passes**
 
-Run: `pnpm run check-types`
-Expected: All packages pass.
+Run: `pnpm run check-types` Expected: All packages pass.
 
 - [ ] **Step 4: Commit**
 
@@ -51,6 +57,7 @@ git commit -m "feat: add splitLevel column to document table"
 ### Task 2: Flexible heading-level detection in `splitMarkdown`
 
 **Files:**
+
 - Modify: `packages/api/src/documents/split-markdown.ts`
 - Modify: `packages/api/src/documents/split-markdown.test.ts`
 
@@ -93,8 +100,8 @@ it("defaults splitLevel to 2 when no headings found", () => {
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `pnpm --filter @fubbik/api test -- --reporter verbose src/documents/split-markdown.test.ts`
-Expected: New tests fail (no `splitLevel` property on result, wrong section counts for H3 tests).
+Run: `pnpm --filter @fubbik/api test -- --reporter verbose src/documents/split-markdown.test.ts` Expected: New tests fail (no `splitLevel`
+property on result, wrong section counts for H3 tests).
 
 - [ ] **Step 3: Implement flexible heading-level detection**
 
@@ -126,11 +133,7 @@ function detectSplitLevel(content: string): number {
     return headingMatch[1]!.length;
 }
 
-export function splitMarkdown(
-    raw: string,
-    filePath: string,
-    splitLevel?: 2 | 3 | 4 | "auto"
-): SplitResult {
+export function splitMarkdown(raw: string, filePath: string, splitLevel?: 2 | 3 | 4 | "auto"): SplitResult {
     const { frontmatter, body } = extractFrontmatter(raw);
 
     let title = frontmatter.title as string | undefined;
@@ -152,9 +155,7 @@ export function splitMarkdown(
     const tags = [...new Set([...fmTags, ...pathTags])];
     const description = (frontmatter.description as string) ?? undefined;
 
-    const resolvedLevel = splitLevel === "auto" || splitLevel === undefined
-        ? detectSplitLevel(content)
-        : splitLevel;
+    const resolvedLevel = splitLevel === "auto" || splitLevel === undefined ? detectSplitLevel(content) : splitLevel;
 
     const prefix = "#".repeat(resolvedLevel);
     const headingRegex = new RegExp(`^${prefix} (.+)$`, "gm");
@@ -183,9 +184,7 @@ export function splitMarkdown(
     for (let i = 0; i < matches.length; i++) {
         const heading = matches[i]!;
         const nextIndex = i + 1 < matches.length ? matches[i + 1]!.index : content.length;
-        const sectionContent = content
-            .slice(heading.index + `${prefix} ${heading.title}`.length + 1, nextIndex)
-            .trim();
+        const sectionContent = content.slice(heading.index + `${prefix} ${heading.title}`.length + 1, nextIndex).trim();
         sections.push({ title: heading.title, content: sectionContent, order: orderCounter++ });
     }
 
@@ -195,13 +194,12 @@ export function splitMarkdown(
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `pnpm --filter @fubbik/api test -- --reporter verbose src/documents/split-markdown.test.ts`
-Expected: All tests pass (old and new).
+Run: `pnpm --filter @fubbik/api test -- --reporter verbose src/documents/split-markdown.test.ts` Expected: All tests pass (old and new).
 
 - [ ] **Step 5: Run full test suite to check for regressions**
 
-Run: `pnpm test`
-Expected: All tests pass. The `importDocument` service and other consumers of `splitMarkdown` are unaffected since `splitLevel` is a new additive field.
+Run: `pnpm test` Expected: All tests pass. The `importDocument` service and other consumers of `splitMarkdown` are unaffected since
+`splitLevel` is a new additive field.
 
 - [ ] **Step 6: Commit**
 
@@ -215,6 +213,7 @@ git commit -m "feat: flexible heading-level detection in splitMarkdown"
 ### Task 3: Decision context extraction in `splitMarkdown`
 
 **Files:**
+
 - Modify: `packages/api/src/documents/split-markdown.ts`
 - Modify: `packages/api/src/documents/split-markdown.test.ts`
 
@@ -237,7 +236,7 @@ it("extracts decision context from trailing blockquotes", () => {
         "> - Session cookies",
         "> - OAuth tokens",
         "",
-        "> **Consequences:** Requires token refresh logic.",
+        "> **Consequences:** Requires token refresh logic."
     ].join("\n");
     const result = splitMarkdown(md, "test.md");
     expect(result.sections).toHaveLength(1);
@@ -255,7 +254,7 @@ it("does not extract blockquotes that are not decision context", () => {
         "",
         "> This is a regular blockquote in the middle.",
         "",
-        "More content after the blockquote.",
+        "More content after the blockquote."
     ].join("\n");
     const result = splitMarkdown(md, "test.md");
     expect(result.sections[0]!.content).toContain("> This is a regular blockquote");
@@ -264,15 +263,7 @@ it("does not extract blockquotes that are not decision context", () => {
 });
 
 it("handles partial decision context (only rationale)", () => {
-    const md = [
-        "# Doc",
-        "",
-        "## Design",
-        "",
-        "We chose X.",
-        "",
-        "> **Rationale:** Because Y.",
-    ].join("\n");
+    const md = ["# Doc", "", "## Design", "", "We chose X.", "", "> **Rationale:** Because Y."].join("\n");
     const result = splitMarkdown(md, "test.md");
     expect(result.sections[0]!.content).toBe("We chose X.");
     expect(result.sections[0]!.rationale).toBe("Because Y.");
@@ -283,8 +274,8 @@ it("handles partial decision context (only rationale)", () => {
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `pnpm --filter @fubbik/api test -- --reporter verbose src/documents/split-markdown.test.ts`
-Expected: New tests fail (no decision context extraction happening).
+Run: `pnpm --filter @fubbik/api test -- --reporter verbose src/documents/split-markdown.test.ts` Expected: New tests fail (no decision
+context extraction happening).
 
 - [ ] **Step 3: Add decision context extraction function**
 
@@ -347,29 +338,29 @@ function extractDecisionContext(content: string): { cleanContent: string; contex
 
 - [ ] **Step 4: Integrate extraction into section building**
 
-In the section-building loop inside `splitMarkdown`, update the two places where sections are created (the single-section fallback and the heading-split loop). After computing `sectionContent`, apply extraction:
+In the section-building loop inside `splitMarkdown`, update the two places where sections are created (the single-section fallback and the
+heading-split loop). After computing `sectionContent`, apply extraction:
 
-For the preamble and introduction sections, no change needed (they rarely have decision context). For heading-split sections, replace the push with:
+For the preamble and introduction sections, no change needed (they rarely have decision context). For heading-split sections, replace the
+push with:
 
 ```typescript
-        const { cleanContent, context } = extractDecisionContext(sectionContent);
-        sections.push({
-            title: heading.title,
-            content: cleanContent,
-            order: orderCounter++,
-            ...context
-        });
+const { cleanContent, context } = extractDecisionContext(sectionContent);
+sections.push({
+    title: heading.title,
+    content: cleanContent,
+    order: orderCounter++,
+    ...context
+});
 ```
 
 - [ ] **Step 5: Run tests to verify they pass**
 
-Run: `pnpm --filter @fubbik/api test -- --reporter verbose src/documents/split-markdown.test.ts`
-Expected: All tests pass.
+Run: `pnpm --filter @fubbik/api test -- --reporter verbose src/documents/split-markdown.test.ts` Expected: All tests pass.
 
 - [ ] **Step 6: Run full test suite**
 
-Run: `pnpm test`
-Expected: All tests pass.
+Run: `pnpm test` Expected: All tests pass.
 
 - [ ] **Step 7: Commit**
 
@@ -383,6 +374,7 @@ git commit -m "feat: extract decision context from trailing blockquotes in split
 ### Task 4: Round-trip `renderDocument` with frontmatter and decision context
 
 **Files:**
+
 - Modify: `packages/api/src/documents/service.ts:250-268`
 - Create: `packages/api/src/documents/render-document.test.ts`
 
@@ -411,7 +403,7 @@ describe("renderDocument round-trip format", () => {
             "",
             "## Configuration",
             "",
-            "Edit config.json.",
+            "Edit config.json."
         ].join("\n");
 
         const first = splitMarkdown(md, "docs/auth.md");
@@ -424,7 +416,7 @@ describe("renderDocument round-trip format", () => {
             type: "reference",
             tags: ["security", "backend"],
             splitLevel: first.splitLevel,
-            sections: first.sections,
+            sections: first.sections
         });
 
         const second = splitMarkdown(rendered, "docs/auth.md");
@@ -452,7 +444,7 @@ describe("renderDocument round-trip format", () => {
             "> - Sessions",
             "> - OAuth",
             "",
-            "> **Consequences:** Need refresh tokens.",
+            "> **Consequences:** Need refresh tokens."
         ].join("\n");
 
         const first = splitMarkdown(md, "test.md");
@@ -462,7 +454,7 @@ describe("renderDocument round-trip format", () => {
             title: first.title,
             tags: [],
             splitLevel: first.splitLevel,
-            sections: first.sections,
+            sections: first.sections
         });
 
         const second = splitMarkdown(rendered, "test.md");
@@ -478,8 +470,8 @@ This test references a `renderMarkdown` pure function that doesn't exist yet —
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `pnpm --filter @fubbik/api test -- --reporter verbose src/documents/render-document.test.ts`
-Expected: Fails with `renderMarkdown is not defined`.
+Run: `pnpm --filter @fubbik/api test -- --reporter verbose src/documents/render-document.test.ts` Expected: Fails with
+`renderMarkdown is not defined`.
 
 - [ ] **Step 3: Create `renderMarkdown` pure function**
 
@@ -577,8 +569,7 @@ import { renderMarkdown } from "./render-markdown";
 
 - [ ] **Step 5: Run tests to verify they pass**
 
-Run: `pnpm --filter @fubbik/api test -- --reporter verbose src/documents/render-document.test.ts`
-Expected: Both round-trip tests pass.
+Run: `pnpm --filter @fubbik/api test -- --reporter verbose src/documents/render-document.test.ts` Expected: Both round-trip tests pass.
 
 - [ ] **Step 6: Update `renderDocument` service to use `renderMarkdown`**
 
@@ -606,9 +597,7 @@ export function renderDocument(documentId: string, userId: string) {
         const tagNames = tags.map((t: { name: string }) => t.name);
 
         const firstChunk = chunks[0]!;
-        const scope = firstChunk.scope && Object.keys(firstChunk.scope).length > 0
-            ? firstChunk.scope
-            : undefined;
+        const scope = firstChunk.scope && Object.keys(firstChunk.scope).length > 0 ? firstChunk.scope : undefined;
 
         const sections = chunks.map((c, i) => ({
             title: c.title,
@@ -616,7 +605,7 @@ export function renderDocument(documentId: string, userId: string) {
             order: c.documentOrder ?? i,
             rationale: c.rationale ?? undefined,
             alternatives: c.alternatives ?? undefined,
-            consequences: c.consequences ?? undefined,
+            consequences: c.consequences ?? undefined
         }));
 
         const markdown = renderMarkdown({
@@ -626,7 +615,7 @@ export function renderDocument(documentId: string, userId: string) {
             scope,
             splitLevel: doc.splitLevel ?? 2,
             sections,
-            sourcePath: doc.sourcePath,
+            sourcePath: doc.sourcePath
         });
 
         return { document: doc, markdown };
@@ -636,13 +625,11 @@ export function renderDocument(documentId: string, userId: string) {
 
 - [ ] **Step 7: Run full test suite**
 
-Run: `pnpm test`
-Expected: All tests pass.
+Run: `pnpm test` Expected: All tests pass.
 
 - [ ] **Step 8: Run type-check**
 
-Run: `pnpm run check-types`
-Expected: All packages pass.
+Run: `pnpm run check-types` Expected: All packages pass.
 
 - [ ] **Step 9: Commit**
 
@@ -656,6 +643,7 @@ git commit -m "feat: round-trip renderDocument with frontmatter and decision con
 ### Task 5: Persist `splitLevel` during import
 
 **Files:**
+
 - Modify: `packages/api/src/documents/service.ts`
 - Modify: `packages/db/src/repository/document.ts`
 
@@ -683,43 +671,47 @@ In `packages/db/src/repository/document.ts`, update the `updateDocument` params 
 ```typescript
 export function updateDocument(id: string, params: { title?: string; contentHash?: string; description?: string; splitLevel?: number }) {
     return dbEffect(async () => {
-            const [updated] = await db
-                .update(document)
-                .set({
-                    ...(params.title !== undefined && { title: params.title }),
-                    ...(params.contentHash !== undefined && { contentHash: params.contentHash }),
-                    ...(params.description !== undefined && { description: params.description }),
-                    ...(params.splitLevel !== undefined && { splitLevel: params.splitLevel })
-                })
-                .where(eq(document.id, id))
-                .returning();
-            return updated;
-        });
+        const [updated] = await db
+            .update(document)
+            .set({
+                ...(params.title !== undefined && { title: params.title }),
+                ...(params.contentHash !== undefined && { contentHash: params.contentHash }),
+                ...(params.description !== undefined && { description: params.description }),
+                ...(params.splitLevel !== undefined && { splitLevel: params.splitLevel })
+            })
+            .where(eq(document.id, id))
+            .returning();
+        return updated;
+    });
 }
 ```
 
 - [ ] **Step 3: Pass `splitLevel` in `importDocument`**
 
-In `packages/api/src/documents/service.ts`, in the default (non-template) import path, pass the detected split level to `createDocumentRepo`:
+In `packages/api/src/documents/service.ts`, in the default (non-template) import path, pass the detected split level to
+`createDocumentRepo`:
 
 Find the line:
+
 ```typescript
-        const split = splitMarkdown(rawContent, sourcePath);
+const split = splitMarkdown(rawContent, sourcePath);
 ```
 
 The `createDocumentRepo` call below it should include `splitLevel`:
 
 ```typescript
-        const doc = yield* createDocumentRepo({
-            id: docId,
-            title: split.title,
-            sourcePath,
-            contentHash,
-            description: split.description,
-            codebaseId,
-            userId,
-            splitLevel: split.splitLevel
-        });
+const doc =
+    yield *
+    createDocumentRepo({
+        id: docId,
+        title: split.title,
+        sourcePath,
+        contentHash,
+        description: split.description,
+        codebaseId,
+        userId,
+        splitLevel: split.splitLevel
+    });
 ```
 
 - [ ] **Step 4: Pass `splitLevel` in `syncDocument`**
@@ -727,23 +719,22 @@ The `createDocumentRepo` call below it should include `splitLevel`:
 In the `syncDocument` function, update the `updateDocumentRepo` call at the end:
 
 ```typescript
-        yield* updateDocumentRepo(documentId, {
-            title: split.title,
-            contentHash,
-            description: split.description,
-            splitLevel: split.splitLevel
-        });
+yield *
+    updateDocumentRepo(documentId, {
+        title: split.title,
+        contentHash,
+        description: split.description,
+        splitLevel: split.splitLevel
+    });
 ```
 
 - [ ] **Step 5: Run type-check**
 
-Run: `pnpm run check-types`
-Expected: All packages pass.
+Run: `pnpm run check-types` Expected: All packages pass.
 
 - [ ] **Step 6: Run full test suite**
 
-Run: `pnpm test`
-Expected: All tests pass.
+Run: `pnpm test` Expected: All tests pass.
 
 - [ ] **Step 7: Commit**
 
@@ -757,6 +748,7 @@ git commit -m "feat: persist splitLevel during document import and sync"
 ### Task 6: Promise-based mermaid loading
 
 **Files:**
+
 - Modify: `apps/web/src/components/markdown-renderer.tsx:1-73`
 
 - [ ] **Step 1: Replace mermaid polling with promise**
@@ -764,12 +756,13 @@ git commit -m "feat: persist splitLevel during document import and sync"
 In `apps/web/src/components/markdown-renderer.tsx`, replace lines 9-16 (the module-level mermaid setup):
 
 ```typescript
-const mermaidPromise = typeof window !== "undefined"
-    ? import("mermaid").then(m => {
-        m.default.initialize({ startOnLoad: false, theme: "dark" });
-        return m.default;
-    })
-    : null;
+const mermaidPromise =
+    typeof window !== "undefined"
+        ? import("mermaid").then(m => {
+              m.default.initialize({ startOnLoad: false, theme: "dark" });
+              return m.default;
+          })
+        : null;
 ```
 
 - [ ] **Step 2: Rewrite `MermaidBlock` to use the promise**
@@ -825,13 +818,11 @@ function MermaidBlock({ children }: { children: string }) {
 
 - [ ] **Step 3: Verify in browser**
 
-Run: `pnpm dev`
-Navigate to a chunk that contains a mermaid code block. Verify the diagram renders without visual delay artifacts.
+Run: `pnpm dev` Navigate to a chunk that contains a mermaid code block. Verify the diagram renders without visual delay artifacts.
 
 - [ ] **Step 4: Run type-check**
 
-Run: `pnpm run check-types`
-Expected: All packages pass.
+Run: `pnpm run check-types` Expected: All packages pass.
 
 - [ ] **Step 5: Commit**
 
@@ -845,6 +836,7 @@ git commit -m "fix: replace mermaid polling with promise-based lazy load"
 ### Task 7: Copy button on code blocks
 
 **Files:**
+
 - Modify: `apps/web/src/components/markdown-renderer.tsx`
 
 - [ ] **Step 1: Add CopyButton component**
@@ -885,7 +877,8 @@ function CopyButton({ code }: { code: string }) {
 
 - [ ] **Step 2: Wrap CodeBlock output in a group container with CopyButton**
 
-Update the `CodeBlock` component. Wrap each return path (shiki-highlighted and fallback) in a `relative group` div with the copy button. Replace the shiki-highlighted return:
+Update the `CodeBlock` component. Wrap each return path (shiki-highlighted and fallback) in a `relative group` div with the copy button.
+Replace the shiki-highlighted return:
 
 ```typescript
     if (html) {
@@ -916,8 +909,8 @@ Replace the plain fallback return:
 
 - [ ] **Step 3: Verify in browser**
 
-Run: `pnpm dev`
-Navigate to a chunk with code blocks. Hover over a code block — copy button should appear top-right. Click it — icon should change to checkmark for 2 seconds.
+Run: `pnpm dev` Navigate to a chunk with code blocks. Hover over a code block — copy button should appear top-right. Click it — icon should
+change to checkmark for 2 seconds.
 
 - [ ] **Step 4: Commit**
 
@@ -931,6 +924,7 @@ git commit -m "feat: add copy button to code blocks"
 ### Task 8: Auto-generated table of contents
 
 **Files:**
+
 - Modify: `apps/web/src/components/markdown-renderer.tsx`
 
 - [ ] **Step 1: Add slug generation utility**
@@ -961,7 +955,7 @@ function extractToc(markdown: string): TocEntry[] {
         entries.push({
             level: match[1]!.length,
             text: match[2]!.trim(),
-            slug: slugify(match[2]!.trim()),
+            slug: slugify(match[2]!.trim())
         });
     }
     return entries;
@@ -1054,13 +1048,12 @@ Add `useMemo` to the import from `react` at the top of the file if not already t
 
 - [ ] **Step 5: Verify in browser**
 
-Run: `pnpm dev`
-Navigate to a chunk with 3+ headings. Verify TOC appears above content with indentation. Click a TOC link — page should scroll to the heading.
+Run: `pnpm dev` Navigate to a chunk with 3+ headings. Verify TOC appears above content with indentation. Click a TOC link — page should
+scroll to the heading.
 
 - [ ] **Step 6: Run type-check**
 
-Run: `pnpm run check-types`
-Expected: All packages pass.
+Run: `pnpm run check-types` Expected: All packages pass.
 
 - [ ] **Step 7: Commit**
 
@@ -1074,12 +1067,14 @@ git commit -m "feat: auto-generated table of contents for markdown content"
 ### Task 9: Vocabulary matching performance
 
 **Files:**
+
 - Modify: `apps/web/src/components/smart-link-provider.tsx`
 - Modify: `apps/web/src/components/markdown-renderer.tsx`
 
 - [ ] **Step 1: Precompile vocabulary regex in the provider**
 
-In `apps/web/src/components/smart-link-provider.tsx`, update the context type and provider to include a precompiled regex. Change the interface:
+In `apps/web/src/components/smart-link-provider.tsx`, update the context type and provider to include a precompiled regex. Change the
+interface:
 
 ```typescript
 interface SmartLinkContextValue {
@@ -1115,13 +1110,13 @@ export function buildVocabPattern(vocabIndex: Map<string, VocabularyMatch>): Reg
 Update the `useMemo` in `SmartLinkProvider`:
 
 ```typescript
-    const value = useMemo<SmartLinkContextValue>(() => {
-        const chunkIndex = buildChunkIndex(chunksQuery.data ?? []);
-        const vocabIndex = buildVocabularyIndex(vocabQuery.data ?? []);
-        const fileRefIndex = buildFileRefIndex(fileRefsQuery.data ?? []);
-        const vocabPattern = buildVocabPattern(vocabIndex);
-        return { chunkIndex, vocabIndex, fileRefIndex, vocabPattern };
-    }, [chunksQuery.data, vocabQuery.data, fileRefsQuery.data]);
+const value = useMemo<SmartLinkContextValue>(() => {
+    const chunkIndex = buildChunkIndex(chunksQuery.data ?? []);
+    const vocabIndex = buildVocabularyIndex(vocabQuery.data ?? []);
+    const fileRefIndex = buildFileRefIndex(fileRefsQuery.data ?? []);
+    const vocabPattern = buildVocabPattern(vocabIndex);
+    return { chunkIndex, vocabIndex, fileRefIndex, vocabPattern };
+}, [chunksQuery.data, vocabQuery.data, fileRefsQuery.data]);
 ```
 
 - [ ] **Step 2: Update `matchVocabularyInText` to accept precompiled pattern**
@@ -1137,12 +1132,12 @@ export function matchVocabularyInText(
     if (vocabIndex.size === 0) return [];
 
     const regex = pattern
-        ? new RegExp(pattern.source, pattern.flags)  // clone to reset lastIndex
+        ? new RegExp(pattern.source, pattern.flags) // clone to reset lastIndex
         : (() => {
-            const words = Array.from(vocabIndex.keys()).sort((a, b) => b.length - a.length);
-            const escaped = words.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
-            return new RegExp(`\\b(${escaped.join("|")})\\b`, "gi");
-        })();
+              const words = Array.from(vocabIndex.keys()).sort((a, b) => b.length - a.length);
+              const escaped = words.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+              return new RegExp(`\\b(${escaped.join("|")})\\b`, "gi");
+          })();
 
     const matches: VocabularyTextMatch[] = [];
     let m: RegExpExecArray | null;
@@ -1219,18 +1214,17 @@ const SmartListItem = memo(function SmartListItem({ children }: { children: Reac
 
 - [ ] **Step 4: Run existing smart-link-provider tests**
 
-Run: `pnpm --filter web test -- --reporter verbose src/components/smart-link-provider.test.ts`
-Expected: All 13 tests pass (the `matchVocabularyInText` tests still work since the `pattern` param is optional).
+Run: `pnpm --filter web test -- --reporter verbose src/components/smart-link-provider.test.ts` Expected: All 13 tests pass (the
+`matchVocabularyInText` tests still work since the `pattern` param is optional).
 
 - [ ] **Step 5: Run type-check**
 
-Run: `pnpm run check-types`
-Expected: All packages pass.
+Run: `pnpm run check-types` Expected: All packages pass.
 
 - [ ] **Step 6: Verify in browser**
 
-Run: `pnpm dev`
-Navigate to a chunk with vocabulary terms. Verify popovers still appear on hover. Navigate between chunks — verify no visible performance difference or broken behavior.
+Run: `pnpm dev` Navigate to a chunk with vocabulary terms. Verify popovers still appear on hover. Navigate between chunks — verify no
+visible performance difference or broken behavior.
 
 - [ ] **Step 7: Commit**
 
@@ -1247,24 +1241,22 @@ git commit -m "perf: precompile vocab regex and memoize markdown text matching"
 
 - [ ] **Step 1: Run full test suite**
 
-Run: `pnpm test`
-Expected: All tests pass across all packages.
+Run: `pnpm test` Expected: All tests pass across all packages.
 
 - [ ] **Step 2: Run type-check**
 
-Run: `pnpm run check-types`
-Expected: All packages pass.
+Run: `pnpm run check-types` Expected: All packages pass.
 
 - [ ] **Step 3: Run full CI pipeline**
 
-Run: `pnpm ci`
-Expected: type-check, lint, test, build, format check, sherif all pass.
+Run: `pnpm ci` Expected: type-check, lint, test, build, format check, sherif all pass.
 
 - [ ] **Step 4: Manual browser verification**
 
 Run: `pnpm dev`
 
 Verify:
+
 1. Import a folder of markdown docs — chunks get folder connections (from previous work)
 2. View a chunk with 3+ headings — TOC appears, links scroll to headings
 3. View a chunk with code blocks — copy button appears on hover, copies correctly

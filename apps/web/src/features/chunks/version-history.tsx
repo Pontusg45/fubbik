@@ -79,14 +79,14 @@ export function VersionHistory({ chunkId }: { chunkId: string }) {
                                 <p className="mb-2 text-sm font-medium">Compare Versions</p>
                                 <div className="flex flex-wrap items-end gap-2">
                                     <div>
-                                        <label className="mb-1 block text-xs text-muted-foreground">From (older)</label>
+                                        <label className="text-muted-foreground mb-1 block text-xs">From (older)</label>
                                         <select
                                             value={compareFrom}
                                             onChange={e => {
                                                 setCompareFrom(e.target.value);
                                                 setShowDiff(false);
                                             }}
-                                            className="bg-background rounded-md border px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-ring"
+                                            className="bg-background focus:ring-ring rounded-md border px-2 py-1.5 text-xs focus:ring-2 focus:outline-none"
                                         >
                                             <option value="">Select version...</option>
                                             {versions.map(v => (
@@ -97,14 +97,14 @@ export function VersionHistory({ chunkId }: { chunkId: string }) {
                                         </select>
                                     </div>
                                     <div>
-                                        <label className="mb-1 block text-xs text-muted-foreground">To (newer)</label>
+                                        <label className="text-muted-foreground mb-1 block text-xs">To (newer)</label>
                                         <select
                                             value={compareTo}
                                             onChange={e => {
                                                 setCompareTo(e.target.value);
                                                 setShowDiff(false);
                                             }}
-                                            className="bg-background rounded-md border px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-ring"
+                                            className="bg-background focus:ring-ring rounded-md border px-2 py-1.5 text-xs focus:ring-2 focus:outline-none"
                                         >
                                             <option value="">Select version...</option>
                                             {versions.map(v => (

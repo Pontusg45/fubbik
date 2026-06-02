@@ -1,7 +1,7 @@
 import { Command } from "commander";
 
-import { formatBold, formatDim, formatError, formatSuccess } from "../lib/colors";
 import { requireServer } from "../lib/api";
+import { formatBold, formatDim, formatError, formatSuccess } from "../lib/colors";
 import { isJson, outputError } from "../lib/output";
 
 interface TagIssue {
@@ -30,7 +30,7 @@ const MERGE_MAP: Record<string, string> = {
     templates: "template",
     features: "feature",
     migrations: "migration",
-    runbooks: "runbook",
+    runbooks: "runbook"
 };
 
 const FILENAME_PATTERN = /(\.\w{2,4}$|\/|^\d{4}-\d{2})/;
@@ -60,7 +60,7 @@ export const tagNormalizeCommand = new Command("normalize")
             const tagUsage = new Map<string, string[]>();
             for (const chunk of chunks) {
                 const tags: string[] = Array.isArray(chunk.tags)
-                    ? chunk.tags.map((t: any) => (typeof t === "string" ? t : t.name ?? ""))
+                    ? chunk.tags.map((t: any) => (typeof t === "string" ? t : (t.name ?? "")))
                     : [];
                 for (const tag of tags) {
                     const existing = tagUsage.get(tag);
@@ -84,7 +84,7 @@ export const tagNormalizeCommand = new Command("normalize")
                         tag: variant,
                         mergeTo: canonical,
                         reason: "Variant of canonical tag",
-                        affectedChunks: tagUsage.get(variant)?.length ?? 0,
+                        affectedChunks: tagUsage.get(variant)?.length ?? 0
                     });
                 }
             }
@@ -93,12 +93,12 @@ export const tagNormalizeCommand = new Command("normalize")
             for (const [tag, chunkIds] of tagUsage) {
                 if (chunkIds.length > broadThreshold) {
                     // Don't double-report if already flagged as merge candidate
-                    if (!issues.some((i) => i.tag === tag)) {
+                    if (!issues.some(i => i.tag === tag)) {
                         issues.push({
                             action: "remove",
                             tag,
                             reason: "Too broad",
-                            affectedChunks: chunkIds.length,
+                            affectedChunks: chunkIds.length
                         });
                     }
                 }
@@ -107,12 +107,12 @@ export const tagNormalizeCommand = new Command("normalize")
             // 3. Filename tags
             for (const [tag, chunkIds] of tagUsage) {
                 if (FILENAME_PATTERN.test(tag)) {
-                    if (!issues.some((i) => i.tag === tag)) {
+                    if (!issues.some(i => i.tag === tag)) {
                         issues.push({
                             action: "remove",
                             tag,
                             reason: "Filename tag",
-                            affectedChunks: chunkIds.length,
+                            affectedChunks: chunkIds.length
                         });
                     }
                 }
@@ -132,18 +132,12 @@ export const tagNormalizeCommand = new Command("normalize")
                 console.error(formatBold("Tag normalization:"));
                 for (const issue of issues) {
                     if (issue.action === "merge") {
-                        console.error(
-                            `  Merge: ${issue.tag} -> ${issue.mergeTo} (${issue.affectedChunks} chunks affected)`
-                        );
+                        console.error(`  Merge: ${issue.tag} -> ${issue.mergeTo} (${issue.affectedChunks} chunks affected)`);
                     } else {
-                        console.error(
-                            `  Remove: ${issue.tag} (${issue.affectedChunks} chunks, ${issue.reason.toLowerCase()})`
-                        );
+                        console.error(`  Remove: ${issue.tag} (${issue.affectedChunks} chunks, ${issue.reason.toLowerCase()})`);
                     }
                 }
-                console.error(
-                    formatDim("\nRun 'fubbik tag-normalize --confirm' to apply.")
-                );
+                console.error(formatDim("\nRun 'fubbik tag-normalize --confirm' to apply."));
                 return;
             }
 
@@ -160,7 +154,7 @@ export const tagNormalizeCommand = new Command("normalize")
                     if (!chunk) continue;
 
                     const currentTags: string[] = Array.isArray(chunk.tags)
-                        ? chunk.tags.map((t: any) => (typeof t === "string" ? t : t.name ?? ""))
+                        ? chunk.tags.map((t: any) => (typeof t === "string" ? t : (t.name ?? "")))
                         : [];
 
                     let newTags: string[];
@@ -175,14 +169,11 @@ export const tagNormalizeCommand = new Command("normalize")
                     }
 
                     try {
-                        const updateRes = await fetch(
-                            `${serverUrl}/api/chunks/${chunkId}`,
-                            {
-                                method: "PATCH",
-                                headers: { "Content-Type": "application/json" },
-                                body: JSON.stringify({ tags: newTags }),
-                            }
-                        );
+                        const updateRes = await fetch(`${serverUrl}/api/chunks/${chunkId}`, {
+                            method: "PATCH",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ tags: newTags })
+                        });
                         if (updateRes.ok) {
                             applied++;
                         } else {
@@ -194,18 +185,11 @@ export const tagNormalizeCommand = new Command("normalize")
                 }
 
                 const verb = issue.action === "merge" ? "Merged" : "Removed";
-                const detail =
-                    issue.action === "merge"
-                        ? `${issue.tag} -> ${issue.mergeTo}`
-                        : issue.tag;
-                console.error(
-                    formatSuccess(`${verb}: ${detail} (${chunkIds.length} chunks)`)
-                );
+                const detail = issue.action === "merge" ? `${issue.tag} -> ${issue.mergeTo}` : issue.tag;
+                console.error(formatSuccess(`${verb}: ${detail} (${chunkIds.length} chunks)`));
             }
 
-            console.error(
-                `\n${formatSuccess(`${applied} tag updates applied`)}${failed > 0 ? ` ${formatError(`${failed} failed`)}` : ""}`
-            );
+            console.error(`\n${formatSuccess(`${applied} tag updates applied`)}${failed > 0 ? ` ${formatError(`${failed} failed`)}` : ""}`);
         } catch (e: any) {
             outputError(e.message);
         }

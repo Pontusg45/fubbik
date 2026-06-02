@@ -4,14 +4,14 @@ import { ClipboardCheck, Plus } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
-import { SkeletonList } from "@/components/ui/skeleton-list";
 import { Button } from "@/components/ui/button";
 import { Card, CardPanel } from "@/components/ui/card";
-import { useActiveSpace } from "@/features/spaces/use-active-space";
+import { SkeletonList } from "@/components/ui/skeleton-list";
 import { TraceabilityContent } from "@/features/coverage/traceability-content";
 import { BulkActions } from "@/features/requirements/bulk-actions";
 import { SidebarFilters } from "@/features/requirements/sidebar-filters";
 import { SortableRequirementList, type RequirementRecord } from "@/features/requirements/sortable-requirement-list";
+import { useActiveSpace } from "@/features/spaces/use-active-space";
 import { getUser } from "@/functions/get-user";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
@@ -56,11 +56,26 @@ function RequirementsPage() {
     const pageSize = 20;
 
     // Reset page when filters change
-    const handleSearchChange = (v: string) => { setSearch(v); setPage(0); };
-    const handleStatusFiltersChange = (v: string[]) => { setStatusFilters(v); setPage(0); };
-    const handlePriorityFiltersChange = (v: string[]) => { setPriorityFilters(v); setPage(0); };
-    const handleOriginFilterChange = (v: string) => { setOriginFilter(v); setPage(0); };
-    const handleUseCaseClick = (id: string | null) => { setActiveUseCaseId(id); setPage(0); };
+    const handleSearchChange = (v: string) => {
+        setSearch(v);
+        setPage(0);
+    };
+    const handleStatusFiltersChange = (v: string[]) => {
+        setStatusFilters(v);
+        setPage(0);
+    };
+    const handlePriorityFiltersChange = (v: string[]) => {
+        setPriorityFilters(v);
+        setPage(0);
+    };
+    const handleOriginFilterChange = (v: string) => {
+        setOriginFilter(v);
+        setPage(0);
+    };
+    const handleUseCaseClick = (id: string | null) => {
+        setActiveUseCaseId(id);
+        setPage(0);
+    };
 
     // Queries
     const statsQuery = useQuery({
@@ -190,9 +205,7 @@ function RequirementsPage() {
     }, [activeTab, selectedIndex, navigate]);
 
     function toggleSelection(id: string, selected: boolean) {
-        setSelectedIds(prev =>
-            selected ? [...prev, id] : prev.filter(i => i !== id)
-        );
+        setSelectedIds(prev => (selected ? [...prev, id] : prev.filter(i => i !== id)));
     }
 
     const showSidebar = activeTab === "requirements";
@@ -253,14 +266,9 @@ function RequirementsPage() {
             )}
 
             {/* Tab switcher */}
-            <div className="flex gap-1 mb-4">
+            <div className="mb-4 flex gap-1">
                 {(["requirements", "plans", "traceability"] as const).map(tab => (
-                    <Button
-                        key={tab}
-                        variant={activeTab === tab ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => setActiveTab(tab)}
-                    >
+                    <Button key={tab} variant={activeTab === tab ? "default" : "outline"} size="sm" onClick={() => setActiveTab(tab)}>
                         {tab === "requirements" ? "Requirements" : tab === "plans" ? "Plans" : "Traceability"}
                     </Button>
                 ))}
@@ -332,7 +340,7 @@ function RequirementsPage() {
 
                                     {/* Pagination */}
                                     {data && data.total > pageSize && (
-                                        <div className="mt-4 flex items-center justify-between text-sm text-muted-foreground">
+                                        <div className="text-muted-foreground mt-4 flex items-center justify-between text-sm">
                                             <span>
                                                 Showing {page * pageSize + 1}-{Math.min((page + 1) * pageSize, data.total)} of {data.total}
                                             </span>
@@ -362,8 +370,12 @@ function RequirementsPage() {
                     )}
 
                     {activeTab === "plans" && (
-                        <div className="py-8 text-center text-sm text-muted-foreground">
-                            Plans have moved to <Link to="/plans" className="underline">Plans</Link>.
+                        <div className="text-muted-foreground py-8 text-center text-sm">
+                            Plans have moved to{" "}
+                            <Link to="/plans" className="underline">
+                                Plans
+                            </Link>
+                            .
                         </div>
                     )}
 
@@ -373,11 +385,7 @@ function RequirementsPage() {
 
             {/* Bulk actions */}
             {activeTab === "requirements" && (
-                <BulkActions
-                    selectedIds={selectedIds}
-                    onClearSelection={() => setSelectedIds([])}
-                    useCases={useCases}
-                />
+                <BulkActions selectedIds={selectedIds} onClearSelection={() => setSelectedIds([])} useCases={useCases} />
             )}
         </div>
     );

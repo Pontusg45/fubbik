@@ -24,7 +24,7 @@ const INITIAL_STATE: ZoomState = {
     focusChunkId: null,
     activeIslandId: null,
     detailChunkId: null,
-    breadcrumbs: [{ level: "overview", label: "Overview" }],
+    breadcrumbs: [{ level: "overview", label: "Overview" }]
 };
 
 function zoomReducer(state: ZoomState, action: ZoomAction): ZoomState {
@@ -37,8 +37,8 @@ function zoomReducer(state: ZoomState, action: ZoomAction): ZoomState {
                 detailChunkId: null,
                 breadcrumbs: [
                     { level: "overview", label: "Overview" },
-                    { level: "neighborhood", label: action.islandId, islandId: action.islandId, chunkId: action.focusChunkId },
-                ],
+                    { level: "neighborhood", label: action.islandId, islandId: action.islandId, chunkId: action.focusChunkId }
+                ]
             };
         case "ZOOM_TO_CHUNK":
             return {
@@ -48,8 +48,8 @@ function zoomReducer(state: ZoomState, action: ZoomAction): ZoomState {
                 detailChunkId: null,
                 breadcrumbs: [
                     { level: "overview", label: "Overview" },
-                    { level: "neighborhood", label: action.islandId, islandId: action.islandId, chunkId: action.chunkId },
-                ],
+                    { level: "neighborhood", label: action.islandId, islandId: action.islandId, chunkId: action.chunkId }
+                ]
             };
         case "SET_FOCUS_CHUNK":
             return { ...state, focusChunkId: action.chunkId };
@@ -60,15 +60,15 @@ function zoomReducer(state: ZoomState, action: ZoomAction): ZoomState {
                 detailChunkId: action.chunkId,
                 breadcrumbs: [
                     ...state.breadcrumbs.filter(b => b.level !== "detail"),
-                    { level: "detail", label: "Detail", chunkId: action.chunkId },
-                ],
+                    { level: "detail", label: "Detail", chunkId: action.chunkId }
+                ]
             };
         case "CLOSE_DETAIL":
             return {
                 ...state,
                 level: "neighborhood",
                 detailChunkId: null,
-                breadcrumbs: state.breadcrumbs.filter(b => b.level !== "detail"),
+                breadcrumbs: state.breadcrumbs.filter(b => b.level !== "detail")
             };
         case "ZOOM_TO_OVERVIEW":
             return INITIAL_STATE;
@@ -92,8 +92,8 @@ export function useGraphZoom(initialFocusChunkId?: string, initialIslandId?: str
                 detailChunkId: null,
                 breadcrumbs: [
                     { level: "overview", label: "Overview" },
-                    { level: "neighborhood", label: initialIslandId, islandId: initialIslandId, chunkId: initialFocusChunkId },
-                ],
+                    { level: "neighborhood", label: initialIslandId, islandId: initialIslandId, chunkId: initialFocusChunkId }
+                ]
             };
         }
         return INITIAL_STATE;
@@ -110,9 +110,15 @@ export function useGraphZoom(initialFocusChunkId?: string, initialIslandId?: str
     const openDetail = useCallback((chunkId: string) => {
         dispatchZoom({ type: "OPEN_DETAIL", chunkId });
     }, []);
-    const closeDetail = useCallback(() => { dispatchZoom({ type: "CLOSE_DETAIL" }); }, []);
-    const goBack = useCallback(() => { dispatchZoom({ type: "GO_BACK" }); }, []);
-    const goToOverview = useCallback(() => { dispatchZoom({ type: "ZOOM_TO_OVERVIEW" }); }, []);
+    const closeDetail = useCallback(() => {
+        dispatchZoom({ type: "CLOSE_DETAIL" });
+    }, []);
+    const goBack = useCallback(() => {
+        dispatchZoom({ type: "GO_BACK" });
+    }, []);
+    const goToOverview = useCallback(() => {
+        dispatchZoom({ type: "ZOOM_TO_OVERVIEW" });
+    }, []);
     const setFocusChunk = useCallback((chunkId: string) => {
         dispatchZoom({ type: "SET_FOCUS_CHUNK", chunkId });
     }, []);

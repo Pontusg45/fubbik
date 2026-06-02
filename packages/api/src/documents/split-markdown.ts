@@ -98,10 +98,7 @@ export function splitMarkdown(raw: string, filePath: string, splitLevel?: 2 | 3 
     const tags = [...new Set([...fmTags, ...pathTags])];
     const description = (frontmatter.description as string) ?? undefined;
 
-    const resolvedLevel: number =
-        splitLevel === undefined || splitLevel === "auto"
-            ? detectSplitLevel(content)
-            : splitLevel;
+    const resolvedLevel: number = splitLevel === undefined || splitLevel === "auto" ? detectSplitLevel(content) : splitLevel;
 
     const prefix = "#".repeat(resolvedLevel);
     const headingRegex = new RegExp(`^${prefix} (.+)$`, "gm");
@@ -130,9 +127,7 @@ export function splitMarkdown(raw: string, filePath: string, splitLevel?: 2 | 3 
     for (let i = 0; i < matches.length; i++) {
         const heading = matches[i]!;
         const nextIndex = i + 1 < matches.length ? matches[i + 1]!.index : content.length;
-        const sectionContent = content
-            .slice(heading.index + `${prefix} ${heading.title}`.length + 1, nextIndex)
-            .trim();
+        const sectionContent = content.slice(heading.index + `${prefix} ${heading.title}`.length + 1, nextIndex).trim();
         const { cleanContent, context } = extractDecisionContext(sectionContent);
         sections.push({
             title: heading.title,

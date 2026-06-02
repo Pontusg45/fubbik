@@ -140,9 +140,7 @@ const exportRequirements = new Command("export")
 
         const validFormats = ["gherkin", "vitest", "markdown"];
         if (!validFormats.includes(opts.format)) {
-            console.error(
-                `Invalid format "${opts.format}". Must be one of: ${validFormats.join(", ")}`
-            );
+            console.error(`Invalid format "${opts.format}". Must be one of: ${validFormats.join(", ")}`);
             process.exit(1);
         }
 

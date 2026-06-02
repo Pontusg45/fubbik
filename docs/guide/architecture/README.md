@@ -1,7 +1,7 @@
 ---
 tags:
-  - guide
-  - architecture
+    - guide
+    - architecture
 description: Architecture section index — backend, frontend, and database design patterns
 ---
 

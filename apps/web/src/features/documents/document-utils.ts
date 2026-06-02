@@ -77,22 +77,20 @@ export function getStaleness(doc: DocumentListItem): { label: string; color: str
 
     const newestDate = doc.lastChunkUpdatedAt ?? doc.updatedAt;
     const oldestDate = doc.oldestChunkUpdatedAt ?? doc.updatedAt;
-    const spread = Math.floor(
-        (new Date(newestDate).getTime() - new Date(oldestDate).getTime()) / (1000 * 60 * 60 * 24)
-    );
+    const spread = Math.floor((new Date(newestDate).getTime() - new Date(oldestDate).getTime()) / (1000 * 60 * 60 * 24));
 
     if (days <= 7) {
         return { label: "Fresh", color: "text-green-600 dark:text-green-400", tooltip: "All sections updated within the last week" };
     }
     if (days <= 30) {
-        const tip = spread > 14
-            ? `Some sections updated recently, oldest section is ${days} days old`
-            : `Last content update ${days} days ago`;
+        const tip =
+            spread > 14 ? `Some sections updated recently, oldest section is ${days} days old` : `Last content update ${days} days ago`;
         return { label: "Recent", color: "text-yellow-600 dark:text-yellow-400", tooltip: tip };
     }
-    const tip = spread > 30
-        ? `Oldest section is ${days} days old, newest is ${Math.floor((Date.now() - new Date(newestDate).getTime()) / (1000 * 60 * 60 * 24))} days old`
-        : `Content last updated ${days} days ago`;
+    const tip =
+        spread > 30
+            ? `Oldest section is ${days} days old, newest is ${Math.floor((Date.now() - new Date(newestDate).getTime()) / (1000 * 60 * 60 * 24))} days old`
+            : `Content last updated ${days} days ago`;
     return { label: "May be outdated", color: "text-orange-600 dark:text-orange-400", tooltip: tip };
 }
 
@@ -113,7 +111,10 @@ export function mdToHtml(md: string): string {
         .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
         .replace(/`([^`]+)`/g, "<code>$1</code>")
         .replace(/^\| (.+) \|$/gm, row => {
-            const cells = row.split("|").filter(c => c.trim()).map(c => c.trim());
+            const cells = row
+                .split("|")
+                .filter(c => c.trim())
+                .map(c => c.trim());
             if (cells.every(c => /^-+$/.test(c))) return "";
             return `<tr>${cells.map(c => `<td>${c}</td>`).join("")}</tr>`;
         })

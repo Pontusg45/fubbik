@@ -21,8 +21,5 @@ export const chunkVersion = pgTable(
         updateTag: text("update_tag"),
         createdAt: timestamp("created_at").defaultNow().notNull()
     },
-    table => [
-        index("chunk_version_chunkId_idx").on(table.chunkId),
-        index("chunk_version_update_tag_idx").on(table.updateTag)
-    ]
+    table => [index("chunk_version_chunkId_idx").on(table.chunkId), index("chunk_version_update_tag_idx").on(table.updateTag)]
 );

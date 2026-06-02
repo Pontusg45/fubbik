@@ -1,10 +1,14 @@
 # PostgreSQL Graph Extensions Deep Utilization Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to
+> implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Deeply leverage the existing PostgreSQL graph extensions (Apache AGE, pgvector, pg_trgm) to improve retrieval relevance, scoring accuracy, staleness detection, search performance, and knowledge clustering.
+**Goal:** Deeply leverage the existing PostgreSQL graph extensions (Apache AGE, pgvector, pg_trgm) to improve retrieval relevance, scoring
+accuracy, staleness detection, search performance, and knowledge clustering.
 
-**Architecture:** Six independent features that build on the existing extension stack. Features 1-3 enhance the scoring/retrieval pipeline. Feature 4 adds missing performance indexes. Feature 5 extends staleness detection with graph traversal. Feature 6 adds community detection for knowledge clustering. Each feature produces working, testable software independently.
+**Architecture:** Six independent features that build on the existing extension stack. Features 1-3 enhance the scoring/retrieval pipeline.
+Feature 4 adds missing performance indexes. Feature 5 extends staleness detection with graph traversal. Feature 6 adds community detection
+for knowledge clustering. Each feature produces working, testable software independently.
 
 **Tech Stack:** PostgreSQL (AGE, pgvector, pg_trgm), Drizzle ORM, Effect, vitest
 
@@ -48,6 +52,7 @@ This is the simplest feature and should go first — it makes every downstream t
 ### Task 1.1: Add GIN trigram and HNSW vector indexes
 
 **Files:**
+
 - Create: `packages/db/src/migrations/0002_graph_indexes.sql`
 
 - [ ] **Step 1: Create the migration file**
@@ -75,11 +80,11 @@ The migration journal lives at `packages/db/src/migrations/meta/_journal.json`. 
 
 ```json
 {
-  "idx": 2,
-  "version": "7",
-  "when": 1715126400000,
-  "tag": "0002_graph_indexes",
-  "breakpoints": true
+    "idx": 2,
+    "version": "7",
+    "when": 1715126400000,
+    "tag": "0002_graph_indexes",
+    "breakpoints": true
 }
 ```
 
@@ -98,6 +103,7 @@ psql $DATABASE_URL -f packages/db/src/migrations/0002_graph_indexes.sql
 - [ ] **Step 4: Verify indexes exist**
 
 Run:
+
 ```bash
 psql $DATABASE_URL -c "\di chunk_title_trgm_idx; \di chunk_content_trgm_idx; \di chunk_embedding_hnsw_idx"
 ```
@@ -107,6 +113,7 @@ Expected: Three indexes listed with correct types (GIN, GIN, HNSW).
 - [ ] **Step 5: Verify query plan uses the new indexes**
 
 Run:
+
 ```bash
 psql $DATABASE_URL -c "EXPLAIN ANALYZE SELECT id, similarity(title, 'authentication') AS sim FROM chunk WHERE similarity(title, 'authentication') > 0.15 ORDER BY sim DESC LIMIT 10;"
 ```
@@ -114,6 +121,7 @@ psql $DATABASE_URL -c "EXPLAIN ANALYZE SELECT id, similarity(title, 'authenticat
 Expected: Plan shows `Bitmap Index Scan on chunk_title_trgm_idx`.
 
 Run:
+
 ```bash
 psql $DATABASE_URL -c "EXPLAIN ANALYZE SELECT id FROM chunk ORDER BY embedding <=> '[0.1,0.2,...]'::vector LIMIT 10;"
 ```
@@ -136,6 +144,7 @@ Add a graph-centrality metric to the health score. Chunks that sit on many short
 ### Task 2.1: Add centrality query to AGE
 
 **Files:**
+
 - Modify: `packages/db/src/age/query.ts`
 - Modify: `packages/db/src/age/query.test.ts`
 
@@ -144,22 +153,14 @@ Add a graph-centrality metric to the health score. Chunks that sit on many short
 Add to `packages/db/src/age/query.test.ts`:
 
 ```typescript
-import {
-    checkCircular,
-    findShortestPath,
-    getConnectionDegrees,
-    getNeighborhood,
-    getOrphanChunkIds
-} from "./query";
+import { checkCircular, findShortestPath, getConnectionDegrees, getNeighborhood, getOrphanChunkIds } from "./query";
 
 // ... existing tests ...
 
 describe("getConnectionDegrees", () => {
     it("returns correct degree counts for known graph", async () => {
         if (!ageReady) return;
-        const degrees = await Effect.runPromise(
-            getConnectionDegrees([uid("A"), uid("B"), uid("C"), uid("center"), uid("orphan")])
-        );
+        const degrees = await Effect.runPromise(getConnectionDegrees([uid("A"), uid("B"), uid("C"), uid("center"), uid("orphan")]));
         // B has 2 edges (A→B, B→C), center has 3 edges (3 spokes)
         expect(degrees.get(uid("B"))).toBe(2);
         expect(degrees.get(uid("center"))).toBe(3);
@@ -234,6 +235,7 @@ git commit -m "feat: add getConnectionDegrees AGE query for centrality scoring"
 ### Task 2.2: Integrate centrality into health score
 
 **Files:**
+
 - Modify: `packages/api/src/chunks/health-score.ts`
 - Modify: `packages/api/src/context/utils.ts`
 
@@ -263,33 +265,35 @@ export interface ChunkHealthInput {
 In `packages/api/src/chunks/health-score.ts`, replace the connectivity block (lines 65-74):
 
 Old:
+
 ```typescript
-    // Connectivity (0-20): 20 for 3+, 12 for 1-2, 0 for orphans
-    let connectivity: number;
-    if (input.connectionCount >= 3) {
-        connectivity = 20;
-    } else if (input.connectionCount >= 1) {
-        connectivity = 12;
-    } else {
-        connectivity = 0;
-        issues.push("Orphan chunk with no connections");
-    }
+// Connectivity (0-20): 20 for 3+, 12 for 1-2, 0 for orphans
+let connectivity: number;
+if (input.connectionCount >= 3) {
+    connectivity = 20;
+} else if (input.connectionCount >= 1) {
+    connectivity = 12;
+} else {
+    connectivity = 0;
+    issues.push("Orphan chunk with no connections");
+}
 ```
 
 New:
+
 ```typescript
-    // Connectivity (0-20): base from connection count + bonus from centrality degree
-    let connectivity: number;
-    if (input.connectionCount === 0) {
-        connectivity = 0;
-        issues.push("Orphan chunk with no connections");
-    } else {
-        // Base: 8 for 1-2 connections, 12 for 3+
-        const base = input.connectionCount >= 3 ? 12 : 8;
-        // Centrality bonus: up to 8 points for high-degree nodes
-        const centralityBonus = Math.min(Math.floor(input.centralityDegree / 2), 8);
-        connectivity = Math.min(base + centralityBonus, 20);
-    }
+// Connectivity (0-20): base from connection count + bonus from centrality degree
+let connectivity: number;
+if (input.connectionCount === 0) {
+    connectivity = 0;
+    issues.push("Orphan chunk with no connections");
+} else {
+    // Base: 8 for 1-2 connections, 12 for 3+
+    const base = input.connectionCount >= 3 ? 12 : 8;
+    // Centrality bonus: up to 8 points for high-degree nodes
+    const centralityBonus = Math.min(Math.floor(input.centralityDegree / 2), 8);
+    connectivity = Math.min(base + centralityBonus, 20);
+}
 ```
 
 - [ ] **Step 3: Update all callers to pass `centralityDegree`**
@@ -338,6 +342,7 @@ git commit -m "feat: integrate centrality degree into health score connectivity 
 ### Task 2.3: Wire centrality into the context-for-file pipeline
 
 **Files:**
+
 - Modify: `packages/api/src/context-for-file/service.ts`
 
 - [ ] **Step 1: Import `getConnectionDegrees` and use it in scoring**
@@ -345,30 +350,39 @@ git commit -m "feat: integrate centrality degree into health score connectivity 
 In `packages/api/src/context-for-file/service.ts`, add the import:
 
 ```typescript
-import { getAppliesToForChunks, getChunkById, getConnectionDegrees, getConnectionsForChunks, getRequirementsForChunks, listChunks, listCodebases, lookupChunksByFilePath, semanticSearch as semanticSearchRepo } from "@fubbik/db/repository";
+import {
+    getAppliesToForChunks,
+    getChunkById,
+    getConnectionDegrees,
+    getConnectionsForChunks,
+    getRequirementsForChunks,
+    listChunks,
+    listCodebases,
+    lookupChunksByFilePath,
+    semanticSearch as semanticSearchRepo
+} from "@fubbik/db/repository";
 ```
 
 Then in the scoring section (around line 237), after building `connCountMap`, add centrality fetch:
 
 ```typescript
-        // Fetch centrality degrees from AGE graph
-        const degreeMap = chunkIdsForScoring.length > 0
-            ? yield* getConnectionDegrees(chunkIdsForScoring).pipe(
-                  Effect.catchAll(() => Effect.succeed(new Map<string, number>())),
-              )
-            : new Map<string, number>();
+// Fetch centrality degrees from AGE graph
+const degreeMap =
+    chunkIdsForScoring.length > 0
+        ? yield * getConnectionDegrees(chunkIdsForScoring).pipe(Effect.catchAll(() => Effect.succeed(new Map<string, number>())))
+        : new Map<string, number>();
 ```
 
 Update the scoring loop (around line 259) to pass centrality:
 
 ```typescript
-        for (const chunk of matchedChunks) {
-            const rawRow = chunkRows.get(chunk.id);
-            const connectionCount = connCountMap.get(chunk.id) ?? 0;
-            const centralityDegree = degreeMap.get(chunk.id) ?? 0;
-            const baseScore = rawRow ? scoreChunk(rawRow, connectionCount, centralityDegree) : 0;
-            chunk.score = baseScore + (STRATEGY_BONUS[chunk.matchReason] ?? 0);
-        }
+for (const chunk of matchedChunks) {
+    const rawRow = chunkRows.get(chunk.id);
+    const connectionCount = connCountMap.get(chunk.id) ?? 0;
+    const centralityDegree = degreeMap.get(chunk.id) ?? 0;
+    const baseScore = rawRow ? scoreChunk(rawRow, connectionCount, centralityDegree) : 0;
+    chunk.score = baseScore + (STRATEGY_BONUS[chunk.matchReason] ?? 0);
+}
 ```
 
 - [ ] **Step 2: Update `scoreChunk` import in service.ts if needed**
@@ -392,11 +406,13 @@ git commit -m "feat: wire centrality degrees into context-for-file scoring pipel
 
 ## Feature 3: Hybrid Graph + Vector Retrieval
 
-Combine semantic similarity (pgvector) with graph proximity (AGE) so chunks that are both semantically relevant AND graph-connected get a higher score than either signal alone.
+Combine semantic similarity (pgvector) with graph proximity (AGE) so chunks that are both semantically relevant AND graph-connected get a
+higher score than either signal alone.
 
 ### Task 3.1: Add `getGraphProximityBoost` to AGE queries
 
 **Files:**
+
 - Modify: `packages/db/src/age/query.ts`
 - Modify: `packages/db/src/age/query.test.ts`
 
@@ -405,23 +421,14 @@ Combine semantic similarity (pgvector) with graph proximity (AGE) so chunks that
 Add to `packages/db/src/age/query.test.ts`:
 
 ```typescript
-import {
-    checkCircular,
-    findShortestPath,
-    getConnectionDegrees,
-    getGraphProximityBoost,
-    getNeighborhood,
-    getOrphanChunkIds
-} from "./query";
+import { checkCircular, findShortestPath, getConnectionDegrees, getGraphProximityBoost, getNeighborhood, getOrphanChunkIds } from "./query";
 
 // ... existing tests ...
 
 describe("getGraphProximityBoost", () => {
     it("returns high boost for directly connected chunks", async () => {
         if (!ageReady) return;
-        const boosts = await Effect.runPromise(
-            getGraphProximityBoost(uid("A"), [uid("B"), uid("C"), uid("orphan")], 3)
-        );
+        const boosts = await Effect.runPromise(getGraphProximityBoost(uid("A"), [uid("B"), uid("C"), uid("orphan")], 3));
         // B is 1 hop from A → high boost
         expect(boosts.get(uid("B"))).toBeGreaterThan(boosts.get(uid("C"))!);
         // C is 2 hops from A → medium boost
@@ -432,9 +439,7 @@ describe("getGraphProximityBoost", () => {
 
     it("returns empty map when anchor has no connections", async () => {
         if (!ageReady) return;
-        const boosts = await Effect.runPromise(
-            getGraphProximityBoost(uid("orphan"), [uid("A"), uid("B")], 3)
-        );
+        const boosts = await Effect.runPromise(getGraphProximityBoost(uid("orphan"), [uid("A"), uid("B")], 3));
         expect(boosts.size).toBe(0);
     });
 });
@@ -451,11 +456,7 @@ Expected: FAIL — not exported.
 Add to `packages/db/src/age/query.ts`:
 
 ```typescript
-export function getGraphProximityBoost(
-    anchorId: string,
-    candidateIds: string[],
-    maxHops: number
-) {
+export function getGraphProximityBoost(anchorId: string, candidateIds: string[], maxHops: number) {
     if (candidateIds.length === 0) return Effect.succeed(new Map<string, number>());
 
     const idList = candidateIds.map(id => `'${escCypher(id)}'`).join(",");
@@ -498,16 +499,29 @@ git commit -m "feat: add getGraphProximityBoost AGE query for hybrid retrieval"
 ### Task 3.2: Integrate hybrid scoring into context-for-file
 
 **Files:**
+
 - Modify: `packages/api/src/context-for-file/service.ts`
 
-The idea: after collecting all candidate chunks and before final scoring, use the first file-ref or applies-to match as an "anchor" and boost semantic results that are also graph-close to the anchor.
+The idea: after collecting all candidate chunks and before final scoring, use the first file-ref or applies-to match as an "anchor" and
+boost semantic results that are also graph-close to the anchor.
 
 - [ ] **Step 1: Add import for `getGraphProximityBoost`**
 
 In `packages/api/src/context-for-file/service.ts`:
 
 ```typescript
-import { getAppliesToForChunks, getChunkById, getConnectionDegrees, getConnectionsForChunks, getGraphProximityBoost, getRequirementsForChunks, listChunks, listCodebases, lookupChunksByFilePath, semanticSearch as semanticSearchRepo } from "@fubbik/db/repository";
+import {
+    getAppliesToForChunks,
+    getChunkById,
+    getConnectionDegrees,
+    getConnectionsForChunks,
+    getGraphProximityBoost,
+    getRequirementsForChunks,
+    listChunks,
+    listCodebases,
+    lookupChunksByFilePath,
+    semanticSearch as semanticSearchRepo
+} from "@fubbik/db/repository";
 ```
 
 - [ ] **Step 2: Add a `graph-boosted` bonus in the STRATEGY_BONUS map**
@@ -515,38 +529,33 @@ import { getAppliesToForChunks, getChunkById, getConnectionDegrees, getConnectio
 Update the scoring section. After the existing `STRATEGY_BONUS` declaration and the `degreeMap` fetch (from Task 2.3), add:
 
 ```typescript
-        // Hybrid boost: if we have high-confidence anchors (file-ref or applies-to),
-        // boost semantic matches that are also graph-connected to them
-        const anchorIds = matchedChunks
-            .filter(c => c.matchReason === "file-ref" || c.matchReason === "applies-to")
-            .map(c => c.id);
-        const semanticIds = matchedChunks
-            .filter(c => c.matchReason === "semantic")
-            .map(c => c.id);
+// Hybrid boost: if we have high-confidence anchors (file-ref or applies-to),
+// boost semantic matches that are also graph-connected to them
+const anchorIds = matchedChunks.filter(c => c.matchReason === "file-ref" || c.matchReason === "applies-to").map(c => c.id);
+const semanticIds = matchedChunks.filter(c => c.matchReason === "semantic").map(c => c.id);
 
-        let graphBoosts = new Map<string, number>();
-        if (anchorIds.length > 0 && semanticIds.length > 0) {
-            // Use first anchor as reference point for proximity
-            graphBoosts = yield* getGraphProximityBoost(anchorIds[0], semanticIds, 3).pipe(
-                Effect.catchAll(() => Effect.succeed(new Map<string, number>())),
-            );
-        }
+let graphBoosts = new Map<string, number>();
+if (anchorIds.length > 0 && semanticIds.length > 0) {
+    // Use first anchor as reference point for proximity
+    graphBoosts =
+        yield * getGraphProximityBoost(anchorIds[0], semanticIds, 3).pipe(Effect.catchAll(() => Effect.succeed(new Map<string, number>())));
+}
 ```
 
 Then update the scoring loop:
 
 ```typescript
-        const GRAPH_PROXIMITY_WEIGHT = 5;
+const GRAPH_PROXIMITY_WEIGHT = 5;
 
-        for (const chunk of matchedChunks) {
-            const rawRow = chunkRows.get(chunk.id);
-            const connectionCount = connCountMap.get(chunk.id) ?? 0;
-            const centralityDegree = degreeMap.get(chunk.id) ?? 0;
-            const baseScore = rawRow ? scoreChunk(rawRow, connectionCount, centralityDegree) : 0;
-            const strategyBonus = STRATEGY_BONUS[chunk.matchReason] ?? 0;
-            const proximityBonus = (graphBoosts.get(chunk.id) ?? 0) * GRAPH_PROXIMITY_WEIGHT;
-            chunk.score = baseScore + strategyBonus + proximityBonus;
-        }
+for (const chunk of matchedChunks) {
+    const rawRow = chunkRows.get(chunk.id);
+    const connectionCount = connCountMap.get(chunk.id) ?? 0;
+    const centralityDegree = degreeMap.get(chunk.id) ?? 0;
+    const baseScore = rawRow ? scoreChunk(rawRow, connectionCount, centralityDegree) : 0;
+    const strategyBonus = STRATEGY_BONUS[chunk.matchReason] ?? 0;
+    const proximityBonus = (graphBoosts.get(chunk.id) ?? 0) * GRAPH_PROXIMITY_WEIGHT;
+    chunk.score = baseScore + strategyBonus + proximityBonus;
+}
 ```
 
 - [ ] **Step 3: Run existing tests**
@@ -565,6 +574,7 @@ git commit -m "feat: hybrid graph+vector scoring in context-for-file pipeline"
 ### Task 3.3: Apply hybrid boost to duplicate detection
 
 **Files:**
+
 - Modify: `packages/db/src/repository/similarity.ts`
 
 - [ ] **Step 1: Read the current file**
@@ -578,11 +588,7 @@ Add to `packages/db/src/repository/similarity.ts`:
 ```typescript
 import { getSubgraph } from "../age/query";
 
-export function findDuplicatePairsWithGraphSignal(params: {
-    chunkIds: string[];
-    embeddingThreshold?: number;
-    limit?: number;
-}) {
+export function findDuplicatePairsWithGraphSignal(params: { chunkIds: string[]; embeddingThreshold?: number; limit?: number }) {
     const embeddingThreshold = params.embeddingThreshold ?? 0.85;
     const limit = params.limit ?? 10;
 
@@ -596,22 +602,19 @@ export function findDuplicatePairsWithGraphSignal(params: {
             const allIds = [...new Set(pairs.flatMap(p => [p.idA, p.idB]))];
             return getSubgraph(allIds).pipe(
                 Effect.map(edges => {
-                    const edgeSet = new Set(
-                        edges.map(e => [e.source, e.target].sort().join(":"))
-                    );
-                    return pairs.map(p => {
-                        const pairKey = [p.idA, p.idB].sort().join(":");
-                        const graphConnected = edgeSet.has(pairKey);
-                        return {
-                            ...p,
-                            graphConnected,
-                            combinedScore: graphConnected
-                                ? p.similarity * 1.15
-                                : p.similarity
-                        };
-                    })
-                    .sort((a, b) => b.combinedScore - a.combinedScore)
-                    .slice(0, limit);
+                    const edgeSet = new Set(edges.map(e => [e.source, e.target].sort().join(":")));
+                    return pairs
+                        .map(p => {
+                            const pairKey = [p.idA, p.idB].sort().join(":");
+                            const graphConnected = edgeSet.has(pairKey);
+                            return {
+                                ...p,
+                                graphConnected,
+                                combinedScore: graphConnected ? p.similarity * 1.15 : p.similarity
+                            };
+                        })
+                        .sort((a, b) => b.combinedScore - a.combinedScore)
+                        .slice(0, limit);
                 }),
                 Effect.catchAll(() =>
                     Effect.succeed(
@@ -649,11 +652,13 @@ git commit -m "feat: graph-enhanced duplicate detection combining embedding + to
 
 ## Feature 4: Graph-Based Impact Analysis for Staleness
 
-When a chunk is updated, automatically flag its downstream dependents (chunks connected via `depends_on`, `extends`, `part_of`) as potentially stale.
+When a chunk is updated, automatically flag its downstream dependents (chunks connected via `depends_on`, `extends`, `part_of`) as
+potentially stale.
 
 ### Task 4.1: Add `getDownstreamChunks` AGE query
 
 **Files:**
+
 - Modify: `packages/db/src/age/query.ts`
 - Modify: `packages/db/src/age/query.test.ts`
 
@@ -677,9 +682,7 @@ describe("getDownstreamChunks", () => {
         if (!ageReady) return;
         // In our test graph: A→B→C (all via :connects)
         // Downstream of A should include B and C
-        const downstream = await Effect.runPromise(
-            getDownstreamChunks(uid("A"), 3)
-        );
+        const downstream = await Effect.runPromise(getDownstreamChunks(uid("A"), 3));
         expect(downstream).toContain(uid("B"));
         expect(downstream).toContain(uid("C"));
     });
@@ -687,17 +690,13 @@ describe("getDownstreamChunks", () => {
     it("returns empty for leaf chunks with no outgoing edges", async () => {
         if (!ageReady) return;
         // C has no outgoing :connects edges
-        const downstream = await Effect.runPromise(
-            getDownstreamChunks(uid("C"), 3)
-        );
+        const downstream = await Effect.runPromise(getDownstreamChunks(uid("C"), 3));
         expect(downstream.length).toBe(0);
     });
 
     it("returns empty for orphan chunks", async () => {
         if (!ageReady) return;
-        const downstream = await Effect.runPromise(
-            getDownstreamChunks(uid("orphan"), 3)
-        );
+        const downstream = await Effect.runPromise(getDownstreamChunks(uid("orphan"), 3));
         expect(downstream.length).toBe(0);
     });
 });
@@ -742,6 +741,7 @@ git commit -m "feat: add getDownstreamChunks AGE query for impact analysis"
 ### Task 4.2: Create impact-based staleness detector
 
 **Files:**
+
 - Create: `packages/api/src/staleness/detect-impact.ts`
 
 - [ ] **Step 1: Implement the impact detector**
@@ -788,16 +788,15 @@ export { flagDownstreamStale } from "./detect-impact";
 
 - [ ] **Step 3: Wire into chunk update flow**
 
-In the chunk service (`packages/api/src/chunks/service.ts`), find the `updateChunk` function. After the chunk is successfully updated, add a fire-and-forget impact scan:
+In the chunk service (`packages/api/src/chunks/service.ts`), find the `updateChunk` function. After the chunk is successfully updated, add a
+fire-and-forget impact scan:
 
 ```typescript
 import { flagDownstreamStale } from "../staleness/detect-impact";
 
 // Inside updateChunk, after the db update succeeds:
 // Fire-and-forget: flag downstream chunks as potentially stale
-Effect.runPromise(
-    flagDownstreamStale(chunkId, updated.title, userId)
-).catch(() => {});
+Effect.runPromise(flagDownstreamStale(chunkId, updated.title, userId)).catch(() => {});
 ```
 
 This should be placed after the existing title/content change detection logic (where embeddings are re-generated).
@@ -851,11 +850,13 @@ git commit -m "feat: graph-based impact analysis flags downstream chunks on upda
 
 ## Feature 5: Community Detection for Auto-Grouping
 
-Use AGE multi-hop queries to find clusters of densely connected chunks. Each cluster is a natural "knowledge community" that could inform tag suggestions, workspace recommendations, or a knowledge-domains view.
+Use AGE multi-hop queries to find clusters of densely connected chunks. Each cluster is a natural "knowledge community" that could inform
+tag suggestions, workspace recommendations, or a knowledge-domains view.
 
 ### Task 5.1: Add `detectCommunities` AGE query
 
 **Files:**
+
 - Modify: `packages/db/src/age/query.ts`
 - Modify: `packages/db/src/age/query.test.ts`
 
@@ -878,11 +879,7 @@ import {
 describe("detectCommunities", () => {
     it("identifies separate clusters in the test graph", async () => {
         if (!ageReady) return;
-        const allTestIds = [
-            uid("A"), uid("B"), uid("C"),
-            uid("center"), uid("spoke1"), uid("spoke2"), uid("spoke3"),
-            uid("orphan")
-        ];
+        const allTestIds = [uid("A"), uid("B"), uid("C"), uid("center"), uid("spoke1"), uid("spoke2"), uid("spoke3"), uid("orphan")];
         const communities = await Effect.runPromise(detectCommunities(allTestIds, 1));
         // Should have at least 2 communities: the chain (A-B-C) and the star (center+spokes)
         // Orphan forms its own singleton community
@@ -909,7 +906,8 @@ Expected: FAIL — not exported.
 
 - [ ] **Step 3: Implement `detectCommunities`**
 
-AGE doesn't have built-in community detection algorithms, so we use a label-propagation approach in application code, seeded by AGE neighborhood queries.
+AGE doesn't have built-in community detection algorithms, so we use a label-propagation approach in application code, seeded by AGE
+neighborhood queries.
 
 Add to `packages/db/src/age/query.ts`:
 
@@ -984,6 +982,7 @@ git commit -m "feat: add community detection via connected-component analysis on
 ### Task 5.2: Expose communities in the graph API
 
 **Files:**
+
 - Modify: `packages/api/src/graph/service.ts`
 - Modify: `packages/api/src/graph/routes.ts`
 
@@ -992,7 +991,14 @@ git commit -m "feat: add community detection via connected-component analysis on
 In `packages/api/src/graph/service.ts`:
 
 ```typescript
-import { detectCommunities, getAllChunksMeta, getAllConnectionsForUser, getAllTagsWithTypes, getChunkCodebaseMappings, getTagTypesForGraph } from "@fubbik/db/repository";
+import {
+    detectCommunities,
+    getAllChunksMeta,
+    getAllConnectionsForUser,
+    getAllTagsWithTypes,
+    getChunkCodebaseMappings,
+    getTagTypesForGraph
+} from "@fubbik/db/repository";
 import { Effect } from "effect";
 
 export function getUserGraph(userId?: string, codebaseId?: string, workspaceId?: string) {
@@ -1002,7 +1008,9 @@ export function getUserGraph(userId?: string, codebaseId?: string, workspaceId?:
             connections: getAllConnectionsForUser(userId),
             chunkTags: getAllTagsWithTypes(userId),
             tagTypes: getTagTypesForGraph(userId),
-            chunkCodebases: workspaceId ? getChunkCodebaseMappings(userId) : Effect.succeed([] as { chunkId: string; codebaseId: string; codebaseName: string }[])
+            chunkCodebases: workspaceId
+                ? getChunkCodebaseMappings(userId)
+                : Effect.succeed([] as { chunkId: string; codebaseId: string; codebaseName: string }[])
         },
         { concurrency: "unbounded" }
     ).pipe(
@@ -1060,11 +1068,13 @@ git commit -m "feat: expose knowledge communities via graph API"
 
 ## Feature 6: Graph-Weighted Similarity for Related Chunk Suggestions
 
-Improve the "related chunks" suggestions on chunk detail pages by combining embedding similarity with graph distance — two chunks that are both semantically similar AND graph-connected are much more likely to be genuinely related.
+Improve the "related chunks" suggestions on chunk detail pages by combining embedding similarity with graph distance — two chunks that are
+both semantically similar AND graph-connected are much more likely to be genuinely related.
 
 ### Task 6.1: Add hybrid similarity function
 
 **Files:**
+
 - Modify: `packages/db/src/repository/semantic.ts`
 
 - [ ] **Step 1: Add `findRelatedChunksHybrid` function**
@@ -1075,20 +1085,13 @@ Add to `packages/db/src/repository/semantic.ts`:
 import { Effect } from "effect";
 import { getNeighborhood } from "../age/query";
 
-export function findRelatedChunksHybrid(
-    chunkId: string,
-    userId: string,
-    k: number,
-    graphHops = 2
-) {
+export function findRelatedChunksHybrid(chunkId: string, userId: string, k: number, graphHops = 2) {
     return Effect.gen(function* () {
         // Get embedding-based neighbors
         const embeddingNeighbors = yield* findNeighborsByChunkId(chunkId, userId, k * 2);
 
         // Get graph neighbors
-        const graphNeighborIds = yield* getNeighborhood(chunkId, graphHops).pipe(
-            Effect.catchAll(() => Effect.succeed([] as string[]))
-        );
+        const graphNeighborIds = yield* getNeighborhood(chunkId, graphHops).pipe(Effect.catchAll(() => Effect.succeed([] as string[])));
         const graphSet = new Set(graphNeighborIds);
 
         // Score: embedding similarity + graph proximity bonus
@@ -1103,9 +1106,7 @@ export function findRelatedChunksHybrid(
             };
         });
 
-        return scored
-            .sort((a, b) => b.combinedScore - a.combinedScore)
-            .slice(0, k);
+        return scored.sort((a, b) => b.combinedScore - a.combinedScore).slice(0, k);
     });
 }
 ```
@@ -1126,33 +1127,42 @@ git commit -m "feat: hybrid similarity function combining embeddings with graph 
 ### Task 6.2: Wire hybrid suggestions into chunk detail
 
 **Files:**
+
 - Modify: `packages/api/src/chunks/service.ts` (or wherever related chunk suggestions are served)
 
 - [ ] **Step 1: Find where related chunks are currently fetched**
 
-Search for `findNeighborsByChunkId` usage in the API layer. If it's used in the chunk detail or suggestion endpoints, replace it with `findRelatedChunksHybrid`.
+Search for `findNeighborsByChunkId` usage in the API layer. If it's used in the chunk detail or suggestion endpoints, replace it with
+`findRelatedChunksHybrid`.
 
 - [ ] **Step 2: Update the import and call**
 
 Replace:
+
 ```typescript
 import { findNeighborsByChunkId } from "@fubbik/db/repository";
 ```
+
 With:
+
 ```typescript
 import { findRelatedChunksHybrid } from "@fubbik/db/repository";
 ```
 
 And update the call from:
+
 ```typescript
-findNeighborsByChunkId(chunkId, userId, 5)
-```
-To:
-```typescript
-findRelatedChunksHybrid(chunkId, userId, 5)
+findNeighborsByChunkId(chunkId, userId, 5);
 ```
 
-The return type includes additional fields (`embeddingSimilarity`, `graphConnected`, `combinedScore`) which can be used by the frontend to show indicators.
+To:
+
+```typescript
+findRelatedChunksHybrid(chunkId, userId, 5);
+```
+
+The return type includes additional fields (`embeddingSimilarity`, `graphConnected`, `combinedScore`) which can be used by the frontend to
+show indicators.
 
 - [ ] **Step 3: Run tests**
 

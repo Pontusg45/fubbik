@@ -1,7 +1,7 @@
 ---
 tags:
-  - guide
-  - onboarding
+    - guide
+    - onboarding
 description: Getting started section index — installation, configuration, and quick start
 ---
 
@@ -11,9 +11,11 @@ Welcome to fubbik — a local-first knowledge framework for storing, navigating,
 
 ## What is Fubbik?
 
-Fubbik helps you capture and organize the knowledge that lives in your team's heads: architecture decisions, coding conventions, runbooks, API documentation, and more. It's designed for both humans (web UI, graph visualization) and machines (CLI, MCP server, VS Code extension).
+Fubbik helps you capture and organize the knowledge that lives in your team's heads: architecture decisions, coding conventions, runbooks,
+API documentation, and more. It's designed for both humans (web UI, graph visualization) and machines (CLI, MCP server, VS Code extension).
 
-Unlike wikis or docs-as-code tools, fubbik breaks knowledge into **chunks** — small, atomic units that can be connected, tagged, searched, and served to AI tools with token-aware budgeting.
+Unlike wikis or docs-as-code tools, fubbik breaks knowledge into **chunks** — small, atomic units that can be connected, tagged, searched,
+and served to AI tools with token-aware budgeting.
 
 ## In This Section
 

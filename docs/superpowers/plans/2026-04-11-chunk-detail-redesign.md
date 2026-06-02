@@ -1,10 +1,14 @@
 # Chunk Detail Redesign Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to
+> implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Rewrite `/chunks/$chunkId` into a reading-first three-pane layout (sibling navigator, content, metadata/ToC) with a "More context" drawer for all supporting data.
+**Goal:** Rewrite `/chunks/$chunkId` into a reading-first three-pane layout (sibling navigator, content, metadata/ToC) with a "More context"
+drawer for all supporting data.
 
-**Architecture:** Extract current inline sub-components into dedicated files under `apps/web/src/features/chunks/detail/`. Reuse all existing feature components (ChunkLinkRenderer, ChunkToc, AiSection, DependencyTree, etc.) unchanged. The route component becomes a thin composition. Use `Sheet` component for the drawer.
+**Architecture:** Extract current inline sub-components into dedicated files under `apps/web/src/features/chunks/detail/`. Reuse all
+existing feature components (ChunkLinkRenderer, ChunkToc, AiSection, DependencyTree, etc.) unchanged. The route component becomes a thin
+composition. Use `Sheet` component for the drawer.
 
 **Tech Stack:** React, TanStack Router, shadcn-ui (base-ui `render` prop pattern), Tailwind CSS, Sheet component, existing hooks
 
@@ -12,26 +16,28 @@
 
 ## File Structure
 
-| File | Action | Responsibility |
-|------|--------|---------------|
-| `apps/web/src/features/chunks/chunk-comments.tsx` | Create | Extracted from inline definition in current chunks.$chunkId.tsx |
-| `apps/web/src/features/chunks/detail/chunk-detail-top-bar.tsx` | Create | Top bar with Back / Favorite / Export / Edit / ⋯ menu |
-| `apps/web/src/features/chunks/detail/chunk-sibling-navigator.tsx` | Create | Left pane with sibling chunks + prev/next |
-| `apps/web/src/features/chunks/detail/chunk-metadata-panel.tsx` | Create | Right pane with ToC + compact details |
-| `apps/web/src/features/chunks/detail/chunk-detail-content.tsx` | Create | Center content (meta row, title, summary, markdown, decision callout) |
-| `apps/web/src/features/chunks/detail/more-context-drawer.tsx` | Create | Sheet-based drawer with 4 tabs |
-| `apps/web/src/features/chunks/detail/more-context-links-tab.tsx` | Create | Links tab (outgoing, incoming, deps, suggested, related) |
-| `apps/web/src/features/chunks/detail/more-context-context-tab.tsx` | Create | Context tab (applies-to, file-refs, AI, decision edit) |
-| `apps/web/src/routes/chunks.$chunkId.tsx` | Rewrite | Thin composition of the above |
+| File                                                               | Action  | Responsibility                                                        |
+| ------------------------------------------------------------------ | ------- | --------------------------------------------------------------------- |
+| `apps/web/src/features/chunks/chunk-comments.tsx`                  | Create  | Extracted from inline definition in current chunks.$chunkId.tsx       |
+| `apps/web/src/features/chunks/detail/chunk-detail-top-bar.tsx`     | Create  | Top bar with Back / Favorite / Export / Edit / ⋯ menu                 |
+| `apps/web/src/features/chunks/detail/chunk-sibling-navigator.tsx`  | Create  | Left pane with sibling chunks + prev/next                             |
+| `apps/web/src/features/chunks/detail/chunk-metadata-panel.tsx`     | Create  | Right pane with ToC + compact details                                 |
+| `apps/web/src/features/chunks/detail/chunk-detail-content.tsx`     | Create  | Center content (meta row, title, summary, markdown, decision callout) |
+| `apps/web/src/features/chunks/detail/more-context-drawer.tsx`      | Create  | Sheet-based drawer with 4 tabs                                        |
+| `apps/web/src/features/chunks/detail/more-context-links-tab.tsx`   | Create  | Links tab (outgoing, incoming, deps, suggested, related)              |
+| `apps/web/src/features/chunks/detail/more-context-context-tab.tsx` | Create  | Context tab (applies-to, file-refs, AI, decision edit)                |
+| `apps/web/src/routes/chunks.$chunkId.tsx`                          | Rewrite | Thin composition of the above                                         |
 
 ---
 
 ### Task 1: Extract ChunkComments to its own file
 
 **Files:**
+
 - Create: `apps/web/src/features/chunks/chunk-comments.tsx`
 
-**Context:** The current `chunks.$chunkId.tsx` file defines `ChunkComments` as an inline function at the bottom of the file (around line 657-818). Extract it unchanged into its own file so we can import it from the new drawer tab components.
+**Context:** The current `chunks.$chunkId.tsx` file defines `ChunkComments` as an inline function at the bottom of the file (around line
+657-818). Extract it unchanged into its own file so we can import it from the new drawer tab components.
 
 - [ ] **Step 1: Find the ChunkComments definition**
 
@@ -41,11 +47,13 @@ Note the line number where the function starts.
 
 - [ ] **Step 2: Read the ChunkComments function and its imports**
 
-Read the current chunks.$chunkId.tsx from that line to the end of the function. Note all external identifiers it references: API calls, hooks, types, icons, UI components.
+Read the current chunks.$chunkId.tsx from that line to the end of the function. Note all external identifiers it references: API calls,
+hooks, types, icons, UI components.
 
 - [ ] **Step 3: Create the new file**
 
-Create `apps/web/src/features/chunks/chunk-comments.tsx` and paste the `ChunkComments` function verbatim. Add all imports the function needs at the top:
+Create `apps/web/src/features/chunks/chunk-comments.tsx` and paste the `ChunkComments` function verbatim. Add all imports the function needs
+at the top:
 
 ```typescript
 // Example imports — verify against the original function body
@@ -59,6 +67,7 @@ import { api } from "@/utils/api";
 ```
 
 Export the component:
+
 ```typescript
 export function ChunkComments({ chunkId }: { chunkId: string }) {
     // ... existing body ...
@@ -70,6 +79,7 @@ Keep the function signature and body identical to the original. Do not modify th
 - [ ] **Step 4: Remove the inline definition from chunks.$chunkId.tsx**
 
 Delete the `ChunkComments` function from `chunks.$chunkId.tsx`. Add an import at the top:
+
 ```typescript
 import { ChunkComments } from "@/features/chunks/chunk-comments";
 ```
@@ -92,9 +102,11 @@ git commit -m "refactor(chunks): extract ChunkComments to its own file"
 ### Task 2: Create the Top Bar component
 
 **Files:**
+
 - Create: `apps/web/src/features/chunks/detail/chunk-detail-top-bar.tsx`
 
-**Context:** The new top bar replaces the 10-button horizontal row with a clean Back button on the left and 4 action buttons on the right (Favorite, Export, Edit, ⋯ menu).
+**Context:** The new top bar replaces the 10-button horizontal row with a clean Back button on the left and 4 action buttons on the right
+(Favorite, Export, Edit, ⋯ menu).
 
 - [ ] **Step 1: Create the component file**
 
@@ -343,7 +355,8 @@ export function ChunkDetailTopBar({
 
 Run: `pnpm --filter web run check-types 2>&1 | grep chunk-detail-top-bar`
 
-Expected: No errors. If `DropdownMenuTrigger` doesn't accept `render` prop, check the actual API of `@/components/ui/dropdown-menu` and adapt.
+Expected: No errors. If `DropdownMenuTrigger` doesn't accept `render` prop, check the actual API of `@/components/ui/dropdown-menu` and
+adapt.
 
 - [ ] **Step 3: Commit**
 
@@ -357,6 +370,7 @@ git commit -m "feat(chunks): add ChunkDetailTopBar component"
 ### Task 3: Create the Sibling Navigator
 
 **Files:**
+
 - Create: `apps/web/src/features/chunks/detail/chunk-sibling-navigator.tsx`
 
 **Context:** Slim left pane with a sliding window of 10 sibling chunks within the same codebase, plus prev/next buttons.
@@ -521,7 +535,8 @@ export function ChunkSiblingNavigator({
 }
 ```
 
-Note: The sliding window logic here is simplified because the current chunk is filtered out; in practice we just show the top N by update time. The prev/next buttons navigate to the first two items in the window.
+Note: The sliding window logic here is simplified because the current chunk is filtered out; in practice we just show the top N by update
+time. The prev/next buttons navigate to the first two items in the window.
 
 - [ ] **Step 2: Verify type check**
 
@@ -541,9 +556,11 @@ git commit -m "feat(chunks): add ChunkSiblingNavigator for detail page left pane
 ### Task 4: Create the Metadata Panel (Right Pane)
 
 **Files:**
+
 - Create: `apps/web/src/features/chunks/detail/chunk-metadata-panel.tsx`
 
-**Context:** Right pane with the existing `ChunkToc` (from content) and compact details (health, tags, type, created, updated, size, connections count, codebase, origin, review).
+**Context:** Right pane with the existing `ChunkToc` (from content) and compact details (health, tags, type, created, updated, size,
+connections count, codebase, origin, review).
 
 - [ ] **Step 1: Create the component**
 
@@ -710,6 +727,7 @@ git commit -m "feat(chunks): add ChunkMetadataPanel for detail page right pane"
 ### Task 5: Create the Detail Content component (center pane)
 
 **Files:**
+
 - Create: `apps/web/src/features/chunks/detail/chunk-detail-content.tsx`
 
 **Context:** The center pane. Renders meta row, title, summary, markdown content, and decision context callout.
@@ -897,15 +915,18 @@ git commit -m "feat(chunks): add ChunkDetailContent for center reading pane"
 ### Task 6: Create the More Context Drawer
 
 **Files:**
+
 - Create: `apps/web/src/features/chunks/detail/more-context-drawer.tsx`
 - Create: `apps/web/src/features/chunks/detail/more-context-links-tab.tsx`
 - Create: `apps/web/src/features/chunks/detail/more-context-context-tab.tsx`
 
-**Context:** The drawer uses the existing `Sheet` component (`apps/web/src/components/ui/sheet.tsx`). Four tabs: Links, Context, Comments, History.
+**Context:** The drawer uses the existing `Sheet` component (`apps/web/src/components/ui/sheet.tsx`). Four tabs: Links, Context, Comments,
+History.
 
 - [ ] **Step 1: Read the existing Sheet component**
 
-Read `apps/web/src/components/ui/sheet.tsx` to understand the API. Look at the exported components (`Sheet`, `SheetTrigger`, `SheetContent`, `SheetHeader`, etc.) and how side is specified ("right" / "left" / etc.).
+Read `apps/web/src/components/ui/sheet.tsx` to understand the API. Look at the exported components (`Sheet`, `SheetTrigger`, `SheetContent`,
+`SheetHeader`, etc.) and how side is specified ("right" / "left" / etc.).
 
 - [ ] **Step 2: Create the Links tab**
 
@@ -1250,13 +1271,17 @@ git commit -m "feat(chunks): add More Context drawer with Links, Context, Commen
 ### Task 7: Rewrite the route component
 
 **Files:**
+
 - Modify: `apps/web/src/routes/chunks.$chunkId.tsx` (full rewrite)
 
-**Context:** The route becomes a thin composition. All the old inline UI gets removed. The new components are composed into a three-pane layout with the drawer and floating trigger button.
+**Context:** The route becomes a thin composition. All the old inline UI gets removed. The new components are composed into a three-pane
+layout with the drawer and floating trigger button.
 
 - [ ] **Step 1: Replace the file contents**
 
-Read the current file to preserve the route definition (`createFileRoute`, `beforeLoad`, auth logic) and the data fetch/mutation setup. Keep:
+Read the current file to preserve the route definition (`createFileRoute`, `beforeLoad`, auth logic) and the data fetch/mutation setup.
+Keep:
+
 - The `Route` export with `createFileRoute` and `beforeLoad`
 - All `useQuery` / `useMutation` logic
 - Loading skeleton
@@ -1265,6 +1290,7 @@ Read the current file to preserve the route definition (`createFileRoute`, `befo
 - Scroll progress state and effect
 
 Delete:
+
 - The inline JSX for action bar (replaced by `ChunkDetailTopBar`)
 - The old title/metadata block (replaced by `ChunkDetailContent`)
 - The `InlineTagEditor` inline (moves to `ChunkMetadataPanel`)
@@ -1390,6 +1416,7 @@ return (
 ```
 
 Add state declarations at the top:
+
 ```typescript
 const [drawerOpen, setDrawerOpen] = useState(false);
 const [drawerTab, setDrawerTab] = useState<DrawerTab>("links");
@@ -1399,6 +1426,7 @@ const totalSignals = connections.length + (appliesTo?.length ?? 0) + (fileRefere
 ```
 
 Add keyboard shortcut for `m`:
+
 ```typescript
 useEffect(() => {
     function handleKey(e: KeyboardEvent) {
@@ -1416,6 +1444,7 @@ useEffect(() => {
 ```
 
 Add imports at the top:
+
 ```typescript
 import { ChunkDetailTopBar } from "@/features/chunks/detail/chunk-detail-top-bar";
 import { ChunkDetailContent } from "@/features/chunks/detail/chunk-detail-content";
@@ -1435,6 +1464,7 @@ Fix any import errors, missing props, or type mismatches. The route file should 
 - [ ] **Step 3: Smoke test**
 
 Run `pnpm dev` and navigate to a chunk detail page:
+
 1. Three panes visible on wide screens
 2. Top bar shows Back + Favorite + Export + Edit + ⋯
 3. Left pane shows sibling chunks (if the chunk has a codebase)
@@ -1476,29 +1506,30 @@ Expected: Success.
 
 Load a chunk with plenty of connections, comments, file refs, and a rationale. Verify:
 
-| Feature | Expected |
-|---------|----------|
-| Top bar | 4 buttons + ⋯ menu visible |
-| ⋯ menu | All old actions accessible (Focus, Find path, Similar, Split, Entry point, Review, Archive, Delete) |
-| Left pane | Siblings visible if in a codebase, prev/next work |
-| Content pane | Type + reading time + updated row, title, summary, staleness banner, markdown with auto-links |
-| Decision context | Amber callout appears when rationale/alternatives/consequences exist |
-| Right pane | ToC generated from headings, Details with health, tags, type, etc. |
-| Drawer trigger | Floating button bottom-right shows signal count |
-| Drawer → Links | Outgoing + incoming + deps + suggested + related all shown |
-| Drawer → Context | Applies-to, file-refs, AI enrichment |
-| Drawer → Comments | Full CRUD works |
-| Drawer → History | Version history renders |
-| Keyboard: m | Opens/closes drawer |
-| Keyboard: f | Toggles focus mode; side panes hide |
-| Keyboard: h / l | Navigates prev/next sibling |
-| Favorite star | Toggles correctly |
-| Export dropdown | Copy and Download both work |
-| Mobile (resize window) | Layout degrades gracefully, top bar compact |
+| Feature                | Expected                                                                                            |
+| ---------------------- | --------------------------------------------------------------------------------------------------- |
+| Top bar                | 4 buttons + ⋯ menu visible                                                                          |
+| ⋯ menu                 | All old actions accessible (Focus, Find path, Similar, Split, Entry point, Review, Archive, Delete) |
+| Left pane              | Siblings visible if in a codebase, prev/next work                                                   |
+| Content pane           | Type + reading time + updated row, title, summary, staleness banner, markdown with auto-links       |
+| Decision context       | Amber callout appears when rationale/alternatives/consequences exist                                |
+| Right pane             | ToC generated from headings, Details with health, tags, type, etc.                                  |
+| Drawer trigger         | Floating button bottom-right shows signal count                                                     |
+| Drawer → Links         | Outgoing + incoming + deps + suggested + related all shown                                          |
+| Drawer → Context       | Applies-to, file-refs, AI enrichment                                                                |
+| Drawer → Comments      | Full CRUD works                                                                                     |
+| Drawer → History       | Version history renders                                                                             |
+| Keyboard: m            | Opens/closes drawer                                                                                 |
+| Keyboard: f            | Toggles focus mode; side panes hide                                                                 |
+| Keyboard: h / l        | Navigates prev/next sibling                                                                         |
+| Favorite star          | Toggles correctly                                                                                   |
+| Export dropdown        | Copy and Download both work                                                                         |
+| Mobile (resize window) | Layout degrades gracefully, top bar compact                                                         |
 
 - [ ] **Step 4: Commit fixes if needed**
 
 If any smoke tests fail, fix inline and commit:
+
 ```bash
 git commit -am "fix(chunks): resolve smoke test issues in detail redesign"
 ```

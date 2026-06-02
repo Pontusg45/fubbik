@@ -1,6 +1,7 @@
 # Knowledge-Integrated Development with Fubbik
 
-You have access to the `fubbik` CLI — a local-first knowledge framework. Use it to pull context before working, capture decisions as you go, and track progress against plans.
+You have access to the `fubbik` CLI — a local-first knowledge framework. Use it to pull context before working, capture decisions as you go,
+and track progress against plans.
 
 ## Before You Start
 
@@ -11,7 +12,8 @@ fubbik health
 fubbik codebase current
 ```
 
-If health fails, the server isn't running. You can still use local commands (`fubbik list`, `fubbik add`, `fubbik search`) but server-dependent features (semantic search, enrichment, plans) won't work.
+If health fails, the server isn't running. You can still use local commands (`fubbik list`, `fubbik add`, `fubbik search`) but
+server-dependent features (semantic search, enrichment, plans) won't work.
 
 ## Workflow Guide
 
@@ -33,7 +35,8 @@ fubbik plan list --json
 fubbik plan show <plan-id> --json
 ```
 
-**When to do this:** Always before starting implementation. The context often contains conventions, gotchas, and architectural decisions that affect your approach.
+**When to do this:** Always before starting implementation. The context often contains conventions, gotchas, and architectural decisions
+that affect your approach.
 
 ### Searching for knowledge
 
@@ -60,26 +63,31 @@ fubbik get <chunk-id> --json
 When you make a decision, discover a pattern, or learn something worth preserving:
 
 **Architecture decision:**
+
 ```bash
 fubbik add --template "Architecture Decision" --title "Use X for Y" --content "## Context\n...\n## Decision\n...\n## Consequences\n..." --tag architecture
 ```
 
 **Convention or pattern:**
+
 ```bash
 fubbik add --type convention --title "Always do X when Y" --content "..." --tag convention
 ```
 
 **Quick note:**
+
 ```bash
 fubbik add --type note --title "Note about X" --content "..."
 ```
 
 **Reference documentation:**
+
 ```bash
 fubbik add --type reference --title "How X works" --content "..."
 ```
 
-**When to capture:** After making a non-obvious decision, discovering a pattern that others should follow, or finding something that took effort to figure out. Don't capture trivial things — the knowledge base should contain what's genuinely useful.
+**When to capture:** After making a non-obvious decision, discovering a pattern that others should follow, or finding something that took
+effort to figure out. Don't capture trivial things — the knowledge base should contain what's genuinely useful.
 
 ### Connecting knowledge
 
@@ -120,7 +128,8 @@ fubbik why <file-path>
 fubbik why <file-path> --json
 ```
 
-This goes beyond `context-for` (which shows what's relevant) to focus on *why* — architecture decisions, rationale, conventions, and alternatives considered.
+This goes beyond `context-for` (which shows what's relevant) to focus on _why_ — architecture decisions, rationale, conventions, and
+alternatives considered.
 
 ### Finding knowledge gaps
 
@@ -196,12 +205,14 @@ fubbik list --global --json
 ## Common Patterns
 
 **Before implementing a feature:**
+
 ```bash
 fubbik context-for src/features/auth/login.tsx --json
 fubbik list --tag convention --codebase fubbik --json
 ```
 
 **After making an architecture decision:**
+
 ```bash
 fubbik add --type document --title "Use Effect for error handling" \
   --content "We use the Effect library for typed errors in the service layer..." \
@@ -209,6 +220,7 @@ fubbik add --type document --title "Use Effect for error handling" \
 ```
 
 **Recording a convention you discovered:**
+
 ```bash
 fubbik add --type convention --title "Always use render prop, not asChild" \
   --content "base-ui components use the render prop pattern, NOT Radix asChild..." \
@@ -216,6 +228,7 @@ fubbik add --type convention --title "Always use render prop, not asChild" \
 ```
 
 **Updating plan progress after completing work:**
+
 ```bash
 fubbik plan show <plan-id> --json   # find the step ID
 fubbik plan step-done <plan-id> <step-id>

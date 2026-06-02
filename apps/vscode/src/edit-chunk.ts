@@ -1,20 +1,14 @@
 import * as vscode from "vscode";
+
 import type { Chunk, FubbikApi } from "./api";
 import { getBaseHtml, getNonce } from "./webview-utils";
 
 const CHUNK_TYPES = ["note", "document", "reference", "schema", "checklist"];
 
-export function showEditChunk(
-    api: FubbikApi,
-    chunk: Chunk,
-    onUpdated: () => void
-) {
-    const panel = vscode.window.createWebviewPanel(
-        "fubbik.editChunk",
-        `Edit: ${chunk.title || "Untitled"}`,
-        vscode.ViewColumn.One,
-        { enableScripts: true }
-    );
+export function showEditChunk(api: FubbikApi, chunk: Chunk, onUpdated: () => void) {
+    const panel = vscode.window.createWebviewPanel("fubbik.editChunk", `Edit: ${chunk.title || "Untitled"}`, vscode.ViewColumn.One, {
+        enableScripts: true
+    });
 
     const nonce = getNonce();
     const body = buildEditForm(chunk);
@@ -22,7 +16,7 @@ export function showEditChunk(
 
     panel.webview.html = getBaseHtml(panel.webview, nonce, body, script);
 
-    panel.webview.onDidReceiveMessage(async (msg) => {
+    panel.webview.onDidReceiveMessage(async msg => {
         if (msg.type === "submit") {
             try {
                 await api.updateChunk(chunk.id, msg.data);
@@ -30,11 +24,8 @@ export function showEditChunk(
                 panel.dispose();
                 onUpdated();
             } catch (err: unknown) {
-                const message =
-                    err instanceof Error ? err.message : "Unknown error";
-                vscode.window.showErrorMessage(
-                    `Failed to update chunk: ${message}`
-                );
+                const message = err instanceof Error ? err.message : "Unknown error";
+                vscode.window.showErrorMessage(`Failed to update chunk: ${message}`);
             }
         }
         if (msg.type === "cancel") {
@@ -119,16 +110,9 @@ function buildEditScript(): string {
 }
 
 function escapeHtml(text: string): string {
-    return text
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;");
+    return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
 function escapeAttr(text: string): string {
-    return text
-        .replace(/&/g, "&amp;")
-        .replace(/"/g, "&quot;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;");
+    return text.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }

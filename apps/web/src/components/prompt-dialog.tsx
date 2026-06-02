@@ -1,15 +1,7 @@
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import {
-    Dialog,
-    DialogPopup,
-    DialogHeader,
-    DialogTitle,
-    DialogDescription,
-    DialogFooter,
-    DialogClose,
-} from "@/components/ui/dialog";
+import { Dialog, DialogPopup, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 
 interface PromptDialogProps {
@@ -31,7 +23,7 @@ export function PromptDialog({
     placeholder,
     defaultValue = "",
     submitLabel = "Save",
-    onSubmit,
+    onSubmit
 }: PromptDialogProps) {
     const [value, setValue] = useState(defaultValue);
 
@@ -44,7 +36,7 @@ export function PromptDialog({
     return (
         <Dialog
             open={open}
-            onOpenChange={(nextOpen) => {
+            onOpenChange={nextOpen => {
                 if (!nextOpen) setValue(defaultValue);
                 onOpenChange(nextOpen);
             }}
@@ -55,29 +47,17 @@ export function PromptDialog({
                     {description && <DialogDescription>{description}</DialogDescription>}
                 </DialogHeader>
                 <form
-                    onSubmit={(e) => {
+                    onSubmit={e => {
                         e.preventDefault();
                         handleSubmit();
                     }}
                     className="px-6 pb-2"
                 >
-                    <Input
-                        placeholder={placeholder}
-                        value={value}
-                        onChange={(e) => setValue(e.target.value)}
-                        autoFocus
-                    />
+                    <Input placeholder={placeholder} value={value} onChange={e => setValue(e.target.value)} autoFocus />
                 </form>
                 <DialogFooter variant="bare">
-                    <DialogClose
-                        render={<Button variant="outline" />}
-                    >
-                        Cancel
-                    </DialogClose>
-                    <Button
-                        onClick={handleSubmit}
-                        disabled={!value.trim()}
-                    >
+                    <DialogClose render={<Button variant="outline" />}>Cancel</DialogClose>
+                    <Button onClick={handleSubmit} disabled={!value.trim()}>
                         {submitLabel}
                     </Button>
                 </DialogFooter>

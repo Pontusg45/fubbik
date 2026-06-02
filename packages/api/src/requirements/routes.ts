@@ -7,37 +7,16 @@ import * as requirementService from "./service";
 import * as suggestContextService from "./suggest-context-service";
 
 const StepSchema = t.Object({
-    keyword: t.Union([
-        t.Literal("given"),
-        t.Literal("when"),
-        t.Literal("then"),
-        t.Literal("and"),
-        t.Literal("but")
-    ]),
+    keyword: t.Union([t.Literal("given"), t.Literal("when"), t.Literal("then"), t.Literal("and"), t.Literal("but")]),
     text: t.String({ maxLength: 1000 }),
     params: t.Optional(t.Record(t.String(), t.String()))
 });
 
-const StatusSchema = t.Union([
-    t.Literal("passing"),
-    t.Literal("failing"),
-    t.Literal("untested")
-]);
+const StatusSchema = t.Union([t.Literal("passing"), t.Literal("failing"), t.Literal("untested")]);
 
-const PrioritySchema = t.Optional(
-    t.Union([
-        t.Literal("must"),
-        t.Literal("should"),
-        t.Literal("could"),
-        t.Literal("wont")
-    ])
-);
+const PrioritySchema = t.Optional(t.Union([t.Literal("must"), t.Literal("should"), t.Literal("could"), t.Literal("wont")]));
 
-const FormatSchema = t.Union([
-    t.Literal("gherkin"),
-    t.Literal("vitest"),
-    t.Literal("markdown")
-]);
+const FormatSchema = t.Union([t.Literal("gherkin"), t.Literal("vitest"), t.Literal("markdown")]);
 
 export const requirementRoutes = new Elysia()
     // 1. Stats
@@ -69,11 +48,7 @@ export const requirementRoutes = new Elysia()
         {
             body: t.Object({
                 ids: t.Array(t.String(), { minItems: 1, maxItems: 100 }),
-                action: t.Union([
-                    t.Literal("set_status"),
-                    t.Literal("set_use_case"),
-                    t.Literal("delete")
-                ]),
+                action: t.Union([t.Literal("set_status"), t.Literal("set_use_case"), t.Literal("delete")]),
                 status: t.Optional(StatusSchema),
                 useCaseId: t.Optional(t.Union([t.String(), t.Null()]))
             })
@@ -234,13 +209,7 @@ export const requirementRoutes = new Elysia()
                 title: t.Optional(t.String({ maxLength: 200 })),
                 description: t.Optional(t.Union([t.String({ maxLength: 5000 }), t.Null()])),
                 steps: t.Optional(t.Array(StepSchema, { minItems: 1 })),
-                priority: t.Optional(t.Union([
-                    t.Literal("must"),
-                    t.Literal("should"),
-                    t.Literal("could"),
-                    t.Literal("wont"),
-                    t.Null()
-                ])),
+                priority: t.Optional(t.Union([t.Literal("must"), t.Literal("should"), t.Literal("could"), t.Literal("wont"), t.Null()])),
                 spaceId: t.Optional(t.Union([t.String(), t.Null()])),
                 useCaseId: t.Optional(t.Union([t.String(), t.Null()])),
                 origin: t.Optional(t.Union([t.Literal("human"), t.Literal("ai")])),

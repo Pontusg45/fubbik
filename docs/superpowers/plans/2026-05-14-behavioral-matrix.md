@@ -1,18 +1,23 @@
 # Behavioral Specification Matrix Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to
+> implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add a first-class Behavioral Specification Matrix system — abstract spec layer above BDD requirements, with two matrix layers (invariants × entities, contracts × actors), computed cell statuses, and a grid UI.
+**Goal:** Add a first-class Behavioral Specification Matrix system — abstract spec layer above BDD requirements, with two matrix layers
+(invariants × entities, contracts × actors), computed cell statuses, and a grid UI.
 
-**Architecture:** Five new database tables (matrix, dimension, rule, cell, cell_requirement), a repository/service/route stack following the existing Effect-based patterns, a grid-based frontend with slide-over cell panel, MCP tools, and CLI commands.
+**Architecture:** Five new database tables (matrix, dimension, rule, cell, cell_requirement), a repository/service/route stack following the
+existing Effect-based patterns, a grid-based frontend with slide-over cell panel, MCP tools, and CLI commands.
 
-**Tech Stack:** Drizzle (schema), Effect (service), Elysia (routes), TanStack Router + React Query (frontend), Commander.js (CLI), MCP SDK (tools)
+**Tech Stack:** Drizzle (schema), Effect (service), Elysia (routes), TanStack Router + React Query (frontend), Commander.js (CLI), MCP SDK
+(tools)
 
 ---
 
 ### Task 1: Database Schema
 
 **Files:**
+
 - Create: `packages/db/src/schema/behavior-matrix.ts`
 - Modify: `packages/db/src/schema/index.ts`
 
@@ -23,13 +28,7 @@ Create `packages/db/src/schema/__tests__/behavior-matrix.test.ts`:
 ```typescript
 import { describe, expect, it } from "vitest";
 import { getTableColumns } from "drizzle-orm";
-import {
-    behaviorMatrix,
-    behaviorDimension,
-    behaviorRule,
-    behaviorCell,
-    behaviorCellRequirement
-} from "../behavior-matrix";
+import { behaviorMatrix, behaviorDimension, behaviorRule, behaviorCell, behaviorCellRequirement } from "../behavior-matrix";
 
 describe("behavior-matrix schema", () => {
     it("behaviorMatrix has expected columns", () => {
@@ -83,8 +82,7 @@ describe("behavior-matrix schema", () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd packages/db && pnpm vitest run src/schema/__tests__/behavior-matrix.test.ts`
-Expected: FAIL — cannot resolve `"../behavior-matrix"`
+Run: `cd packages/db && pnpm vitest run src/schema/__tests__/behavior-matrix.test.ts` Expected: FAIL — cannot resolve `"../behavior-matrix"`
 
 - [ ] **Step 3: Create the schema file**
 
@@ -114,10 +112,7 @@ export const behaviorMatrix = pgTable(
             .$onUpdate(() => new Date())
             .notNull()
     },
-    table => [
-        index("behavior_matrix_userId_idx").on(table.userId),
-        index("behavior_matrix_layer_idx").on(table.layer)
-    ]
+    table => [index("behavior_matrix_userId_idx").on(table.userId), index("behavior_matrix_layer_idx").on(table.layer)]
 );
 
 export const behaviorDimension = pgTable(
@@ -154,9 +149,7 @@ export const behaviorRule = pgTable(
             .$onUpdate(() => new Date())
             .notNull()
     },
-    table => [
-        index("behavior_rule_matrixId_idx").on(table.matrixId)
-    ]
+    table => [index("behavior_rule_matrixId_idx").on(table.matrixId)]
 );
 
 export const behaviorCell = pgTable(
@@ -230,13 +223,12 @@ export * from "./behavior-matrix";
 
 - [ ] **Step 5: Run test to verify it passes**
 
-Run: `cd packages/db && pnpm vitest run src/schema/__tests__/behavior-matrix.test.ts`
-Expected: PASS — all 5 assertions green
+Run: `cd packages/db && pnpm vitest run src/schema/__tests__/behavior-matrix.test.ts` Expected: PASS — all 5 assertions green
 
 - [ ] **Step 6: Push schema to database**
 
-Run: `pnpm db:push`
-Expected: Tables `behavior_matrix`, `behavior_dimension`, `behavior_rule`, `behavior_cell`, `behavior_cell_requirement` created
+Run: `pnpm db:push` Expected: Tables `behavior_matrix`, `behavior_dimension`, `behavior_rule`, `behavior_cell`, `behavior_cell_requirement`
+created
 
 - [ ] **Step 7: Commit**
 
@@ -250,6 +242,7 @@ git commit -m "feat: add behavioral matrix database schema"
 ### Task 2: Repository
 
 **Files:**
+
 - Create: `packages/db/src/repository/behavior-matrix.ts`
 - Modify: `packages/db/src/repository/index.ts`
 
@@ -261,13 +254,7 @@ Create `packages/db/src/repository/behavior-matrix.ts`:
 import { and, eq, sql, inArray, asc } from "drizzle-orm";
 
 import { db, dbEffect } from "../index";
-import {
-    behaviorMatrix,
-    behaviorDimension,
-    behaviorRule,
-    behaviorCell,
-    behaviorCellRequirement
-} from "../schema/behavior-matrix";
+import { behaviorMatrix, behaviorDimension, behaviorRule, behaviorCell, behaviorCellRequirement } from "../schema/behavior-matrix";
 import { requirement } from "../schema/requirement";
 
 // --- Matrix CRUD ---
@@ -363,11 +350,7 @@ export function deleteDimension(id: string, matrixId: string) {
 
 export function getDimensionsForMatrix(matrixId: string) {
     return dbEffect(() =>
-        db
-            .select()
-            .from(behaviorDimension)
-            .where(eq(behaviorDimension.matrixId, matrixId))
-            .orderBy(asc(behaviorDimension.order))
+        db.select().from(behaviorDimension).where(eq(behaviorDimension.matrixId, matrixId)).orderBy(asc(behaviorDimension.order))
     );
 }
 
@@ -384,10 +367,7 @@ export function getMaxDimensionOrder(matrixId: string) {
 export function reorderDimensions(dimensionIds: string[]) {
     return dbEffect(async () => {
         for (let i = 0; i < dimensionIds.length; i++) {
-            await db
-                .update(behaviorDimension)
-                .set({ order: i })
-                .where(eq(behaviorDimension.id, dimensionIds[i]!));
+            await db.update(behaviorDimension).set({ order: i }).where(eq(behaviorDimension.id, dimensionIds[i]!));
         }
     });
 }
@@ -430,13 +410,7 @@ export function deleteRule(id: string, matrixId: string) {
 }
 
 export function getRulesForMatrix(matrixId: string) {
-    return dbEffect(() =>
-        db
-            .select()
-            .from(behaviorRule)
-            .where(eq(behaviorRule.matrixId, matrixId))
-            .orderBy(asc(behaviorRule.order))
-    );
+    return dbEffect(() => db.select().from(behaviorRule).where(eq(behaviorRule.matrixId, matrixId)).orderBy(asc(behaviorRule.order)));
 }
 
 export function getMaxRuleOrder(matrixId: string) {
@@ -452,10 +426,7 @@ export function getMaxRuleOrder(matrixId: string) {
 export function reorderRules(ruleIds: string[]) {
     return dbEffect(async () => {
         for (let i = 0; i < ruleIds.length; i++) {
-            await db
-                .update(behaviorRule)
-                .set({ order: i })
-                .where(eq(behaviorRule.id, ruleIds[i]!));
+            await db.update(behaviorRule).set({ order: i }).where(eq(behaviorRule.id, ruleIds[i]!));
         }
     });
 }
@@ -500,11 +471,7 @@ export function getCellRequirementCount(cellId: string) {
 
 export function linkCellRequirement(cellId: string, requirementId: string) {
     return dbEffect(async () => {
-        const [created] = await db
-            .insert(behaviorCellRequirement)
-            .values({ cellId, requirementId })
-            .onConflictDoNothing()
-            .returning();
+        const [created] = await db.insert(behaviorCellRequirement).values({ cellId, requirementId }).onConflictDoNothing().returning();
         return created ?? null;
     });
 }
@@ -513,10 +480,7 @@ export function unlinkCellRequirement(cellId: string, requirementId: string) {
     return dbEffect(async () => {
         const [deleted] = await db
             .delete(behaviorCellRequirement)
-            .where(and(
-                eq(behaviorCellRequirement.cellId, cellId),
-                eq(behaviorCellRequirement.requirementId, requirementId)
-            ))
+            .where(and(eq(behaviorCellRequirement.cellId, cellId), eq(behaviorCellRequirement.requirementId, requirementId)))
             .returning();
         return deleted ?? null;
     });
@@ -546,11 +510,7 @@ export function getMatrixView(matrixId: string) {
             .where(eq(behaviorDimension.matrixId, matrixId))
             .orderBy(asc(behaviorDimension.order));
 
-        const rules = await db
-            .select()
-            .from(behaviorRule)
-            .where(eq(behaviorRule.matrixId, matrixId))
-            .orderBy(asc(behaviorRule.order));
+        const rules = await db.select().from(behaviorRule).where(eq(behaviorRule.matrixId, matrixId)).orderBy(asc(behaviorRule.order));
 
         const cells = await db
             .select({
@@ -586,8 +546,7 @@ export * from "./behavior-matrix";
 
 - [ ] **Step 3: Run the schema test to verify nothing broke**
 
-Run: `cd packages/db && pnpm vitest run src/schema/__tests__/behavior-matrix.test.ts`
-Expected: PASS
+Run: `cd packages/db && pnpm vitest run src/schema/__tests__/behavior-matrix.test.ts` Expected: PASS
 
 - [ ] **Step 4: Commit**
 
@@ -601,6 +560,7 @@ git commit -m "feat: add behavioral matrix repository"
 ### Task 3: Service Layer
 
 **Files:**
+
 - Create: `packages/api/src/matrices/service.ts`
 
 - [ ] **Step 1: Write service tests**
@@ -665,10 +625,12 @@ describe("createMatrix", () => {
         const mat = mockMatrix();
         mockRepo.createMatrix.mockReturnValue(Effect.succeed(mat));
 
-        const result = await Effect.runPromise(service.createMatrix("user-1", {
-            name: "Domain Invariants",
-            layer: "invariant"
-        }));
+        const result = await Effect.runPromise(
+            service.createMatrix("user-1", {
+                name: "Domain Invariants",
+                layer: "invariant"
+            })
+        );
 
         expect(result).toMatchObject({ name: "Domain Invariants", layer: "invariant" });
         expect(mockRepo.createMatrix).toHaveBeenCalledOnce();
@@ -727,15 +689,17 @@ describe("toggleCell", () => {
 describe("getMatrixView", () => {
     it("computes cell statuses correctly", async () => {
         mockRepo.getMatrixById.mockReturnValue(Effect.succeed(mockMatrix()));
-        mockRepo.getMatrixView.mockReturnValue(Effect.succeed({
-            dimensions: [{ id: "dim-1", name: "Chunk", order: 0 }],
-            rules: [{ id: "rule-1", title: "Cascade", category: null, order: 0 }],
-            cells: [
-                { id: "c1", ruleId: "rule-1", dimensionId: "dim-1", requirementCount: 2, failingCount: 0 },
-                { id: "c2", ruleId: "rule-1", dimensionId: "dim-2", requirementCount: 0, failingCount: 0 },
-                { id: "c3", ruleId: "rule-1", dimensionId: "dim-3", requirementCount: 3, failingCount: 1 }
-            ]
-        }));
+        mockRepo.getMatrixView.mockReturnValue(
+            Effect.succeed({
+                dimensions: [{ id: "dim-1", name: "Chunk", order: 0 }],
+                rules: [{ id: "rule-1", title: "Cascade", category: null, order: 0 }],
+                cells: [
+                    { id: "c1", ruleId: "rule-1", dimensionId: "dim-1", requirementCount: 2, failingCount: 0 },
+                    { id: "c2", ruleId: "rule-1", dimensionId: "dim-2", requirementCount: 0, failingCount: 0 },
+                    { id: "c3", ruleId: "rule-1", dimensionId: "dim-3", requirementCount: 3, failingCount: 1 }
+                ]
+            })
+        );
 
         const result = await Effect.runPromise(service.getMatrixViewService("mat-1", "user-1"));
 
@@ -752,8 +716,7 @@ describe("getMatrixView", () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd packages/api && pnpm vitest run src/matrices/service.test.ts`
-Expected: FAIL — cannot resolve `"./service"`
+Run: `cd packages/api && pnpm vitest run src/matrices/service.test.ts` Expected: FAIL — cannot resolve `"./service"`
 
 - [ ] **Step 3: Create the service file**
 
@@ -793,12 +756,15 @@ import { NotFoundError, ValidationError } from "../errors";
 
 // --- Matrix ---
 
-export function createMatrix(userId: string, body: {
-    name: string;
-    layer: string;
-    description?: string;
-    codebaseId?: string;
-}) {
+export function createMatrix(
+    userId: string,
+    body: {
+        name: string;
+        layer: string;
+        description?: string;
+        codebaseId?: string;
+    }
+) {
     if (body.layer !== "invariant" && body.layer !== "contract") {
         return Effect.fail(new ValidationError({ message: "Layer must be 'invariant' or 'contract'" }));
     }
@@ -841,12 +807,14 @@ export function addDimension(matrixId: string, userId: string, body: { name: str
     return getMatrixById(matrixId, userId).pipe(
         Effect.flatMap(found => (found ? Effect.succeed(found) : Effect.fail(new NotFoundError({ resource: "Matrix" })))),
         Effect.flatMap(() => getMaxDimensionOrder(matrixId)),
-        Effect.flatMap(maxOrder => createDimensionRepo({
-            id: crypto.randomUUID(),
-            matrixId,
-            name: body.name,
-            order: maxOrder + 1
-        }))
+        Effect.flatMap(maxOrder =>
+            createDimensionRepo({
+                id: crypto.randomUUID(),
+                matrixId,
+                name: body.name,
+                order: maxOrder + 1
+            })
+        )
     );
 }
 
@@ -880,18 +848,25 @@ export function addRule(matrixId: string, userId: string, body: { title: string;
     return getMatrixById(matrixId, userId).pipe(
         Effect.flatMap(found => (found ? Effect.succeed(found) : Effect.fail(new NotFoundError({ resource: "Matrix" })))),
         Effect.flatMap(() => getMaxRuleOrder(matrixId)),
-        Effect.flatMap(maxOrder => createRuleRepo({
-            id: crypto.randomUUID(),
-            matrixId,
-            title: body.title,
-            description: body.description,
-            category: body.category,
-            order: maxOrder + 1
-        }))
+        Effect.flatMap(maxOrder =>
+            createRuleRepo({
+                id: crypto.randomUUID(),
+                matrixId,
+                title: body.title,
+                description: body.description,
+                category: body.category,
+                order: maxOrder + 1
+            })
+        )
     );
 }
 
-export function updateRule(matrixId: string, ruleId: string, userId: string, body: { title?: string; description?: string | null; category?: string | null }) {
+export function updateRule(
+    matrixId: string,
+    ruleId: string,
+    userId: string,
+    body: { title?: string; description?: string | null; category?: string | null }
+) {
     return getMatrixById(matrixId, userId).pipe(
         Effect.flatMap(found => (found ? Effect.succeed(found) : Effect.fail(new NotFoundError({ resource: "Matrix" })))),
         Effect.flatMap(() => updateRuleRepo(ruleId, matrixId, body)),
@@ -928,13 +903,13 @@ export function toggleCell(ruleId: string, dimensionId: string) {
             return getCellRequirementCount(existing.id).pipe(
                 Effect.flatMap(count => {
                     if (count > 0) {
-                        return Effect.fail(new ValidationError({
-                            message: `Cell has ${count} linked requirement(s). Unlink them first.`
-                        }));
+                        return Effect.fail(
+                            new ValidationError({
+                                message: `Cell has ${count} linked requirement(s). Unlink them first.`
+                            })
+                        );
                     }
-                    return deleteCellRepo(existing.id).pipe(
-                        Effect.map(() => ({ action: "deleted" as const, cell: existing }))
-                    );
+                    return deleteCellRepo(existing.id).pipe(Effect.map(() => ({ action: "deleted" as const, cell: existing })));
                 })
             );
         })
@@ -947,7 +922,9 @@ export function linkRequirementToCell(cellId: string, requirementId: string) {
 
 export function unlinkRequirementFromCell(cellId: string, requirementId: string) {
     return unlinkCellRequirementRepo(cellId, requirementId).pipe(
-        Effect.flatMap(deleted => (deleted ? Effect.succeed(deleted) : Effect.fail(new NotFoundError({ resource: "Cell-Requirement link" }))))
+        Effect.flatMap(deleted =>
+            deleted ? Effect.succeed(deleted) : Effect.fail(new NotFoundError({ resource: "Cell-Requirement link" }))
+        )
     );
 }
 
@@ -1013,8 +990,7 @@ export function getMatrixViewService(matrixId: string, userId: string) {
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `cd packages/api && pnpm vitest run src/matrices/service.test.ts`
-Expected: PASS — all 5 tests green
+Run: `cd packages/api && pnpm vitest run src/matrices/service.test.ts` Expected: PASS — all 5 tests green
 
 - [ ] **Step 5: Commit**
 
@@ -1028,6 +1004,7 @@ git commit -m "feat: add behavioral matrix service with tests"
 ### Task 4: API Routes
 
 **Files:**
+
 - Create: `packages/api/src/matrices/routes.ts`
 - Modify: `packages/api/src/index.ts`
 
@@ -1070,7 +1047,11 @@ export const matrixRoutes = new Elysia()
             Effect.runPromise(
                 requireSession(ctx).pipe(
                     Effect.flatMap(session => matrixService.createMatrix(session.user.id, ctx.body)),
-                    Effect.tap(() => Effect.sync(() => { ctx.set.status = 201; }))
+                    Effect.tap(() =>
+                        Effect.sync(() => {
+                            ctx.set.status = 201;
+                        })
+                    )
                 )
             ),
         {
@@ -1084,25 +1065,19 @@ export const matrixRoutes = new Elysia()
     )
     .get("/matrices/:id", ctx =>
         Effect.runPromise(
-            requireSession(ctx).pipe(
-                Effect.flatMap(session => matrixService.getMatrixDetail(ctx.params.id, session.user.id))
-            )
+            requireSession(ctx).pipe(Effect.flatMap(session => matrixService.getMatrixDetail(ctx.params.id, session.user.id)))
         )
     )
     .get("/matrices/:id/view", ctx =>
         Effect.runPromise(
-            requireSession(ctx).pipe(
-                Effect.flatMap(session => matrixService.getMatrixViewService(ctx.params.id, session.user.id))
-            )
+            requireSession(ctx).pipe(Effect.flatMap(session => matrixService.getMatrixViewService(ctx.params.id, session.user.id)))
         )
     )
     .patch(
         "/matrices/:id",
         ctx =>
             Effect.runPromise(
-                requireSession(ctx).pipe(
-                    Effect.flatMap(session => matrixService.updateMatrix(ctx.params.id, session.user.id, ctx.body))
-                )
+                requireSession(ctx).pipe(Effect.flatMap(session => matrixService.updateMatrix(ctx.params.id, session.user.id, ctx.body)))
             ),
         {
             body: t.Object({
@@ -1126,7 +1101,11 @@ export const matrixRoutes = new Elysia()
             Effect.runPromise(
                 requireSession(ctx).pipe(
                     Effect.flatMap(session => matrixService.addDimension(ctx.params.id, session.user.id, ctx.body)),
-                    Effect.tap(() => Effect.sync(() => { ctx.set.status = 201; }))
+                    Effect.tap(() =>
+                        Effect.sync(() => {
+                            ctx.set.status = 201;
+                        })
+                    )
                 )
             ),
         {
@@ -1178,7 +1157,11 @@ export const matrixRoutes = new Elysia()
             Effect.runPromise(
                 requireSession(ctx).pipe(
                     Effect.flatMap(session => matrixService.addRule(ctx.params.id, session.user.id, ctx.body)),
-                    Effect.tap(() => Effect.sync(() => { ctx.set.status = 201; }))
+                    Effect.tap(() =>
+                        Effect.sync(() => {
+                            ctx.set.status = 201;
+                        })
+                    )
                 )
             ),
         {
@@ -1232,9 +1215,7 @@ export const matrixRoutes = new Elysia()
         "/matrices/:id/cells",
         ctx =>
             Effect.runPromise(
-                requireSession(ctx).pipe(
-                    Effect.flatMap(() => matrixService.toggleCell(ctx.body.ruleId, ctx.body.dimensionId))
-                )
+                requireSession(ctx).pipe(Effect.flatMap(() => matrixService.toggleCell(ctx.body.ruleId, ctx.body.dimensionId)))
             ),
         {
             body: t.Object({
@@ -1249,7 +1230,11 @@ export const matrixRoutes = new Elysia()
             Effect.runPromise(
                 requireSession(ctx).pipe(
                     Effect.flatMap(() => matrixService.linkRequirementToCell(ctx.params.cellId, ctx.body.requirementId)),
-                    Effect.tap(() => Effect.sync(() => { ctx.set.status = 201; }))
+                    Effect.tap(() =>
+                        Effect.sync(() => {
+                            ctx.set.status = 201;
+                        })
+                    )
                 )
             ),
         {
@@ -1267,11 +1252,7 @@ export const matrixRoutes = new Elysia()
         )
     )
     .get("/matrices/:id/cells/:cellId/requirements", ctx =>
-        Effect.runPromise(
-            requireSession(ctx).pipe(
-                Effect.flatMap(() => matrixService.getRequirementsForCell(ctx.params.cellId))
-            )
-        )
+        Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(() => matrixService.getRequirementsForCell(ctx.params.cellId))))
     );
 ```
 
@@ -1288,14 +1269,13 @@ Add `.use(matrixRoutes)` to the `extendedRoutes` group:
 ```typescript
 const extendedRoutes = new Elysia()
     // ... existing routes ...
-    .use(matrixRoutes)
-    // ... rest
+    .use(matrixRoutes);
+// ... rest
 ```
 
 - [ ] **Step 3: Run type check**
 
-Run: `pnpm run check-types`
-Expected: No type errors
+Run: `pnpm run check-types` Expected: No type errors
 
 - [ ] **Step 4: Commit**
 
@@ -1309,6 +1289,7 @@ git commit -m "feat: add behavioral matrix API routes"
 ### Task 5: Frontend — List Page
 
 **Files:**
+
 - Create: `apps/web/src/routes/matrices.tsx`
 
 - [ ] **Step 1: Create the matrices list page**
@@ -1348,15 +1329,17 @@ function MatricesPage() {
     const [layer, setLayer] = useState<"invariant" | "contract">("invariant");
     const [description, setDescription] = useState("");
 
-    const matricesQuery = useApiQuery<Array<{
-        id: string;
-        name: string;
-        layer: string;
-        description: string | null;
-        codebaseId: string | null;
-        createdAt: string;
-        updatedAt: string;
-    }>>({
+    const matricesQuery = useApiQuery<
+        Array<{
+            id: string;
+            name: string;
+            layer: string;
+            description: string | null;
+            codebaseId: string | null;
+            createdAt: string;
+            updatedAt: string;
+        }>
+    >({
         queryKey: ["matrices"],
         queryFn: () => api.api.matrices.get({ query: {} }),
         fallback: []
@@ -1364,13 +1347,15 @@ function MatricesPage() {
 
     const createMutation = useMutation({
         mutationFn: async () => {
-            return unwrapEden(await api.api.matrices.post({
-                name,
-                layer,
-                description: description || undefined
-            }));
+            return unwrapEden(
+                await api.api.matrices.post({
+                    name,
+                    layer,
+                    description: description || undefined
+                })
+            );
         },
-        onSuccess: (data) => {
+        onSuccess: data => {
             queryClient.invalidateQueries({ queryKey: ["matrices"] });
             setCreateOpen(false);
             setName("");
@@ -1423,14 +1408,10 @@ function MatricesPage() {
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-3">
                                     <h3 className="font-medium">{matrix.name}</h3>
-                                    <Badge variant={matrix.layer === "invariant" ? "secondary" : "outline"}>
-                                        {matrix.layer}
-                                    </Badge>
+                                    <Badge variant={matrix.layer === "invariant" ? "secondary" : "outline"}>{matrix.layer}</Badge>
                                 </div>
                             </div>
-                            {matrix.description && (
-                                <p className="text-muted-foreground mt-1 text-sm">{matrix.description}</p>
-                            )}
+                            {matrix.description && <p className="text-muted-foreground mt-1 text-sm">{matrix.description}</p>}
                         </Link>
                     ))}
                 </div>
@@ -1474,11 +1455,10 @@ function MatricesPage() {
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
-                        <Button
-                            onClick={() => createMutation.mutate()}
-                            disabled={!name.trim() || createMutation.isPending}
-                        >
+                        <Button variant="outline" onClick={() => setCreateOpen(false)}>
+                            Cancel
+                        </Button>
+                        <Button onClick={() => createMutation.mutate()} disabled={!name.trim() || createMutation.isPending}>
                             Create
                         </Button>
                     </DialogFooter>
@@ -1491,12 +1471,12 @@ function MatricesPage() {
 
 - [ ] **Step 2: Regenerate route tree**
 
-Run: `cd apps/web && pnpm tsr generate`
-Expected: `routeTree.gen.ts` updated with `/matrices` route
+Run: `cd apps/web && pnpm tsr generate` Expected: `routeTree.gen.ts` updated with `/matrices` route
 
 - [ ] **Step 3: Add nav link**
 
-In `apps/web/src/routes/__root.tsx`, add a link to Matrices in the "Manage" dropdown under the "Navigate" section, alongside Features and Requirements:
+In `apps/web/src/routes/__root.tsx`, add a link to Matrices in the "Manage" dropdown under the "Navigate" section, alongside Features and
+Requirements:
 
 ```tsx
 <Link to="/matrices" className="...">
@@ -1509,9 +1489,8 @@ Import `Grid3X3` from `lucide-react` if not already imported.
 
 - [ ] **Step 4: Start dev server and verify the list page renders**
 
-Run: `pnpm dev`
-Navigate to `http://localhost:3001/matrices`
-Expected: Empty state with "No matrices yet" message and "Create Matrix" button. Creating a matrix should redirect to the detail page (which will 404 for now — that's expected).
+Run: `pnpm dev` Navigate to `http://localhost:3001/matrices` Expected: Empty state with "No matrices yet" message and "Create Matrix"
+button. Creating a matrix should redirect to the detail page (which will 404 for now — that's expected).
 
 - [ ] **Step 5: Commit**
 
@@ -1525,6 +1504,7 @@ git commit -m "feat: add matrices list page with create dialog"
 ### Task 6: Frontend — Matrix Grid View
 
 **Files:**
+
 - Create: `apps/web/src/routes/matrices_.$matrixId.tsx`
 - Create: `apps/web/src/features/matrices/matrix-grid.tsx`
 - Create: `apps/web/src/features/matrices/cell-panel.tsx`
@@ -1584,10 +1564,7 @@ export function MatrixGrid({ dimensions, rules, cells, onCellClick, onToggleCell
                             Rules / Dimensions
                         </th>
                         {dimensions.map(dim => (
-                            <th
-                                key={dim.id}
-                                className="border-border border-b px-3 py-2 text-center text-sm font-medium"
-                            >
+                            <th key={dim.id} className="border-border border-b px-3 py-2 text-center text-sm font-medium">
                                 {dim.name}
                             </th>
                         ))}
@@ -1643,7 +1620,10 @@ function CategoryGroup({
             )}
             {rules.map(rule => (
                 <tr key={rule.id} className="hover:bg-muted/30">
-                    <td className="sticky left-0 z-10 bg-background border-border border-b border-r px-3 py-2 text-sm" title={rule.description ?? undefined}>
+                    <td
+                        className="sticky left-0 z-10 bg-background border-border border-b border-r px-3 py-2 text-sm"
+                        title={rule.description ?? undefined}
+                    >
                         {rule.title}
                     </td>
                     {dimensions.map(dim => {
@@ -1654,11 +1634,9 @@ function CategoryGroup({
                                 <button
                                     className={cn(
                                         "mx-auto h-8 w-8 rounded border transition-colors",
-                                        cell
-                                            ? statusColors[cell.status]
-                                            : "border-border/50 bg-muted/20 hover:bg-muted/40"
+                                        cell ? statusColors[cell.status] : "border-border/50 bg-muted/20 hover:bg-muted/40"
                                     )}
-                                    onClick={() => cell ? onCellClick(rule.id, dim.id, cell) : onToggleCell(rule.id, dim.id)}
+                                    onClick={() => (cell ? onCellClick(rule.id, dim.id, cell) : onToggleCell(rule.id, dim.id))}
                                     onContextMenu={e => {
                                         e.preventDefault();
                                         if (cell) onToggleCell(rule.id, dim.id);
@@ -1716,17 +1694,13 @@ export function CellPanel({ matrixId, cellId, ruleTitle, dimensionName, onClose 
     const requirementsQuery = useQuery({
         queryKey: ["matrix-cell-requirements", cellId],
         queryFn: async () => {
-            return unwrapEden(
-                await api.api.matrices({ id: matrixId }).cells({ cellId }).requirements.get()
-            );
+            return unwrapEden(await api.api.matrices({ id: matrixId }).cells({ cellId }).requirements.get());
         }
     });
 
     const linkMutation = useMutation({
         mutationFn: async (requirementId: string) => {
-            return unwrapEden(
-                await api.api.matrices({ id: matrixId }).cells({ cellId }).requirements.post({ requirementId })
-            );
+            return unwrapEden(await api.api.matrices({ id: matrixId }).cells({ cellId }).requirements.post({ requirementId }));
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["matrix-cell-requirements", cellId] });
@@ -1739,9 +1713,7 @@ export function CellPanel({ matrixId, cellId, ruleTitle, dimensionName, onClose 
 
     const unlinkMutation = useMutation({
         mutationFn: async (requirementId: string) => {
-            return unwrapEden(
-                await api.api.matrices({ id: matrixId }).cells({ cellId }).requirements({ reqId: requirementId }).delete()
-            );
+            return unwrapEden(await api.api.matrices({ id: matrixId }).cells({ cellId }).requirements({ reqId: requirementId }).delete());
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["matrix-cell-requirements", cellId] });
@@ -1884,10 +1856,12 @@ function MatrixDetailPage() {
 
     const addRuleMutation = useMutation({
         mutationFn: async () => {
-            return unwrapEden(await api.api.matrices({ id: matrixId }).rules.post({
-                title: newRuleTitle.trim(),
-                category: newRuleCategory.trim() || undefined
-            }));
+            return unwrapEden(
+                await api.api.matrices({ id: matrixId }).rules.post({
+                    title: newRuleTitle.trim(),
+                    category: newRuleCategory.trim() || undefined
+                })
+            );
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["matrix-view", matrixId] });
@@ -1901,15 +1875,20 @@ function MatrixDetailPage() {
         mutationFn: async ({ ruleId, dimensionId }: { ruleId: string; dimensionId: string }) => {
             return unwrapEden(await api.api.matrices({ id: matrixId }).cells.put({ ruleId, dimensionId }));
         },
-        onSuccess: (data) => {
+        onSuccess: data => {
             queryClient.invalidateQueries({ queryKey: ["matrix-view", matrixId] });
             const action = (data as { action: string }).action;
             toast.success(action === "created" ? "Cell marked as relevant" : "Cell removed");
         },
-        onError: (err) => toast.error(err.message || "Failed to toggle cell")
+        onError: err => toast.error(err.message || "Failed to toggle cell")
     });
 
-    if (viewQuery.isLoading) return <PageContainer maxWidth="6xl"><PageLoading count={5} /></PageContainer>;
+    if (viewQuery.isLoading)
+        return (
+            <PageContainer maxWidth="6xl">
+                <PageLoading count={5} />
+            </PageContainer>
+        );
     if (!viewQuery.data) return null;
 
     const { matrix, dimensions, rules, cells, summary } = viewQuery.data;
@@ -1942,13 +1921,9 @@ function MatrixDetailPage() {
                 <div className="flex items-center gap-3">
                     <Grid3X3 className="text-muted-foreground h-6 w-6" />
                     <h1 className="text-2xl font-bold">{matrix.name}</h1>
-                    <Badge variant={matrix.layer === "invariant" ? "secondary" : "outline"}>
-                        {matrix.layer}
-                    </Badge>
+                    <Badge variant={matrix.layer === "invariant" ? "secondary" : "outline"}>{matrix.layer}</Badge>
                 </div>
-                {matrix.description && (
-                    <p className="text-muted-foreground mt-1">{matrix.description}</p>
-                )}
+                {matrix.description && <p className="text-muted-foreground mt-1">{matrix.description}</p>}
             </div>
 
             {/* Coverage Summary */}
@@ -1967,13 +1942,7 @@ function MatrixDetailPage() {
             </div>
 
             {/* Grid */}
-            <MatrixGrid
-                dimensions={dimensions}
-                rules={rules}
-                cells={cells}
-                onCellClick={handleCellClick}
-                onToggleCell={handleToggleCell}
-            />
+            <MatrixGrid dimensions={dimensions} rules={rules} cells={cells} onCellClick={handleCellClick} onToggleCell={handleToggleCell} />
 
             {/* Add controls */}
             <div className="mt-4 flex gap-4">
@@ -1983,7 +1952,9 @@ function MatrixDetailPage() {
                         value={newDimName}
                         onChange={e => setNewDimName(e.target.value)}
                         className="w-48 text-sm"
-                        onKeyDown={e => { if (e.key === "Enter" && newDimName.trim()) addDimensionMutation.mutate(); }}
+                        onKeyDown={e => {
+                            if (e.key === "Enter" && newDimName.trim()) addDimensionMutation.mutate();
+                        }}
                     />
                     <Button size="sm" variant="outline" disabled={!newDimName.trim()} onClick={() => addDimensionMutation.mutate()}>
                         <Plus className="mr-1 h-3 w-3" />
@@ -1996,7 +1967,9 @@ function MatrixDetailPage() {
                         value={newRuleTitle}
                         onChange={e => setNewRuleTitle(e.target.value)}
                         className="w-48 text-sm"
-                        onKeyDown={e => { if (e.key === "Enter" && newRuleTitle.trim()) addRuleMutation.mutate(); }}
+                        onKeyDown={e => {
+                            if (e.key === "Enter" && newRuleTitle.trim()) addRuleMutation.mutate();
+                        }}
                     />
                     <Input
                         placeholder="Category (optional)"
@@ -2028,15 +2001,15 @@ function MatrixDetailPage() {
 
 - [ ] **Step 4: Regenerate route tree**
 
-Run: `cd apps/web && pnpm tsr generate`
-Expected: `routeTree.gen.ts` updated with `/matrices/$matrixId` route
+Run: `cd apps/web && pnpm tsr generate` Expected: `routeTree.gen.ts` updated with `/matrices/$matrixId` route
 
 - [ ] **Step 5: Test in browser**
 
-Run: `pnpm dev`
-Navigate to `http://localhost:3001/matrices`, create a matrix, add dimensions and rules, click cells to toggle them, click colored cells to open the panel.
+Run: `pnpm dev` Navigate to `http://localhost:3001/matrices`, create a matrix, add dimensions and rules, click cells to toggle them, click
+colored cells to open the panel.
 
 Expected:
+
 - Grid renders with dimensions as columns, rules as rows
 - Clicking gray cells creates them (turns yellow)
 - Right-clicking colored cells removes them (with confirmation if linked requirements exist)
@@ -2055,6 +2028,7 @@ git commit -m "feat: add matrix grid view and cell panel"
 ### Task 7: MCP Tools
 
 **Files:**
+
 - Create: `packages/mcp/src/matrix-tools.ts`
 - Modify: `packages/mcp/src/index.ts`
 
@@ -2076,7 +2050,7 @@ export const matrixPlugin = {
             "list_matrices",
             "List behavioral specification matrices",
             { codebaseId: z.string().optional(), layer: z.enum(["invariant", "contract"]).optional() },
-            async (params) => {
+            async params => {
                 const query = new URLSearchParams();
                 if (params.codebaseId) query.set("codebaseId", params.codebaseId);
                 if (params.layer) query.set("layer", params.layer);
@@ -2089,7 +2063,7 @@ export const matrixPlugin = {
             "get_matrix_view",
             "Get the full behavioral matrix grid with computed cell statuses (specified/unspecified/violated)",
             { matrixId: z.string().describe("Matrix ID") },
-            async (params) => {
+            async params => {
                 const result = await apiFetch(`/matrices/${params.matrixId}/view`);
                 return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
             }
@@ -2104,7 +2078,7 @@ export const matrixPlugin = {
                 description: z.string().optional(),
                 codebaseId: z.string().optional()
             },
-            async (params) => {
+            async params => {
                 const result = await apiFetch("/matrices", {
                     method: "POST",
                     body: JSON.stringify(params)
@@ -2120,7 +2094,7 @@ export const matrixPlugin = {
                 matrixId: z.string().describe("Matrix ID"),
                 name: z.string().describe("Dimension name, e.g. 'Chunk' or 'AI Agent'")
             },
-            async (params) => {
+            async params => {
                 const result = await apiFetch(`/matrices/${params.matrixId}/dimensions`, {
                     method: "POST",
                     body: JSON.stringify({ name: params.name })
@@ -2138,7 +2112,7 @@ export const matrixPlugin = {
                 description: z.string().optional(),
                 category: z.string().optional().describe("Category for grouping rules")
             },
-            async (params) => {
+            async params => {
                 const result = await apiFetch(`/matrices/${params.matrixId}/rules`, {
                     method: "POST",
                     body: JSON.stringify({ title: params.title, description: params.description, category: params.category })
@@ -2155,7 +2129,7 @@ export const matrixPlugin = {
                 ruleId: z.string().describe("Rule ID"),
                 dimensionId: z.string().describe("Dimension ID")
             },
-            async (params) => {
+            async params => {
                 const result = await apiFetch(`/matrices/${params.matrixId}/cells`, {
                     method: "PUT",
                     body: JSON.stringify({ ruleId: params.ruleId, dimensionId: params.dimensionId })
@@ -2172,7 +2146,7 @@ export const matrixPlugin = {
                 cellId: z.string().describe("Cell ID"),
                 requirementId: z.string().describe("Requirement ID to link")
             },
-            async (params) => {
+            async params => {
                 const result = await apiFetch(`/matrices/${params.matrixId}/cells/${params.cellId}/requirements`, {
                     method: "POST",
                     body: JSON.stringify({ requirementId: params.requirementId })
@@ -2185,7 +2159,7 @@ export const matrixPlugin = {
             "get_matrix_gaps",
             "Get only unspecified and violated cells — shows what is missing or broken",
             { matrixId: z.string().describe("Matrix ID") },
-            async (params) => {
+            async params => {
                 const view = (await apiFetch(`/matrices/${params.matrixId}/view`)) as {
                     matrix: { name: string };
                     dimensions: Array<{ id: string; name: string }>;
@@ -2210,10 +2184,12 @@ export const matrixPlugin = {
                 }
 
                 return {
-                    content: [{
-                        type: "text",
-                        text: JSON.stringify({ matrix: view.matrix.name, summary: view.summary, gaps }, null, 2)
-                    }]
+                    content: [
+                        {
+                            type: "text",
+                            text: JSON.stringify({ matrix: view.matrix.name, summary: view.summary, gaps }, null, 2)
+                        }
+                    ]
                 };
             }
         );
@@ -2237,8 +2213,7 @@ registerPlugin(matrixPlugin);
 
 - [ ] **Step 3: Verify MCP builds**
 
-Run: `cd packages/mcp && pnpm build`
-Expected: No errors
+Run: `cd packages/mcp && pnpm build` Expected: No errors
 
 - [ ] **Step 4: Commit**
 
@@ -2252,6 +2227,7 @@ git commit -m "feat: add behavioral matrix MCP tools"
 ### Task 8: CLI Commands
 
 **Files:**
+
 - Create: `apps/cli/src/commands/matrix.ts`
 - Modify: `apps/cli/src/index.ts`
 
@@ -2286,7 +2262,7 @@ matrixCommand
     .command("list")
     .description("List matrices")
     .option("--layer <layer>", "Filter by layer (invariant|contract)")
-    .action(async (opts) => {
+    .action(async opts => {
         await requireServer();
         const query = new URLSearchParams();
         if (opts.layer) query.set("layer", opts.layer);
@@ -2324,13 +2300,15 @@ matrixCommand
 matrixCommand
     .command("show <id>")
     .description("Show matrix as ASCII grid")
-    .action(async (id) => {
+    .action(async id => {
         await requireServer();
         const view = await fetchApiJson<ViewResponse>(`/matrices/${id}/view`);
         const { matrix, dimensions, rules, cells, summary } = view;
 
         output(`\n${formatBold(matrix.name)} [${matrix.layer}]`);
-        output(`Coverage: ${summary.specified} specified, ${summary.unspecified} unspecified, ${summary.violated} violated / ${summary.total} total\n`);
+        output(
+            `Coverage: ${summary.specified} specified, ${summary.unspecified} unspecified, ${summary.violated} violated / ${summary.total} total\n`
+        );
 
         if (dimensions.length === 0 || rules.length === 0) {
             output("Matrix is empty. Add dimensions and rules first.");
@@ -2347,13 +2325,17 @@ matrixCommand
 
         // Rows
         for (const rule of rules) {
-            const row = rule.title.padEnd(maxRuleLen + 2) + dimensions.map(dim => {
-                const key = `${rule.id}:${dim.id}`;
-                const cell = cells[key];
-                if (!cell) return ".".padStart(colWidth);
-                const symbol = cell.status === "specified" ? "✓" : cell.status === "violated" ? "✗" : "?";
-                return symbol.padStart(colWidth);
-            }).join(" ");
+            const row =
+                rule.title.padEnd(maxRuleLen + 2) +
+                dimensions
+                    .map(dim => {
+                        const key = `${rule.id}:${dim.id}`;
+                        const cell = cells[key];
+                        if (!cell) return ".".padStart(colWidth);
+                        const symbol = cell.status === "specified" ? "✓" : cell.status === "violated" ? "✗" : "?";
+                        return symbol.padStart(colWidth);
+                    })
+                    .join(" ");
             output(row);
         }
     });
@@ -2398,7 +2380,7 @@ matrixCommand
 matrixCommand
     .command("gaps <id>")
     .description("List unspecified and violated cells")
-    .action(async (id) => {
+    .action(async id => {
         await requireServer();
         const view = await fetchApiJson<ViewResponse>(`/matrices/${id}/view`);
         const { dimensions, rules, cells, summary } = view;
@@ -2449,17 +2431,18 @@ program.addCommand(matrixCommand);
 
 - [ ] **Step 3: Verify CLI builds**
 
-Run: `cd apps/cli && pnpm build`
-Expected: No errors
+Run: `cd apps/cli && pnpm build` Expected: No errors
 
 - [ ] **Step 4: Test CLI commands**
 
 Run (with server running):
+
 ```bash
 node apps/cli/dist/index.js matrix list
 node apps/cli/dist/index.js matrix create "Test Invariants" --layer invariant
 node apps/cli/dist/index.js matrix show <id-from-previous>
 ```
+
 Expected: List shows the created matrix, show renders an ASCII grid (empty at first)
 
 - [ ] **Step 5: Commit**
@@ -2474,17 +2457,16 @@ git commit -m "feat: add behavioral matrix CLI commands"
 ### Task 9: Integration and Polish
 
 **Files:**
+
 - Modify: `apps/web/src/routes/__root.tsx` (if not already done in Task 5)
 
 - [ ] **Step 1: Run full test suite**
 
-Run: `pnpm test`
-Expected: All tests pass, including the new schema and service tests
+Run: `pnpm test` Expected: All tests pass, including the new schema and service tests
 
 - [ ] **Step 2: Run type check**
 
-Run: `pnpm run check-types`
-Expected: No type errors
+Run: `pnpm run check-types` Expected: No type errors
 
 - [ ] **Step 3: Test end-to-end flow in browser**
 
@@ -2505,6 +2487,7 @@ node apps/cli/dist/index.js matrix list
 node apps/cli/dist/index.js matrix show <id>
 node apps/cli/dist/index.js matrix gaps <id>
 ```
+
 Expected: ASCII grid renders correctly, gaps command shows unspecified cells
 
 - [ ] **Step 5: Final commit**

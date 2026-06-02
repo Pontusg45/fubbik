@@ -37,7 +37,11 @@ export const exportCommand = new Command("export")
                 const filename = `${chunk.id}.md`;
                 writeFileSync(join(opts.out, filename), frontmatter);
             }
-            output(cmd, { count: store.chunks.length, dir: opts.out }, formatSuccess(`Exported ${store.chunks.length} chunk(s) to ${opts.out}/`));
+            output(
+                cmd,
+                { count: store.chunks.length, dir: opts.out },
+                formatSuccess(`Exported ${store.chunks.length} chunk(s) to ${opts.out}/`)
+            );
         } else {
             outputError(`Unknown format "${opts.format}". Use json or md.`);
             process.exit(1);

@@ -1,9 +1,9 @@
 ---
 tags:
-  - guide
-  - architecture
-  - backend
-  - patterns
+    - guide
+    - architecture
+    - backend
+    - patterns
 description: The three-layer backend pattern — repository, service, and route
 ---
 
@@ -15,11 +15,13 @@ Located at `packages/db/src/repository/`. Pure data access — functions return 
 
 ## Service Layer
 
-Located at `packages/api/src/*/service.ts`. Business logic — composes repository Effects, validates inputs, introduces domain errors (`NotFoundError`, `AuthError`, `ValidationError`).
+Located at `packages/api/src/*/service.ts`. Business logic — composes repository Effects, validates inputs, introduces domain errors
+(`NotFoundError`, `AuthError`, `ValidationError`).
 
 ## Route Layer
 
-Located at `packages/api/src/*/routes.ts`. HTTP layer — calls services via `Effect.runPromise()`. Uses Elysia's `t` schema for request validation. Errors propagate to the global error handler.
+Located at `packages/api/src/*/routes.ts`. HTTP layer — calls services via `Effect.runPromise()`. Uses Elysia's `t` schema for request
+validation. Errors propagate to the global error handler.
 
 ## Data Flow
 

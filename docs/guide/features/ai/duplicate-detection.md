@@ -1,8 +1,8 @@
 ---
 tags:
-  - guide
-  - ai
-  - duplicates
+    - guide
+    - ai
+    - duplicates
 description: Embedding-based similarity checking for duplicate prevention
 ---
 
@@ -24,7 +24,8 @@ This uses embedding similarity to find chunks that might be duplicates or cover 
 
 ## In the Web UI
 
-The web UI shows duplicate warnings automatically during chunk creation. If similar chunks are found, you'll see them listed with similarity scores before saving. You can then decide to:
+The web UI shows duplicate warnings automatically during chunk creation. If similar chunks are found, you'll see them listed with similarity
+scores before saving. You can then decide to:
 
 - Continue creating (the content is different enough)
 - Edit the existing chunk instead

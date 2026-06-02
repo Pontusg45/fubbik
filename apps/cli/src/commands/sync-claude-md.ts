@@ -47,12 +47,8 @@ export const syncClaudeMdCommand = new Command("sync-claude-md")
             }
 
             // Apply config fallbacks for tag and output
-            const tag = cmd.getOptionValueSource("tag") === "default"
-                ? (config.claudeMd?.tag ?? opts.tag)
-                : opts.tag;
-            const outputPath = cmd.getOptionValueSource("output") === "default"
-                ? (config.claudeMd?.output ?? opts.output)
-                : opts.output;
+            const tag = cmd.getOptionValueSource("tag") === "default" ? (config.claudeMd?.tag ?? opts.tag) : opts.tag;
+            const outputPath = cmd.getOptionValueSource("output") === "default" ? (config.claudeMd?.output ?? opts.output) : opts.output;
             const spaceName = opts.space ?? opts.codebase ?? config.codebase;
 
             const spaceId = await resolveSpaceId(serverUrl, {

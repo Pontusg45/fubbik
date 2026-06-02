@@ -31,9 +31,7 @@ export const aiRoutes = new Elysia()
         "/ai/structure-requirement",
         ctx =>
             Effect.runPromise(
-                requireSession(ctx).pipe(
-                    Effect.flatMap(() => structureRequirement(ctx.body.description, ctx.body.codebaseId))
-                )
+                requireSession(ctx).pipe(Effect.flatMap(() => structureRequirement(ctx.body.description, ctx.body.codebaseId)))
             ),
         {
             body: t.Object({

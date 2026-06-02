@@ -37,15 +37,13 @@ export function AlphabeticalIndex({ chunks }: { chunks: ChunkRef[] }) {
     return (
         <div className="space-y-8">
             {/* Jump bar */}
-            <div className="sticky top-0 z-10 flex flex-wrap gap-1 bg-background/95 backdrop-blur py-3 border-b">
+            <div className="bg-background/95 sticky top-0 z-10 flex flex-wrap gap-1 border-b py-3 backdrop-blur">
                 {groups.map(([letter, items]) => (
                     <a
                         key={letter}
                         href={`#letter-${letter}`}
-                        className={`rounded px-2 py-1 text-xs font-mono transition-colors ${
-                            items.length > 0
-                                ? "hover:bg-muted text-foreground"
-                                : "text-muted-foreground/30 pointer-events-none"
+                        className={`rounded px-2 py-1 font-mono text-xs transition-colors ${
+                            items.length > 0 ? "hover:bg-muted text-foreground" : "text-muted-foreground/30 pointer-events-none"
                         }`}
                     >
                         {letter}
@@ -54,28 +52,27 @@ export function AlphabeticalIndex({ chunks }: { chunks: ChunkRef[] }) {
             </div>
 
             {/* Groups */}
-            {groups.map(([letter, items]) => (
-                items.length > 0 && (
-                    <section key={letter} id={`letter-${letter}`}>
-                        <h2 className="mb-3 border-b pb-1 text-lg font-bold">{letter}</h2>
-                        <div className="grid gap-1 sm:grid-cols-2 lg:grid-cols-3">
-                            {items.map(item => (
-                                <Link
-                                    key={item.id}
-                                    to="/chunks/$chunkId"
-                                    params={{ chunkId: item.id }}
-                                    className="hover:bg-muted/50 rounded px-2 py-1 text-sm transition-colors"
-                                >
-                                    {item.title}
-                                    <span className="ml-2 text-[9px] text-muted-foreground font-mono">
-                                        {item.type}
-                                    </span>
-                                </Link>
-                            ))}
-                        </div>
-                    </section>
-                )
-            ))}
+            {groups.map(
+                ([letter, items]) =>
+                    items.length > 0 && (
+                        <section key={letter} id={`letter-${letter}`}>
+                            <h2 className="mb-3 border-b pb-1 text-lg font-bold">{letter}</h2>
+                            <div className="grid gap-1 sm:grid-cols-2 lg:grid-cols-3">
+                                {items.map(item => (
+                                    <Link
+                                        key={item.id}
+                                        to="/chunks/$chunkId"
+                                        params={{ chunkId: item.id }}
+                                        className="hover:bg-muted/50 rounded px-2 py-1 text-sm transition-colors"
+                                    >
+                                        {item.title}
+                                        <span className="text-muted-foreground ml-2 font-mono text-[9px]">{item.type}</span>
+                                    </Link>
+                                ))}
+                            </div>
+                        </section>
+                    )
+            )}
         </div>
     );
 }

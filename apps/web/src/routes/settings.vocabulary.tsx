@@ -117,9 +117,9 @@ function ChunkTypesPanel() {
 
             <Card>
                 {isLoading ? (
-                    <CardPanel className="p-4 text-sm text-muted-foreground">Loading...</CardPanel>
+                    <CardPanel className="text-muted-foreground p-4 text-sm">Loading...</CardPanel>
                 ) : !data || data.length === 0 ? (
-                    <CardPanel className="p-4 text-sm text-muted-foreground">No chunk types yet.</CardPanel>
+                    <CardPanel className="text-muted-foreground p-4 text-sm">No chunk types yet.</CardPanel>
                 ) : (
                     data.map((meta, i) => (
                         <div key={meta.id}>
@@ -190,9 +190,7 @@ function ChunkTypeRow({
                 </div>
                 {meta.description && <p className="text-muted-foreground mt-0.5 text-xs">{meta.description}</p>}
                 {meta.examples.length > 0 && (
-                    <p className="text-muted-foreground mt-0.5 text-xs italic">
-                        e.g., {meta.examples.join(", ")}
-                    </p>
+                    <p className="text-muted-foreground mt-0.5 text-xs italic">e.g., {meta.examples.join(", ")}</p>
                 )}
             </div>
             {!meta.builtIn && (
@@ -286,7 +284,11 @@ function ChunkTypeForm({
                     </div>
                     <div>
                         <Label className="text-xs">Examples (comma-separated)</Label>
-                        <Input value={examplesText} onChange={e => setExamplesText(e.target.value)} placeholder="Incident response, Deploy rollback" />
+                        <Input
+                            value={examplesText}
+                            onChange={e => setExamplesText(e.target.value)}
+                            placeholder="Incident response, Deploy rollback"
+                        />
                     </div>
                 </div>
                 <div className="flex items-center justify-end gap-2">
@@ -327,7 +329,8 @@ function ConnectionRelationsPanel() {
     const [adding, setAdding] = useState(false);
 
     const createMutation = useMutation({
-        mutationFn: async (body: RelationCreateBody) => unwrapEden(await api.api["connection-relations"].post(body)) as ConnectionRelationMeta,
+        mutationFn: async (body: RelationCreateBody) =>
+            unwrapEden(await api.api["connection-relations"].post(body)) as ConnectionRelationMeta,
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: ["connection-relations"] });
             toast.success("Relation added");
@@ -383,9 +386,9 @@ function ConnectionRelationsPanel() {
 
             <Card>
                 {isLoading ? (
-                    <CardPanel className="p-4 text-sm text-muted-foreground">Loading...</CardPanel>
+                    <CardPanel className="text-muted-foreground p-4 text-sm">Loading...</CardPanel>
                 ) : !data || data.length === 0 ? (
-                    <CardPanel className="p-4 text-sm text-muted-foreground">No relations yet.</CardPanel>
+                    <CardPanel className="text-muted-foreground p-4 text-sm">No relations yet.</CardPanel>
                 ) : (
                     data.map((meta, i) => (
                         <div key={meta.id}>
@@ -461,8 +464,12 @@ function RelationRow({
                 <div className="flex items-center gap-2">
                     <span className="font-medium">{meta.label}</span>
                     <span className="text-muted-foreground font-mono text-xs">{meta.id}</span>
-                    <Badge variant="outline" size="sm">{meta.arrowStyle}</Badge>
-                    <Badge variant="outline" size="sm">{meta.direction}</Badge>
+                    <Badge variant="outline" size="sm">
+                        {meta.arrowStyle}
+                    </Badge>
+                    <Badge variant="outline" size="sm">
+                        {meta.direction}
+                    </Badge>
                     {meta.builtIn && (
                         <Badge variant="secondary" size="sm" className="gap-1">
                             <Lock className="size-2.5" />
@@ -527,11 +534,7 @@ function RelationForm({
                 </div>
                 <div>
                     <Label className="text-xs">Description</Label>
-                    <Input
-                        value={description ?? ""}
-                        onChange={e => setDescription(e.target.value)}
-                        placeholder="Inverse of depends_on"
-                    />
+                    <Input value={description ?? ""} onChange={e => setDescription(e.target.value)} placeholder="Inverse of depends_on" />
                 </div>
                 <div className="grid grid-cols-3 gap-3">
                     <div>

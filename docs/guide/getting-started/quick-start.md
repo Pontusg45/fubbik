@@ -1,8 +1,8 @@
 ---
 tags:
-  - guide
-  - onboarding
-  - quick-start
+    - guide
+    - onboarding
+    - quick-start
 description: Your first five minutes with fubbik
 ---
 
@@ -17,18 +17,19 @@ description: Your first five minutes with fubbik
 
 ## Keyboard Shortcuts
 
-| Shortcut | Action |
-|----------|--------|
-| `Cmd+K` | Open command palette |
-| `?` | Show all shortcuts |
-| `n` | Create new (context-aware) |
-| `e` | Edit current item |
-| `Esc` | Go back |
-| `j/k` | Navigate lists |
+| Shortcut | Action                     |
+| -------- | -------------------------- |
+| `Cmd+K`  | Open command palette       |
+| `?`      | Show all shortcuts         |
+| `n`      | Create new (context-aware) |
+| `e`      | Edit current item          |
+| `Esc`    | Go back                    |
+| `j/k`    | Navigate lists             |
 
 ## Core Concepts at a Glance
 
-**Chunks** are the central unit. Each chunk is a discrete piece of knowledge with a title, markdown content, type, tags, and optional metadata.
+**Chunks** are the central unit. Each chunk is a discrete piece of knowledge with a title, markdown content, type, tags, and optional
+metadata.
 
 **Connections** are directed edges between chunks. They have a relation type and form a knowledge graph you can visualize and navigate.
 

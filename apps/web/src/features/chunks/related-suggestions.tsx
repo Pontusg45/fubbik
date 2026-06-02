@@ -16,10 +16,7 @@ interface RelatedSuggestionsProps {
 
 export function RelatedSuggestions({ chunkId, chunkTitle, connectedIds }: RelatedSuggestionsProps) {
     const queryClient = useQueryClient();
-    const [dismissedIds, setDismissedIds] = useLocalStorage<string[]>(
-        `fubbik:dismissed-suggestions:${chunkId}`,
-        []
-    );
+    const [dismissedIds, setDismissedIds] = useLocalStorage<string[]>(`fubbik:dismissed-suggestions:${chunkId}`, []);
 
     const { data, isLoading, isError } = useQuery({
         queryKey: ["related-suggestions", chunkId],
@@ -60,12 +57,7 @@ export function RelatedSuggestions({ chunkId, chunkTitle, connectedIds }: Relate
     const dismissedSet = new Set(dismissedIds);
 
     const suggestions = (data ?? [])
-        .filter(
-            item =>
-                item.id !== chunkId &&
-                !connectedSet.has(item.id) &&
-                !dismissedSet.has(item.id)
-        )
+        .filter(item => item.id !== chunkId && !connectedSet.has(item.id) && !dismissedSet.has(item.id))
         .slice(0, 5);
 
     if (isLoading) {
@@ -95,11 +87,11 @@ export function RelatedSuggestions({ chunkId, chunkTitle, connectedIds }: Relate
                         key={item.id}
                         className="hover:bg-muted flex items-center justify-between rounded-md border px-3 py-2 text-sm transition-colors"
                     >
-                        <div className="flex-1 min-w-0">
+                        <div className="min-w-0 flex-1">
                             <Link
                                 to="/chunks/$chunkId"
                                 params={{ chunkId: item.id }}
-                                className="font-medium hover:underline truncate block"
+                                className="block truncate font-medium hover:underline"
                             >
                                 {item.title}
                             </Link>
@@ -107,9 +99,7 @@ export function RelatedSuggestions({ chunkId, chunkTitle, connectedIds }: Relate
                                 <Badge variant="secondary" size="sm" className="text-[10px]">
                                     {item.type}
                                 </Badge>
-                                <span className="text-muted-foreground text-xs">
-                                    {Math.round(item.similarity * 100)}% similar
-                                </span>
+                                <span className="text-muted-foreground text-xs">{Math.round(item.similarity * 100)}% similar</span>
                             </div>
                         </div>
                         <div className="ml-2 flex shrink-0 items-center gap-1">
@@ -122,14 +112,7 @@ export function RelatedSuggestions({ chunkId, chunkTitle, connectedIds }: Relate
                             >
                                 <Link2 className="size-3" />
                             </Button>
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() =>
-                                    setDismissedIds(prev => [...prev, item.id])
-                                }
-                                title="Dismiss"
-                            >
+                            <Button variant="ghost" size="sm" onClick={() => setDismissedIds(prev => [...prev, item.id])} title="Dismiss">
                                 <X className="size-3" />
                             </Button>
                         </div>

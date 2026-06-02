@@ -1,32 +1,21 @@
-
 import { Check } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { useApiQuery } from "@/hooks/use-api-query";
 import { api } from "@/utils/api";
-import type {
-    FileConfig,
-    FileEntry,
-    ImportFileStatus,
-    PreviewFileResult,
-    WizardStep
-} from "./types";
-import { StepSelectFiles } from "./steps/select-files";
+
+import { StepImport } from "./steps/import-step";
 import { StepPreview } from "./steps/preview";
 import { StepReview } from "./steps/review";
-import { StepImport } from "./steps/import-step";
+import { StepSelectFiles } from "./steps/select-files";
+import type { FileConfig, FileEntry, ImportFileStatus, PreviewFileResult, WizardStep } from "./types";
 
 // ---------------------------------------------------------------------------
 // Step indicator
 // ---------------------------------------------------------------------------
 
-const STEPS: { label: string }[] = [
-    { label: "Select Files" },
-    { label: "Preview & Configure" },
-    { label: "Review" },
-    { label: "Import" }
-];
+const STEPS: { label: string }[] = [{ label: "Select Files" }, { label: "Preview & Configure" }, { label: "Review" }, { label: "Import" }];
 
 interface StepIndicatorProps {
     current: WizardStep;
@@ -34,7 +23,7 @@ interface StepIndicatorProps {
 
 function StepIndicator({ current }: StepIndicatorProps) {
     return (
-        <div className="flex items-center gap-0 mb-8">
+        <div className="mb-8 flex items-center gap-0">
             {STEPS.map((s, i) => {
                 const stepNum = (i + 1) as WizardStep;
                 const isActive = stepNum === current;
@@ -44,7 +33,7 @@ function StepIndicator({ current }: StepIndicatorProps) {
                 return (
                     <div key={stepNum} className="flex items-center">
                         {/* Connector line before step (not before first) */}
-                        {i > 0 && <div className="h-px w-8 bg-border shrink-0" />}
+                        {i > 0 && <div className="bg-border h-px w-8 shrink-0" />}
 
                         <div className="flex flex-col items-center gap-1">
                             <div
@@ -53,20 +42,12 @@ function StepIndicator({ current }: StepIndicatorProps) {
                                         ? "bg-primary text-primary-foreground"
                                         : isCompleted
                                           ? "bg-primary text-primary-foreground"
-                                          : "border border-border text-muted-foreground"
+                                          : "border-border text-muted-foreground border"
                                 }`}
                             >
-                                {isCompleted ? (
-                                    <Check className="size-4" />
-                                ) : (
-                                    <span>{stepNum}</span>
-                                )}
+                                {isCompleted ? <Check className="size-4" /> : <span>{stepNum}</span>}
                             </div>
-                            <span
-                                className={`text-xs whitespace-nowrap ${
-                                    isFuture ? "text-muted-foreground" : "text-foreground"
-                                }`}
-                            >
+                            <span className={`text-xs whitespace-nowrap ${isFuture ? "text-muted-foreground" : "text-foreground"}`}>
                                 {s.label}
                             </span>
                         </div>
@@ -99,15 +80,9 @@ export function ImportWizard() {
         fallback: []
     });
 
-    const spaceName =
-        spaces?.find(c => c.id === spaceId)?.name ?? spaceId;
+    const spaceName = spaces?.find(c => c.id === spaceId)?.name ?? spaceId;
 
-    const canNext =
-        step === 1
-            ? selectedPaths.size > 0 && spaceId !== ""
-            : step === 2
-              ? selectedPaths.size > 0
-              : true;
+    const canNext = step === 1 ? selectedPaths.size > 0 && spaceId !== "" : step === 2 ? selectedPaths.size > 0 : true;
 
     const handleNext = () => {
         if (step === 2) setPreviewActivePath("");
@@ -130,8 +105,7 @@ export function ImportWizard() {
         setPreviewActivePath("");
     };
 
-    const nextLabel =
-        step === 1 ? "Preview →" : step === 2 ? "Review →" : "Start Import";
+    const nextLabel = step === 1 ? "Preview →" : step === 2 ? "Review →" : "Start Import";
 
     return (
         <div className="flex flex-col">
@@ -172,7 +146,7 @@ export function ImportWizard() {
                         overrides={overrides}
                         existingHashes={existingHashes}
                         spaceName={spaceName}
-                        onGoToFile={(path) => {
+                        onGoToFile={path => {
                             setPreviewActivePath(path);
                             setStep(2);
                         }}
@@ -193,19 +167,12 @@ export function ImportWizard() {
 
             {/* Navigation footer — hidden on step 4 */}
             {step !== 4 && (
-                <div className="border-t pt-4 mt-6 flex items-center justify-between">
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleBack}
-                        disabled={step === 1}
-                    >
+                <div className="mt-6 flex items-center justify-between border-t pt-4">
+                    <Button variant="outline" size="sm" onClick={handleBack} disabled={step === 1}>
                         Back
                     </Button>
 
-                    <span className="text-sm text-muted-foreground">
-                        Step {step} of 4
-                    </span>
+                    <span className="text-muted-foreground text-sm">Step {step} of 4</span>
 
                     <Button size="sm" onClick={handleNext} disabled={!canNext}>
                         {nextLabel}

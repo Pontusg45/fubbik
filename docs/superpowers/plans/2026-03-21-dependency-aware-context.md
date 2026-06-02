@@ -1,10 +1,14 @@
 # Dependency-Aware Context Plan
 
-> **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to
+> implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** When generating context for a file, also include chunks from codebases that the current project depends on (detected via package.json, go.mod, etc.).
+**Goal:** When generating context for a file, also include chunks from codebases that the current project depends on (detected via
+package.json, go.mod, etc.).
 
-**Architecture:** New service function that detects project dependencies, maps them to known codebases (by package name matching against codebase names or remote URLs), and includes their chunks in context results. Extends the existing `/context/for-file` endpoint with a `includeDeps` flag.
+**Architecture:** New service function that detects project dependencies, maps them to known codebases (by package name matching against
+codebase names or remote URLs), and includes their chunks in context results. Extends the existing `/context/for-file` endpoint with a
+`includeDeps` flag.
 
 **Tech Stack:** Effect, Elysia, Node.js fs (for reading manifest files)
 
@@ -13,10 +17,12 @@
 ## File Structure
 
 ### New files:
+
 - `packages/api/src/context-for-file/detect-deps.ts` — Detect project dependencies from manifest files
 - `packages/api/src/context-for-file/detect-deps.test.ts` — Tests
 
 ### Files to modify:
+
 - `packages/api/src/context-for-file/service.ts` — Add dependency-aware context
 - `packages/api/src/context-for-file/routes.ts` — Add `deps` query param (comma-separated dependency names)
 - `apps/cli/src/commands/context-for.ts` — Add `--include-deps` flag
@@ -26,6 +32,7 @@
 ## Task 1: Dependency Detection
 
 **Files:**
+
 - Create: `packages/api/src/context-for-file/detect-deps.ts`
 - Create: `packages/api/src/context-for-file/detect-deps.test.ts`
 
@@ -39,8 +46,8 @@ import { parseDependencies } from "./detect-deps";
 describe("parseDependencies", () => {
     it("extracts npm dependencies from package.json content", () => {
         const content = JSON.stringify({
-            dependencies: { "@acme/auth": "^1.0.0", "react": "^18.0.0" },
-            devDependencies: { "vitest": "^3.0.0" },
+            dependencies: { "@acme/auth": "^1.0.0", react: "^18.0.0" },
+            devDependencies: { vitest: "^3.0.0" }
         });
         const deps = parseDependencies("package.json", content);
         expect(deps).toContain("@acme/auth");
@@ -124,8 +131,7 @@ export function findManifestFile(filePath: string): string | null {
 
 - [ ] **Step 4: Run tests**
 
-Run: `cd packages/api && pnpm vitest run src/context-for-file/detect-deps.test.ts`
-Expected: PASS
+Run: `cd packages/api && pnpm vitest run src/context-for-file/detect-deps.test.ts` Expected: PASS
 
 - [ ] **Step 5: Commit**
 
@@ -138,12 +144,14 @@ git commit -m "feat: add dependency detection from package.json and go.mod"
 ## Task 2: Dependency-Aware Context Service
 
 **Files:**
+
 - Modify: `packages/api/src/context-for-file/service.ts`
 - Modify: `packages/api/src/context-for-file/routes.ts`
 
 - [ ] **Step 1: Extend service to resolve dependencies to codebases**
 
 In `service.ts`, add a function that:
+
 1. Reads the manifest file near the requested file path
 2. Parses dependencies
 3. Matches dependency names against known codebase names (fuzzy: `@acme/auth` matches codebase named "auth" or "acme-auth")
@@ -153,7 +161,7 @@ In `service.ts`, add a function that:
 import { parseDependencies, findManifestFile } from "./detect-deps";
 // NOTE: Verify the actual export name in packages/db/src/repository/codebase.ts
 // It may be `listCodebasesForUser` or similar — check before using.
-import { /* listCodebases or actual name */ } from "@fubbik/db/repository";
+import {} from /* listCodebases or actual name */ "@fubbik/db/repository";
 
 export function getDepContext(userId: string, filePath: string) {
     return Effect.gen(function* () {
@@ -166,18 +174,21 @@ export function getDepContext(userId: string, filePath: string) {
 }
 ```
 
-**Alternative approach (simpler):** The client (CLI) detects dependencies and sends them as a query param. The server matches dep names against codebase names and returns relevant chunks.
+**Alternative approach (simpler):** The client (CLI) detects dependencies and sends them as a query param. The server matches dep names
+against codebase names and returns relevant chunks.
 
 Add to the route:
+
 ```ts
 query: t.Object({
     path: t.String(),
     codebaseId: t.Optional(t.String()),
-    deps: t.Optional(t.String()), // comma-separated dependency names
-})
+    deps: t.Optional(t.String()) // comma-separated dependency names
+});
 ```
 
 In the service, when `deps` is provided:
+
 1. Parse comma-separated dep names
 2. Query codebases where name matches any dep name (fuzzy)
 3. For each matched codebase, fetch top chunks (by relevance or recency)
@@ -196,11 +207,13 @@ git commit -m "feat: dependency-aware context with codebase name matching"
 ## Task 3: CLI Integration
 
 **Files:**
+
 - Modify: `apps/cli/src/commands/context-for.ts`
 
 - [ ] **Step 1: Add `--include-deps` flag**
 
 When set:
+
 1. Find the nearest `package.json` or `go.mod` relative to the file path
 2. Parse dependencies
 3. Pass as `&deps=dep1,dep2,dep3` to the API call

@@ -1,8 +1,8 @@
 ---
 tags:
-  - guide
-  - cli
-  - codebases
+    - guide
+    - cli
+    - codebases
 description: CLI commands for codebase and workspace management
 ---
 

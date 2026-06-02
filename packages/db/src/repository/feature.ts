@@ -49,7 +49,7 @@ export function listFeatures(userId: string, filters?: { codebaseId?: string; st
                 color: feature.color,
                 createdAt: feature.createdAt,
                 updatedAt: feature.updatedAt,
-                deltaCount: sql<number>`count(${chunkFeatureDelta.id})::int`.as("delta_count"),
+                deltaCount: sql<number>`count(${chunkFeatureDelta.id})::int`.as("delta_count")
             })
             .from(feature)
             .leftJoin(chunkFeatureDelta, eq(chunkFeatureDelta.featureId, feature.id))
@@ -65,9 +65,7 @@ export function listFeatures(userId: string, filters?: { codebaseId?: string; st
             .where(eq(featureSpace.spaceId, filters.codebaseId));
         const idSet = new Set(featureIdsInSpace.map(r => r.featureId));
 
-        const allLinked = await db
-            .select({ featureId: featureSpace.featureId })
-            .from(featureSpace);
+        const allLinked = await db.select({ featureId: featureSpace.featureId }).from(featureSpace);
         const linkedSet = new Set(allLinked.map(r => r.featureId));
 
         return features.filter(f => idSet.has(f.id) || !linkedSet.has(f.id));
@@ -83,7 +81,7 @@ export function updateFeature(
         priority?: number;
         status?: string;
         color?: string | null;
-    },
+    }
 ) {
     return dbEffect(async () => {
         const [updated] = await db
@@ -122,7 +120,7 @@ export function getSpacesForFeature(featureId: string) {
             .select({ id: space.id, name: space.name })
             .from(featureSpace)
             .innerJoin(space, eq(featureSpace.spaceId, space.id))
-            .where(eq(featureSpace.featureId, featureId)),
+            .where(eq(featureSpace.featureId, featureId))
     );
 }
 
@@ -154,10 +152,7 @@ export function getMaxPriority(userId: string) {
 
 export function getActiveFeatureIds(userId: string) {
     return dbEffect(() =>
-        db
-            .select({ featureId: userActiveFeature.featureId })
-            .from(userActiveFeature)
-            .where(eq(userActiveFeature.userId, userId)),
+        db.select({ featureId: userActiveFeature.featureId }).from(userActiveFeature).where(eq(userActiveFeature.userId, userId))
     );
 }
 

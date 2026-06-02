@@ -1,10 +1,13 @@
 # Knowledge Health + Path Finding Implementation Plan
 
-> **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to
+> implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Add a knowledge health page (orphan/stale/thin chunk detection) and improve path finding UX in the graph view.
 
-**Architecture:** New knowledge-health repository with three SQL queries (orphans, stale, thin). New service + routes following Repository → Service → Route pattern. Frontend: new `/knowledge-health` page, path finding panel in graph view, "Find path to..." action on chunk detail page.
+**Architecture:** New knowledge-health repository with three SQL queries (orphans, stale, thin). New service + routes following Repository →
+Service → Route pattern. Frontend: new `/knowledge-health` page, path finding panel in graph view, "Find path to..." action on chunk detail
+page.
 
 **Tech Stack:** Drizzle ORM, Effect, Elysia, React Flow, TanStack Router/Query, Vitest
 
@@ -15,6 +18,7 @@
 ## File Structure
 
 ### New files
+
 - `packages/db/src/repository/knowledge-health.ts` — orphan, stale, thin chunk queries
 - `packages/api/src/knowledge-health/service.ts` — composes the three queries
 - `packages/api/src/knowledge-health/routes.ts` — `GET /health/knowledge`
@@ -22,6 +26,7 @@
 - `apps/web/src/features/graph/path-panel.tsx` — path finding panel component
 
 ### Modified files
+
 - `packages/db/src/repository/index.ts` — export knowledge-health
 - `packages/api/src/index.ts` — register knowledge-health routes
 - `apps/web/src/routes/__root.tsx` — add Health nav link
@@ -38,6 +43,7 @@
 ### Task 1: Knowledge health repository
 
 **Files:**
+
 - Create: `packages/db/src/repository/knowledge-health.ts`
 - Modify: `packages/db/src/repository/index.ts`
 
@@ -62,12 +68,8 @@ function codebaseConditions(userId: string, codebaseId?: string) {
             .select({ chunkId: chunkCodebase.chunkId })
             .from(chunkCodebase)
             .where(eq(chunkCodebase.codebaseId, codebaseId));
-        const inAnyCodebase = db
-            .select({ chunkId: chunkCodebase.chunkId })
-            .from(chunkCodebase);
-        conditions.push(
-            sql`(${chunk.id} IN (${inCodebase}) OR ${chunk.id} NOT IN (${inAnyCodebase}))`
-        );
+        const inAnyCodebase = db.select({ chunkId: chunkCodebase.chunkId }).from(chunkCodebase);
+        conditions.push(sql`(${chunk.id} IN (${inCodebase}) OR ${chunk.id} NOT IN (${inAnyCodebase}))`);
     }
     return conditions;
 }
@@ -157,10 +159,7 @@ export function getStaleChunks(userId: string, codebaseId?: string) {
 export function getThinChunks(userId: string, codebaseId?: string) {
     return Effect.tryPromise({
         try: async () => {
-            const conditions = [
-                ...codebaseConditions(userId, codebaseId),
-                sql`LENGTH(${chunk.content}) < 100`
-            ];
+            const conditions = [...codebaseConditions(userId, codebaseId), sql`LENGTH(${chunk.content}) < 100`];
 
             const chunks = await db
                 .select({
@@ -186,19 +185,21 @@ export function getThinChunks(userId: string, codebaseId?: string) {
 }
 ```
 
-Note: The stale query uses raw SQL column names in the EXISTS subquery because Drizzle's SQL template interpolation doesn't work cleanly inside correlated subqueries with self-joins. The implementer should verify the generated SQL is correct and adjust if Drizzle produces invalid output — fall back to fully raw `sql` if needed.
+Note: The stale query uses raw SQL column names in the EXISTS subquery because Drizzle's SQL template interpolation doesn't work cleanly
+inside correlated subqueries with self-joins. The implementer should verify the generated SQL is correct and adjust if Drizzle produces
+invalid output — fall back to fully raw `sql` if needed.
 
 - [ ] **Step 2: Export from repository index**
 
 Add to `packages/db/src/repository/index.ts`:
+
 ```typescript
 export * from "./knowledge-health";
 ```
 
 - [ ] **Step 3: Run tests to verify nothing breaks**
 
-Run: `cd packages/db && pnpm vitest run`
-Expected: All existing tests PASS
+Run: `cd packages/db && pnpm vitest run` Expected: All existing tests PASS
 
 - [ ] **Step 4: Commit**
 
@@ -212,6 +213,7 @@ git commit -m "feat(db): add knowledge health repository (orphan, stale, thin qu
 ### Task 2: Knowledge health service and routes
 
 **Files:**
+
 - Create: `packages/api/src/knowledge-health/service.ts`
 - Create: `packages/api/src/knowledge-health/routes.ts`
 - Modify: `packages/api/src/index.ts`
@@ -250,9 +252,7 @@ export const knowledgeHealthRoutes = new Elysia().get(
     ctx =>
         Effect.runPromise(
             requireSession(ctx).pipe(
-                Effect.flatMap(session =>
-                    knowledgeHealthService.getKnowledgeHealth(session.user.id, ctx.query.codebaseId)
-                )
+                Effect.flatMap(session => knowledgeHealthService.getKnowledgeHealth(session.user.id, ctx.query.codebaseId))
             )
         ),
     {
@@ -276,8 +276,7 @@ import { knowledgeHealthRoutes } from "./knowledge-health/routes";
 
 - [ ] **Step 4: Run tests**
 
-Run: `cd packages/api && pnpm vitest run src/codebases/normalize-url.test.ts`
-Expected: PASS (no regressions in compilation)
+Run: `cd packages/api && pnpm vitest run src/codebases/normalize-url.test.ts` Expected: PASS (no regressions in compilation)
 
 - [ ] **Step 5: Commit**
 
@@ -293,6 +292,7 @@ git commit -m "feat(api): add knowledge health endpoint with orphan, stale, thin
 ### Task 3: Knowledge health frontend page
 
 **Files:**
+
 - Create: `apps/web/src/routes/knowledge-health.tsx`
 - Modify: `apps/web/src/routes/__root.tsx`
 - Modify: `apps/web/src/features/nav/mobile-nav.tsx`
@@ -307,24 +307,28 @@ Read `apps/web/src/routes/tags.tsx` and `apps/web/src/routes/codebases.tsx` for 
 Create `apps/web/src/routes/knowledge-health.tsx`:
 
 The page should:
+
 1. Use `createFileRoute("/knowledge-health")` with `beforeLoad` for optional auth (same pattern as dashboard)
 2. Query `api.api.health.knowledge.get({ query: { codebaseId } })` using `useQuery` with key `["knowledge-health", codebaseId]`
 3. Get `codebaseId` from `useActiveCodebase()` hook
 4. Render three card sections:
 
 **Orphan Chunks card:**
+
 - Count badge in header
 - Description text
 - List of chunks: title (Link to `/chunks/$chunkId`), type Badge, created date
 - Quick actions: "View" link, "Delete" button (with mutation)
 
 **Stale Chunks card:**
+
 - Count badge in header
 - Description text
 - List: title (linked), type badge, "Updated X days ago", "Neighbor updated Y days ago"
 - Quick action: "Edit" link to `/chunks/$chunkId/edit`
 
 **Thin Chunks card:**
+
 - Count badge in header
 - Description text
 - List: title (linked), type badge, "N characters" content length
@@ -335,6 +339,7 @@ Use shadcn Card component, Badge, Button, Link from tanstack router. Follow exis
 - [ ] **Step 3: Add nav links**
 
 In `apps/web/src/routes/__root.tsx`, add a "Health" Link between "Tags" and "Codebases":
+
 ```tsx
 <Link
     to="/knowledge-health"
@@ -348,8 +353,7 @@ Add the same link to `apps/web/src/features/nav/mobile-nav.tsx`.
 
 - [ ] **Step 4: Verify**
 
-Run: `pnpm run check-types`
-Expected: No new type errors
+Run: `pnpm run check-types` Expected: No new type errors
 
 - [ ] **Step 5: Commit**
 
@@ -365,11 +369,13 @@ git commit -m "feat(web): add knowledge health page with orphan, stale, thin sec
 ### Task 4: Path finding panel component
 
 **Files:**
+
 - Create: `apps/web/src/features/graph/path-panel.tsx`
 
 - [ ] **Step 1: Create the path panel component**
 
-The panel receives the graph's chunk list, current path state, and callbacks. It's a self-contained component that renders in the graph toolbar area.
+The panel receives the graph's chunk list, current path state, and callbacks. It's a self-contained component that renders in the graph
+toolbar area.
 
 ```tsx
 // apps/web/src/features/graph/path-panel.tsx
@@ -413,6 +419,7 @@ git commit -m "feat(web): add path finding panel component with relation chain d
 ### Task 5: Integrate path panel into graph view
 
 **Files:**
+
 - Modify: `apps/web/src/routes/graph.tsx`
 - Modify: `apps/web/src/features/graph/graph-view.tsx`
 
@@ -425,16 +432,18 @@ export const Route = createFileRoute("/graph")({
     validateSearch: (search: Record<string, unknown>) => ({
         pathFrom: (search.pathFrom as string) ?? undefined,
         pathTo: (search.pathTo as string) ?? undefined
-    }),
+    })
     // ... rest stays the same
 });
 ```
 
 - [ ] **Step 2: Pass path params to GraphView**
 
-The graph view needs to receive the initial `pathFrom`/`pathTo` values. Since GraphView is lazy-loaded, pass them as props or read them from the route inside the component.
+The graph view needs to receive the initial `pathFrom`/`pathTo` values. Since GraphView is lazy-loaded, pass them as props or read them from
+the route inside the component.
 
 In `graph-view.tsx`:
+
 - Read `pathFrom`/`pathTo` from `useSearch({ from: "/graph" })` (or accept as props)
 - On mount, if `pathFrom` and `pathTo` are present, set `pathStartId` and `pathEndId` from them
 - Use a `useEffect` with the search params as dependencies
@@ -450,7 +459,8 @@ useEffect(() => {
 
 - [ ] **Step 3: Add PathPanel to graph toolbar**
 
-In `graph-view.tsx`, find the toolbar area (where layout/filter controls are). Add a "Find Path" button that toggles a `showPathPanel` state. When open, render `<PathPanel>` with the existing `pathStartId`, `pathEndId`, `pathResult`, chunks, edges, and setter callbacks.
+In `graph-view.tsx`, find the toolbar area (where layout/filter controls are). Add a "Find Path" button that toggles a `showPathPanel`
+state. When open, render `<PathPanel>` with the existing `pathStartId`, `pathEndId`, `pathResult`, chunks, edges, and setter callbacks.
 
 Replace or augment the existing path result display (around line 1579) with the PathPanel component.
 
@@ -458,14 +468,14 @@ Wire the clear button to reset both `pathStartId` and `pathEndId` to null.
 
 - [ ] **Step 4: Handle missing chunks error for deep links**
 
-When `pathFrom`/`pathTo` are set but the chunks aren't found in the loaded graph data, show an error message in the path panel: "One or both chunks are not in the current graph view. Try switching to 'All' codebases."
+When `pathFrom`/`pathTo` are set but the chunks aren't found in the loaded graph data, show an error message in the path panel: "One or both
+chunks are not in the current graph view. Try switching to 'All' codebases."
 
 Check by verifying the IDs exist in the `chunkMap` before triggering path finding.
 
 - [ ] **Step 5: Verify**
 
-Run: `pnpm run check-types`
-Expected: No new type errors
+Run: `pnpm run check-types` Expected: No new type errors
 
 - [ ] **Step 6: Commit**
 
@@ -479,6 +489,7 @@ git commit -m "feat(web): integrate path finding panel into graph view with deep
 ### Task 6: Add "Find path to..." on chunk detail page
 
 **Files:**
+
 - Modify: `apps/web/src/routes/chunks.$chunkId.tsx`
 
 - [ ] **Step 1: Read the current chunk detail page**
@@ -491,29 +502,26 @@ In the actions area (around line 121-134, where Edit and Delete buttons are), ad
 
 Implementation options (pick simplest that works):
 
-**Option A — Simple:** "Find path to..." button that navigates to `/graph?pathFrom=<chunkId>`. The user then selects the target in the graph's path panel. This is the simplest and avoids needing a chunk search dropdown on this page.
+**Option A — Simple:** "Find path to..." button that navigates to `/graph?pathFrom=<chunkId>`. The user then selects the target in the
+graph's path panel. This is the simplest and avoids needing a chunk search dropdown on this page.
 
-**Option B — Full:** Button opens a Popover with a searchable chunk list. On selection, navigates to `/graph?pathFrom=<chunkId>&pathTo=<selectedId>`.
+**Option B — Full:** Button opens a Popover with a searchable chunk list. On selection, navigates to
+`/graph?pathFrom=<chunkId>&pathTo=<selectedId>`.
 
 Start with Option A. The implementer can upgrade to Option B if time permits.
 
 ```tsx
 import { Network } from "lucide-react"; // already imported
 
-<Button
-    variant="outline"
-    size="sm"
-    render={<Link to="/graph" search={{ pathFrom: chunkId }} />}
->
+<Button variant="outline" size="sm" render={<Link to="/graph" search={{ pathFrom: chunkId }} />}>
     <Network className="size-3.5" />
     Find path
-</Button>
+</Button>;
 ```
 
 - [ ] **Step 3: Verify**
 
-Run: `pnpm run check-types`
-Expected: No new type errors
+Run: `pnpm run check-types` Expected: No new type errors
 
 - [ ] **Step 4: Commit**
 
@@ -528,8 +536,7 @@ git commit -m "feat(web): add 'Find path' action to chunk detail page"
 
 - [ ] **Step 1: Run full CI**
 
-Run: `pnpm ci`
-Expected: Type-check, lint, test, build pass (same baseline failures as before)
+Run: `pnpm ci` Expected: Type-check, lint, test, build pass (same baseline failures as before)
 
 - [ ] **Step 2: Fix any issues**
 

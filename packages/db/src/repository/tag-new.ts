@@ -6,7 +6,14 @@ import { chunk } from "../schema/chunk";
 import { chunkSpace } from "../schema/space";
 import { tag, chunkTag, tagType } from "../schema/tag";
 
-export function createTag(params: { id: string; name: string; tagTypeId?: string; userId: string; origin?: string; reviewStatus?: string }) {
+export function createTag(params: {
+    id: string;
+    name: string;
+    tagTypeId?: string;
+    userId: string;
+    origin?: string;
+    reviewStatus?: string;
+}) {
     return dbEffect(async () => {
         const [created] = await db.insert(tag).values(params).returning();
         return created!;
@@ -23,13 +30,13 @@ export function getTagsForUser(userId: string) {
                 tagTypeName: tagType.name,
                 tagTypeColor: tagType.color,
                 tagTypeIcon: tagType.icon,
-                chunkCount: sql<number>`count(${chunkTag.chunkId})::int`.as("chunk_count"),
+                chunkCount: sql<number>`count(${chunkTag.chunkId})::int`.as("chunk_count")
             })
             .from(tag)
             .leftJoin(tagType, eq(tag.tagTypeId, tagType.id))
             .leftJoin(chunkTag, eq(chunkTag.tagId, tag.id))
             .where(eq(tag.userId, userId))
-            .groupBy(tag.id, tagType.id),
+            .groupBy(tag.id, tagType.id)
     );
 }
 
@@ -43,7 +50,7 @@ export function updateTag(
         reviewStatus?: string;
         reviewedBy?: string | null;
         reviewedAt?: Date | null;
-    },
+    }
 ) {
     return dbEffect(async () => {
         const [updated] = await db
@@ -129,7 +136,7 @@ export function getTagsForChunk(chunkId: string) {
             .select({ id: tag.id, name: tag.name, tagTypeId: tag.tagTypeId })
             .from(chunkTag)
             .innerJoin(tag, eq(chunkTag.tagId, tag.id))
-            .where(eq(chunkTag.chunkId, chunkId)),
+            .where(eq(chunkTag.chunkId, chunkId))
     );
 }
 
@@ -141,11 +148,11 @@ export function getTagsForChunks(chunkIds: string[]) {
                 chunkId: chunkTag.chunkId,
                 tagId: tag.id,
                 tagName: tag.name,
-                tagTypeId: tag.tagTypeId,
+                tagTypeId: tag.tagTypeId
             })
             .from(chunkTag)
             .innerJoin(tag, eq(chunkTag.tagId, tag.id))
-            .where(inArray(chunkTag.chunkId, chunkIds)),
+            .where(inArray(chunkTag.chunkId, chunkIds))
     );
 }
 
@@ -180,30 +187,18 @@ export function listChunksByTag(params: ListChunksByTagParams) {
         if (!matchingTag) return [];
 
         // Get chunk IDs that have this tag
-        const taggedChunkIds = await db
-            .select({ chunkId: chunkTag.chunkId })
-            .from(chunkTag)
-            .where(eq(chunkTag.tagId, matchingTag.id));
+        const taggedChunkIds = await db.select({ chunkId: chunkTag.chunkId }).from(chunkTag).where(eq(chunkTag.tagId, matchingTag.id));
 
         if (taggedChunkIds.length === 0) return [];
 
         const ids = taggedChunkIds.map(r => r.chunkId);
 
-        const conditions = [
-            inArray(chunk.id, ids),
-            eq(chunk.userId, params.userId),
-            isNull(chunk.archivedAt),
-        ];
+        const conditions = [inArray(chunk.id, ids), eq(chunk.userId, params.userId), isNull(chunk.archivedAt)];
 
         if (params.codebaseId) {
-            const inSpace = db
-                .select({ chunkId: chunkSpace.chunkId })
-                .from(chunkSpace)
-                .where(eq(chunkSpace.spaceId, params.codebaseId));
+            const inSpace = db.select({ chunkId: chunkSpace.chunkId }).from(chunkSpace).where(eq(chunkSpace.spaceId, params.codebaseId));
             const inAnySpace = db.select({ chunkId: chunkSpace.chunkId }).from(chunkSpace);
-            conditions.push(
-                sql`(${chunk.id} IN (${inSpace}) OR ${chunk.id} NOT IN (${inAnySpace}))`,
-            );
+            conditions.push(sql`(${chunk.id} IN (${inSpace}) OR ${chunk.id} NOT IN (${inAnySpace}))`);
         }
 
         return db
@@ -213,11 +208,10 @@ export function listChunksByTag(params: ListChunksByTagParams) {
                 content: chunk.content,
                 type: chunk.type,
                 rationale: chunk.rationale,
-                summary: chunk.summary,
+                summary: chunk.summary
             })
             .from(chunk)
             .where(and(...conditions))
             .orderBy(chunk.title);
     });
 }
-

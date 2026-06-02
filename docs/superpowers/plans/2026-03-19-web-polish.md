@@ -1,14 +1,17 @@
 # Web UI Polish Implementation Plan
 
-> **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to
+> implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Polish remaining web UI rough edges — remaining skeleton loaders, kanban responsiveness, inline list actions, draft indicator, graph onboarding, and form validation.
+**Goal:** Polish remaining web UI rough edges — remaining skeleton loaders, kanban responsiveness, inline list actions, draft indicator,
+graph onboarding, and form validation.
 
 **Architecture:** All changes in `apps/web/src/`. Isolated component changes with no backend modifications. Each task is independent.
 
 **Tech Stack:** React, TanStack Router, TanStack Query, shadcn-ui (base-ui), Tailwind CSS
 
 **Codebase notes:**
+
 - `SkeletonList` exists at `apps/web/src/components/ui/skeleton-list.tsx`
 - `SkeletonCard` exists at `apps/web/src/components/ui/skeleton-card.tsx`
 - Loading states use `isLoading` from TanStack Query
@@ -22,11 +25,13 @@
 ## File Structure
 
 ### New files to create:
+
 - `apps/web/src/features/chunks/chunk-row-actions.tsx` — Dropdown menu for inline list actions
 - `apps/web/src/features/chunks/draft-indicator.tsx` — Small "Draft saved" badge component
 - `apps/web/src/features/graph/graph-welcome.tsx` — First-visit onboarding overlay for graph
 
 ### Files to modify:
+
 - `apps/web/src/routes/templates.tsx` — Replace "Loading..." with skeleton
 - `apps/web/src/routes/tags.tsx` — Replace "Loading..." with skeleton
 - `apps/web/src/routes/codebases.tsx` — Replace "Loading..." with skeleton
@@ -46,6 +51,7 @@
 Replace "Loading..." text in 6 pages with `SkeletonList`.
 
 **Files to modify:**
+
 - `apps/web/src/routes/templates.tsx:249-250`
 - `apps/web/src/routes/tags.tsx:195-196,309-310`
 - `apps/web/src/routes/codebases.tsx:120-121`
@@ -56,20 +62,25 @@ Replace "Loading..." text in 6 pages with `SkeletonList`.
 - [ ] **Step 1: Replace loading state in templates.tsx**
 
 Find:
+
 ```tsx
 {templatesQuery.isLoading ? (
     <p className="text-muted-foreground text-sm">Loading...</p>
 ```
+
 Replace with:
+
 ```tsx
 {templatesQuery.isLoading ? (
     <SkeletonList count={4} />
 ```
+
 Import `SkeletonList` from `@/components/ui/skeleton-list`.
 
 - [ ] **Step 2: Replace loading states in tags.tsx**
 
-Two loading states: one for tags list (~line 195) and one for tag types (~line 309). Replace both with `<SkeletonList count={5} />` and `<SkeletonList count={3} />` respectively.
+Two loading states: one for tags list (~line 195) and one for tag types (~line 309). Replace both with `<SkeletonList count={5} />` and
+`<SkeletonList count={3} />` respectively.
 
 - [ ] **Step 3: Replace loading state in codebases.tsx**
 
@@ -85,7 +96,8 @@ Replace `<p>Loading...</p>` with `<SkeletonList count={4} />`.
 
 - [ ] **Step 6: Replace loading state in requirements.tsx**
 
-Replace the `<p>Loading...</p>` inside the existing `<Card><CardPanel>` wrapper with `<SkeletonList count={5} />`. Keep the Card/CardPanel wrapper for visual consistency with the rest of the page.
+Replace the `<p>Loading...</p>` inside the existing `<Card><CardPanel>` wrapper with `<SkeletonList count={5} />`. Keep the Card/CardPanel
+wrapper for visual consistency with the rest of the page.
 
 - [ ] **Step 7: Commit**
 
@@ -101,6 +113,7 @@ git commit -m "feat(web): add skeleton loaders to all remaining list pages"
 Make the kanban columns responsive and scrollable on small screens.
 
 **Files:**
+
 - Modify: `apps/web/src/features/chunks/kanban-view.tsx:35`
 
 - [ ] **Step 1: Read kanban-view.tsx**
@@ -110,17 +123,19 @@ Understand the current `grid-cols-5 gap-3` layout and how columns are rendered.
 - [ ] **Step 2: Make columns responsive**
 
 Replace the hardcoded grid (~line 41) with responsive flex + horizontal scroll:
+
 ```tsx
 // Replace: className="grid grid-cols-5 gap-3"
 // With:
-className="flex gap-3 overflow-x-auto pb-2"
+className = "flex gap-3 overflow-x-auto pb-2";
 ```
 
 On each column div (~line 45), replace the existing className to add min-width and flex:
+
 ```tsx
 // Replace: className="bg-muted/30 rounded-lg border p-2"
 // With:
-className="bg-muted/30 min-w-[200px] flex-1 rounded-lg border p-2"
+className = "bg-muted/30 min-w-[200px] flex-1 rounded-lg border p-2";
 ```
 
 This gives flexible columns on wide screens and horizontal scrolling on narrow ones.
@@ -143,6 +158,7 @@ git commit -m "feat(web): make kanban view responsive with horizontal scroll"
 Add a "..." dropdown menu on each chunk row in the list view with quick actions.
 
 **Files:**
+
 - Create: `apps/web/src/features/chunks/chunk-row-actions.tsx`
 - Modify: `apps/web/src/routes/chunks.index.tsx` (~lines 1082-1155, chunk list item rendering)
 
@@ -157,7 +173,7 @@ import {
     DropdownMenuTrigger,
     DropdownMenuContent,
     DropdownMenuItem,
-    DropdownMenuSeparator,
+    DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
 import { Link } from "@tanstack/react-router";
 
@@ -196,30 +212,36 @@ export function ChunkRowActions({ chunkId, isPinned, onTogglePin, onDelete }: Ch
 }
 ```
 
-**Note:** Read the existing `DropdownMenu` component first — the codebase uses base-ui, so the actual API may differ from standard shadcn. Match the pattern used elsewhere (check `dashboard.tsx` export dropdown or `__root.tsx` manage dropdown).
+**Note:** Read the existing `DropdownMenu` component first — the codebase uses base-ui, so the actual API may differ from standard shadcn.
+Match the pattern used elsewhere (check `dashboard.tsx` export dropdown or `__root.tsx` manage dropdown).
 
 - [ ] **Step 2: Wire into chunk list items**
 
-In `chunks.index.tsx`, inside each chunk's `CardPanel` (~line 1082-1155), add `<ChunkRowActions>` after the date display, before the closing `</CardPanel>`:
+In `chunks.index.tsx`, inside each chunk's `CardPanel` (~line 1082-1155), add `<ChunkRowActions>` after the date display, before the closing
+`</CardPanel>`:
 
 ```tsx
 <ChunkRowActions
     chunkId={chunk.id}
     isPinned={isPinned(chunk.id)}
     onTogglePin={() => togglePin(chunk.id)}
-    onDelete={() => setConfirmAction({
-        title: `Delete "${chunk.title}"?`,
-        description: "This action cannot be undone.",
-        action: () => deleteMutation.mutate(chunk.id),
-    })}
+    onDelete={() =>
+        setConfirmAction({
+            title: `Delete "${chunk.title}"?`,
+            description: "This action cannot be undone.",
+            action: () => deleteMutation.mutate(chunk.id)
+        })
+    }
 />
 ```
 
-**Note:** `isPinned` and `togglePin` already exist in the file. `setConfirmAction` takes `{ title, description, action }` shape (read the existing ConfirmDialog usage in the file). You may need to create a `deleteMutation` for single-chunk deletion if only bulk delete exists.
+**Note:** `isPinned` and `togglePin` already exist in the file. `setConfirmAction` takes `{ title, description, action }` shape (read the
+existing ConfirmDialog usage in the file). You may need to create a `deleteMutation` for single-chunk deletion if only bulk delete exists.
 
 - [ ] **Step 3: Add click stopPropagation**
 
 The dropdown must stop click propagation to prevent navigating to chunk detail when clicking the menu:
+
 ```tsx
 <div onClick={(e) => e.stopPropagation()}>
     <ChunkRowActions ... />
@@ -240,6 +262,7 @@ git commit -m "feat(web): add inline action menu on chunk list rows"
 Show a subtle "Draft saved" indicator on chunk create/edit forms when autosave fires.
 
 **Files:**
+
 - Create: `apps/web/src/features/chunks/draft-indicator.tsx`
 - Modify: `apps/web/src/features/chunks/use-autosave.ts` — return `lastSaved` timestamp
 - Modify: `apps/web/src/routes/chunks.new.tsx` — render indicator
@@ -248,6 +271,7 @@ Show a subtle "Draft saved" indicator on chunk create/edit forms when autosave f
 - [ ] **Step 1: Extend useAutosave to track save time**
 
 In `use-autosave.ts`, add a `lastSaved` state:
+
 ```tsx
 const [lastSaved, setLastSaved] = useState<Date | null>(null);
 
@@ -284,7 +308,7 @@ export function DraftIndicator({ lastSaved }: { lastSaved: Date | null }) {
 
 Render `<DraftIndicator lastSaved={lastSaved} />` near the submit button area.
 
-- [ ] **Step 4: Add to chunks.$chunkId_.edit.tsx**
+- [ ] **Step 4: Add to chunks.$chunkId\_.edit.tsx**
 
 Same placement near the submit button.
 
@@ -302,6 +326,7 @@ git commit -m "feat(web): show draft saved indicator on chunk forms"
 Show a welcome overlay on first graph visit explaining key interactions.
 
 **Files:**
+
 - Create: `apps/web/src/features/graph/graph-welcome.tsx`
 - Modify: `apps/web/src/features/graph/graph-view.tsx`
 
@@ -325,19 +350,27 @@ export function GraphWelcome({ onDismiss }: GraphWelcomeProps) {
                 <div className="space-y-3 text-sm">
                     <div className="flex items-center gap-3">
                         <MousePointer className="text-muted-foreground size-4 shrink-0" />
-                        <span><strong>Click</strong> a node to see details. <strong>Double-click</strong> to open.</span>
+                        <span>
+                            <strong>Click</strong> a node to see details. <strong>Double-click</strong> to open.
+                        </span>
                     </div>
                     <div className="flex items-center gap-3">
                         <Move className="text-muted-foreground size-4 shrink-0" />
-                        <span><strong>Drag</strong> nodes to rearrange. Scroll to zoom.</span>
+                        <span>
+                            <strong>Drag</strong> nodes to rearrange. Scroll to zoom.
+                        </span>
                     </div>
                     <div className="flex items-center gap-3">
                         <Link2 className="text-muted-foreground size-4 shrink-0" />
-                        <span><strong>Shift+click</strong> two nodes to find the path between them.</span>
+                        <span>
+                            <strong>Shift+click</strong> two nodes to find the path between them.
+                        </span>
                     </div>
                     <div className="flex items-center gap-3">
                         <Search className="text-muted-foreground size-4 shrink-0" />
-                        <span>Press <kbd className="bg-muted rounded border px-1 text-xs">?</kbd> for all shortcuts.</span>
+                        <span>
+                            Press <kbd className="bg-muted rounded border px-1 text-xs">?</kbd> for all shortcuts.
+                        </span>
                     </div>
                 </div>
                 <Button onClick={onDismiss} className="mt-5 w-full" size="sm">
@@ -351,7 +384,9 @@ export function GraphWelcome({ onDismiss }: GraphWelcomeProps) {
 
 - [ ] **Step 2: Wire into graph-view.tsx**
 
-Add state that checks localStorage for first visit. **Important:** TanStack Start does SSR, so guard against `localStorage` not being available on the server:
+Add state that checks localStorage for first visit. **Important:** TanStack Start does SSR, so guard against `localStorage` not being
+available on the server:
+
 ```tsx
 const [showWelcome, setShowWelcome] = useState(false);
 
@@ -383,12 +418,14 @@ git commit -m "feat(web): add first-visit onboarding overlay to graph page"
 Validate applies-to patterns on chunk forms and show inline warnings.
 
 **Files:**
+
 - Modify: `apps/web/src/routes/chunks.new.tsx` (~line 454-461, applies-to input)
 - Modify: `apps/web/src/routes/chunks.$chunkId_.edit.tsx` (same section)
 
 - [ ] **Step 1: Add validation helper**
 
 Create a simple inline function (no new file needed):
+
 ```tsx
 function isValidGlob(pattern: string): boolean {
     if (!pattern.trim()) return true; // empty is fine
@@ -406,10 +443,11 @@ function isValidGlob(pattern: string): boolean {
 - [ ] **Step 2: Show warning on invalid patterns**
 
 After each applies-to pattern input, add:
+
 ```tsx
-{pattern && !isValidGlob(pattern) && (
-    <p className="text-destructive text-xs mt-1">Invalid glob pattern</p>
-)}
+{
+    pattern && !isValidGlob(pattern) && <p className="text-destructive text-xs mt-1">Invalid glob pattern</p>;
+}
 ```
 
 - [ ] **Step 3: Apply same to edit form**

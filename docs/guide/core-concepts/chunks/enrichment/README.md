@@ -1,9 +1,9 @@
 ---
 tags:
-  - guide
-  - chunks
-  - enrichment
-  - ai
+    - guide
+    - chunks
+    - enrichment
+    - ai
 description: Enrichment section index — AI-generated metadata for chunks
 ---
 

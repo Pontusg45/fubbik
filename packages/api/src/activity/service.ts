@@ -1,7 +1,4 @@
-import {
-    createActivity as createActivityRepo,
-    listActivity as listActivityRepo
-} from "@fubbik/db/repository";
+import { createActivity as createActivityRepo, listActivity as listActivityRepo } from "@fubbik/db/repository";
 
 export function listActivity(
     userId: string,

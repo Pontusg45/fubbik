@@ -1,14 +1,17 @@
 # Cross-Cutting Polish Implementation Plan
 
-> **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to
+> implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Polish cross-cutting concerns — connection creation UX, graph state management, mobile layout fixes, and kanban bulk operations.
 
-**Architecture:** Mostly web UI changes. Graph refactor extracts state into a custom hook. Mobile fixes are Tailwind responsive class additions. Connection UX simplification modifies existing dialog components.
+**Architecture:** Mostly web UI changes. Graph refactor extracts state into a custom hook. Mobile fixes are Tailwind responsive class
+additions. Connection UX simplification modifies existing dialog components.
 
 **Tech Stack:** React, TanStack Router, @xyflow/react, Tailwind CSS
 
 **Codebase notes:**
+
 - Graph view at `features/graph/graph-view.tsx` has 20+ useState calls
 - Mobile nav at `features/nav/mobile-nav.tsx` uses Sheet component
 - Settings page uses fixed widths (`w-64`, `w-80`) that break on mobile
@@ -20,9 +23,11 @@
 ## File Structure
 
 ### New files to create:
+
 - `apps/web/src/features/graph/use-graph-state.ts` — Extracted graph state reducer
 
 ### Files to modify:
+
 - `apps/web/src/features/graph/graph-view.tsx` — Use extracted state, simplify connection UX
 - `apps/web/src/routes/settings.tsx` — Responsive layout fixes
 - `apps/web/src/features/chunks/kanban-view.tsx` — Add multi-select and bulk actions
@@ -34,13 +39,16 @@
 Add a "quick connect" mode with a default relation type to reduce clicks.
 
 **Files:**
+
 - Modify: `apps/web/src/features/chunks/link-chunk-dialog.tsx` — The actual dialog component (NOT in the route file)
 
-**Note:** `chunks.$chunkId.tsx` only imports and renders `<LinkChunkDialog>`. The dialog implementation is in `features/chunks/link-chunk-dialog.tsx`.
+**Note:** `chunks.$chunkId.tsx` only imports and renders `<LinkChunkDialog>`. The dialog implementation is in
+`features/chunks/link-chunk-dialog.tsx`.
 
 - [ ] **Step 1: Read link-chunk-dialog.tsx**
 
-Find where the dialog is implemented. The current flow: search for chunk + pick relation type + confirm. The relation state already has a default of `"related"` (line 15) — but the valid enum value is `"related_to"`. This is likely a bug.
+Find where the dialog is implemented. The current flow: search for chunk + pick relation type + confirm. The relation state already has a
+default of `"related"` (line 15) — but the valid enum value is `"related_to"`. This is likely a bug.
 
 - [ ] **Step 2: Fix default relation type**
 
@@ -52,7 +60,8 @@ const [relation, setRelation] = useState("related_to"); // fix from "related" to
 
 - [ ] **Step 3: Add "quick link" from search results**
 
-When search results appear, allow clicking a result to immediately create the connection with the default relation. Show a small "Change type" link to expand the relation picker only when needed.
+When search results appear, allow clicking a result to immediately create the connection with the default relation. Show a small "Change
+type" link to expand the relation picker only when needed.
 
 - [ ] **Step 4: Commit**
 
@@ -68,12 +77,14 @@ git commit -m "feat(web): simplify connection creation with default relation typ
 Extract the 20+ useState calls from graph-view.tsx into a `useReducer`-based hook.
 
 **Files:**
+
 - Create: `apps/web/src/features/graph/use-graph-state.ts`
 - Modify: `apps/web/src/features/graph/graph-view.tsx`
 
 - [ ] **Step 1: Read graph-view.tsx state declarations**
 
 Catalog all useState calls. Group them into logical categories:
+
 - **View state:** layout algorithm, edge bundling, timeline cutoff, panel width
 - **Selection state:** selectedChunkId (focused node), multi-selected IDs
 - **Interaction state:** pending connection (`{ source, target }` — both fields), explore mode, path start/end, show help
@@ -123,8 +134,8 @@ type GraphAction =
     | { type: "TOGGLE_HELP" }
     | { type: "TOGGLE_FILTER_TYPE"; chunkType: string }
     | { type: "TOGGLE_FILTER_RELATION"; relation: string }
-    | { type: "SET_SEARCH"; query: string }
-    // ... add more as needed from reading the actual state
+    | { type: "SET_SEARCH"; query: string };
+// ... add more as needed from reading the actual state
 
 function graphReducer(state: GraphState, action: GraphAction): GraphState {
     switch (action.type) {
@@ -164,7 +175,7 @@ export function useGraphState(initialOverrides?: Partial<GraphState>) {
         filterTypes: new Set(),
         filterRelations: new Set(),
         searchQuery: "",
-        ...initialOverrides,
+        ...initialOverrides
     });
 
     return { state, dispatch };
@@ -174,13 +185,16 @@ export function useGraphState(initialOverrides?: Partial<GraphState>) {
 - [ ] **Step 3: Replace useState calls in graph-view.tsx**
 
 Replace all the individual useState calls with the hook:
+
 ```tsx
 const { state: gs, dispatch } = useGraphState();
 ```
 
-Update all state reads from `focusedNodeId` to `gs.focusedNodeId`, etc. Update all state setters from `setFocusedNodeId(id)` to `dispatch({ type: "SET_FOCUSED_NODE", id })`.
+Update all state reads from `focusedNodeId` to `gs.focusedNodeId`, etc. Update all state setters from `setFocusedNodeId(id)` to
+`dispatch({ type: "SET_FOCUSED_NODE", id })`.
 
-**Important:** This is a large refactor. Do it incrementally — start with one group (e.g., selection state), verify it works, then continue. Don't try to replace all 20 at once.
+**Important:** This is a large refactor. Do it incrementally — start with one group (e.g., selection state), verify it works, then continue.
+Don't try to replace all 20 at once.
 
 - [ ] **Step 4: Commit**
 
@@ -196,12 +210,14 @@ git commit -m "refactor(web): extract graph state into useGraphState reducer"
 Fix pages with hardcoded widths that break on mobile.
 
 **Files:**
+
 - Modify: `apps/web/src/routes/settings.tsx`
 - Modify: `apps/web/src/features/graph/graph-view.tsx` (panel width)
 
 - [ ] **Step 1: Fix settings page responsive layout**
 
 Read `settings.tsx`. Find fixed width classes: `w-32`, `w-48`, `w-64`, `w-80`. Replace with responsive alternatives:
+
 - `w-64` → `w-full max-w-64`
 - `w-80` → `w-full max-w-80`
 - `w-48` → `w-full max-w-48`
@@ -211,6 +227,7 @@ Read `settings.tsx`. Find fixed width classes: `w-32`, `w-48`, `w-64`, `w-80`. R
 - [ ] **Step 2: Fix graph detail panel on mobile**
 
 The graph detail panel uses `panelWidth: 380` fixed. On mobile, this should take full width. Look for the panel rendering and add:
+
 ```tsx
 className={`${isMobile ? "w-full" : `w-[${panelWidth}px]`}`}
 ```
@@ -231,6 +248,7 @@ git commit -m "fix(web): responsive layout for settings page and graph panel"
 Add multi-select to kanban columns and expose bulk actions.
 
 **Files:**
+
 - Modify: `apps/web/src/features/chunks/kanban-view.tsx`
 
 - [ ] **Step 1: Read kanban-view.tsx**
@@ -254,6 +272,7 @@ const toggleSelect = (id: string) => {
 - [ ] **Step 3: Add checkbox to each card**
 
 On each draggable card, add a small checkbox:
+
 ```tsx
 <div className="flex items-start gap-2">
     <Checkbox
@@ -272,18 +291,28 @@ On each draggable card, add a small checkbox:
 - [ ] **Step 4: Add bulk action bar**
 
 When items are selected, show a floating bar (similar to the one in list view):
+
 ```tsx
-{selectedIds.size > 0 && (
-    <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-20 bg-background border rounded-lg shadow-lg px-4 py-2 flex items-center gap-3">
-        <span className="text-sm font-medium">{selectedIds.size} selected</span>
-        <Button size="sm" variant="outline" onClick={() => bulkArchive(selectedIds)}>Archive</Button>
-        <Button size="sm" variant="destructive" onClick={() => bulkDelete(selectedIds)}>Delete</Button>
-        <Button size="sm" variant="ghost" onClick={() => setSelectedIds(new Set())}>Cancel</Button>
-    </div>
-)}
+{
+    selectedIds.size > 0 && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-20 bg-background border rounded-lg shadow-lg px-4 py-2 flex items-center gap-3">
+            <span className="text-sm font-medium">{selectedIds.size} selected</span>
+            <Button size="sm" variant="outline" onClick={() => bulkArchive(selectedIds)}>
+                Archive
+            </Button>
+            <Button size="sm" variant="destructive" onClick={() => bulkDelete(selectedIds)}>
+                Delete
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setSelectedIds(new Set())}>
+                Cancel
+            </Button>
+        </div>
+    );
+}
 ```
 
 **Important:** The kanban component currently only accepts `{ chunks: Chunk[] }` as props — no mutation callbacks are passed in. You must:
+
 1. Extend the kanban component's props to accept `onBulkDelete` and `onBulkArchive` callbacks
 2. Pass these from the parent (`chunks.index.tsx`) using the existing bulk mutations there
 3. Read both files to understand the current prop contract before implementing
@@ -302,6 +331,7 @@ git commit -m "feat(web): add multi-select and bulk actions to kanban view"
 Simplify edge creation in the graph to reduce modal friction.
 
 **Files:**
+
 - Modify: `apps/web/src/features/graph/graph-view.tsx`
 
 - [ ] **Step 1: Read the edge creation flow**
@@ -311,6 +341,7 @@ Find the `pendingConnection` state and how the relation picker dialog works when
 - [ ] **Step 2: Add quick-create with default relation**
 
 When a user drags to create an edge, instead of showing a modal asking for relation type:
+
 1. Create the connection immediately with `related_to` as default
 2. Show a toast: "Connected A → B (related_to)" with an "Edit" action button
 3. Clicking "Edit" opens the relation type picker to change it
@@ -321,8 +352,8 @@ await createConnection({ sourceId, targetId, relation: "related_to" });
 toast("Connection created", {
     action: {
         label: "Change type",
-        onClick: () => openRelationPicker(connectionId),
-    },
+        onClick: () => openRelationPicker(connectionId)
+    }
 });
 ```
 

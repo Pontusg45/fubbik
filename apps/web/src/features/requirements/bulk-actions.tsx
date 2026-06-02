@@ -67,10 +67,8 @@ export function BulkActions({ selectedIds, onClearSelection, useCases }: BulkAct
     if (selectedIds.length === 0) return null;
 
     return (
-        <div className="fixed bottom-6 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-xl border bg-card px-5 py-3 shadow-lg">
-            <span className="text-sm font-medium">
-                {selectedIds.length} selected
-            </span>
+        <div className="bg-card fixed bottom-6 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-xl border px-5 py-3 shadow-lg">
+            <span className="text-sm font-medium">{selectedIds.length} selected</span>
 
             <div className="bg-border h-5 w-px" />
 
@@ -87,7 +85,9 @@ export function BulkActions({ selectedIds, onClearSelection, useCases }: BulkAct
                     }}
                     disabled={bulkMutation.isPending}
                 >
-                    <option value="" disabled>Set Status</option>
+                    <option value="" disabled>
+                        Set Status
+                    </option>
                     <option value="passing">Passing</option>
                     <option value="failing">Failing</option>
                     <option value="untested">Untested</option>
@@ -110,21 +110,20 @@ export function BulkActions({ selectedIds, onClearSelection, useCases }: BulkAct
                         }}
                         disabled={bulkMutation.isPending}
                     >
-                        <option value="" disabled>Assign Use Case</option>
+                        <option value="" disabled>
+                            Assign Use Case
+                        </option>
                         <option value="__none__">None (unassign)</option>
                         {useCases.map(uc => (
-                            <option key={uc.id} value={uc.id}>{uc.name}</option>
+                            <option key={uc.id} value={uc.id}>
+                                {uc.name}
+                            </option>
                         ))}
                     </select>
                 </div>
             )}
 
-            <Button
-                variant="destructive"
-                size="sm"
-                onClick={() => setShowDeleteConfirm(true)}
-                disabled={bulkMutation.isPending}
-            >
+            <Button variant="destructive" size="sm" onClick={() => setShowDeleteConfirm(true)} disabled={bulkMutation.isPending}>
                 Delete
             </Button>
             <ConfirmDialog
@@ -138,11 +137,7 @@ export function BulkActions({ selectedIds, onClearSelection, useCases }: BulkAct
                 loading={bulkMutation.isPending}
             />
 
-            <Button
-                variant="ghost"
-                size="sm"
-                onClick={onClearSelection}
-            >
+            <Button variant="ghost" size="sm" onClick={onClearSelection}>
                 Clear
             </Button>
         </div>

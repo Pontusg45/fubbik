@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+
 import { resolveChunk, resolveChunks } from "./resolve";
 
 describe("resolveChunk", () => {
@@ -20,9 +21,7 @@ describe("resolveChunk", () => {
     });
 
     it("applies a single delta", () => {
-        const deltas = [
-            { featureId: "f1", delta: { content: "Feature content" }, priority: 1 }
-        ];
+        const deltas = [{ featureId: "f1", delta: { content: "Feature content" }, priority: 1 }];
         const result = resolveChunk(baseChunk, deltas);
         expect(result.title).toBe("Base Title");
         expect(result.content).toBe("Feature content");
@@ -72,9 +71,7 @@ describe("resolveChunks", () => {
             { id: "c1", title: "Chunk 1", content: "Content 1" },
             { id: "c2", title: "Chunk 2", content: "Content 2" }
         ];
-        const deltas = [
-            { chunkId: "c1", featureId: "f1", delta: { title: "Modified 1" }, priority: 1 }
-        ];
+        const deltas = [{ chunkId: "c1", featureId: "f1", delta: { title: "Modified 1" }, priority: 1 }];
         const result = resolveChunks(chunks, ["f1"], deltas);
         expect(result[0]!.title).toBe("Modified 1");
         expect(result[0]!._hasDeltas).toBe(true);

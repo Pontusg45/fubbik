@@ -1,10 +1,14 @@
 # Query Builder & Graph-Aware Search Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to
+> implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Replace the text-only `/search` page with a hybrid query builder featuring visual filter blocks, structured text input, and graph-aware queries powered by Apache AGE.
+**Goal:** Replace the text-only `/search` page with a hybrid query builder featuring visual filter blocks, structured text input, and
+graph-aware queries powered by Apache AGE.
 
-**Architecture:** New `saved_query` schema + repository for persistence. New `packages/api/src/search/` module for query execution (dispatches graph clauses to AGE, standard clauses to Drizzle). Text parser converts structured syntax to query clauses. Frontend rewrites `/search` with filter pills, autocomplete, and result list.
+**Architecture:** New `saved_query` schema + repository for persistence. New `packages/api/src/search/` module for query execution
+(dispatches graph clauses to AGE, standard clauses to Drizzle). Text parser converts structured syntax to query clauses. Frontend rewrites
+`/search` with filter pills, autocomplete, and result list.
 
 **Tech Stack:** TypeScript, Effect, Drizzle ORM, Apache AGE (Cypher), Elysia, React, TanStack Router/Query, shadcn-ui
 
@@ -12,29 +16,30 @@
 
 ## File Structure
 
-| File | Action | Responsibility |
-|------|--------|---------------|
-| `packages/db/src/schema/saved-query.ts` | Create | saved_query table definition |
-| `packages/db/src/repository/saved-query.ts` | Create | CRUD for saved queries |
-| `packages/api/src/search/types.ts` | Create | QueryClause, SearchQuery, SearchResult types |
-| `packages/api/src/search/service.ts` | Create | Query execution engine |
-| `packages/api/src/search/routes.ts` | Create | POST /search/query, GET /search/autocomplete, saved query CRUD |
-| `packages/api/src/search/parser.ts` | Create | Text syntax → QueryClause[] parser |
-| `packages/api/src/index.ts` | Modify | Register searchRoutes |
-| `packages/db/src/schema/index.ts` | Modify | Export saved-query schema |
-| `apps/web/src/features/search/query-types.ts` | Create | Shared types for frontend |
-| `apps/web/src/features/search/use-query-builder.ts` | Create | State management hook |
-| `apps/web/src/features/search/query-input.tsx` | Create | Text input with autocomplete |
-| `apps/web/src/features/search/filter-pills.tsx` | Create | Visual filter pill row |
-| `apps/web/src/features/search/add-filter-dropdown.tsx` | Create | Categorized filter type picker |
-| `apps/web/src/features/search/search-results.tsx` | Create | Result list with graph context |
-| `apps/web/src/routes/search.tsx` | Modify | Full rewrite — query builder page |
+| File                                                   | Action | Responsibility                                                 |
+| ------------------------------------------------------ | ------ | -------------------------------------------------------------- |
+| `packages/db/src/schema/saved-query.ts`                | Create | saved_query table definition                                   |
+| `packages/db/src/repository/saved-query.ts`            | Create | CRUD for saved queries                                         |
+| `packages/api/src/search/types.ts`                     | Create | QueryClause, SearchQuery, SearchResult types                   |
+| `packages/api/src/search/service.ts`                   | Create | Query execution engine                                         |
+| `packages/api/src/search/routes.ts`                    | Create | POST /search/query, GET /search/autocomplete, saved query CRUD |
+| `packages/api/src/search/parser.ts`                    | Create | Text syntax → QueryClause[] parser                             |
+| `packages/api/src/index.ts`                            | Modify | Register searchRoutes                                          |
+| `packages/db/src/schema/index.ts`                      | Modify | Export saved-query schema                                      |
+| `apps/web/src/features/search/query-types.ts`          | Create | Shared types for frontend                                      |
+| `apps/web/src/features/search/use-query-builder.ts`    | Create | State management hook                                          |
+| `apps/web/src/features/search/query-input.tsx`         | Create | Text input with autocomplete                                   |
+| `apps/web/src/features/search/filter-pills.tsx`        | Create | Visual filter pill row                                         |
+| `apps/web/src/features/search/add-filter-dropdown.tsx` | Create | Categorized filter type picker                                 |
+| `apps/web/src/features/search/search-results.tsx`      | Create | Result list with graph context                                 |
+| `apps/web/src/routes/search.tsx`                       | Modify | Full rewrite — query builder page                              |
 
 ---
 
 ### Task 1: Saved Query Schema and Repository
 
 **Files:**
+
 - Create: `packages/db/src/schema/saved-query.ts`
 - Create: `packages/db/src/repository/saved-query.ts`
 - Modify: `packages/db/src/schema/index.ts`
@@ -62,9 +67,7 @@ export const savedQuery = pgTable(
         codebaseId: text("codebase_id").references(() => codebase.id, { onDelete: "set null" }),
         createdAt: timestamp("created_at").defaultNow().notNull()
     },
-    table => [
-        index("saved_query_userId_idx").on(table.userId)
-    ]
+    table => [index("saved_query_userId_idx").on(table.userId)]
 );
 
 export const savedQueryRelations = relations(savedQuery, ({ one }) => ({
@@ -76,6 +79,7 @@ export const savedQueryRelations = relations(savedQuery, ({ one }) => ({
 - [ ] **Step 2: Export from schema index**
 
 Add to `packages/db/src/schema/index.ts`:
+
 ```typescript
 export * from "./saved-query";
 ```
@@ -106,13 +110,7 @@ export function listSavedQueries(userId: string, codebaseId?: string) {
     });
 }
 
-export function createSavedQuery(params: {
-    id: string;
-    name: string;
-    query: unknown;
-    userId: string;
-    codebaseId?: string;
-}) {
+export function createSavedQuery(params: { id: string; name: string; query: unknown; userId: string; codebaseId?: string }) {
     return Effect.tryPromise({
         try: async () => {
             const [created] = await db.insert(savedQuery).values(params).returning();
@@ -139,6 +137,7 @@ export function deleteSavedQuery(id: string, userId: string) {
 - [ ] **Step 4: Export from repository index**
 
 Add to `packages/db/src/repository/index.ts`:
+
 ```typescript
 export * from "./saved-query";
 ```
@@ -167,10 +166,12 @@ git commit -m "feat(search): add saved_query schema and repository"
 ### Task 2: Search Types and Query Execution Service
 
 **Files:**
+
 - Create: `packages/api/src/search/types.ts`
 - Create: `packages/api/src/search/service.ts`
 
-**Context:** The service receives a `SearchQuery`, dispatches graph clauses to AGE, builds Drizzle filters for standard clauses, and combines results. This is the core engine.
+**Context:** The service receives a `SearchQuery`, dispatches graph clauses to AGE, builds Drizzle filters for standard clauses, and
+combines results. This is the core engine.
 
 - [ ] **Step 1: Create shared types**
 
@@ -226,13 +227,7 @@ export interface SearchResult {
 
 ```typescript
 // packages/api/src/search/service.ts
-import {
-    listChunks,
-    findShortestPath,
-    getNeighborhood,
-    getChunksAffectedByRequirement,
-    getChunkById
-} from "@fubbik/db/repository";
+import { listChunks, findShortestPath, getNeighborhood, getChunksAffectedByRequirement, getChunkById } from "@fubbik/db/repository";
 import { Effect } from "effect";
 
 import type { QueryClause, SearchQuery, SearchResult, SearchResultChunk, GraphContext } from "./types";
@@ -251,9 +246,7 @@ function executeGraphClauses(clauses: QueryClause[]) {
                 const ids = yield* getNeighborhood(clause.value, hops);
                 // Add the reference chunk itself
                 ids.push(clause.value);
-                graphChunkIds = graphChunkIds
-                    ? graphChunkIds.filter(id => ids.includes(id))
-                    : ids;
+                graphChunkIds = graphChunkIds ? graphChunkIds.filter(id => ids.includes(id)) : ids;
                 graphMeta = { type: "neighborhood", referenceChunk: clause.value };
 
                 // Compute hop distances (approximate: re-query per result would be expensive)
@@ -267,9 +260,7 @@ function executeGraphClauses(clauses: QueryClause[]) {
                 const toId = clause.params?.to ?? "";
                 const pathIds = yield* findShortestPath(fromId, toId);
                 if (pathIds) {
-                    graphChunkIds = graphChunkIds
-                        ? graphChunkIds.filter(id => pathIds.includes(id))
-                        : pathIds;
+                    graphChunkIds = graphChunkIds ? graphChunkIds.filter(id => pathIds.includes(id)) : pathIds;
                     graphMeta = { type: "path", pathChunks: pathIds, referenceChunk: fromId };
                     for (let i = 0; i < pathIds.length; i++) {
                         graphContextMap.set(pathIds[i], { pathPosition: i });
@@ -280,9 +271,7 @@ function executeGraphClauses(clauses: QueryClause[]) {
             } else if (clause.field === "affected-by") {
                 const hops = Number(clause.params?.hops ?? 2);
                 const ids = yield* getChunksAffectedByRequirement(clause.value, hops);
-                graphChunkIds = graphChunkIds
-                    ? graphChunkIds.filter(id => ids.includes(id))
-                    : ids;
+                graphChunkIds = graphChunkIds ? graphChunkIds.filter(id => ids.includes(id)) : ids;
                 graphMeta = { type: "requirement-reach", referenceChunk: clause.value };
                 for (const id of ids) {
                     graphContextMap.set(id, { matchedRequirement: clause.value });
@@ -337,12 +326,8 @@ function buildStandardQuery(clauses: QueryClause[], codebaseId?: string) {
 
 export function executeSearch(userId: string, searchQuery: SearchQuery) {
     return Effect.gen(function* () {
-        const graphClauses = searchQuery.clauses.filter(c =>
-            ["near", "path", "affected-by"].includes(c.field)
-        );
-        const standardClauses = searchQuery.clauses.filter(c =>
-            !["near", "path", "affected-by"].includes(c.field)
-        );
+        const graphClauses = searchQuery.clauses.filter(c => ["near", "path", "affected-by"].includes(c.field));
+        const standardClauses = searchQuery.clauses.filter(c => !["near", "path", "affected-by"].includes(c.field));
 
         // 1. Execute graph clauses (returns chunk ID set or null)
         const { graphChunkIds, graphMeta, graphContextMap } = yield* executeGraphClauses(graphClauses);
@@ -449,7 +434,8 @@ export function autocomplete(userId: string, field: string, prefix: string) {
 }
 ```
 
-Note: The `tag` import may need adjustment — check where the `tag` table is actually exported from (likely `@fubbik/db/schema/chunk` is wrong; it's probably in the tag schema). Read the actual imports before writing. Same for `chunk` — verify the import path.
+Note: The `tag` import may need adjustment — check where the `tag` table is actually exported from (likely `@fubbik/db/schema/chunk` is
+wrong; it's probably in the tag schema). Read the actual imports before writing. Same for `chunk` — verify the import path.
 
 - [ ] **Step 3: Verify type-check passes**
 
@@ -469,9 +455,11 @@ git commit -m "feat(search): add query execution service with graph clause suppo
 ### Task 3: Text Query Parser
 
 **Files:**
+
 - Create: `packages/api/src/search/parser.ts`
 
-**Context:** Parses structured text syntax like `type:reference tag:api near:"Auth Flow" hops:2 NOT tag:deprecated` into an array of `QueryClause` objects.
+**Context:** Parses structured text syntax like `type:reference tag:api near:"Auth Flow" hops:2 NOT tag:deprecated` into an array of
+`QueryClause` objects.
 
 - [ ] **Step 1: Create the parser**
 
@@ -537,11 +525,7 @@ export function parseQueryString(input: string): QueryClause[] {
     return clauses;
 }
 
-function parseSingleToken(
-    token: string,
-    tokens: string[],
-    index: number
-): { clause: QueryClause | null; nextIndex: number } {
+function parseSingleToken(token: string, tokens: string[], index: number): { clause: QueryClause | null; nextIndex: number } {
     // field:value patterns
     const colonIndex = token.indexOf(":");
     if (colonIndex > 0) {
@@ -647,27 +631,29 @@ function tokenize(input: string): string[] {
  * Convert clauses back to a query string (for syncing pills → text input).
  */
 export function clausesToQueryString(clauses: QueryClause[]): string {
-    return clauses.map(c => {
-        const prefix = c.negate ? "NOT " : "";
-        const value = c.value.includes(" ") ? `"${c.value}"` : c.value;
+    return clauses
+        .map(c => {
+            const prefix = c.negate ? "NOT " : "";
+            const value = c.value.includes(" ") ? `"${c.value}"` : c.value;
 
-        if (c.field === "text") return `${prefix}${value}`;
-        if (c.field === "path" && c.params?.from && c.params?.to) {
-            return `${prefix}path:"${c.params.from}"->"${c.params.to}"`;
-        }
+            if (c.field === "text") return `${prefix}${value}`;
+            if (c.field === "path" && c.params?.from && c.params?.to) {
+                return `${prefix}path:"${c.params.from}"->"${c.params.to}"`;
+            }
 
-        let result = `${prefix}${c.field}:${value}`;
-        if (c.field === "near" && c.params?.hops) {
-            result += ` hops:${c.params.hops}`;
-        }
-        if (c.field === "connections" && c.operator === "gte") {
-            result = `${prefix}${c.field}:${c.value}+`;
-        }
-        if (c.field === "updated" && c.operator === "within") {
-            result = `${prefix}${c.field}:${c.value}d`;
-        }
-        return result;
-    }).join(" ");
+            let result = `${prefix}${c.field}:${value}`;
+            if (c.field === "near" && c.params?.hops) {
+                result += ` hops:${c.params.hops}`;
+            }
+            if (c.field === "connections" && c.operator === "gte") {
+                result = `${prefix}${c.field}:${c.value}+`;
+            }
+            if (c.field === "updated" && c.operator === "within") {
+                result = `${prefix}${c.field}:${c.value}d`;
+            }
+            return result;
+        })
+        .join(" ");
 }
 ```
 
@@ -689,6 +675,7 @@ git commit -m "feat(search): add text query parser with structured syntax suppor
 ### Task 4: API Routes and Registration
 
 **Files:**
+
 - Create: `packages/api/src/search/routes.ts`
 - Modify: `packages/api/src/index.ts`
 
@@ -759,11 +746,7 @@ export const searchRoutes = new Elysia()
         "/search/autocomplete",
         ctx =>
             Effect.runPromise(
-                requireSession(ctx).pipe(
-                    Effect.flatMap(session =>
-                        autocomplete(session.user.id, ctx.query.field, ctx.query.prefix ?? "")
-                    )
-                )
+                requireSession(ctx).pipe(Effect.flatMap(session => autocomplete(session.user.id, ctx.query.field, ctx.query.prefix ?? "")))
             ),
         {
             query: t.Object({
@@ -775,13 +758,7 @@ export const searchRoutes = new Elysia()
     .get(
         "/search/saved",
         ctx =>
-            Effect.runPromise(
-                requireSession(ctx).pipe(
-                    Effect.flatMap(session =>
-                        listSavedQueries(session.user.id, ctx.query.codebaseId)
-                    )
-                )
-            ),
+            Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(session => listSavedQueries(session.user.id, ctx.query.codebaseId)))),
         {
             query: t.Object({
                 codebaseId: t.Optional(t.String())
@@ -814,14 +791,7 @@ export const searchRoutes = new Elysia()
     )
     .delete(
         "/search/saved/:id",
-        ctx =>
-            Effect.runPromise(
-                requireSession(ctx).pipe(
-                    Effect.flatMap(session =>
-                        deleteSavedQuery(ctx.params.id, session.user.id)
-                    )
-                )
-            ),
+        ctx => Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(session => deleteSavedQuery(ctx.params.id, session.user.id)))),
         {
             params: t.Object({
                 id: t.String()
@@ -833,11 +803,13 @@ export const searchRoutes = new Elysia()
 - [ ] **Step 2: Register in main API**
 
 In `packages/api/src/index.ts`, add import:
+
 ```typescript
 import { searchRoutes } from "./search/routes";
 ```
 
 Add `.use(searchRoutes)` after the last `.use(stalenessRoutes)`:
+
 ```typescript
     .use(stalenessRoutes)
     .use(searchRoutes);
@@ -861,6 +833,7 @@ git commit -m "feat(search): add query API routes and register in main API"
 ### Task 5: Frontend — Query Builder Components
 
 **Files:**
+
 - Create: `apps/web/src/features/search/query-types.ts`
 - Create: `apps/web/src/features/search/use-query-builder.ts`
 - Create: `apps/web/src/features/search/query-input.tsx`
@@ -868,7 +841,8 @@ git commit -m "feat(search): add query API routes and register in main API"
 - Create: `apps/web/src/features/search/add-filter-dropdown.tsx`
 - Create: `apps/web/src/features/search/search-results.tsx`
 
-**Context:** These are the building blocks for the search page. The state management hook holds the clauses array and syncs between text input and pills. Each component is focused on one responsibility.
+**Context:** These are the building blocks for the search page. The state management hook holds the clauses array and syncs between text
+input and pills. Each component is focused on one responsibility.
 
 - [ ] **Step 1: Create shared frontend types**
 
@@ -900,7 +874,7 @@ export const FILTER_COLORS: Record<string, string> = {
     text: "bg-slate-500/15 border-slate-500/30 text-slate-400",
     connections: "bg-slate-500/15 border-slate-500/30 text-slate-400",
     updated: "bg-slate-500/15 border-slate-500/30 text-slate-400",
-    codebase: "bg-slate-500/15 border-slate-500/30 text-slate-400",
+    codebase: "bg-slate-500/15 border-slate-500/30 text-slate-400"
 };
 
 export const GRAPH_FIELDS = ["near", "path", "affected-by"];
@@ -915,7 +889,7 @@ export const FILTER_CATEGORIES = [
             { field: "connections", label: "Connections", description: "Minimum connection count" },
             { field: "updated", label: "Updated within", description: "Days since last update" },
             { field: "origin", label: "Origin", description: "Created by human or AI" },
-            { field: "review", label: "Review status", description: "Draft or approved" },
+            { field: "review", label: "Review status", description: "Draft or approved" }
         ]
     },
     {
@@ -923,7 +897,7 @@ export const FILTER_CATEGORIES = [
         fields: [
             { field: "near", label: "Neighborhood", description: "Chunks within N hops of a chunk" },
             { field: "path", label: "Path finding", description: "Find connection path between two chunks" },
-            { field: "affected-by", label: "Affected by requirement", description: "Chunks linked to a requirement" },
+            { field: "affected-by", label: "Affected by requirement", description: "Chunks linked to a requirement" }
         ]
     }
 ];
@@ -964,9 +938,7 @@ export function useQueryBuilder(initialClauses: QueryClause[] = []) {
 
     const query: SearchQuery = { clauses, join, sort };
 
-    const hasGraphClauses = clauses.some(c =>
-        ["near", "path", "affected-by"].includes(c.field)
-    );
+    const hasGraphClauses = clauses.some(c => ["near", "path", "affected-by"].includes(c.field));
 
     return {
         clauses,
@@ -980,7 +952,7 @@ export function useQueryBuilder(initialClauses: QueryClause[] = []) {
         clearAll,
         loadClauses,
         setJoin,
-        setSort,
+        setSort
     };
 }
 ```
@@ -989,30 +961,41 @@ export function useQueryBuilder(initialClauses: QueryClause[] = []) {
 
 Create the following files. Each is a focused React component:
 
-**`apps/web/src/features/search/query-input.tsx`** — text input bar with monospace font. On Enter, parses the text via `GET /api/search/parse?q=...` and calls `loadClauses`. Shows syntax help below. The implementer should:
+**`apps/web/src/features/search/query-input.tsx`** — text input bar with monospace font. On Enter, parses the text via
+`GET /api/search/parse?q=...` and calls `loadClauses`. Shows syntax help below. The implementer should:
+
 - Use a controlled input with `onKeyDown` Enter handler
 - Call the parse API endpoint to convert text to clauses
 - Display the syntax reference line below the input
 
-**`apps/web/src/features/search/filter-pills.tsx`** — renders clauses as color-coded pills using `FILTER_COLORS`. Each pill shows field name, operator word, value, and × button. AND/OR toggle between pills. The implementer should:
+**`apps/web/src/features/search/filter-pills.tsx`** — renders clauses as color-coded pills using `FILTER_COLORS`. Each pill shows field
+name, operator word, value, and × button. AND/OR toggle between pills. The implementer should:
+
 - Map over `clauses` array
 - Render each as a pill with the appropriate color class
 - Show join toggle between pills
 - Call `removeClause(index)` on × click
 
-**`apps/web/src/features/search/add-filter-dropdown.tsx`** — dropdown triggered by "+ Add filter" button. Shows `FILTER_CATEGORIES` grouped by Basic/Graph. Clicking a field opens a sub-form for entering the value (text input for most, chunk autocomplete for `near`/`path`). The implementer should:
+**`apps/web/src/features/search/add-filter-dropdown.tsx`** — dropdown triggered by "+ Add filter" button. Shows `FILTER_CATEGORIES` grouped
+by Basic/Graph. Clicking a field opens a sub-form for entering the value (text input for most, chunk autocomplete for `near`/`path`). The
+implementer should:
+
 - Use the existing `DropdownMenu` component from `@/components/ui/dropdown-menu`
 - Group fields by category
 - On field selection, show a value input (inline or via a small form)
 - Call `addClause` with the completed clause
 
-**`apps/web/src/features/search/search-results.tsx`** — renders the result list. Each chunk shows title, type badge, tags, connection count, updated time, and optional graph context (hop distance, path position, requirement name). The implementer should:
+**`apps/web/src/features/search/search-results.tsx`** — renders the result list. Each chunk shows title, type badge, tags, connection count,
+updated time, and optional graph context (hop distance, path position, requirement name). The implementer should:
+
 - Accept `chunks` array and `graphMeta` as props
 - Show result count with "graph filtered" badge when graphMeta is present
 - Render each chunk as a `Link` to `/chunks/$chunkId`
 - Show `graphContext` metadata in an amber label when present
 
-For each of these files, the implementer should follow the patterns in existing feature components (e.g., `apps/web/src/features/chunks/chunk-filters-popover.tsx` for the dropdown pattern, existing chunk list pages for the result rendering pattern). Use shadcn-ui components and Tailwind classes matching the project's dark theme.
+For each of these files, the implementer should follow the patterns in existing feature components (e.g.,
+`apps/web/src/features/chunks/chunk-filters-popover.tsx` for the dropdown pattern, existing chunk list pages for the result rendering
+pattern). Use shadcn-ui components and Tailwind classes matching the project's dark theme.
 
 - [ ] **Step 4: Verify type-check passes**
 
@@ -1032,9 +1015,11 @@ git commit -m "feat(search): add query builder frontend components"
 ### Task 6: Rewrite Search Page
 
 **Files:**
+
 - Modify: `apps/web/src/routes/search.tsx`
 
-**Context:** Full rewrite of the search page to use the query builder components from Task 5. This composes QueryInput, FilterPills, AddFilterDropdown, and SearchResults into the final page.
+**Context:** Full rewrite of the search page to use the query builder components from Task 5. This composes QueryInput, FilterPills,
+AddFilterDropdown, and SearchResults into the final page.
 
 - [ ] **Step 1: Rewrite search.tsx**
 
@@ -1044,20 +1029,22 @@ Replace the full file. The page should:
 
 2. **State:** Use `useQueryBuilder()` hook. On mount, if `q` param exists, parse it via the API and load clauses.
 
-3. **Query execution:** Use `useMutation` for `POST /api/search/query` (not useQuery, since it's a POST). Trigger on clause changes (debounced).
+3. **Query execution:** Use `useMutation` for `POST /api/search/query` (not useQuery, since it's a POST). Trigger on clause changes
+   (debounced).
 
 4. **Saved queries:** Use `useQuery` for `GET /api/search/saved`. Show as a dropdown next to the search bar.
 
 5. **Layout (top to bottom):**
-   - Page header: "Search" title + saved queries dropdown + clear button
-   - `<QueryInput>` — text input bar
-   - `<FilterPills>` — visual pill row with `<AddFilterDropdown>` at the end
-   - Graph indicator bar (when `hasGraphClauses`)
-   - `<SearchResults>` — result list
+    - Page header: "Search" title + saved queries dropdown + clear button
+    - `<QueryInput>` — text input bar
+    - `<FilterPills>` — visual pill row with `<AddFilterDropdown>` at the end
+    - Graph indicator bar (when `hasGraphClauses`)
+    - `<SearchResults>` — result list
 
 6. **URL sync:** When clauses change, update the `q` search param with `clausesToQueryString`. This makes queries bookmarkable.
 
-The implementer should read the existing `search.tsx` for the route/auth pattern, then compose the new components. Follow the project's page layout patterns (container, max-width, padding).
+The implementer should read the existing `search.tsx` for the route/auth pattern, then compose the new components. Follow the project's page
+layout patterns (container, max-width, padding).
 
 - [ ] **Step 2: Verify the page renders**
 

@@ -1,8 +1,8 @@
 ---
 tags:
-  - guide
-  - search
-  - full-text
+    - guide
+    - search
+    - full-text
 description: Keyword-based search across all entity types
 ---
 
@@ -14,7 +14,8 @@ Type in the search bar or press `Cmd+K` to open the command palette for quick se
 
 ## Chunk List Search
 
-The chunks list at `/chunks` has its own search that filters by title and content. Combine with type, tag, and codebase filters for precise results.
+The chunks list at `/chunks` has its own search that filters by title and content. Combine with type, tag, and codebase filters for precise
+results.
 
 ## Search Tips
 

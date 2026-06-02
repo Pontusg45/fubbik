@@ -1,8 +1,8 @@
 import { eq } from "drizzle-orm";
 
 import { plan, planAnalyzeItem, planRequirement, planTask } from "../../schema/plan";
-import { uuid } from "../factories";
 import type { SeedContext } from "../context";
+import { uuid } from "../factories";
 
 export async function seed(ctx: SeedContext): Promise<void> {
     const spaceId = ctx.ids.codebases["fubbik"];
@@ -28,12 +28,12 @@ export async function seed(ctx: SeedContext): Promise<void> {
     }
 
     const tasks: Array<{ name: string; title: string; order: number; status?: string }> = [
-        { name: "schema",       title: "Add chunk_type + connection_relation tables + seed builtins", order: 0, status: "done" },
-        { name: "read-api",     title: "Read-through API + react-query hooks", order: 1, status: "done" },
-        { name: "ui-catalog",   title: "Use catalog in graph-node icon + chunk-type-icon", order: 2, status: "done" },
-        { name: "fk-cutover",   title: "FK cutover on chunk.type and chunk_connection.relation", order: 3, status: "done" },
-        { name: "crud-ui",      title: "CRUD UI at /settings/vocabulary", order: 4, status: "done" },
-        { name: "inverse-ui",   title: "Inverse relation labels on chunk detail", order: 5, status: "in_progress" }
+        { name: "schema", title: "Add chunk_type + connection_relation tables + seed builtins", order: 0, status: "done" },
+        { name: "read-api", title: "Read-through API + react-query hooks", order: 1, status: "done" },
+        { name: "ui-catalog", title: "Use catalog in graph-node icon + chunk-type-icon", order: 2, status: "done" },
+        { name: "fk-cutover", title: "FK cutover on chunk.type and chunk_connection.relation", order: 3, status: "done" },
+        { name: "crud-ui", title: "CRUD UI at /settings/vocabulary", order: 4, status: "done" },
+        { name: "inverse-ui", title: "Inverse relation labels on chunk detail", order: 5, status: "in_progress" }
     ];
     for (const t of tasks) {
         const id = uuid();

@@ -1,20 +1,21 @@
 # Smart Link Renderer
 
-**Date:** 2026-04-26
-**Status:** Draft
+**Date:** 2026-04-26 **Status:** Draft
 
 ## Problem
 
 Link intelligence is scattered across the app:
 
-- `ChunkLinkRenderer` does fragile regex replacement on raw markdown strings before parsing — can break inside code blocks, existing links, and other markdown syntax
+- `ChunkLinkRenderer` does fragile regex replacement on raw markdown strings before parsing — can break inside code blocks, existing links,
+  and other markdown syntax
 - `document-browser` does post-render click interception via `handleContentClick` — only works on the docs page
 - Most of the app gets no smart linking at all
 - Vocabulary terms aren't surfaced anywhere in content
 
 ## Goal
 
-Extend `MarkdownRenderer` with a React context provider so that every markdown surface in the app automatically resolves backticked terms to chunks/file-refs and highlights vocabulary terms with hover popovers — without any callsite changes.
+Extend `MarkdownRenderer` with a React context provider so that every markdown surface in the app automatically resolves backticked terms to
+chunks/file-refs and highlights vocabulary terms with hover popovers — without any callsite changes.
 
 ## Architecture
 
@@ -32,55 +33,58 @@ A context provider placed in the root layout (`__root.tsx`). Uses three queries 
 
 - **Vocabulary**: `GET /api/vocabulary` → `Map<lowercase_word, { word, category, expects }>`
 - **Chunks**: `GET /api/chunks` (title index) → `Map<lowercase_title, { id, title }>` + aliases flattened in
-- **File refs**: `GET /api/file-refs/lookup` (existing endpoint, may need a batch/index variant) → `Map<lowercase_symbol, { chunkId, path }>`
+- **File refs**: `GET /api/file-refs/lookup` (existing endpoint, may need a batch/index variant) →
+  `Map<lowercase_symbol, { chunkId, path }>`
 
 All three maps are memoized. The context exposes:
 
 ```ts
 interface SmartLinkContextValue {
-  matchVocabulary(text: string): VocabularyMatch | null;
-  matchChunk(text: string): ChunkMatch | null;
-  matchFileRef(text: string): FileRefMatch | null;
-  // Convenience: runs all three with priority vocab > chunk > fileRef
-  matchAny(text: string): SmartMatch | null;
+    matchVocabulary(text: string): VocabularyMatch | null;
+    matchChunk(text: string): ChunkMatch | null;
+    matchFileRef(text: string): FileRefMatch | null;
+    // Convenience: runs all three with priority vocab > chunk > fileRef
+    matchAny(text: string): SmartMatch | null;
 }
 
 interface VocabularyMatch {
-  word: string;
-  category: string;
-  expects: string[] | null;
+    word: string;
+    category: string;
+    expects: string[] | null;
 }
 
 interface ChunkMatch {
-  id: string;
-  title: string;
+    id: string;
+    title: string;
 }
 
 interface FileRefMatch {
-  chunkId: string;
-  path: string;
-  symbol?: string;
+    chunkId: string;
+    path: string;
+    symbol?: string;
 }
 
 type SmartMatch =
-  | { type: "vocabulary"; match: VocabularyMatch }
-  | { type: "chunk"; match: ChunkMatch }
-  | { type: "fileRef"; match: FileRefMatch };
+    | { type: "vocabulary"; match: VocabularyMatch }
+    | { type: "chunk"; match: ChunkMatch }
+    | { type: "fileRef"; match: FileRefMatch };
 ```
 
-Queries only fire when the user is authenticated (no data to match on landing/login pages). The provider renders children immediately — if queries are still loading, matching functions return `null` (graceful degradation, no layout shift).
+Queries only fire when the user is authenticated (no data to match on landing/login pages). The provider renders children immediately — if
+queries are still loading, matching functions return `null` (graceful degradation, no layout shift).
 
 ## Matching Rules
 
-| Content type | What matches | Interaction |
-|---|---|---|
-| `` `backticked term` `` | Chunks (by title/alias), then file refs (by symbol/path) | Styled as clickable code link → navigates to `/chunks/:id` |
-| Plain prose text | Vocabulary terms (by word, case-insensitive, word-boundary) | Subtle dotted underline → hover shows popover card |
-| Existing `[links](url)` | Pass through unchanged | Normal link behavior |
+| Content type            | What matches                                                | Interaction                                                |
+| ----------------------- | ----------------------------------------------------------- | ---------------------------------------------------------- |
+| `` `backticked term` `` | Chunks (by title/alias), then file refs (by symbol/path)    | Styled as clickable code link → navigates to `/chunks/:id` |
+| Plain prose text        | Vocabulary terms (by word, case-insensitive, word-boundary) | Subtle dotted underline → hover shows popover card         |
+| Existing `[links](url)` | Pass through unchanged                                      | Normal link behavior                                       |
 
 **Priority depends on context:**
 
-- **In backticks:** chunk > file ref > vocabulary. Backticking is an explicit code-reference signal, so a chunk link is the most useful result. Vocabulary popover is the fallback if no chunk or file ref matches.
+- **In backticks:** chunk > file ref > vocabulary. Backticking is an explicit code-reference signal, so a chunk link is the most useful
+  result. Vocabulary popover is the fallback if no chunk or file ref matches.
 - **In prose:** only vocabulary matches (chunks and file refs don't match plain text).
 
 This means there's no ambiguity — the matching context determines priority, not a global ranking.
@@ -104,13 +108,16 @@ Plain text nodes are scanned for vocabulary term matches:
 
 - Build a pre-compiled regex from all vocabulary words (sorted longest-first, word-boundary-delimited)
 - Split text nodes on matches, wrap matched substrings in `<VocabularyPopover>`
-- **Skip matching inside:** headings (h1-h6), existing links (`<a>`), code blocks — these are already interactive or semantic elements where injecting popovers would be disruptive
+- **Skip matching inside:** headings (h1-h6), existing links (`<a>`), code blocks — these are already interactive or semantic elements where
+  injecting popovers would be disruptive
 
-Implementation: a custom rehype plugin that walks text nodes after markdown parsing, or a React wrapper component around text content. The rehype plugin approach is cleaner since it operates on the AST before React rendering.
+Implementation: a custom rehype plugin that walks text nodes after markdown parsing, or a React wrapper component around text content. The
+rehype plugin approach is cleaner since it operates on the AST before React rendering.
 
 ### `components.a`
 
-Existing links pass through with current behavior (external links get `target="_blank"`, internal links use normal navigation). No changes needed here — the smart linking happens at the `code` and text levels.
+Existing links pass through with current behavior (external links get `target="_blank"`, internal links use normal navigation). No changes
+needed here — the smart linking happens at the `code` and text levels.
 
 ## Vocabulary Popover
 
@@ -143,11 +150,11 @@ A custom hover card component (not a base-ui tooltip — needs more room for str
 
 ## Migration
 
-| Current | After |
-|---|---|
-| `ChunkLinkRenderer` wraps `MarkdownRenderer` with regex pre-processing | **Deleted** — matching lives inside `MarkdownRenderer` via context |
+| Current                                                                                           | After                                                                                                          |
+| ------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `ChunkLinkRenderer` wraps `MarkdownRenderer` with regex pre-processing                            | **Deleted** — matching lives inside `MarkdownRenderer` via context                                             |
 | `document-browser` uses `handleContentClick` + `docTitleMap` + `allDocsQuery` for inter-doc links | **Removed** — inter-doc title matching moves into the provider or is handled naturally by chunk title matching |
-| Callsites use `<ChunkLinkRenderer content={...} currentChunkId={...}>` | Replaced with `<MarkdownRenderer>{content}</MarkdownRenderer>` |
+| Callsites use `<ChunkLinkRenderer content={...} currentChunkId={...}>`                            | Replaced with `<MarkdownRenderer>{content}</MarkdownRenderer>`                                                 |
 
 ### Callsites to update
 
@@ -156,7 +163,8 @@ A custom hover card component (not a base-ui tooltip — needs more room for str
 
 ### `currentChunkId` handling
 
-`ChunkLinkRenderer` currently accepts `currentChunkId` to avoid self-linking. The new approach handles this differently: the `MarkdownRenderer` doesn't know which chunk it's rendering. Two options:
+`ChunkLinkRenderer` currently accepts `currentChunkId` to avoid self-linking. The new approach handles this differently: the
+`MarkdownRenderer` doesn't know which chunk it's rendering. Two options:
 
 1. An optional `excludeChunkId` prop on `MarkdownRenderer` (simple, explicit)
 2. A `SmartLinkExclude` context wrapper that callsites can use
@@ -173,15 +181,15 @@ Option 1 is simpler and sufficient — only chunk detail pages need this. One op
 
 ## Files
 
-| File | Action |
-|---|---|
-| `apps/web/src/components/smart-link-provider.tsx` | **Create** — context, provider, queries, matching logic |
-| `apps/web/src/components/vocabulary-popover.tsx` | **Create** — hover card component |
-| `apps/web/src/components/markdown-renderer.tsx` | **Modify** — consume context, update `code` override, add text node processing via rehype plugin |
-| `apps/web/src/features/chunks/chunk-link-renderer.tsx` | **Delete** |
-| `apps/web/src/features/documents/document-browser.tsx` | **Modify** — remove `handleContentClick`, `docTitleMap`, `allDocsQuery` |
-| `apps/web/src/routes/__root.tsx` | **Modify** — add `<SmartLinkProvider>` |
-| All `ChunkLinkRenderer` import sites | **Modify** — replace with `<MarkdownRenderer>` |
+| File                                                   | Action                                                                                           |
+| ------------------------------------------------------ | ------------------------------------------------------------------------------------------------ |
+| `apps/web/src/components/smart-link-provider.tsx`      | **Create** — context, provider, queries, matching logic                                          |
+| `apps/web/src/components/vocabulary-popover.tsx`       | **Create** — hover card component                                                                |
+| `apps/web/src/components/markdown-renderer.tsx`        | **Modify** — consume context, update `code` override, add text node processing via rehype plugin |
+| `apps/web/src/features/chunks/chunk-link-renderer.tsx` | **Delete**                                                                                       |
+| `apps/web/src/features/documents/document-browser.tsx` | **Modify** — remove `handleContentClick`, `docTitleMap`, `allDocsQuery`                          |
+| `apps/web/src/routes/__root.tsx`                       | **Modify** — add `<SmartLinkProvider>`                                                           |
+| All `ChunkLinkRenderer` import sites                   | **Modify** — replace with `<MarkdownRenderer>`                                                   |
 
 ## Out of Scope
 

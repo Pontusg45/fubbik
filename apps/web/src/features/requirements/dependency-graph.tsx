@@ -1,15 +1,8 @@
+import dagre from "@dagrejs/dagre";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import {
-    Background,
-    Controls,
-    ReactFlow,
-    ReactFlowProvider,
-    type Edge,
-    type Node
-} from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import dagre from "@dagrejs/dagre";
+import { Background, Controls, ReactFlow, ReactFlowProvider, type Edge, type Node } from "@xyflow/react";
 import { useState, useCallback, useMemo } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -58,9 +51,10 @@ function DependencyGraphInner({ requirementId }: DependencyGraphProps) {
     const { data, isLoading } = useQuery({
         queryKey: ["dependency-graph", requirementId],
         queryFn: async () => {
-            return unwrapEden(
-                await api.api.requirements({ id: requirementId }).dependencies.graph.get()
-            ) as { nodes: GraphNode[]; edges: GraphEdge[] };
+            return unwrapEden(await api.api.requirements({ id: requirementId }).dependencies.graph.get()) as {
+                nodes: GraphNode[];
+                edges: GraphEdge[];
+            };
         }
     });
 

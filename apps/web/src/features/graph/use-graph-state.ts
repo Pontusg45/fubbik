@@ -79,7 +79,7 @@ export const initialGraphState: GraphState = {
     groupingTagTypeId: null,
     showUngrouped: false,
     panelWidth: 380,
-    heatmapMode: false,
+    heatmapMode: false
 };
 
 // --- Reducer ---
@@ -155,9 +155,7 @@ export function graphReducer(state: GraphState, action: GraphAction): GraphState
                 ...state,
                 filterTypes: new Set(action.filterTypes),
                 filterRelations: new Set(action.filterRelations),
-                ...(action.focusNodeId
-                    ? { selectedChunkId: action.focusNodeId }
-                    : {}),
+                ...(action.focusNodeId ? { selectedChunkId: action.focusNodeId } : {})
             };
 
         default:

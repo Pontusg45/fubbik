@@ -33,9 +33,7 @@ export function ChunkLinker({ selectedChunkIds, onSelectedChunkIdsChange, codeba
 
     const allChunks = chunksQuery.data ?? [];
     const filteredChunks = chunkSearch
-        ? allChunks.filter(
-              c => c.title.toLowerCase().includes(chunkSearch.toLowerCase()) && !selectedChunkIds.includes(c.id)
-          )
+        ? allChunks.filter(c => c.title.toLowerCase().includes(chunkSearch.toLowerCase()) && !selectedChunkIds.includes(c.id))
         : allChunks.filter(c => !selectedChunkIds.includes(c.id));
 
     return (
@@ -61,11 +59,7 @@ export function ChunkLinker({ selectedChunkIds, onSelectedChunkIdsChange, codeba
                 </div>
             )}
 
-            <Input
-                value={chunkSearch}
-                onChange={e => setChunkSearch(e.target.value)}
-                placeholder="Search chunks to link..."
-            />
+            <Input value={chunkSearch} onChange={e => setChunkSearch(e.target.value)} placeholder="Search chunks to link..." />
 
             {chunkSearch && filteredChunks.length > 0 && (
                 <div className="mt-1 max-h-40 overflow-y-auto rounded-md border">

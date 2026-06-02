@@ -17,9 +17,7 @@ export const contextRoutes = new Elysia()
             Effect.runPromise(
                 requireSession(ctx).pipe(
                     Effect.flatMap(session => {
-                        const maxTokens = ctx.query.maxTokens
-                            ? Number(ctx.query.maxTokens)
-                            : DEFAULT_MAX_TOKENS;
+                        const maxTokens = ctx.query.maxTokens ? Number(ctx.query.maxTokens) : DEFAULT_MAX_TOKENS;
 
                         if (!ctx.query.planId) {
                             return Effect.fail(new ValidationError({ message: "planId is required" }));
@@ -37,20 +35,20 @@ export const contextRoutes = new Elysia()
                                 return {
                                     format: "structured-md" as const,
                                     content: formatStructuredMarkdown(structured),
-                                    totalChunks: structured.totalChunks,
+                                    totalChunks: structured.totalChunks
                                 };
-                            }),
+                            })
                         );
-                    }),
-                ),
+                    })
+                )
             ),
         {
             query: t.Object({
                 planId: t.String(),
                 maxTokens: t.Optional(t.String()),
-                format: t.Optional(t.Union([t.Literal("structured-md"), t.Literal("structured-json")])),
-            }),
-        },
+                format: t.Optional(t.Union([t.Literal("structured-md"), t.Literal("structured-json")]))
+            })
+        }
     )
     // GET /context/about?q=auth&maxTokens=N&codebaseId=X&format=structured-md
     .get(
@@ -59,19 +57,13 @@ export const contextRoutes = new Elysia()
             Effect.runPromise(
                 requireSession(ctx).pipe(
                     Effect.flatMap(session => {
-                        const maxTokens = ctx.query.maxTokens
-                            ? Number(ctx.query.maxTokens)
-                            : DEFAULT_MAX_TOKENS;
+                        const maxTokens = ctx.query.maxTokens ? Number(ctx.query.maxTokens) : DEFAULT_MAX_TOKENS;
 
                         if (!ctx.query.q) {
                             return Effect.fail(new ValidationError({ message: "q is required" }));
                         }
 
-                        return resolveForConcept(
-                            ctx.query.q,
-                            session.user.id,
-                            ctx.query.spaceId,
-                        ).pipe(
+                        return resolveForConcept(ctx.query.q, session.user.id, ctx.query.spaceId).pipe(
                             Effect.flatMap(ids => enrichChunks(ids, session.user.id)),
                             Effect.map(chunks => {
                                 const budgeted = budgetChunks(chunks, maxTokens);
@@ -83,21 +75,21 @@ export const contextRoutes = new Elysia()
                                 return {
                                     format: "structured-md" as const,
                                     content: formatStructuredMarkdown(structured),
-                                    totalChunks: structured.totalChunks,
+                                    totalChunks: structured.totalChunks
                                 };
-                            }),
+                            })
                         );
-                    }),
-                ),
+                    })
+                )
             ),
         {
             query: t.Object({
                 q: t.String(),
                 maxTokens: t.Optional(t.String()),
                 spaceId: t.Optional(t.String()),
-                format: t.Optional(t.Union([t.Literal("structured-md"), t.Literal("structured-json")])),
-            }),
-        },
+                format: t.Optional(t.Union([t.Literal("structured-md"), t.Literal("structured-json")]))
+            })
+        }
     )
     // GET /context/for-files?paths=a.ts,b.ts&maxTokens=N&codebaseId=X&format=structured-md
     .get(
@@ -106,15 +98,16 @@ export const contextRoutes = new Elysia()
             Effect.runPromise(
                 requireSession(ctx).pipe(
                     Effect.flatMap(session => {
-                        const maxTokens = ctx.query.maxTokens
-                            ? Number(ctx.query.maxTokens)
-                            : DEFAULT_MAX_TOKENS;
+                        const maxTokens = ctx.query.maxTokens ? Number(ctx.query.maxTokens) : DEFAULT_MAX_TOKENS;
 
                         if (!ctx.query.paths) {
                             return Effect.fail(new ValidationError({ message: "paths is required" }));
                         }
 
-                        const paths = ctx.query.paths.split(",").map(p => p.trim()).filter(Boolean);
+                        const paths = ctx.query.paths
+                            .split(",")
+                            .map(p => p.trim())
+                            .filter(Boolean);
                         if (paths.length === 0) {
                             return Effect.fail(new ValidationError({ message: "paths must contain at least one path" }));
                         }
@@ -131,19 +124,19 @@ export const contextRoutes = new Elysia()
                                 return {
                                     format: "structured-md" as const,
                                     content: formatStructuredMarkdown(structured),
-                                    totalChunks: structured.totalChunks,
+                                    totalChunks: structured.totalChunks
                                 };
-                            }),
+                            })
                         );
-                    }),
-                ),
+                    })
+                )
             ),
         {
             query: t.Object({
                 paths: t.String(),
                 maxTokens: t.Optional(t.String()),
                 spaceId: t.Optional(t.String()),
-                format: t.Optional(t.Union([t.Literal("structured-md"), t.Literal("structured-json")])),
-            }),
-        },
+                format: t.Optional(t.Union([t.Literal("structured-md"), t.Literal("structured-json")]))
+            })
+        }
     );

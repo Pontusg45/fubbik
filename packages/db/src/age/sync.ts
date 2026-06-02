@@ -31,13 +31,9 @@ export function deleteEdge(edgeLabel: string, props: Record<string, string>) {
     const conditions = Object.entries(props)
         .map(([k, v]) => `e.${k} = '${escCypher(v)}'`)
         .join(" AND ");
-    return cypherVoid(
-        `MATCH ()-[e:${edgeLabel}]-() WHERE ${conditions} DELETE e`
-    );
+    return cypherVoid(`MATCH ()-[e:${edgeLabel}]-() WHERE ${conditions} DELETE e`);
 }
 
 export function deleteEdgesFrom(edgeLabel: string, fromLabel: string, fromId: string) {
-    return cypherVoid(
-        `MATCH (a:${fromLabel} {id: '${escCypher(fromId)}'})-[e:${edgeLabel}]->() DELETE e`
-    );
+    return cypherVoid(`MATCH (a:${fromLabel} {id: '${escCypher(fromId)}'})-[e:${edgeLabel}]->() DELETE e`);
 }

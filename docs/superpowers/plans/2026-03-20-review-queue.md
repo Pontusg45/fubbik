@@ -1,10 +1,14 @@
 # Chunk Review Queue Implementation Plan
 
-> **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to
+> implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** A dedicated review queue page showing all AI-generated chunks in "draft" status, with batch approve/reject/edit actions for efficient knowledge curation.
+**Goal:** A dedicated review queue page showing all AI-generated chunks in "draft" status, with batch approve/reject/edit actions for
+efficient knowledge curation.
 
-**Architecture:** New web route `/reviews/queue` using the existing chunk list API with `origin=ai&reviewStatus=draft` filters. No new backend endpoints needed — the existing PATCH `/chunks/:id` with `reviewStatus` and bulk update endpoints already support this. Pure frontend feature.
+**Architecture:** New web route `/reviews/queue` using the existing chunk list API with `origin=ai&reviewStatus=draft` filters. No new
+backend endpoints needed — the existing PATCH `/chunks/:id` with `reviewStatus` and bulk update endpoints already support this. Pure
+frontend feature.
 
 **Tech Stack:** React, TanStack Router, TanStack Query, shadcn-ui, Eden treaty client
 
@@ -13,10 +17,12 @@
 ## File Structure
 
 ### New files:
+
 - `apps/web/src/routes/reviews_.queue.tsx` — Review queue page route
 - `apps/web/src/features/reviews/review-queue-item.tsx` — Individual review card with actions
 
 ### Files to modify:
+
 - `apps/web/src/routes/__root.tsx` — Add nav link to review queue
 - `apps/web/src/features/nav/mobile-nav.tsx` — Add to mobile nav
 
@@ -25,6 +31,7 @@
 ## Task 1: Review Queue Page
 
 **Files:**
+
 - Create: `apps/web/src/routes/reviews_.queue.tsx`
 
 - [ ] **Step 1: Create the route file**
@@ -48,7 +55,7 @@ import { toast } from "sonner";
 // TanStack Router generates the route ID as "/reviews_/queue" (with underscore).
 // Check existing reviews_.$sessionId.tsx for the pattern.
 export const Route = createFileRoute("/reviews_/queue")({
-    component: ReviewQueuePage,
+    component: ReviewQueuePage
 });
 
 function ReviewQueuePage() {
@@ -62,9 +69,9 @@ function ReviewQueuePage() {
         queryFn: async () =>
             unwrapEden(
                 await api.api.chunks.get({
-                    query: { origin: "ai", reviewStatus: "draft", limit: "50", sort: "newest" },
+                    query: { origin: "ai", reviewStatus: "draft", limit: "50", sort: "newest" }
                 })
-            ),
+            )
     });
 
     const chunks = draftsQuery.data?.chunks ?? [];
@@ -73,17 +80,13 @@ function ReviewQueuePage() {
     // Approve mutation
     const approveMutation = useMutation({
         mutationFn: async (ids: string[]) => {
-            await Promise.all(
-                ids.map(id =>
-                    api.api.chunks({ id }).patch({ reviewStatus: "approved" })
-                )
-            );
+            await Promise.all(ids.map(id => api.api.chunks({ id }).patch({ reviewStatus: "approved" })));
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["review-queue"] });
             setSelectedIds(new Set());
             toast.success("Chunks approved");
-        },
+        }
     });
 
     // Reject (archive) mutation
@@ -101,7 +104,7 @@ function ReviewQueuePage() {
             queryClient.invalidateQueries({ queryKey: ["review-queue"] });
             setSelectedIds(new Set());
             toast.success("Chunks archived");
-        },
+        }
     });
 
     const toggleSelect = (id: string) => {
@@ -131,11 +134,7 @@ function ReviewQueuePage() {
                 </div>
                 {chunks.length > 0 && (
                     <div className="flex items-center gap-2">
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={selectAll}
-                        >
+                        <Button variant="outline" size="sm" onClick={selectAll}>
                             {selectedIds.size === chunks.length ? "Deselect all" : "Select all"}
                         </Button>
                     </div>
@@ -146,11 +145,7 @@ function ReviewQueuePage() {
             {selectedIds.size > 0 && (
                 <div className="mb-4 flex items-center gap-3 rounded-lg border bg-muted/50 px-4 py-2">
                     <span className="text-sm font-medium">{selectedIds.size} selected</span>
-                    <Button
-                        size="sm"
-                        onClick={() => approveMutation.mutate(Array.from(selectedIds))}
-                        disabled={approveMutation.isPending}
-                    >
+                    <Button size="sm" onClick={() => approveMutation.mutate(Array.from(selectedIds))} disabled={approveMutation.isPending}>
                         <CheckCircle className="mr-1.5 size-3.5" />
                         Approve
                     </Button>
@@ -187,10 +182,7 @@ function ReviewQueuePage() {
                             {i > 0 && <div className="border-t" />}
                             <CardPanel className="p-4">
                                 <div className="flex items-start gap-3">
-                                    <Checkbox
-                                        checked={selectedIds.has(chunk.id)}
-                                        onCheckedChange={() => toggleSelect(chunk.id)}
-                                    />
+                                    <Checkbox checked={selectedIds.has(chunk.id)} onCheckedChange={() => toggleSelect(chunk.id)} />
                                     <div className="min-w-0 flex-1">
                                         <div className="flex items-center gap-2">
                                             <Link
@@ -203,7 +195,11 @@ function ReviewQueuePage() {
                                             <Badge variant="secondary" size="sm" className="font-mono text-[10px]">
                                                 {chunk.type}
                                             </Badge>
-                                            <Badge variant="outline" size="sm" className="border-yellow-500/30 bg-yellow-500/10 text-[10px] text-yellow-600">
+                                            <Badge
+                                                variant="outline"
+                                                size="sm"
+                                                className="border-yellow-500/30 bg-yellow-500/10 text-[10px] text-yellow-600"
+                                            >
                                                 <Bot className="mr-0.5 size-2.5" /> Draft
                                             </Badge>
                                         </div>
@@ -213,7 +209,11 @@ function ReviewQueuePage() {
                                             onClick={() => setExpandedId(expandedId === chunk.id ? null : chunk.id)}
                                             className="text-muted-foreground mt-1 flex items-center gap-1 text-xs hover:text-foreground"
                                         >
-                                            {expandedId === chunk.id ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />}
+                                            {expandedId === chunk.id ? (
+                                                <ChevronUp className="size-3" />
+                                            ) : (
+                                                <ChevronDown className="size-3" />
+                                            )}
                                             {expandedId === chunk.id ? "Hide preview" : "Show preview"}
                                         </button>
                                         {expandedId === chunk.id && (
@@ -235,12 +235,7 @@ function ReviewQueuePage() {
                                         >
                                             <CheckCircle className="size-4 text-green-600" />
                                         </Button>
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            className="size-7 p-0"
-                                            asChild
-                                        >
+                                        <Button variant="ghost" size="sm" className="size-7 p-0" asChild>
                                             <Link to="/chunks/$chunkId/edit" params={{ chunkId: chunk.id }} title="Edit">
                                                 <Pencil className="size-4" />
                                             </Link>
@@ -266,14 +261,18 @@ function ReviewQueuePage() {
 }
 ```
 
-**Important:** Read existing route files to understand the exact pattern for `createFileRoute`, imports, and the Eden treaty API call syntax. The file naming `reviews_.queue.tsx` uses TanStack Router's layout route convention — the `_` avoids nesting under a reviews layout. Verify this matches the project's routing convention.
+**Important:** Read existing route files to understand the exact pattern for `createFileRoute`, imports, and the Eden treaty API call
+syntax. The file naming `reviews_.queue.tsx` uses TanStack Router's layout route convention — the `_` avoids nesting under a reviews layout.
+Verify this matches the project's routing convention.
 
 - [ ] **Step 2: Run route generation**
 
 TanStack Router auto-generates route trees. After creating the file:
+
 ```bash
 cd apps/web && pnpm dev
 ```
+
 This should regenerate `routeTree.gen.ts` to include the new route.
 
 - [ ] **Step 3: Commit**
@@ -288,18 +287,19 @@ git commit -m "feat(web): add review queue page for AI-generated chunks"
 ## Task 2: Navigation Links
 
 **Files:**
+
 - Modify: `apps/web/src/routes/__root.tsx`
 - Modify: `apps/web/src/features/nav/mobile-nav.tsx`
 
 - [ ] **Step 1: Add nav link in root layout**
 
-Read `__root.tsx`. Find where "Reviews" is in the nav. Add "Review Queue" as a sub-link or update the Reviews link to include a badge showing draft count.
+Read `__root.tsx`. Find where "Reviews" is in the nav. Add "Review Queue" as a sub-link or update the Reviews link to include a badge
+showing draft count.
 
 Alternatively, add it to the "Manage" dropdown:
+
 ```tsx
-<DropdownMenuItem render={<Link to="/reviews/queue" />}>
-    Review Queue
-</DropdownMenuItem>
+<DropdownMenuItem render={<Link to="/reviews/queue" />}>Review Queue</DropdownMenuItem>
 ```
 
 - [ ] **Step 2: Add to mobile nav**

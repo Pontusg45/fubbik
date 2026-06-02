@@ -9,9 +9,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardPanel } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import { chunkTemplates } from "@/features/chunks/templates";
 import { DraftIndicator } from "@/features/chunks/draft-indicator";
 import { SimilarChunksWarning } from "@/features/chunks/similar-chunks-warning";
+import { chunkTemplates } from "@/features/chunks/templates";
 import { loadDraft, useAutosave } from "@/features/chunks/use-autosave";
 import { MarkdownEditor } from "@/features/editor/markdown-editor";
 import { getUser } from "@/functions/get-user";
@@ -114,7 +114,7 @@ function NewChunk() {
     const templatesQuery = useApiQuery<TemplateRow[]>({
         queryKey: ["templates"],
         queryFn: () => api.api.templates.get(),
-        fallback: [],
+        fallback: []
     });
 
     const serverTemplates = Array.isArray(templatesQuery.data) ? templatesQuery.data : [];
@@ -129,13 +129,11 @@ function NewChunk() {
             }
             const response = await api.api.chunks.get({ query: { search: debouncedTitle, limit: "3" } });
             const raw = unwrapEden(response) as { chunks?: { id: string; title: string }[] } | null;
-            const filtered = raw?.chunks
-                ?.filter(c => c.title.toLowerCase() !== debouncedTitle.toLowerCase())
-                .slice(0, 3) ?? [];
+            const filtered = raw?.chunks?.filter(c => c.title.toLowerCase() !== debouncedTitle.toLowerCase()).slice(0, 3) ?? [];
             return { data: filtered, error: null };
         },
         fallback: [],
-        enabled: debouncedTitle.length >= 3,
+        enabled: debouncedTitle.length >= 3
     });
 
     const duplicates = duplicateQuery.data ?? [];
@@ -170,7 +168,7 @@ function NewChunk() {
 
     const handleSubmit = useCallback(() => {
         if (validate()) createMutation.mutate();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [title, content, type, tags, appliesTo, fileRefs, rationale, alternativesInput, consequences]);
 
     useEffect(() => {
@@ -378,7 +376,9 @@ function NewChunk() {
             <Card>
                 <CardPanel className="space-y-4 p-6">
                     <div>
-                        <label htmlFor="chunk-title" className="mb-1.5 block text-sm font-medium">Title</label>
+                        <label htmlFor="chunk-title" className="mb-1.5 block text-sm font-medium">
+                            Title
+                        </label>
                         <Input
                             id="chunk-title"
                             type="text"
@@ -408,7 +408,9 @@ function NewChunk() {
                     </div>
 
                     <div>
-                        <label htmlFor="chunk-type" className="mb-1.5 block text-sm font-medium">Type</label>
+                        <label htmlFor="chunk-type" className="mb-1.5 block text-sm font-medium">
+                            Type
+                        </label>
                         <select
                             id="chunk-type"
                             value={type}
@@ -424,7 +426,9 @@ function NewChunk() {
                     </div>
 
                     <div>
-                        <label htmlFor="chunk-tags" className="mb-1.5 block text-sm font-medium">Tags</label>
+                        <label htmlFor="chunk-tags" className="mb-1.5 block text-sm font-medium">
+                            Tags
+                        </label>
                         <div className="mb-2 flex flex-wrap gap-2">
                             {tags.map(tag => (
                                 <Badge
@@ -469,16 +473,14 @@ function NewChunk() {
                     <div>
                         <div className="mb-1 flex items-center justify-between">
                             <label className="text-sm font-medium">Applies To</label>
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => setAppliesTo([...appliesTo, { pattern: "", note: "" }])}
-                            >
+                            <Button variant="ghost" size="sm" onClick={() => setAppliesTo([...appliesTo, { pattern: "", note: "" }])}>
                                 <Plus className="mr-1 size-3" />
                                 Add
                             </Button>
                         </div>
-                        <p className="text-muted-foreground mb-2 text-xs">Glob patterns matching file paths, e.g. <code className="bg-muted rounded px-1">src/api/**/*.ts</code></p>
+                        <p className="text-muted-foreground mb-2 text-xs">
+                            Glob patterns matching file paths, e.g. <code className="bg-muted rounded px-1">src/api/**/*.ts</code>
+                        </p>
                         {appliesTo.map((row, i) => (
                             <div key={i} className="mb-2">
                                 <div className="flex gap-2">
@@ -500,11 +502,7 @@ function NewChunk() {
                                         placeholder="Note (optional)"
                                         className="w-40"
                                     />
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => setAppliesTo(appliesTo.filter((_, j) => j !== i))}
-                                    >
+                                    <Button variant="ghost" size="sm" onClick={() => setAppliesTo(appliesTo.filter((_, j) => j !== i))}>
                                         <Trash2 className="size-3.5" />
                                     </Button>
                                 </div>
@@ -564,11 +562,7 @@ function NewChunk() {
                                     <option value="tests">tests</option>
                                     <option value="implements">implements</option>
                                 </select>
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => setFileRefs(fileRefs.filter((_, j) => j !== i))}
-                                >
+                                <Button variant="ghost" size="sm" onClick={() => setFileRefs(fileRefs.filter((_, j) => j !== i))}>
                                     <Trash2 className="size-3.5" />
                                 </Button>
                             </div>
@@ -583,15 +577,15 @@ function NewChunk() {
                             onClick={() => setShowDecisionContext(!showDecisionContext)}
                             className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-sm font-medium transition-colors"
                         >
-                            <ChevronDown
-                                className={`size-4 transition-transform ${showDecisionContext ? "rotate-0" : "-rotate-90"}`}
-                            />
+                            <ChevronDown className={`size-4 transition-transform ${showDecisionContext ? "rotate-0" : "-rotate-90"}`} />
                             Decision Context
                         </button>
                         {showDecisionContext && (
                             <div className="mt-3 space-y-3 rounded-md border p-4">
                                 <div>
-                                    <label htmlFor="chunk-rationale" className="mb-1.5 block text-sm font-medium">Rationale</label>
+                                    <label htmlFor="chunk-rationale" className="mb-1.5 block text-sm font-medium">
+                                        Rationale
+                                    </label>
                                     <textarea
                                         id="chunk-rationale"
                                         value={rationale}
@@ -602,7 +596,9 @@ function NewChunk() {
                                     />
                                 </div>
                                 <div>
-                                    <label htmlFor="chunk-alternatives" className="mb-1.5 block text-sm font-medium">Alternatives Considered</label>
+                                    <label htmlFor="chunk-alternatives" className="mb-1.5 block text-sm font-medium">
+                                        Alternatives Considered
+                                    </label>
                                     <Input
                                         id="chunk-alternatives"
                                         type="text"
@@ -612,7 +608,9 @@ function NewChunk() {
                                     />
                                 </div>
                                 <div>
-                                    <label htmlFor="chunk-consequences" className="mb-1.5 block text-sm font-medium">Consequences</label>
+                                    <label htmlFor="chunk-consequences" className="mb-1.5 block text-sm font-medium">
+                                        Consequences
+                                    </label>
                                     <textarea
                                         id="chunk-consequences"
                                         value={consequences}
@@ -633,11 +631,7 @@ function NewChunk() {
                         <Button variant="outline" render={<Link to="/dashboard" />}>
                             Cancel
                         </Button>
-                        <Button
-                            onClick={handleSubmit}
-                            disabled={createMutation.isPending}
-                            title="⌘Enter"
-                        >
+                        <Button onClick={handleSubmit} disabled={createMutation.isPending} title="⌘Enter">
                             {createMutation.isPending ? "Creating..." : "Create Chunk"}{" "}
                             <kbd className="text-muted-foreground ml-1 text-[10px] font-normal opacity-60">⌘↵</kbd>
                         </Button>

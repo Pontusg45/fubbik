@@ -11,8 +11,8 @@ import { Input } from "@/components/ui/input";
 import { PageContainer, PageLoading } from "@/components/ui/page";
 import { CellPanel } from "@/features/matrices/cell-panel";
 import { MatrixGrid, type Dimension, type Rule, type ViewCell } from "@/features/matrices/matrix-grid";
-import { useApiQuery } from "@/hooks/use-api-query";
 import { getUser } from "@/functions/get-user";
+import { useApiQuery } from "@/hooks/use-api-query";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
@@ -24,7 +24,7 @@ export const Route = createFileRoute("/matrices_/$matrixId")({
             session = await getUser();
         } catch {}
         return { session };
-    },
+    }
 });
 
 interface MatrixView {
@@ -67,12 +67,11 @@ function MatrixDetailPage() {
 
     const viewQuery = useApiQuery<MatrixView>({
         queryKey: ["matrix-view", matrixId],
-        queryFn: () => api.api.matrices({ id: matrixId }).view.get(),
+        queryFn: () => api.api.matrices({ id: matrixId }).view.get()
     });
 
     const addDimensionMutation = useMutation({
-        mutationFn: async (name: string) =>
-            unwrapEden(await api.api.matrices({ id: matrixId }).dimensions.post({ name })),
+        mutationFn: async (name: string) => unwrapEden(await api.api.matrices({ id: matrixId }).dimensions.post({ name })),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["matrix-view", matrixId] });
             setNewDimName("");
@@ -80,7 +79,7 @@ function MatrixDetailPage() {
         },
         onError: (err: unknown) => {
             toast.error(err instanceof Error ? err.message : "Failed to add dimension");
-        },
+        }
     });
 
     const addRuleMutation = useMutation({
@@ -94,13 +93,13 @@ function MatrixDetailPage() {
         },
         onError: (err: unknown) => {
             toast.error(err instanceof Error ? err.message : "Failed to add rule");
-        },
+        }
     });
 
     const toggleCellMutation = useMutation({
         mutationFn: async (body: { ruleId: string; dimensionId: string }) =>
             unwrapEden(await api.api.matrices({ id: matrixId }).cells.put(body)),
-        onSuccess: (data) => {
+        onSuccess: data => {
             queryClient.invalidateQueries({ queryKey: ["matrix-view", matrixId] });
             if (data && typeof data === "object" && "action" in data) {
                 const action = (data as { action: string }).action;
@@ -109,7 +108,7 @@ function MatrixDetailPage() {
         },
         onError: (err: unknown) => {
             toast.error(err instanceof Error ? err.message : "Failed to toggle cell");
-        },
+        }
     });
 
     function handleAddDimension(e: React.FormEvent) {
@@ -123,7 +122,7 @@ function MatrixDetailPage() {
         if (!newRuleTitle.trim()) return;
         addRuleMutation.mutate({
             title: newRuleTitle.trim(),
-            ...(newRuleCategory.trim() ? { category: newRuleCategory.trim() } : {}),
+            ...(newRuleCategory.trim() ? { category: newRuleCategory.trim() } : {})
         });
     }
 
@@ -138,7 +137,7 @@ function MatrixDetailPage() {
             ruleId,
             dimensionId,
             ruleTitle: rule.title,
-            dimensionName: dim.name,
+            dimensionName: dim.name
         });
     }
 
@@ -163,9 +162,7 @@ function MatrixDetailPage() {
         return (
             <PageContainer maxWidth="6xl">
                 <BackLink to="/matrices" label="Matrices" />
-                <div className="text-muted-foreground py-12 text-center">
-                    Failed to load matrix.
-                </div>
+                <div className="text-muted-foreground py-12 text-center">Failed to load matrix.</div>
             </PageContainer>
         );
     }
@@ -181,16 +178,11 @@ function MatrixDetailPage() {
                 <div className="flex items-center gap-3">
                     <Grid3X3 className="size-5" />
                     <h1 className="text-2xl font-bold tracking-tight">{matrix.name}</h1>
-                    <Badge
-                        variant={matrix.layer === "invariant" ? "info" : "warning"}
-                        size="sm"
-                    >
+                    <Badge variant={matrix.layer === "invariant" ? "info" : "warning"} size="sm">
                         {matrix.layer}
                     </Badge>
                 </div>
-                {matrix.description && (
-                    <p className="text-muted-foreground mt-1 text-sm">{matrix.description}</p>
-                )}
+                {matrix.description && <p className="text-muted-foreground mt-1 text-sm">{matrix.description}</p>}
             </div>
 
             {/* Coverage summary */}
@@ -209,27 +201,19 @@ function MatrixDetailPage() {
                         <span className="inline-block size-2.5 rounded-full bg-red-500" />
                         {summary.violated} violated
                     </span>
-                    <span className="text-muted-foreground ml-auto tabular-nums">
-                        {summary.total} total
-                    </span>
+                    <span className="text-muted-foreground ml-auto tabular-nums">{summary.total} total</span>
                 </div>
             )}
 
             {/* Grid */}
-            <MatrixGrid
-                dimensions={dimensions}
-                rules={rules}
-                cells={cells}
-                onCellClick={handleCellClick}
-                onToggleCell={handleToggleCell}
-            />
+            <MatrixGrid dimensions={dimensions} rules={rules} cells={cells} onCellClick={handleCellClick} onToggleCell={handleToggleCell} />
 
             {/* Add controls */}
             <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:gap-6">
                 {/* Add dimension */}
                 <form onSubmit={handleAddDimension} className="flex items-end gap-2">
                     <div className="space-y-1">
-                        <label htmlFor="new-dim" className="text-xs font-medium text-muted-foreground">
+                        <label htmlFor="new-dim" className="text-muted-foreground text-xs font-medium">
                             Add Dimension
                         </label>
                         <Input
@@ -240,12 +224,7 @@ function MatrixDetailPage() {
                             size="sm"
                         />
                     </div>
-                    <Button
-                        type="submit"
-                        size="sm"
-                        variant="outline"
-                        disabled={!newDimName.trim() || addDimensionMutation.isPending}
-                    >
+                    <Button type="submit" size="sm" variant="outline" disabled={!newDimName.trim() || addDimensionMutation.isPending}>
                         <Plus className="size-3.5" />
                         Add
                     </Button>
@@ -254,7 +233,7 @@ function MatrixDetailPage() {
                 {/* Add rule */}
                 <form onSubmit={handleAddRule} className="flex items-end gap-2">
                     <div className="space-y-1">
-                        <label htmlFor="new-rule" className="text-xs font-medium text-muted-foreground">
+                        <label htmlFor="new-rule" className="text-muted-foreground text-xs font-medium">
                             Add Rule
                         </label>
                         <Input
@@ -266,7 +245,7 @@ function MatrixDetailPage() {
                         />
                     </div>
                     <div className="space-y-1">
-                        <label htmlFor="new-rule-cat" className="text-xs font-medium text-muted-foreground">
+                        <label htmlFor="new-rule-cat" className="text-muted-foreground text-xs font-medium">
                             Category
                         </label>
                         <Input
@@ -277,12 +256,7 @@ function MatrixDetailPage() {
                             size="sm"
                         />
                     </div>
-                    <Button
-                        type="submit"
-                        size="sm"
-                        variant="outline"
-                        disabled={!newRuleTitle.trim() || addRuleMutation.isPending}
-                    >
+                    <Button type="submit" size="sm" variant="outline" disabled={!newRuleTitle.trim() || addRuleMutation.isPending}>
                         <Plus className="size-3.5" />
                         Add
                     </Button>

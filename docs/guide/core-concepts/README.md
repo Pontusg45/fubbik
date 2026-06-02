@@ -1,7 +1,7 @@
 ---
 tags:
-  - guide
-  - concepts
+    - guide
+    - concepts
 description: Core concepts section index — chunks, connections, organization, requirements, and scope
 ---
 

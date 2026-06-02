@@ -1,8 +1,4 @@
-import {
-    createConnectionIfNotExists,
-    listDocuments as listDocumentsRepo,
-    listTemplates as listTemplatesRepo
-} from "@fubbik/db/repository";
+import { createConnectionIfNotExists, listDocuments as listDocumentsRepo, listTemplates as listTemplatesRepo } from "@fubbik/db/repository";
 import { Effect } from "effect";
 
 import { importDocument } from "../documents/service";
@@ -61,11 +57,7 @@ export function getExistingHashes(spaceId: string, userId: string) {
     });
 }
 
-export function createFolderConnections(
-    _userId: string,
-    fileChunks: Map<string, string>,
-    _spaceId: string
-) {
+export function createFolderConnections(_userId: string, fileChunks: Map<string, string>, _spaceId: string) {
     return Effect.gen(function* () {
         const byDir = new Map<string, { path: string; chunkId: string; isIndex: boolean }[]>();
         for (const [path, chunkId] of fileChunks) {
@@ -194,15 +186,11 @@ export function importDocsStream(
 
             controller.enqueue(encode("done", { type: "done", created, skipped, errors, connections, elapsed: Date.now() - startTime }));
             controller.close();
-        },
+        }
     });
 }
 
-export function previewImportDocs(
-    userId: string,
-    files: { path: string; content: string }[],
-    spaceId: string
-) {
+export function previewImportDocs(userId: string, files: { path: string; content: string }[], spaceId: string) {
     return Effect.gen(function* () {
         const existingHashes = yield* getExistingHashes(spaceId, userId);
         const allTemplates = yield* listTemplatesRepo(userId);
@@ -216,7 +204,7 @@ export function previewImportDocs(
                 matchRules: t.matchRules,
                 fieldMappings: t.fieldMappings ?? null,
                 priority: t.priority ?? 0,
-                tags: t.tags ?? null,
+                tags: t.tags ?? null
             }));
 
         const results: PreviewFileResult[] = [];
@@ -233,9 +221,8 @@ export function previewImportDocs(
             if (match !== null) {
                 const matchedTemplate = templatesWithRules.find(t => t.id === match.templateId);
                 const fieldMappings = matchedTemplate?.fieldMappings ?? [];
-                const { extracted } = fieldMappings.length > 0
-                    ? extractFields(file.content, fieldMappings)
-                    : { extracted: {} as ExtractedFields };
+                const { extracted } =
+                    fieldMappings.length > 0 ? extractFields(file.content, fieldMappings) : { extracted: {} as ExtractedFields };
 
                 const mergedTags = [...new Set([...(match.tags ?? []), ...parsed.tags])];
 
@@ -250,8 +237,8 @@ export function previewImportDocs(
                         ...(extracted.alternatives !== undefined && { alternatives: extracted.alternatives }),
                         ...(extracted.consequences !== undefined && { consequences: extracted.consequences }),
                         ...(extracted.summary !== undefined && { summary: extracted.summary }),
-                        ...(extracted.scope !== undefined && { scope: extracted.scope }),
-                    },
+                        ...(extracted.scope !== undefined && { scope: extracted.scope })
+                    }
                 };
             }
 
@@ -263,8 +250,8 @@ export function previewImportDocs(
                     title: parsed.title,
                     type: parsed.type,
                     tags: parsed.tags,
-                    content: parsed.content,
-                },
+                    content: parsed.content
+                }
             });
         }
 

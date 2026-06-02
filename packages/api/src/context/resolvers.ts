@@ -12,7 +12,7 @@ import {
     listProposalsForChunk,
     listTaskChunks,
     listTasks,
-    semanticSearch as semanticSearchRepo,
+    semanticSearch as semanticSearchRepo
 } from "@fubbik/db/repository";
 import { Effect } from "effect";
 
@@ -26,10 +26,7 @@ import { scoreChunk } from "./utils";
 // enrichChunks — fetch full chunk rows + stale/proposal metadata
 // ---------------------------------------------------------------------------
 
-export function enrichChunks(
-    chunkIds: string[],
-    userId?: string,
-): Effect.Effect<ChunkWithMetadata[], never> {
+export function enrichChunks(chunkIds: string[], userId?: string): Effect.Effect<ChunkWithMetadata[], never> {
     if (chunkIds.length === 0) return Effect.succeed([]);
 
     const unique = [...new Set(chunkIds)];
@@ -37,23 +34,13 @@ export function enrichChunks(
     return Effect.all(
         unique.map(id =>
             Effect.gen(function* () {
-                const row = yield* getChunkById(id, userId).pipe(
-                    Effect.catchAll(() => Effect.succeed(null)),
-                );
+                const row = yield* getChunkById(id, userId).pipe(Effect.catchAll(() => Effect.succeed(null)));
                 if (!row) return null;
 
-                const connections = yield* getChunkConnections(id).pipe(
-                    Effect.catchAll(() => Effect.succeed([])),
-                );
-                const tags = yield* getTagsForChunk(id).pipe(
-                    Effect.catchAll(() => Effect.succeed([])),
-                );
-                const staleFlags = yield* getStaleFlagsForChunk(id).pipe(
-                    Effect.catchAll(() => Effect.succeed([])),
-                );
-                const proposals = yield* listProposalsForChunk(id, "pending").pipe(
-                    Effect.catchAll(() => Effect.succeed([])),
-                );
+                const connections = yield* getChunkConnections(id).pipe(Effect.catchAll(() => Effect.succeed([])));
+                const tags = yield* getTagsForChunk(id).pipe(Effect.catchAll(() => Effect.succeed([])));
+                const staleFlags = yield* getStaleFlagsForChunk(id).pipe(Effect.catchAll(() => Effect.succeed([])));
+                const proposals = yield* listProposalsForChunk(id, "pending").pipe(Effect.catchAll(() => Effect.succeed([])));
 
                 const connectionCount = connections.length;
                 const score = scoreChunk(row, connectionCount);
@@ -71,7 +58,7 @@ export function enrichChunks(
                     hasEmbedding: row.embedding != null,
                     requirementCount: 0,
                     allRequirementsPassing: false,
-                    referencedInSession: false,
+                    referencedInSession: false
                 });
 
                 const isStale = staleFlags.length > 0;
@@ -87,14 +74,14 @@ export function enrichChunks(
                     score,
                     healthScore: health.total,
                     isStale,
-                    hasPendingProposal,
+                    hasPendingProposal
                 } satisfies ChunkWithMetadata;
-            }),
+            })
         ),
-        { concurrency: 8 },
+        { concurrency: 8 }
     ).pipe(
         Effect.map(results => results.filter((r): r is ChunkWithMetadata => r !== null)),
-        Effect.flatMap(chunks => userId ? resolveFeatureOverlays(chunks, userId) : Effect.succeed(chunks)),
+        Effect.flatMap(chunks => (userId ? resolveFeatureOverlays(chunks, userId) : Effect.succeed(chunks)))
     );
 }
 
@@ -102,24 +89,17 @@ export function enrichChunks(
 // resolveFeatureOverlays — apply active feature deltas to enriched chunks
 // ---------------------------------------------------------------------------
 
-export function resolveFeatureOverlays(
-    chunks: ChunkWithMetadata[],
-    userId: string,
-): Effect.Effect<ChunkWithMetadata[], never> {
+export function resolveFeatureOverlays(chunks: ChunkWithMetadata[], userId: string): Effect.Effect<ChunkWithMetadata[], never> {
     if (chunks.length === 0) return Effect.succeed(chunks);
 
     return Effect.gen(function* () {
-        const activeRows = yield* getActiveFeatureIds(userId).pipe(
-            Effect.catchAll(() => Effect.succeed([])),
-        );
+        const activeRows = yield* getActiveFeatureIds(userId).pipe(Effect.catchAll(() => Effect.succeed([])));
         const activeFeatureIds = activeRows.map((r: { featureId: string }) => r.featureId);
 
         if (activeFeatureIds.length === 0) return chunks;
 
         const chunkIds = chunks.map(c => c.id);
-        const deltas = yield* batchFetchDeltas(chunkIds, activeFeatureIds).pipe(
-            Effect.catchAll(() => Effect.succeed([])),
-        );
+        const deltas = yield* batchFetchDeltas(chunkIds, activeFeatureIds).pipe(Effect.catchAll(() => Effect.succeed([])));
 
         if (deltas.length === 0) return chunks;
 
@@ -146,7 +126,7 @@ export function resolveFeatureOverlays(
                 ...(overlay.title != null && { title: overlay.title as string }),
                 ...(overlay.content != null && { content: overlay.content as string }),
                 ...(overlay.type != null && { type: overlay.type as string }),
-                ...(overlay.rationale != null && { rationale: overlay.rationale as string | null }),
+                ...(overlay.rationale != null && { rationale: overlay.rationale as string | null })
             };
         });
     });
@@ -161,9 +141,7 @@ export function resolveForPlan(planId: string): Effect.Effect<string[], never> {
         const ids = new Set<string>();
 
         // 1. plan_analyze_item where kind=chunk
-        const analyzeItems = yield* listAnalyzeItems(planId).pipe(
-            Effect.catchAll(() => Effect.succeed([])),
-        );
+        const analyzeItems = yield* listAnalyzeItems(planId).pipe(Effect.catchAll(() => Effect.succeed([])));
         for (const item of analyzeItems) {
             if (item.kind === "chunk" && item.chunkId) {
                 ids.add(item.chunkId);
@@ -171,16 +149,10 @@ export function resolveForPlan(planId: string): Effect.Effect<string[], never> {
         }
 
         // 2. plan_requirement → requirement_chunk
-        const planReqs = yield* listPlanRequirements(planId).pipe(
-            Effect.catchAll(() => Effect.succeed([])),
-        );
+        const planReqs = yield* listPlanRequirements(planId).pipe(Effect.catchAll(() => Effect.succeed([])));
         const reqChunkResults = yield* Effect.all(
-            planReqs.map(pr =>
-                getChunksForRequirement(pr.requirementId).pipe(
-                    Effect.catchAll(() => Effect.succeed([])),
-                ),
-            ),
-            { concurrency: 5 },
+            planReqs.map(pr => getChunksForRequirement(pr.requirementId).pipe(Effect.catchAll(() => Effect.succeed([])))),
+            { concurrency: 5 }
         );
         for (const chunks of reqChunkResults) {
             for (const c of chunks) {
@@ -189,16 +161,10 @@ export function resolveForPlan(planId: string): Effect.Effect<string[], never> {
         }
 
         // 3. plan_task → plan_task_chunk
-        const tasks = yield* listTasks(planId).pipe(
-            Effect.catchAll(() => Effect.succeed([])),
-        );
+        const tasks = yield* listTasks(planId).pipe(Effect.catchAll(() => Effect.succeed([])));
         const taskChunkResults = yield* Effect.all(
-            tasks.map(t =>
-                listTaskChunks(t.id).pipe(
-                    Effect.catchAll(() => Effect.succeed([])),
-                ),
-            ),
-            { concurrency: 5 },
+            tasks.map(t => listTaskChunks(t.id).pipe(Effect.catchAll(() => Effect.succeed([])))),
+            { concurrency: 5 }
         );
         for (const taskChunks of taskChunkResults) {
             for (const tc of taskChunks) {
@@ -214,21 +180,15 @@ export function resolveForPlan(planId: string): Effect.Effect<string[], never> {
 // resolveForConcept — semantic + text search
 // ---------------------------------------------------------------------------
 
-export function resolveForConcept(
-    query: string,
-    userId?: string,
-    spaceId?: string,
-): Effect.Effect<string[], never> {
+export function resolveForConcept(query: string, userId?: string, spaceId?: string): Effect.Effect<string[], never> {
     return Effect.gen(function* () {
         const ids = new Set<string>();
 
         // Semantic search (requires Ollama; fall back silently if unavailable)
         const semanticIds = yield* generateQueryEmbedding(query).pipe(
-            Effect.flatMap(embedding =>
-                semanticSearchRepo({ embedding, userId, limit: 20 }),
-            ),
+            Effect.flatMap(embedding => semanticSearchRepo({ embedding, userId, limit: 20 })),
             Effect.map(results => results.map((r: { id: string }) => r.id)),
-            Effect.catchAll(() => Effect.succeed([] as string[])),
+            Effect.catchAll(() => Effect.succeed([] as string[]))
         );
         for (const id of semanticIds) ids.add(id);
 
@@ -238,10 +198,10 @@ export function resolveForConcept(
             spaceId,
             search: query,
             limit: 20,
-            offset: 0,
+            offset: 0
         }).pipe(
             Effect.map(r => r.chunks.map((c: { id: string }) => c.id)),
-            Effect.catchAll(() => Effect.succeed([] as string[])),
+            Effect.catchAll(() => Effect.succeed([] as string[]))
         );
         for (const id of textResults) ids.add(id);
 
@@ -253,21 +213,15 @@ export function resolveForConcept(
 // resolveForFiles — calls getContextForFile for each path, deduplicates
 // ---------------------------------------------------------------------------
 
-export function resolveForFiles(
-    paths: string[],
-    userId: string,
-    spaceId?: string,
-): Effect.Effect<string[], never> {
+export function resolveForFiles(paths: string[], userId: string, spaceId?: string): Effect.Effect<string[], never> {
     return Effect.gen(function* () {
         const ids = new Set<string>();
 
         const results = yield* Effect.all(
             paths.map(path =>
-                getContextForFile(userId, path, spaceId).pipe(
-                    Effect.catchAll(() => Effect.succeed({ chunks: [], requirements: [] })),
-                ),
+                getContextForFile(userId, path, spaceId).pipe(Effect.catchAll(() => Effect.succeed({ chunks: [], requirements: [] })))
             ),
-            { concurrency: 5 },
+            { concurrency: 5 }
         );
 
         for (const result of results) {

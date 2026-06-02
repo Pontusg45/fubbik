@@ -1,10 +1,13 @@
 # General Codebase Improvements Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to
+> implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Fix 20 prioritized issues spanning security, architecture, validation, DX, and frontend UX identified during a full codebase audit.
+**Goal:** Fix 20 prioritized issues spanning security, architecture, validation, DX, and frontend UX identified during a full codebase
+audit.
 
-**Architecture:** Changes span all layers — backend security gates, input validation schemas, CI configuration, infrastructure activation, dead code removal, and frontend component refactoring. Each task is self-contained and can be committed independently.
+**Architecture:** Changes span all layers — backend security gates, input validation schemas, CI configuration, infrastructure activation,
+dead code removal, and frontend component refactoring. Each task is self-contained and can be committed independently.
 
 **Tech Stack:** TypeScript, Elysia, Effect, Drizzle, TanStack Start/Router, React, Winston, OpenTelemetry, pnpm, Turborepo
 
@@ -15,6 +18,7 @@
 ### Task 1: Gate auth bypass behind NODE_ENV
 
 **Files:**
+
 - Modify: `packages/api/src/index.ts:66-99`
 
 - [ ] **Step 1: Add environment gate to getSession fallback**
@@ -49,7 +53,9 @@ async function getSession(headers: Headers): Promise<Session | null> {
 
 - [ ] **Step 2: Update the .resolve handler to handle null session**
 
-The `.resolve` block at line 130-133 currently always returns a session. Update the downstream `requireSession` to handle the null case. Check `packages/api/src/require-session.ts` — it already checks for `ctx.session` and fails with `AuthError` if missing, so the null propagation is already handled. No change needed there.
+The `.resolve` block at line 130-133 currently always returns a session. Update the downstream `requireSession` to handle the null case.
+Check `packages/api/src/require-session.ts` — it already checks for `ctx.session` and fails with `AuthError` if missing, so the null
+propagation is already handled. No change needed there.
 
 However, the `.resolve` return type changes. Update line 130-133:
 
@@ -87,6 +93,7 @@ git commit -m "fix(security): gate auth bypass behind NODE_ENV to prevent produc
 ### Task 2: Fix Cypher injection in AGE queries
 
 **Files:**
+
 - Modify: `packages/db/src/age/sync.ts`
 - Modify: `packages/db/src/age/client.ts`
 
@@ -139,15 +146,11 @@ export function deleteEdge(edgeLabel: string, props: Record<string, string>) {
     const conditions = Object.entries(props)
         .map(([k, v]) => `e.${k} = '${escCypher(v)}'`)
         .join(" AND ");
-    return cypherVoid(
-        `MATCH ()-[e:${edgeLabel}]-() WHERE ${conditions} DELETE e`
-    );
+    return cypherVoid(`MATCH ()-[e:${edgeLabel}]-() WHERE ${conditions} DELETE e`);
 }
 
 export function deleteEdgesFrom(edgeLabel: string, fromLabel: string, fromId: string) {
-    return cypherVoid(
-        `MATCH (a:${fromLabel} {id: '${escCypher(fromId)}'})-[e:${edgeLabel}]->() DELETE e`
-    );
+    return cypherVoid(`MATCH (a:${fromLabel} {id: '${escCypher(fromId)}'})-[e:${edgeLabel}]->() DELETE e`);
 }
 ```
 
@@ -169,6 +172,7 @@ git commit -m "fix(security): escape Cypher string literals to prevent injection
 ### Task 3: Replace drizzle-kit push with migrate in entrypoint
 
 **Files:**
+
 - Modify: `apps/server/entrypoint.sh:27-30`
 
 - [ ] **Step 1: Replace push with migrate and fail-fast**
@@ -205,6 +209,7 @@ git commit -m "fix(deploy): replace drizzle-kit push with migrate in entrypoint 
 ### Task 4: Activate OpenTelemetry tracing
 
 **Files:**
+
 - Modify: `apps/server/src/index.ts`
 - Modify: `apps/server/src/lib/tracing.ts`
 
@@ -213,11 +218,13 @@ git commit -m "fix(deploy): replace drizzle-kit push with migrate in entrypoint 
 In `apps/server/src/lib/tracing.ts`, add import and replace console calls:
 
 Add at line 8:
+
 ```typescript
 import { logger } from "../logger";
 ```
 
 Replace lines 72-73:
+
 ```typescript
 // Before:
 console.log(`[OpenTelemetry] Tracing started for service: ${serviceName}`);
@@ -229,6 +236,7 @@ logger.info(`[OpenTelemetry] Exporting to: ${otlpEndpoint}`);
 ```
 
 Replace line 89:
+
 ```typescript
 // Before:
 console.log("[OpenTelemetry] Tracing shutdown complete");
@@ -238,6 +246,7 @@ logger.info("[OpenTelemetry] Tracing shutdown complete");
 ```
 
 Replace line 91:
+
 ```typescript
 // Before:
 console.error("[OpenTelemetry] Error shutting down tracing:", error);
@@ -293,6 +302,7 @@ git commit -m "feat(observability): activate OpenTelemetry tracing when OTLP end
 ### Task 5: Consolidate duplicate logger and replace console.log in API layer
 
 **Files:**
+
 - Delete: `apps/server/src/lib/logger.ts`
 - Modify: `apps/server/src/logger.ts`
 - Modify: `packages/api/src/index.ts`
@@ -314,9 +324,7 @@ export const logger = winston.createLogger({
     level: logLevel,
     format: winston.format.combine(
         winston.format.timestamp(),
-        env.NODE_ENV === "production"
-            ? winston.format.json()
-            : winston.format.combine(winston.format.colorize(), winston.format.simple())
+        env.NODE_ENV === "production" ? winston.format.json() : winston.format.combine(winston.format.colorize(), winston.format.simple())
     ),
     defaultMeta: { env: env.NODE_ENV },
     transports: [
@@ -339,7 +347,8 @@ rm apps/server/src/lib/logger.ts
 
 - [ ] **Step 3: Export logger from server package for use by API**
 
-The API package can't import directly from `apps/server`. Instead, we'll create a minimal logger instance in the API package. Create `packages/api/src/logger.ts`:
+The API package can't import directly from `apps/server`. Instead, we'll create a minimal logger instance in the API package. Create
+`packages/api/src/logger.ts`:
 
 ```typescript
 import winston from "winston";
@@ -369,6 +378,7 @@ import { logger } from "./logger";
 ```
 
 Replace line 118:
+
 ```typescript
 // Before:
 console.error("AI service error", effectError.cause);
@@ -377,6 +387,7 @@ logger.error("AI service error", { cause: effectError.cause });
 ```
 
 Replace line 125:
+
 ```typescript
 // Before:
 console.error("Database error", effectError.cause);
@@ -387,6 +398,7 @@ logger.error("Database error", { cause: effectError.cause });
 - [ ] **Step 5: Replace console calls in event handlers**
 
 In `packages/api/src/events/handlers.ts`, add import:
+
 ```typescript
 import { logger } from "../logger";
 ```
@@ -394,6 +406,7 @@ import { logger } from "../logger";
 Replace `console.log(...)` and `console.error(...)` calls with `logger.info(...)` and `logger.error(...)`.
 
 In `packages/api/src/events/bus.ts`, add import:
+
 ```typescript
 import { logger } from "../logger";
 ```
@@ -401,6 +414,7 @@ import { logger } from "../logger";
 Replace `console.error(...)` with `logger.error(...)`.
 
 In `packages/api/src/chunks/service.ts`, add import:
+
 ```typescript
 import { logger } from "../logger";
 ```
@@ -426,6 +440,7 @@ git commit -m "refactor(logging): consolidate to single logger, replace console 
 ### Task 6: Fix CI to use pnpm instead of bun
 
 **Files:**
+
 - Modify: `.github/workflows/ci.yml`
 
 - [ ] **Step 1: Replace bun with pnpm in CI**
@@ -508,7 +523,8 @@ jobs:
               run: pnpm run build
 ```
 
-Note: `pnpm/action-setup@v4` reads `packageManager` from `package.json` to auto-detect the pnpm version, so no explicit version pin is needed.
+Note: `pnpm/action-setup@v4` reads `packageManager` from `package.json` to auto-detect the pnpm version, so no explicit version pin is
+needed.
 
 - [ ] **Step 2: Commit**
 
@@ -522,6 +538,7 @@ git commit -m "fix(ci): use pnpm instead of bun for reproducible builds matching
 ### Task 7: Add check-types scripts to shared packages
 
 **Files:**
+
 - Modify: `packages/api/package.json`
 - Modify: `packages/db/package.json`
 - Modify: `packages/auth/package.json`
@@ -529,7 +546,8 @@ git commit -m "fix(ci): use pnpm instead of bun for reproducible builds matching
 
 - [ ] **Step 1: Check what check-types command the apps use**
 
-Look at `apps/server/package.json` and `apps/web/package.json` for their `check-types` scripts. They likely use `tsgo --noEmit` or `tsc --noEmit`.
+Look at `apps/server/package.json` and `apps/web/package.json` for their `check-types` scripts. They likely use `tsgo --noEmit` or
+`tsc --noEmit`.
 
 Run: `grep -A1 '"check-types"' apps/server/package.json apps/web/package.json apps/cli/package.json`
 
@@ -538,21 +556,25 @@ Run: `grep -A1 '"check-types"' apps/server/package.json apps/web/package.json ap
 Add the `check-types` script to each package's `package.json` `scripts` field, matching the pattern from apps (likely `tsgo --noEmit`):
 
 In `packages/api/package.json`, add to `"scripts"`:
+
 ```json
 "check-types": "tsgo --noEmit"
 ```
 
 In `packages/db/package.json`, add to `"scripts"`:
+
 ```json
 "check-types": "tsgo --noEmit"
 ```
 
 In `packages/auth/package.json`, add to `"scripts"`:
+
 ```json
 "check-types": "tsgo --noEmit"
 ```
 
 In `packages/env/package.json`, add to `"scripts"`:
+
 ```json
 "check-types": "tsgo --noEmit"
 ```
@@ -575,6 +597,7 @@ git commit -m "fix(dx): add check-types scripts to shared packages for CI type c
 ### Task 8: Clean up .env.example
 
 **Files:**
+
 - Modify: `apps/server/.env.example`
 
 - [ ] **Step 1: Remove stale Typesense vars and add missing ones**
@@ -623,6 +646,7 @@ git commit -m "docs(env): remove stale Typesense vars, add missing OPENAI/OLLAMA
 ### Task 9: Replace t.Any() with proper schemas
 
 **Files:**
+
 - Modify: `packages/api/src/templates/routes.ts:30-31,51-52`
 - Modify: `packages/api/src/plans/analyze.ts:70,87`
 - Modify: `packages/api/src/search/routes.ts:119`
@@ -648,6 +672,7 @@ const FieldMappingSchema = t.Object({
 ```
 
 Then replace in the POST body (lines 30-31):
+
 ```typescript
 // Before:
 matchRules: t.Optional(t.Any()),
@@ -659,34 +684,34 @@ fieldMappings: t.Optional(t.Array(FieldMappingSchema)),
 ```
 
 And the same in the PATCH body (lines 51-52):
+
 ```typescript
 matchRules: t.Optional(t.Array(MatchRuleSchema)),
 fieldMappings: t.Optional(t.Array(FieldMappingSchema)),
 ```
 
 **Important:** Before defining the schemas, check what shape the frontend actually sends for these fields by grepping:
+
 ```bash
 grep -r "matchRules\|fieldMappings" apps/web/src/ packages/api/src/templates/
 ```
+
 Adjust the schemas to match the actual data shape used in the codebase.
 
 - [ ] **Step 2: Define proper schema for plan analyze metadata**
 
-In `packages/api/src/plans/analyze.ts`, the `metadata` field stores kind-specific data (severity for risks, verified flag for assumptions, answer for questions, line range for files). Replace `t.Any()` on lines 70 and 87:
+In `packages/api/src/plans/analyze.ts`, the `metadata` field stores kind-specific data (severity for risks, verified flag for assumptions,
+answer for questions, line range for files). Replace `t.Any()` on lines 70 and 87:
 
 ```typescript
 // A flexible but bounded metadata schema
 const AnalyzeMetadataSchema = t.Optional(
-    t.Record(t.String({ maxLength: 50 }), t.Union([
-        t.String({ maxLength: 2000 }),
-        t.Number(),
-        t.Boolean(),
-        t.Null()
-    ]))
+    t.Record(t.String({ maxLength: 50 }), t.Union([t.String({ maxLength: 2000 }), t.Number(), t.Boolean(), t.Null()]))
 );
 ```
 
 Replace line 70:
+
 ```typescript
 // Before:
 metadata: t.Optional(t.Any()),
@@ -695,6 +720,7 @@ metadata: AnalyzeMetadataSchema,
 ```
 
 Replace line 87:
+
 ```typescript
 // Before:
 metadata: t.Optional(t.Any()),
@@ -704,9 +730,11 @@ metadata: AnalyzeMetadataSchema,
 
 - [ ] **Step 3: Define proper schema for saved search query**
 
-In `packages/api/src/search/routes.ts`, the saved query's `query` field stores an array of search clauses. The `ClauseSchema` is already defined at lines 9-15. Reuse it:
+In `packages/api/src/search/routes.ts`, the saved query's `query` field stores an array of search clauses. The `ClauseSchema` is already
+defined at lines 9-15. Reuse it:
 
 Replace line 119:
+
 ```typescript
 // Before:
 query: t.Any(),
@@ -721,6 +749,7 @@ query: t.Object({
 ```
 
 **Important:** Verify this matches what the frontend sends by checking the saved query creation flow:
+
 ```bash
 grep -r "search/saved" apps/web/src/
 ```
@@ -743,6 +772,7 @@ git commit -m "fix(validation): replace t.Any() with proper schemas for template
 ### Task 10: Replace Number() coercion with t.Numeric()
 
 **Files:**
+
 - Modify: `packages/api/src/activity/routes.ts`
 - Modify: `packages/api/src/proposals/routes.ts`
 - Modify: `packages/api/src/notifications/routes.ts`
@@ -753,6 +783,7 @@ git commit -m "fix(validation): replace t.Any() with proper schemas for template
 In `packages/api/src/activity/routes.ts`, replace the query schema (lines 23-28) and remove the manual `Number()` coercion (lines 16-17):
 
 Replace lines 16-17:
+
 ```typescript
 // Before:
 limit: ctx.query.limit ? Number(ctx.query.limit) : undefined,
@@ -764,6 +795,7 @@ offset: ctx.query.offset
 ```
 
 Replace lines 26-27 in the query schema:
+
 ```typescript
 // Before:
 limit: t.Optional(t.String()),
@@ -777,6 +809,7 @@ offset: t.Optional(t.Numeric())
 - [ ] **Step 2: Fix proposals routes**
 
 In `packages/api/src/proposals/routes.ts`, replace lines 103-104:
+
 ```typescript
 // Before:
 limit: ctx.query.limit ? Number(ctx.query.limit) : undefined,
@@ -788,6 +821,7 @@ offset: ctx.query.offset,
 ```
 
 Replace lines 114-115 in the query schema:
+
 ```typescript
 // Before:
 limit: t.Optional(t.String()),
@@ -801,6 +835,7 @@ offset: t.Optional(t.Numeric()),
 - [ ] **Step 3: Fix notifications routes**
 
 In `packages/api/src/notifications/routes.ts`, replace line 33:
+
 ```typescript
 // Before:
 limit: ctx.query.limit ? Number(ctx.query.limit) : undefined,
@@ -810,6 +845,7 @@ limit: ctx.query.limit,
 ```
 
 Replace line 41 in the query schema:
+
 ```typescript
 // Before:
 limit: t.Optional(t.String()),
@@ -821,21 +857,23 @@ limit: t.Optional(t.Numeric()),
 - [ ] **Step 4: Fix staleness routes**
 
 In `packages/api/src/staleness/routes.ts`, replace line 18:
+
 ```typescript
 // Before:
-limit: ctx.query.limit ? Number(ctx.query.limit) : undefined
+limit: ctx.query.limit ? Number(ctx.query.limit) : undefined;
 
 // After:
-limit: ctx.query.limit
+limit: ctx.query.limit;
 ```
 
 Replace line 27 in the query schema:
+
 ```typescript
 // Before:
-limit: t.Optional(t.String())
+limit: t.Optional(t.String());
 
 // After:
-limit: t.Optional(t.Numeric())
+limit: t.Optional(t.Numeric());
 ```
 
 - [ ] **Step 5: Verify build**
@@ -856,6 +894,7 @@ git commit -m "fix(validation): use t.Numeric() instead of manual Number() coerc
 ### Task 11: Add service layer for routes that bypass it
 
 **Files:**
+
 - Create: `packages/api/src/learning-paths/service.ts`
 - Modify: `packages/api/src/learning-paths/routes.ts`
 - Modify: `packages/api/src/search/routes.ts`
@@ -867,13 +906,7 @@ git commit -m "fix(validation): use t.Numeric() instead of manual Number() coerc
 Create `packages/api/src/learning-paths/service.ts`:
 
 ```typescript
-import {
-    listLearningPaths,
-    getLearningPath,
-    createLearningPath,
-    updateLearningPath,
-    deleteLearningPath,
-} from "@fubbik/db/repository";
+import { listLearningPaths, getLearningPath, createLearningPath, updateLearningPath, deleteLearningPath } from "@fubbik/db/repository";
 
 export { listLearningPaths, getLearningPath, createLearningPath, updateLearningPath, deleteLearningPath };
 ```
@@ -886,27 +919,16 @@ In `packages/api/src/learning-paths/routes.ts`, replace lines 4-10:
 
 ```typescript
 // Before:
-import {
-    listLearningPaths,
-    getLearningPath,
-    createLearningPath,
-    updateLearningPath,
-    deleteLearningPath,
-} from "@fubbik/db/repository";
+import { listLearningPaths, getLearningPath, createLearningPath, updateLearningPath, deleteLearningPath } from "@fubbik/db/repository";
 
 // After:
-import {
-    listLearningPaths,
-    getLearningPath,
-    createLearningPath,
-    updateLearningPath,
-    deleteLearningPath,
-} from "./service";
+import { listLearningPaths, getLearningPath, createLearningPath, updateLearningPath, deleteLearningPath } from "./service";
 ```
 
 - [ ] **Step 3: Move saved query repo calls out of search routes**
 
-In `packages/api/src/search/routes.ts`, the saved query CRUD calls go directly to the repository. Add these re-exports to the existing search service.
+In `packages/api/src/search/routes.ts`, the saved query CRUD calls go directly to the repository. Add these re-exports to the existing
+search service.
 
 Check if `packages/api/src/search/service.ts` exists. If so, add to it:
 
@@ -941,13 +963,15 @@ import { listChunks } from "../chunks/service";
 ```
 
 Verify `listChunks` is exported from `packages/api/src/chunks/service.ts`. If not, add:
+
 ```typescript
 export { listChunks } from "@fubbik/db/repository";
 ```
 
 - [ ] **Step 5: Route task claim/complete through plan service**
 
-In `packages/api/src/tasks/routes.ts`, the `claim` and `complete` endpoints call `planRepo.updateTask` directly. Route through plan service instead.
+In `packages/api/src/tasks/routes.ts`, the `claim` and `complete` endpoints call `planRepo.updateTask` directly. Route through plan service
+instead.
 
 First, check if `planService` already has a `updateTask` method. If not, add to `packages/api/src/plans/service.ts`:
 
@@ -970,16 +994,16 @@ Replace `planRepo.updateTask` calls (lines 59, 78) with `planService.updateTask`
 
 ```typescript
 // Before:
-yield* planRepo.updateTask(firstTask.id, { status: "in_progress" });
+yield * planRepo.updateTask(firstTask.id, { status: "in_progress" });
 // After:
-yield* planService.updateTask(firstTask.id, { status: "in_progress" });
+yield * planService.updateTask(firstTask.id, { status: "in_progress" });
 ```
 
 ```typescript
 // Before:
-yield* planRepo.updateTask(firstTask.id, { status: "done" });
+yield * planRepo.updateTask(firstTask.id, { status: "done" });
 // After:
-yield* planService.updateTask(firstTask.id, { status: "done" });
+yield * planService.updateTask(firstTask.id, { status: "done" });
 ```
 
 - [ ] **Step 6: Verify build**
@@ -1002,22 +1026,28 @@ git commit -m "refactor(architecture): route all endpoints through service layer
 ### Task 12: Address Vercel AI SDK / document its actual status
 
 **Files:**
+
 - Modify: `packages/api/src/ai/service.ts` (if removing)
 - Modify: `packages/api/package.json` (if removing deps)
 - OR: Modify: `CLAUDE.md` (if keeping the SDK)
 
 - [ ] **Step 1: Decide: keep or remove**
 
-The AI service (`packages/api/src/ai/service.ts`) uses the Vercel AI SDK (`@ai-sdk/openai`, `ai`) for three routes: `/ai/summarize`, `/ai/suggest-connections`, `/ai/generate`. CLAUDE.md says "vercel-ai SDK was removed" but it's still active.
+The AI service (`packages/api/src/ai/service.ts`) uses the Vercel AI SDK (`@ai-sdk/openai`, `ai`) for three routes: `/ai/summarize`,
+`/ai/suggest-connections`, `/ai/generate`. CLAUDE.md says "vercel-ai SDK was removed" but it's still active.
 
-**Option A (keep it):** Update CLAUDE.md to reflect reality — the Vercel AI SDK is used for OpenAI-based features alongside Ollama for local enrichment/embeddings.
+**Option A (keep it):** Update CLAUDE.md to reflect reality — the Vercel AI SDK is used for OpenAI-based features alongside Ollama for local
+enrichment/embeddings.
 
 In `CLAUDE.md`, update the AI line under Tech Stack:
+
 ```markdown
 - AI: Ollama (local LLM for enrichment + embeddings), OpenAI via Vercel AI SDK (optional, for summarization/suggestions)
 ```
 
-**Option B (remove it):** Delete `packages/api/src/ai/service.ts`, `packages/api/src/ai/routes.ts`, remove the `aiRoutes` import from `packages/api/src/index.ts`, and remove `"ai"` and `"@ai-sdk/openai"` from `packages/api/package.json`. Also remove `OPENAI_API_KEY` and `OPENAI_MODEL` from `packages/env/src/server.ts`.
+**Option B (remove it):** Delete `packages/api/src/ai/service.ts`, `packages/api/src/ai/routes.ts`, remove the `aiRoutes` import from
+`packages/api/src/index.ts`, and remove `"ai"` and `"@ai-sdk/openai"` from `packages/api/package.json`. Also remove `OPENAI_API_KEY` and
+`OPENAI_MODEL` from `packages/env/src/server.ts`.
 
 **Choose based on whether the OpenAI features are used.** If unsure, go with Option A (document reality).
 
@@ -1041,11 +1071,13 @@ git commit -m "refactor: remove unused Vercel AI SDK code and dependencies"
 ### Task 13: Fix SmartLinkProvider to lazy-load chunk index
 
 **Files:**
+
 - Modify: `apps/web/src/components/smart-link-provider.tsx`
 
 - [ ] **Step 1: Gate the 2000-chunk fetch behind markdown-rendering routes**
 
-In `apps/web/src/components/smart-link-provider.tsx`, the `useQuery` that fetches all chunks runs unconditionally at the root. Add an `enabled` flag so it only fetches when needed.
+In `apps/web/src/components/smart-link-provider.tsx`, the `useQuery` that fetches all chunks runs unconditionally at the root. Add an
+`enabled` flag so it only fetches when needed.
 
 Find the query that fetches chunks (around line 162-166). Add `enabled: false` by default, then create a context to enable it:
 
@@ -1079,8 +1111,8 @@ const { data: chunks } = useQuery({
 
 - [ ] **Step 2: Verify smart links still work on chunk pages**
 
-Navigate to `/chunks/:id` — smart links in markdown content should still resolve.
-Navigate to `/settings` — no chunk fetch should fire (check Network tab).
+Navigate to `/chunks/:id` — smart links in markdown content should still resolve. Navigate to `/settings` — no chunk fetch should fire
+(check Network tab).
 
 - [ ] **Step 3: Commit**
 
@@ -1094,12 +1126,14 @@ git commit -m "perf: lazy-load SmartLinkProvider chunk index only on routes that
 ### Task 14: Fix dashboard loading states to prevent layout shift
 
 **Files:**
+
 - Modify: `apps/web/src/features/dashboard/stats-bar.tsx`
 - Modify: `apps/web/src/features/dashboard/active-plan-card.tsx`
 
 - [ ] **Step 1: Replace `return null` with skeleton in StatsBar**
 
-In `apps/web/src/features/dashboard/stats-bar.tsx`, find the `return null` during loading (around line 29). Replace with a skeleton placeholder that preserves the layout:
+In `apps/web/src/features/dashboard/stats-bar.tsx`, find the `return null` during loading (around line 29). Replace with a skeleton
+placeholder that preserves the layout:
 
 ```typescript
 // Before:
@@ -1119,7 +1153,8 @@ if (isLoading) {
 
 - [ ] **Step 2: Replace `return null` with skeleton in ActivePlanCard**
 
-In `apps/web/src/features/dashboard/active-plan-card.tsx`, find the `return null` during loading (around line 75). Replace with a card-shaped skeleton:
+In `apps/web/src/features/dashboard/active-plan-card.tsx`, find the `return null` during loading (around line 75). Replace with a
+card-shaped skeleton:
 
 ```typescript
 // Before:
@@ -1153,6 +1188,7 @@ git commit -m "fix(ux): replace return-null loading states with skeleton placeho
 ### Task 15: Add error boundaries around dashboard widgets
 
 **Files:**
+
 - Modify: `apps/web/src/routes/dashboard.tsx`
 
 - [ ] **Step 1: Import the existing ErrorBoundary component**
@@ -1165,7 +1201,8 @@ import { ErrorBoundary } from "../components/error-boundary";
 
 - [ ] **Step 2: Wrap each independent dashboard section**
 
-Find the JSX where `StatsBar`, `ActivePlanCard`, and the main feed/content are rendered. Wrap each in an `<ErrorBoundary>` with a minimal fallback:
+Find the JSX where `StatsBar`, `ActivePlanCard`, and the main feed/content are rendered. Wrap each in an `<ErrorBoundary>` with a minimal
+fallback:
 
 ```tsx
 <ErrorBoundary fallback={<div className="text-sm text-muted-foreground p-4">Failed to load stats</div>}>
@@ -1201,11 +1238,13 @@ git commit -m "fix(ux): add per-widget error boundaries on dashboard, add error 
 ### Task 16: Add optimistic update for favorites toggle
 
 **Files:**
+
 - Modify: `apps/web/src/features/chunks/use-favorites.ts`
 
 - [ ] **Step 1: Add optimistic update logic to the toggle mutation**
 
-In `apps/web/src/features/chunks/use-favorites.ts`, find the mutation that toggles a favorite. Update it following the same pattern as `use-bulk-chunk-operations.ts` (the only existing optimistic update):
+In `apps/web/src/features/chunks/use-favorites.ts`, find the mutation that toggles a favorite. Update it following the same pattern as
+`use-bulk-chunk-operations.ts` (the only existing optimistic update):
 
 ```typescript
 const toggleFavorite = useMutation({
@@ -1226,9 +1265,7 @@ const toggleFavorite = useMutation({
         // Optimistically update
         queryClient.setQueryData(["favorites"], (old: string[] | undefined) => {
             if (!old) return old;
-            return isFavorited
-                ? old.filter(id => id !== chunkId)
-                : [...old, chunkId];
+            return isFavorited ? old.filter(id => id !== chunkId) : [...old, chunkId];
         });
 
         return { previousFavorites };
@@ -1241,11 +1278,12 @@ const toggleFavorite = useMutation({
     },
     onSettled: () => {
         queryClient.invalidateQueries({ queryKey: ["favorites"] });
-    },
+    }
 });
 ```
 
-**Important:** Read the actual file first to understand the current shape of the favorites data and mutation. Adapt the query key, data shape, and API calls to match what's actually there.
+**Important:** Read the actual file first to understand the current shape of the favorites data and mutation. Adapt the query key, data
+shape, and API calls to match what's actually there.
 
 - [ ] **Step 2: Verify the star toggle feels instant**
 
@@ -1263,15 +1301,18 @@ git commit -m "feat(ux): add optimistic update for favorites toggle for instant 
 ### Task 17: Fix accessibility — label/input associations
 
 **Files:**
+
 - Modify: `apps/web/src/routes/chunks.new.tsx`
 - Modify: `apps/web/src/routes/chunks.$chunkId_.edit.tsx`
 - Modify: `apps/web/src/routes/requirements_.new.tsx`
 
 - [ ] **Step 1: Fix chunk creation form labels**
 
-In `apps/web/src/routes/chunks.new.tsx`, find all `<label>` elements and add `htmlFor` attributes. Find the corresponding `<Input>` or `<select>` elements and add matching `id` attributes.
+In `apps/web/src/routes/chunks.new.tsx`, find all `<label>` elements and add `htmlFor` attributes. Find the corresponding `<Input>` or
+`<select>` elements and add matching `id` attributes.
 
 Example pattern:
+
 ```tsx
 // Before:
 <label className="mb-1.5 block text-sm font-medium">Title</label>
@@ -1294,14 +1335,11 @@ Apply the same pattern in `apps/web/src/routes/requirements_.new.tsx`.
 
 - [ ] **Step 4: Add aria-label to view toggle buttons**
 
-In `apps/web/src/routes/chunks.index.tsx`, find the List/Grid/Kanban view toggle buttons (around lines 589-604). Add `aria-label` and `aria-pressed` attributes:
+In `apps/web/src/routes/chunks.index.tsx`, find the List/Grid/Kanban view toggle buttons (around lines 589-604). Add `aria-label` and
+`aria-pressed` attributes:
 
 ```tsx
-<button
-    aria-label="List view"
-    aria-pressed={view === "list"}
-    onClick={() => setView("list")}
->
+<button aria-label="List view" aria-pressed={view === "list"} onClick={() => setView("list")}>
     <ListIcon />
 </button>
 ```
@@ -1311,10 +1349,7 @@ In `apps/web/src/routes/chunks.index.tsx`, find the List/Grid/Kanban view toggle
 In `apps/web/src/features/nav/mobile-nav.tsx`, find the "Manage" collapsible button (around line 86). Add `aria-expanded`:
 
 ```tsx
-<button
-    aria-expanded={manageOpen}
-    onClick={() => setManageOpen(!manageOpen)}
->
+<button aria-expanded={manageOpen} onClick={() => setManageOpen(!manageOpen)}>
     Manage
 </button>
 ```
@@ -1331,13 +1366,15 @@ git commit -m "fix(a11y): associate labels with inputs, add aria attributes to t
 ### Task 18: Add route-level data prefetching for key routes
 
 **Files:**
+
 - Modify: `apps/web/src/routes/dashboard.tsx`
 - Modify: `apps/web/src/routes/chunks.index.tsx`
 - Modify: `apps/web/src/routes/chunks.$chunkId.tsx`
 
 - [ ] **Step 1: Add prefetch to dashboard route**
 
-In `apps/web/src/routes/dashboard.tsx`, find the route definition (likely `createFileRoute`). Add a `loader` that prefetches the stats and recent chunks queries:
+In `apps/web/src/routes/dashboard.tsx`, find the route definition (likely `createFileRoute`). Add a `loader` that prefetches the stats and
+recent chunks queries:
 
 ```typescript
 export const Route = createFileRoute("/dashboard")({
@@ -1350,14 +1387,15 @@ export const Route = createFileRoute("/dashboard")({
         queryClient.ensureQueryData({
             queryKey: ["stats"],
             queryFn: () => api.stats.get().then(r => r.data),
-            staleTime: 60_000,
+            staleTime: 60_000
         });
     },
-    component: DashboardPage,
+    component: DashboardPage
 });
 ```
 
-**Important:** Check how `queryClient` is passed through the router context. Look at `apps/web/src/router.tsx` for the context shape. Adapt accordingly.
+**Important:** Check how `queryClient` is passed through the router context. Look at `apps/web/src/router.tsx` for the context shape. Adapt
+accordingly.
 
 - [ ] **Step 2: Add prefetch to chunk detail route**
 
@@ -1375,7 +1413,8 @@ loader: ({ params, context }) => {
 
 - [ ] **Step 3: Verify faster navigations**
 
-Run: `pnpm dev`, navigate between routes. Dashboard and chunk detail should load faster because data fetching starts during navigation, not after render.
+Run: `pnpm dev`, navigate between routes. Dashboard and chunk detail should load faster because data fetching starts during navigation, not
+after render.
 
 - [ ] **Step 4: Commit**
 
@@ -1389,12 +1428,14 @@ git commit -m "perf: add route-level data prefetching for dashboard and chunk de
 ### Task 19: Extract ChunkRow component from chunks.index.tsx
 
 **Files:**
+
 - Create: `apps/web/src/features/chunks/chunk-row.tsx`
 - Modify: `apps/web/src/routes/chunks.index.tsx`
 
 - [ ] **Step 1: Identify the row rendering code**
 
-In `apps/web/src/routes/chunks.index.tsx`, find the chunk row rendering JSX. It appears twice — once for the flat view and once for the grouped view (each ~200 lines). The two blocks are nearly identical.
+In `apps/web/src/routes/chunks.index.tsx`, find the chunk row rendering JSX. It appears twice — once for the flat view and once for the
+grouped view (each ~200 lines). The two blocks are nearly identical.
 
 - [ ] **Step 2: Extract ChunkRow component**
 
@@ -1437,21 +1478,24 @@ Import and use `<ChunkRow>` in both the flat and grouped views, eliminating the 
 import { ChunkRow } from "../features/chunks/chunk-row";
 
 // In both the flat view and grouped view:
-{chunks.map(chunk => (
-    <ChunkRow
-        key={chunk.id}
-        chunk={chunk}
-        isSelected={selectedIds.has(chunk.id)}
-        onSelect={handleSelect}
-        onNavigate={handleNavigate}
-        onToggleFavorite={handleToggleFavorite}
-    />
-))}
+{
+    chunks.map(chunk => (
+        <ChunkRow
+            key={chunk.id}
+            chunk={chunk}
+            isSelected={selectedIds.has(chunk.id)}
+            onSelect={handleSelect}
+            onNavigate={handleNavigate}
+            onToggleFavorite={handleToggleFavorite}
+        />
+    ));
+}
 ```
 
 - [ ] **Step 4: Verify list behavior**
 
 Run: `pnpm dev`, navigate to `/chunks`. Verify:
+
 - Row rendering works in both flat and grouped views
 - Selection, inline editing, favorite toggling all work
 - Hover prefetch still works
@@ -1468,23 +1512,25 @@ git commit -m "refactor: extract ChunkRow component, deduplicate row rendering, 
 ### Task 20: Fix ActivePlanCard query waterfall
 
 **Files:**
+
 - Modify: `apps/web/src/features/dashboard/active-plan-card.tsx`
 
 - [ ] **Step 1: Fetch both plan statuses in parallel**
 
-In `apps/web/src/features/dashboard/active-plan-card.tsx`, find the two sequential queries (around lines 45-55): `plans-in-progress` runs first, then `plans-ready` only if the first returns empty (`enabled: !inProgressQuery.isLoading && !inProgressPlans.length`).
+In `apps/web/src/features/dashboard/active-plan-card.tsx`, find the two sequential queries (around lines 45-55): `plans-in-progress` runs
+first, then `plans-ready` only if the first returns empty (`enabled: !inProgressQuery.isLoading && !inProgressPlans.length`).
 
 Change to fetch both in parallel:
 
 ```typescript
 const inProgressQuery = useQuery({
     queryKey: ["plans", "in-progress"],
-    queryFn: () => api.plans.get({ query: { status: "in_progress" } }).then(r => r.data),
+    queryFn: () => api.plans.get({ query: { status: "in_progress" } }).then(r => r.data)
 });
 
 const readyQuery = useQuery({
     queryKey: ["plans", "ready"],
-    queryFn: () => api.plans.get({ query: { status: "ready" } }).then(r => r.data),
+    queryFn: () => api.plans.get({ query: { status: "ready" } }).then(r => r.data)
 });
 
 // Prefer in_progress, fall back to ready
@@ -1507,16 +1553,17 @@ git commit -m "perf: fetch in-progress and ready plans in parallel to eliminate 
 
 ## Summary
 
-| Phase | Tasks | Focus |
-|-------|-------|-------|
-| 1 | 1-3 | Critical security & safety |
-| 2 | 4-8 | Infrastructure & DX |
-| 3 | 9-11 | Validation & architecture |
-| 4 | 12 | Dead code cleanup |
-| 5 | 13-20 | Frontend UX |
+| Phase | Tasks | Focus                      |
+| ----- | ----- | -------------------------- |
+| 1     | 1-3   | Critical security & safety |
+| 2     | 4-8   | Infrastructure & DX        |
+| 3     | 9-11  | Validation & architecture  |
+| 4     | 12    | Dead code cleanup          |
+| 5     | 13-20 | Frontend UX                |
 
 **Total: 20 tasks, ~60 commits**
 
 Tasks within each phase are independent and can be parallelized via subagent-driven development.
 
-Tasks across phases can also be parallelized — the only dependency is that Task 5 (logger consolidation) should happen before Task 4 (tracing activation) since Task 4 references the logger.
+Tasks across phases can also be parallelized — the only dependency is that Task 5 (logger consolidation) should happen before Task 4
+(tracing activation) since Task 4 references the logger.

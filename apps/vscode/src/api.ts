@@ -31,10 +31,7 @@ export class FubbikApi {
         this.baseUrl = serverUrl.replace(/\/+$/, "");
     }
 
-    async detectSpace(params: {
-        remoteUrl?: string;
-        localPath?: string;
-    }): Promise<DetectResult | null> {
+    async detectSpace(params: { remoteUrl?: string; localPath?: string }): Promise<DetectResult | null> {
         try {
             const query = new URLSearchParams();
             if (params.remoteUrl) query.set("remoteUrl", params.remoteUrl);
@@ -51,9 +48,7 @@ export class FubbikApi {
         }
     }
 
-    async getChunks(
-        spaceId?: string
-    ): Promise<{ chunks: Chunk[]; total: number }> {
+    async getChunks(spaceId?: string): Promise<{ chunks: Chunk[]; total: number }> {
         const url = new URL(`${this.baseUrl}/api/chunks`);
         if (spaceId) {
             url.searchParams.set("spaceId", spaceId);
@@ -62,9 +57,7 @@ export class FubbikApi {
         const response = await fetch(url.toString());
 
         if (!response.ok) {
-            throw new Error(
-                `Failed to fetch chunks: ${response.status} ${response.statusText}`
-            );
+            throw new Error(`Failed to fetch chunks: ${response.status} ${response.statusText}`);
         }
 
         return (await response.json()) as { chunks: Chunk[]; total: number };
@@ -88,41 +81,29 @@ export class FubbikApi {
         }
     }
 
-    async updateChunk(
-        id: string,
-        body: Partial<CreateChunkBody>
-    ): Promise<Chunk> {
+    async updateChunk(id: string, body: Partial<CreateChunkBody>): Promise<Chunk> {
         const response = await fetch(`${this.baseUrl}/api/chunks/${id}`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(body),
+            body: JSON.stringify(body)
         });
         if (!response.ok) {
-            throw new Error(
-                `Failed to update chunk: ${response.status} ${response.statusText}`
-            );
+            throw new Error(`Failed to update chunk: ${response.status} ${response.statusText}`);
         }
         return (await response.json()) as Chunk;
     }
 
-    async searchChunks(
-        query: string,
-        spaceId?: string
-    ): Promise<{ chunks: Chunk[]; total: number }> {
+    async searchChunks(query: string, spaceId?: string): Promise<{ chunks: Chunk[]; total: number }> {
         const params = new URLSearchParams({ search: query });
         if (spaceId) params.set("spaceId", spaceId);
-        const response = await fetch(
-            `${this.baseUrl}/api/chunks?${params}`
-        );
+        const response = await fetch(`${this.baseUrl}/api/chunks?${params}`);
         if (!response.ok) return { chunks: [], total: 0 };
         return (await response.json()) as { chunks: Chunk[]; total: number };
     }
 
     async getFileRefLookup(path: string): Promise<Chunk[]> {
         try {
-            const response = await fetch(
-                `${this.baseUrl}/api/file-refs/lookup?path=${encodeURIComponent(path)}`
-            );
+            const response = await fetch(`${this.baseUrl}/api/file-refs/lookup?path=${encodeURIComponent(path)}`);
             if (!response.ok) return [];
             return (await response.json()) as Chunk[];
         } catch {
@@ -134,13 +115,11 @@ export class FubbikApi {
         const response = await fetch(`${this.baseUrl}/api/chunks`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(body),
+            body: JSON.stringify(body)
         });
 
         if (!response.ok) {
-            throw new Error(
-                `Failed to create chunk: ${response.status} ${response.statusText}`
-            );
+            throw new Error(`Failed to create chunk: ${response.status} ${response.statusText}`);
         }
 
         return (await response.json()) as Chunk;

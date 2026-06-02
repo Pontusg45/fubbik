@@ -40,9 +40,7 @@ export function ChunkHealthBadge({ healthScore }: { healthScore: HealthScore }) 
                     <Badge variant="outline" className={`${color.bg} ${color.border} ${color.text} gap-1`}>
                         <Heart className="size-3" />
                         {healthScore.total}/100 · {label}
-                        {issueCount > 0 && (
-                            <span className="ml-0.5 opacity-70">({issueCount})</span>
-                        )}
+                        {issueCount > 0 && <span className="ml-0.5 opacity-70">({issueCount})</span>}
                     </Badge>
                 }
             />

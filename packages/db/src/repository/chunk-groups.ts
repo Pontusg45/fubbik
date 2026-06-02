@@ -1,5 +1,5 @@
-import { Effect } from "effect";
 import { and, countDistinct, eq, inArray, isNull, sql } from "drizzle-orm";
+import { Effect } from "effect";
 
 import { db, dbEffect } from "../index";
 import { chunk } from "../schema/chunk";
@@ -128,18 +128,11 @@ function buildBaseConditions(params: {
             .from(chunkSpace)
             .where(sql`${chunkSpace.spaceId} IN (${inWorkspace})`);
         const inAnySpace = db.select({ chunkId: chunkSpace.chunkId }).from(chunkSpace);
-        conditions.push(
-            sql`(${chunk.id} IN (${inSpaces}) OR ${chunk.id} NOT IN (${inAnySpace}))`
-        );
+        conditions.push(sql`(${chunk.id} IN (${inSpaces}) OR ${chunk.id} NOT IN (${inAnySpace}))`);
     } else if (params.codebaseId) {
-        const inSpace = db
-            .select({ chunkId: chunkSpace.chunkId })
-            .from(chunkSpace)
-            .where(eq(chunkSpace.spaceId, params.codebaseId));
+        const inSpace = db.select({ chunkId: chunkSpace.chunkId }).from(chunkSpace).where(eq(chunkSpace.spaceId, params.codebaseId));
         const inAnySpace = db.select({ chunkId: chunkSpace.chunkId }).from(chunkSpace);
-        conditions.push(
-            sql`(${chunk.id} IN (${inSpace}) OR ${chunk.id} NOT IN (${inAnySpace}))`
-        );
+        conditions.push(sql`(${chunk.id} IN (${inSpace}) OR ${chunk.id} NOT IN (${inAnySpace}))`);
     }
 
     if (params.globalOnly) {
@@ -173,14 +166,12 @@ export function getGroupedCounts(params: GroupedCountsParams) {
 
         if (params.groupBy === "tagtype") {
             // JOIN chunk_tag + tag, WHERE tag.tagTypeId = param, GROUP BY tag.name
-            const tagTypeConditions = params.tagTypeId
-                ? [eq(tag.tagTypeId, params.tagTypeId)]
-                : [];
+            const tagTypeConditions = params.tagTypeId ? [eq(tag.tagTypeId, params.tagTypeId)] : [];
 
             const rows = await db
                 .select({
                     groupName: tag.name,
-                    count: countDistinct(chunk.id),
+                    count: countDistinct(chunk.id)
                 })
                 .from(chunk)
                 .innerJoin(chunkTag, eq(chunkTag.chunkId, chunk.id))
@@ -190,7 +181,7 @@ export function getGroupedCounts(params: GroupedCountsParams) {
 
             return rows.map(r => ({
                 groupName: r.groupName,
-                count: Number(r.count),
+                count: Number(r.count)
             }));
         }
 
@@ -211,7 +202,7 @@ export function getGroupedCounts(params: GroupedCountsParams) {
         const rows = await db
             .select({
                 groupName: groupExpr,
-                count: sql<number>`count(*)`,
+                count: sql<number>`count(*)`
             })
             .from(chunk)
             .where(and(...conditions))
@@ -219,7 +210,7 @@ export function getGroupedCounts(params: GroupedCountsParams) {
 
         return rows.map(r => ({
             groupName: String(r.groupName),
-            count: Number(r.count),
+            count: Number(r.count)
         }));
     });
 }
@@ -250,9 +241,7 @@ function buildGroupCondition(groupBy: GroupChunksParams["groupBy"], groupName: s
             }
         case "tagtype": {
             // Chunk must have a tag with the given name under the given tagTypeId
-            const tagConditions = tagTypeId
-                ? and(eq(tag.name, groupName), eq(tag.tagTypeId, tagTypeId))
-                : eq(tag.name, groupName);
+            const tagConditions = tagTypeId ? and(eq(tag.name, groupName), eq(tag.tagTypeId, tagTypeId)) : eq(tag.name, groupName);
             const tagSubquery = db
                 .select({ chunkId: chunkTag.chunkId })
                 .from(chunkTag)
@@ -302,7 +291,7 @@ export function getCompoundGroupedCounts(params: CompoundGroupedCountsParams) {
         Effect.flatMap(topGroups =>
             Effect.forEach(
                 topGroups,
-                (topGroup) => {
+                topGroup => {
                     // Build sub-group params: inherit all base filters, add a constraint
                     // that restricts chunks to those in the parent group
                     const subParams: GroupedCountsParams = {
@@ -316,14 +305,14 @@ export function getCompoundGroupedCounts(params: CompoundGroupedCountsParams) {
                         workspaceId: params.workspaceId,
                         globalOnly: params.globalOnly,
                         tags: params.tags,
-                        tagMode: params.tagMode,
+                        tagMode: params.tagMode
                     };
 
                     return getSubGroupCounts(subParams, params.groupBy, topGroup.groupName, params.tagTypeId).pipe(
                         Effect.map(subGroups => ({
                             groupName: topGroup.groupName,
                             count: topGroup.count,
-                            subGroups,
+                            subGroups
                         }))
                     );
                 },
@@ -342,7 +331,7 @@ function getSubGroupCounts(
     params: GroupedCountsParams,
     parentGroupBy: GroupedCountsParams["groupBy"],
     parentGroupName: string,
-    parentTagTypeId?: string,
+    parentTagTypeId?: string
 ) {
     return dbEffect(async () => {
         const conditions = buildBaseConditions(params);
@@ -351,14 +340,12 @@ function getSubGroupCounts(
         conditions.push(parentCondition);
 
         if (params.groupBy === "tagtype") {
-            const tagTypeConditions = params.tagTypeId
-                ? [eq(tag.tagTypeId, params.tagTypeId)]
-                : [];
+            const tagTypeConditions = params.tagTypeId ? [eq(tag.tagTypeId, params.tagTypeId)] : [];
 
             const rows = await db
                 .select({
                     groupName: tag.name,
-                    count: countDistinct(chunk.id),
+                    count: countDistinct(chunk.id)
                 })
                 .from(chunk)
                 .innerJoin(chunkTag, eq(chunkTag.chunkId, chunk.id))
@@ -368,7 +355,7 @@ function getSubGroupCounts(
 
             return rows.map(r => ({
                 groupName: r.groupName,
-                count: Number(r.count),
+                count: Number(r.count)
             }));
         }
 
@@ -388,7 +375,7 @@ function getSubGroupCounts(
         const rows = await db
             .select({
                 groupName: groupExpr,
-                count: sql<number>`count(*)`,
+                count: sql<number>`count(*)`
             })
             .from(chunk)
             .where(and(...conditions))
@@ -396,7 +383,7 @@ function getSubGroupCounts(
 
         return rows.map(r => ({
             groupName: String(r.groupName),
-            count: Number(r.count),
+            count: Number(r.count)
         }));
     });
 }

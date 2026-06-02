@@ -1,9 +1,10 @@
-
-import { CheckCircle2, Loader2 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
+import { CheckCircle2, Loader2 } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+
 import { Button } from "@/components/ui/button";
+
 import type { FileConfig, FileEntry, ImportFileStatus } from "../types";
 import { useSSEImport } from "../use-sse-import";
 
@@ -25,15 +26,7 @@ interface StepImportProps {
 // StepImport component
 // ---------------------------------------------------------------------------
 
-export function StepImport({
-    files,
-    selectedPaths,
-    spaceId,
-    overrides,
-    importStatus,
-    onStatusChange,
-    onReset,
-}: StepImportProps) {
+export function StepImport({ files, selectedPaths, spaceId, overrides, importStatus, onStatusChange, onReset }: StepImportProps) {
     const queryClient = useQueryClient();
     const { startImport } = useSSEImport();
     const startedRef = useRef(false);
@@ -45,10 +38,7 @@ export function StepImport({
         elapsed: number;
     } | null>(null);
 
-    const selectedFiles = useMemo(
-        () => files.filter(f => selectedPaths.has(f.path)),
-        [files, selectedPaths]
-    );
+    const selectedFiles = useMemo(() => files.filter(f => selectedPaths.has(f.path)), [files, selectedPaths]);
 
     // Start import on mount (once)
     useEffect(() => {
@@ -102,12 +92,12 @@ export function StepImport({
                     skipped: 0,
                     errors: selectedFiles.length,
                     connections: 0,
-                    elapsed: 0,
+                    elapsed: 0
                 });
                 console.error("Import error:", error);
-            },
+            }
         });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     // Auto-scroll currently importing row into view
@@ -151,13 +141,15 @@ export function StepImport({
             {/* Progress bar */}
             {!completionData && (
                 <div className="flex flex-col gap-2">
-                    <div className="flex items-center justify-between text-sm text-muted-foreground">
+                    <div className="text-muted-foreground flex items-center justify-between text-sm">
                         <span>Importing files…</span>
-                        <span>{processedCount} / {totalCount}</span>
+                        <span>
+                            {processedCount} / {totalCount}
+                        </span>
                     </div>
-                    <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+                    <div className="bg-muted h-2 w-full overflow-hidden rounded-full">
                         <div
-                            className="h-full bg-primary rounded-full transition-all duration-300 ease-out"
+                            className="bg-primary h-full rounded-full transition-all duration-300 ease-out"
                             style={{ width: totalCount > 0 ? `${(processedCount / totalCount) * 100}%` : "0%" }}
                         />
                     </div>
@@ -176,26 +168,40 @@ export function StepImport({
 
             {/* Completion banner */}
             {completionData && (
-                <div className="rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30 p-4 flex flex-col gap-4">
+                <div className="flex flex-col gap-4 rounded-lg border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-800 dark:bg-emerald-950/30">
                     <div className="flex items-center gap-3">
-                        <CheckCircle2 className="size-6 text-emerald-600 shrink-0" />
+                        <CheckCircle2 className="size-6 shrink-0 text-emerald-600" />
                         <div>
-                            <div className="font-semibold text-emerald-700 dark:text-emerald-400">
-                                Import Complete
-                            </div>
-                            {elapsedLabel && (
-                                <div className="text-xs text-muted-foreground">
-                                    Finished in {elapsedLabel}
-                                </div>
-                            )}
+                            <div className="font-semibold text-emerald-700 dark:text-emerald-400">Import Complete</div>
+                            {elapsedLabel && <div className="text-muted-foreground text-xs">Finished in {elapsedLabel}</div>}
                         </div>
                     </div>
 
                     <div className="grid grid-cols-4 gap-3">
-                        <StatCard value={completionData.created} label="Created" colorClass="text-emerald-600" bgClass="bg-white dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-700" />
-                        <StatCard value={completionData.skipped} label="Skipped" colorClass="text-amber-600" bgClass="bg-white dark:bg-amber-900/20 border-amber-200 dark:border-amber-700" />
-                        <StatCard value={completionData.errors} label="Errors" colorClass="text-red-600" bgClass="bg-white dark:bg-red-900/20 border-red-200 dark:border-red-700" />
-                        <StatCard value={completionData.connections} label="Connections" colorClass="text-purple-600" bgClass="bg-white dark:bg-purple-900/20 border-purple-200 dark:border-purple-700" />
+                        <StatCard
+                            value={completionData.created}
+                            label="Created"
+                            colorClass="text-emerald-600"
+                            bgClass="bg-white dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-700"
+                        />
+                        <StatCard
+                            value={completionData.skipped}
+                            label="Skipped"
+                            colorClass="text-amber-600"
+                            bgClass="bg-white dark:bg-amber-900/20 border-amber-200 dark:border-amber-700"
+                        />
+                        <StatCard
+                            value={completionData.errors}
+                            label="Errors"
+                            colorClass="text-red-600"
+                            bgClass="bg-white dark:bg-red-900/20 border-red-200 dark:border-red-700"
+                        />
+                        <StatCard
+                            value={completionData.connections}
+                            label="Connections"
+                            colorClass="text-purple-600"
+                            bgClass="bg-white dark:bg-purple-900/20 border-purple-200 dark:border-purple-700"
+                        />
                     </div>
 
                     <div className="flex items-center gap-3 pt-1">
@@ -216,20 +222,23 @@ export function StepImport({
             {Array.from(importStatus.values()).some(s => s.error?.includes("Connection lost")) && (
                 <div className="mb-4 rounded-lg border border-amber-500/20 bg-amber-500/5 px-4 py-3 text-sm text-amber-500">
                     Connection lost — some files may have been imported. Check{" "}
-                    <Link to="/chunks" className="underline">chunks</Link> for results.
+                    <Link to="/chunks" className="underline">
+                        chunks
+                    </Link>{" "}
+                    for results.
                 </div>
             )}
 
             {/* Pipeline table */}
-            <div className="rounded-md border overflow-hidden">
+            <div className="overflow-hidden rounded-md border">
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                         <thead>
-                            <tr className="border-b bg-muted/30 text-left text-muted-foreground">
-                                <th className="px-3 py-2 font-medium w-8" />
+                            <tr className="bg-muted/30 text-muted-foreground border-b text-left">
+                                <th className="w-8 px-3 py-2 font-medium" />
                                 <th className="px-3 py-2 font-medium">File path</th>
                                 <th className="px-3 py-2 font-medium">Title</th>
-                                <th className="px-3 py-2 font-medium w-20">Chunks</th>
+                                <th className="w-20 px-3 py-2 font-medium">Chunks</th>
                                 <th className="px-3 py-2 font-medium">Detail</th>
                             </tr>
                         </thead>
@@ -237,14 +246,7 @@ export function StepImport({
                             {selectedFiles.map(f => {
                                 const s = importStatus.get(f.path) ?? { status: "pending" as const };
                                 const config = overrides.get(f.path);
-                                return (
-                                    <ImportRow
-                                        key={f.path}
-                                        path={f.path}
-                                        title={config?.title ?? f.path}
-                                        status={s}
-                                    />
-                                );
+                                return <ImportRow key={f.path} path={f.path} title={config?.title ?? f.path} status={s} />;
                             })}
                         </tbody>
                     </table>
@@ -268,21 +270,12 @@ function ImportRow({ path, title, status }: ImportRowProps) {
     const { icon, detailText, rowClass } = getRowStyle(status);
 
     return (
-        <tr
-            data-path={path}
-            className={`border-b last:border-0 transition-colors ${rowClass}`}
-        >
+        <tr data-path={path} className={`border-b transition-colors last:border-0 ${rowClass}`}>
             <td className="px-3 py-2 text-center">{icon}</td>
-            <td className="px-3 py-2 font-mono text-xs text-muted-foreground max-w-[200px] truncate">
-                {path}
-            </td>
-            <td className="px-3 py-2 max-w-[200px] truncate text-sm">
-                {title}
-            </td>
-            <td className="px-3 py-2 text-sm text-muted-foreground">
-                {status.created != null ? status.created : "—"}
-            </td>
-            <td className="px-3 py-2 text-sm max-w-[200px] truncate">{detailText}</td>
+            <td className="text-muted-foreground max-w-[200px] truncate px-3 py-2 font-mono text-xs">{path}</td>
+            <td className="max-w-[200px] truncate px-3 py-2 text-sm">{title}</td>
+            <td className="text-muted-foreground px-3 py-2 text-sm">{status.created != null ? status.created : "—"}</td>
+            <td className="max-w-[200px] truncate px-3 py-2 text-sm">{detailText}</td>
         </tr>
     );
 }
@@ -295,41 +288,38 @@ function getRowStyle(status: ImportFileStatus): {
     switch (status.status) {
         case "created":
             return {
-                icon: <span className="text-emerald-600 font-bold">✓</span>,
+                icon: <span className="font-bold text-emerald-600">✓</span>,
                 detailText: <span className="text-emerald-600">Created</span>,
-                rowClass: "bg-emerald-50/40 dark:bg-emerald-950/20",
+                rowClass: "bg-emerald-50/40 dark:bg-emerald-950/20"
             };
         case "skipped":
             return {
                 icon: <span className="text-amber-500">○</span>,
                 detailText: <span className="text-amber-600">Unchanged</span>,
-                rowClass: "",
+                rowClass: ""
             };
         case "error":
             return {
-                icon: <span className="text-red-600 font-bold">✕</span>,
+                icon: <span className="font-bold text-red-600">✕</span>,
                 detailText: (
-                    <span
-                        className="text-red-600 truncate block max-w-[200px]"
-                        title={status.error}
-                    >
+                    <span className="block max-w-[200px] truncate text-red-600" title={status.error}>
                         {status.error ?? "Error"}
                     </span>
                 ),
-                rowClass: "bg-red-50/40 dark:bg-red-950/20",
+                rowClass: "bg-red-50/40 dark:bg-red-950/20"
             };
         case "importing":
             return {
-                icon: <Loader2 className="size-4 animate-spin text-primary" />,
+                icon: <Loader2 className="text-primary size-4 animate-spin" />,
                 detailText: <span className="text-muted-foreground">Importing…</span>,
-                rowClass: "bg-primary/5",
+                rowClass: "bg-primary/5"
             };
         case "pending":
         default:
             return {
                 icon: <span className="text-muted-foreground/50">⋯</span>,
                 detailText: <span className="text-muted-foreground/60">Pending</span>,
-                rowClass: "",
+                rowClass: ""
             };
     }
 }
@@ -348,7 +338,7 @@ function StatBadge({ value, label, colorClass }: StatBadgeProps) {
     return (
         <div className="flex flex-col items-center rounded-md border px-3 py-2">
             <span className={`text-xl font-bold tabular-nums ${colorClass}`}>{value}</span>
-            <span className="text-xs text-muted-foreground">{label}</span>
+            <span className="text-muted-foreground text-xs">{label}</span>
         </div>
     );
 }

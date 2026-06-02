@@ -1,10 +1,14 @@
 # Import Wizard Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to
+> implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Replace the flat `/import` page with a four-step wizard (Select Files → Preview & Configure → Review → Import) that uses the existing preview endpoint, adds SSE streaming for per-file progress, and keeps the old flow as a Quick mode toggle.
+**Goal:** Replace the flat `/import` page with a four-step wizard (Select Files → Preview & Configure → Review → Import) that uses the
+existing preview endpoint, adds SSE streaming for per-file progress, and keeps the old flow as a Quick mode toggle.
 
-**Architecture:** The page shell renders either `ImportQuickMode` (existing code extracted) or `ImportWizard` (new four-step state machine). The wizard uses local `useState` for all state. Backend gets one new SSE streaming endpoint and a small extension to the preview response for duplicate detection hashes.
+**Architecture:** The page shell renders either `ImportQuickMode` (existing code extracted) or `ImportWizard` (new four-step state machine).
+The wizard uses local `useState` for all state. Backend gets one new SSE streaming endpoint and a small extension to the preview response
+for duplicate detection hashes.
 
 **Tech Stack:** React, TanStack Router, Elysia, Effect, @base-ui/react (Checkbox), Eden treaty, SSE via fetch ReadableStream
 
@@ -16,26 +20,26 @@
 
 ### New Files
 
-| File | Responsibility |
-|------|---------------|
-| `apps/web/src/features/import/types.ts` | Shared types for the wizard (FileEntry, WizardState, FileConfig, etc.) |
-| `apps/web/src/features/import/quick-mode.tsx` | Extracted current import page as the Quick mode component |
-| `apps/web/src/features/import/wizard.tsx` | Wizard state machine, step indicator, navigation footer |
-| `apps/web/src/features/import/file-tree.tsx` | Recursive tree with tri-state checkboxes, index badges, connection hints |
-| `apps/web/src/features/import/steps/select-files.tsx` | Step 1: folder picker, codebase dropdown, file tree |
-| `apps/web/src/features/import/steps/preview.tsx` | Step 2: split-pane with tree nav + detail panel |
-| `apps/web/src/features/import/file-detail-panel.tsx` | Right panel editor: title, tags, type, template, content preview |
-| `apps/web/src/features/import/steps/review.tsx` | Step 3: summary stats, collapsible tables, connection preview |
-| `apps/web/src/features/import/steps/import-step.tsx` | Step 4: pipeline table, SSE consumer, completion state |
-| `apps/web/src/features/import/use-sse-import.ts` | Hook wrapping fetch+ReadableStream SSE parsing for the streaming import |
-| `packages/api/src/chunks/__tests__/import-stream.test.ts` | Tests for the streaming import service function |
+| File                                                      | Responsibility                                                           |
+| --------------------------------------------------------- | ------------------------------------------------------------------------ |
+| `apps/web/src/features/import/types.ts`                   | Shared types for the wizard (FileEntry, WizardState, FileConfig, etc.)   |
+| `apps/web/src/features/import/quick-mode.tsx`             | Extracted current import page as the Quick mode component                |
+| `apps/web/src/features/import/wizard.tsx`                 | Wizard state machine, step indicator, navigation footer                  |
+| `apps/web/src/features/import/file-tree.tsx`              | Recursive tree with tri-state checkboxes, index badges, connection hints |
+| `apps/web/src/features/import/steps/select-files.tsx`     | Step 1: folder picker, codebase dropdown, file tree                      |
+| `apps/web/src/features/import/steps/preview.tsx`          | Step 2: split-pane with tree nav + detail panel                          |
+| `apps/web/src/features/import/file-detail-panel.tsx`      | Right panel editor: title, tags, type, template, content preview         |
+| `apps/web/src/features/import/steps/review.tsx`           | Step 3: summary stats, collapsible tables, connection preview            |
+| `apps/web/src/features/import/steps/import-step.tsx`      | Step 4: pipeline table, SSE consumer, completion state                   |
+| `apps/web/src/features/import/use-sse-import.ts`          | Hook wrapping fetch+ReadableStream SSE parsing for the streaming import  |
+| `packages/api/src/chunks/__tests__/import-stream.test.ts` | Tests for the streaming import service function                          |
 
 ### Modified Files
 
-| File | Changes |
-|------|---------|
-| `apps/web/src/routes/import.tsx` | Replace body with mode toggle routing to QuickMode or Wizard |
-| `packages/api/src/chunks/routes.ts` | Add `POST /chunks/import-docs/stream` SSE route |
+| File                                 | Changes                                                                     |
+| ------------------------------------ | --------------------------------------------------------------------------- |
+| `apps/web/src/routes/import.tsx`     | Replace body with mode toggle routing to QuickMode or Wizard                |
+| `packages/api/src/chunks/routes.ts`  | Add `POST /chunks/import-docs/stream` SSE route                             |
 | `packages/api/src/chunks/service.ts` | Add `importDocsStream` generator function, add `getExistingHashes` function |
 
 ---
@@ -43,6 +47,7 @@
 ### Task 1: Shared Types
 
 **Files:**
+
 - Create: `apps/web/src/features/import/types.ts`
 
 - [ ] **Step 1: Create the shared types file**
@@ -113,27 +118,20 @@ git commit -m "feat(import-wizard): add shared types for wizard state"
 ### Task 2: Extract Quick Mode from Existing Import Page
 
 **Files:**
+
 - Create: `apps/web/src/features/import/quick-mode.tsx`
 - Modify: `apps/web/src/routes/import.tsx`
 
 - [ ] **Step 1: Create quick-mode.tsx by extracting the current import page body**
 
-Move the entire current `ImportPage` function body (state, handlers, JSX) into a new `ImportQuickMode` component. Keep the `readFilesFromInput` and `previewFile` helpers inside since they're only used here.
+Move the entire current `ImportPage` function body (state, handlers, JSX) into a new `ImportQuickMode` component. Keep the
+`readFilesFromInput` and `previewFile` helpers inside since they're only used here.
 
 ```typescript
 // apps/web/src/features/import/quick-mode.tsx
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import {
-    AlertTriangle,
-    CheckCircle2,
-    ChevronDown,
-    ChevronRight,
-    FileText,
-    FolderUp,
-    Upload,
-    XCircle
-} from "lucide-react";
+import { AlertTriangle, CheckCircle2, ChevronDown, ChevronRight, FileText, FolderUp, Upload, XCircle } from "lucide-react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -229,8 +227,8 @@ function ImportPage() {
 
 - [ ] **Step 3: Verify the quick mode works unchanged**
 
-Run: `pnpm dev` and open `http://localhost:3001/import`
-Expected: The import page looks and works exactly as before, with a Quick/Wizard toggle in the header. Quick is selected by default.
+Run: `pnpm dev` and open `http://localhost:3001/import` Expected: The import page looks and works exactly as before, with a Quick/Wizard
+toggle in the header. Quick is selected by default.
 
 - [ ] **Step 4: Commit**
 
@@ -244,6 +242,7 @@ git commit -m "feat(import-wizard): extract quick mode, add mode toggle shell"
 ### Task 3: File Tree Component
 
 **Files:**
+
 - Create: `apps/web/src/features/import/file-tree.tsx`
 
 This is the core reusable tree used in both Step 1 (with checkboxes) and Step 2 (without checkboxes, with click-to-select).
@@ -279,7 +278,7 @@ export function buildTree(paths: string[]): TreeNode[] {
                     path: currentPath,
                     isDir: !isLast,
                     isIndex: isLast && INDEX_FILE_NAMES.has(name.toLowerCase()),
-                    children: [],
+                    children: []
                 };
                 current.push(node);
             }
@@ -295,10 +294,7 @@ function countFiles(node: TreeNode): number {
     return node.children.reduce((sum, child) => sum + countFiles(child), 0);
 }
 
-function getCheckState(
-    node: TreeNode,
-    selected: Set<string>
-): "checked" | "unchecked" | "indeterminate" {
+function getCheckState(node: TreeNode, selected: Set<string>): "checked" | "unchecked" | "indeterminate" {
     if (!node.isDir) {
         return selected.has(node.path) ? "checked" : "unchecked";
     }
@@ -533,6 +529,7 @@ git commit -m "feat(import-wizard): add recursive file tree with tri-state check
 ### Task 4: Wizard Shell and Step 1 (Select Files)
 
 **Files:**
+
 - Create: `apps/web/src/features/import/wizard.tsx`
 - Create: `apps/web/src/features/import/steps/select-files.tsx`
 - Modify: `apps/web/src/routes/import.tsx`
@@ -833,8 +830,9 @@ import { ImportWizard } from "@/features/import/wizard";
 
 - [ ] **Step 4: Verify Step 1 works**
 
-Run: `pnpm dev` and open `http://localhost:3001/import`
-Expected: Toggle to Wizard mode. Click "Select Folder" and pick `docs/guide/`. See the file tree with tri-state checkboxes, index badges, and connection hints. Select/deselect files. "Preview →" button enables when files + codebase are selected.
+Run: `pnpm dev` and open `http://localhost:3001/import` Expected: Toggle to Wizard mode. Click "Select Folder" and pick `docs/guide/`. See
+the file tree with tri-state checkboxes, index badges, and connection hints. Select/deselect files. "Preview →" button enables when files +
+codebase are selected.
 
 - [ ] **Step 5: Commit**
 
@@ -848,6 +846,7 @@ git commit -m "feat(import-wizard): add wizard shell and Step 1 (select files wi
 ### Task 5: Backend — Extend Preview Endpoint with Existing Hashes
 
 **Files:**
+
 - Modify: `packages/api/src/chunks/service.ts`
 
 - [ ] **Step 1: Add getExistingHashes function to chunks service**
@@ -874,21 +873,24 @@ export function getExistingHashes(codebaseId: string, userId: string) {
 Modify the `previewImportDocs` function to also return `existingHashes`:
 
 At the top of the `Effect.gen` block, add:
+
 ```typescript
-const existingHashes = yield* getExistingHashes(codebaseId, userId);
+const existingHashes = yield * getExistingHashes(codebaseId, userId);
 ```
 
 Change the return to:
+
 ```typescript
 return { files: results, existingHashes };
 ```
 
-Note: The `_codebaseId` parameter needs to be renamed to `codebaseId` since it's now used. Also update the function signature to pass the real `codebaseId`.
+Note: The `_codebaseId` parameter needs to be renamed to `codebaseId` since it's now used. Also update the function signature to pass the
+real `codebaseId`.
 
 - [ ] **Step 3: Verify the preview endpoint still works**
 
-Run: `pnpm dev`
-Test: `curl -X POST http://localhost:3000/api/chunks/import-docs/preview -H "Content-Type: application/json" -H "Cookie: <session>" -d '{"files":[{"path":"test.md","content":"# Test"}],"codebaseId":"<id>"}'`
+Run: `pnpm dev` Test:
+`curl -X POST http://localhost:3000/api/chunks/import-docs/preview -H "Content-Type: application/json" -H "Cookie: <session>" -d '{"files":[{"path":"test.md","content":"# Test"}],"codebaseId":"<id>"}'`
 Expected: Response now includes `{ files: [...], existingHashes: {...} }`
 
 - [ ] **Step 4: Commit**
@@ -903,6 +905,7 @@ git commit -m "feat(import-wizard): extend preview endpoint with existing hashes
 ### Task 6: Step 2 — Preview & Configure (Split Pane)
 
 **Files:**
+
 - Create: `apps/web/src/features/import/file-detail-panel.tsx`
 - Create: `apps/web/src/features/import/steps/preview.tsx`
 - Modify: `apps/web/src/features/import/wizard.tsx`
@@ -1326,8 +1329,8 @@ import { StepPreview } from "./steps/preview";
 
 - [ ] **Step 4: Verify Step 2 works**
 
-Run: `pnpm dev`, navigate to `/import`, select Wizard mode, pick a folder, select codebase, click "Preview →".
-Expected: Loading spinner, then split pane with tree on left and detail panel on right. Click files to see editable fields. Template matches show green cards.
+Run: `pnpm dev`, navigate to `/import`, select Wizard mode, pick a folder, select codebase, click "Preview →". Expected: Loading spinner,
+then split pane with tree on left and detail panel on right. Click files to see editable fields. Template matches show green cards.
 
 - [ ] **Step 5: Commit**
 
@@ -1341,6 +1344,7 @@ git commit -m "feat(import-wizard): add Step 2 (preview & configure with split p
 ### Task 7: Step 3 — Review
 
 **Files:**
+
 - Create: `apps/web/src/features/import/steps/review.tsx`
 - Modify: `apps/web/src/features/import/wizard.tsx`
 
@@ -1587,11 +1591,13 @@ export function StepReview({
 
 - [ ] **Step 2: Wire Step 3 into the wizard**
 
-In `wizard.tsx`, add imports and replace the step 3 placeholder. The `onGoToFile` handler navigates back to step 2 with the file selected. Add a helper to look up the codebase name from the codebases query.
+In `wizard.tsx`, add imports and replace the step 3 placeholder. The `onGoToFile` handler navigates back to step 2 with the file selected.
+Add a helper to look up the codebase name from the codebases query.
 
 - [ ] **Step 3: Verify Step 3 works**
 
-Run through the full flow: select folder → preview → review. Check that stats are correct, tables are clickable, connections preview shows the right pairs.
+Run through the full flow: select folder → preview → review. Check that stats are correct, tables are clickable, connections preview shows
+the right pairs.
 
 - [ ] **Step 4: Commit**
 
@@ -1605,6 +1611,7 @@ git commit -m "feat(import-wizard): add Step 3 (review with stats, tables, conne
 ### Task 8: Backend — SSE Streaming Import Endpoint
 
 **Files:**
+
 - Modify: `packages/api/src/chunks/routes.ts`
 - Modify: `packages/api/src/chunks/service.ts`
 - Create: `packages/api/src/chunks/__tests__/import-stream.test.ts`
@@ -1633,8 +1640,7 @@ describe("importDocsStream", () => {
 
 - [ ] **Step 2: Run the test to verify it passes (signature check)**
 
-Run: `pnpm test packages/api/src/chunks/__tests__/import-stream.test.ts`
-Expected: PASS
+Run: `pnpm test packages/api/src/chunks/__tests__/import-stream.test.ts` Expected: PASS
 
 - [ ] **Step 3: Add importDocsStream generator to the service**
 
@@ -1656,9 +1662,7 @@ export async function* importDocsStream(
     for (const file of files) {
         try {
             const templateId = templateOverrides?.[file.path] ?? undefined;
-            const result = await Effect.runPromise(
-                importDocument(userId, file.path, file.content, codebaseId, templateId ?? undefined)
-            );
+            const result = await Effect.runPromise(importDocument(userId, file.path, file.content, codebaseId, templateId ?? undefined));
             if (result.status === "unchanged") {
                 skipped++;
                 yield { type: "file" as const, path: file.path, status: "unchanged" as const };
@@ -1687,7 +1691,7 @@ export async function* importDocsStream(
         skipped,
         errors,
         connections,
-        elapsed: Date.now() - startTime,
+        elapsed: Date.now() - startTime
     };
 }
 ```
@@ -1755,8 +1759,7 @@ In `packages/api/src/chunks/routes.ts`, add after the existing import-docs route
 
 - [ ] **Step 5: Run tests**
 
-Run: `pnpm test packages/api/src/chunks/__tests__/import-stream.test.ts`
-Expected: PASS
+Run: `pnpm test packages/api/src/chunks/__tests__/import-stream.test.ts` Expected: PASS
 
 - [ ] **Step 6: Commit**
 
@@ -1770,6 +1773,7 @@ git commit -m "feat(import-wizard): add SSE streaming import endpoint"
 ### Task 9: SSE Consumer Hook and Step 4 (Import)
 
 **Files:**
+
 - Create: `apps/web/src/features/import/use-sse-import.ts`
 - Create: `apps/web/src/features/import/steps/import-step.tsx`
 - Modify: `apps/web/src/features/import/wizard.tsx`
@@ -1811,8 +1815,8 @@ export function useSSEImport() {
                 body: JSON.stringify({
                     files: options.files,
                     codebaseId: options.codebaseId,
-                    templateOverrides: options.templateOverrides,
-                }),
+                    templateOverrides: options.templateOverrides
+                })
             });
 
             if (!response.ok || !response.body) {
@@ -1841,7 +1845,7 @@ export function useSSEImport() {
                             options.onFileUpdate(data.path, {
                                 status: data.status === "unchanged" ? "skipped" : data.status,
                                 created: data.created,
-                                error: data.error,
+                                error: data.error
                             });
                         } else if (currentEvent === "done") {
                             options.onDone(data);
@@ -2108,15 +2112,20 @@ export function StepImport({
 }
 ```
 
-Note: The `onStatusChange` prop uses a function updater pattern (`prev => next`). In the wizard, pass `setImportStatus` directly as the prop since React's `useState` setter already accepts both values and updater functions. The prop type should be `React.Dispatch<React.SetStateAction<Map<string, ImportFileStatus>>>`.
+Note: The `onStatusChange` prop uses a function updater pattern (`prev => next`). In the wizard, pass `setImportStatus` directly as the prop
+since React's `useState` setter already accepts both values and updater functions. The prop type should be
+`React.Dispatch<React.SetStateAction<Map<string, ImportFileStatus>>>`.
 
 - [ ] **Step 3: Wire Step 4 into the wizard**
 
-In `wizard.tsx`, add the import and replace the step 4 placeholder. Also add a `useState` import for `completionData` that was used inside `StepImport` — actually, keep `completionData` local to `StepImport` using its own `useState`. The `onStatusChange` prop should accept a setter function.
+In `wizard.tsx`, add the import and replace the step 4 placeholder. Also add a `useState` import for `completionData` that was used inside
+`StepImport` — actually, keep `completionData` local to `StepImport` using its own `useState`. The `onStatusChange` prop should accept a
+setter function.
 
 - [ ] **Step 4: Verify the full wizard flow end-to-end**
 
 Run: `pnpm dev`, open `/import`, toggle Wizard mode.
+
 1. Select `docs/guide/` folder, pick codebase, click "Preview →"
 2. Browse files in split pane, verify template suggestions appear, edit a title
 3. Click "Review →", verify stats and tables
@@ -2135,13 +2144,15 @@ git commit -m "feat(import-wizard): add Step 4 (SSE streaming import with pipeli
 ### Task 10: Final Polish and Edge Cases
 
 **Files:**
+
 - Modify: `apps/web/src/features/import/wizard.tsx`
 - Modify: `apps/web/src/features/import/steps/select-files.tsx`
 - Modify: `apps/web/src/features/import/steps/preview.tsx`
 
 - [ ] **Step 1: Handle edge case — preview endpoint failure**
 
-In `StepPreview`, the `catch` block already shows a toast. Add a fallback: if preview fails, initialize overrides from client-side parsing (using the `previewFile` helper from quick-mode) so the user can still proceed.
+In `StepPreview`, the `catch` block already shows a toast. Add a fallback: if preview fails, initialize overrides from client-side parsing
+(using the `previewFile` helper from quick-mode) so the user can still proceed.
 
 - [ ] **Step 2: Handle edge case — empty folder**
 
@@ -2149,16 +2160,17 @@ In `StepSelectFiles`, the empty state already shows a message. Verify that the "
 
 - [ ] **Step 3: Handle edge case — SSE connection drop**
 
-In `useSSEImport`, the `onError` callback already marks remaining files as errors. Add a visible warning banner in `StepImport` when errors include "Connection lost".
+In `useSSEImport`, the `onError` callback already marks remaining files as errors. Add a visible warning banner in `StepImport` when errors
+include "Connection lost".
 
 - [ ] **Step 4: Handle "click row to go back" in review**
 
-In `StepReview`, the `onGoToFile` prop is called when clicking a row. In the wizard, this should set `step = 2` and set the active file path for the preview step. Add an `initialActivePath` prop to `StepPreview`.
+In `StepReview`, the `onGoToFile` prop is called when clicking a row. In the wizard, this should set `step = 2` and set the active file path
+for the preview step. Add an `initialActivePath` prop to `StepPreview`.
 
 - [ ] **Step 5: Run type check**
 
-Run: `pnpm run check-types`
-Expected: No type errors in the new files.
+Run: `pnpm run check-types` Expected: No type errors in the new files.
 
 - [ ] **Step 6: Full end-to-end test with docs/guide**
 

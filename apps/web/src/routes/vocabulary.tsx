@@ -151,7 +151,7 @@ function VocabularyPage() {
             if (!spaceId) throw new Error("No space");
             return unwrapEden(await api.api.vocabulary.suggest.post({ spaceId })) as SuggestedEntry[];
         },
-        onSuccess: (data) => {
+        onSuccess: data => {
             const suggested = Array.isArray(data) ? data : [];
             setSuggestions(suggested);
             setSelectedSuggestions(new Set(suggested.map((_, i) => i)));
@@ -297,12 +297,7 @@ function VocabularyPage() {
                 count={entries.length}
                 actions={
                     <div className="flex gap-2">
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => suggestMutation.mutate()}
-                            disabled={suggestMutation.isPending}
-                        >
+                        <Button variant="outline" size="sm" onClick={() => suggestMutation.mutate()} disabled={suggestMutation.isPending}>
                             {suggestMutation.isPending ? (
                                 <Loader2 className="mr-1 size-4 animate-spin" />
                             ) : (
@@ -358,9 +353,7 @@ function VocabularyPage() {
                                         {s.category}
                                     </Badge>
                                     {s.expects && s.expects.length > 0 && (
-                                        <span className="text-muted-foreground text-xs">
-                                            expects: {s.expects.join(", ")}
-                                        </span>
+                                        <span className="text-muted-foreground text-xs">expects: {s.expects.join(", ")}</span>
                                     )}
                                 </label>
                             ))}
@@ -418,11 +411,7 @@ function VocabularyPage() {
                                 <Button
                                     type="submit"
                                     size="sm"
-                                    disabled={
-                                        createMutation.isPending ||
-                                        updateMutation.isPending ||
-                                        !word.trim()
-                                    }
+                                    disabled={createMutation.isPending || updateMutation.isPending || !word.trim()}
                                 >
                                     {editingId
                                         ? updateMutation.isPending
@@ -464,11 +453,7 @@ function VocabularyPage() {
                                             onClick={() => toggleCategory(cat)}
                                             className="hover:bg-muted flex w-full items-center gap-2 rounded-md px-2 py-2 text-left transition-colors"
                                         >
-                                            {isCollapsed ? (
-                                                <ChevronRight className="size-4" />
-                                            ) : (
-                                                <ChevronDown className="size-4" />
-                                            )}
+                                            {isCollapsed ? <ChevronRight className="size-4" /> : <ChevronDown className="size-4" />}
                                             <Badge variant="outline" className={categoryColor(cat)}>
                                                 {cat.charAt(0).toUpperCase() + cat.slice(1)}
                                             </Badge>
@@ -536,7 +521,9 @@ function VocabularyPage() {
 
             <ConfirmDialog
                 open={deleteTarget !== null}
-                onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}
+                onOpenChange={open => {
+                    if (!open) setDeleteTarget(null);
+                }}
                 title="Delete vocabulary entry"
                 description={deleteTarget ? `Delete vocabulary entry "${deleteTarget.word}"?` : ""}
                 confirmLabel="Delete"

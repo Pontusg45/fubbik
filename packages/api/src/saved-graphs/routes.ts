@@ -8,12 +8,7 @@ export const savedGraphRoutes = new Elysia()
     .get("/saved-graphs", ctx =>
         Effect.runPromise(
             requireSession(ctx).pipe(
-                Effect.flatMap(session =>
-                    savedGraphService.listSavedGraphs(
-                        session.user.id,
-                        (ctx.query as { spaceId?: string }).spaceId
-                    )
-                )
+                Effect.flatMap(session => savedGraphService.listSavedGraphs(session.user.id, (ctx.query as { spaceId?: string }).spaceId))
             )
         )
     )
@@ -22,9 +17,7 @@ export const savedGraphRoutes = new Elysia()
         ctx =>
             Effect.runPromise(
                 requireSession(ctx).pipe(
-                    Effect.flatMap(session =>
-                        savedGraphService.createSavedGraph(session.user.id, ctx.body)
-                    ),
+                    Effect.flatMap(session => savedGraphService.createSavedGraph(session.user.id, ctx.body)),
                     Effect.tap(() =>
                         Effect.sync(() => {
                             ctx.set.status = 201;
@@ -37,10 +30,7 @@ export const savedGraphRoutes = new Elysia()
                 name: t.String({ maxLength: 200 }),
                 description: t.Optional(t.String({ maxLength: 2000 })),
                 chunkIds: t.Array(t.String()),
-                positions: t.Record(
-                    t.String(),
-                    t.Object({ x: t.Number(), y: t.Number() })
-                ),
+                positions: t.Record(t.String(), t.Object({ x: t.Number(), y: t.Number() })),
                 layoutAlgorithm: t.Optional(t.String()),
                 spaceId: t.Optional(t.Union([t.String(), t.Null()]))
             })
@@ -48,11 +38,7 @@ export const savedGraphRoutes = new Elysia()
     )
     .get("/saved-graphs/:id", ctx =>
         Effect.runPromise(
-            requireSession(ctx).pipe(
-                Effect.flatMap(session =>
-                    savedGraphService.getSavedGraphDetail(ctx.params.id, session.user.id)
-                )
-            )
+            requireSession(ctx).pipe(Effect.flatMap(session => savedGraphService.getSavedGraphDetail(ctx.params.id, session.user.id)))
         )
     )
     .patch(
@@ -60,9 +46,7 @@ export const savedGraphRoutes = new Elysia()
         ctx =>
             Effect.runPromise(
                 requireSession(ctx).pipe(
-                    Effect.flatMap(session =>
-                        savedGraphService.updateSavedGraph(ctx.params.id, session.user.id, ctx.body)
-                    )
+                    Effect.flatMap(session => savedGraphService.updateSavedGraph(ctx.params.id, session.user.id, ctx.body))
                 )
             ),
         {
@@ -70,12 +54,7 @@ export const savedGraphRoutes = new Elysia()
                 name: t.Optional(t.String({ maxLength: 200 })),
                 description: t.Optional(t.Union([t.String({ maxLength: 2000 }), t.Null()])),
                 chunkIds: t.Optional(t.Array(t.String())),
-                positions: t.Optional(
-                    t.Record(
-                        t.String(),
-                        t.Object({ x: t.Number(), y: t.Number() })
-                    )
-                ),
+                positions: t.Optional(t.Record(t.String(), t.Object({ x: t.Number(), y: t.Number() }))),
                 layoutAlgorithm: t.Optional(t.String())
             })
         }
@@ -83,9 +62,7 @@ export const savedGraphRoutes = new Elysia()
     .delete("/saved-graphs/:id", ctx =>
         Effect.runPromise(
             requireSession(ctx).pipe(
-                Effect.flatMap(session =>
-                    savedGraphService.deleteSavedGraph(ctx.params.id, session.user.id)
-                ),
+                Effect.flatMap(session => savedGraphService.deleteSavedGraph(ctx.params.id, session.user.id)),
                 Effect.map(() => ({ message: "Deleted" }))
             )
         )

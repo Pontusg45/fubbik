@@ -2,105 +2,98 @@ import { and, eq, isNull, sql } from "drizzle-orm";
 
 import { db, dbEffect } from "../index";
 import { chunk } from "../schema/chunk";
-import { chunkSpace } from "../schema/space";
 // TODO: removed in plans rewrite — implementationSession, sessionRequirementRef, planStep deleted (Task 7 will rewrite coverage)
 import { requirement, requirementChunk } from "../schema/requirement";
+import { chunkSpace } from "../schema/space";
 
 export function getChunkCoverage(userId: string, codebaseId?: string) {
     return dbEffect(async () => {
-            const conditions = [eq(chunk.userId, userId), isNull(chunk.archivedAt)];
+        const conditions = [eq(chunk.userId, userId), isNull(chunk.archivedAt)];
 
-            let chunkQuery;
-            if (codebaseId) {
-                chunkQuery = db
-                    .select({
-                        id: chunk.id,
-                        title: chunk.title,
-                        requirementCount: sql<number>`count(${requirementChunk.requirementId})`
-                    })
-                    .from(chunk)
-                    .innerJoin(chunkSpace, eq(chunkSpace.chunkId, chunk.id))
-                    .leftJoin(requirementChunk, eq(requirementChunk.chunkId, chunk.id))
-                    .where(and(...conditions, eq(chunkSpace.spaceId, codebaseId)))
-                    .groupBy(chunk.id, chunk.title);
-            } else {
-                chunkQuery = db
-                    .select({
-                        id: chunk.id,
-                        title: chunk.title,
-                        requirementCount: sql<number>`count(${requirementChunk.requirementId})`
-                    })
-                    .from(chunk)
-                    .leftJoin(requirementChunk, eq(requirementChunk.chunkId, chunk.id))
-                    .where(and(...conditions))
-                    .groupBy(chunk.id, chunk.title);
-            }
+        let chunkQuery;
+        if (codebaseId) {
+            chunkQuery = db
+                .select({
+                    id: chunk.id,
+                    title: chunk.title,
+                    requirementCount: sql<number>`count(${requirementChunk.requirementId})`
+                })
+                .from(chunk)
+                .innerJoin(chunkSpace, eq(chunkSpace.chunkId, chunk.id))
+                .leftJoin(requirementChunk, eq(requirementChunk.chunkId, chunk.id))
+                .where(and(...conditions, eq(chunkSpace.spaceId, codebaseId)))
+                .groupBy(chunk.id, chunk.title);
+        } else {
+            chunkQuery = db
+                .select({
+                    id: chunk.id,
+                    title: chunk.title,
+                    requirementCount: sql<number>`count(${requirementChunk.requirementId})`
+                })
+                .from(chunk)
+                .leftJoin(requirementChunk, eq(requirementChunk.chunkId, chunk.id))
+                .where(and(...conditions))
+                .groupBy(chunk.id, chunk.title);
+        }
 
-            return chunkQuery;
-        });
+        return chunkQuery;
+    });
 }
 
 export function getChunkCoverageMatrix(userId: string, codebaseId?: string) {
     return dbEffect(async () => {
-            if (codebaseId) {
-                return db
-                    .select({
-                        chunkId: requirementChunk.chunkId,
-                        chunkTitle: chunk.title,
-                        requirementId: requirementChunk.requirementId,
-                        requirementTitle: requirement.title,
-                        requirementStatus: requirement.status
-                    })
-                    .from(requirementChunk)
-                    .innerJoin(chunk, eq(requirementChunk.chunkId, chunk.id))
-                    .innerJoin(requirement, eq(requirementChunk.requirementId, requirement.id))
-                    .innerJoin(chunkSpace, eq(chunkSpace.chunkId, chunk.id))
-                    .where(and(
-                        eq(chunk.userId, userId),
-                        isNull(chunk.archivedAt),
-                        eq(chunkSpace.spaceId, codebaseId)
-                    ));
-            } else {
-                return db
-                    .select({
-                        chunkId: requirementChunk.chunkId,
-                        chunkTitle: chunk.title,
-                        requirementId: requirementChunk.requirementId,
-                        requirementTitle: requirement.title,
-                        requirementStatus: requirement.status
-                    })
-                    .from(requirementChunk)
-                    .innerJoin(chunk, eq(requirementChunk.chunkId, chunk.id))
-                    .innerJoin(requirement, eq(requirementChunk.requirementId, requirement.id))
-                    .where(and(
-                        eq(chunk.userId, userId),
-                        isNull(chunk.archivedAt)
-                    ));
-            }
-        });
+        if (codebaseId) {
+            return db
+                .select({
+                    chunkId: requirementChunk.chunkId,
+                    chunkTitle: chunk.title,
+                    requirementId: requirementChunk.requirementId,
+                    requirementTitle: requirement.title,
+                    requirementStatus: requirement.status
+                })
+                .from(requirementChunk)
+                .innerJoin(chunk, eq(requirementChunk.chunkId, chunk.id))
+                .innerJoin(requirement, eq(requirementChunk.requirementId, requirement.id))
+                .innerJoin(chunkSpace, eq(chunkSpace.chunkId, chunk.id))
+                .where(and(eq(chunk.userId, userId), isNull(chunk.archivedAt), eq(chunkSpace.spaceId, codebaseId)));
+        } else {
+            return db
+                .select({
+                    chunkId: requirementChunk.chunkId,
+                    chunkTitle: chunk.title,
+                    requirementId: requirementChunk.requirementId,
+                    requirementTitle: requirement.title,
+                    requirementStatus: requirement.status
+                })
+                .from(requirementChunk)
+                .innerJoin(chunk, eq(requirementChunk.chunkId, chunk.id))
+                .innerJoin(requirement, eq(requirementChunk.requirementId, requirement.id))
+                .where(and(eq(chunk.userId, userId), isNull(chunk.archivedAt)));
+        }
+    });
 }
 
 // TODO: removed in plans rewrite — traceability needs rework in Task 7 (plan tasks replace plan steps, sessions removed)
 export function getTraceabilityMatrix(userId: string, codebaseId?: string) {
     return dbEffect(async () => {
-            const conditions = [eq(requirement.userId, userId)];
-            if (codebaseId) {
-                conditions.push(eq(requirement.spaceId, codebaseId));
-            }
-            const requirements = await db
-                .select({
-                    id: requirement.id,
-                    title: requirement.title,
-                    status: requirement.status,
-                    priority: requirement.priority
-                })
-                .from(requirement)
-                .where(and(...conditions));
+        const conditions = [eq(requirement.userId, userId)];
+        if (codebaseId) {
+            conditions.push(eq(requirement.spaceId, codebaseId));
+        }
+        const requirements = await db
+            .select({
+                id: requirement.id,
+                title: requirement.title,
+                status: requirement.status,
+                priority: requirement.priority
+            })
+            .from(requirement)
+            .where(and(...conditions));
 
-            return requirements.map(req => ({
-                ...req,
-                planSteps: [] as unknown[],
-                sessions: [] as unknown[]
-            }));
-        });
+        return requirements.map(req => ({
+            ...req,
+            planSteps: [] as unknown[],
+            sessions: [] as unknown[]
+        }));
+    });
 }

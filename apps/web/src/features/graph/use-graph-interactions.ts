@@ -5,8 +5,8 @@
  * from layout nodes/edges and interaction state.
  */
 
-import { useMemo } from "react";
 import type { Edge, Node } from "@xyflow/react";
+import { useMemo } from "react";
 
 import { findShortestPath, getNodesWithinHops } from "@/features/graph/graph-utils";
 
@@ -29,7 +29,7 @@ export function useGraphInteractions({
     focusModeNodeId,
     selectedChunkId,
     pathStartId,
-    pathEndId,
+    pathEndId
 }: UseGraphInteractionsParams) {
     // Search match IDs
     const searchMatchIds = useMemo(() => {
@@ -102,6 +102,6 @@ export function useGraphInteractions({
         focusModeNeighbors,
         selectedEdgeIds,
         selectedNeighborNodes,
-        pathResult,
+        pathResult
     };
 }

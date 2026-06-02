@@ -1,8 +1,8 @@
 ---
 tags:
-  - guide
-  - views
-  - kanban
+    - guide
+    - views
+    - kanban
 description: Kanban board view organized by chunk type with drag-and-drop
 ---
 
@@ -13,6 +13,7 @@ The kanban view at `/chunks` (toggle from list view) displays chunks as cards or
 ## Columns
 
 Each chunk type gets its own column:
+
 - **Notes** — general knowledge, conventions
 - **Documents** — architecture docs, guides
 - **References** — API docs, specifications

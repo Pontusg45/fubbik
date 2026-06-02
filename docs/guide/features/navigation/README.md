@@ -1,7 +1,7 @@
 ---
 tags:
-  - guide
-  - navigation
+    - guide
+    - navigation
 description: Navigation section index — keyboard shortcuts, command palette, and focus mode
 ---
 

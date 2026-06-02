@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { splitMarkdown } from "./split-markdown";
+
 import { renderMarkdown } from "./render-markdown";
+import { splitMarkdown } from "./split-markdown";
 
 describe("renderDocument round-trip format", () => {
     it("round-trips frontmatter through split → render → split", () => {
@@ -19,7 +20,7 @@ describe("renderDocument round-trip format", () => {
             "",
             "## Configuration",
             "",
-            "Edit config.json.",
+            "Edit config.json."
         ].join("\n");
 
         const first = splitMarkdown(md, "docs/auth.md");
@@ -31,7 +32,7 @@ describe("renderDocument round-trip format", () => {
             type: "reference",
             tags: ["security", "backend"],
             splitLevel: first.splitLevel,
-            sections: first.sections,
+            sections: first.sections
         });
 
         const second = splitMarkdown(rendered, "docs/auth.md");
@@ -59,7 +60,7 @@ describe("renderDocument round-trip format", () => {
             "> - Sessions",
             "> - OAuth",
             "",
-            "> **Consequences:** Need refresh tokens.",
+            "> **Consequences:** Need refresh tokens."
         ].join("\n");
 
         const first = splitMarkdown(md, "test.md");
@@ -69,7 +70,7 @@ describe("renderDocument round-trip format", () => {
             title: first.title,
             tags: [],
             splitLevel: first.splitLevel,
-            sections: first.sections,
+            sections: first.sections
         });
 
         const second = splitMarkdown(rendered, "test.md");

@@ -1,7 +1,8 @@
-import { useCallback, useRef, useState } from "react";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { ChevronRight, Loader2 } from "lucide-react";
+import { useCallback, useRef, useState } from "react";
+
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { SkeletonList } from "@/components/ui/skeleton-list";
@@ -64,7 +65,7 @@ export function LazyGroupList({
     selectedIds,
     onSelectionClick,
     onDelete,
-    onReviewCycle,
+    onReviewCycle
 }: LazyGroupListProps) {
     const [expanded, setExpanded] = useState<Set<string>>(new Set());
     const [expandedSub, setExpandedSub] = useState<Set<string>>(new Set());
@@ -83,27 +84,19 @@ export function LazyGroupList({
                         ...(tagTypeId ? { tagTypeId } : {}),
                         ...(subQueryParam ? { subGroupBy: subQueryParam } : {}),
                         ...(subTagTypeId ? { subTagTypeId } : {}),
-                        ...(spaceId && spaceId !== "global"
-                            ? { spaceId }
-                            : spaceId === "global"
-                              ? { global: "true" }
-                              : {}),
+                        ...(spaceId && spaceId !== "global" ? { spaceId } : spaceId === "global" ? { global: "true" } : {}),
                         ...(workspaceId ? { workspaceId } : {}),
                         ...(filters.type ? { type: filters.type } : {}),
                         ...(filters.tags ? { tags: filters.tags } : {}),
                         ...(filters.tagMode ? { tagMode: filters.tagMode } : {}),
-                        ...(filters.origin
-                            ? { origin: filters.origin as "human" | "ai" }
-                            : {}),
-                        ...(filters.reviewStatus
-                            ? { reviewStatus: filters.reviewStatus as "draft" | "reviewed" | "approved" }
-                            : {}),
-                        ...(filters.search ? { search: filters.search } : {}),
-                    },
+                        ...(filters.origin ? { origin: filters.origin as "human" | "ai" } : {}),
+                        ...(filters.reviewStatus ? { reviewStatus: filters.reviewStatus as "draft" | "reviewed" | "approved" } : {}),
+                        ...(filters.search ? { search: filters.search } : {})
+                    }
                 })
             );
         },
-        staleTime: 30_000,
+        staleTime: 30_000
     });
 
     function toggleExpanded(name: string) {
@@ -131,11 +124,7 @@ export function LazyGroupList({
     const groups: SubGroupData[] = groupsQuery.data?.groups ?? [];
 
     if (groups.length === 0) {
-        return (
-            <p className="text-muted-foreground py-8 text-center text-sm">
-                No groups found for this grouping.
-            </p>
-        );
+        return <p className="text-muted-foreground py-8 text-center text-sm">No groups found for this grouping.</p>;
     }
 
     const hasSubGroups = subQueryParam && groups.some(g => g.subGroups && g.subGroups.length > 0);
@@ -144,17 +133,10 @@ export function LazyGroupList({
         <div className="space-y-4">
             {groups.map(g => (
                 <div key={g.groupName}>
-                    <button
-                        onClick={() => toggleExpanded(g.groupName)}
-                        className="mb-2 flex items-center gap-2"
-                    >
-                        <ChevronRight
-                            className={`size-3 transition-transform ${expanded.has(g.groupName) && "rotate-90"}`}
-                        />
+                    <button onClick={() => toggleExpanded(g.groupName)} className="mb-2 flex items-center gap-2">
+                        <ChevronRight className={`size-3 transition-transform ${expanded.has(g.groupName) && "rotate-90"}`} />
                         <Badge variant="secondary">{g.groupName}</Badge>
-                        <span className="text-muted-foreground text-xs">
-                            ({g.count})
-                        </span>
+                        <span className="text-muted-foreground text-xs">({g.count})</span>
                     </button>
                     {expanded.has(g.groupName) && hasSubGroups && g.subGroups ? (
                         <div className="ml-4 space-y-3">
@@ -162,17 +144,12 @@ export function LazyGroupList({
                                 const subKey = `${g.groupName}::${sub.groupName}`;
                                 return (
                                     <div key={subKey}>
-                                        <button
-                                            onClick={() => toggleExpandedSub(subKey)}
-                                            className="mb-2 flex items-center gap-2"
-                                        >
+                                        <button onClick={() => toggleExpandedSub(subKey)} className="mb-2 flex items-center gap-2">
                                             <ChevronRight
                                                 className={`size-3 transition-transform ${expandedSub.has(subKey) && "rotate-90"}`}
                                             />
                                             <Badge variant="outline">{sub.groupName}</Badge>
-                                            <span className="text-muted-foreground text-xs">
-                                                ({sub.count})
-                                            </span>
+                                            <span className="text-muted-foreground text-xs">({sub.count})</span>
                                         </button>
                                         {expandedSub.has(subKey) && (
                                             <div className="ml-4">
@@ -189,7 +166,7 @@ export function LazyGroupList({
                                                         // If sub-group is by type, filter chunks to that type
                                                         ...(subQueryParam === "type" ? { type: sub.groupName } : {}),
                                                         ...(subQueryParam === "origin" ? { origin: sub.groupName } : {}),
-                                                        ...(subQueryParam === "status" ? { reviewStatus: sub.groupName } : {}),
+                                                        ...(subQueryParam === "status" ? { reviewStatus: sub.groupName } : {})
                                                     }}
                                                     selectedIds={selectedIds}
                                                     onSelectionClick={onSelectionClick}
@@ -255,7 +232,7 @@ function GroupChunksList({
     selectedIds,
     onSelectionClick,
     onDelete,
-    onReviewCycle,
+    onReviewCycle
 }: GroupChunksListProps) {
     const queryClient = useQueryClient();
     const { isPinned, togglePin } = usePinnedChunks();
@@ -264,70 +241,45 @@ function GroupChunksList({
     const [editingChunkId, setEditingChunkId] = useState<string | null>(null);
     const [editTitle, setEditTitle] = useState("");
     const editMutation = useMutation({
-        mutationFn: async ({ id, title }: { id: string; title: string }) =>
-            unwrapEden(await api.api.chunks({ id }).patch({ title })),
+        mutationFn: async ({ id, title }: { id: string; title: string }) => unwrapEden(await api.api.chunks({ id }).patch({ title })),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["chunks-group", groupName] });
             queryClient.invalidateQueries({ queryKey: ["chunks-list"] });
-        },
+        }
     });
 
     const chunksQuery = useInfiniteQuery({
-        queryKey: [
-            "chunks-group",
-            groupName,
-            groupBy,
-            tagTypeId,
-            spaceId,
-            workspaceId,
-            sort,
-            filters,
-        ],
+        queryKey: ["chunks-group", groupName, groupBy, tagTypeId, spaceId, workspaceId, sort, filters],
         queryFn: async ({ pageParam = 0 }) => {
             return unwrapEden(
                 await api.api.chunks.grouped({ groupName }).chunks.get({
                     query: {
                         groupBy,
                         ...(tagTypeId ? { tagTypeId } : {}),
-                        ...(spaceId && spaceId !== "global"
-                            ? { spaceId }
-                            : spaceId === "global"
-                              ? { global: "true" }
-                              : {}),
+                        ...(spaceId && spaceId !== "global" ? { spaceId } : spaceId === "global" ? { global: "true" } : {}),
                         ...(workspaceId ? { workspaceId } : {}),
-                        ...(sort
-                            ? { sort: sort as "newest" | "oldest" | "alpha" | "updated" }
-                            : {}),
+                        ...(sort ? { sort: sort as "newest" | "oldest" | "alpha" | "updated" } : {}),
                         ...(filters.type ? { type: filters.type } : {}),
                         ...(filters.tags ? { tags: filters.tags } : {}),
                         ...(filters.tagMode ? { tagMode: filters.tagMode } : {}),
-                        ...(filters.origin
-                            ? { origin: filters.origin as "human" | "ai" }
-                            : {}),
-                        ...(filters.reviewStatus
-                            ? { reviewStatus: filters.reviewStatus as "draft" | "reviewed" | "approved" }
-                            : {}),
+                        ...(filters.origin ? { origin: filters.origin as "human" | "ai" } : {}),
+                        ...(filters.reviewStatus ? { reviewStatus: filters.reviewStatus as "draft" | "reviewed" | "approved" } : {}),
                         ...(filters.search ? { search: filters.search } : {}),
                         limit: String(PAGE_SIZE),
-                        offset: String(pageParam),
-                    },
+                        offset: String(pageParam)
+                    }
                 })
             );
         },
         initialPageParam: 0,
         getNextPageParam: (lastPage, allPages) => {
             if (!lastPage) return undefined;
-            const loaded = allPages.reduce(
-                (sum, p) => sum + (p?.chunks?.length ?? 0),
-                0
-            );
+            const loaded = allPages.reduce((sum, p) => sum + (p?.chunks?.length ?? 0), 0);
             return loaded < lastPage.total ? loaded : undefined;
-        },
+        }
     });
 
-    const allChunks: ChunkRowChunk[] = (
-        chunksQuery.data?.pages.flatMap(p => p?.chunks ?? []) ?? []
-    ) as ChunkRowChunk[];
+    const allChunks: ChunkRowChunk[] = (chunksQuery.data?.pages.flatMap(p => p?.chunks ?? []) ?? []) as ChunkRowChunk[];
 
     const allChunkIds = allChunks.map(c => c.id);
 
@@ -337,7 +289,7 @@ function GroupChunksList({
         count: allChunks.length,
         getScrollElement: () => parentRef.current,
         estimateSize: () => ESTIMATED_ROW_HEIGHT,
-        overscan: 5,
+        overscan: 5
     });
 
     // Fetch next page when scrolling near bottom
@@ -354,7 +306,7 @@ function GroupChunksList({
         queryClient.prefetchQuery({
             queryKey: ["chunk", chunkId],
             queryFn: async () => unwrapEden(await api.api.chunks({ id: chunkId }).get()),
-            staleTime: 30_000,
+            staleTime: 30_000
         });
     };
 
@@ -363,28 +315,19 @@ function GroupChunksList({
     }
 
     if (allChunks.length === 0) {
-        return (
-            <p className="text-muted-foreground py-4 text-center text-sm">
-                No chunks in this group.
-            </p>
-        );
+        return <p className="text-muted-foreground py-4 text-center text-sm">No chunks in this group.</p>;
     }
 
     const virtualItems = virtualizer.getVirtualItems();
 
     return (
         <Card>
-            <div
-                ref={parentRef}
-                onScroll={handleScroll}
-                className="overflow-auto"
-                style={{ maxHeight: 600 }}
-            >
+            <div ref={parentRef} onScroll={handleScroll} className="overflow-auto" style={{ maxHeight: 600 }}>
                 <div
                     style={{
                         height: virtualizer.getTotalSize(),
                         width: "100%",
-                        position: "relative",
+                        position: "relative"
                     }}
                 >
                     {virtualItems.map(virtualRow => {
@@ -399,7 +342,7 @@ function GroupChunksList({
                                     top: 0,
                                     left: 0,
                                     width: "100%",
-                                    transform: `translateY(${virtualRow.start}px)`,
+                                    transform: `translateY(${virtualRow.start}px)`
                                 }}
                             >
                                 <ChunkRow
@@ -420,7 +363,7 @@ function GroupChunksList({
                                         if (editingChunkId && editTitle.trim()) {
                                             editMutation.mutate({
                                                 id: editingChunkId,
-                                                title: editTitle.trim(),
+                                                title: editTitle.trim()
                                             });
                                         }
                                         setEditingChunkId(null);
@@ -456,10 +399,7 @@ function GroupChunksList({
  * `tagtype:<id>` but the API expects `groupBy=tagtype` + separate `tagTypeId`.
  * For other groups, just pass through.
  */
-function buildGroupByParam(
-    groupBy: string,
-    tagTypeId?: string | null
-): string {
+function buildGroupByParam(groupBy: string, tagTypeId?: string | null): string {
     if (tagTypeId || groupBy.startsWith("tagtype:")) return "tagtype";
     return groupBy;
 }

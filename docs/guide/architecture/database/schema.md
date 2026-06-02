@@ -1,9 +1,9 @@
 ---
 tags:
-  - guide
-  - architecture
-  - database
-  - schema
+    - guide
+    - architecture
+    - database
+    - schema
 description: Core database tables and relationships
 ---
 

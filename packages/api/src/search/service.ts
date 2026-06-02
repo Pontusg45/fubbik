@@ -13,13 +13,12 @@ import {
     searchRequirementTitles,
     listSavedQueries,
     createSavedQuery,
-    deleteSavedQuery,
+    deleteSavedQuery
 } from "@fubbik/db/repository";
 import { Effect } from "effect";
 
-import { generateQueryEmbedding } from "../ollama/client";
-
 import { computeHealthScore } from "../chunks/health-score";
+import { generateQueryEmbedding } from "../ollama/client";
 import type { QueryClause, SearchQuery, SearchResult, SearchResultChunk, GraphContext, DuplicateHint } from "./types";
 
 const GRAPH_FIELDS = new Set(["near", "path", "affected-by", "similar-to"]);
@@ -34,11 +33,7 @@ function mapSortParam(sort?: SearchQuery["sort"]): "newest" | "oldest" | "alpha"
     return undefined;
 }
 
-function buildListChunksParams(
-    userId: string | undefined,
-    clauses: QueryClause[],
-    query: SearchQuery
-): Parameters<typeof listChunks>[0] {
+function buildListChunksParams(userId: string | undefined, clauses: QueryClause[], query: SearchQuery): Parameters<typeof listChunks>[0] {
     const params: Parameters<typeof listChunks>[0] = {
         userId,
         limit: query.limit ?? 50,
@@ -53,7 +48,10 @@ function buildListChunksParams(
                 params.type = clause.value;
                 break;
             case "tag":
-                params.tags = clause.value.split(",").map(t => t.trim()).filter(Boolean);
+                params.tags = clause.value
+                    .split(",")
+                    .map(t => t.trim())
+                    .filter(Boolean);
                 break;
             case "text":
                 params.search = clause.value;
@@ -76,7 +74,6 @@ function buildListChunksParams(
     return params;
 }
 
-
 export function executeSearch(userId: string | undefined, searchQuery: SearchQuery): Effect.Effect<SearchResult, never> {
     const graphClauses = searchQuery.clauses.filter(isGraphClause);
     const standardClauses = searchQuery.clauses.filter(c => !isGraphClause(c));
@@ -92,18 +89,14 @@ export function executeSearch(userId: string | undefined, searchQuery: SearchQue
         for (const clause of graphClauses) {
             if (clause.field === "near") {
                 const hops = clause.params?.hops ? Number(clause.params.hops) : 1;
-                const ids = yield* getNeighborhood(clause.value, hops).pipe(
-                    Effect.orElse(() => Effect.succeed([] as string[]))
-                );
+                const ids = yield* getNeighborhood(clause.value, hops).pipe(Effect.orElse(() => Effect.succeed([] as string[])));
                 graphIds = graphIds ? graphIds.filter(id => ids.includes(id)) : ids;
                 graphMeta = { type: "neighborhood", referenceChunk: clause.value };
                 neighborhoodRef = { referenceId: clause.value, maxHops: hops };
             } else if (clause.field === "path") {
                 const [chunkA, chunkB] = clause.value.split(",").map(s => s.trim());
                 if (chunkA && chunkB) {
-                    const detailedPath = yield* findShortestPathWithDetails(chunkA, chunkB).pipe(
-                        Effect.orElse(() => Effect.succeed(null))
-                    );
+                    const detailedPath = yield* findShortestPathWithDetails(chunkA, chunkB).pipe(Effect.orElse(() => Effect.succeed(null)));
                     const ids = detailedPath?.nodes ?? [];
                     graphIds = graphIds ? graphIds.filter(id => ids.includes(id)) : ids;
                     graphMeta = {
@@ -122,9 +115,7 @@ export function executeSearch(userId: string | undefined, searchQuery: SearchQue
                 graphMeta = { type: "requirement-reach" };
             } else if (clause.field === "similar-to") {
                 const ids = yield* generateQueryEmbedding(clause.value).pipe(
-                    Effect.flatMap(embedding =>
-                        semanticSearchRepo({ embedding, userId, limit: 20 })
-                    ),
+                    Effect.flatMap(embedding => semanticSearchRepo({ embedding, userId, limit: 20 })),
                     Effect.map(results => results.map(r => r.id)),
                     Effect.orElse(() => Effect.succeed([] as string[]))
                 );
@@ -142,9 +133,7 @@ export function executeSearch(userId: string | undefined, searchQuery: SearchQue
 
         // Execute standard query
         const params = buildListChunksParams(userId, standardClauses, searchQuery);
-        const result = yield* listChunks(params).pipe(
-            Effect.orElse(() => Effect.succeed({ chunks: [] as any[], total: 0 }))
-        );
+        const result = yield* listChunks(params).pipe(Effect.orElse(() => Effect.succeed({ chunks: [] as any[], total: 0 })));
 
         let filteredChunks = result.chunks;
 
@@ -174,9 +163,7 @@ export function executeSearch(userId: string | undefined, searchQuery: SearchQue
 
         // Enrich with tags
         const chunkIds = filteredChunks.map(c => c.id);
-        const tagRows = yield* getTagsForChunks(chunkIds).pipe(
-            Effect.orElse(() => Effect.succeed([] as any[]))
-        );
+        const tagRows = yield* getTagsForChunks(chunkIds).pipe(Effect.orElse(() => Effect.succeed([] as any[])));
 
         const tagsByChunk = new Map<string, string[]>();
         for (const row of tagRows) {
@@ -191,7 +178,9 @@ export function executeSearch(userId: string | undefined, searchQuery: SearchQue
             chunkIds,
             chunkId =>
                 getChunkConnections(chunkId).pipe(
-                    Effect.map(conns => { connectionCounts.set(chunkId, conns.length); }),
+                    Effect.map(conns => {
+                        connectionCounts.set(chunkId, conns.length);
+                    }),
                     Effect.orElse(() => Effect.succeed(void 0))
                 ),
             { concurrency: 5 }
@@ -236,7 +225,7 @@ export function executeSearch(userId: string | undefined, searchQuery: SearchQue
                 hasEmbedding: false,
                 requirementCount: 0,
                 allRequirementsPassing: false,
-                referencedInSession: false,
+                referencedInSession: false
             });
             return {
                 id: c.id,
@@ -247,39 +236,29 @@ export function executeSearch(userId: string | undefined, searchQuery: SearchQue
                 connectionCount,
                 updatedAt: c.updatedAt,
                 graphContext: graphContextMap.get(c.id),
-                healthScore: healthScore.total,
+                healthScore: healthScore.total
             };
         });
 
         const total = graphIds !== undefined ? chunks.length : result.total;
 
         const emptyPairs: Array<{ idA: string; idB: string; similarity: number }> = [];
-        const pairs = yield* findDuplicatePairs({ chunkIds }).pipe(
-            Effect.orElse(() => Effect.succeed(emptyPairs))
-        );
+        const pairs = yield* findDuplicatePairs({ chunkIds }).pipe(Effect.orElse(() => Effect.succeed(emptyPairs)));
         const duplicateHints: DuplicateHint[] = pairs.map(p => ({
             chunkIdA: p.idA,
             chunkIdB: p.idB,
-            similarity: p.similarity,
+            similarity: p.similarity
         }));
 
         return { chunks, total, graphMeta, duplicateHints: duplicateHints.length > 0 ? duplicateHints : undefined } satisfies SearchResult;
-    }).pipe(
-        Effect.orElse(() => Effect.succeed<SearchResult>({ chunks: [], total: 0 }))
-    );
+    }).pipe(Effect.orElse(() => Effect.succeed<SearchResult>({ chunks: [], total: 0 })));
 }
 
-export function autocomplete(
-    userId: string | undefined,
-    field: string,
-    prefix: string
-): Effect.Effect<string[], never> {
+export function autocomplete(userId: string | undefined, field: string, prefix: string): Effect.Effect<string[], never> {
     return Effect.gen(function* () {
         if (field === "tag") {
             if (!userId) return [];
-            const allTags = yield* getTagsForUser(userId).pipe(
-                Effect.orElse(() => Effect.succeed([] as any[]))
-            );
+            const allTags = yield* getTagsForUser(userId).pipe(Effect.orElse(() => Effect.succeed([] as any[])));
             const lower = prefix.toLowerCase();
             return allTags
                 .filter(t => t.name.toLowerCase().startsWith(lower))
@@ -288,9 +267,7 @@ export function autocomplete(
         }
 
         if (field === "chunk") {
-            const rows = yield* searchChunkTitles(prefix).pipe(
-                Effect.orElse(() => Effect.succeed([] as { id: string; title: string }[]))
-            );
+            const rows = yield* searchChunkTitles(prefix).pipe(Effect.orElse(() => Effect.succeed([] as { id: string; title: string }[])));
             return rows.map(r => r.title);
         }
 
@@ -302,9 +279,7 @@ export function autocomplete(
         }
 
         return [];
-    }).pipe(
-        Effect.orElse(() => Effect.succeed([] as string[]))
-    );
+    }).pipe(Effect.orElse(() => Effect.succeed([] as string[])));
 }
 
 export { listSavedQueries, createSavedQuery, deleteSavedQuery };

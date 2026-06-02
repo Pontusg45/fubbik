@@ -3,13 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { ChevronDown, ChevronRight, GripVertical, Trash2, X } from "lucide-react";
 import { useEffect, useState, type HTMLAttributes } from "react";
 
-import {
-    Select,
-    SelectItem,
-    SelectPopup,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
@@ -44,7 +38,7 @@ const STATUS_LABEL: Record<TaskStatus, string> = {
     in_progress: "In progress",
     blocked: "Blocked",
     done: "Done",
-    skipped: "Skipped",
+    skipped: "Skipped"
 };
 
 const STATUS_DOT_CLASS: Record<TaskStatus, string> = {
@@ -52,7 +46,7 @@ const STATUS_DOT_CLASS: Record<TaskStatus, string> = {
     in_progress: "bg-blue-500",
     blocked: "bg-amber-500",
     done: "bg-emerald-500",
-    skipped: "bg-zinc-500",
+    skipped: "bg-zinc-500"
 };
 
 export interface PlanTaskCardProps {
@@ -76,26 +70,28 @@ export function PlanTaskCard({
     allTasks = [],
     dependsOn = [],
     dependentCount = 0,
-    dragHandleProps,
+    dragHandleProps
 }: PlanTaskCardProps) {
     const [expanded, setExpanded] = useState(false);
     const [titleDraft, setTitleDraft] = useState(task.title);
     const [editingTitle, setEditingTitle] = useState(false);
     const [descDraft, setDescDraft] = useState(task.description ?? "");
 
-    useEffect(() => { setTitleDraft(task.title); }, [task.title]);
-    useEffect(() => { setDescDraft(task.description ?? ""); }, [task.description]);
+    useEffect(() => {
+        setTitleDraft(task.title);
+    }, [task.title]);
+    useEffect(() => {
+        setDescDraft(task.description ?? "");
+    }, [task.description]);
 
     const updateMutation = useMutation({
-        mutationFn: async (patch: Record<string, unknown>) =>
-            unwrapEden(await (api.api as any).plans[planId].tasks[task.id].patch(patch)),
-        onSuccess: () => onUpdate(),
+        mutationFn: async (patch: Record<string, unknown>) => unwrapEden(await (api.api as any).plans[planId].tasks[task.id].patch(patch)),
+        onSuccess: () => onUpdate()
     });
 
     const deleteMutation = useMutation({
-        mutationFn: async () =>
-            unwrapEden(await (api.api as any).plans[planId].tasks[task.id].delete()),
-        onSuccess: () => onUpdate(),
+        mutationFn: async () => unwrapEden(await (api.api as any).plans[planId].tasks[task.id].delete()),
+        onSuccess: () => onUpdate()
     });
 
     const setStatus = (next: TaskStatus) => {
@@ -104,18 +100,13 @@ export function PlanTaskCard({
 
     const addDependencyMutation = useMutation({
         mutationFn: async (dependsOnTaskId: string) =>
-            unwrapEden(
-                await (api.api as any).plans[planId].tasks[task.id].dependencies.post({ dependsOnTaskId })
-            ),
-        onSuccess: () => onUpdate(),
+            unwrapEden(await (api.api as any).plans[planId].tasks[task.id].dependencies.post({ dependsOnTaskId })),
+        onSuccess: () => onUpdate()
     });
 
     const removeDependencyMutation = useMutation({
-        mutationFn: async (depId: string) =>
-            unwrapEden(
-                await (api.api as any).plans[planId].tasks[task.id].dependencies[depId].delete()
-            ),
-        onSuccess: () => onUpdate(),
+        mutationFn: async (depId: string) => unwrapEden(await (api.api as any).plans[planId].tasks[task.id].dependencies[depId].delete()),
+        onSuccess: () => onUpdate()
     });
 
     const dependsOnIds = new Set(dependsOn.map(d => d.dependsOnTaskId));
@@ -134,7 +125,7 @@ export function PlanTaskCard({
     };
 
     return (
-        <div className="rounded-md border bg-card">
+        <div className="bg-card rounded-md border">
             <div className="flex items-start gap-2 p-3">
                 {dragHandleProps && (
                     <div
@@ -146,7 +137,12 @@ export function PlanTaskCard({
                     </div>
                 )}
                 {/* Status dot + select; clicking the dot rotates done/pending for fast toggling */}
-                <Select value={task.status} onValueChange={v => { if (v) setStatus(v as TaskStatus); }}>
+                <Select
+                    value={task.status}
+                    onValueChange={v => {
+                        if (v) setStatus(v as TaskStatus);
+                    }}
+                >
                     <SelectTrigger
                         size="sm"
                         className="mt-0.5 h-auto min-h-0 w-auto border-0 bg-transparent p-0 shadow-none hover:opacity-80"
@@ -182,34 +178,36 @@ export function PlanTaskCard({
                             }}
                             onKeyDown={e => {
                                 if (e.key === "Enter") e.currentTarget.blur();
-                                if (e.key === "Escape") { setTitleDraft(task.title); setEditingTitle(false); }
+                                if (e.key === "Escape") {
+                                    setTitleDraft(task.title);
+                                    setEditingTitle(false);
+                                }
                             }}
-                            className="bg-background w-full rounded border px-1 text-sm font-medium outline-none focus:ring-1 focus:ring-ring"
+                            className="bg-background focus:ring-ring w-full rounded border px-1 text-sm font-medium outline-none focus:ring-1"
                         />
                     ) : (
                         <button type="button" onClick={() => setExpanded(e => !e)} className="text-left">
                             <span
-                                onDoubleClick={e => { e.stopPropagation(); setEditingTitle(true); }}
-                                className={`font-medium ${task.status === "done" ? "line-through text-muted-foreground" : ""}`}
+                                onDoubleClick={e => {
+                                    e.stopPropagation();
+                                    setEditingTitle(true);
+                                }}
+                                className={`font-medium ${task.status === "done" ? "text-muted-foreground line-through" : ""}`}
                             >
                                 {task.title}
                             </span>
                         </button>
                     )}
                     {task.description && !expanded && (
-                        <div className="mt-1 line-clamp-1 text-xs text-muted-foreground">{task.description}</div>
+                        <div className="text-muted-foreground mt-1 line-clamp-1 text-xs">{task.description}</div>
                     )}
                 </div>
 
                 {/* Dependency indicators */}
                 {(dependsOn.length > 0 || dependentCount > 0) && (
-                    <div className="mt-0.5 flex shrink-0 items-center gap-1.5 text-[10px] text-muted-foreground">
-                        {dependsOn.length > 0 && (
-                            <span title={`Waits on ${dependsOn.length} task(s)`}>↑ {dependsOn.length}</span>
-                        )}
-                        {dependentCount > 0 && (
-                            <span title={`Blocks ${dependentCount} task(s)`}>↓ {dependentCount}</span>
-                        )}
+                    <div className="text-muted-foreground mt-0.5 flex shrink-0 items-center gap-1.5 text-[10px]">
+                        {dependsOn.length > 0 && <span title={`Waits on ${dependsOn.length} task(s)`}>↑ {dependsOn.length}</span>}
+                        {dependentCount > 0 && <span title={`Blocks ${dependentCount} task(s)`}>↓ {dependentCount}</span>}
                     </div>
                 )}
 
@@ -227,35 +225,38 @@ export function PlanTaskCard({
             </div>
 
             {expanded && (
-                <div className="border-t px-3 py-3 space-y-3 text-xs">
+                <div className="space-y-3 border-t px-3 py-3 text-xs">
                     {/* Description editor */}
                     <div>
-                        <div className="mb-1 text-[10px] uppercase text-muted-foreground">Description</div>
+                        <div className="text-muted-foreground mb-1 text-[10px] uppercase">Description</div>
                         <textarea
                             value={descDraft}
                             onChange={e => setDescDraft(e.target.value)}
                             onBlur={saveDescription}
                             placeholder="Add a description (markdown supported)"
                             rows={3}
-                            className="bg-background focus:ring-ring w-full rounded border p-2 text-xs leading-relaxed outline-none focus:ring-1 resize-y"
+                            className="bg-background focus:ring-ring w-full resize-y rounded border p-2 text-xs leading-relaxed outline-none focus:ring-1"
                         />
                     </div>
 
                     {/* Acceptance criteria */}
                     {task.acceptanceCriteria.length > 0 && (
                         <div className="space-y-1">
-                            <div className="text-[10px] uppercase text-muted-foreground">
+                            <div className="text-muted-foreground text-[10px] uppercase">
                                 Acceptance ({task.acceptanceCriteria.filter(c => c.done).length}/{task.acceptanceCriteria.length})
                             </div>
                             {task.acceptanceCriteria.map((c, i) => (
-                                <label key={i} className="hover:bg-muted/40 -mx-1 flex cursor-pointer items-start gap-2 rounded px-1 py-0.5">
+                                <label
+                                    key={i}
+                                    className="hover:bg-muted/40 -mx-1 flex cursor-pointer items-start gap-2 rounded px-1 py-0.5"
+                                >
                                     <input
                                         type="checkbox"
                                         checked={c.done}
                                         onChange={e => toggleCriterion(i, e.target.checked)}
                                         className="mt-0.5"
                                     />
-                                    <span className={c.done ? "line-through text-muted-foreground" : ""}>{c.text}</span>
+                                    <span className={c.done ? "text-muted-foreground line-through" : ""}>{c.text}</span>
                                 </label>
                             ))}
                         </div>
@@ -263,18 +264,13 @@ export function PlanTaskCard({
 
                     {/* Dependencies */}
                     <div>
-                        <div className="text-[10px] uppercase text-muted-foreground">Depends on</div>
+                        <div className="text-muted-foreground text-[10px] uppercase">Depends on</div>
                         <div className="mt-1 flex flex-wrap items-center gap-1">
-                            {dependsOn.length === 0 && (
-                                <span className="text-muted-foreground/60 text-[11px]">None</span>
-                            )}
+                            {dependsOn.length === 0 && <span className="text-muted-foreground/60 text-[11px]">None</span>}
                             {dependsOn.map(d => {
                                 const dep = taskById.get(d.dependsOnTaskId);
                                 return (
-                                    <span
-                                        key={d.id}
-                                        className="bg-muted/50 inline-flex items-center gap-1 rounded px-2 py-0.5 text-[11px]"
-                                    >
+                                    <span key={d.id} className="bg-muted/50 inline-flex items-center gap-1 rounded px-2 py-0.5 text-[11px]">
                                         <span className="font-medium">{dep?.title ?? d.dependsOnTaskId.slice(0, 8)}</span>
                                         <button
                                             type="button"
@@ -288,13 +284,20 @@ export function PlanTaskCard({
                                 );
                             })}
                             {candidateDeps.length > 0 && (
-                                <Select value="" onValueChange={v => { if (v) addDependencyMutation.mutate(v); }}>
+                                <Select
+                                    value=""
+                                    onValueChange={v => {
+                                        if (v) addDependencyMutation.mutate(v);
+                                    }}
+                                >
                                     <SelectTrigger size="sm" className="h-6 min-h-0 w-auto px-2 text-[11px]">
                                         <SelectValue placeholder="+ add" />
                                     </SelectTrigger>
                                     <SelectPopup>
                                         {candidateDeps.map(t => (
-                                            <SelectItem key={t.id} value={t.id}>{t.title}</SelectItem>
+                                            <SelectItem key={t.id} value={t.id}>
+                                                {t.title}
+                                            </SelectItem>
                                         ))}
                                     </SelectPopup>
                                 </Select>
@@ -305,7 +308,7 @@ export function PlanTaskCard({
                     {/* Chunk links */}
                     {task.chunks.length > 0 && (
                         <div>
-                            <div className="text-[10px] uppercase text-muted-foreground">Chunks</div>
+                            <div className="text-muted-foreground text-[10px] uppercase">Chunks</div>
                             <div className="mt-1 flex flex-wrap gap-1">
                                 {task.chunks.map(c => (
                                     <Link

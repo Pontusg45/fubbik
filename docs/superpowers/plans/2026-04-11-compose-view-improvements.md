@@ -1,10 +1,13 @@
 # Compose View Improvements Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to
+> implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Improve the `/compose` composite view with proper markdown rendering, table of contents, navigation, export options, filtering controls, and UX polish. Excludes AI integration.
+**Goal:** Improve the `/compose` composite view with proper markdown rendering, table of contents, navigation, export options, filtering
+controls, and UX polish. Excludes AI integration.
 
-**Architecture:** All changes are to `apps/web/src/routes/compose.tsx` (one file). Reuses the existing `MarkdownRenderer` component and search API. No backend changes needed except possibly reusing existing export endpoints.
+**Architecture:** All changes are to `apps/web/src/routes/compose.tsx` (one file). Reuses the existing `MarkdownRenderer` component and
+search API. No backend changes needed except possibly reusing existing export endpoints.
 
 **Tech Stack:** React, TanStack Router, Tailwind CSS, react-markdown (already a dep), lucide-react
 
@@ -12,10 +15,10 @@
 
 ## File Structure
 
-| File | Action | Responsibility |
-|------|--------|---------------|
-| `apps/web/src/routes/compose.tsx` | Modify | All compose view enhancements |
-| `apps/web/src/features/compose/` | Create | Extract components if file grows too large |
+| File                              | Action | Responsibility                             |
+| --------------------------------- | ------ | ------------------------------------------ |
+| `apps/web/src/routes/compose.tsx` | Modify | All compose view enhancements              |
+| `apps/web/src/features/compose/`  | Create | Extract components if file grows too large |
 
 All changes are incremental modifications to the existing compose page.
 
@@ -24,13 +27,16 @@ All changes are incremental modifications to the existing compose page.
 ### Task 1: Render Markdown Properly
 
 **Files:**
+
 - Modify: `apps/web/src/routes/compose.tsx`
 
-**Context:** Chunk content is currently rendered as `whitespace-pre-wrap` plain text. Replace with the existing `MarkdownRenderer` component at `apps/web/src/components/markdown-renderer.tsx` which supports GFM, syntax highlighting (rehype-highlight), and mermaid diagrams.
+**Context:** Chunk content is currently rendered as `whitespace-pre-wrap` plain text. Replace with the existing `MarkdownRenderer` component
+at `apps/web/src/components/markdown-renderer.tsx` which supports GFM, syntax highlighting (rehype-highlight), and mermaid diagrams.
 
 - [ ] **Step 1: Import the MarkdownRenderer**
 
 In `apps/web/src/routes/compose.tsx`, add at the top with other imports:
+
 ```typescript
 import { MarkdownRenderer } from "@/components/markdown-renderer";
 ```
@@ -38,35 +44,40 @@ import { MarkdownRenderer } from "@/components/markdown-renderer";
 - [ ] **Step 2: Replace the content div**
 
 Find this block in the article map:
+
 ```tsx
-{chunk.content && (
-    <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap text-sm leading-relaxed">
-        {chunk.content}
-    </div>
-)}
+{
+    chunk.content && (
+        <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap text-sm leading-relaxed">{chunk.content}</div>
+    );
+}
 ```
 
 Replace with:
+
 ```tsx
-{chunk.content && (
-    <div className="prose prose-sm dark:prose-invert max-w-none">
-        <MarkdownRenderer>{chunk.content}</MarkdownRenderer>
-    </div>
-)}
+{
+    chunk.content && (
+        <div className="prose prose-sm dark:prose-invert max-w-none">
+            <MarkdownRenderer>{chunk.content}</MarkdownRenderer>
+        </div>
+    );
+}
 ```
 
 Also update the rationale block the same way:
+
 ```tsx
-{chunk.rationale && (
-    <div className="mt-4 rounded-md border-l-2 border-amber-500/40 bg-amber-500/5 px-4 py-3">
-        <div className="text-xs font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400 mb-1">
-            Rationale
+{
+    chunk.rationale && (
+        <div className="mt-4 rounded-md border-l-2 border-amber-500/40 bg-amber-500/5 px-4 py-3">
+            <div className="text-xs font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400 mb-1">Rationale</div>
+            <div className="prose prose-sm dark:prose-invert max-w-none text-muted-foreground">
+                <MarkdownRenderer>{chunk.rationale}</MarkdownRenderer>
+            </div>
         </div>
-        <div className="prose prose-sm dark:prose-invert max-w-none text-muted-foreground">
-            <MarkdownRenderer>{chunk.rationale}</MarkdownRenderer>
-        </div>
-    </div>
-)}
+    );
+}
 ```
 
 - [ ] **Step 3: Verify**
@@ -87,6 +98,7 @@ git commit -m "feat(compose): render chunk content as markdown with highlighting
 ### Task 2: Table of Contents Sidebar
 
 **Files:**
+
 - Modify: `apps/web/src/routes/compose.tsx`
 
 **Context:** Add a sticky left sidebar listing all chunks in the view, with click-to-scroll anchors. Essential for longer composite views.
@@ -94,6 +106,7 @@ git commit -m "feat(compose): render chunk content as markdown with highlighting
 - [ ] **Step 1: Add anchor IDs to each article**
 
 In the article map, add an `id` to each article element:
+
 ```tsx
 <article key={chunk.id} id={`chunk-${chunk.id}`} className={i > 0 ? "border-t pt-12" : ""}>
 ```
@@ -107,18 +120,15 @@ return (
     <div className="container mx-auto max-w-6xl px-4 py-8 print:py-4">
         {/* Header (unchanged) */}
         ...
-
         {/* Two-column layout: ToC + content */}
         <div className="flex gap-8">
             {/* ToC sidebar */}
             <aside className="hidden lg:block w-56 shrink-0 print:hidden">
                 <div className="sticky top-8">
-                    <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
-                        Contents
-                    </div>
+                    <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Contents</div>
                     {chunks.length > 0 ? (
                         <nav className="space-y-1 max-h-[calc(100vh-8rem)] overflow-y-auto">
-                            {chunks.map((chunk) => (
+                            {chunks.map(chunk => (
                                 <a
                                     key={chunk.id}
                                     href={`#chunk-${chunk.id}`}
@@ -149,16 +159,20 @@ return (
 );
 ```
 
-Move the title/filter summary, loading/error/empty states, and article list INTO the main content div. The header with back/copy/print buttons stays at the top above the flex layout.
+Move the title/filter summary, loading/error/empty states, and article list INTO the main content div. The header with back/copy/print
+buttons stays at the top above the flex layout.
 
 - [ ] **Step 3: Smooth scroll behavior**
 
 Add to the main div or the `html` element via a CSS class:
+
 ```tsx
 <div className="container mx-auto max-w-6xl px-4 py-8 print:py-4 scroll-smooth">
 ```
 
-Actually, `scroll-smooth` on the container isn't enough — anchor navigation uses document scroll. Add it to the html element via a `useEffect`:
+Actually, `scroll-smooth` on the container isn't enough — anchor navigation uses document scroll. Add it to the html element via a
+`useEffect`:
+
 ```tsx
 useEffect(() => {
     document.documentElement.classList.add("scroll-smooth");
@@ -182,6 +196,7 @@ git commit -m "feat(compose): add table of contents sidebar with anchor links"
 ### Task 3: Keyboard Navigation (j/k shortcuts)
 
 **Files:**
+
 - Modify: `apps/web/src/routes/compose.tsx`
 
 **Context:** Add `j` / `k` keyboard shortcuts to jump between chunks, like Gmail or Vim.
@@ -230,9 +245,11 @@ useEffect(() => {
 - [ ] **Step 2: Add a hint in the header**
 
 Add a small text hint next to the action buttons:
+
 ```tsx
 <span className="hidden lg:inline text-[10px] text-muted-foreground/60 font-mono mr-2">
-    press <kbd className="rounded border bg-muted px-1 py-0.5">j</kbd> / <kbd className="rounded border bg-muted px-1 py-0.5">k</kbd> to navigate
+    press <kbd className="rounded border bg-muted px-1 py-0.5">j</kbd> / <kbd className="rounded border bg-muted px-1 py-0.5">k</kbd> to
+    navigate
 </span>
 ```
 
@@ -248,6 +265,7 @@ git commit -m "feat(compose): add j/k keyboard shortcuts to navigate between chu
 ### Task 4: Reading Progress Bar
 
 **Files:**
+
 - Modify: `apps/web/src/routes/compose.tsx`
 
 **Context:** Small progress indicator at the top of the viewport showing scroll position through the document.
@@ -255,6 +273,7 @@ git commit -m "feat(compose): add j/k keyboard shortcuts to navigate between chu
 - [ ] **Step 1: Add scroll progress state**
 
 Add state and effect:
+
 ```typescript
 const [scrollProgress, setScrollProgress] = useState(0);
 
@@ -274,12 +293,10 @@ useEffect(() => {
 - [ ] **Step 2: Render the progress bar**
 
 At the top of the component return, before the container div:
+
 ```tsx
 <div className="fixed top-0 left-0 right-0 z-50 h-0.5 bg-transparent print:hidden">
-    <div
-        className="h-full bg-primary transition-[width] duration-100 ease-out"
-        style={{ width: `${scrollProgress}%` }}
-    />
+    <div className="h-full bg-primary transition-[width] duration-100 ease-out" style={{ width: `${scrollProgress}%` }} />
 </div>
 ```
 
@@ -295,6 +312,7 @@ git commit -m "feat(compose): add reading progress bar at top of viewport"
 ### Task 5: Sort and Group Controls
 
 **Files:**
+
 - Modify: `apps/web/src/routes/compose.tsx`
 
 **Context:** Add dropdown controls for sorting (title, updated, created, type, connections) and grouping (none, type, tags, codebase).
@@ -302,6 +320,7 @@ git commit -m "feat(compose): add reading progress bar at top of viewport"
 - [ ] **Step 1: Add sort/group state and URL params**
 
 Update the `validateSearch` to include sort and group:
+
 ```typescript
 validateSearch: (search: Record<string, unknown>) => ({
     q: (search.q as string) || undefined,
@@ -311,6 +330,7 @@ validateSearch: (search: Record<string, unknown>) => ({
 ```
 
 In the component:
+
 ```typescript
 const { q, sort, group } = Route.useSearch();
 
@@ -318,7 +338,7 @@ function updateParam(key: string, value: string) {
     void navigate({
         to: "/compose",
         search: { q, sort, group, [key]: value } as any,
-        replace: true,
+        replace: true
     });
 }
 ```
@@ -331,11 +351,7 @@ Add a dropdown/select below the filter summary (or next to the copy button):
 <div className="flex items-center gap-3 mt-3 text-xs">
     <label className="flex items-center gap-1.5 text-muted-foreground">
         Sort:
-        <select
-            value={sort}
-            onChange={e => updateParam("sort", e.target.value)}
-            className="bg-muted/50 rounded px-2 py-1 border text-xs"
-        >
+        <select value={sort} onChange={e => updateParam("sort", e.target.value)} className="bg-muted/50 rounded px-2 py-1 border text-xs">
             <option value="updated">Recently updated</option>
             <option value="newest">Newest</option>
             <option value="oldest">Oldest</option>
@@ -346,11 +362,7 @@ Add a dropdown/select below the filter summary (or next to the copy button):
     </label>
     <label className="flex items-center gap-1.5 text-muted-foreground">
         Group by:
-        <select
-            value={group}
-            onChange={e => updateParam("group", e.target.value)}
-            className="bg-muted/50 rounded px-2 py-1 border text-xs"
-        >
+        <select value={group} onChange={e => updateParam("group", e.target.value)} className="bg-muted/50 rounded px-2 py-1 border text-xs">
             <option value="none">None</option>
             <option value="type">Type</option>
             <option value="tag">Tag</option>
@@ -413,34 +425,38 @@ const groupedChunks = useMemo(() => {
 In the render, if `groupedChunks` is not null, render with section headings:
 
 ```tsx
-{!loading && chunks.length > 0 && groupedChunks && (
-    <div className="space-y-12">
-        {groupedChunks.map(([groupKey, groupChunks]) => (
-            <section key={groupKey}>
-                <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-6 pb-2 border-b">
-                    {groupKey} <span className="text-muted-foreground/60">({groupChunks.length})</span>
-                </h2>
-                <div className="space-y-12">
-                    {groupChunks.map((chunk, i) => (
-                        <article key={chunk.id} id={`chunk-${chunk.id}`} className={i > 0 ? "border-t pt-12" : ""}>
-                            {/* same article content */}
-                        </article>
-                    ))}
-                </div>
-            </section>
-        ))}
-    </div>
-)}
+{
+    !loading && chunks.length > 0 && groupedChunks && (
+        <div className="space-y-12">
+            {groupedChunks.map(([groupKey, groupChunks]) => (
+                <section key={groupKey}>
+                    <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-6 pb-2 border-b">
+                        {groupKey} <span className="text-muted-foreground/60">({groupChunks.length})</span>
+                    </h2>
+                    <div className="space-y-12">
+                        {groupChunks.map((chunk, i) => (
+                            <article key={chunk.id} id={`chunk-${chunk.id}`} className={i > 0 ? "border-t pt-12" : ""}>
+                                {/* same article content */}
+                            </article>
+                        ))}
+                    </div>
+                </section>
+            ))}
+        </div>
+    );
+}
 
-{!loading && chunks.length > 0 && !groupedChunks && (
-    <div className="space-y-12">
-        {sortedChunks.map((chunk, i) => (
-            <article key={chunk.id} id={`chunk-${chunk.id}`} className={i > 0 ? "border-t pt-12" : ""}>
-                {/* same article content */}
-            </article>
-        ))}
-    </div>
-)}
+{
+    !loading && chunks.length > 0 && !groupedChunks && (
+        <div className="space-y-12">
+            {sortedChunks.map((chunk, i) => (
+                <article key={chunk.id} id={`chunk-${chunk.id}`} className={i > 0 ? "border-t pt-12" : ""}>
+                    {/* same article content */}
+                </article>
+            ))}
+        </div>
+    );
+}
 ```
 
 Note: This duplicates the article markup. Extract it into an inline `renderChunk` function to avoid duplication:
@@ -469,9 +485,11 @@ git commit -m "feat(compose): add sort and group-by controls with URL persistenc
 ### Task 6: Download as Markdown File
 
 **Files:**
+
 - Modify: `apps/web/src/routes/compose.tsx`
 
-**Context:** Add a "Download .md" button next to the copy button. Creates a Blob from the same markdown string used for copy, then triggers a download.
+**Context:** Add a "Download .md" button next to the copy button. Creates a Blob from the same markdown string used for copy, then triggers
+a download.
 
 - [ ] **Step 1: Add the download function**
 
@@ -521,6 +539,7 @@ function handleDownload() {
 - [ ] **Step 4: Add the download button**
 
 Import `Download` from lucide-react and add the button next to Copy:
+
 ```tsx
 <Button variant="outline" size="sm" onClick={handleDownload} className="gap-1.5">
     <Download className="size-3.5" />
@@ -540,9 +559,11 @@ git commit -m "feat(compose): add download as markdown file button"
 ### Task 7: Print-Optimized CSS
 
 **Files:**
+
 - Modify: `apps/web/src/routes/compose.tsx`
 
-**Context:** Polish the print output so the composite view looks good when printed or saved as PDF from the browser. Hide UI chrome, use serif fonts, add page breaks between chunks.
+**Context:** Polish the print output so the composite view looks good when printed or saved as PDF from the browser. Hide UI chrome, use
+serif fonts, add page breaks between chunks.
 
 - [ ] **Step 1: Add print-specific Tailwind classes**
 
@@ -553,6 +574,7 @@ Many elements in the page already have `print:hidden` where needed. Review and a
 3. Hide the reading progress bar (already done)
 4. Hide the sort/group controls — add `print:hidden` to the controls div
 5. Add page breaks between articles — on the article element:
+
 ```tsx
 <article
     key={chunk.id}
@@ -562,6 +584,7 @@ Many elements in the page already have `print:hidden` where needed. Review and a
 ```
 
 For the first article, don't force a page break:
+
 ```tsx
 className={`${i > 0 ? "border-t pt-12" : ""} ${i > 0 ? "print:break-before-page" : ""} print:pt-0 print:border-0`}
 ```
@@ -587,6 +610,7 @@ Place it at the top of the return, inside the outermost div.
 - [ ] **Step 3: Test by pressing Cmd+P / Ctrl+P in browser**
 
 Verify:
+
 1. No UI chrome visible
 2. Each chunk starts on a new page
 3. Serif font for readability
@@ -604,9 +628,11 @@ git commit -m "feat(compose): add print-optimized styles with page breaks and se
 ### Task 8: Inline Filter Pills (editable from compose view)
 
 **Files:**
+
 - Modify: `apps/web/src/routes/compose.tsx`
 
-**Context:** Show the current filters as removable pills. Clicking × removes that filter and re-queries (via URL update). Users can refine without going back to search.
+**Context:** Show the current filters as removable pills. Clicking × removes that filter and re-queries (via URL update). Users can refine
+without going back to search.
 
 - [ ] **Step 1: Parse filters into a pill-friendly format**
 
@@ -618,13 +644,11 @@ You already have `parseSimpleQuery(q)`. The result is a `clauses` array. Use it 
 function removeFilter(index: number) {
     const clauses = parseSimpleQuery(q ?? "");
     const remaining = clauses.filter((_, i) => i !== index);
-    const newQ = remaining
-        .map(c => `${c.negate ? "NOT " : ""}${c.field}:${c.value}`)
-        .join(" ");
+    const newQ = remaining.map(c => `${c.negate ? "NOT " : ""}${c.field}:${c.value}`).join(" ");
     void navigate({
         to: "/compose",
         search: { q: newQ || undefined, sort, group } as any,
-        replace: true,
+        replace: true
     });
 }
 ```
@@ -632,41 +656,47 @@ function removeFilter(index: number) {
 - [ ] **Step 3: Replace the filter summary with editable pills**
 
 Replace this block:
+
 ```tsx
-{q && (
-    <div className="flex items-center gap-2">
-        <span className="text-xs text-muted-foreground">Filters:</span>
-        <code className="bg-muted/60 rounded px-2 py-0.5 font-mono text-xs">{q}</code>
-    </div>
-)}
+{
+    q && (
+        <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">Filters:</span>
+            <code className="bg-muted/60 rounded px-2 py-0.5 font-mono text-xs">{q}</code>
+        </div>
+    );
+}
 ```
 
 With:
+
 ```tsx
-{q && (
-    <div className="flex flex-wrap items-center gap-2">
-        <span className="text-xs text-muted-foreground">Filters:</span>
-        {parseSimpleQuery(q).map((clause, idx) => (
-            <span
-                key={idx}
-                className="inline-flex items-center gap-1 rounded border border-slate-500/30 bg-slate-500/15 text-slate-400 px-2 py-0.5 text-xs"
-            >
-                {clause.negate && <span className="font-semibold">NOT</span>}
-                <span className="font-semibold">{clause.field}</span>
-                <span className="text-muted-foreground">is</span>
-                <span>{clause.value}</span>
-                <button
-                    type="button"
-                    onClick={() => removeFilter(idx)}
-                    className="opacity-50 hover:opacity-100 transition-opacity"
-                    aria-label={`Remove ${clause.field} filter`}
+{
+    q && (
+        <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs text-muted-foreground">Filters:</span>
+            {parseSimpleQuery(q).map((clause, idx) => (
+                <span
+                    key={idx}
+                    className="inline-flex items-center gap-1 rounded border border-slate-500/30 bg-slate-500/15 text-slate-400 px-2 py-0.5 text-xs"
                 >
-                    ×
-                </button>
-            </span>
-        ))}
-    </div>
-)}
+                    {clause.negate && <span className="font-semibold">NOT</span>}
+                    <span className="font-semibold">{clause.field}</span>
+                    <span className="text-muted-foreground">is</span>
+                    <span>{clause.value}</span>
+                    <button
+                        type="button"
+                        onClick={() => removeFilter(idx)}
+                        className="opacity-50 hover:opacity-100 transition-opacity"
+                        aria-label={`Remove ${clause.field} filter`}
+                    >
+                        ×
+                    </button>
+                </span>
+            ))}
+        </div>
+    );
+}
 ```
 
 - [ ] **Step 4: Verify and commit**
@@ -681,6 +711,7 @@ git commit -m "feat(compose): add removable filter pills for inline filter editi
 ### Task 9: Chunk Count Limit
 
 **Files:**
+
 - Modify: `apps/web/src/routes/compose.tsx`
 
 **Context:** Add a limit control so users can cap how many chunks are shown (10, 25, 50, 100, all). Default 50.
@@ -688,6 +719,7 @@ git commit -m "feat(compose): add removable filter pills for inline filter editi
 - [ ] **Step 1: Add limit to URL params**
 
 Update `validateSearch`:
+
 ```typescript
 validateSearch: (search: Record<string, unknown>) => ({
     q: (search.q as string) || undefined,
@@ -698,14 +730,16 @@ validateSearch: (search: Record<string, unknown>) => ({
 ```
 
 Use it in the search mutation:
+
 ```typescript
 const result = await searchMutation.mutateAsync({
     clauses,
-    limit: limit === "all" ? 500 : Number(limit),
+    limit: limit === "all" ? 500 : Number(limit)
 });
 ```
 
 Update the mutation function to accept params:
+
 ```typescript
 const searchMutation = useMutation({
     mutationFn: async ({ clauses, limit }: { clauses: any[]; limit: number }) =>
@@ -716,9 +750,9 @@ const searchMutation = useMutation({
                 sort: "updated",
                 limit,
                 offset: 0,
-                ...(codebaseId ? { codebaseId } : {}),
-            } as any),
-        ),
+                ...(codebaseId ? { codebaseId } : {})
+            } as any)
+        )
 });
 ```
 
@@ -727,11 +761,7 @@ const searchMutation = useMutation({
 ```tsx
 <label className="flex items-center gap-1.5 text-muted-foreground">
     Limit:
-    <select
-        value={limit}
-        onChange={e => updateParam("limit", e.target.value)}
-        className="bg-muted/50 rounded px-2 py-1 border text-xs"
-    >
+    <select value={limit} onChange={e => updateParam("limit", e.target.value)} className="bg-muted/50 rounded px-2 py-1 border text-xs">
         <option value="10">10</option>
         <option value="25">25</option>
         <option value="50">50</option>
@@ -753,9 +783,11 @@ git commit -m "feat(compose): add chunk count limit control (10/25/50/100/all)"
 ### Task 10: Share Button and Empty-State CTA
 
 **Files:**
+
 - Modify: `apps/web/src/routes/compose.tsx`
 
-**Context:** Small polish items. Add a share button that copies the current URL, and improve the empty state with a button to go back to search.
+**Context:** Small polish items. Add a share button that copies the current URL, and improve the empty state with a button to go back to
+search.
 
 - [ ] **Step 1: Add share button**
 
@@ -774,39 +806,38 @@ function handleShare() {
 <Button variant="outline" size="sm" onClick={handleShare} className="gap-1.5">
     {shared ? <Check className="size-3.5" /> : <Share2 className="size-3.5" />}
     {shared ? "Copied" : "Share"}
-</Button>
+</Button>;
 ```
 
 - [ ] **Step 2: Improve empty state**
 
 Replace:
+
 ```tsx
-{!loading && !error && chunks.length === 0 && (
-    <div className="py-16 text-center text-muted-foreground">
-        No chunks match the current filter.
-    </div>
-)}
+{
+    !loading && !error && chunks.length === 0 && (
+        <div className="py-16 text-center text-muted-foreground">No chunks match the current filter.</div>
+    );
+}
 ```
 
 With:
+
 ```tsx
-{!loading && !error && chunks.length === 0 && (
-    <div className="py-16 flex flex-col items-center gap-4">
-        <div className="text-center">
-            <p className="text-muted-foreground mb-2">No chunks match the current filter.</p>
-            <p className="text-muted-foreground/70 text-xs">Try broadening your filters.</p>
+{
+    !loading && !error && chunks.length === 0 && (
+        <div className="py-16 flex flex-col items-center gap-4">
+            <div className="text-center">
+                <p className="text-muted-foreground mb-2">No chunks match the current filter.</p>
+                <p className="text-muted-foreground/70 text-xs">Try broadening your filters.</p>
+            </div>
+            <Button variant="outline" size="sm" onClick={() => void navigate({ to: "/search", search: { q } as any })} className="gap-1.5">
+                <ArrowLeft className="size-3.5" />
+                Back to search
+            </Button>
         </div>
-        <Button
-            variant="outline"
-            size="sm"
-            onClick={() => void navigate({ to: "/search", search: { q } as any })}
-            className="gap-1.5"
-        >
-            <ArrowLeft className="size-3.5" />
-            Back to search
-        </Button>
-    </div>
-)}
+    );
+}
 ```
 
 - [ ] **Step 3: Verify and commit**
@@ -837,6 +868,7 @@ Expected: Build succeeds.
 - [ ] **Step 3: Manual smoke test**
 
 Start dev server and test:
+
 1. Navigate to `/search`, add filters, click "View as document"
 2. Verify ToC sidebar shows all chunks
 3. Click a ToC entry — smooth scroll works

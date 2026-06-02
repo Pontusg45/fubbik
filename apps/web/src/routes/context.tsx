@@ -50,7 +50,7 @@ function ExpandableContent({ content }: { content: string }) {
 
     return (
         <div className="mt-2 text-sm">
-            <pre className="whitespace-pre-wrap font-sans">
+            <pre className="font-sans whitespace-pre-wrap">
                 {expanded ? content : preview}
                 {needsTruncation && !expanded && "..."}
             </pre>
@@ -123,19 +123,11 @@ function ContextPage() {
             <Card>
                 <CardPanel className="p-6">
                     {!searchPath ? (
-                        <PageEmpty
-                            icon={FileSearch}
-                            title="Enter a file path"
-                            description="Enter a file path to find relevant knowledge"
-                        />
+                        <PageEmpty icon={FileSearch} title="Enter a file path" description="Enter a file path to find relevant knowledge" />
                     ) : contextQuery.isLoading ? (
                         <PageLoading count={4} />
                     ) : results.length === 0 ? (
-                        <PageEmpty
-                            icon={FileSearch}
-                            title="No results"
-                            description={`No chunks found matching "${searchPath}"`}
-                        />
+                        <PageEmpty icon={FileSearch} title="No results" description={`No chunks found matching "${searchPath}"`} />
                     ) : (
                         <div className="divide-y">
                             {results.map(result => (
@@ -146,7 +138,7 @@ function ContextPage() {
                                                 <Link
                                                     to="/chunks/$chunkId"
                                                     params={{ chunkId: result.id }}
-                                                    className="text-foreground hover:underline font-medium"
+                                                    className="text-foreground font-medium hover:underline"
                                                 >
                                                     {result.title}
                                                 </Link>

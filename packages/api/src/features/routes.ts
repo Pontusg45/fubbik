@@ -33,7 +33,11 @@ export const featureRoutes = new Elysia()
             Effect.runPromise(
                 requireSession(ctx).pipe(
                     Effect.flatMap(session => featureService.createFeature(session.user.id, ctx.body)),
-                    Effect.tap(() => Effect.sync(() => { ctx.set.status = 201; }))
+                    Effect.tap(() =>
+                        Effect.sync(() => {
+                            ctx.set.status = 201;
+                        })
+                    )
                 )
             ),
         {
@@ -47,11 +51,7 @@ export const featureRoutes = new Elysia()
         }
     )
     .get("/features/active", ctx =>
-        Effect.runPromise(
-            requireSession(ctx).pipe(
-                Effect.flatMap(session => featureService.getActiveFeatures(session.user.id))
-            )
-        )
+        Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(session => featureService.getActiveFeatures(session.user.id))))
     )
     .put(
         "/features/active",
@@ -70,18 +70,14 @@ export const featureRoutes = new Elysia()
     )
     .get("/features/:id", ctx =>
         Effect.runPromise(
-            requireSession(ctx).pipe(
-                Effect.flatMap(session => featureService.getFeatureDetail(ctx.params.id, session.user.id))
-            )
+            requireSession(ctx).pipe(Effect.flatMap(session => featureService.getFeatureDetail(ctx.params.id, session.user.id)))
         )
     )
     .patch(
         "/features/:id",
         ctx =>
             Effect.runPromise(
-                requireSession(ctx).pipe(
-                    Effect.flatMap(session => featureService.updateFeature(ctx.params.id, session.user.id, ctx.body))
-                )
+                requireSession(ctx).pipe(Effect.flatMap(session => featureService.updateFeature(ctx.params.id, session.user.id, ctx.body)))
             ),
         {
             body: t.Object({
@@ -125,11 +121,7 @@ export const featureRoutes = new Elysia()
         }
     )
     .get("/chunks/:id/deltas", ctx =>
-        Effect.runPromise(
-            requireSession(ctx).pipe(
-                Effect.flatMap(() => featureService.getDeltasForChunk(ctx.params.id))
-            )
-        )
+        Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(() => featureService.getDeltasForChunk(ctx.params.id))))
     )
     .put(
         "/chunks/:id/deltas/:featureId",
@@ -150,9 +142,7 @@ export const featureRoutes = new Elysia()
     .delete("/chunks/:id/deltas/:featureId", ctx =>
         Effect.runPromise(
             requireSession(ctx).pipe(
-                Effect.flatMap(session =>
-                    featureService.deleteDelta(ctx.params.id, ctx.params.featureId, session.user.id)
-                ),
+                Effect.flatMap(session => featureService.deleteDelta(ctx.params.id, ctx.params.featureId, session.user.id)),
                 Effect.map(() => ({ message: "Delta deleted" }))
             )
         )
@@ -161,9 +151,7 @@ export const featureRoutes = new Elysia()
         Effect.runPromise(
             requireSession(ctx).pipe(
                 Effect.flatMap(session => {
-                    return featureService.getFeatureDetail(ctx.params.id, session.user.id).pipe(
-                        Effect.map(detail => detail.deltas)
-                    );
+                    return featureService.getFeatureDetail(ctx.params.id, session.user.id).pipe(Effect.map(detail => detail.deltas));
                 })
             )
         )

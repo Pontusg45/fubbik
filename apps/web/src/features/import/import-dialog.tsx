@@ -4,15 +4,7 @@ import { useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import {
-    Dialog,
-    DialogClose,
-    DialogFooter,
-    DialogHeader,
-    DialogPopup,
-    DialogTitle,
-    DialogTrigger
-} from "@/components/ui/dialog";
+import { Dialog, DialogClose, DialogFooter, DialogHeader, DialogPopup, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
@@ -63,7 +55,7 @@ export function ImportDocsDialog() {
             );
             return result as ImportResult;
         },
-        onSuccess: (data) => {
+        onSuccess: data => {
             const msg = `Created: ${data.created} | Skipped: ${data.skipped} | Errors: ${data.errors.length}`;
             if (data.errors.length > 0) {
                 toast.warning(msg);
@@ -161,15 +153,9 @@ export function ImportDocsDialog() {
 
                 <DialogFooter variant="bare">
                     <DialogClose render={<Button variant="outline" size="sm" />}>Cancel</DialogClose>
-                    <Button
-                        size="sm"
-                        onClick={handleImport}
-                        disabled={importMutation.isPending || files.length === 0 || !spaceId}
-                    >
+                    <Button size="sm" onClick={handleImport} disabled={importMutation.isPending || files.length === 0 || !spaceId}>
                         <Upload className="mr-1 size-3.5" />
-                        {importMutation.isPending
-                            ? "Importing..."
-                            : `Import ${files.length} file${files.length !== 1 ? "s" : ""}`}
+                        {importMutation.isPending ? "Importing..." : `Import ${files.length} file${files.length !== 1 ? "s" : ""}`}
                     </Button>
                 </DialogFooter>
             </DialogPopup>

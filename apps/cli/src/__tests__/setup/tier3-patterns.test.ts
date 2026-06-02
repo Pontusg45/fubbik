@@ -1,6 +1,6 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
@@ -8,17 +8,14 @@ import { scanPatterns } from "../../lib/setup/tier3-patterns";
 
 let tempDir: string;
 
-function writePkg(
-    deps: Record<string, string> = {},
-    devDeps: Record<string, string> = {},
-): void {
+function writePkg(deps: Record<string, string> = {}, devDeps: Record<string, string> = {}): void {
     writeFileSync(
         join(tempDir, "package.json"),
         JSON.stringify({
             name: "test-project",
             dependencies: deps,
-            devDependencies: devDeps,
-        }),
+            devDependencies: devDeps
+        })
     );
 }
 

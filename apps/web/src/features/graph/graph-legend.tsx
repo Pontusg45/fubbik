@@ -1,8 +1,4 @@
-import {
-    resolveChunkTypeIcon,
-    useChunkTypes,
-    useConnectionRelations
-} from "@/features/vocabularies/use-vocabularies";
+import { resolveChunkTypeIcon, useChunkTypes, useConnectionRelations } from "@/features/vocabularies/use-vocabularies";
 
 /**
  * Top-center legend for the graph.
@@ -46,9 +42,7 @@ export function GraphLegend({
     const { data: relations } = useConnectionRelations();
 
     // Types: only render for those present in the data, ordered by catalog displayOrder.
-    const typesInData = (chunkTypes ?? [])
-        .filter(t => (typeCounts.get(t.id) ?? 0) > 0)
-        .sort((a, b) => a.displayOrder - b.displayOrder);
+    const typesInData = (chunkTypes ?? []).filter(t => (typeCounts.get(t.id) ?? 0) > 0).sort((a, b) => a.displayOrder - b.displayOrder);
 
     // Same for relations.
     const relationsInData = (relations ?? [])
@@ -61,7 +55,7 @@ export function GraphLegend({
         <div className="bg-background/85 absolute top-4 left-1/2 z-10 flex max-w-[min(920px,calc(100vw-280px))] -translate-x-1/2 items-center gap-x-3 gap-y-1.5 overflow-x-auto rounded-lg border px-3 py-1.5 backdrop-blur-sm max-md:hidden">
             {typesInData.length > 0 && (
                 <div className="flex items-center gap-1.5">
-                    <span className="text-muted-foreground text-[9px] font-medium uppercase tracking-wider mr-0.5 shrink-0">Types</span>
+                    <span className="text-muted-foreground mr-0.5 shrink-0 text-[9px] font-medium tracking-wider uppercase">Types</span>
                     {typesInData.map(t => {
                         const count = typeCounts.get(t.id) ?? 0;
                         const active = activeTypePrefilter.has(t.id);
@@ -82,28 +76,24 @@ export function GraphLegend({
                                     active
                                         ? "border-primary bg-primary/10 text-primary"
                                         : hasAnyFilter
-                                            ? "border-muted text-muted-foreground/60 hover:text-foreground"
-                                            : "text-muted-foreground hover:text-foreground"
+                                          ? "border-muted text-muted-foreground/60 hover:text-foreground"
+                                          : "text-muted-foreground hover:text-foreground"
                                 }`}
                             >
                                 <Icon className="size-2.5" style={{ color: t.color }} />
-                                <span className="truncate max-w-[120px]">{t.label}</span>
-                                <span className="text-muted-foreground/70 font-mono text-[9px] tabular-nums">
-                                    {count}
-                                </span>
+                                <span className="max-w-[120px] truncate">{t.label}</span>
+                                <span className="text-muted-foreground/70 font-mono text-[9px] tabular-nums">{count}</span>
                             </button>
                         );
                     })}
                 </div>
             )}
 
-            {typesInData.length > 0 && relationsInData.length > 0 && (
-                <div className="bg-border h-4 w-px shrink-0" />
-            )}
+            {typesInData.length > 0 && relationsInData.length > 0 && <div className="bg-border h-4 w-px shrink-0" />}
 
             {relationsInData.length > 0 && (
                 <div className="flex items-center gap-1.5">
-                    <span className="text-muted-foreground text-[9px] font-medium uppercase tracking-wider mr-0.5 shrink-0">Relations</span>
+                    <span className="text-muted-foreground mr-0.5 shrink-0 text-[9px] font-medium tracking-wider uppercase">Relations</span>
                     {relationsInData.map(r => {
                         const count = relationCounts.get(r.id) ?? 0;
                         // Active logic for relations: when filter is empty, all shown.
@@ -122,8 +112,8 @@ export function GraphLegend({
                                     inFilter
                                         ? "border-primary bg-primary/10 text-primary"
                                         : filteredOut
-                                            ? "border-muted text-muted-foreground/50 opacity-60 hover:opacity-100"
-                                            : "text-muted-foreground hover:text-foreground"
+                                          ? "border-muted text-muted-foreground/50 opacity-60 hover:opacity-100"
+                                          : "text-muted-foreground hover:text-foreground"
                                 }`}
                             >
                                 <svg width="14" height="6" viewBox="0 0 14 6" className="shrink-0">
@@ -134,20 +124,12 @@ export function GraphLegend({
                                         y2="3"
                                         stroke={r.color}
                                         strokeWidth="1.5"
-                                        strokeDasharray={
-                                            r.arrowStyle === "dashed" ? "3,2"
-                                                : r.arrowStyle === "dotted" ? "1,2"
-                                                : undefined
-                                        }
+                                        strokeDasharray={r.arrowStyle === "dashed" ? "3,2" : r.arrowStyle === "dotted" ? "1,2" : undefined}
                                     />
-                                    {r.direction === "forward" && (
-                                        <polygon points="14,3 11,1.5 11,4.5" fill={r.color} />
-                                    )}
+                                    {r.direction === "forward" && <polygon points="14,3 11,1.5 11,4.5" fill={r.color} />}
                                 </svg>
-                                <span className="truncate max-w-[120px]">{r.label}</span>
-                                <span className="text-muted-foreground/70 font-mono text-[9px] tabular-nums">
-                                    {count}
-                                </span>
+                                <span className="max-w-[120px] truncate">{r.label}</span>
+                                <span className="text-muted-foreground/70 font-mono text-[9px] tabular-nums">{count}</span>
                             </button>
                         );
                     })}

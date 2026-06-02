@@ -9,11 +9,7 @@ export const useCaseRoutes = new Elysia()
         "/use-cases",
         ctx =>
             Effect.runPromise(
-                requireSession(ctx).pipe(
-                    Effect.flatMap(session =>
-                        useCaseService.listUseCases(session.user.id, ctx.query.spaceId)
-                    )
-                )
+                requireSession(ctx).pipe(Effect.flatMap(session => useCaseService.listUseCases(session.user.id, ctx.query.spaceId)))
             ),
         {
             query: t.Object({
@@ -26,9 +22,7 @@ export const useCaseRoutes = new Elysia()
         ctx =>
             Effect.runPromise(
                 requireSession(ctx).pipe(
-                    Effect.flatMap(session =>
-                        useCaseService.createUseCase(session.user.id, ctx.body)
-                    ),
+                    Effect.flatMap(session => useCaseService.createUseCase(session.user.id, ctx.body)),
                     Effect.tap(() =>
                         Effect.sync(() => {
                             ctx.set.status = 201;
@@ -47,22 +41,14 @@ export const useCaseRoutes = new Elysia()
     )
     .get("/use-cases/:id/requirements", ctx =>
         Effect.runPromise(
-            requireSession(ctx).pipe(
-                Effect.flatMap(session =>
-                    useCaseService.getUseCaseRequirements(ctx.params.id, session.user.id)
-                )
-            )
+            requireSession(ctx).pipe(Effect.flatMap(session => useCaseService.getUseCaseRequirements(ctx.params.id, session.user.id)))
         )
     )
     .patch(
         "/use-cases/:id",
         ctx =>
             Effect.runPromise(
-                requireSession(ctx).pipe(
-                    Effect.flatMap(session =>
-                        useCaseService.updateUseCase(ctx.params.id, session.user.id, ctx.body)
-                    )
-                )
+                requireSession(ctx).pipe(Effect.flatMap(session => useCaseService.updateUseCase(ctx.params.id, session.user.id, ctx.body)))
             ),
         {
             body: t.Object({
@@ -76,9 +62,7 @@ export const useCaseRoutes = new Elysia()
     .delete("/use-cases/:id", ctx =>
         Effect.runPromise(
             requireSession(ctx).pipe(
-                Effect.flatMap(session =>
-                    useCaseService.deleteUseCase(ctx.params.id, session.user.id)
-                ),
+                Effect.flatMap(session => useCaseService.deleteUseCase(ctx.params.id, session.user.id)),
                 Effect.map(() => ({ message: "Deleted" }))
             )
         )

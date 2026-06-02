@@ -6,8 +6,8 @@ import { env } from "@fubbik/env/server";
 import { Elysia } from "elysia";
 import { rateLimit } from "elysia-rate-limit";
 
-import { logger } from "./logger";
 import { startTracing, shutdownTracing } from "./lib/tracing";
+import { logger } from "./logger";
 
 // Start OpenTelemetry if an OTLP endpoint is configured
 if (process.env.OTEL_EXPORTER_OTLP_ENDPOINT) {
@@ -53,8 +53,7 @@ new Elysia()
         const pathname = new URL(request.url).pathname;
         const message = "message" in error ? String(error.message) : String(error);
         // Effect.runPromise throws FiberFailure with generic message — log full string for context.
-        const errorLog =
-            message === "An error has occurred" ? `${(error as Error).name}: ${String(error)}` : message;
+        const errorLog = message === "An error has occurred" ? `${(error as Error).name}: ${String(error)}` : message;
         logger.error(`${request.method} ${pathname}`, { error: errorLog });
     })
     .use(api)

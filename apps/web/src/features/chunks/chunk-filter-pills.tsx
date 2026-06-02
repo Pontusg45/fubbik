@@ -9,7 +9,7 @@ const PILL_COLORS: Record<string, string> = {
     after: "bg-slate-500/15 border-slate-500/30 text-slate-400",
     enrichment: "bg-slate-500/15 border-slate-500/30 text-slate-400",
     minConnections: "bg-slate-500/15 border-slate-500/30 text-slate-400",
-    allSpaces: "bg-slate-500/15 border-slate-500/30 text-slate-400",
+    allSpaces: "bg-slate-500/15 border-slate-500/30 text-slate-400"
 };
 
 function Pill({ colorKey, label, onRemove }: { colorKey: string; label: string; onRemove: () => void }) {
@@ -54,44 +54,33 @@ export function ChunkFilterPills({
     allSpaces,
     activeTags,
     onRemoveFilter,
-    onClearAll,
+    onClearAll
 }: ChunkFilterPillsProps) {
     const hasAny = type || q || activeTags.length > 0 || after || enrichment || minConnections || origin || reviewStatus || allSpaces;
     if (!hasAny) return null;
 
     return (
         <div className="mb-4 flex flex-wrap items-center gap-1.5">
-            {type && (
-                <Pill colorKey="type" label={`type: ${type}`} onRemove={() => onRemoveFilter("type")} />
-            )}
-            {q && (
-                <Pill colorKey="q" label={`search: ${q}`} onRemove={() => onRemoveFilter("q")} />
-            )}
+            {type && <Pill colorKey="type" label={`type: ${type}`} onRemove={() => onRemoveFilter("type")} />}
+            {q && <Pill colorKey="q" label={`search: ${q}`} onRemove={() => onRemoveFilter("q")} />}
             {activeTags.map(tag => (
                 <Pill key={tag} colorKey="tags" label={tag} onRemove={() => onRemoveFilter(`tag:${tag}`)} />
             ))}
-            {after && (
-                <Pill colorKey="after" label={`updated: ${after}d`} onRemove={() => onRemoveFilter("after")} />
-            )}
-            {enrichment && (
-                <Pill colorKey="enrichment" label={`enrichment: ${enrichment}`} onRemove={() => onRemoveFilter("enrichment")} />
-            )}
+            {after && <Pill colorKey="after" label={`updated: ${after}d`} onRemove={() => onRemoveFilter("after")} />}
+            {enrichment && <Pill colorKey="enrichment" label={`enrichment: ${enrichment}`} onRemove={() => onRemoveFilter("enrichment")} />}
             {minConnections && (
-                <Pill colorKey="minConnections" label={`connections: ${minConnections}+`} onRemove={() => onRemoveFilter("minConnections")} />
+                <Pill
+                    colorKey="minConnections"
+                    label={`connections: ${minConnections}+`}
+                    onRemove={() => onRemoveFilter("minConnections")}
+                />
             )}
-            {origin && (
-                <Pill colorKey="origin" label={`origin: ${origin}`} onRemove={() => onRemoveFilter("origin")} />
-            )}
+            {origin && <Pill colorKey="origin" label={`origin: ${origin}`} onRemove={() => onRemoveFilter("origin")} />}
             {reviewStatus && (
                 <Pill colorKey="reviewStatus" label={`review: ${reviewStatus}`} onRemove={() => onRemoveFilter("reviewStatus")} />
             )}
-            {allSpaces && (
-                <Pill colorKey="allSpaces" label="all spaces" onRemove={() => onRemoveFilter("allSpaces")} />
-            )}
-            <button
-                onClick={onClearAll}
-                className="text-muted-foreground hover:text-foreground ml-1 text-xs underline"
-            >
+            {allSpaces && <Pill colorKey="allSpaces" label="all spaces" onRemove={() => onRemoveFilter("allSpaces")} />}
+            <button onClick={onClearAll} className="text-muted-foreground hover:text-foreground ml-1 text-xs underline">
                 Clear all
             </button>
         </div>

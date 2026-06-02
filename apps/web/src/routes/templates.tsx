@@ -10,8 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardPanel } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { PageContainer, PageEmpty, PageHeader, PageLoading } from "@/components/ui/page";
-import { useApiQuery } from "@/hooks/use-api-query";
 import { getUser } from "@/functions/get-user";
+import { useApiQuery } from "@/hooks/use-api-query";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
@@ -52,7 +52,7 @@ function TemplatesPage() {
     const templatesQuery = useApiQuery<Template[]>({
         queryKey: ["templates"],
         queryFn: () => api.api.templates.get(),
-        fallback: [],
+        fallback: []
     });
 
     const templates = Array.isArray(templatesQuery.data) ? templatesQuery.data : [];
@@ -72,7 +72,13 @@ function TemplatesPage() {
     });
 
     const updateMutation = useMutation({
-        mutationFn: async ({ id, body }: { id: string; body: { name?: string; description?: string; type?: string; content?: string } }) => {
+        mutationFn: async ({
+            id,
+            body
+        }: {
+            id: string;
+            body: { name?: string; description?: string; type?: string; content?: string };
+        }) => {
             return unwrapEden(await api.api.templates({ id }).patch(body));
         },
         onSuccess: () => {
@@ -270,38 +276,21 @@ function TemplatesPage() {
                                                 </Badge>
                                             )}
                                         </div>
-                                        {t.description && (
-                                            <p className="text-muted-foreground mt-0.5 text-sm">{t.description}</p>
-                                        )}
+                                        {t.description && <p className="text-muted-foreground mt-0.5 text-sm">{t.description}</p>}
                                         <p className="text-muted-foreground mt-1 truncate font-mono text-xs">
                                             {getContentPreview(t.content)}
                                         </p>
                                     </div>
                                     <div className="flex gap-1">
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => setPreviewTemplate(t)}
-                                            title="Preview"
-                                        >
+                                        <Button variant="ghost" size="sm" onClick={() => setPreviewTemplate(t)} title="Preview">
                                             <Eye className="size-3.5" />
                                         </Button>
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => handleDuplicate(t)}
-                                            title="Duplicate"
-                                        >
+                                        <Button variant="ghost" size="sm" onClick={() => handleDuplicate(t)} title="Duplicate">
                                             <Copy className="size-3.5" />
                                         </Button>
                                         {!t.isBuiltIn && (
                                             <>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={() => handleEdit(t)}
-                                                    title="Edit"
-                                                >
+                                                <Button variant="ghost" size="sm" onClick={() => handleEdit(t)} title="Edit">
                                                     <Pencil className="size-3.5" />
                                                 </Button>
                                                 <Button
@@ -325,7 +314,9 @@ function TemplatesPage() {
 
             <ConfirmDialog
                 open={deleteTarget !== null}
-                onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}
+                onOpenChange={open => {
+                    if (!open) setDeleteTarget(null);
+                }}
                 title="Delete template"
                 description={deleteTarget ? `Delete template "${deleteTarget.name}"?` : ""}
                 confirmLabel="Delete"
@@ -342,13 +333,13 @@ function TemplatesPage() {
             {previewTemplate && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center">
                     <div className="bg-background/80 absolute inset-0 backdrop-blur-sm" onClick={() => setPreviewTemplate(null)} />
-                    <div className="bg-card relative mx-4 w-full max-w-2xl max-h-[80vh] overflow-hidden rounded-xl border shadow-2xl">
+                    <div className="bg-card relative mx-4 max-h-[80vh] w-full max-w-2xl overflow-hidden rounded-xl border shadow-2xl">
                         <div className="flex items-center justify-between border-b px-6 py-4">
                             <div className="flex items-center gap-3">
                                 <FileText className="text-muted-foreground size-5" />
                                 <div>
                                     <h2 className="font-semibold">{previewTemplate.name}</h2>
-                                    <div className="flex items-center gap-2 mt-0.5">
+                                    <div className="mt-0.5 flex items-center gap-2">
                                         <Badge variant="secondary" size="sm" className="text-[10px]">
                                             {previewTemplate.type}
                                         </Badge>
@@ -365,22 +356,30 @@ function TemplatesPage() {
                             </Button>
                         </div>
                         {previewTemplate.description && (
-                            <div className="text-muted-foreground border-b px-6 py-3 text-sm">
-                                {previewTemplate.description}
-                            </div>
+                            <div className="text-muted-foreground border-b px-6 py-3 text-sm">{previewTemplate.description}</div>
                         )}
                         <div className="overflow-y-auto px-6 py-4" style={{ maxHeight: "calc(80vh - 140px)" }}>
-                            <pre className="whitespace-pre-wrap font-mono text-sm leading-relaxed">{previewTemplate.content}</pre>
+                            <pre className="font-mono text-sm leading-relaxed whitespace-pre-wrap">{previewTemplate.content}</pre>
                         </div>
                         <div className="flex justify-end gap-2 border-t px-6 py-3">
-                            <Button variant="outline" size="sm" onClick={() => { handleDuplicate(previewTemplate); setPreviewTemplate(null); }}>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                    handleDuplicate(previewTemplate);
+                                    setPreviewTemplate(null);
+                                }}
+                            >
                                 <Copy className="size-3.5" />
                                 Duplicate
                             </Button>
-                            <Button size="sm" onClick={() => {
-                                navigator.clipboard.writeText(previewTemplate.content);
-                                toast.success("Content copied");
-                            }}>
+                            <Button
+                                size="sm"
+                                onClick={() => {
+                                    navigator.clipboard.writeText(previewTemplate.content);
+                                    toast.success("Content copied");
+                                }}
+                            >
                                 <Copy className="size-3.5" />
                                 Copy Content
                             </Button>

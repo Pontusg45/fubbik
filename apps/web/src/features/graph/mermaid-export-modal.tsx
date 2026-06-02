@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogHeader, DialogPopup, DialogTitle } from "@/components/ui/dialog";
+
 import { buildMermaidFromGraph, type MermaidExportResult } from "./mermaid-export";
 
 interface MermaidExportModalProps {
@@ -16,10 +17,7 @@ export function MermaidExportModal({ open, onOpenChange, nodes, edges }: Mermaid
     const [copied, setCopied] = useState(false);
     const [direction, setDirection] = useState<"LR" | "TB">("LR");
 
-    const result: MermaidExportResult = useMemo(
-        () => buildMermaidFromGraph(nodes, edges, { direction }),
-        [nodes, edges, direction]
-    );
+    const result: MermaidExportResult = useMemo(() => buildMermaidFromGraph(nodes, edges, { direction }), [nodes, edges, direction]);
 
     async function handleCopy() {
         try {
@@ -81,10 +79,10 @@ export function MermaidExportModal({ open, onOpenChange, nodes, edges }: Mermaid
 
                     {result.truncated && (
                         <div className="flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 p-2.5 text-xs text-amber-600 dark:text-amber-400">
-                            <AlertTriangle className="size-3.5 shrink-0 mt-0.5" />
+                            <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
                             <span>
-                                Graph truncated to {result.nodeCount} nodes. Mermaid becomes unreadable past ~100 nodes —
-                                filter or focus the view before exporting for best results.
+                                Graph truncated to {result.nodeCount} nodes. Mermaid becomes unreadable past ~100 nodes — filter or focus
+                                the view before exporting for best results.
                             </span>
                         </div>
                     )}
@@ -92,7 +90,7 @@ export function MermaidExportModal({ open, onOpenChange, nodes, edges }: Mermaid
                     <textarea
                         readOnly
                         value={result.text}
-                        className="font-mono bg-muted/50 text-xs w-full h-64 resize-none rounded-md border p-3"
+                        className="bg-muted/50 h-64 w-full resize-none rounded-md border p-3 font-mono text-xs"
                         onFocus={e => e.currentTarget.select()}
                     />
 

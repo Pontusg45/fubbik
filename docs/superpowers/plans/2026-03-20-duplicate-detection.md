@@ -1,10 +1,12 @@
 # Smart Duplicate Detection Implementation Plan
 
-> **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to
+> implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Warn users when creating a chunk that is semantically similar to an existing one, using the existing embedding infrastructure.
 
-**Architecture:** New API endpoint `/api/chunks/check-similar` that takes title+content, generates an embedding via Ollama, and queries pgvector for nearest neighbors. Web UI calls this on the create form with debounced input. Falls back gracefully when Ollama is unavailable.
+**Architecture:** New API endpoint `/api/chunks/check-similar` that takes title+content, generates an embedding via Ollama, and queries
+pgvector for nearest neighbors. Web UI calls this on the create form with debounced input. Falls back gracefully when Ollama is unavailable.
 
 **Tech Stack:** Elysia, Effect, pgvector (cosine distance), Ollama (nomic-embed-text), React, TanStack Query
 
@@ -13,12 +15,14 @@
 ## File Structure
 
 ### New files:
+
 - `packages/api/src/chunks/similarity.ts` — Service function for similarity checking
 - `packages/db/src/repository/similarity.ts` — Repository query for nearest-neighbor search
 - `packages/api/src/chunks/similarity.test.ts` — Tests for similarity service
 - `apps/web/src/features/chunks/similar-chunks-warning.tsx` — UI warning component
 
 ### Files to modify:
+
 - `packages/api/src/chunks/routes.ts` — Add `/chunks/check-similar` endpoint
 - `packages/db/src/repository/index.ts` — Export similarity repo
 - `apps/web/src/routes/chunks.new.tsx` — Integrate warning component
@@ -28,6 +32,7 @@
 ## Task 1: Similarity Repository
 
 **Files:**
+
 - Create: `packages/db/src/repository/similarity.ts`
 - Modify: `packages/db/src/repository/index.ts`
 - Test: `packages/api/src/chunks/similarity.test.ts`
@@ -76,10 +81,7 @@ export function findSimilarByEmbedding(params: {
     return Effect.tryPromise({
         try: async () => {
             const vectorStr = `[${embedding.join(",")}]`;
-            const conditions = [
-                eq(chunk.userId, userId),
-                isNotNull(chunk.embedding),
-            ];
+            const conditions = [eq(chunk.userId, userId), isNotNull(chunk.embedding)];
             if (excludeId) conditions.push(ne(chunk.id, excludeId));
 
             const results = await db
@@ -87,7 +89,7 @@ export function findSimilarByEmbedding(params: {
                     id: chunk.id,
                     title: chunk.title,
                     type: chunk.type,
-                    distance: sql<number>`embedding <=> ${vectorStr}::vector`,
+                    distance: sql<number>`embedding <=> ${vectorStr}::vector`
                 })
                 .from(chunk)
                 .where(and(...conditions))
@@ -99,11 +101,11 @@ export function findSimilarByEmbedding(params: {
                     id: r.id,
                     title: r.title,
                     type: r.type,
-                    similarity: 1 - r.distance,
+                    similarity: 1 - r.distance
                 }))
                 .filter(r => r.similarity >= threshold);
         },
-        catch: (e) => new DatabaseError({ cause: e }),
+        catch: e => new DatabaseError({ cause: e })
     });
 }
 ```
@@ -111,6 +113,7 @@ export function findSimilarByEmbedding(params: {
 - [ ] **Step 3: Export from repository index**
 
 In `packages/db/src/repository/index.ts`, add:
+
 ```ts
 export { findSimilarByEmbedding } from "./similarity";
 ```
@@ -127,6 +130,7 @@ git commit -m "feat: add similarity search repository using pgvector"
 ## Task 2: Similarity Service and API Endpoint
 
 **Files:**
+
 - Create: `packages/api/src/chunks/similarity.ts`
 - Modify: `packages/api/src/chunks/routes.ts`
 
@@ -138,12 +142,7 @@ import { Effect } from "effect";
 import { generateDocumentEmbedding, isOllamaAvailable } from "../ollama/client";
 import { findSimilarByEmbedding } from "@fubbik/db/repository";
 
-export function checkSimilar(params: {
-    title: string;
-    content: string;
-    userId: string;
-    excludeId?: string;
-}) {
+export function checkSimilar(params: { title: string; content: string; userId: string; excludeId?: string }) {
     return Effect.gen(function* () {
         const available = yield* isOllamaAvailable();
         if (!available) return [];
@@ -154,17 +153,19 @@ export function checkSimilar(params: {
             userId: params.userId,
             excludeId: params.excludeId,
             threshold: 0.75,
-            limit: 3,
+            limit: 3
         });
     });
 }
 ```
 
-**Note:** Read `ollama/client.ts` first — `isOllamaAvailable()` and `generateDocumentEmbedding()` both return Effect types. Make sure the pipe/gen pattern matches the codebase convention.
+**Note:** Read `ollama/client.ts` first — `isOllamaAvailable()` and `generateDocumentEmbedding()` both return Effect types. Make sure the
+pipe/gen pattern matches the codebase convention.
 
 - [ ] **Step 2: Add API endpoint**
 
 In `packages/api/src/chunks/routes.ts`, add:
+
 ```ts
 .post(
     "/chunks/check-similar",
@@ -202,6 +203,7 @@ git commit -m "feat: add /chunks/check-similar API endpoint"
 ## Task 3: Web UI Warning Component
 
 **Files:**
+
 - Create: `apps/web/src/features/chunks/similar-chunks-warning.tsx`
 - Modify: `apps/web/src/routes/chunks.new.tsx`
 
@@ -228,12 +230,10 @@ export function SimilarChunksWarning({ title, content, excludeId, enabled = true
         queryKey: ["check-similar", title, content],
         queryFn: async () => {
             if (!title.trim() || !content.trim()) return [];
-            return unwrapEden(
-                await api.api.chunks["check-similar"].post({ title, content, excludeId })
-            );
+            return unwrapEden(await api.api.chunks["check-similar"].post({ title, content, excludeId }));
         },
         enabled: enabled && title.trim().length > 3 && content.trim().length > 20,
-        staleTime: 10_000, // don't re-check too often
+        staleTime: 10_000 // don't re-check too often
     });
 
     if (!similar?.length) return null;
@@ -250,7 +250,9 @@ export function SimilarChunksWarning({ title, content, excludeId, enabled = true
                         <Link to="/chunks/$chunkId" params={{ chunkId: c.id }} className="underline hover:no-underline">
                             {c.title}
                         </Link>
-                        <Badge variant="secondary" size="sm">{c.type}</Badge>
+                        <Badge variant="secondary" size="sm">
+                            {c.type}
+                        </Badge>
                         <span className="text-muted-foreground text-xs">{Math.round(c.similarity * 100)}% similar</span>
                     </li>
                 ))}
@@ -263,11 +265,14 @@ export function SimilarChunksWarning({ title, content, excludeId, enabled = true
 - [ ] **Step 2: Integrate into chunk create form**
 
 In `apps/web/src/routes/chunks.new.tsx`, add `<SimilarChunksWarning>` below the content editor:
+
 ```tsx
 <SimilarChunksWarning title={title} content={content} />
 ```
 
-**Important:** `staleTime` does NOT debounce input — it only caches results for the same key. Use debounced values for `title` and `content` in the queryKey to avoid firing on every keystroke. The create form likely already has a debounce utility — check for `useDebouncedValue` or similar. Wrap the title/content in debounced state before passing to the component, or add debouncing inside the component.
+**Important:** `staleTime` does NOT debounce input — it only caches results for the same key. Use debounced values for `title` and `content`
+in the queryKey to avoid firing on every keystroke. The create form likely already has a debounce utility — check for `useDebouncedValue` or
+similar. Wrap the title/content in debounced state before passing to the component, or add debouncing inside the component.
 
 - [ ] **Step 3: Commit**
 

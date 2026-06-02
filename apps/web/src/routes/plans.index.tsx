@@ -8,13 +8,7 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { PageContainer, PageHeader, PageLoading } from "@/components/ui/page";
 import { RowActionsMenu } from "@/components/ui/row-actions-menu";
-import {
-    Select,
-    SelectItem,
-    SelectPopup,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PlanStatusPill, type PlanStatusValue } from "@/features/plans/plan-status-pill";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
@@ -48,8 +42,8 @@ export const Route = createFileRoute("/plans/")({
     validateSearch: (search): { status?: StatusFilter; space?: string; q?: string } => ({
         status: (search.status as StatusFilter) ?? undefined,
         space: (search.space as string) ?? undefined,
-        q: (search.q as string) ?? undefined,
-    }),
+        q: (search.q as string) ?? undefined
+    })
 });
 
 function PlansIndexPage() {
@@ -74,7 +68,7 @@ function PlansIndexPage() {
                 }
                 return next;
             },
-            replace: true,
+            replace: true
         });
     };
 
@@ -109,7 +103,7 @@ function PlansIndexPage() {
                 return [];
             }
         },
-        staleTime: 60_000,
+        staleTime: 60_000
     });
 
     const plansQuery = useQuery({
@@ -129,7 +123,7 @@ function PlansIndexPage() {
             if (spaceId) query.spaceId = spaceId;
             const result = unwrapEden(await api.api.plans.get({ query }));
             return (result as unknown as PlanRow[]) ?? [];
-        },
+        }
     });
 
     const filteredPlans = useMemo(() => {
@@ -154,29 +148,27 @@ function PlansIndexPage() {
         mutationFn: async ({ id, body }: { id: string; body: Record<string, unknown> }) =>
             unwrapEden(await api.api.plans({ id }).patch(body)),
         onSuccess: () => queryClient.invalidateQueries({ queryKey: ["plans"] }),
-        onError: () => toast.error("Failed to update plan"),
+        onError: () => toast.error("Failed to update plan")
     });
 
     const duplicateMutation = useMutation({
-        mutationFn: async (id: string) =>
-            unwrapEden(await api.api.plans({ id }).duplicate.post()),
+        mutationFn: async (id: string) => unwrapEden(await api.api.plans({ id }).duplicate.post()),
         onSuccess: created => {
             queryClient.invalidateQueries({ queryKey: ["plans"] });
             toast.success(`Duplicated as "${created.title}"`);
             navigate({ to: "/plans/$planId", params: { planId: created.id } });
         },
-        onError: () => toast.error("Failed to duplicate plan"),
+        onError: () => toast.error("Failed to duplicate plan")
     });
 
     const deleteMutation = useMutation({
-        mutationFn: async (id: string) =>
-            unwrapEden(await api.api.plans({ id }).delete()),
+        mutationFn: async (id: string) => unwrapEden(await api.api.plans({ id }).delete()),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["plans"] });
             toast.success("Plan deleted");
             setDeleteTarget(null);
         },
-        onError: () => toast.error("Failed to delete plan"),
+        onError: () => toast.error("Failed to delete plan")
     });
 
     const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
@@ -187,7 +179,7 @@ function PlansIndexPage() {
         { value: "ready", label: "Ready" },
         { value: "completed", label: "Completed" },
         { value: "archived", label: "Archived" },
-        { value: "all", label: "All" },
+        { value: "all", label: "All" }
     ];
 
     return (
@@ -234,11 +226,14 @@ function PlansIndexPage() {
                         placeholder="Search plans...  ( / )"
                         value={qDraft}
                         onChange={e => setQDraft(e.target.value)}
-                        className="bg-background focus:ring-ring w-full rounded-lg border py-2 pl-9 pr-3 text-sm focus:ring-2 focus:outline-none"
+                        className="bg-background focus:ring-ring w-full rounded-lg border py-2 pr-3 pl-9 text-sm focus:ring-2 focus:outline-none"
                     />
                     {qDraft && (
                         <button
-                            onClick={() => { setQDraft(""); setSearch({ q: undefined }); }}
+                            onClick={() => {
+                                setQDraft("");
+                                setSearch({ q: undefined });
+                            }}
                             className="text-muted-foreground absolute top-1/2 right-3 -translate-y-1/2"
                         >
                             <X className="size-3.5" />
@@ -246,14 +241,19 @@ function PlansIndexPage() {
                     )}
                 </div>
 
-                <Select value={spaceId || "__all__"} onValueChange={v => setSearch({ space: !v || v === "__all__" ? undefined : (v as string) })}>
+                <Select
+                    value={spaceId || "__all__"}
+                    onValueChange={v => setSearch({ space: !v || v === "__all__" ? undefined : (v as string) })}
+                >
                     <SelectTrigger size="sm" className="w-[180px]">
                         <SelectValue placeholder="All spaces" />
                     </SelectTrigger>
                     <SelectPopup>
                         <SelectItem value="__all__">All spaces</SelectItem>
                         {(spacesQuery.data ?? []).map(c => (
-                            <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                            <SelectItem key={c.id} value={c.id}>
+                                {c.name}
+                            </SelectItem>
                         ))}
                     </SelectPopup>
                 </Select>
@@ -271,7 +271,7 @@ function PlansIndexPage() {
                             onArchiveToggle={() =>
                                 updateMutation.mutate({
                                     id: p.id,
-                                    body: { status: p.status === "archived" ? "draft" : "archived" },
+                                    body: { status: p.status === "archived" ? "draft" : "archived" }
                                 })
                             }
                             onDuplicate={() => duplicateMutation.mutate(p.id)}
@@ -279,18 +279,18 @@ function PlansIndexPage() {
                         />
                     ))}
                     {filteredPlans.length === 0 && (
-                        <div className="rounded-md border border-dashed p-8 text-center text-sm text-muted-foreground">
-                            {q || spaceId || statusFilter !== "active"
-                                ? "No plans match the current filters."
-                                : (
-                                    <>
-                                        No plans yet.{" "}
-                                        <Link to="/plans/new" className="underline">
-                                            Create one
-                                        </Link>{" "}
-                                        to get started.
-                                    </>
-                                )}
+                        <div className="text-muted-foreground rounded-md border border-dashed p-8 text-center text-sm">
+                            {q || spaceId || statusFilter !== "active" ? (
+                                "No plans match the current filters."
+                            ) : (
+                                <>
+                                    No plans yet.{" "}
+                                    <Link to="/plans/new" className="underline">
+                                        Create one
+                                    </Link>{" "}
+                                    to get started.
+                                </>
+                            )}
                         </div>
                     )}
                 </div>
@@ -298,7 +298,9 @@ function PlansIndexPage() {
 
             <ConfirmDialog
                 open={deleteTarget !== null}
-                onOpenChange={open => { if (!open) setDeleteTarget(null); }}
+                onOpenChange={open => {
+                    if (!open) setDeleteTarget(null);
+                }}
                 title="Delete plan"
                 description={
                     deleteTarget
@@ -307,7 +309,9 @@ function PlansIndexPage() {
                 }
                 confirmLabel="Delete"
                 confirmVariant="destructive"
-                onConfirm={() => { if (deleteTarget) deleteMutation.mutate(deleteTarget.id); }}
+                onConfirm={() => {
+                    if (deleteTarget) deleteMutation.mutate(deleteTarget.id);
+                }}
                 loading={deleteMutation.isPending}
             />
         </PageContainer>
@@ -325,30 +329,26 @@ function PlanRow({ plan, onArchiveToggle, onDuplicate, onDelete }: PlanRowProps)
     const progressPct = plan.taskTotal === 0 ? 0 : Math.round((plan.taskDone / plan.taskTotal) * 100);
     const isArchived = plan.status === "archived";
     return (
-        <div className={`group flex items-start gap-3 rounded-md border px-4 py-3 transition-colors hover:bg-muted/40 ${isArchived ? "opacity-60" : ""}`}>
-            <Link
-                to="/plans/$planId"
-                params={{ planId: plan.id }}
-                className="min-w-0 flex-1"
-            >
+        <div
+            className={`group hover:bg-muted/40 flex items-start gap-3 rounded-md border px-4 py-3 transition-colors ${isArchived ? "opacity-60" : ""}`}
+        >
+            <Link to="/plans/$planId" params={{ planId: plan.id }} className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
                     <span className="font-medium">{plan.title}</span>
                     <PlanStatusPill status={plan.status} />
                     {plan.spaceName && (
-                        <span className="text-muted-foreground rounded border px-1.5 py-0.5 text-[10px]">
-                            {plan.spaceName}
-                        </span>
+                        <span className="text-muted-foreground rounded border px-1.5 py-0.5 text-[10px]">{plan.spaceName}</span>
                     )}
                 </div>
-                {plan.description && (
-                    <div className="mt-0.5 text-xs text-muted-foreground line-clamp-1">{plan.description}</div>
-                )}
+                {plan.description && <div className="text-muted-foreground mt-0.5 line-clamp-1 text-xs">{plan.description}</div>}
                 {plan.taskTotal > 0 && (
-                    <div className="mt-1.5 flex items-center gap-2 text-xs text-muted-foreground">
+                    <div className="text-muted-foreground mt-1.5 flex items-center gap-2 text-xs">
                         <div className="bg-muted h-1 max-w-[120px] flex-1 overflow-hidden rounded">
-                            <div className="bg-emerald-500 h-full" style={{ width: `${progressPct}%` }} />
+                            <div className="h-full bg-emerald-500" style={{ width: `${progressPct}%` }} />
                         </div>
-                        <span className="font-mono tabular-nums">{plan.taskDone}/{plan.taskTotal}</span>
+                        <span className="font-mono tabular-nums">
+                            {plan.taskDone}/{plan.taskTotal}
+                        </span>
                     </div>
                 )}
                 {plan.nextAction && plan.status !== "completed" && plan.status !== "archived" && (
@@ -359,31 +359,43 @@ function PlanRow({ plan, onArchiveToggle, onDuplicate, onDelete }: PlanRowProps)
                 )}
             </Link>
             <div className="flex shrink-0 items-center gap-2 self-start">
-                <span className="text-[10px] text-muted-foreground tabular-nums">
-                    {new Date(plan.lastActivityAt).toLocaleDateString()}
-                </span>
+                <span className="text-muted-foreground text-[10px] tabular-nums">{new Date(plan.lastActivityAt).toLocaleDateString()}</span>
                 <RowActionsMenu
                     ariaLabel={`Actions for ${plan.title}`}
                     items={[
                         {
                             key: "duplicate",
                             onSelect: onDuplicate,
-                            children: (<><Copy className="size-3.5" /> Duplicate</>),
+                            children: (
+                                <>
+                                    <Copy className="size-3.5" /> Duplicate
+                                </>
+                            )
                         },
                         {
                             key: "archive",
                             onSelect: onArchiveToggle,
-                            children: isArchived
-                                ? (<><ArchiveRestore className="size-3.5" /> Unarchive</>)
-                                : (<><Archive className="size-3.5" /> Archive</>),
+                            children: isArchived ? (
+                                <>
+                                    <ArchiveRestore className="size-3.5" /> Unarchive
+                                </>
+                            ) : (
+                                <>
+                                    <Archive className="size-3.5" /> Archive
+                                </>
+                            )
                         },
                         {
                             key: "delete",
                             onSelect: onDelete,
                             destructive: true,
                             separatorBefore: true,
-                            children: (<><Trash2 className="size-3.5" /> Delete</>),
-                        },
+                            children: (
+                                <>
+                                    <Trash2 className="size-3.5" /> Delete
+                                </>
+                            )
+                        }
                     ]}
                 />
             </div>

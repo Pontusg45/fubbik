@@ -1,7 +1,7 @@
 ---
 tags:
-  - guide
-  - learning
+    - guide
+    - learning
 description: Curated sequential paths through chunks for guided learning
 ---
 
@@ -20,6 +20,7 @@ Learning paths at `/learn` provide curated, ordered sequences of chunks for guid
 ## Following a Path
 
 When someone follows a learning path:
+
 - Chunks are presented in sequence with navigation controls
 - Progress is tracked (which chunks have been read)
 - Transition notes provide context between chunks

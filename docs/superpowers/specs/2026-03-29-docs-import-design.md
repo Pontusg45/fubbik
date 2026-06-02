@@ -19,11 +19,11 @@ Import a folder of markdown documents (with nested subdirectories) as chunks, vi
 
 ```typescript
 {
-  files: Array<{
-    path: string      // relative path preserving folder structure, e.g. "api/auth.md"
-    content: string   // raw file content including frontmatter
-  }>                  // max 500 files
-  codebaseId: string  // required
+    files: Array<{
+        path: string; // relative path preserving folder structure, e.g. "api/auth.md"
+        content: string; // raw file content including frontmatter
+    }>; // max 500 files
+    codebaseId: string; // required
 }
 ```
 
@@ -31,9 +31,9 @@ Import a folder of markdown documents (with nested subdirectories) as chunks, vi
 
 ```typescript
 {
-  created: number
-  skipped: number     // files with no parseable content after frontmatter
-  errors: Array<{ path: string, error: string }>
+    created: number;
+    skipped: number; // files with no parseable content after frontmatter
+    errors: Array<{ path: string; error: string }>;
 }
 ```
 
@@ -42,7 +42,8 @@ Import a folder of markdown documents (with nested subdirectories) as chunks, vi
 1. Parse YAML frontmatter (use `gray-matter` or lightweight equivalent)
 2. Recognized frontmatter fields: `title` (string), `type` (string), `tags` (string[]), `scope` (object) — all optional
 3. Title fallback chain: frontmatter `title` > first `# heading` in body > filename without `.md` extension
-4. Folder-derived tags: each directory segment in the relative path becomes a tag (e.g., `guides/api/auth.md` produces tags `["guides", "api"]`)
+4. Folder-derived tags: each directory segment in the relative path becomes a tag (e.g., `guides/api/auth.md` produces tags
+   `["guides", "api"]`)
 5. Final tags = frontmatter tags + folder tags, deduplicated
 6. Type defaults to `"document"` if not specified in frontmatter
 7. Content = markdown body after frontmatter is stripped (and after leading `# heading` if it was used as title)
@@ -71,6 +72,7 @@ Import a folder of markdown documents (with nested subdirectories) as chunks, vi
 Add "Import Docs" option to the header dropdown menu (alongside existing actions).
 
 **Dialog contents:**
+
 - Folder picker via `<input type="file" webkitdirectory>` (also accepts multiple individual files)
 - Codebase selector dropdown (required)
 - File count preview after selection (e.g., "12 markdown files found")

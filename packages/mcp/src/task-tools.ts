@@ -1,5 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
+
 import { apiFetch } from "./api-client.js";
 import type { McpPlugin } from "./plugin.js";
 
@@ -35,9 +36,7 @@ export function registerTaskTools(server: McpServer): void {
                 content: [{ type: "text" as const, text: "No open tasks" }]
             };
         }
-        const list = tasks
-            .map((t: any) => `- [${t.status}] ${t.title} (${t.id})`)
-            .join("\n");
+        const list = tasks.map((t: any) => `- [${t.status}] ${t.title} (${t.id})`).join("\n");
         return {
             content: [
                 {

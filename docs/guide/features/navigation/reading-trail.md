@@ -1,8 +1,8 @@
 ---
 tags:
-  - guide
-  - navigation
-  - reading-trail
+    - guide
+    - navigation
+    - reading-trail
 description: Recently viewed chunks sidebar for session navigation
 ---
 

@@ -1,4 +1,5 @@
 import { X } from "lucide-react";
+
 import { FILTER_COLORS } from "./query-types";
 import type { QueryClause } from "./query-types";
 
@@ -11,14 +12,22 @@ interface FilterPillsProps {
 
 function operatorLabel(operator: string): string {
     switch (operator) {
-        case "eq": return "is";
-        case "neq": return "is not";
-        case "gt": return ">";
-        case "lt": return "<";
-        case "gte": return ">=";
-        case "lte": return "<=";
-        case "contains": return "contains";
-        default: return operator;
+        case "eq":
+            return "is";
+        case "neq":
+            return "is not";
+        case "gt":
+            return ">";
+        case "lt":
+            return "<";
+        case "gte":
+            return ">=";
+        case "lte":
+            return "<=";
+        case "contains":
+            return "contains";
+        default:
+            return operator;
     }
 }
 
@@ -34,18 +43,14 @@ export function FilterPills({ clauses, join, onRemove, onSetJoin }: FilterPillsP
                         {index > 0 && (
                             <button
                                 onClick={() => onSetJoin(join === "and" ? "or" : "and")}
-                                className="text-muted-foreground hover:text-foreground rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider transition-colors hover:bg-muted"
+                                className="text-muted-foreground hover:text-foreground hover:bg-muted rounded px-1.5 py-0.5 text-[10px] font-semibold tracking-wider uppercase transition-colors"
                                 title="Click to toggle AND/OR"
                             >
                                 {join}
                             </button>
                         )}
-                        <div
-                            className={`flex items-center gap-1 rounded border px-2 py-0.5 text-xs ${colorClass}`}
-                        >
-                            {clause.negate && (
-                                <span className="font-semibold opacity-70">NOT</span>
-                            )}
+                        <div className={`flex items-center gap-1 rounded border px-2 py-0.5 text-xs ${colorClass}`}>
+                            {clause.negate && <span className="font-semibold opacity-70">NOT</span>}
                             <span className="font-semibold">{clause.field}</span>
                             <span className="opacity-70">{operatorLabel(clause.operator)}</span>
                             <span>{clause.value}</span>

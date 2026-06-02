@@ -54,10 +54,7 @@ export function SuggestedConnections({ chunkId }: { chunkId: string }) {
     return (
         <Card>
             <CardHeader>
-                <button
-                    onClick={() => setExpanded(!expanded)}
-                    className="flex w-full items-center gap-2"
-                >
+                <button onClick={() => setExpanded(!expanded)} className="flex w-full items-center gap-2">
                     <CardTitle className="flex items-center gap-2 text-sm">
                         <Lightbulb className="size-4" />
                         Suggested Connections
@@ -79,9 +76,7 @@ export function SuggestedConnections({ chunkId }: { chunkId: string }) {
                         </div>
                     )}
 
-                    {suggestionsQuery.isError && (
-                        <p className="text-muted-foreground text-sm">Failed to load suggestions.</p>
-                    )}
+                    {suggestionsQuery.isError && <p className="text-muted-foreground text-sm">Failed to load suggestions.</p>}
 
                     {!suggestionsQuery.isLoading && suggestions.length === 0 && !suggestionsQuery.isError && (
                         <p className="text-muted-foreground text-sm">No suggestions found.</p>
@@ -93,11 +88,7 @@ export function SuggestedConnections({ chunkId }: { chunkId: string }) {
                             className="hover:bg-muted flex items-center justify-between rounded-md border px-3 py-2 text-sm transition-colors"
                         >
                             <div className="flex-1">
-                                <Link
-                                    to="/chunks/$chunkId"
-                                    params={{ chunkId: suggestion.id }}
-                                    className="font-medium"
-                                >
+                                <Link to="/chunks/$chunkId" params={{ chunkId: suggestion.id }} className="font-medium">
                                     {suggestion.title}
                                 </Link>
                                 <div className="mt-0.5 flex items-center gap-2">

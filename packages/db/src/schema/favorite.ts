@@ -16,8 +16,5 @@ export const userFavorite = pgTable(
         order: integer("order").notNull().default(0),
         createdAt: timestamp("created_at").defaultNow().notNull()
     },
-    table => [
-        uniqueIndex("favorite_user_chunk_idx").on(table.userId, table.chunkId),
-        index("favorite_userId_idx").on(table.userId)
-    ]
+    table => [uniqueIndex("favorite_user_chunk_idx").on(table.userId, table.chunkId), index("favorite_userId_idx").on(table.userId)]
 );

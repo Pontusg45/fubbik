@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+
 import { parseHeadings, extractFields } from "./field-extraction";
 import type { FieldMapping } from "./types";
 
@@ -23,7 +24,7 @@ const ADR_MAPPINGS: FieldMapping[] = [
     { headings: ["Context", "Background"], match: "prefix", target: "content" },
     { headings: ["Decision", "Choice"], match: "prefix", target: "rationale" },
     { headings: ["Alternatives"], match: "prefix", target: "alternatives" },
-    { headings: ["Consequences"], match: "prefix", target: "consequences" },
+    { headings: ["Consequences"], match: "prefix", target: "consequences" }
 ];
 
 describe("parseHeadings", () => {
@@ -33,7 +34,7 @@ describe("parseHeadings", () => {
         expect(headings).toEqual([
             { text: "Title", level: 1 },
             { text: "Context", level: 2 },
-            { text: "Details", level: 3 },
+            { text: "Details", level: 3 }
         ]);
     });
 
@@ -90,18 +91,14 @@ describe("extractFields", () => {
 
     it("wraps single-item non-bullet alternatives as array", () => {
         const md = `# Doc\n\n## Alternatives\nJust one option\n`;
-        const mappings: FieldMapping[] = [
-            { headings: ["Alternatives"], match: "exact", target: "alternatives" },
-        ];
+        const mappings: FieldMapping[] = [{ headings: ["Alternatives"], match: "exact", target: "alternatives" }];
         const { extracted } = extractFields(md, mappings);
         expect(extracted.alternatives).toEqual(["Just one option"]);
     });
 
     it("handles scope extraction from key-value lines", () => {
         const md = `# Doc\n\n## Scope\narea: backend\nteam: platform\n`;
-        const mappings: FieldMapping[] = [
-            { headings: ["Scope"], match: "exact", target: "scope" },
-        ];
+        const mappings: FieldMapping[] = [{ headings: ["Scope"], match: "exact", target: "scope" }];
         const { extracted } = extractFields(md, mappings);
         expect(extracted.scope).toEqual({ area: "backend", team: "platform" });
     });

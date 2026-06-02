@@ -64,7 +64,7 @@ export function GraphSettingsPanel({
     onOpenGraph,
     onDeleteGraph,
     onExportImage,
-    onExportMermaid,
+    onExportMermaid
 }: GraphSettingsPanelProps) {
     return (
         <Popover>
@@ -74,9 +74,7 @@ export function GraphSettingsPanel({
             <PopoverPopup side="bottom" align="end" sideOffset={8} className="w-56">
                 <div className="flex flex-col gap-3">
                     <div>
-                        <label className="text-muted-foreground mb-1 block text-[10px] font-medium tracking-wider uppercase">
-                            Layout
-                        </label>
+                        <label className="text-muted-foreground mb-1 block text-[10px] font-medium tracking-wider uppercase">Layout</label>
                         <select
                             value={layoutAlgorithm}
                             onChange={e => onLayoutChange(e.target.value as LayoutAlgorithm)}
@@ -100,9 +98,7 @@ export function GraphSettingsPanel({
                         <button
                             onClick={onToggleExploreMode}
                             className={`w-full rounded-md border px-2.5 py-1.5 text-left text-xs ${
-                                exploreMode
-                                    ? "bg-primary text-primary-foreground"
-                                    : "text-muted-foreground hover:text-foreground"
+                                exploreMode ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
                             }`}
                         >
                             Explore mode
@@ -119,9 +115,7 @@ export function GraphSettingsPanel({
                         <button
                             onClick={onToggleBundleEdges}
                             className={`w-full rounded-md border px-2.5 py-1.5 text-left text-xs ${
-                                bundleEdges
-                                    ? "bg-primary text-primary-foreground"
-                                    : "text-muted-foreground hover:text-foreground"
+                                bundleEdges ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
                             }`}
                         >
                             Bundle edges
@@ -129,9 +123,7 @@ export function GraphSettingsPanel({
                         <button
                             onClick={onToggleMainThread}
                             className={`w-full rounded-md border px-2.5 py-1.5 text-left text-xs ${
-                                useMainThread
-                                    ? "bg-primary text-primary-foreground"
-                                    : "text-muted-foreground hover:text-foreground"
+                                useMainThread ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
                             }`}
                         >
                             Main-thread layout

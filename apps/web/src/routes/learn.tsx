@@ -6,13 +6,13 @@ import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 export const Route = createFileRoute("/learn")({
-    component: LearnPage,
+    component: LearnPage
 });
 
 function LearnPage() {
     const { data } = useQuery({
         queryKey: ["learning-paths"],
-        queryFn: async () => unwrapEden(await (api.api as any)["learning-paths"].get()),
+        queryFn: async () => unwrapEden(await (api.api as any)["learning-paths"].get())
     });
 
     const paths = ((data as any) ?? []) as Array<{
@@ -27,7 +27,7 @@ function LearnPage() {
             <h1 className="mb-6 text-2xl font-bold tracking-tight">Learning Paths</h1>
             {paths.length === 0 ? (
                 <div className="rounded-lg border p-8 text-center">
-                    <BookOpen className="mx-auto size-8 text-muted-foreground/40 mb-2" />
+                    <BookOpen className="text-muted-foreground/40 mx-auto mb-2 size-8" />
                     <p className="text-muted-foreground">No learning paths yet.</p>
                 </div>
             ) : (
@@ -37,17 +37,13 @@ function LearnPage() {
                             key={p.id}
                             to="/learn/$pathId"
                             params={{ pathId: p.id }}
-                            className="flex items-start gap-3 rounded-lg border bg-card p-4 hover:bg-muted/50 transition-colors"
+                            className="bg-card hover:bg-muted/50 flex items-start gap-3 rounded-lg border p-4 transition-colors"
                         >
-                            <BookOpen className="mt-0.5 size-5 text-muted-foreground shrink-0" />
+                            <BookOpen className="text-muted-foreground mt-0.5 size-5 shrink-0" />
                             <div className="min-w-0 flex-1">
                                 <div className="font-semibold">{p.title}</div>
-                                {p.description && (
-                                    <p className="mt-1 text-sm text-muted-foreground">{p.description}</p>
-                                )}
-                                <p className="mt-2 text-xs text-muted-foreground">
-                                    {p.chunkIds.length} chunks in sequence
-                                </p>
+                                {p.description && <p className="text-muted-foreground mt-1 text-sm">{p.description}</p>}
+                                <p className="text-muted-foreground mt-2 text-xs">{p.chunkIds.length} chunks in sequence</p>
                             </div>
                         </Link>
                     ))}

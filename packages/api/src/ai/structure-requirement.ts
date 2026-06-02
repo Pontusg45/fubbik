@@ -43,9 +43,7 @@ export function structureRequirement(description: string, codebaseId?: string) {
             return Effect.succeed("");
         }),
         Effect.flatMap(vocabularyContext => {
-            const vocabSection = vocabularyContext
-                ? `\nUse this vocabulary if possible:\n${vocabularyContext}\n`
-                : "";
+            const vocabSection = vocabularyContext ? `\nUse this vocabulary if possible:\n${vocabularyContext}\n` : "";
 
             const prompt = `Convert this requirement description into structured Given/When/Then steps.
 ${vocabSection}

@@ -10,7 +10,9 @@ export const space = pgTable(
     {
         id: text("id").primaryKey(),
         name: text("name").notNull(),
-        kind: text("kind").notNull().references(() => spaceKind.id, { onDelete: "restrict" }),
+        kind: text("kind")
+            .notNull()
+            .references(() => spaceKind.id, { onDelete: "restrict" }),
         description: text("description"),
         userId: text("user_id")
             .notNull()

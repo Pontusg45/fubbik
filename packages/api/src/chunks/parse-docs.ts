@@ -40,7 +40,7 @@ export function parseDocFile(path: string, raw: string): ParsedDoc {
     const rawScope = frontmatter.scope;
     const scope: Record<string, string> | undefined =
         rawScope && typeof rawScope === "object" && !Array.isArray(rawScope)
-            ? (Object.fromEntries(Object.entries(rawScope).map(([k, v]) => [k, String(v)])))
+            ? Object.fromEntries(Object.entries(rawScope).map(([k, v]) => [k, String(v)]))
             : undefined;
 
     return { title, content: content.trim(), type, tags, ...(scope ? { scope } : {}) };

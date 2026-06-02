@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
+
 import { FILTER_CATEGORIES, GRAPH_FIELDS } from "./query-types";
 import type { QueryClause } from "./query-types";
 
@@ -13,7 +14,7 @@ import type { QueryClause } from "./query-types";
 const PRESET_FIELD_VALUES: Record<string, string[]> = {
     type: ["note", "document", "reference", "schema", "checklist"],
     origin: ["human", "ai"],
-    review: ["draft", "approved"],
+    review: ["draft", "approved"]
 };
 
 // Fields that use autocomplete
@@ -69,39 +70,33 @@ export function AddFilterDropdown({ onAddClause }: AddFilterDropdownProps) {
 
     // Autocomplete query
     const autocompleteEnabled =
-        mode === "input" &&
-        selectedField !== null &&
-        AUTOCOMPLETE_FIELDS.has(selectedField) &&
-        inputValue.length >= 1;
+        mode === "input" && selectedField !== null && AUTOCOMPLETE_FIELDS.has(selectedField) && inputValue.length >= 1;
 
     const { data: suggestions } = useQuery({
         queryKey: ["search-autocomplete", selectedField, inputValue],
         queryFn: async () =>
             unwrapEden(
                 await api.api.search.autocomplete.get({
-                    query: { field: selectedField!, prefix: inputValue },
-                }),
+                    query: { field: selectedField!, prefix: inputValue }
+                })
             ),
         enabled: autocompleteEnabled,
-        staleTime: 10_000,
+        staleTime: 10_000
     });
 
     // For path field, the active input determines autocomplete
-    const pathAutocompleteEnabled =
-        mode === "input" &&
-        selectedField === "path" &&
-        inputValue.length >= 1;
+    const pathAutocompleteEnabled = mode === "input" && selectedField === "path" && inputValue.length >= 1;
 
     const { data: pathSuggestions } = useQuery({
         queryKey: ["search-autocomplete", "near", inputValue],
         queryFn: async () =>
             unwrapEden(
                 await api.api.search.autocomplete.get({
-                    query: { field: "near", prefix: inputValue },
-                }),
+                    query: { field: "near", prefix: inputValue }
+                })
             ),
         enabled: pathAutocompleteEnabled,
-        staleTime: 10_000,
+        staleTime: 10_000
     });
 
     function goToInput(field: string) {
@@ -179,27 +174,21 @@ export function AddFilterDropdown({ onAddClause }: AddFilterDropdownProps) {
         }
     }
 
-    const activeSuggestions =
-        selectedField === "path"
-            ? (pathSuggestions as string[] | undefined)
-            : (suggestions as string[] | undefined);
+    const activeSuggestions = selectedField === "path" ? (pathSuggestions as string[] | undefined) : (suggestions as string[] | undefined);
 
     const fieldDefs = FILTER_CATEGORIES.flatMap(c => c.fields);
     const selectedFieldDef = fieldDefs.find(f => f.field === selectedField);
 
     return (
         <Popover open={open} onOpenChange={setOpen}>
-            <PopoverTrigger className="inline-flex items-center gap-1.5 rounded-md border px-3 py-2 text-sm font-medium transition-colors hover:bg-muted">
+            <PopoverTrigger className="hover:bg-muted inline-flex items-center gap-1.5 rounded-md border px-3 py-2 text-sm font-medium transition-colors">
                 <Plus className="size-3.5" />
                 Add filter
             </PopoverTrigger>
 
             <PopoverContent align="start" className="w-56 p-0" sideOffset={4}>
                 {mode === "menu" ? (
-                    <MenuView
-                        onPresetValue={handlePresetValue}
-                        onGoToInput={goToInput}
-                    />
+                    <MenuView onPresetValue={handlePresetValue} onGoToInput={goToInput} />
                 ) : (
                     <InputView
                         field={selectedField!}
@@ -212,7 +201,7 @@ export function AddFilterDropdown({ onAddClause }: AddFilterDropdownProps) {
                         onInputChange={setInputValue}
                         onKeyDown={handleInputKeyDown}
                         onSuggestionClick={handleSuggestionClick}
-                        onPreset={(value) => commitClause(selectedField!, value)}
+                        onPreset={value => commitClause(selectedField!, value)}
                         onBack={goBack}
                     />
                 )}
@@ -259,11 +248,11 @@ function MenuView({ onPresetValue, onGoToInput }: MenuViewProps) {
                             <button
                                 key={fieldDef.field}
                                 onClick={() => onGoToInput(fieldDef.field)}
-                                className="flex w-full cursor-default items-center gap-2 px-2 py-2 text-xs outline-none hover:bg-accent hover:text-accent-foreground"
+                                className="hover:bg-accent hover:text-accent-foreground flex w-full cursor-default items-center gap-2 px-2 py-2 text-xs outline-none"
                             >
-                                {isGraph && <Network className="size-3 opacity-60 shrink-0" />}
+                                {isGraph && <Network className="size-3 shrink-0 opacity-60" />}
                                 <span>{fieldDef.label}</span>
-                                <span className="ml-auto text-muted-foreground opacity-60">›</span>
+                                <span className="text-muted-foreground ml-auto opacity-60">›</span>
                             </button>
                         );
                     })}
@@ -290,11 +279,11 @@ function PresetFieldRow({ field, label, isGraph, values, onSelect }: PresetField
         <div>
             <button
                 onClick={() => setExpanded(e => !e)}
-                className="flex w-full cursor-default items-center gap-2 px-2 py-2 text-xs outline-none hover:bg-accent hover:text-accent-foreground"
+                className="hover:bg-accent hover:text-accent-foreground flex w-full cursor-default items-center gap-2 px-2 py-2 text-xs outline-none"
             >
-                {isGraph && <Network className="size-3 opacity-60 shrink-0" />}
+                {isGraph && <Network className="size-3 shrink-0 opacity-60" />}
                 <span>{label}</span>
-                <span className="ml-auto text-muted-foreground opacity-60">{expanded ? "▾" : "›"}</span>
+                <span className="text-muted-foreground ml-auto opacity-60">{expanded ? "▾" : "›"}</span>
             </button>
             {expanded && (
                 <div className="pb-1">
@@ -302,7 +291,7 @@ function PresetFieldRow({ field, label, isGraph, values, onSelect }: PresetField
                         <button
                             key={val}
                             onClick={() => onSelect(field, val)}
-                            className="flex w-full cursor-default items-center pl-6 pr-2 py-1.5 text-xs outline-none hover:bg-accent hover:text-accent-foreground"
+                            className="hover:bg-accent hover:text-accent-foreground flex w-full cursor-default items-center py-1.5 pr-2 pl-6 text-xs outline-none"
                         >
                             {val}
                         </button>
@@ -342,7 +331,7 @@ function InputView({
     onKeyDown,
     onSuggestionClick,
     onPreset,
-    onBack,
+    onBack
 }: InputViewProps) {
     const placeholder = getPlaceholder(field, pathStep);
 
@@ -352,20 +341,16 @@ function InputView({
             <div className="flex items-center gap-1 border-b px-2 py-2">
                 <button
                     onClick={onBack}
-                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground outline-none"
+                    className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-xs outline-none"
                     title="Back"
                 >
                     <ArrowLeft className="size-3" />
                 </button>
                 <span className="text-xs font-medium">
-                    {field === "path"
-                        ? pathStep === "from"
-                            ? "From chunk"
-                            : "To chunk"
-                        : fieldLabel}
+                    {field === "path" ? (pathStep === "from" ? "From chunk" : "To chunk") : fieldLabel}
                 </span>
                 {field === "path" && pathStep === "to" && (
-                    <span className="ml-auto text-xs text-muted-foreground truncate max-w-24" title={pathState.fromLabel}>
+                    <span className="text-muted-foreground ml-auto max-w-24 truncate text-xs" title={pathState.fromLabel}>
                         from: {pathState.fromLabel}
                     </span>
                 )}
@@ -401,7 +386,7 @@ function InputView({
                         onChange={e => onInputChange(e.target.value)}
                         onKeyDown={onKeyDown}
                         placeholder={placeholder}
-                        className="w-full rounded border bg-background px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-ring"
+                        className="bg-background focus:ring-ring w-full rounded border px-2 py-1.5 text-xs outline-none focus:ring-1"
                     />
                 </div>
             )}
@@ -417,7 +402,7 @@ function InputView({
                                 e.preventDefault();
                                 onSuggestionClick(s);
                             }}
-                            className="flex w-full cursor-default items-center px-2 py-1.5 text-xs outline-none hover:bg-accent hover:text-accent-foreground"
+                            className="hover:bg-accent hover:text-accent-foreground flex w-full cursor-default items-center px-2 py-1.5 text-xs outline-none"
                         >
                             {s}
                         </button>
@@ -437,7 +422,7 @@ function getPlaceholder(field: string, pathStep: PathStep): string {
         text: "Search text…",
         near: "Chunk name or ID…",
         "affected-by": "Requirement name or ID…",
-        "similar-to": "Describe what you're looking for…",
+        "similar-to": "Describe what you're looking for…"
     };
     return map[field] ?? `Value for ${field}…`;
 }

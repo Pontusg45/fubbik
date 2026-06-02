@@ -1,11 +1,11 @@
 {
     "name": "@fubbik/mcp",
     "version": "0.0.1",
-    "type": "module",
-    "main": "src/index.ts",
     "bin": {
         "fubbik-mcp": "src/index.ts"
     },
+    "type": "module",
+    "main": "src/index.ts",
     "scripts": {
         "start": "npx tsx src/index.ts"
     },

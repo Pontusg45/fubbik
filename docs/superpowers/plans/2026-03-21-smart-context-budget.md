@@ -1,10 +1,14 @@
 # Smart Context Budget Plan
 
-> **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to
+> implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Make `fubbik context` smarter by prioritizing chunks with higher health scores, stronger relevance to the target, and recent updates — maximizing value per token.
+**Goal:** Make `fubbik context` smarter by prioritizing chunks with higher health scores, stronger relevance to the target, and recent
+updates — maximizing value per token.
 
-**Architecture:** Extend the existing context export scoring algorithm to factor in health score, embedding freshness, and optional file-path relevance. The current scoring is: `connectionCount * 2 + typeScore + hasRationale`. The new scoring adds: `healthScore / 10 + freshnessBonus + relevanceBonus`. This replaces the hardcoded type-based scoring with a multi-factor ranking.
+**Architecture:** Extend the existing context export scoring algorithm to factor in health score, embedding freshness, and optional
+file-path relevance. The current scoring is: `connectionCount * 2 + typeScore + hasRationale`. The new scoring adds:
+`healthScore / 10 + freshnessBonus + relevanceBonus`. This replaces the hardcoded type-based scoring with a multi-factor ranking.
 
 **Tech Stack:** Effect, existing context export service, health score computation
 
@@ -13,6 +17,7 @@
 ## File Structure
 
 ### Files to modify:
+
 - `packages/api/src/context-export/service.ts` — Upgrade scoring algorithm
 - `packages/api/src/context-export/routes.ts` — Add `forPath` query param
 - `apps/cli/src/commands/context.ts` — Add `--for <path>` flag
@@ -22,13 +27,16 @@
 ## Task 1: Upgrade Context Scoring Algorithm
 
 **Files:**
+
 - Modify: `packages/api/src/context-export/service.ts`
 
 - [ ] **Step 1: Read existing scoring**
 
-Read `packages/api/src/context-export/service.ts` to understand the current `exportContext` function, especially lines where chunks are scored and selected.
+Read `packages/api/src/context-export/service.ts` to understand the current `exportContext` function, especially lines where chunks are
+scored and selected.
 
 Current scoring:
+
 ```ts
 const typeScore = c.type === "document" ? 3 : c.type === "note" ? 1 : 2;
 const hasRationale = c.rationale ? 2 : 0;
@@ -37,9 +45,12 @@ const score = connectionCount * 2 + typeScore + hasRationale;
 
 - [ ] **Step 2: Replace with multi-factor scoring**
 
-**IMPORTANT:** The scoring function must operate on the RAW Drizzle DB row type (which has `updatedAt`, `reviewStatus`, `embedding`, etc.), NOT on the stripped-down `ScoredChunk` interface. Apply the scoring BEFORE creating `ScoredChunk` objects — in the `.map()` that processes raw chunks.
+**IMPORTANT:** The scoring function must operate on the RAW Drizzle DB row type (which has `updatedAt`, `reviewStatus`, `embedding`, etc.),
+NOT on the stripped-down `ScoredChunk` interface. Apply the scoring BEFORE creating `ScoredChunk` objects — in the `.map()` that processes
+raw chunks.
 
-Also: `computeHealthScore` already includes a freshness component in its 0-100 score. Don't double-count freshness with a separate `freshnessPoints`.
+Also: `computeHealthScore` already includes a freshness component in its 0-100 score. Don't double-count freshness with a separate
+`freshnessPoints`.
 
 ```ts
 import { computeHealthScore } from "../chunks/health-score";
@@ -54,7 +65,7 @@ function scoreChunk(c: typeof chunk.$inferSelect, connectionCount: number): numb
         alternatives: c.alternatives,
         consequences: c.consequences,
         connectionCount,
-        hasEmbedding: c.embedding != null,
+        hasEmbedding: c.embedding != null
     });
     const healthPoints = health.total / 10; // 0-10 (includes freshness already)
 
@@ -88,12 +99,14 @@ git commit -m "feat: upgrade context export with multi-factor chunk scoring"
 ## Task 2: File-Path Relevance Boost
 
 **Files:**
+
 - Modify: `packages/api/src/context-export/service.ts`
 - Modify: `packages/api/src/context-export/routes.ts`
 
 - [ ] **Step 1: Add `forPath` query param**
 
 In `routes.ts`, add to the context export route:
+
 ```ts
 forPath: t.Optional(t.String()),
 ```
@@ -105,7 +118,7 @@ When `forPath` is provided, fetch matching chunks from the context-for-file serv
 ```ts
 if (query.forPath) {
     // Use the existing context-for-file service to find relevant chunks
-    const fileContext = yield* getContextForFile(userId, query.forPath, query.codebaseId);
+    const fileContext = yield * getContextForFile(userId, query.forPath, query.codebaseId);
     const fileContextIds = new Set(fileContext.map(c => c.id));
 
     // Boost scores for file-relevant chunks
@@ -130,6 +143,7 @@ git commit -m "feat: add file-path relevance boost to context export"
 ## Task 3: CLI Integration
 
 **Files:**
+
 - Modify: `apps/cli/src/commands/context.ts`
 
 - [ ] **Step 1: Read existing context command**

@@ -7,20 +7,13 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardPanel } from "@/components/ui/card";
-import {
-    Dialog,
-    DialogPopup,
-    DialogHeader,
-    DialogTitle,
-    DialogDescription,
-    DialogPanel,
-} from "@/components/ui/dialog";
+import { Dialog, DialogPopup, DialogHeader, DialogTitle, DialogDescription, DialogPanel } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { DraftIndicator } from "@/features/chunks/draft-indicator";
 import { loadDraft, useAutosave } from "@/features/chunks/use-autosave";
-import { useActiveFeatures } from "@/features/feature-flags/use-active-features";
 import { MarkdownEditor } from "@/features/editor/markdown-editor";
+import { useActiveFeatures } from "@/features/feature-flags/use-active-features";
 import { getUser } from "@/functions/get-user";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
@@ -71,7 +64,7 @@ function SaveTargetDialog({
     open,
     onOpenChange,
     activeFeatures,
-    onSave,
+    onSave
 }: {
     open: boolean;
     onOpenChange: (open: boolean) => void;
@@ -83,30 +76,16 @@ function SaveTargetDialog({
             <DialogPopup showCloseButton={false}>
                 <DialogHeader>
                     <DialogTitle>Save to</DialogTitle>
-                    <DialogDescription>
-                        You have active features. Save changes to the base chunk or as a feature overlay.
-                    </DialogDescription>
+                    <DialogDescription>You have active features. Save changes to the base chunk or as a feature overlay.</DialogDescription>
                 </DialogHeader>
                 <DialogPanel>
                     <div className="space-y-2">
-                        <Button
-                            variant="outline"
-                            className="w-full justify-start"
-                            onClick={() => onSave("base")}
-                        >
+                        <Button variant="outline" className="w-full justify-start" onClick={() => onSave("base")}>
                             Base chunk
                         </Button>
                         {activeFeatures.map(f => (
-                            <Button
-                                key={f.id}
-                                variant="outline"
-                                className="w-full justify-start gap-2"
-                                onClick={() => onSave(f.id)}
-                            >
-                                <span
-                                    className="size-2 rounded-full"
-                                    style={{ backgroundColor: f.color ?? "#8b5cf6" }}
-                                />
+                            <Button key={f.id} variant="outline" className="w-full justify-start gap-2" onClick={() => onSave(f.id)}>
+                                <span className="size-2 rounded-full" style={{ backgroundColor: f.color ?? "#8b5cf6" }} />
                                 Feature: {f.name}
                             </Button>
                         ))}
@@ -147,7 +126,7 @@ function EditChunk() {
     const { data: featuresData } = useQuery({
         queryKey: ["features"],
         queryFn: async () => unwrapEden(await api.api.features.get({ query: {} })),
-        staleTime: 60_000,
+        staleTime: 60_000
     });
 
     const { data, isLoading, error } = useQuery({
@@ -317,9 +296,7 @@ function EditChunk() {
             if (Object.keys(delta).length === 0) {
                 throw new Error("No changes to save as feature overlay");
             }
-            await unwrapEden(
-                await (api.api.chunks({ id: chunkId }) as any).deltas({ featureId }).put({ delta })
-            );
+            await unwrapEden(await (api.api.chunks({ id: chunkId }) as any).deltas({ featureId }).put({ delta }));
         },
         onSuccess: () => {
             clearDraft();
@@ -392,7 +369,9 @@ function EditChunk() {
             <Card>
                 <CardPanel className="space-y-4 p-6">
                     <div>
-                        <label htmlFor="edit-title" className="mb-1.5 block text-sm font-medium">Title</label>
+                        <label htmlFor="edit-title" className="mb-1.5 block text-sm font-medium">
+                            Title
+                        </label>
                         <Input
                             id="edit-title"
                             type="text"
@@ -404,7 +383,9 @@ function EditChunk() {
                     </div>
 
                     <div>
-                        <label htmlFor="edit-type" className="mb-1.5 block text-sm font-medium">Type</label>
+                        <label htmlFor="edit-type" className="mb-1.5 block text-sm font-medium">
+                            Type
+                        </label>
                         <select
                             id="edit-type"
                             value={type}
@@ -420,7 +401,9 @@ function EditChunk() {
                     </div>
 
                     <div>
-                        <label htmlFor="edit-tags" className="mb-1.5 block text-sm font-medium">Tags</label>
+                        <label htmlFor="edit-tags" className="mb-1.5 block text-sm font-medium">
+                            Tags
+                        </label>
                         <div className="mb-2 flex flex-wrap gap-2">
                             {tags.map(tag => (
                                 <Badge
@@ -463,11 +446,7 @@ function EditChunk() {
                     <div>
                         <div className="mb-2 flex items-center justify-between">
                             <label className="text-sm font-medium">Applies To</label>
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => setAppliesTo([...appliesTo, { pattern: "", note: "" }])}
-                            >
+                            <Button variant="ghost" size="sm" onClick={() => setAppliesTo([...appliesTo, { pattern: "", note: "" }])}>
                                 <Plus className="mr-1 size-3" />
                                 Add
                             </Button>
@@ -493,11 +472,7 @@ function EditChunk() {
                                         placeholder="Note (optional)"
                                         className="w-40"
                                     />
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => setAppliesTo(appliesTo.filter((_, j) => j !== i))}
-                                    >
+                                    <Button variant="ghost" size="sm" onClick={() => setAppliesTo(appliesTo.filter((_, j) => j !== i))}>
                                         <Trash2 className="size-3.5" />
                                     </Button>
                                 </div>
@@ -557,11 +532,7 @@ function EditChunk() {
                                     <option value="tests">tests</option>
                                     <option value="implements">implements</option>
                                 </select>
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => setFileRefs(fileRefs.filter((_, j) => j !== i))}
-                                >
+                                <Button variant="ghost" size="sm" onClick={() => setFileRefs(fileRefs.filter((_, j) => j !== i))}>
                                     <Trash2 className="size-3.5" />
                                 </Button>
                             </div>
@@ -576,15 +547,15 @@ function EditChunk() {
                             onClick={() => setShowDecisionContext(!showDecisionContext)}
                             className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-sm font-medium transition-colors"
                         >
-                            <ChevronDown
-                                className={`size-4 transition-transform ${showDecisionContext ? "rotate-0" : "-rotate-90"}`}
-                            />
+                            <ChevronDown className={`size-4 transition-transform ${showDecisionContext ? "rotate-0" : "-rotate-90"}`} />
                             Decision Context
                         </button>
                         {showDecisionContext && (
                             <div className="mt-3 space-y-3 rounded-md border p-4">
                                 <div>
-                                    <label htmlFor="edit-rationale" className="mb-1.5 block text-sm font-medium">Rationale</label>
+                                    <label htmlFor="edit-rationale" className="mb-1.5 block text-sm font-medium">
+                                        Rationale
+                                    </label>
                                     <textarea
                                         id="edit-rationale"
                                         value={rationale}
@@ -595,7 +566,9 @@ function EditChunk() {
                                     />
                                 </div>
                                 <div>
-                                    <label htmlFor="edit-alternatives" className="mb-1.5 block text-sm font-medium">Alternatives Considered</label>
+                                    <label htmlFor="edit-alternatives" className="mb-1.5 block text-sm font-medium">
+                                        Alternatives Considered
+                                    </label>
                                     <Input
                                         id="edit-alternatives"
                                         type="text"
@@ -605,7 +578,9 @@ function EditChunk() {
                                     />
                                 </div>
                                 <div>
-                                    <label htmlFor="edit-consequences" className="mb-1.5 block text-sm font-medium">Consequences</label>
+                                    <label htmlFor="edit-consequences" className="mb-1.5 block text-sm font-medium">
+                                        Consequences
+                                    </label>
                                     <textarea
                                         id="edit-consequences"
                                         value={consequences}
@@ -646,8 +621,8 @@ function EditChunk() {
             <SaveTargetDialog
                 open={saveDialogOpen}
                 onOpenChange={setSaveDialogOpen}
-                activeFeatures={(featuresData as Array<{ id: string; name: string; color: string | null }> | undefined ?? []).filter(
-                    f => (activeFeatureIds as string[]).includes(f.id)
+                activeFeatures={((featuresData as Array<{ id: string; name: string; color: string | null }> | undefined) ?? []).filter(f =>
+                    (activeFeatureIds as string[]).includes(f.id)
                 )}
                 onSave={handleSaveTarget}
             />

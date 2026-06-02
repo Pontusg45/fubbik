@@ -1,15 +1,16 @@
 ---
 tags:
-  - guide
-  - views
-  - browse
-  - tags
+    - guide
+    - views
+    - browse
+    - tags
 description: Visual tag distribution showing tag usage across chunks
 ---
 
 # Tag Cloud
 
-The tag cloud view visualizes the distribution of tags across your knowledge base. Tags are sized proportionally to their usage count — frequently used tags appear larger.
+The tag cloud view visualizes the distribution of tags across your knowledge base. Tags are sized proportionally to their usage count —
+frequently used tags appear larger.
 
 ## Interactions
 

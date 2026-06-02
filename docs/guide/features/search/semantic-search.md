@@ -1,14 +1,15 @@
 ---
 tags:
-  - guide
-  - search
-  - semantic
+    - guide
+    - search
+    - semantic
 description: Meaning-based search using vector embeddings
 ---
 
 # Semantic Search
 
-With Ollama running, fubbik supports meaning-based search using vector embeddings. This finds chunks that are conceptually related even if they don't share keywords.
+With Ollama running, fubbik supports meaning-based search using vector embeddings. This finds chunks that are conceptually related even if
+they don't share keywords.
 
 ```bash
 fubbik search "how do we handle authentication" --semantic

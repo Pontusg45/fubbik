@@ -1,8 +1,8 @@
 ---
 tags:
-  - guide
-  - cli
-  - chunks
+    - guide
+    - cli
+    - chunks
 description: CLI commands for chunk CRUD and search
 ---
 

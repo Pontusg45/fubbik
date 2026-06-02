@@ -1,7 +1,7 @@
 import { Command } from "commander";
 
-import { formatBold, formatDim, formatSuccess } from "../lib/colors";
 import { fetchApi } from "../lib/api";
+import { formatBold, formatDim, formatSuccess } from "../lib/colors";
 import { isJson, output, outputError, outputQuiet } from "../lib/output";
 
 interface Proposal {
@@ -67,7 +67,7 @@ const listProposals = new Command("list")
                 const fields = Object.keys(p.changes).join(", ");
                 const age = timeSince(p.createdAt);
                 lines.push(
-                    `  ${icon} ${formatBold(p.chunkTitle ?? p.chunkId.slice(0, 8))} ${formatDim(`[${fields}]`)} ${formatDim(age)} ${formatDim(p.id.slice(0, 8))}`,
+                    `  ${icon} ${formatBold(p.chunkTitle ?? p.chunkId.slice(0, 8))} ${formatDim(`[${fields}]`)} ${formatDim(age)} ${formatDim(p.id.slice(0, 8))}`
                 );
                 if (p.reason) {
                     lines.push(`    ${formatDim(p.reason)}`);
@@ -109,10 +109,7 @@ const showProposal = new Command("show")
             }
             lines.push(`${formatDim("Changes:")}`);
             for (const [field, value] of Object.entries(proposal.changes)) {
-                const display =
-                    typeof value === "string" && value.length > 80
-                        ? `${value.slice(0, 80)}…`
-                        : JSON.stringify(value);
+                const display = typeof value === "string" && value.length > 80 ? `${value.slice(0, 80)}…` : JSON.stringify(value);
                 lines.push(`  ${formatBold(field)}: ${display}`);
             }
             output(cmd, proposal, lines.join("\n"));
@@ -133,7 +130,7 @@ const approveProposal = new Command("approve")
 
             const res = await fetchApi(`/proposals/${proposalId}/approve`, {
                 method: "POST",
-                body: JSON.stringify(body),
+                body: JSON.stringify(body)
             });
 
             if (!res.ok) {
@@ -161,7 +158,7 @@ const rejectProposal = new Command("reject")
 
             const res = await fetchApi(`/proposals/${proposalId}/reject`, {
                 method: "POST",
-                body: JSON.stringify(body),
+                body: JSON.stringify(body)
             });
 
             if (!res.ok) {
@@ -204,39 +201,45 @@ const proposeCommand = new Command("propose")
     .option("--type <type>", "Proposed new type")
     .option("--tags <tags>", "Proposed tags (comma-separated)")
     .option("-r, --reason <reason>", "Why you're proposing this change")
-    .action(async (chunkId: string, opts: { title?: string; content?: string; type?: string; tags?: string; reason?: string }, cmd: Command) => {
-        try {
-            const changes: Record<string, unknown> = {};
-            if (opts.title) changes.title = opts.title;
-            if (opts.content) changes.content = opts.content;
-            if (opts.type) changes.type = opts.type;
-            if (opts.tags) changes.tags = opts.tags.split(",").map(t => t.trim());
+    .action(
+        async (
+            chunkId: string,
+            opts: { title?: string; content?: string; type?: string; tags?: string; reason?: string },
+            cmd: Command
+        ) => {
+            try {
+                const changes: Record<string, unknown> = {};
+                if (opts.title) changes.title = opts.title;
+                if (opts.content) changes.content = opts.content;
+                if (opts.type) changes.type = opts.type;
+                if (opts.tags) changes.tags = opts.tags.split(",").map(t => t.trim());
 
-            if (Object.keys(changes).length === 0) {
-                outputError("At least one change is required (--title, --content, --type, or --tags)");
+                if (Object.keys(changes).length === 0) {
+                    outputError("At least one change is required (--title, --content, --type, or --tags)");
+                    process.exit(1);
+                }
+
+                const body: Record<string, unknown> = { changes };
+                if (opts.reason) body.reason = opts.reason;
+
+                const res = await fetchApi(`/chunks/${chunkId}/proposals`, {
+                    method: "POST",
+                    body: JSON.stringify(body)
+                });
+
+                if (!res.ok) {
+                    outputError(`Failed to create proposal: ${res.status} ${await res.text()}`);
+                    process.exit(1);
+                }
+
+                const proposal = (await res.json()) as Proposal;
+                output(cmd, proposal, formatSuccess(`Proposal created (${proposal.id.slice(0, 8)}) — pending review.`));
+            } catch (err) {
+                outputError(String(err));
                 process.exit(1);
             }
-
-            const body: Record<string, unknown> = { changes };
-            if (opts.reason) body.reason = opts.reason;
-
-            const res = await fetchApi(`/chunks/${chunkId}/proposals`, {
-                method: "POST",
-                body: JSON.stringify(body),
-            });
-
-            if (!res.ok) {
-                outputError(`Failed to create proposal: ${res.status} ${await res.text()}`);
-                process.exit(1);
-            }
-
-            const proposal = (await res.json()) as Proposal;
-            output(cmd, proposal, formatSuccess(`Proposal created (${proposal.id.slice(0, 8)}) — pending review.`));
-        } catch (err) {
-            outputError(String(err));
-            process.exit(1);
         }
-    });
+    );
 
 // ── Helper ──────────────────────────────────────────────────────────
 

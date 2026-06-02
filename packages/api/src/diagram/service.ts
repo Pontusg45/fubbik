@@ -11,8 +11,7 @@ interface DiagramOptions {
 }
 
 export function generateDiagram(userId: string, codebaseIdOrOpts: string | DiagramOptions) {
-    const opts: DiagramOptions =
-        typeof codebaseIdOrOpts === "string" ? { codebaseId: codebaseIdOrOpts } : codebaseIdOrOpts;
+    const opts: DiagramOptions = typeof codebaseIdOrOpts === "string" ? { codebaseId: codebaseIdOrOpts } : codebaseIdOrOpts;
     const maxNodes = opts.maxNodes ?? DEFAULT_MAX_NODES;
     const direction = opts.direction ?? "LR";
 
@@ -31,9 +30,7 @@ export function generateDiagram(userId: string, codebaseIdOrOpts: string | Diagr
                 lines.push(`    ${sanitizeId(chunk.id)}["${escapeLabel(chunk.title)}"]`);
             }
             for (const conn of keptConnections) {
-                lines.push(
-                    `    ${sanitizeId(conn.sourceId)} -->|${escapeLabel(conn.relation)}| ${sanitizeId(conn.targetId)}`
-                );
+                lines.push(`    ${sanitizeId(conn.sourceId)} -->|${escapeLabel(conn.relation)}| ${sanitizeId(conn.targetId)}`);
             }
 
             return {

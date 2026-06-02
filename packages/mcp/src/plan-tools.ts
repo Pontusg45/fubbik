@@ -1,5 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
+
 import { apiFetch } from "./api-client.js";
 import type { McpPlugin } from "./plugin.js";
 
@@ -11,7 +12,7 @@ export function registerPlanTools(server: McpServer): void {
             title: z.string().describe("Plan title"),
             description: z.string().optional().describe("Plan description"),
             spaceId: z.string().optional().describe("Space ID to associate with"),
-            requirementIds: z.array(z.string()).optional().describe("Requirement IDs to link"),
+            requirementIds: z.array(z.string()).optional().describe("Requirement IDs to link")
         },
         async ({ title, description, spaceId, requirementIds }) => {
             const body: Record<string, unknown> = { title };
@@ -21,11 +22,11 @@ export function registerPlanTools(server: McpServer): void {
 
             const plan = (await apiFetch("/plans", {
                 method: "POST",
-                body: JSON.stringify(body),
+                body: JSON.stringify(body)
             })) as Record<string, unknown>;
 
             return { content: [{ type: "text" as const, text: JSON.stringify(plan, null, 2) }] };
-        },
+        }
     );
 
     server.tool(
@@ -34,7 +35,7 @@ export function registerPlanTools(server: McpServer): void {
         {
             spaceId: z.string().optional().describe("Filter by space ID"),
             status: z.string().optional().describe("Filter by status (draft, analyzing, ready, in_progress, completed, archived)"),
-            requirementId: z.string().optional().describe("Filter by linked requirement ID"),
+            requirementId: z.string().optional().describe("Filter by linked requirement ID")
         },
         async ({ spaceId, status, requirementId }) => {
             const params = new URLSearchParams();
@@ -44,7 +45,7 @@ export function registerPlanTools(server: McpServer): void {
 
             const plans = (await apiFetch(`/plans?${params}`)) as unknown;
             return { content: [{ type: "text" as const, text: JSON.stringify(plans, null, 2) }] };
-        },
+        }
     );
 
     server.tool(
@@ -54,7 +55,7 @@ export function registerPlanTools(server: McpServer): void {
         async ({ planId }) => {
             const detail = (await apiFetch(`/plans/${planId}`)) as unknown;
             return { content: [{ type: "text" as const, text: JSON.stringify(detail, null, 2) }] };
-        },
+        }
     );
 
     server.tool(
@@ -64,18 +65,15 @@ export function registerPlanTools(server: McpServer): void {
             planId: z.string().describe("Plan ID"),
             title: z.string().optional().describe("New title"),
             description: z.string().optional().describe("New description"),
-            status: z
-                .enum(["draft", "analyzing", "ready", "in_progress", "completed", "archived"])
-                .optional()
-                .describe("New status"),
+            status: z.enum(["draft", "analyzing", "ready", "in_progress", "completed", "archived"]).optional().describe("New status")
         },
         async ({ planId, ...patch }) => {
             const plan = (await apiFetch(`/plans/${planId}`, {
                 method: "PATCH",
-                body: JSON.stringify(patch),
+                body: JSON.stringify(patch)
             })) as unknown;
             return { content: [{ type: "text" as const, text: JSON.stringify(plan, null, 2) }] };
-        },
+        }
     );
 
     server.tool(
@@ -85,10 +83,10 @@ export function registerPlanTools(server: McpServer): void {
         async ({ planId, requirementId }) => {
             await apiFetch(`/plans/${planId}/requirements`, {
                 method: "POST",
-                body: JSON.stringify({ requirementId }),
+                body: JSON.stringify({ requirementId })
             });
             return { content: [{ type: "text" as const, text: "Requirement linked" }] };
-        },
+        }
     );
 
     server.tool(
@@ -98,7 +96,7 @@ export function registerPlanTools(server: McpServer): void {
         async ({ planId, requirementId }) => {
             await apiFetch(`/plans/${planId}/requirements/${requirementId}`, { method: "DELETE" });
             return { content: [{ type: "text" as const, text: "Requirement unlinked" }] };
-        },
+        }
     );
 
     server.tool(
@@ -106,13 +104,11 @@ export function registerPlanTools(server: McpServer): void {
         "Add a chunk, file, risk, assumption, or question to the plan's analyze phase",
         {
             planId: z.string().describe("Plan ID"),
-            kind: z
-                .enum(["chunk", "file", "risk", "assumption", "question"])
-                .describe("Kind of analyze item"),
+            kind: z.enum(["chunk", "file", "risk", "assumption", "question"]).describe("Kind of analyze item"),
             chunkId: z.string().optional().describe("Chunk ID (for kind=chunk)"),
             filePath: z.string().optional().describe("File path (for kind=file)"),
             text: z.string().optional().describe("Text content (for risk/assumption/question)"),
-            metadata: z.record(z.unknown()).optional().describe("Additional metadata"),
+            metadata: z.record(z.unknown()).optional().describe("Additional metadata")
         },
         async ({ planId, kind, chunkId, filePath, text, metadata }) => {
             const body: Record<string, unknown> = { kind };
@@ -123,10 +119,10 @@ export function registerPlanTools(server: McpServer): void {
 
             const item = (await apiFetch(`/plans/${planId}/analyze`, {
                 method: "POST",
-                body: JSON.stringify(body),
+                body: JSON.stringify(body)
             })) as unknown;
             return { content: [{ type: "text" as const, text: JSON.stringify(item, null, 2) }] };
-        },
+        }
     );
 
     server.tool(
@@ -136,7 +132,7 @@ export function registerPlanTools(server: McpServer): void {
             planId: z.string().describe("Plan ID"),
             itemId: z.string().describe("Analyze item ID"),
             text: z.string().optional().describe("Updated text"),
-            metadata: z.record(z.unknown()).optional().describe("Updated metadata"),
+            metadata: z.record(z.unknown()).optional().describe("Updated metadata")
         },
         async ({ planId, itemId, text, metadata }) => {
             const body: Record<string, unknown> = {};
@@ -145,10 +141,10 @@ export function registerPlanTools(server: McpServer): void {
 
             const item = (await apiFetch(`/plans/${planId}/analyze/${itemId}`, {
                 method: "PATCH",
-                body: JSON.stringify(body),
+                body: JSON.stringify(body)
             })) as unknown;
             return { content: [{ type: "text" as const, text: JSON.stringify(item, null, 2) }] };
-        },
+        }
     );
 
     server.tool(
@@ -158,7 +154,7 @@ export function registerPlanTools(server: McpServer): void {
         async ({ planId, itemId }) => {
             await apiFetch(`/plans/${planId}/analyze/${itemId}`, { method: "DELETE" });
             return { content: [{ type: "text" as const, text: "Analyze item deleted" }] };
-        },
+        }
     );
 
     server.tool(
@@ -173,12 +169,12 @@ export function registerPlanTools(server: McpServer): void {
                 .array(
                     z.object({
                         chunkId: z.string(),
-                        relation: z.enum(["context", "created", "modified"]),
-                    }),
+                        relation: z.enum(["context", "created", "modified"])
+                    })
                 )
                 .optional()
                 .describe("Chunk links with relation type"),
-            dependsOnTaskIds: z.array(z.string()).optional().describe("Task IDs this task depends on"),
+            dependsOnTaskIds: z.array(z.string()).optional().describe("Task IDs this task depends on")
         },
         async ({ planId, title, description, acceptanceCriteria, chunks, dependsOnTaskIds }) => {
             const body: Record<string, unknown> = { title };
@@ -189,10 +185,10 @@ export function registerPlanTools(server: McpServer): void {
 
             const task = (await apiFetch(`/plans/${planId}/tasks`, {
                 method: "POST",
-                body: JSON.stringify(body),
+                body: JSON.stringify(body)
             })) as unknown;
             return { content: [{ type: "text" as const, text: JSON.stringify(task, null, 2) }] };
-        },
+        }
     );
 
     server.tool(
@@ -204,10 +200,7 @@ export function registerPlanTools(server: McpServer): void {
             title: z.string().optional().describe("New title"),
             description: z.string().optional().describe("New description"),
             acceptanceCriteria: z.array(z.string()).optional().describe("Updated acceptance criteria"),
-            status: z
-                .enum(["pending", "in_progress", "done", "skipped", "blocked"])
-                .optional()
-                .describe("New status"),
+            status: z.enum(["pending", "in_progress", "done", "skipped", "blocked"]).optional().describe("New status")
         },
         async ({ planId, taskId, title, description, acceptanceCriteria, status }) => {
             const body: Record<string, unknown> = {};
@@ -218,10 +211,10 @@ export function registerPlanTools(server: McpServer): void {
 
             const task = (await apiFetch(`/plans/${planId}/tasks/${taskId}`, {
                 method: "PATCH",
-                body: JSON.stringify(body),
+                body: JSON.stringify(body)
             })) as unknown;
             return { content: [{ type: "text" as const, text: JSON.stringify(task, null, 2) }] };
-        },
+        }
     );
 
     server.tool(
@@ -231,7 +224,7 @@ export function registerPlanTools(server: McpServer): void {
         async ({ planId, taskId }) => {
             await apiFetch(`/plans/${planId}/tasks/${taskId}`, { method: "DELETE" });
             return { content: [{ type: "text" as const, text: "Task deleted" }] };
-        },
+        }
     );
 
     server.tool(
@@ -241,20 +234,20 @@ export function registerPlanTools(server: McpServer): void {
             planId: z.string().describe("Plan ID"),
             taskId: z.string().describe("Task ID"),
             chunkId: z.string().describe("Chunk ID"),
-            relation: z.enum(["context", "created", "modified"]).describe("Relation type"),
+            relation: z.enum(["context", "created", "modified"]).describe("Relation type")
         },
         async ({ planId, taskId, chunkId, relation }) => {
             const link = (await apiFetch(`/plans/${planId}/tasks/${taskId}/chunks`, {
                 method: "POST",
-                body: JSON.stringify({ chunkId, relation }),
+                body: JSON.stringify({ chunkId, relation })
             })) as unknown;
             return { content: [{ type: "text" as const, text: JSON.stringify(link, null, 2) }] };
-        },
+        }
     );
 }
 
 export const planPlugin: McpPlugin = {
     name: "plans",
     description: "Implementation plan management tools",
-    register: registerPlanTools,
+    register: registerPlanTools
 };

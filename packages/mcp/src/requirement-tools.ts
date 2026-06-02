@@ -1,5 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
+
 import { apiFetch } from "./api-client.js";
 
 export function registerRequirementTools(server: McpServer): void {
@@ -8,14 +9,8 @@ export function registerRequirementTools(server: McpServer): void {
         "list_requirements",
         "List requirements with optional status and priority filters",
         {
-            status: z
-                .enum(["passing", "failing", "untested"])
-                .optional()
-                .describe("Filter by requirement status"),
-            priority: z
-                .enum(["must", "should", "could", "wont"])
-                .optional()
-                .describe("Filter by priority"),
+            status: z.enum(["passing", "failing", "untested"]).optional().describe("Filter by requirement status"),
+            priority: z.enum(["must", "should", "could", "wont"]).optional().describe("Filter by priority"),
             spaceId: z.string().optional().describe("Filter by space ID"),
             search: z.string().optional().describe("Search in title and description")
         },
@@ -63,10 +58,7 @@ export function registerRequirementTools(server: McpServer): void {
         {
             title: z.string().describe("Requirement title"),
             description: z.string().optional().describe("Requirement description"),
-            priority: z
-                .enum(["must", "should", "could", "wont"])
-                .optional()
-                .describe("Requirement priority"),
+            priority: z.enum(["must", "should", "could", "wont"]).optional().describe("Requirement priority"),
             steps: z
                 .array(
                     z.object({
@@ -109,9 +101,7 @@ export function registerRequirementTools(server: McpServer): void {
         "Update the status of a requirement (passing, failing, untested)",
         {
             requirementId: z.string().describe("Requirement ID"),
-            status: z
-                .enum(["passing", "failing", "untested"])
-                .describe("New requirement status")
+            status: z.enum(["passing", "failing", "untested"]).describe("New requirement status")
         },
         async ({ requirementId, status }) => {
             const data = (await apiFetch(`/requirements/${requirementId}`, {

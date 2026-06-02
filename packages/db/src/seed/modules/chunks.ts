@@ -13,8 +13,8 @@
 import { eq } from "drizzle-orm";
 
 import { chunk } from "../../schema/chunk";
-import { loadChunkFixtures, type ChunkFixture } from "../fixtures";
 import type { SeedContext } from "../context";
+import { loadChunkFixtures, type ChunkFixture } from "../fixtures";
 
 // ---------------------------------------------------------------------------
 // 1) Architecture & system overview
@@ -25,7 +25,8 @@ const ARCHITECTURE: ChunkFixture[] = [
         name: "arch",
         title: "Fubbik Architecture Overview",
         type: "document",
-        summary: "Local-first knowledge framework: chunks + typed connections + vector search, orchestrated through Elysia + Effect + Drizzle + TanStack Start.",
+        summary:
+            "Local-first knowledge framework: chunks + typed connections + vector search, orchestrated through Elysia + Effect + Drizzle + TanStack Start.",
         content: `Fubbik stores structured knowledge as **chunks** (atomic units) connected by **typed relationships** (a directed graph) with a **vector embedding** (semantic similarity). It is designed to be used by humans *and* machines — a web UI for browsing, a CLI for capture, an MCP server for AI agents, and a VS Code extension for in-editor access.
 
 ## Core data flow
@@ -63,8 +64,10 @@ PostgreSQL + pgvector + pg_trgm
 - **Database**: PostgreSQL 16+ with pgvector and pg_trgm
 - **AI**: Ollama (local LLM — llama3.2 for enrichment, nomic-embed-text for embeddings)
 - **Build**: Turborepo, pnpm`,
-        rationale: "Local-first so knowledge stays queryable without internet; typed errors keep failure modes explicit; vector search + graph structure together cover both 'fuzzy' and 'precise' knowledge retrieval.",
-        consequences: "Every feature has to plug through Elysia + Effect + Drizzle. Adding a non-Postgres store or a non-Effect service would fight the grain of the codebase.",
+        rationale:
+            "Local-first so knowledge stays queryable without internet; typed errors keep failure modes explicit; vector search + graph structure together cover both 'fuzzy' and 'precise' knowledge retrieval.",
+        consequences:
+            "Every feature has to plug through Elysia + Effect + Drizzle. Adding a non-Postgres store or a non-Effect service would fight the grain of the codebase.",
         tags: ["architecture", "typescript", "onboarding"]
     }
 ];
@@ -78,7 +81,8 @@ const BACKEND: ChunkFixture[] = [
         name: "repo-pattern",
         title: "Repository → Service → Route",
         type: "convention",
-        summary: "Three strict layers. Repositories return Effect<T, DatabaseError>. Services compose + add domain errors. Routes just runPromise.",
+        summary:
+            "Three strict layers. Repositories return Effect<T, DatabaseError>. Services compose + add domain errors. Routes just runPromise.",
         content: `All backend code is organised in three layers and never skips one:
 
 ## 1. Repository (\`packages/db/src/repository/*\`)
@@ -126,15 +130,18 @@ Thin wrapper. \`Effect.runPromise\` the service call; the global \`.onError\` ha
     )
 )
 \`\`\``,
-        rationale: "Each layer is testable in isolation. Repositories don't know about HTTP; services don't know about SQL; routes don't know about business logic. Typed errors mean status codes are derived, not sprinkled.",
-        consequences: "A route that needs a new DB query must go through all three layers. No shortcuts — but this is the price of never having to hunt for where an error surfaces from.",
+        rationale:
+            "Each layer is testable in isolation. Repositories don't know about HTTP; services don't know about SQL; routes don't know about business logic. Typed errors mean status codes are derived, not sprinkled.",
+        consequences:
+            "A route that needs a new DB query must go through all three layers. No shortcuts — but this is the price of never having to hunt for where an error surfaces from.",
         tags: ["repository-pattern", "service-layer", "convention", "effect", "elysia"]
     },
     {
         name: "typed-errors",
         title: "Typed errors via Effect tagged classes",
         type: "convention",
-        summary: "NotFoundError, AuthError, ValidationError, DatabaseError, AiError are Data.TaggedError classes. Global .onError maps _tag → HTTP status.",
+        summary:
+            "NotFoundError, AuthError, ValidationError, DatabaseError, AiError are Data.TaggedError classes. Global .onError maps _tag → HTTP status.",
         content: `All backend errors are tagged Effect classes, not thrown exceptions:
 
 \`\`\`ts
@@ -161,8 +168,10 @@ The Elysia root mounts a single \`.onError\` that extracts the Effect failure ca
 \`\`\`
 
 Routes therefore never write status codes. A service that fails with \`NotFoundError\` automatically becomes a 404 at the edge.`,
-        rationale: "Errors are part of the type signature. TS will not compile a route that forgets to handle a failure mode the service can produce.",
-        consequences: "Adding a new error class means updating the global handler in one place. Throwing a bare Error bypasses the typed system and will render as a generic 500.",
+        rationale:
+            "Errors are part of the type signature. TS will not compile a route that forgets to handle a failure mode the service can produce.",
+        consequences:
+            "Adding a new error class means updating the global handler in one place. Throwing a bare Error bypasses the typed system and will render as a generic 500.",
         tags: ["typed-errors", "effect", "error-handling", "convention"]
     },
     {
@@ -187,7 +196,8 @@ const { data } = await api.api["chunk-types"].post({ id: "runbook", label: "Runb
 \`\`\`
 
 Path params nest as functions; query/body get typed from the Elysia \`t\` schema defined on each route. A schema change on the server produces a compile error on the client — **no drift possible**.`,
-        rationale: "The client is always in sync with the server contract. Renaming a route or changing a body shape surfaces the break immediately in every consumer.",
+        rationale:
+            "The client is always in sync with the server contract. Renaming a route or changing a body shape surfaces the break immediately in every consumer.",
         tags: ["eden-treaty", "elysia", "typescript", "reference"]
     },
     {
@@ -311,15 +321,18 @@ chunk_type           connection_relation
 \`\`\`
 
 Builtins are seeded with \`built_in = true\`; the CRUD UI at \`/settings/vocabulary\` rejects edits to these. Per-user or per-codebase rows can be added freely.`,
-        rationale: "Before the catalog tables, adding a chunk type meant editing 5+ hardcoded maps (icon, color, legend, filter, seed). Now it's a DB row and the UI picks it up on next query.",
-        consequences: "The UI must tolerate an unknown icon string gracefully (fall back to FileText). The fixture loader rejects tags referring to missing catalog rows.",
+        rationale:
+            "Before the catalog tables, adding a chunk type meant editing 5+ hardcoded maps (icon, color, legend, filter, seed). Now it's a DB row and the UI picks it up on next query.",
+        consequences:
+            "The UI must tolerate an unknown icon string gracefully (fall back to FileText). The fixture loader rejects tags referring to missing catalog rows.",
         tags: ["catalog-driven", "vocabulary", "migration"]
     },
     {
         name: "schema-plan",
         title: "Database Schema: plan + plan_task",
         type: "schema",
-        summary: "Plans are the central unit of work. Tasks, analyze items (risk/assumption/question/chunk/file), requirements links, dependencies, external links.",
+        summary:
+            "Plans are the central unit of work. Tasks, analyze items (risk/assumption/question/chunk/file), requirements links, dependencies, external links.",
         content: `A plan is the top-level container:
 
 - \`plan\` — title, description, status, codebaseId, metadata (JSONB), completedAt
@@ -436,7 +449,8 @@ export const Route = createFileRoute("/chunks/$chunkId")({
         name: "feature-structure",
         title: "Frontend feature-based structure",
         type: "convention",
-        summary: "Routes in apps/web/src/routes/, feature-scoped components in apps/web/src/features/<feature>/, shared UI in components/ui.",
+        summary:
+            "Routes in apps/web/src/routes/, feature-scoped components in apps/web/src/features/<feature>/, shared UI in components/ui.",
         content: `Frontend code is organised by feature rather than by technical concern:
 
 \`\`\`
@@ -513,14 +527,16 @@ Cell size NODE_W=200, NODE_H=72. Grid centre = group centre.
 ### Post-step (client-side, in graph-view)
 
 Re-space the grid with **measured** per-column widths and per-row heights. Long chunk titles can exceed the default cell; the client-side respacing prevents overlap when the grid is drawn.`,
-        rationale: "Separating phases lets us skip the expensive phase 1 when only grouping changes (warm-start from previous positions). Client-side respacing is needed because the worker can't see measured DOM sizes.",
+        rationale:
+            "Separating phases lets us skip the expensive phase 1 when only grouping changes (warm-start from previous positions). Client-side respacing is needed because the worker can't see measured DOM sizes.",
         tags: ["graph", "performance", "reference"]
     },
     {
         name: "graph-filter-dialog",
         title: "Pre-filter dialog + prefilter pipeline",
         type: "reference",
-        summary: "Dialog opens on /graph entry. Tags, types, focus+depth, group-by. URL params drive everything; reopening stays idempotent.",
+        summary:
+            "Dialog opens on /graph entry. Tags, types, focus+depth, group-by. URL params drive everything; reopening stays idempotent.",
         content: `On entering \`/graph\` with no filter params, the filter dialog auto-opens. Fields:
 
 - **Tags** — multi-select from the tag catalog
@@ -549,7 +565,8 @@ The dialog uses the same \`applyPrefilter\` function on the graph's already-fetc
         name: "mermaid-export",
         title: "Export graph as Mermaid",
         type: "guide",
-        summary: "Export button in graph toolbar → modal with text, copy, download .mmd, LR/TB direction toggle, truncation warning at 100 nodes.",
+        summary:
+            "Export button in graph toolbar → modal with text, copy, download .mmd, LR/TB direction toggle, truncation warning at 100 nodes.",
         content: `Click the settings gear (top-right of the graph) → **Export as Mermaid**. The modal shows:
 
 - Current node + edge count
@@ -663,7 +680,8 @@ fubbik search "how do we handle auth" --semantic
         name: "enrichment",
         title: "Chunk enrichment (summary, aliases, notAbout)",
         type: "reference",
-        summary: "Ollama fills `summary` (1-2 sentences), `aliases` (synonyms), `not_about` (exclusion terms). Runs on create + on title/content edit.",
+        summary:
+            "Ollama fills `summary` (1-2 sentences), `aliases` (synonyms), `not_about` (exclusion terms). Runs on create + on title/content edit.",
         content: `On every chunk create or title/content update, a background enrichment job runs:
 
 1. Generate \`summary\` — 1–2 sentence TL;DR (via llama3.2)
@@ -682,7 +700,8 @@ All three feed into search quality: aliases widen the match set; notAbout lets s
         name: "semantic-neighbors",
         title: "Semantic neighbors view",
         type: "guide",
-        summary: "Each chunk detail page shows its 10 nearest neighbors by embedding distance. Helps find near-duplicates and related context.",
+        summary:
+            "Each chunk detail page shows its 10 nearest neighbors by embedding distance. Helps find near-duplicates and related context.",
         content: `On \`/chunks/:id\` there's a **Semantic neighbors** section listing the chunk's 10 nearest embedding neighbors with a similarity percentage.
 
 ## Uses
@@ -749,7 +768,8 @@ const KNOWLEDGE: ChunkFixture[] = [
 ## Types
 
 Seven builtin chunk types: note, document, guide, reference, schema, checklist, convention. Per-codebase custom types possible via \`/settings/vocabulary\`.`,
-        rationale: "Atomic chunks are reusable across contexts; composite pages aren't. Fine granularity also gives better semantic search precision.",
+        rationale:
+            "Atomic chunks are reusable across contexts; composite pages aren't. Fine granularity also gives better semantic search precision.",
         consequences: "Requires discipline when importing a long doc — split it, or import as a document with auto-chunking.",
         tags: ["chunks", "convention", "onboarding"]
     },
@@ -757,7 +777,8 @@ Seven builtin chunk types: note, document, guide, reference, schema, checklist, 
         name: "connections-concept",
         title: "Typed connections + inverse relations",
         type: "document",
-        summary: "Connections are directed edges with a typed relation. Inverse pairs (depends_on ↔ required_by) let the graph read from either direction.",
+        summary:
+            "Connections are directed edges with a typed relation. Inverse pairs (depends_on ↔ required_by) let the graph read from either direction.",
         content: `A **connection** is a directed edge from one chunk to another with a typed \`relation\` (a slug from the \`connection_relation\` catalog).
 
 ## Inverses
@@ -829,7 +850,8 @@ High-score chunks are genuinely more usable — they're findable (rich + connect
         name: "staleness-detection",
         title: "Staleness detection",
         type: "reference",
-        summary: "chunk_staleness flags chunks needing attention. Reasons: file_changed, age, diverged_duplicate. Dismissable + suppressible.",
+        summary:
+            "chunk_staleness flags chunks needing attention. Reasons: file_changed, age, diverged_duplicate. Dismissable + suppressible.",
         content: `\`chunk_staleness\` is a table of flags indicating a chunk may need attention:
 
 - \`reason = 'file_changed'\` — a referenced file has changed since the chunk's \`updated_at\`
@@ -882,7 +904,8 @@ Globs + explicit refs together cover breadth and depth. The graph density map (\
         name: "decision-context",
         title: "Decision context: rationale / alternatives / consequences",
         type: "convention",
-        summary: "ADR-style fields on chunks. Capture the why, what else was considered, and what the decision costs — not just the decision.",
+        summary:
+            "ADR-style fields on chunks. Capture the why, what else was considered, and what the decision costs — not just the decision.",
         content: `Chunks have three optional decision-context fields that mirror the ADR (Architecture Decision Record) pattern:
 
 - \`rationale\` — why this choice
@@ -911,7 +934,8 @@ const PLANS_REQS: ChunkFixture[] = [
         name: "plans-overview",
         title: "Plans: the central unit of work",
         type: "document",
-        summary: "A plan holds description, linked requirements, analyze items (chunks/files/risks/assumptions/questions), and enriched tasks.",
+        summary:
+            "A plan holds description, linked requirements, analyze items (chunks/files/risks/assumptions/questions), and enriched tasks.",
         content: `A **plan** captures a piece of work end-to-end:
 
 - \`title\`, \`description\` (markdown), \`status\` (draft/analyzing/ready/in_progress/completed/archived — labels only, ungated)
@@ -950,7 +974,8 @@ fubbik plan link-requirement <planId> <reqId>
         name: "analyze-items",
         title: "Plan analyze items: structured reflection",
         type: "reference",
-        summary: "Five kinds: chunk, file, risk (severity), assumption (verified flag), question (answer). Kind-specific metadata in JSONB.",
+        summary:
+            "Five kinds: chunk, file, risk (severity), assumption (verified flag), question (answer). Kind-specific metadata in JSONB.",
         content: `\`plan_analyze_item\` is a discriminated table holding five kinds of structured pre-implementation notes:
 
 - **chunk** — "this existing chunk is relevant to the plan" (references chunkId)
@@ -974,7 +999,8 @@ The plan detail page groups items by kind. CRUD:
         name: "requirements-bdd",
         title: "Requirements: BDD-style Given/When/Then",
         type: "reference",
-        summary: "requirement.steps is jsonb[] of {keyword, text} where keyword ∈ given|when|then|and|but. Priority: must|should|could|wont.",
+        summary:
+            "requirement.steps is jsonb[] of {keyword, text} where keyword ∈ given|when|then|and|but. Priority: must|should|could|wont.",
         content: `Requirements capture behavior in BDD form:
 
 \`\`\`json
@@ -1129,7 +1155,8 @@ Each file exports \`registerXTools(server: McpServer)\`. Tools use a shared \`ap
         name: "vscode-ext",
         title: "VS Code / Cursor extension",
         type: "reference",
-        summary: "apps/vscode — standalone extension. Sidebar, status bar, quick-add, chunk-detail webviews. Talks HTTP to the local fubbik server.",
+        summary:
+            "apps/vscode — standalone extension. Sidebar, status bar, quick-add, chunk-detail webviews. Talks HTTP to the local fubbik server.",
         content: `\`apps/vscode\` is a standalone package. It does **not** import from other fubbik packages — it talks to the fubbik server via HTTP to stay decoupled (and so it can ship as a single .vsix bundle).
 
 ## Features
@@ -1159,7 +1186,8 @@ Settings: \`fubbik.serverUrl\` (default \`http://localhost:3000\`) and \`fubbik.
         name: "cli-overview",
         title: "CLI overview",
         type: "reference",
-        summary: "`fubbik` command. Init, add/get/list/search, link/unlink, context export, plans, hooks. Auto-detects codebase via git remote.",
+        summary:
+            "`fubbik` command. Init, add/get/list/search, link/unlink, context export, plans, hooks. Auto-detects codebase via git remote.",
         content: `\`fubbik\` is the Commander.js CLI in \`apps/cli/\`. It auto-detects the current codebase from the git remote, so running \`fubbik list\` in a repo shows only that codebase's chunks by default.
 
 ## Chunk CRUD
@@ -1290,15 +1318,18 @@ Backend: \`/api/chunk-types\` and \`/api/connection-relations\` (with optional c
 ## CRUD
 
 \`/settings/vocabulary\` — protects builtins, allows custom types per codebase. Inverse pairs link explicitly via \`inverse_of_id\`.`,
-        rationale: "Before the catalog tables, adding a chunk type meant editing 5+ hardcoded maps scattered across the codebase. Now it's a row insert.",
-        consequences: "UI must tolerate unknown icon strings (falls back to FileText). Every schema migration that changes an enum slug needs a data backfill.",
+        rationale:
+            "Before the catalog tables, adding a chunk type meant editing 5+ hardcoded maps scattered across the codebase. Now it's a row insert.",
+        consequences:
+            "UI must tolerate unknown icon strings (falls back to FileText). Every schema migration that changes an enum slug needs a data backfill.",
         tags: ["catalog-driven", "convention", "vocabulary", "migration"]
     },
     {
         name: "graph-perf",
         title: "Graph rendering performance playbook",
         type: "reference",
-        summary: "Four wins shipped: React.memo on nodes, viewport culling, regroup skip, session layout cache. Baseline 540ms → 1ms on groupBy toggle.",
+        summary:
+            "Four wins shipped: React.memo on nodes, viewport culling, regroup skip, session layout cache. Baseline 540ms → 1ms on groupBy toggle.",
         content: `The \`/graph\` page was re-running a 200-iteration force simulation on every filter toggle. Four compounding fixes brought layout-duration on a 138-chunk graph from ~540 ms → ~1 ms (on cached paths).
 
 ## 1. React.memo on GraphNode + GraphGroupNode
@@ -1330,7 +1361,8 @@ DOM mount skipped for off-screen nodes. MiniMap + fitView still work because the
         name: "seed-system",
         title: "Seed system (high-level)",
         type: "document",
-        summary: "packages/db/src/seed/ — orchestrator, 14 modules, factories, fixture DSL, scenarios, strict errors, post-seed verify, self-documenting chunks.",
+        summary:
+            "packages/db/src/seed/ — orchestrator, 14 modules, factories, fixture DSL, scenarios, strict errors, post-seed verify, self-documenting chunks.",
         content: `See the \`seed-system\` + \`self-documenting\` tagged chunks for the deep dive. Big-picture:
 
 - **Orchestrator** \`seed/index.ts\` — parses \`--scenario\`, \`--only\`, \`--skip\`, \`--reset=none\`. MODULE_REGISTRY declares dependency order.
@@ -1347,7 +1379,8 @@ DOM mount skipped for off-screen nodes. MiniMap + fitView still work because the
         name: "note-conventions",
         title: "Convention chunks are sticky",
         type: "note",
-        summary: "Every `convention` chunk should be in CLAUDE.md generation and at the top of context-export bundles — that's the point of the type.",
+        summary:
+            "Every `convention` chunk should be in CLAUDE.md generation and at the top of context-export bundles — that's the point of the type.",
         content: `Treat every \`convention\` chunk as pinned: they should appear in CLAUDE.md generation and near the top of \`context-export\` runs. That's the whole point of the \`convention\` type over plain \`note\`.
 
 ## Good convention chunks

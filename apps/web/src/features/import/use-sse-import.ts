@@ -1,5 +1,6 @@
-import { useCallback, useRef, useState } from "react";
 import { env } from "@fubbik/env/web";
+import { useCallback, useRef, useState } from "react";
+
 import type { ImportFileStatus } from "./types";
 
 interface SSEImportOptions {
@@ -29,8 +30,8 @@ export function useSSEImport() {
                 body: JSON.stringify({
                     files: options.files,
                     spaceId: options.spaceId,
-                    templateOverrides: options.templateOverrides,
-                }),
+                    templateOverrides: options.templateOverrides
+                })
             });
 
             if (!response.ok || !response.body) {
@@ -64,7 +65,7 @@ export function useSSEImport() {
                             options.onFileUpdate(data.path, {
                                 status: data.status === "unchanged" ? "skipped" : data.status,
                                 created: data.created,
-                                error: data.error,
+                                error: data.error
                             });
                         } else if (currentEvent === "done") {
                             options.onDone(data);

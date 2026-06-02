@@ -36,27 +36,17 @@ beforeAll(async () => {
     await Effect.runPromise(ensureVertex("chunk", uid("A")));
     await Effect.runPromise(ensureVertex("chunk", uid("B")));
     await Effect.runPromise(ensureVertex("chunk", uid("C")));
-    await Effect.runPromise(
-        createEdge("connects", "chunk", uid("A"), "chunk", uid("B"), { relation: "related_to" })
-    );
-    await Effect.runPromise(
-        createEdge("connects", "chunk", uid("B"), "chunk", uid("C"), { relation: "related_to" })
-    );
+    await Effect.runPromise(createEdge("connects", "chunk", uid("A"), "chunk", uid("B"), { relation: "related_to" }));
+    await Effect.runPromise(createEdge("connects", "chunk", uid("B"), "chunk", uid("C"), { relation: "related_to" }));
 
     // Create a star: center + 3 spokes (for neighborhood test)
     await Effect.runPromise(ensureVertex("chunk", uid("center")));
     await Effect.runPromise(ensureVertex("chunk", uid("spoke1")));
     await Effect.runPromise(ensureVertex("chunk", uid("spoke2")));
     await Effect.runPromise(ensureVertex("chunk", uid("spoke3")));
-    await Effect.runPromise(
-        createEdge("connects", "chunk", uid("center"), "chunk", uid("spoke1"), { relation: "related_to" })
-    );
-    await Effect.runPromise(
-        createEdge("connects", "chunk", uid("center"), "chunk", uid("spoke2"), { relation: "related_to" })
-    );
-    await Effect.runPromise(
-        createEdge("connects", "chunk", uid("center"), "chunk", uid("spoke3"), { relation: "related_to" })
-    );
+    await Effect.runPromise(createEdge("connects", "chunk", uid("center"), "chunk", uid("spoke1"), { relation: "related_to" }));
+    await Effect.runPromise(createEdge("connects", "chunk", uid("center"), "chunk", uid("spoke2"), { relation: "related_to" }));
+    await Effect.runPromise(createEdge("connects", "chunk", uid("center"), "chunk", uid("spoke3"), { relation: "related_to" }));
 
     // Isolated chunk (for orphan test)
     await Effect.runPromise(ensureVertex("chunk", uid("orphan")));
@@ -66,26 +56,13 @@ beforeAll(async () => {
     await Effect.runPromise(ensureVertex("requirement", uid("reqA")));
     await Effect.runPromise(ensureVertex("requirement", uid("reqB")));
     await Effect.runPromise(ensureVertex("requirement", uid("reqC")));
-    await Effect.runPromise(
-        createEdge("depends_on", "requirement", uid("reqA"), "requirement", uid("reqB"))
-    );
-    await Effect.runPromise(
-        createEdge("depends_on", "requirement", uid("reqB"), "requirement", uid("reqC"))
-    );
+    await Effect.runPromise(createEdge("depends_on", "requirement", uid("reqA"), "requirement", uid("reqB")));
+    await Effect.runPromise(createEdge("depends_on", "requirement", uid("reqB"), "requirement", uid("reqC")));
 });
 
 afterAll(async () => {
     if (!ageReady) return;
-    const chunkIds = [
-        uid("A"),
-        uid("B"),
-        uid("C"),
-        uid("center"),
-        uid("spoke1"),
-        uid("spoke2"),
-        uid("spoke3"),
-        uid("orphan")
-    ];
+    const chunkIds = [uid("A"), uid("B"), uid("C"), uid("center"), uid("spoke1"), uid("spoke2"), uid("spoke3"), uid("orphan")];
     for (const id of chunkIds) {
         await Effect.runPromise(deleteVertex("chunk", id));
     }
@@ -189,9 +166,7 @@ describe("getConnectionDegrees", () => {
 describe("getGraphProximityBoost", () => {
     it("returns higher boost for closer nodes", async () => {
         if (!ageReady) return;
-        const map = await Effect.runPromise(
-            getGraphProximityBoost(uid("A"), [uid("B"), uid("C")], 3)
-        );
+        const map = await Effect.runPromise(getGraphProximityBoost(uid("A"), [uid("B"), uid("C")], 3));
         // B is 1 hop from A → boost 1/1 = 1
         // C is 2 hops from A → boost 1/2 = 0.5
         expect(map.get(uid("B"))).toBeGreaterThan(map.get(uid("C"))!);
@@ -199,18 +174,14 @@ describe("getGraphProximityBoost", () => {
 
     it("omits unreachable nodes", async () => {
         if (!ageReady) return;
-        const map = await Effect.runPromise(
-            getGraphProximityBoost(uid("A"), [uid("B"), uid("orphan")], 3)
-        );
+        const map = await Effect.runPromise(getGraphProximityBoost(uid("A"), [uid("B"), uid("orphan")], 3));
         expect(map.has(uid("B"))).toBe(true);
         expect(map.has(uid("orphan"))).toBe(false);
     });
 
     it("returns empty map when anchor has no connections", async () => {
         if (!ageReady) return;
-        const map = await Effect.runPromise(
-            getGraphProximityBoost(uid("orphan"), [uid("A"), uid("B")], 3)
-        );
+        const map = await Effect.runPromise(getGraphProximityBoost(uid("orphan"), [uid("A"), uid("B")], 3));
         expect(map.size).toBe(0);
     });
 });
@@ -240,22 +211,14 @@ describe("getDownstreamChunks", () => {
 describe("detectCommunities", () => {
     it("finds at least 2 communities among all test chunks", async () => {
         if (!ageReady) return;
-        const allIds = [
-            uid("A"), uid("B"), uid("C"),
-            uid("center"), uid("spoke1"), uid("spoke2"), uid("spoke3"),
-            uid("orphan")
-        ];
+        const allIds = [uid("A"), uid("B"), uid("C"), uid("center"), uid("spoke1"), uid("spoke2"), uid("spoke3"), uid("orphan")];
         const communities = await Effect.runPromise(detectCommunities(allIds, 3));
         expect(communities.length).toBeGreaterThanOrEqual(2);
     });
 
     it("star cluster has 4 members", async () => {
         if (!ageReady) return;
-        const allIds = [
-            uid("A"), uid("B"), uid("C"),
-            uid("center"), uid("spoke1"), uid("spoke2"), uid("spoke3"),
-            uid("orphan")
-        ];
+        const allIds = [uid("A"), uid("B"), uid("C"), uid("center"), uid("spoke1"), uid("spoke2"), uid("spoke3"), uid("orphan")];
         const communities = await Effect.runPromise(detectCommunities(allIds, 3));
         const starCluster = communities.find(c => c.members.includes(uid("center")));
         expect(starCluster).toBeDefined();
@@ -264,11 +227,7 @@ describe("detectCommunities", () => {
 
     it("excludes orphan from all communities (singleton)", async () => {
         if (!ageReady) return;
-        const allIds = [
-            uid("A"), uid("B"), uid("C"),
-            uid("center"), uid("spoke1"), uid("spoke2"), uid("spoke3"),
-            uid("orphan")
-        ];
+        const allIds = [uid("A"), uid("B"), uid("C"), uid("center"), uid("spoke1"), uid("spoke2"), uid("spoke3"), uid("orphan")];
         const communities = await Effect.runPromise(detectCommunities(allIds, 3));
         const orphanCommunity = communities.find(c => c.members.includes(uid("orphan")));
         expect(orphanCommunity).toBeUndefined();
@@ -284,25 +243,19 @@ describe("detectCommunities", () => {
 describe("findBridgeChunks", () => {
     it("identifies B as a bridge in chain A-B-C", async () => {
         if (!ageReady) return;
-        const bridges = await Effect.runPromise(
-            findBridgeChunks([uid("A"), uid("B"), uid("C")])
-        );
+        const bridges = await Effect.runPromise(findBridgeChunks([uid("A"), uid("B"), uid("C")]));
         expect(bridges).toContain(uid("B"));
     });
 
     it("identifies center as a bridge in star topology", async () => {
         if (!ageReady) return;
-        const bridges = await Effect.runPromise(
-            findBridgeChunks([uid("center"), uid("spoke1"), uid("spoke2"), uid("spoke3")])
-        );
+        const bridges = await Effect.runPromise(findBridgeChunks([uid("center"), uid("spoke1"), uid("spoke2"), uid("spoke3")]));
         expect(bridges).toContain(uid("center"));
     });
 
     it("does not identify leaf nodes as bridges", async () => {
         if (!ageReady) return;
-        const bridges = await Effect.runPromise(
-            findBridgeChunks([uid("A"), uid("B"), uid("C")])
-        );
+        const bridges = await Effect.runPromise(findBridgeChunks([uid("A"), uid("B"), uid("C")]));
         expect(bridges).not.toContain(uid("A"));
         expect(bridges).not.toContain(uid("C"));
     });
@@ -317,9 +270,7 @@ describe("findBridgeChunks", () => {
 describe("findShortestPathWithDetails", () => {
     it("returns full path from A to C with intermediate nodes and edges", async () => {
         if (!ageReady) return;
-        const result = await Effect.runPromise(
-            findShortestPathWithDetails(uid("A"), uid("C"))
-        );
+        const result = await Effect.runPromise(findShortestPathWithDetails(uid("A"), uid("C")));
         expect(result).not.toBeNull();
         expect(result!.nodes).toHaveLength(3);
         expect(result!.nodes[0]).toBe(uid("A"));
@@ -332,9 +283,7 @@ describe("findShortestPathWithDetails", () => {
 
     it("returns direct path from A to B", async () => {
         if (!ageReady) return;
-        const result = await Effect.runPromise(
-            findShortestPathWithDetails(uid("A"), uid("B"))
-        );
+        const result = await Effect.runPromise(findShortestPathWithDetails(uid("A"), uid("B")));
         expect(result).not.toBeNull();
         expect(result!.nodes).toHaveLength(2);
         expect(result!.edges).toHaveLength(1);
@@ -343,9 +292,7 @@ describe("findShortestPathWithDetails", () => {
 
     it("returns null when no path exists", async () => {
         if (!ageReady) return;
-        const result = await Effect.runPromise(
-            findShortestPathWithDetails(uid("A"), uid("orphan"))
-        );
+        const result = await Effect.runPromise(findShortestPathWithDetails(uid("A"), uid("orphan")));
         expect(result).toBeNull();
     });
 });

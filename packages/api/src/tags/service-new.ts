@@ -20,7 +20,14 @@ export function getUserTags(userId: string) {
 export function createUserTag(userId: string, body: { name: string; tagTypeId?: string; origin?: string }) {
     const id = crypto.randomUUID();
     const origin = body.origin ?? "human";
-    return createTagRepo({ id, name: body.name, tagTypeId: body.tagTypeId, userId, origin, reviewStatus: origin === "ai" ? "draft" : "approved" });
+    return createTagRepo({
+        id,
+        name: body.name,
+        tagTypeId: body.tagTypeId,
+        userId,
+        origin,
+        reviewStatus: origin === "ai" ? "draft" : "approved"
+    });
 }
 
 export function updateUserTag(id: string, userId: string, body: { name?: string; tagTypeId?: string | null; reviewStatus?: string }) {
@@ -33,15 +40,16 @@ export function updateUserTag(id: string, userId: string, body: { name?: string;
     // If the caller is renaming, refuse collisions early. The DB has a unique
     // (user_id, name) index, so without this check the rename would surface as
     // a generic DatabaseError → 500 instead of 400.
-    const guard = body.name !== undefined
-        ? tagNameConflict(id, userId, body.name).pipe(
-            Effect.flatMap(conflict =>
-                conflict
-                    ? Effect.fail(new ValidationError({ message: `Tag "${body.name}" already exists` }))
-                    : Effect.succeed(undefined)
-            )
-        )
-        : Effect.succeed(undefined);
+    const guard =
+        body.name !== undefined
+            ? tagNameConflict(id, userId, body.name).pipe(
+                  Effect.flatMap(conflict =>
+                      conflict
+                          ? Effect.fail(new ValidationError({ message: `Tag "${body.name}" already exists` }))
+                          : Effect.succeed(undefined)
+                  )
+              )
+            : Effect.succeed(undefined);
 
     return guard.pipe(
         Effect.flatMap(() => updateTagRepo(id, userId, data)),

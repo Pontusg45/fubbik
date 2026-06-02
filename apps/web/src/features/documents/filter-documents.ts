@@ -12,10 +12,7 @@ export interface DocFilters {
     activeTypes: string[];
 }
 
-export function filterDocuments<T extends EnrichedDocument>(
-    documents: T[],
-    filters: DocFilters
-): T[] {
+export function filterDocuments<T extends EnrichedDocument>(documents: T[], filters: DocFilters): T[] {
     const { activeTags, activeTypes } = filters;
 
     return documents.filter(doc => {
@@ -37,10 +34,7 @@ function folderFromPath(sourcePath: string): string {
     return parts.slice(0, -1).join("/");
 }
 
-export function groupDocuments<T extends EnrichedDocument>(
-    documents: T[],
-    groupBy: "folder" | "tag"
-): Map<string, T[]> {
+export function groupDocuments<T extends EnrichedDocument>(documents: T[], groupBy: "folder" | "tag"): Map<string, T[]> {
     const groups = new Map<string, T[]>();
 
     if (groupBy === "folder") {
@@ -66,11 +60,13 @@ export function groupDocuments<T extends EnrichedDocument>(
         }
     }
 
-    return new Map([...groups.entries()].sort((a, b) => {
-        if (a[0] === "Untagged") return 1;
-        if (b[0] === "Untagged") return -1;
-        return a[0].localeCompare(b[0]);
-    }));
+    return new Map(
+        [...groups.entries()].sort((a, b) => {
+            if (a[0] === "Untagged") return 1;
+            if (b[0] === "Untagged") return -1;
+            return a[0].localeCompare(b[0]);
+        })
+    );
 }
 
 export function collectAllTags(documents: EnrichedDocument[]): string[] {

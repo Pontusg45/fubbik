@@ -1,8 +1,8 @@
 ---
 tags:
-  - guide
-  - chunks
-  - health
+    - guide
+    - chunks
+    - health
 description: How chunk health scores are computed and used
 ---
 
@@ -10,12 +10,12 @@ description: How chunk health scores are computed and used
 
 Each chunk has a health score (0-100) computed from four dimensions:
 
-| Dimension | Points | What It Measures |
-|-----------|--------|-----------------|
-| Freshness | 0-25 | Days since last update |
-| Completeness | 0-25 | Has rationale, alternatives, consequences |
-| Richness | 0-25 | Content length + AI enrichment (summary, aliases) |
-| Connectivity | 0-25 | Number of connections to other chunks |
+| Dimension    | Points | What It Measures                                  |
+| ------------ | ------ | ------------------------------------------------- |
+| Freshness    | 0-25   | Days since last update                            |
+| Completeness | 0-25   | Has rationale, alternatives, consequences         |
+| Richness     | 0-25   | Content length + AI enrichment (summary, aliases) |
+| Connectivity | 0-25   | Number of connections to other chunks             |
 
 ## Where Scores Appear
 

@@ -11,28 +11,24 @@ const FIELD_LABELS: Record<string, string> = {
     rationale: "Rationale",
     alternatives: "Alternatives",
     consequences: "Consequences",
-    scope: "Scope",
+    scope: "Scope"
 };
 
 export function ProposalDiff({ currentChunk, changes }: ProposalDiffProps) {
     const changedFields = Object.keys(changes).filter(k => k in FIELD_LABELS);
 
     if (changedFields.length === 0) {
-        return <div className="text-xs text-muted-foreground">No changes</div>;
+        return <div className="text-muted-foreground text-xs">No changes</div>;
     }
 
     return (
         <div className="space-y-3">
             {changedFields.map(field => (
                 <div key={field} className="space-y-1">
-                    <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    <div className="text-muted-foreground text-[10px] font-semibold tracking-wider uppercase">
                         {FIELD_LABELS[field] ?? field}
                     </div>
-                    <FieldDiff
-                        field={field}
-                        current={currentChunk[field]}
-                        proposed={changes[field]}
-                    />
+                    <FieldDiff field={field} current={currentChunk[field]} proposed={changes[field]} />
                 </div>
             ))}
         </div>
@@ -49,13 +45,19 @@ function FieldDiff({ field, current, proposed }: { field: string; current: unkno
         return (
             <div className="flex flex-wrap gap-1 text-xs">
                 {kept.map(t => (
-                    <span key={t} className="rounded bg-muted px-1.5 py-0.5">{t}</span>
+                    <span key={t} className="bg-muted rounded px-1.5 py-0.5">
+                        {t}
+                    </span>
                 ))}
                 {added.map(t => (
-                    <span key={`+${t}`} className="rounded bg-emerald-500/15 border border-emerald-500/30 text-emerald-500 px-1.5 py-0.5">+ {t}</span>
+                    <span key={`+${t}`} className="rounded border border-emerald-500/30 bg-emerald-500/15 px-1.5 py-0.5 text-emerald-500">
+                        + {t}
+                    </span>
                 ))}
                 {removed.map(t => (
-                    <span key={`-${t}`} className="rounded bg-red-500/15 border border-red-500/30 text-red-500 px-1.5 py-0.5 line-through">− {t}</span>
+                    <span key={`-${t}`} className="rounded border border-red-500/30 bg-red-500/15 px-1.5 py-0.5 text-red-500 line-through">
+                        − {t}
+                    </span>
                 ))}
             </div>
         );
@@ -74,7 +76,7 @@ function FieldDiff({ field, current, proposed }: { field: string; current: unkno
 
     if (field === "scope") {
         return (
-            <div className="text-xs font-mono">
+            <div className="font-mono text-xs">
                 <div className="text-red-500/80 line-through">{JSON.stringify(current ?? {})}</div>
                 <div className="text-emerald-500/80">{JSON.stringify(proposed ?? {})}</div>
             </div>
@@ -89,7 +91,7 @@ function FieldDiff({ field, current, proposed }: { field: string; current: unkno
         return (
             <div className="space-y-1 text-xs">
                 <details>
-                    <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
+                    <summary className="text-muted-foreground hover:text-foreground cursor-pointer">
                         Content changed ({currentStr.length} → {proposedStr.length} chars)
                     </summary>
                     <div className="mt-1 space-y-1 rounded border p-2">

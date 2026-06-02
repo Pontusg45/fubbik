@@ -1,6 +1,7 @@
-import { useCallback, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useCallback, useRef, useState } from "react";
 import { toast } from "sonner";
+
 import { api } from "@/utils/api";
 
 export function useBulkChunkOperations() {
@@ -52,11 +53,9 @@ export function useBulkChunkOperations() {
                         if (!page?.chunks) return page;
                         return {
                             ...page,
-                            chunks: page.chunks.map((chunk: any) =>
-                                chunk.id === id ? { ...chunk, reviewStatus: status } : chunk
-                            ),
+                            chunks: page.chunks.map((chunk: any) => (chunk.id === id ? { ...chunk, reviewStatus: status } : chunk))
                         };
-                    }),
+                    })
                 };
             });
             return { previousQueries };
@@ -89,26 +88,23 @@ export function useBulkChunkOperations() {
      * and the click event. If Shift is held and there is a previous selection, selects
      * all chunks in the range.
      */
-    const handleSelectionClick = useCallback(
-        (id: string, index: number, allIds: string[], event: React.MouseEvent) => {
-            if (event.shiftKey && lastSelectedIndex.current !== null) {
-                const start = Math.min(lastSelectedIndex.current, index);
-                const end = Math.max(lastSelectedIndex.current, index);
-                const rangeIds = allIds.slice(start, end + 1);
-                setSelectedIds(prev => {
-                    const next = new Set(prev);
-                    for (const rid of rangeIds) {
-                        next.add(rid);
-                    }
-                    return next;
-                });
-            } else {
-                toggleSelection(id);
-                lastSelectedIndex.current = index;
-            }
-        },
-        []
-    );
+    const handleSelectionClick = useCallback((id: string, index: number, allIds: string[], event: React.MouseEvent) => {
+        if (event.shiftKey && lastSelectedIndex.current !== null) {
+            const start = Math.min(lastSelectedIndex.current, index);
+            const end = Math.max(lastSelectedIndex.current, index);
+            const rangeIds = allIds.slice(start, end + 1);
+            setSelectedIds(prev => {
+                const next = new Set(prev);
+                for (const rid of rangeIds) {
+                    next.add(rid);
+                }
+                return next;
+            });
+        } else {
+            toggleSelection(id);
+            lastSelectedIndex.current = index;
+        }
+    }, []);
 
     function toggleAll(chunkIds: string[]) {
         if (selectedIds.size === chunkIds.length) {
@@ -127,6 +123,6 @@ export function useBulkChunkOperations() {
         reviewMutation,
         toggleSelection,
         handleSelectionClick,
-        toggleAll,
+        toggleAll
     };
 }

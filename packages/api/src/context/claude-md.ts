@@ -85,22 +85,15 @@ export function generateClaudeMd(params: GenerateClaudeMdParams) {
             parts.push("## Requirements\n");
 
             const statusOrder: Record<string, number> = { failing: 0, untested: 1, passing: 2 };
-            const sorted = [...requirements].sort(
-                (a, b) => (statusOrder[a.status ?? ""] ?? 3) - (statusOrder[b.status ?? ""] ?? 3)
-            );
+            const sorted = [...requirements].sort((a, b) => (statusOrder[a.status ?? ""] ?? 3) - (statusOrder[b.status ?? ""] ?? 3));
 
             for (const req of sorted) {
-                const marker =
-                    req.status === "failing" || req.status === "untested"
-                        ? " <!-- ACTION NEEDED -->"
-                        : "";
+                const marker = req.status === "failing" || req.status === "untested" ? " <!-- ACTION NEEDED -->" : "";
                 const priority = req.priority ? ` [${req.priority}]` : "";
                 parts.push(`### ${req.title}${priority} — ${req.status}${marker}`);
 
                 if (req.steps && Array.isArray(req.steps)) {
-                    const stepsText = req.steps
-                        .map(s => `- **${s.keyword}** ${s.text}`)
-                        .join("\n");
+                    const stepsText = req.steps.map(s => `- **${s.keyword}** ${s.text}`).join("\n");
                     parts.push(stepsText);
                 }
 
@@ -116,7 +109,7 @@ export function generateClaudeMd(params: GenerateClaudeMdParams) {
         const plans = yield* listPlans({
             userId: params.userId,
             spaceId: params.spaceId,
-            status: "in_progress",
+            status: "in_progress"
         });
 
         if (plans.length > 0) {
@@ -130,9 +123,7 @@ export function generateClaudeMd(params: GenerateClaudeMdParams) {
 
                 parts.push(`### ${plan.title} (${done}/${total} tasks — ${pct}%)`);
 
-                const pending = tasks.filter(
-                    t => t.status === "pending" || t.status === "in_progress"
-                );
+                const pending = tasks.filter(t => t.status === "pending" || t.status === "in_progress");
                 if (pending.length > 0) {
                     const pendingText = pending.map(t => `- [ ] ${t.title}`).join("\n");
                     parts.push(pendingText);

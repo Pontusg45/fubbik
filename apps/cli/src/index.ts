@@ -1,19 +1,11 @@
 import { Command } from "commander";
 
+// Remaining top-level commands
+import { checkFilesCommand } from "./commands/check-files";
 // Group commands
 import { chunkCommand } from "./commands/chunk";
 import { codebaseCommand } from "./commands/codebase";
-import { spaceCommand } from "./commands/space";
 import { contextGroupCommand } from "./commands/context-group";
-import { maintainCommand } from "./commands/maintain";
-import { matrixCommand } from "./commands/matrix";
-import { planCommand } from "./commands/plan";
-import { reqCommand } from "./commands/req";
-import { reviewCommand } from "./commands/review";
-import { tagGroupCommand } from "./commands/tag-group";
-
-// Remaining top-level commands
-import { checkFilesCommand } from "./commands/check-files";
 import { diffCommand } from "./commands/diff";
 import { docsCommand } from "./commands/docs";
 import { exportCommand } from "./commands/export";
@@ -24,21 +16,27 @@ import { hooksCommand } from "./commands/hooks";
 import { importCommand } from "./commands/import";
 import { initCommand } from "./commands/init";
 import { kbDiffCommand } from "./commands/kb-diff";
+import { maintainCommand } from "./commands/maintain";
+import { matrixCommand } from "./commands/matrix";
 import { mcpToolsCommand } from "./commands/mcp-tools";
 import { openCommand } from "./commands/open";
+import { planCommand } from "./commands/plan";
 import { promptCommand } from "./commands/prompt";
 import { recapCommand } from "./commands/recap";
+import { reqCommand } from "./commands/req";
+import { reviewCommand } from "./commands/review";
+import { setupCommand } from "./commands/setup";
+import { spaceCommand } from "./commands/space";
 import { statsCommand } from "./commands/stats";
 import { statusCommand } from "./commands/status";
 import { suggestCommand } from "./commands/suggest";
 import { syncCommand } from "./commands/sync";
-import { setupCommand } from "./commands/setup";
 import { syncClaudeMdCommand } from "./commands/sync-claude-md";
+import { tagGroupCommand } from "./commands/tag-group";
 import { taskCommand } from "./commands/task";
 import { updatesCommand } from "./commands/updates";
 import { watchCommand } from "./commands/watch";
 import { whyCommand } from "./commands/why";
-
 import { generateZshCompletions } from "./lib/completions";
 
 const program = new Command();
@@ -89,7 +87,8 @@ program.addCommand(updatesCommand);
 program.addCommand(watchCommand);
 program.addCommand(whyCommand);
 
-program.command("completions")
+program
+    .command("completions")
     .description("Generate shell completions")
     .argument("<shell>", "shell type: zsh")
     .action((shell: string) => {

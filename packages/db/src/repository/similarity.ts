@@ -29,8 +29,8 @@ export function findDuplicatePairs(params: {
     if (chunkIds.length < 2) return Effect.succeed([]);
 
     return dbEffect(async () => {
-            const idList = chunkIds.map(id => `'${id.replace(/'/g, "''")}'`).join(",");
-            const rows = await db.execute(sql`
+        const idList = chunkIds.map(id => `'${id.replace(/'/g, "''")}'`).join(",");
+        const rows = await db.execute(sql`
                 SELECT a.id AS id_a, b.id AS id_b,
                        1 - (a.embedding <=> b.embedding) AS similarity
                 FROM chunk a, chunk b
@@ -42,12 +42,12 @@ export function findDuplicatePairs(params: {
                 ORDER BY similarity DESC
                 LIMIT ${limit}
             `);
-            return (rows.rows as Array<{ id_a: string; id_b: string; similarity: string | number }>).map(r => ({
-                idA: r.id_a,
-                idB: r.id_b,
-                similarity: Number(r.similarity),
-            }));
-        });
+        return (rows.rows as Array<{ id_a: string; id_b: string; similarity: string | number }>).map(r => ({
+            idA: r.id_a,
+            idB: r.id_b,
+            similarity: Number(r.similarity)
+        }));
+    });
 }
 
 export function findSimilarByEmbedding(params: {
@@ -60,66 +60,49 @@ export function findSimilarByEmbedding(params: {
     const { embedding, userId, excludeId, threshold = 0.7, limit = 5 } = params;
 
     return dbEffect(async () => {
-            const vectorStr = `[${embedding.join(",")}]`;
-            const conditions = [
-                eq(chunk.userId, userId),
-                sql`${chunk.embedding} IS NOT NULL`,
-            ];
-            if (excludeId) conditions.push(ne(chunk.id, excludeId));
+        const vectorStr = `[${embedding.join(",")}]`;
+        const conditions = [eq(chunk.userId, userId), sql`${chunk.embedding} IS NOT NULL`];
+        if (excludeId) conditions.push(ne(chunk.id, excludeId));
 
-            const results = await db
-                .select({
-                    id: chunk.id,
-                    title: chunk.title,
-                    type: chunk.type,
-                    similarity: sql<number>`1 - (${chunk.embedding} <=> ${vectorStr}::vector)`,
-                })
-                .from(chunk)
-                .where(and(...conditions))
-                .orderBy(sql`${chunk.embedding} <=> ${vectorStr}::vector`)
-                .limit(limit);
+        const results = await db
+            .select({
+                id: chunk.id,
+                title: chunk.title,
+                type: chunk.type,
+                similarity: sql<number>`1 - (${chunk.embedding} <=> ${vectorStr}::vector)`
+            })
+            .from(chunk)
+            .where(and(...conditions))
+            .orderBy(sql`${chunk.embedding} <=> ${vectorStr}::vector`)
+            .limit(limit);
 
-            return results.filter(r => r.similarity >= threshold);
-        });
+        return results.filter(r => r.similarity >= threshold);
+    });
 }
 
-export function findDuplicatePairsWithGraphSignal(params: {
-    chunkIds: string[];
-    embeddingThreshold?: number;
-    limit?: number;
-}) {
+export function findDuplicatePairsWithGraphSignal(params: { chunkIds: string[]; embeddingThreshold?: number; limit?: number }) {
     const embeddingThreshold = params.embeddingThreshold ?? 0.85;
     const limit = params.limit ?? 10;
 
     return findDuplicatePairs({
         chunkIds: params.chunkIds,
         threshold: embeddingThreshold,
-        limit: limit * 2,
+        limit: limit * 2
     }).pipe(
-        Effect.flatMap((pairs) => {
+        Effect.flatMap(pairs => {
             if (pairs.length === 0) return Effect.succeed([]);
-            const allIds = [
-                ...new Set(pairs.flatMap((p) => [p.idA, p.idB])),
-            ];
+            const allIds = [...new Set(pairs.flatMap(p => [p.idA, p.idB]))];
             return getSubgraph(allIds).pipe(
-                Effect.map((edges) => {
-                    const edgeSet = new Set(
-                        edges.map((e) =>
-                            [e.source, e.target].sort().join(":")
-                        )
-                    );
+                Effect.map(edges => {
+                    const edgeSet = new Set(edges.map(e => [e.source, e.target].sort().join(":")));
                     return pairs
-                        .map((p) => {
-                            const pairKey = [p.idA, p.idB]
-                                .sort()
-                                .join(":");
+                        .map(p => {
+                            const pairKey = [p.idA, p.idB].sort().join(":");
                             const graphConnected = edgeSet.has(pairKey);
                             return {
                                 ...p,
                                 graphConnected,
-                                combinedScore: graphConnected
-                                    ? p.similarity * 1.15
-                                    : p.similarity,
+                                combinedScore: graphConnected ? p.similarity * 1.15 : p.similarity
                             };
                         })
                         .sort((a, b) => b.combinedScore - a.combinedScore)
@@ -127,10 +110,10 @@ export function findDuplicatePairsWithGraphSignal(params: {
                 }),
                 Effect.catchAll(() =>
                     Effect.succeed(
-                        pairs.slice(0, limit).map((p) => ({
+                        pairs.slice(0, limit).map(p => ({
                             ...p,
                             graphConnected: false,
-                            combinedScore: p.similarity,
+                            combinedScore: p.similarity
                         }))
                     )
                 )

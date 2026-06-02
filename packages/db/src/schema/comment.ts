@@ -20,8 +20,5 @@ export const chunkComment = pgTable(
             .$onUpdate(() => new Date())
             .notNull()
     },
-    table => [
-        index("chunk_comment_chunkId_idx").on(table.chunkId),
-        index("chunk_comment_userId_idx").on(table.userId)
-    ]
+    table => [index("chunk_comment_chunkId_idx").on(table.chunkId), index("chunk_comment_userId_idx").on(table.userId)]
 );

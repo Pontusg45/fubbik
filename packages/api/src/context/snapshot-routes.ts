@@ -2,12 +2,7 @@ import { Effect } from "effect";
 import { Elysia, t } from "elysia";
 
 import { requireSession } from "../require-session";
-import {
-    createSnapshot,
-    deleteSnapshot,
-    getSnapshot,
-    listSnapshots,
-} from "./snapshot-service";
+import { createSnapshot, deleteSnapshot, getSnapshot, listSnapshots } from "./snapshot-service";
 
 export const snapshotRoutes = new Elysia()
     // POST /context/snapshot — create a frozen context snapshot
@@ -23,10 +18,10 @@ export const snapshotRoutes = new Elysia()
                             filePaths: ctx.body.filePaths,
                             concept: ctx.body.concept,
                             maxTokens: ctx.body.maxTokens,
-                            spaceId: ctx.body.spaceId,
-                        }),
-                    ),
-                ),
+                            spaceId: ctx.body.spaceId
+                        })
+                    )
+                )
             ),
         {
             body: t.Object({
@@ -35,32 +30,21 @@ export const snapshotRoutes = new Elysia()
                 filePaths: t.Optional(t.Array(t.String())),
                 concept: t.Optional(t.String()),
                 maxTokens: t.Optional(t.Number()),
-                spaceId: t.Optional(t.String()),
-            }),
-        },
+                spaceId: t.Optional(t.String())
+            })
+        }
     )
     // GET /context/snapshot/:id — retrieve a frozen snapshot
     .get(
         "/context/snapshot/:id",
-        ctx =>
-            Effect.runPromise(
-                requireSession(ctx).pipe(
-                    Effect.flatMap(session => getSnapshot(ctx.params.id, session.user.id)),
-                ),
-            ),
+        ctx => Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(session => getSnapshot(ctx.params.id, session.user.id)))),
         {
-            params: t.Object({ id: t.String() }),
-        },
+            params: t.Object({ id: t.String() })
+        }
     )
     // GET /context/snapshots — list user's snapshots
-    .get(
-        "/context/snapshots",
-        ctx =>
-            Effect.runPromise(
-                requireSession(ctx).pipe(
-                    Effect.flatMap(session => listSnapshots(session.user.id)),
-                ),
-            ),
+    .get("/context/snapshots", ctx =>
+        Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(session => listSnapshots(session.user.id))))
     )
     // DELETE /context/snapshot/:id — delete a snapshot
     .delete(
@@ -69,13 +53,11 @@ export const snapshotRoutes = new Elysia()
             Effect.runPromise(
                 requireSession(ctx).pipe(
                     Effect.flatMap(session =>
-                        getSnapshot(ctx.params.id, session.user.id).pipe(
-                            Effect.flatMap(() => deleteSnapshot(ctx.params.id)),
-                        ),
-                    ),
-                ),
+                        getSnapshot(ctx.params.id, session.user.id).pipe(Effect.flatMap(() => deleteSnapshot(ctx.params.id)))
+                    )
+                )
             ),
         {
-            params: t.Object({ id: t.String() }),
-        },
+            params: t.Object({ id: t.String() })
+        }
     );

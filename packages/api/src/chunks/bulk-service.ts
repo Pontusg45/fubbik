@@ -1,3 +1,4 @@
+import { DatabaseError } from "@fubbik/db/errors";
 import {
     archiveMany,
     deleteMany,
@@ -10,7 +11,6 @@ import {
 } from "@fubbik/db/repository";
 import { Effect } from "effect";
 
-import { DatabaseError } from "@fubbik/db/errors";
 import { AuthError, NotFoundError, ValidationError } from "../errors";
 
 export type BulkAction = "add_tags" | "remove_tags" | "set_type" | "set_codebase" | "set_review_status" | "archive" | "delete";
@@ -28,11 +28,7 @@ export function bulkUpdate(
     // Validate ownership of all chunk IDs
     const validateOwnership = Effect.all(
         ids.map(id =>
-            getChunkById(id, userId).pipe(
-                Effect.flatMap(found =>
-                    found ? Effect.succeed(found) : Effect.fail(new AuthError())
-                )
-            )
+            getChunkById(id, userId).pipe(Effect.flatMap(found => (found ? Effect.succeed(found) : Effect.fail(new AuthError()))))
         ),
         { concurrency: 10 }
     );
@@ -42,8 +38,14 @@ export function bulkUpdate(
             switch (action) {
                 case "add_tags": {
                     if (!value) return Effect.fail(new ValidationError({ message: "value is required for add_tags" }));
-                    const tagNames = value.split(",").map(s => s.trim()).filter(Boolean);
-                    return Effect.all(tagNames.map(name => findOrCreateTag(name, userId)), { concurrency: 5 }).pipe(
+                    const tagNames = value
+                        .split(",")
+                        .map(s => s.trim())
+                        .filter(Boolean);
+                    return Effect.all(
+                        tagNames.map(name => findOrCreateTag(name, userId)),
+                        { concurrency: 5 }
+                    ).pipe(
                         Effect.flatMap(tags => {
                             const newTagIds = tags.map(t => t.id);
                             return getTagsForChunks(ids).pipe(
@@ -71,8 +73,14 @@ export function bulkUpdate(
                 }
                 case "remove_tags": {
                     if (!value) return Effect.fail(new ValidationError({ message: "value is required for remove_tags" }));
-                    const tagNames = value.split(",").map(s => s.trim()).filter(Boolean);
-                    return Effect.all(tagNames.map(name => findOrCreateTag(name, userId)), { concurrency: 5 }).pipe(
+                    const tagNames = value
+                        .split(",")
+                        .map(s => s.trim())
+                        .filter(Boolean);
+                    return Effect.all(
+                        tagNames.map(name => findOrCreateTag(name, userId)),
+                        { concurrency: 5 }
+                    ).pipe(
                         Effect.flatMap(tags => {
                             const removeTagIds = new Set(tags.map(t => t.id));
                             return getTagsForChunks(ids).pipe(
@@ -100,9 +108,7 @@ export function bulkUpdate(
                 }
                 case "set_type": {
                     if (!value) return Effect.fail(new ValidationError({ message: "value is required for set_type" }));
-                    return updateManyChunks(ids, userId, { type: value }).pipe(
-                        Effect.map(result => ({ updated: result.length }))
-                    );
+                    return updateManyChunks(ids, userId, { type: value }).pipe(Effect.map(result => ({ updated: result.length })));
                 }
                 case "set_codebase": {
                     const spaceIds = value ? [value] : [];
@@ -115,19 +121,13 @@ export function bulkUpdate(
                     if (!value || !["draft", "reviewed", "approved"].includes(value)) {
                         return Effect.fail(new ValidationError({ message: "value must be draft, reviewed, or approved" }));
                     }
-                    return updateManyChunks(ids, userId, { reviewStatus: value }).pipe(
-                        Effect.map(result => ({ updated: result.length }))
-                    );
+                    return updateManyChunks(ids, userId, { reviewStatus: value }).pipe(Effect.map(result => ({ updated: result.length })));
                 }
                 case "archive": {
-                    return archiveMany(ids, userId).pipe(
-                        Effect.map(result => ({ updated: result.length }))
-                    );
+                    return archiveMany(ids, userId).pipe(Effect.map(result => ({ updated: result.length })));
                 }
                 case "delete": {
-                    return deleteMany(ids, userId).pipe(
-                        Effect.map(result => ({ updated: result.length }))
-                    );
+                    return deleteMany(ids, userId).pipe(Effect.map(result => ({ updated: result.length })));
                 }
                 default:
                     return Effect.fail(new ValidationError({ message: `Unknown action: ${action}` }));

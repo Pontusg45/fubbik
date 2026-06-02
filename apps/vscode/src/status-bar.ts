@@ -1,14 +1,12 @@
 import * as vscode from "vscode";
+
 import type { FubbikApi } from "./api";
 
 export class FubbikStatusBar {
     private item: vscode.StatusBarItem;
 
     constructor() {
-        this.item = vscode.window.createStatusBarItem(
-            vscode.StatusBarAlignment.Left,
-            100
-        );
+        this.item = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
         this.item.command = "fubbik.sidebar.focus";
         this.item.tooltip = "Fubbik Knowledge Base";
     }

@@ -4,30 +4,30 @@ import { config } from "dotenv";
 import { eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 
+import { activityLog } from "./schema/activity";
+import { chunkAppliesTo } from "./schema/applies-to";
 import { user } from "./schema/auth";
 import { chunk, chunkConnection } from "./schema/chunk";
-import { chunkTag, tag, tagType } from "./schema/tag";
+import { chunkProposal } from "./schema/chunk-proposal";
+import { chunkType } from "./schema/chunk-type";
+import { chunkVersion } from "./schema/chunk-version";
+import { collection } from "./schema/collection";
+import { chunkComment } from "./schema/comment";
+import { connectionRelation } from "./schema/connection-relation";
+import { userFavorite } from "./schema/favorite";
+import { chunkFileRef } from "./schema/file-ref";
+import { notification } from "./schema/notification";
+import { plan, planRequirement, planAnalyzeItem, planTask, planTaskChunk, planTaskDependency } from "./schema/plan";
+import { requirement, requirementChunk } from "./schema/requirement";
+import { savedQuery } from "./schema/saved-query";
 import { space, chunkSpace } from "./schema/space";
 import { spaceCodeMetadata } from "./schema/space-code-metadata";
-import { chunkAppliesTo } from "./schema/applies-to";
-import { chunkFileRef } from "./schema/file-ref";
-import { requirement, requirementChunk } from "./schema/requirement";
-import { useCase } from "./schema/use-case";
-import { plan, planRequirement, planAnalyzeItem, planTask, planTaskChunk, planTaskDependency } from "./schema/plan";
-import { chunkVersion } from "./schema/chunk-version";
 import { chunkStaleness } from "./schema/staleness";
-import { chunkProposal } from "./schema/chunk-proposal";
-import { activityLog } from "./schema/activity";
-import { userFavorite } from "./schema/favorite";
-import { notification } from "./schema/notification";
-import { chunkComment } from "./schema/comment";
-import { savedQuery } from "./schema/saved-query";
-import { vocabularyEntry } from "./schema/vocabulary";
-import { collection } from "./schema/collection";
-import { workspace, workspaceSpace } from "./schema/workspace";
-import { chunkType } from "./schema/chunk-type";
-import { connectionRelation } from "./schema/connection-relation";
+import { chunkTag, tag, tagType } from "./schema/tag";
 import { chunkTemplate, type TemplateMatchRules, type TemplateFieldMapping } from "./schema/template";
+import { useCase } from "./schema/use-case";
+import { vocabularyEntry } from "./schema/vocabulary";
+import { workspace, workspaceSpace } from "./schema/workspace";
 
 config({ path: resolve(import.meta.dirname, "../../../apps/server/.env") });
 
@@ -55,45 +55,229 @@ if (!existing) {
 // Idempotent across runs and safe to call before or after clearing user data.
 // ---------------------------------------------------------------------------
 const BUILTIN_CHUNK_TYPES = [
-    { id: "note",       label: "Note",        description: "A free-form note or observation",                    icon: "StickyNote", color: "#94a3b8", displayOrder: 10, examples: ["Quick thought", "TODO", "Question"] },
-    { id: "document",   label: "Document",    description: "Longer-form written content",                        icon: "FileText",   color: "#3b82f6", displayOrder: 20, examples: ["Spec", "RFC", "Meeting notes"] },
-    { id: "guide",      label: "Guide",       description: "Step-by-step instructions or tutorial",              icon: "BookOpen",   color: "#6366f1", displayOrder: 30, examples: ["Onboarding", "How-to"] },
-    { id: "reference",  label: "Reference",   description: "Lookup material — APIs, glossary, canonical links", icon: "Compass",    color: "#14b8a6", displayOrder: 40, examples: ["API shape", "Glossary entry"] },
-    { id: "schema",     label: "Schema",      description: "Data model or structural definition",                icon: "Database",   color: "#f59e0b", displayOrder: 50, examples: ["Table schema", "Event payload"] },
-    { id: "checklist",  label: "Checklist",   description: "Ordered items to verify or complete",                icon: "CheckSquare",color: "#84cc16", displayOrder: 60, examples: ["Launch checklist", "Review items"] },
-    { id: "convention", label: "Convention",  description: "A rule the team agrees to follow",                   icon: "Scale",      color: "#ec4899", displayOrder: 70, examples: ["Naming pattern", "Code style"] }
+    {
+        id: "note",
+        label: "Note",
+        description: "A free-form note or observation",
+        icon: "StickyNote",
+        color: "#94a3b8",
+        displayOrder: 10,
+        examples: ["Quick thought", "TODO", "Question"]
+    },
+    {
+        id: "document",
+        label: "Document",
+        description: "Longer-form written content",
+        icon: "FileText",
+        color: "#3b82f6",
+        displayOrder: 20,
+        examples: ["Spec", "RFC", "Meeting notes"]
+    },
+    {
+        id: "guide",
+        label: "Guide",
+        description: "Step-by-step instructions or tutorial",
+        icon: "BookOpen",
+        color: "#6366f1",
+        displayOrder: 30,
+        examples: ["Onboarding", "How-to"]
+    },
+    {
+        id: "reference",
+        label: "Reference",
+        description: "Lookup material — APIs, glossary, canonical links",
+        icon: "Compass",
+        color: "#14b8a6",
+        displayOrder: 40,
+        examples: ["API shape", "Glossary entry"]
+    },
+    {
+        id: "schema",
+        label: "Schema",
+        description: "Data model or structural definition",
+        icon: "Database",
+        color: "#f59e0b",
+        displayOrder: 50,
+        examples: ["Table schema", "Event payload"]
+    },
+    {
+        id: "checklist",
+        label: "Checklist",
+        description: "Ordered items to verify or complete",
+        icon: "CheckSquare",
+        color: "#84cc16",
+        displayOrder: 60,
+        examples: ["Launch checklist", "Review items"]
+    },
+    {
+        id: "convention",
+        label: "Convention",
+        description: "A rule the team agrees to follow",
+        icon: "Scale",
+        color: "#ec4899",
+        displayOrder: 70,
+        examples: ["Naming pattern", "Code style"]
+    }
 ] as const;
 
 for (const t of BUILTIN_CHUNK_TYPES) {
-    await db.insert(chunkType).values({ ...t, builtIn: true, examples: [...t.examples] }).onConflictDoUpdate({
-        target: chunkType.id,
-        set: { label: t.label, description: t.description, icon: t.icon, color: t.color, displayOrder: t.displayOrder, examples: [...t.examples], builtIn: true }
-    }).catch(e => console.error(`  ✗ chunk_type ${t.id}:`, e));
+    await db
+        .insert(chunkType)
+        .values({ ...t, builtIn: true, examples: [...t.examples] })
+        .onConflictDoUpdate({
+            target: chunkType.id,
+            set: {
+                label: t.label,
+                description: t.description,
+                icon: t.icon,
+                color: t.color,
+                displayOrder: t.displayOrder,
+                examples: [...t.examples],
+                builtIn: true
+            }
+        })
+        .catch(e => console.error(`  ✗ chunk_type ${t.id}:`, e));
 }
 console.log(`  ✓ ${BUILTIN_CHUNK_TYPES.length} builtin chunk types`);
 
 // Base relations first (no inverse links — those are added in a second pass so pairs can reference each other).
 const BUILTIN_RELATIONS = [
-    { id: "related_to",     label: "Related to",     description: "General relationship — the weakest link",                       arrowStyle: "dashed", direction: "bidirectional", color: "#94a3b8", displayOrder: 10 },
-    { id: "part_of",        label: "Part of",        description: "Source is a component of target",                                arrowStyle: "solid",  direction: "forward",        color: "#3b82f6", displayOrder: 20 },
-    { id: "contains",       label: "Contains",       description: "Source is a container holding target (inverse of part_of)",      arrowStyle: "solid",  direction: "forward",        color: "#3b82f6", displayOrder: 21 },
-    { id: "depends_on",     label: "Depends on",     description: "Source requires target to work",                                 arrowStyle: "solid",  direction: "forward",        color: "#f59e0b", displayOrder: 30 },
-    { id: "required_by",    label: "Required by",    description: "Target depends on source (inverse of depends_on)",               arrowStyle: "solid",  direction: "forward",        color: "#f59e0b", displayOrder: 31 },
-    { id: "extends",        label: "Extends",        description: "Source specializes or builds upon target",                       arrowStyle: "solid",  direction: "forward",        color: "#6366f1", displayOrder: 40 },
-    { id: "extended_by",    label: "Extended by",    description: "Target extends source (inverse of extends)",                     arrowStyle: "solid",  direction: "forward",        color: "#6366f1", displayOrder: 41 },
-    { id: "references",     label: "References",     description: "Source mentions or cites target",                                arrowStyle: "dotted", direction: "forward",        color: "#14b8a6", displayOrder: 50 },
-    { id: "referenced_by",  label: "Referenced by",  description: "Target references source (inverse of references)",               arrowStyle: "dotted", direction: "forward",        color: "#14b8a6", displayOrder: 51 },
-    { id: "supports",       label: "Supports",       description: "Source provides evidence for target",                            arrowStyle: "solid",  direction: "forward",        color: "#22c55e", displayOrder: 60 },
-    { id: "supported_by",   label: "Supported by",   description: "Target supports source (inverse of supports)",                   arrowStyle: "solid",  direction: "forward",        color: "#22c55e", displayOrder: 61 },
-    { id: "contradicts",    label: "Contradicts",    description: "Source disagrees with target",                                   arrowStyle: "solid",  direction: "bidirectional", color: "#ef4444", displayOrder: 70 },
-    { id: "alternative_to", label: "Alternative to", description: "Source and target are competing approaches",                     arrowStyle: "dashed", direction: "bidirectional", color: "#a855f7", displayOrder: 80 }
+    {
+        id: "related_to",
+        label: "Related to",
+        description: "General relationship — the weakest link",
+        arrowStyle: "dashed",
+        direction: "bidirectional",
+        color: "#94a3b8",
+        displayOrder: 10
+    },
+    {
+        id: "part_of",
+        label: "Part of",
+        description: "Source is a component of target",
+        arrowStyle: "solid",
+        direction: "forward",
+        color: "#3b82f6",
+        displayOrder: 20
+    },
+    {
+        id: "contains",
+        label: "Contains",
+        description: "Source is a container holding target (inverse of part_of)",
+        arrowStyle: "solid",
+        direction: "forward",
+        color: "#3b82f6",
+        displayOrder: 21
+    },
+    {
+        id: "depends_on",
+        label: "Depends on",
+        description: "Source requires target to work",
+        arrowStyle: "solid",
+        direction: "forward",
+        color: "#f59e0b",
+        displayOrder: 30
+    },
+    {
+        id: "required_by",
+        label: "Required by",
+        description: "Target depends on source (inverse of depends_on)",
+        arrowStyle: "solid",
+        direction: "forward",
+        color: "#f59e0b",
+        displayOrder: 31
+    },
+    {
+        id: "extends",
+        label: "Extends",
+        description: "Source specializes or builds upon target",
+        arrowStyle: "solid",
+        direction: "forward",
+        color: "#6366f1",
+        displayOrder: 40
+    },
+    {
+        id: "extended_by",
+        label: "Extended by",
+        description: "Target extends source (inverse of extends)",
+        arrowStyle: "solid",
+        direction: "forward",
+        color: "#6366f1",
+        displayOrder: 41
+    },
+    {
+        id: "references",
+        label: "References",
+        description: "Source mentions or cites target",
+        arrowStyle: "dotted",
+        direction: "forward",
+        color: "#14b8a6",
+        displayOrder: 50
+    },
+    {
+        id: "referenced_by",
+        label: "Referenced by",
+        description: "Target references source (inverse of references)",
+        arrowStyle: "dotted",
+        direction: "forward",
+        color: "#14b8a6",
+        displayOrder: 51
+    },
+    {
+        id: "supports",
+        label: "Supports",
+        description: "Source provides evidence for target",
+        arrowStyle: "solid",
+        direction: "forward",
+        color: "#22c55e",
+        displayOrder: 60
+    },
+    {
+        id: "supported_by",
+        label: "Supported by",
+        description: "Target supports source (inverse of supports)",
+        arrowStyle: "solid",
+        direction: "forward",
+        color: "#22c55e",
+        displayOrder: 61
+    },
+    {
+        id: "contradicts",
+        label: "Contradicts",
+        description: "Source disagrees with target",
+        arrowStyle: "solid",
+        direction: "bidirectional",
+        color: "#ef4444",
+        displayOrder: 70
+    },
+    {
+        id: "alternative_to",
+        label: "Alternative to",
+        description: "Source and target are competing approaches",
+        arrowStyle: "dashed",
+        direction: "bidirectional",
+        color: "#a855f7",
+        displayOrder: 80
+    }
 ] as const;
 
 for (const r of BUILTIN_RELATIONS) {
-    await db.insert(connectionRelation).values({ ...r, builtIn: true }).onConflictDoUpdate({
-        target: connectionRelation.id,
-        set: { label: r.label, description: r.description, arrowStyle: r.arrowStyle, direction: r.direction, color: r.color, displayOrder: r.displayOrder, builtIn: true }
-    }).catch(e => console.error(`  ✗ connection_relation ${r.id}:`, e));
+    await db
+        .insert(connectionRelation)
+        .values({ ...r, builtIn: true })
+        .onConflictDoUpdate({
+            target: connectionRelation.id,
+            set: {
+                label: r.label,
+                description: r.description,
+                arrowStyle: r.arrowStyle,
+                direction: r.direction,
+                color: r.color,
+                displayOrder: r.displayOrder,
+                builtIn: true
+            }
+        })
+        .catch(e => console.error(`  ✗ connection_relation ${r.id}:`, e));
 }
 
 // Second pass: link inverse pairs. Both sides point at each other so the graph can display
@@ -121,32 +305,65 @@ console.log(`  ✓ ${BUILTIN_RELATIONS.length} builtin connection relations (${I
 
 // Clear existing data for dev user (order matters for FK constraints)
 // New entity cleanup (must come before chunk/codebase deletion)
-await db.delete(savedQuery).where(eq(savedQuery.userId, DEV_USER_ID)).catch(() => {});
-await db.delete(notification).where(eq(notification.userId, DEV_USER_ID)).catch(() => {});
-await db.delete(userFavorite).where(eq(userFavorite.userId, DEV_USER_ID)).catch(() => {});
-await db.delete(activityLog).where(eq(activityLog.userId, DEV_USER_ID)).catch(() => {});
+await db
+    .delete(savedQuery)
+    .where(eq(savedQuery.userId, DEV_USER_ID))
+    .catch(() => {});
+await db
+    .delete(notification)
+    .where(eq(notification.userId, DEV_USER_ID))
+    .catch(() => {});
+await db
+    .delete(userFavorite)
+    .where(eq(userFavorite.userId, DEV_USER_ID))
+    .catch(() => {});
+await db
+    .delete(activityLog)
+    .where(eq(activityLog.userId, DEV_USER_ID))
+    .catch(() => {});
 await db.delete(chunkComment).catch(() => {});
 await db.delete(chunkProposal).catch(() => {});
 await db.delete(chunkStaleness).catch(() => {});
 await db.delete(chunkVersion).catch(() => {});
 await db.delete(workspaceSpace).catch(() => {});
-await db.delete(workspace).where(eq(workspace.userId, DEV_USER_ID)).catch(() => {});
-await db.delete(collection).where(eq(collection.userId, DEV_USER_ID)).catch(() => {});
-await db.delete(vocabularyEntry).where(eq(vocabularyEntry.userId, DEV_USER_ID)).catch(() => {});
+await db
+    .delete(workspace)
+    .where(eq(workspace.userId, DEV_USER_ID))
+    .catch(() => {});
+await db
+    .delete(collection)
+    .where(eq(collection.userId, DEV_USER_ID))
+    .catch(() => {});
+await db
+    .delete(vocabularyEntry)
+    .where(eq(vocabularyEntry.userId, DEV_USER_ID))
+    .catch(() => {});
 // Delete plan sub-tables first (FK constraints), then plans
 await db.delete(planTaskChunk).catch(() => {});
 await db.delete(planTaskDependency).catch(() => {});
 await db.delete(planTask).catch(() => {});
 await db.delete(planAnalyzeItem).catch(() => {});
 await db.delete(planRequirement).catch(() => {});
-await db.delete(plan).where(eq(plan.userId, DEV_USER_ID)).catch(() => {});
+await db
+    .delete(plan)
+    .where(eq(plan.userId, DEV_USER_ID))
+    .catch(() => {});
 await db.delete(requirementChunk).catch(() => {});
-await db.delete(requirement).where(eq(requirement.userId, DEV_USER_ID)).catch(() => {});
-await db.delete(useCase).where(eq(useCase.userId, DEV_USER_ID)).catch(() => {});
+await db
+    .delete(requirement)
+    .where(eq(requirement.userId, DEV_USER_ID))
+    .catch(() => {});
+await db
+    .delete(useCase)
+    .where(eq(useCase.userId, DEV_USER_ID))
+    .catch(() => {});
 await db.delete(chunkFileRef).catch(() => {});
 await db.delete(chunkAppliesTo).catch(() => {});
 await db.delete(chunkSpace).catch(() => {});
-await db.delete(space).where(eq(space.userId, DEV_USER_ID)).catch(() => {});
+await db
+    .delete(space)
+    .where(eq(space.userId, DEV_USER_ID))
+    .catch(() => {});
 // Original cleanup
 await db.delete(tag).where(eq(tag.userId, DEV_USER_ID));
 await db.delete(tagType).where(eq(tagType.userId, DEV_USER_ID));
@@ -1486,7 +1703,10 @@ const seedTagTypes = [
 ];
 
 for (const tt of seedTagTypes) {
-    await db.insert(tagType).values(tt).catch(e => console.error(`  \u2717 Tag type ${tt.name}:`, e));
+    await db
+        .insert(tagType)
+        .values(tt)
+        .catch(e => console.error(`  \u2717 Tag type ${tt.name}:`, e));
 }
 console.log(`  \u2713 ${seedTagTypes.length} tag types`);
 
@@ -1541,7 +1761,10 @@ const seedTags: { id: string; name: string; tagTypeId: string; userId: string }[
 ];
 
 for (const t of seedTags) {
-    await db.insert(tag).values(t).catch(e => console.error(`  \u2717 Tag ${t.name}:`, e));
+    await db
+        .insert(tag)
+        .values(t)
+        .catch(e => console.error(`  \u2717 Tag ${t.name}:`, e));
 }
 console.log(`  \u2713 ${seedTags.length} tags`);
 
@@ -1658,7 +1881,10 @@ const chunkTagAssociations: { chunkId: string; tagId: string }[] = [
 ];
 
 for (const ct of chunkTagAssociations) {
-    await db.insert(chunkTag).values(ct).catch(e => console.error(`  \u2717 chunk_tag:`, e));
+    await db
+        .insert(chunkTag)
+        .values(ct)
+        .catch(e => console.error(`  \u2717 chunk_tag:`, e));
 }
 console.log(`  \u2713 ${chunkTagAssociations.length} chunk-tag associations`);
 
@@ -1693,7 +1919,10 @@ const chunkSpaceAssociations = chunks
         spaceId: CODEBASE_ID
     }));
 for (const cs of chunkSpaceAssociations) {
-    await db.insert(chunkSpace).values(cs).catch(e => console.error("  \u2717 chunk_space:", e));
+    await db
+        .insert(chunkSpace)
+        .values(cs)
+        .catch(e => console.error("  \u2717 chunk_space:", e));
 }
 console.log(`  \u2713 ${chunkSpaceAssociations.length} chunk-space associations`);
 // ─── 2. Applies-to patterns ────────────────────────────────────────
@@ -1709,7 +1938,10 @@ const appliesToPatterns = [
     { id: "seed-at-turbo", chunkId: ids.turbo, pattern: "turbo.json", note: "Turborepo config" }
 ];
 for (const at of appliesToPatterns) {
-    await db.insert(chunkAppliesTo).values(at).catch(e => console.error("  \u2717 applies_to:", e));
+    await db
+        .insert(chunkAppliesTo)
+        .values(at)
+        .catch(e => console.error("  \u2717 applies_to:", e));
 }
 console.log(`  \u2713 ${appliesToPatterns.length} applies-to patterns`);
 
@@ -1722,7 +1954,10 @@ const fileRefs = [
     { id: "seed-fr-env", chunkId: ids.env, path: "packages/env/src/index.ts", relation: "documents" }
 ];
 for (const fr of fileRefs) {
-    await db.insert(chunkFileRef).values(fr).catch(e => console.error("  \u2717 file_ref:", e));
+    await db
+        .insert(chunkFileRef)
+        .values(fr)
+        .catch(e => console.error("  \u2717 file_ref:", e));
 }
 console.log(`  \u2713 ${fileRefs.length} file references`);
 
@@ -1746,7 +1981,10 @@ const useCases = [
     }
 ];
 for (const uc of useCases) {
-    await db.insert(useCase).values(uc).catch(e => console.error("  \u2717 use_case:", e));
+    await db
+        .insert(useCase)
+        .values(uc)
+        .catch(e => console.error("  \u2717 use_case:", e));
 }
 console.log(`  \u2713 ${useCases.length} use cases`);
 
@@ -1809,7 +2047,10 @@ const requirements = [
     }
 ];
 for (const req of requirements) {
-    await db.insert(requirement).values(req).catch(e => console.error("  \u2717 requirement:", e));
+    await db
+        .insert(requirement)
+        .values(req)
+        .catch(e => console.error("  \u2717 requirement:", e));
 }
 console.log(`  \u2713 ${requirements.length} requirements`);
 
@@ -1822,7 +2063,10 @@ const reqChunkLinks = [
     { requirementId: "seed-req-plan", chunkId: ids.arch }
 ];
 for (const rc of reqChunkLinks) {
-    await db.insert(requirementChunk).values(rc).catch(e => console.error("  \u2717 requirement_chunk:", e));
+    await db
+        .insert(requirementChunk)
+        .values(rc)
+        .catch(e => console.error("  \u2717 requirement_chunk:", e));
 }
 console.log(`  \u2713 ${reqChunkLinks.length} requirement-chunk links`);
 
@@ -1832,12 +2076,11 @@ const [planCompleted] = await db
     .insert(plan)
     .values({
         title: "Add user avatars",
-        description:
-            "Let users upload a profile picture. Shown on chunk detail pages and in the top-right nav.",
+        description: "Let users upload a profile picture. Shown on chunk detail pages and in the top-right nav.",
         status: "completed",
         userId: DEV_USER_ID,
         spaceId: CODEBASE_ID,
-        completedAt: new Date(),
+        completedAt: new Date()
     })
     .returning();
 
@@ -1846,29 +2089,31 @@ if (!planCompleted) throw new Error("failed to seed completed plan");
 await db.insert(planTask).values([
     { planId: planCompleted.id, title: "Add avatar column to user table", status: "done", order: 0 },
     { planId: planCompleted.id, title: "Wire upload endpoint", status: "done", order: 1 },
-    { planId: planCompleted.id, title: "Render avatar in nav", status: "done", order: 2 },
+    { planId: planCompleted.id, title: "Render avatar in nav", status: "done", order: 2 }
 ]);
 
 const [planInProgress] = await db
     .insert(plan)
     .values({
         title: "Federated chunk search",
-        description:
-            "Search chunks across all linked codebases from one query. Returns results grouped by codebase.",
+        description: "Search chunks across all linked codebases from one query. Returns results grouped by codebase.",
         status: "in_progress",
         userId: DEV_USER_ID,
-        spaceId: CODEBASE_ID,
+        spaceId: CODEBASE_ID
     })
     .returning();
 
 if (!planInProgress) throw new Error("failed to seed in_progress plan");
 
 // Link the first requirement if one exists
-await db.insert(planRequirement).values({
-    planId: planInProgress.id,
-    requirementId: "seed-req-plan",
-    order: 0,
-}).catch(e => console.error("  ✗ planRequirement:", e));
+await db
+    .insert(planRequirement)
+    .values({
+        planId: planInProgress.id,
+        requirementId: "seed-req-plan",
+        order: 0
+    })
+    .catch(e => console.error("  ✗ planRequirement:", e));
 
 await db.insert(planAnalyzeItem).values([
     {
@@ -1876,7 +2121,7 @@ await db.insert(planAnalyzeItem).values([
         kind: "chunk",
         chunkId: ids.apiChunks,
         text: "Existing search service entry point",
-        order: 0,
+        order: 0
     },
     {
         planId: planInProgress.id,
@@ -1884,29 +2129,29 @@ await db.insert(planAnalyzeItem).values([
         filePath: "packages/api/src/search/service.ts",
         text: "Main search entry point",
         metadata: { lineStart: 1, lineEnd: 50 },
-        order: 1,
+        order: 1
     },
     {
         planId: planInProgress.id,
         kind: "risk",
         text: "Cross-codebase indexes may blow up memory for 10+ codebases",
         metadata: { severity: "medium" },
-        order: 2,
+        order: 2
     },
     {
         planId: planInProgress.id,
         kind: "assumption",
         text: "All codebases share the same embedding model",
         metadata: { verified: false },
-        order: 3,
+        order: 3
     },
     {
         planId: planInProgress.id,
         kind: "question",
         text: "Should archived codebases be searchable?",
         metadata: { answered: false },
-        order: 4,
-    },
+        order: 4
+    }
 ]);
 
 await db.insert(planTask).values([
@@ -1914,7 +2159,7 @@ await db.insert(planTask).values([
     { planId: planInProgress.id, title: "Group results by codebase in response", status: "in_progress", order: 1 },
     { planId: planInProgress.id, title: "Add federated mode toggle to search page", status: "pending", order: 2 },
     { planId: planInProgress.id, title: "Integration test: 3 codebases, 1 query", status: "pending", order: 3 },
-    { planId: planInProgress.id, title: "Update CLAUDE.md with federated search docs", status: "pending", order: 4 },
+    { planId: planInProgress.id, title: "Update CLAUDE.md with federated search docs", status: "pending", order: 4 }
 ]);
 
 const [planAnalyzing] = await db
@@ -1925,7 +2170,7 @@ const [planAnalyzing] = await db
             "Make Plan the home for a unit of work — description, linked requirements, structured analyze fields, and enriched tasks.",
         status: "analyzing",
         userId: DEV_USER_ID,
-        spaceId: CODEBASE_ID,
+        spaceId: CODEBASE_ID
     })
     .returning();
 
@@ -1937,15 +2182,15 @@ await db.insert(planAnalyzeItem).values([
         kind: "risk",
         text: "Dropping session data loses review history",
         metadata: { severity: "low" },
-        order: 0,
+        order: 0
     },
     {
         planId: planAnalyzing.id,
         kind: "assumption",
         text: "Existing plan data is mostly seed/scratch, safe to wipe",
         metadata: { verified: true },
-        order: 1,
-    },
+        order: 1
+    }
 ]);
 
 console.log("  ✓ 3 plans with tasks and analyze items");
@@ -1953,7 +2198,10 @@ console.log("  ✓ 3 plans with tasks and analyze items");
 // ─── 8. Document Chunks ───────────────────────────────────────────
 import { document } from "./schema/document";
 
-await db.delete(document).where(eq(document.userId, DEV_USER_ID)).catch(() => {});
+await db
+    .delete(document)
+    .where(eq(document.userId, DEV_USER_ID))
+    .catch(() => {});
 
 const seedDocs = [
     {
@@ -1963,7 +2211,7 @@ const seedDocs = [
         contentHash: "abc123",
         description: "Step-by-step guide for setting up fubbik locally",
         spaceId: CODEBASE_ID,
-        userId: DEV_USER_ID,
+        userId: DEV_USER_ID
     },
     {
         id: "seed-doc-architecture",
@@ -1972,7 +2220,7 @@ const seedDocs = [
         contentHash: "def456",
         description: "System architecture, data flow, and design decisions",
         spaceId: CODEBASE_ID,
-        userId: DEV_USER_ID,
+        userId: DEV_USER_ID
     },
     {
         id: "seed-doc-api-reference",
@@ -1981,12 +2229,15 @@ const seedDocs = [
         contentHash: "ghi789",
         description: "Complete REST API documentation with examples",
         spaceId: CODEBASE_ID,
-        userId: DEV_USER_ID,
-    },
+        userId: DEV_USER_ID
+    }
 ];
 
 for (const doc of seedDocs) {
-    await db.insert(document).values(doc).catch(e => console.error(`  ✗ doc ${doc.title}:`, e));
+    await db
+        .insert(document)
+        .values(doc)
+        .catch(e => console.error(`  ✗ doc ${doc.title}:`, e));
 }
 console.log(`  ✓ ${seedDocs.length} documents`);
 
@@ -2027,7 +2278,7 @@ pnpm dev
 
 The web UI runs at \`http://localhost:3001\` and the API at \`http://localhost:3000/docs\`.`,
         documentId: "seed-doc-getting-started",
-        documentOrder: 0,
+        documentOrder: 0
     },
     {
         id: "seed-doc-chunk-concepts",
@@ -2054,7 +2305,7 @@ Connections are global — they work across codebases, enabling cross-project kn
 
 Chunks can belong to codebases (identified by git remote URL). Workspaces group related codebases (e.g., frontend + backend + infra). The CLI auto-detects your codebase via git remote.`,
         documentId: "seed-doc-getting-started",
-        documentOrder: 1,
+        documentOrder: 1
     },
     {
         id: "seed-doc-chunk-arch-layers",
@@ -2087,7 +2338,7 @@ Errors propagate through Effect to a global \`.onError\` handler that maps \`_ta
 - \`NotFoundError\` → 404
 - \`DatabaseError\` → 500`,
         documentId: "seed-doc-architecture",
-        documentOrder: 0,
+        documentOrder: 0
     },
     {
         id: "seed-doc-chunk-api-overview",
@@ -2116,18 +2367,24 @@ Fubbik uses Better Auth for session-based authentication. All API endpoints (exc
 
 Full interactive documentation at \`/docs\` (Swagger UI).`,
         documentId: "seed-doc-api-reference",
-        documentOrder: 0,
-    },
+        documentOrder: 0
+    }
 ];
 
 for (const dc of docChunks) {
-    await db.insert(chunk).values({ ...dc, userId: DEV_USER_ID }).catch(e => console.error(`  ✗ doc chunk ${dc.title}:`, e));
+    await db
+        .insert(chunk)
+        .values({ ...dc, userId: DEV_USER_ID })
+        .catch(e => console.error(`  ✗ doc chunk ${dc.title}:`, e));
 }
 console.log(`  ✓ ${docChunks.length} document chunks`);
 
 // Connect doc chunks to codebase
 for (const dc of docChunks) {
-    await db.insert(chunkSpace).values({ chunkId: dc.id, spaceId: CODEBASE_ID }).catch(() => {});
+    await db
+        .insert(chunkSpace)
+        .values({ chunkId: dc.id, spaceId: CODEBASE_ID })
+        .catch(() => {});
 }
 console.log(`  ✓ ${docChunks.length} doc chunk-codebase links`);
 
@@ -2142,10 +2399,13 @@ const docConnections = [
     { id: "seed-conn-arch-routes", sourceId: "seed-doc-chunk-arch-layers", targetId: ids.routes, relation: "part_of" },
     { id: "seed-conn-arch-effect", sourceId: "seed-doc-chunk-arch-layers", targetId: ids.effect, relation: "depends_on" },
     { id: "seed-conn-api-eden", sourceId: "seed-doc-chunk-api-overview", targetId: ids.eden, relation: "references" },
-    { id: "seed-conn-api-auth", sourceId: "seed-doc-chunk-api-overview", targetId: ids.auth, relation: "references" },
+    { id: "seed-conn-api-auth", sourceId: "seed-doc-chunk-api-overview", targetId: ids.auth, relation: "references" }
 ];
 for (const conn of docConnections) {
-    await db.insert(chunkConnection).values(conn).catch(e => console.error(`  ✗ doc connection:`, e));
+    await db
+        .insert(chunkConnection)
+        .values(conn)
+        .catch(e => console.error(`  ✗ doc connection:`, e));
 }
 console.log(`  ✓ ${docConnections.length} doc chunk connections`);
 
@@ -2163,7 +2423,10 @@ const vocabEntries = [
     { id: "seed-vocab-draft", word: "draft", category: "state", expects: null, spaceId: CODEBASE_ID, userId: DEV_USER_ID }
 ];
 for (const ve of vocabEntries) {
-    await db.insert(vocabularyEntry).values(ve).catch(e => console.error("  \u2717 vocabulary:", e));
+    await db
+        .insert(vocabularyEntry)
+        .values(ve)
+        .catch(e => console.error("  \u2717 vocabulary:", e));
 }
 console.log(`  \u2713 ${vocabEntries.length} vocabulary entries`);
 
@@ -2227,7 +2490,10 @@ console.log("  \u2713 1 docs space");
 // Associate docs chunks with the docs codebase
 const docsChunkIds = [ids.docsArch, ids.docsContent, ids.docsDeploy];
 for (const chunkId of docsChunkIds) {
-    await db.insert(chunkSpace).values({ chunkId, spaceId: CODEBASE_DOCS_ID }).catch(e => console.error("  \u2717 docs chunk_codebase:", e));
+    await db
+        .insert(chunkSpace)
+        .values({ chunkId, spaceId: CODEBASE_DOCS_ID })
+        .catch(e => console.error("  \u2717 docs chunk_codebase:", e));
 }
 console.log(`  \u2713 ${docsChunkIds.length} docs chunk-codebase associations`);
 
@@ -2311,7 +2577,10 @@ const moreRequirements = [
     }
 ];
 for (const req of moreRequirements) {
-    await db.insert(requirement).values(req).catch(e => console.error("  \u2717 requirement:", e));
+    await db
+        .insert(requirement)
+        .values(req)
+        .catch(e => console.error("  \u2717 requirement:", e));
 }
 console.log(`  \u2713 ${moreRequirements.length} more requirements`);
 
@@ -2324,7 +2593,10 @@ const moreReqChunkLinks = [
     { requirementId: "seed-req-workspace-queries", chunkId: ids.arch }
 ];
 for (const rc of moreReqChunkLinks) {
-    await db.insert(requirementChunk).values(rc).catch(e => console.error("  \u2717 requirement_chunk:", e));
+    await db
+        .insert(requirementChunk)
+        .values(rc)
+        .catch(e => console.error("  \u2717 requirement_chunk:", e));
 }
 console.log(`  \u2713 ${moreReqChunkLinks.length} more requirement-chunk links`);
 
@@ -2342,7 +2614,10 @@ const moreVocabEntries = [
     { id: "seed-vocab-active", word: "active", category: "state", expects: null, spaceId: CODEBASE_ID, userId: DEV_USER_ID }
 ];
 for (const ve of moreVocabEntries) {
-    await db.insert(vocabularyEntry).values(ve).catch(e => console.error("  \u2717 vocabulary:", e));
+    await db
+        .insert(vocabularyEntry)
+        .values(ve)
+        .catch(e => console.error("  \u2717 vocabulary:", e));
 }
 console.log(`  \u2713 ${moreVocabEntries.length} more vocabulary entries`);
 
@@ -2366,7 +2641,10 @@ const moreCollections = [
     }
 ];
 for (const col of moreCollections) {
-    await db.insert(collection).values(col).catch(e => console.error("  \u2717 collection:", e));
+    await db
+        .insert(collection)
+        .values(col)
+        .catch(e => console.error("  \u2717 collection:", e));
 }
 console.log(`  \u2713 ${moreCollections.length} more collections`);
 
@@ -2378,7 +2656,10 @@ const moreAppliesToPatterns = [
     { id: "seed-at-eden", chunkId: ids.eden, pattern: "apps/web/src/utils/**", note: "Frontend utility files" }
 ];
 for (const at of moreAppliesToPatterns) {
-    await db.insert(chunkAppliesTo).values(at).catch(e => console.error("  \u2717 applies_to:", e));
+    await db
+        .insert(chunkAppliesTo)
+        .values(at)
+        .catch(e => console.error("  \u2717 applies_to:", e));
 }
 console.log(`  \u2713 ${moreAppliesToPatterns.length} more applies-to patterns`);
 
@@ -2391,11 +2672,16 @@ const moreFileRefs = [
     { id: "seed-fr-turbo", chunkId: ids.turbo, path: "turbo.json", relation: "configures" }
 ];
 for (const fr of moreFileRefs) {
-    await db.insert(chunkFileRef).values(fr).catch(e => console.error("  \u2717 file_ref:", e));
+    await db
+        .insert(chunkFileRef)
+        .values(fr)
+        .catch(e => console.error("  \u2717 file_ref:", e));
 }
 console.log(`  \u2713 ${moreFileRefs.length} more file references`);
 
-console.log(`\n\u2705 Database seeded: ${chunks.length} chunks, ${connections.length} connections, ${seedTagTypes.length} tag types, ${seedTags.length} tags, plus codebases, patterns, refs, requirements, use cases, plans, vocabulary, collections, workspaces`);
+console.log(
+    `\n\u2705 Database seeded: ${chunks.length} chunks, ${connections.length} connections, ${seedTagTypes.length} tag types, ${seedTags.length} tags, plus codebases, patterns, refs, requirements, use cases, plans, vocabulary, collections, workspaces`
+);
 
 // ─── A. chunk_version — version history ────────────────────────────
 const chunkVersions = [
@@ -2414,14 +2700,18 @@ const chunkVersions = [
         chunkId: ids.arch,
         version: 2,
         title: "Fubbik Architecture Overview",
-        content: "Fubbik is a local-first knowledge framework for humans and machines. It stores knowledge as **chunks** connected by typed relationships in a graph.\n\nAdded monorepo layout section and key technologies table.",
+        content:
+            "Fubbik is a local-first knowledge framework for humans and machines. It stores knowledge as **chunks** connected by typed relationships in a graph.\n\nAdded monorepo layout section and key technologies table.",
         type: "document",
         tags: ["overview", "monorepo"],
         createdAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000) // 14 days ago
     }
 ];
 for (const cv of chunkVersions) {
-    await db.insert(chunkVersion).values(cv).catch(e => console.error("  \u2717 chunk_version:", e));
+    await db
+        .insert(chunkVersion)
+        .values(cv)
+        .catch(e => console.error("  \u2717 chunk_version:", e));
 }
 console.log(`  \u2713 ${chunkVersions.length} chunk versions`);
 
@@ -2444,7 +2734,10 @@ const stalenessFlags = [
     }
 ];
 for (const sf of stalenessFlags) {
-    await db.insert(chunkStaleness).values(sf).catch(e => console.error("  \u2717 chunk_staleness:", e));
+    await db
+        .insert(chunkStaleness)
+        .values(sf)
+        .catch(e => console.error("  \u2717 chunk_staleness:", e));
 }
 console.log(`  \u2713 ${stalenessFlags.length} staleness flags`);
 
@@ -2453,7 +2746,10 @@ const proposals = [
     {
         id: "seed-proposal-pending-1",
         chunkId: ids.effect,
-        changes: { title: "Effect Error Handling Pattern (Updated)", content: "Updated content with new AiError examples and retry logic." },
+        changes: {
+            title: "Effect Error Handling Pattern (Updated)",
+            content: "Updated content with new AiError examples and retry logic."
+        },
         reason: "The AiError type was added recently but the chunk doesn't document it.",
         status: "pending",
         proposedBy: DEV_USER_ID,
@@ -2494,7 +2790,10 @@ const proposals = [
     }
 ];
 for (const p of proposals) {
-    await db.insert(chunkProposal).values(p).catch(e => console.error("  \u2717 chunk_proposal:", e));
+    await db
+        .insert(chunkProposal)
+        .values(p)
+        .catch(e => console.error("  \u2717 chunk_proposal:", e));
 }
 console.log(`  \u2713 ${proposals.length} chunk proposals (2 pending, 1 approved, 1 rejected)`);
 
@@ -2503,7 +2802,8 @@ const [planDraft] = await db
     .insert(plan)
     .values({
         title: "Add MCP resource endpoints",
-        description: "Expose fubbik chunks as MCP resources so AI agents can read them without using tools. This requires updating the MCP server package.",
+        description:
+            "Expose fubbik chunks as MCP resources so AI agents can read them without using tools. This requires updating the MCP server package.",
         status: "draft",
         userId: DEV_USER_ID,
         spaceId: CODEBASE_ID
@@ -2515,7 +2815,8 @@ const [planReady] = await db
     .insert(plan)
     .values({
         title: "Chunk health score dashboard widget",
-        description: "Add a dashboard widget showing health score distribution (excellent/good/fair/poor) with drill-down to low-scoring chunks.",
+        description:
+            "Add a dashboard widget showing health score distribution (excellent/good/fair/poor) with drill-down to low-scoring chunks.",
         status: "ready",
         userId: DEV_USER_ID,
         spaceId: CODEBASE_ID
@@ -2539,17 +2840,23 @@ const [readyTask3] = await db
 if (!readyTask1 || !readyTask2 || !readyTask3) throw new Error("failed to seed ready plan tasks");
 
 // task 2 depends on task 1
-await db.insert(planTaskDependency).values({
-    taskId: readyTask2.id,
-    dependsOnTaskId: readyTask1.id
-}).catch(e => console.error("  \u2717 planTaskDependency:", e));
+await db
+    .insert(planTaskDependency)
+    .values({
+        taskId: readyTask2.id,
+        dependsOnTaskId: readyTask1.id
+    })
+    .catch(e => console.error("  \u2717 planTaskDependency:", e));
 
 // link task 1 to an existing chunk with relation "context"
-await db.insert(planTaskChunk).values({
-    taskId: readyTask1.id,
-    chunkId: ids.schemaChunks,
-    relation: "context"
-}).catch(e => console.error("  \u2717 planTaskChunk:", e));
+await db
+    .insert(planTaskChunk)
+    .values({
+        taskId: readyTask1.id,
+        chunkId: ids.schemaChunks,
+        relation: "context"
+    })
+    .catch(e => console.error("  \u2717 planTaskChunk:", e));
 
 const [planArchived] = await db
     .insert(plan)
@@ -2607,7 +2914,10 @@ const activityEntries = [
     }
 ];
 for (const entry of activityEntries) {
-    await db.insert(activityLog).values(entry).catch(e => console.error("  \u2717 activity_log:", e));
+    await db
+        .insert(activityLog)
+        .values(entry)
+        .catch(e => console.error("  \u2717 activity_log:", e));
 }
 console.log(`  \u2713 ${activityEntries.length} activity log entries`);
 
@@ -2618,7 +2928,10 @@ const favorites = [
     { id: "seed-fav-checklist", userId: DEV_USER_ID, chunkId: ids.checklistFeature, order: 2 }
 ];
 for (const fav of favorites) {
-    await db.insert(userFavorite).values(fav).catch(e => console.error("  \u2717 user_favorite:", e));
+    await db
+        .insert(userFavorite)
+        .values(fav)
+        .catch(e => console.error("  \u2717 user_favorite:", e));
 }
 console.log(`  \u2713 ${favorites.length} user favorites`);
 
@@ -2656,7 +2969,10 @@ const notifications = [
     }
 ];
 for (const n of notifications) {
-    await db.insert(notification).values(n).catch(e => console.error("  \u2717 notification:", e));
+    await db
+        .insert(notification)
+        .values(n)
+        .catch(e => console.error("  \u2717 notification:", e));
 }
 console.log(`  \u2713 ${notifications.length} notifications`);
 
@@ -2680,7 +2996,10 @@ const comments = [
     }
 ];
 for (const c of comments) {
-    await db.insert(chunkComment).values(c).catch(e => console.error("  \u2717 chunk_comment:", e));
+    await db
+        .insert(chunkComment)
+        .values(c)
+        .catch(e => console.error("  \u2717 chunk_comment:", e));
 }
 console.log(`  \u2713 ${comments.length} chunk comments`);
 
@@ -2711,7 +3030,10 @@ const savedQueries = [
     }
 ];
 for (const sq of savedQueries) {
-    await db.insert(savedQuery).values(sq).catch(e => console.error("  \u2717 saved_query:", e));
+    await db
+        .insert(savedQuery)
+        .values(sq)
+        .catch(e => console.error("  \u2717 saved_query:", e));
 }
 console.log(`  \u2713 ${savedQueries.length} saved queries`);
 
@@ -2796,10 +3118,7 @@ const defaultInstanceSettings: Array<{ key: string; value: unknown }> = [
 ];
 
 for (const setting of defaultInstanceSettings) {
-    await db
-        .insert(instanceSettings)
-        .values({ key: setting.key, value: setting.value })
-        .onConflictDoNothing();
+    await db.insert(instanceSettings).values({ key: setting.key, value: setting.value }).onConflictDoNothing();
 }
 console.log("\nSeeded default instance settings");
 
@@ -2834,18 +3153,16 @@ const BUILTIN_TEMPLATES: Array<{
                 { patterns: ["Decision", "Choice", "Selected Option"], match: "prefix", level: 2, required: true },
                 { patterns: ["Alternatives", "Options Considered"], match: "prefix", level: 2, required: true },
                 { patterns: ["Consequences", "Impact"], match: "prefix", level: 2, required: false },
-                { patterns: ["Context", "Background"], match: "prefix", level: 2, required: false },
+                { patterns: ["Context", "Background"], match: "prefix", level: 2, required: false }
             ],
-            frontmatter: [
-                { key: "type", match: "oneOf", values: ["adr", "decision", "architecture-decision"] },
-            ],
+            frontmatter: [{ key: "type", match: "oneOf", values: ["adr", "decision", "architecture-decision"] }]
         },
         fieldMappings: [
             { headings: ["Context", "Background"], match: "prefix", target: "content" },
             { headings: ["Decision", "Choice"], match: "prefix", target: "rationale" },
             { headings: ["Alternatives", "Options Considered"], match: "prefix", target: "alternatives" },
-            { headings: ["Consequences", "Impact"], match: "prefix", target: "consequences" },
-        ],
+            { headings: ["Consequences", "Impact"], match: "prefix", target: "consequences" }
+        ]
     },
     {
         id: "builtin-api-reference",
@@ -2862,13 +3179,11 @@ const BUILTIN_TEMPLATES: Array<{
                 { patterns: ["Endpoint", "URL", "Route"], match: "prefix", level: 2, required: true },
                 { patterns: ["Request", "Parameters", "Payload"], match: "prefix", level: 2, required: true },
                 { patterns: ["Response", "Returns"], match: "prefix", level: 2, required: false },
-                { patterns: ["Errors", "Error Codes"], match: "prefix", level: 2, required: false },
+                { patterns: ["Errors", "Error Codes"], match: "prefix", level: 2, required: false }
             ],
-            frontmatter: [
-                { key: "type", match: "oneOf", values: ["api", "endpoint", "reference"] },
-            ],
+            frontmatter: [{ key: "type", match: "oneOf", values: ["api", "endpoint", "reference"] }]
         },
-        fieldMappings: null,
+        fieldMappings: null
     },
     {
         id: "builtin-meeting-notes",
@@ -2885,15 +3200,11 @@ const BUILTIN_TEMPLATES: Array<{
                 { patterns: ["Attendees", "Participants", "Present"], match: "prefix", level: 2, required: true },
                 { patterns: ["Action Items", "Actions", "TODOs", "Next Steps"], match: "prefix", level: 2, required: true },
                 { patterns: ["Agenda"], match: "prefix", level: 2, required: false },
-                { patterns: ["Notes", "Discussion"], match: "prefix", level: 2, required: false },
+                { patterns: ["Notes", "Discussion"], match: "prefix", level: 2, required: false }
             ],
-            frontmatter: [
-                { key: "type", match: "oneOf", values: ["meeting", "meeting-notes"] },
-            ],
+            frontmatter: [{ key: "type", match: "oneOf", values: ["meeting", "meeting-notes"] }]
         },
-        fieldMappings: [
-            { headings: ["Summary", "TLDR"], match: "prefix", target: "summary" },
-        ],
+        fieldMappings: [{ headings: ["Summary", "TLDR"], match: "prefix", target: "summary" }]
     },
     {
         id: "builtin-checklist",
@@ -2907,11 +3218,9 @@ const BUILTIN_TEMPLATES: Array<{
         matchRules: {
             minScore: 1,
             headings: [],
-            frontmatter: [
-                { key: "type", match: "oneOf", values: ["checklist", "procedure"] },
-            ],
+            frontmatter: [{ key: "type", match: "oneOf", values: ["checklist", "procedure"] }]
         },
-        fieldMappings: null,
+        fieldMappings: null
     },
     {
         id: "builtin-schema",
@@ -2925,12 +3234,10 @@ const BUILTIN_TEMPLATES: Array<{
         matchRules: {
             minScore: 1,
             headings: [],
-            frontmatter: [
-                { key: "type", match: "oneOf", values: ["schema", "model", "data-model"] },
-            ],
+            frontmatter: [{ key: "type", match: "oneOf", values: ["schema", "model", "data-model"] }]
         },
-        fieldMappings: null,
-    },
+        fieldMappings: null
+    }
 ];
 
 for (const tmpl of BUILTIN_TEMPLATES) {
@@ -2947,8 +3254,8 @@ for (const tmpl of BUILTIN_TEMPLATES) {
                 matchRules: tmpl.matchRules,
                 fieldMappings: tmpl.fieldMappings,
                 priority: tmpl.priority,
-                tags: tmpl.tags,
-            },
+                tags: tmpl.tags
+            }
         });
 }
 console.log(`\nSeeded ${BUILTIN_TEMPLATES.length} builtin templates`);

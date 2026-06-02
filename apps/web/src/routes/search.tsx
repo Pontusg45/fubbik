@@ -4,18 +4,13 @@ import { AlertTriangle, FileText, Network, Save, Search as SearchIcon, Trash2, X
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { useActiveSpace } from "@/features/spaces/use-active-space";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AddFilterDropdown } from "@/features/search/add-filter-dropdown";
 import { FilterPills } from "@/features/search/filter-pills";
 import { QueryInput } from "@/features/search/query-input";
 import { SearchResults } from "@/features/search/search-results";
 import { useQueryBuilder } from "@/features/search/use-query-builder";
+import { useActiveSpace } from "@/features/spaces/use-active-space";
 import { getUser } from "@/functions/get-user";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
@@ -23,7 +18,7 @@ import { unwrapEden } from "@/utils/eden";
 export const Route = createFileRoute("/search")({
     component: SearchPage,
     validateSearch: (search: Record<string, unknown>) => ({
-        q: (search.q as string) || undefined,
+        q: (search.q as string) || undefined
     }),
     beforeLoad: async () => {
         let session = null;
@@ -33,14 +28,12 @@ export const Route = createFileRoute("/search")({
             // allow guest access
         }
         return { session };
-    },
+    }
 });
 
 /** Build a simple query string representation from clauses. */
 function clausesToQueryString(clauses: Array<{ field: string; operator: string; value: string; negate?: boolean }>): string {
-    return clauses
-        .map(c => `${c.negate ? "NOT " : ""}${c.field}:${c.value}`)
-        .join(" ");
+    return clauses.map(c => `${c.negate ? "NOT " : ""}${c.field}:${c.value}`).join(" ");
 }
 
 const EXAMPLE_QUERIES = [
@@ -48,7 +41,7 @@ const EXAMPLE_QUERIES = [
     { label: "AI-generated chunks", clauses: [{ field: "origin", operator: "is", value: "ai" }] },
     { label: "Chunks needing review", clauses: [{ field: "review", operator: "is", value: "draft" }] },
     { label: "Updated in last 7 days", clauses: [{ field: "updated", operator: "within", value: "7" }] },
-    { label: "Well-connected chunks", clauses: [{ field: "connections", operator: "gte", value: "3" }] },
+    { label: "Well-connected chunks", clauses: [{ field: "connections", operator: "gte", value: "3" }] }
 ];
 
 function SearchPage() {
@@ -70,9 +63,7 @@ function SearchPage() {
 
         void (async () => {
             try {
-                const result = unwrapEden(
-                    await api.api.search.parse.get({ query: { q } })
-                );
+                const result = unwrapEden(await api.api.search.parse.get({ query: { q } }));
                 if (result && Array.isArray((result as any).clauses)) {
                     builder.loadClauses((result as any).clauses);
                 }
@@ -80,16 +71,12 @@ function SearchPage() {
                 // ignore parse errors — leave clauses empty
             }
         })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     // Search mutation
     const searchMutation = useMutation({
-        mutationFn: async (params: {
-            clauses: typeof builder.clauses;
-            join: "and" | "or";
-            sort: typeof builder.sort;
-        }) => {
+        mutationFn: async (params: { clauses: typeof builder.clauses; join: "and" | "or"; sort: typeof builder.sort }) => {
             return unwrapEden(
                 await api.api.search.query.post({
                     clauses: params.clauses,
@@ -97,10 +84,10 @@ function SearchPage() {
                     sort: params.sort,
                     limit: 20,
                     offset: 0,
-                    spaceId: spaceId ?? undefined,
+                    spaceId: spaceId ?? undefined
                 })
             );
-        },
+        }
     });
 
     // Trigger search whenever clauses change (debounced)
@@ -111,20 +98,20 @@ function SearchPage() {
             searchMutation.mutate({
                 clauses: builder.clauses,
                 join: builder.join,
-                sort: builder.sort,
+                sort: builder.sort
             });
             // Sync URL
             const qs = clausesToQueryString(builder.clauses);
             void navigate({
                 to: "/search",
                 search: qs ? { q: qs } : { q: undefined },
-                replace: true,
+                replace: true
             } as any);
         }, 300);
         return () => {
             if (debounceRef.current) clearTimeout(debounceRef.current);
         };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [builder.clauses, builder.join, builder.sort, spaceId]);
 
     // Health (AGE availability) — checked once per session with a long stale time
@@ -134,7 +121,7 @@ function SearchPage() {
             const res = await api.api.health.get();
             return (res as any)?.data ?? null;
         },
-        staleTime: 5 * 60 * 1000, // 5 minutes
+        staleTime: 5 * 60 * 1000 // 5 minutes
     });
     const ageAvailable = healthQuery.data?.ageAvailable !== false;
 
@@ -144,10 +131,10 @@ function SearchPage() {
         queryFn: async () => {
             return unwrapEden(
                 await api.api.search.saved.get({
-                    query: { spaceId: spaceId ?? undefined },
+                    query: { spaceId: spaceId ?? undefined }
                 })
             );
-        },
+        }
     });
 
     const savedQueries = Array.isArray(savedQueriesQuery.data) ? savedQueriesQuery.data : [];
@@ -157,9 +144,7 @@ function SearchPage() {
         async (value: string) => {
             if (!value.trim()) return;
             try {
-                const result = unwrapEden(
-                    await api.api.search.parse.get({ query: { q: value } })
-                );
+                const result = unwrapEden(await api.api.search.parse.get({ query: { q: value } }));
                 if (result && Array.isArray((result as any).clauses) && (result as any).clauses.length > 0) {
                     builder.loadClauses((result as any).clauses);
                 }
@@ -190,9 +175,9 @@ function SearchPage() {
                     query: {
                         clauses: builder.clauses,
                         join: builder.join,
-                        sort: builder.sort,
+                        sort: builder.sort
                     },
-                    spaceId: spaceId ?? undefined,
+                    spaceId: spaceId ?? undefined
                 })
             );
             void queryClient.invalidateQueries({ queryKey: ["search-saved"] });
@@ -204,9 +189,7 @@ function SearchPage() {
     // Delete a saved query
     async function handleDeleteSavedQuery(id: string) {
         try {
-            await unwrapEden(
-                await (api.api.search.saved as any)[id].delete()
-            );
+            await unwrapEden(await (api.api.search.saved as any)[id].delete());
             void queryClient.invalidateQueries({ queryKey: ["search-saved"] });
         } catch {
             // ignore
@@ -231,8 +214,8 @@ function SearchPage() {
                     {/* Saved queries dropdown */}
                     {savedQueries.length > 0 && (
                         <DropdownMenu>
-                            <DropdownMenuTrigger className="inline-flex items-center gap-1.5 rounded-md border border-input bg-background px-3 py-1.5 text-xs font-medium shadow-xs hover:bg-accent hover:text-accent-foreground transition-colors">
-                                    Saved queries
+                            <DropdownMenuTrigger className="border-input bg-background hover:bg-accent hover:text-accent-foreground inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium shadow-xs transition-colors">
+                                Saved queries
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="start" className="w-56">
                                 {savedQueries.map((saved: any) => (
@@ -243,7 +226,7 @@ function SearchPage() {
                                     >
                                         <span className="truncate">{saved.name}</span>
                                         <button
-                                            onClick={(e) => {
+                                            onClick={e => {
                                                 e.stopPropagation();
                                                 void handleDeleteSavedQuery(saved.id);
                                             }}
@@ -293,7 +276,7 @@ function SearchPage() {
                                 void navigate({
                                     to: "/search",
                                     search: { q: undefined },
-                                    replace: true,
+                                    replace: true
                                 } as any);
                             }}
                             className="gap-1.5"
@@ -307,29 +290,20 @@ function SearchPage() {
 
             {/* Query Input */}
             <div className="mb-3">
-                <QueryInput
-                    value={rawInput}
-                    onChange={setRawInput}
-                    onSubmit={(val) => void handleQuerySubmit(val)}
-                />
+                <QueryInput value={rawInput} onChange={setRawInput} onSubmit={val => void handleQuerySubmit(val)} />
             </div>
 
             {/* Filter pills + AND/OR + Add filter */}
             <div className="mb-4 flex flex-wrap items-center gap-2">
-                <FilterPills
-                    clauses={builder.clauses}
-                    join={builder.join}
-                    onRemove={builder.removeClause}
-                    onSetJoin={builder.setJoin}
-                />
+                <FilterPills clauses={builder.clauses} join={builder.join} onRemove={builder.removeClause} onSetJoin={builder.setJoin} />
                 <AddFilterDropdown onAddClause={builder.addClause} />
             </div>
 
             {/* Graph indicator */}
             {builder.hasGraphClauses && (
-                <div className="mb-4 flex items-center gap-2 rounded-lg border border-indigo-500/10 bg-indigo-500/5 px-4 py-2 text-xs text-muted-foreground">
+                <div className="text-muted-foreground mb-4 flex items-center gap-2 rounded-lg border border-indigo-500/10 bg-indigo-500/5 px-4 py-2 text-xs">
                     <Network className="size-3.5" />
-                    <span className="font-semibold uppercase tracking-wider">Graph query active</span>
+                    <span className="font-semibold tracking-wider uppercase">Graph query active</span>
                 </div>
             )}
 
@@ -345,22 +319,20 @@ function SearchPage() {
             {!hasSearched && builder.clauses.length === 0 && (
                 <div className="py-8">
                     <div className="mb-8 flex flex-col items-center gap-3 text-center">
-                        <SearchIcon className="size-10 text-muted-foreground/30" />
-                        <p className="text-sm text-muted-foreground">
-                            Add filters above or type a query and press Enter
-                        </p>
+                        <SearchIcon className="text-muted-foreground/30 size-10" />
+                        <p className="text-muted-foreground text-sm">Add filters above or type a query and press Enter</p>
                     </div>
-                    <p className="mb-4 text-center text-sm text-muted-foreground">Try an example query</p>
+                    <p className="text-muted-foreground mb-4 text-center text-sm">Try an example query</p>
                     <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                         {EXAMPLE_QUERIES.map(example => (
                             <button
                                 key={example.label}
                                 type="button"
                                 onClick={() => builder.loadClauses(example.clauses)}
-                                className="rounded-lg border p-3 text-left transition-colors hover:bg-muted/50"
+                                className="hover:bg-muted/50 rounded-lg border p-3 text-left transition-colors"
                             >
                                 <div className="text-sm font-medium">{example.label}</div>
-                                <div className="mt-1 font-mono text-xs text-muted-foreground">
+                                <div className="text-muted-foreground mt-1 font-mono text-xs">
                                     {example.clauses.map(c => `${c.field}:${c.value}`).join(" ")}
                                 </div>
                             </button>

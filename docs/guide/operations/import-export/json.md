@@ -1,9 +1,9 @@
 ---
 tags:
-  - guide
-  - import
-  - export
-  - json
+    - guide
+    - import
+    - export
+    - json
 description: Bulk import/export of chunks in JSON format
 ---
 
@@ -21,14 +21,14 @@ The JSON format:
 
 ```json
 {
-  "chunks": [
-    {
-      "title": "My Chunk",
-      "content": "Markdown content here",
-      "type": "note",
-      "tags": ["backend", "auth"]
-    }
-  ]
+    "chunks": [
+        {
+            "title": "My Chunk",
+            "content": "Markdown content here",
+            "type": "note",
+            "tags": ["backend", "auth"]
+        }
+    ]
 }
 ```
 

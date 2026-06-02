@@ -14,14 +14,7 @@ describe("validateSteps", () => {
     });
 
     it("accepts and/but continuations", () => {
-        const errors = validateSteps([
-            step("given"),
-            step("and"),
-            step("when"),
-            step("but"),
-            step("then"),
-            step("and")
-        ]);
+        const errors = validateSteps([step("given"), step("and"), step("when"), step("but"), step("then"), step("and")]);
         expect(errors).toEqual([]);
     });
 

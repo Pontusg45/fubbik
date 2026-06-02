@@ -69,20 +69,26 @@ describe("createMatrix", () => {
         const mat = mockMatrix();
         vi.mocked(createMatrixRepo).mockReturnValue(Effect.succeed(mat));
 
-        const result = await Effect.runPromise(service.createMatrix("user-1", {
-            name: "Domain Invariants",
-            layer: "invariant"
-        }));
+        const result = await Effect.runPromise(
+            service.createMatrix("user-1", {
+                name: "Domain Invariants",
+                layer: "invariant"
+            })
+        );
 
         expect(result).toMatchObject({ name: "Domain Invariants", layer: "invariant" });
         expect(createMatrixRepo).toHaveBeenCalledOnce();
     });
 
     it("rejects invalid layer values", async () => {
-        await expect(Effect.runPromise(service.createMatrix("user-1", {
-            name: "Bad Matrix",
-            layer: "invalid"
-        }))).rejects.toThrow();
+        await expect(
+            Effect.runPromise(
+                service.createMatrix("user-1", {
+                    name: "Bad Matrix",
+                    layer: "invalid"
+                })
+            )
+        ).rejects.toThrow();
     });
 });
 
@@ -115,9 +121,7 @@ describe("addDimension", () => {
         const result = await Effect.runPromise(service.addDimension("mat-1", "user-1", { name: "API" }));
 
         expect(result.name).toBe("API");
-        expect(createDimensionRepo).toHaveBeenCalledWith(
-            expect.objectContaining({ matrixId: "mat-1", name: "API", order: 3 })
-        );
+        expect(createDimensionRepo).toHaveBeenCalledWith(expect.objectContaining({ matrixId: "mat-1", name: "API", order: 3 }));
     });
 
     it("fails when matrix not found", async () => {
@@ -136,9 +140,7 @@ describe("addRule", () => {
         const result = await Effect.runPromise(service.addRule("mat-1", "user-1", { title: "No orphans" }));
 
         expect(result.title).toBe("No orphans");
-        expect(createRuleRepo).toHaveBeenCalledWith(
-            expect.objectContaining({ matrixId: "mat-1", title: "No orphans", order: 2 })
-        );
+        expect(createRuleRepo).toHaveBeenCalledWith(expect.objectContaining({ matrixId: "mat-1", title: "No orphans", order: 2 }));
     });
 });
 
@@ -190,15 +192,17 @@ describe("unlinkRequirementFromCell", () => {
 describe("getMatrixView", () => {
     it("computes cell statuses correctly", async () => {
         vi.mocked(getMatrixById).mockReturnValue(Effect.succeed(mockMatrix()) as any);
-        vi.mocked(getMatrixView).mockReturnValue(Effect.succeed({
-            dimensions: [{ id: "dim-1", name: "Chunk", order: 0 }],
-            rules: [{ id: "rule-1", title: "Cascade", category: null, order: 0 }],
-            cells: [
-                { id: "c1", ruleId: "rule-1", dimensionId: "dim-1", requirementCount: 2, failingCount: 0 },
-                { id: "c2", ruleId: "rule-1", dimensionId: "dim-2", requirementCount: 0, failingCount: 0 },
-                { id: "c3", ruleId: "rule-1", dimensionId: "dim-3", requirementCount: 3, failingCount: 1 }
-            ]
-        }) as any);
+        vi.mocked(getMatrixView).mockReturnValue(
+            Effect.succeed({
+                dimensions: [{ id: "dim-1", name: "Chunk", order: 0 }],
+                rules: [{ id: "rule-1", title: "Cascade", category: null, order: 0 }],
+                cells: [
+                    { id: "c1", ruleId: "rule-1", dimensionId: "dim-1", requirementCount: 2, failingCount: 0 },
+                    { id: "c2", ruleId: "rule-1", dimensionId: "dim-2", requirementCount: 0, failingCount: 0 },
+                    { id: "c3", ruleId: "rule-1", dimensionId: "dim-3", requirementCount: 3, failingCount: 1 }
+                ]
+            }) as any
+        );
 
         const result = await Effect.runPromise(service.getMatrixViewService("mat-1", "user-1"));
 

@@ -1,10 +1,12 @@
 # Workflow & UI Expansions Plan
 
-> **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to
+> implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Add PR review with knowledge, knowledge changelog, validate command, dashboard widgets, search preview, and bulk chunk editor.
 
-**Architecture:** PR review fetches a GitHub diff and matches against chunks. Changelog queries recent changes. Validate checks filesystem against chunk refs. Dashboard uses localStorage for widget layout. Bulk editor extends existing selection system.
+**Architecture:** PR review fetches a GitHub diff and matches against chunks. Changelog queries recent changes. Validate checks filesystem
+against chunk refs. Dashboard uses localStorage for widget layout. Bulk editor extends existing selection system.
 
 **Tech Stack:** Elysia, Effect, React, CLI, GitHub API (optional)
 
@@ -15,9 +17,11 @@
 Fetch PR diff, match against chunks, output review checklist.
 
 **Files:**
+
 - Create: `apps/cli/src/commands/review-pr.ts`
 
 - [ ] **Step 1:** Create command that:
+
 1. Parses PR URL to extract owner/repo/number (or accepts a local diff file)
 2. For GitHub PRs: `fetch("https://api.github.com/repos/{owner}/{repo}/pulls/{number}/files")` to get changed files
 3. For local diffs: parse `git diff` output for file paths
@@ -53,6 +57,7 @@ src/db/schema.ts (1 chunk):
 Generate knowledge changelog between dates or git tags.
 
 **Files:**
+
 - Create: `apps/cli/src/commands/changelog.ts`
 
 - [ ] **Step 1:** Create command:
@@ -62,24 +67,27 @@ Generate knowledge changelog between dates or git tags.
 Uses the existing `GET /api/chunks?after=N&sort=updated` endpoint (same as `kb-diff` but with richer output).
 
 Output format:
+
 ```markdown
 # Knowledge Changelog (Mar 21 - Mar 28)
 
 ## New Chunks (12)
+
 - [note] Auth Middleware Convention
-- [document] Workspace Architecture
-...
+- [document] Workspace Architecture ...
 
 ## Updated Chunks (5)
+
 - Database Schema: Chunks (3 versions)
-- Effect Error Handling (content updated)
-...
+- Effect Error Handling (content updated) ...
 
 ## Plans Completed (2)
+
 - Frontend Polish (6 steps)
 - Documentation Improvement (5 steps)
 
 ## Requirements Status Changes
+
 - "Graph layouts" → passing
 - "Stale detection" → failing
 ```
@@ -99,9 +107,11 @@ Fetch plans via `GET /api/plans?status=completed` and requirements via `GET /api
 Check referential integrity against the filesystem.
 
 **Files:**
+
 - Create: `apps/cli/src/commands/validate.ts`
 
 - [ ] **Step 1:** Create command that:
+
 1. Fetches all chunks with file references: `GET /api/health/knowledge` (fileRefs section)
 2. Fetches all chunks with appliesTo patterns
 3. For each file reference, checks if the file exists on disk: `fs.existsSync(path)`
@@ -132,15 +142,23 @@ Valid references: 42/45 (93%)
 Customizable dashboard with show/hide toggles for sections.
 
 **Files:**
+
 - Modify: `apps/web/src/routes/dashboard.tsx`
 
 - [ ] **Step 1:** Read the dashboard. It has sections: Stats, Favorites, Recently Viewed, Recent Chunks, Health, Requirements, Activity.
 
 - [ ] **Step 2:** Add a localStorage-persisted widget visibility state:
+
 ```tsx
-const [visibleWidgets, setVisibleWidgets] = useLocalStorage<string[]>("fubbik-dashboard-widgets",
-    ["stats", "favorites", "recent-viewed", "recent-chunks", "health", "requirements", "activity"]
-);
+const [visibleWidgets, setVisibleWidgets] = useLocalStorage<string[]>("fubbik-dashboard-widgets", [
+    "stats",
+    "favorites",
+    "recent-viewed",
+    "recent-chunks",
+    "health",
+    "requirements",
+    "activity"
+]);
 ```
 
 - [ ] **Step 3:** Add a "Customize" button that opens a popover with toggles for each section.
@@ -156,13 +174,16 @@ const [visibleWidgets, setVisibleWidgets] = useLocalStorage<string[]>("fubbik-da
 Show content preview on search results.
 
 **Files:**
+
 - Modify: `apps/web/src/features/command-palette/command-palette.tsx`
 
 - [ ] **Step 1:** Read the command palette. Chunk search results currently show title + type badge.
 
-- [ ] **Step 2:** Add a `detail` field to chunk search results showing `chunk.content?.slice(0, 120)`. The command palette item's secondary text shows this preview.
+- [ ] **Step 2:** Add a `detail` field to chunk search results showing `chunk.content?.slice(0, 120)`. The command palette item's secondary
+      text shows this preview.
 
-- [ ] **Step 3:** The search results from the API already include `content` (or `summary`). Show whichever is available — prefer `summary` (shorter) over truncated `content`.
+- [ ] **Step 3:** The search results from the API already include `content` (or `summary`). Show whichever is available — prefer `summary`
+      (shorter) over truncated `content`.
 
 - [ ] **Step 4:** Commit.
 
@@ -173,15 +194,18 @@ Show content preview on search results.
 Batch edit shared fields on multiple selected chunks.
 
 **Files:**
+
 - Modify: `apps/web/src/routes/chunks.index.tsx` — extend bulk action bar
 
-- [ ] **Step 1:** Read the existing bulk action bar (appears when chunks are selected). It currently has: Add/Remove Tags, Set Type, Set Review Status, Archive, Delete.
+- [ ] **Step 1:** Read the existing bulk action bar (appears when chunks are selected). It currently has: Add/Remove Tags, Set Type, Set
+      Review Status, Archive, Delete.
 
 - [ ] **Step 2:** Add "Move to Codebase" action:
 - Dropdown showing available codebases
 - On select, bulk-update chunk-codebase associations
 
-Use `POST /api/chunks/bulk-update` with action `set_codebases` and the selected codebase ID. Read the bulk-update endpoint to understand supported actions.
+Use `POST /api/chunks/bulk-update` with action `set_codebases` and the selected codebase ID. Read the bulk-update endpoint to understand
+supported actions.
 
 - [ ] **Step 3:** Add "Set Type" dropdown if not already present (it may already exist from earlier work).
 

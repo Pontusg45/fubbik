@@ -14,7 +14,7 @@ export const contextAboutCommand = new Command("about")
             const params = new URLSearchParams({
                 q: concept,
                 maxTokens: opts.maxTokens,
-                format: isJson(cmd) ? "structured-json" : "structured-md",
+                format: isJson(cmd) ? "structured-json" : "structured-md"
             });
             const spaceId = opts.space ?? opts.codebase;
             if (spaceId) params.set("spaceId", spaceId);

@@ -17,7 +17,7 @@ export const Route = createFileRoute("/compose")({
         q: (search.q as string) || undefined,
         sort: (search.sort as string) || "updated",
         group: (search.group as string) || "none",
-        limit: (search.limit as string) || "50",
+        limit: (search.limit as string) || "50"
     }),
     beforeLoad: async () => {
         let session = null;
@@ -27,7 +27,7 @@ export const Route = createFileRoute("/compose")({
             // allow guest
         }
         return { session };
-    },
+    }
 });
 
 interface ComposedChunk {
@@ -79,7 +79,7 @@ function ComposePage() {
         void navigate({
             to: "/compose",
             search: { q, sort, group, limit, [key]: value } as any,
-            replace: true,
+            replace: true
         });
     }
 
@@ -97,9 +97,9 @@ function ComposePage() {
                     sort: (sort as any) ?? "updated",
                     limit: lim,
                     offset: 0,
-                    ...(spaceId ? { spaceId } : {}),
-                } as any),
-            ),
+                    ...(spaceId ? { spaceId } : {})
+                } as any)
+            )
     });
 
     useEffect(() => {
@@ -130,7 +130,7 @@ function ComposePage() {
                                 content: (detail as any)?.content ?? "",
                                 tags: ((detail as any)?.tags ?? []).map((t: any) => t.name ?? t),
                                 connectionCount: c.connectionCount ?? 0,
-                                rationale: (detail as any)?.rationale ?? null,
+                                rationale: (detail as any)?.rationale ?? null
                             } as ComposedChunk;
                         } catch {
                             return {
@@ -140,10 +140,10 @@ function ComposePage() {
                                 summary: c.summary,
                                 content: "",
                                 tags: [],
-                                connectionCount: c.connectionCount ?? 0,
+                                connectionCount: c.connectionCount ?? 0
                             } as ComposedChunk;
                         }
-                    }),
+                    })
                 );
                 setChunks(full);
             } catch (e: any) {
@@ -224,13 +224,11 @@ function ComposePage() {
     function removeFilter(index: number) {
         const clauses = parseSimpleQuery(q ?? "");
         const remaining = clauses.filter((_, i) => i !== index);
-        const newQ = remaining
-            .map(c => `${c.negate ? "NOT " : ""}${c.field}:${c.value}`)
-            .join(" ");
+        const newQ = remaining.map(c => `${c.negate ? "NOT " : ""}${c.field}:${c.value}`).join(" ");
         void navigate({
             to: "/compose",
             search: { q: newQ || undefined, sort, group, limit } as any,
-            replace: true,
+            replace: true
         });
     }
 
@@ -255,9 +253,7 @@ function ComposePage() {
             if (e.key !== "j" && e.key !== "k") return;
             if (sortedChunks.length === 0) return;
 
-            const articles = sortedChunks
-                .map(c => document.getElementById(`chunk-${c.id}`))
-                .filter((el): el is HTMLElement => el !== null);
+            const articles = sortedChunks.map(c => document.getElementById(`chunk-${c.id}`)).filter((el): el is HTMLElement => el !== null);
             if (articles.length === 0) return;
 
             const viewportTop = window.scrollY + 100;
@@ -299,7 +295,7 @@ function ComposePage() {
             <article
                 key={chunk.id}
                 id={`chunk-${chunk.id}`}
-                className={`${withBorder && i > 0 ? "border-t pt-12" : ""} ${i > 0 ? "print:break-before-page" : ""} print:pt-0 print:border-0`.trim()}
+                className={`${withBorder && i > 0 ? "border-t pt-12" : ""} ${i > 0 ? "print:break-before-page" : ""} print:border-0 print:pt-0`.trim()}
             >
                 <div className="mb-4">
                     <Link
@@ -307,30 +303,24 @@ function ComposePage() {
                         params={{ chunkId: chunk.id }}
                         className="group inline-flex items-baseline gap-3 hover:underline"
                     >
-                        <h2 className="text-2xl font-bold tracking-tight group-hover:text-primary transition-colors">
-                            {chunk.title}
-                        </h2>
+                        <h2 className="group-hover:text-primary text-2xl font-bold tracking-tight transition-colors">{chunk.title}</h2>
                     </Link>
                     <div className="mt-2 flex flex-wrap items-center gap-2">
                         <Badge variant="secondary" size="sm" className="font-mono text-[9px]">
                             {chunk.type}
                         </Badge>
                         {chunk.tags && chunk.tags.length > 0 && (
-                            <span className="text-xs text-muted-foreground">
-                                {chunk.tags.join(" · ")}
-                            </span>
+                            <span className="text-muted-foreground text-xs">{chunk.tags.join(" · ")}</span>
                         )}
                         {chunk.connectionCount ? (
-                            <span className="text-xs text-muted-foreground">
+                            <span className="text-muted-foreground text-xs">
                                 · {chunk.connectionCount} connection{chunk.connectionCount === 1 ? "" : "s"}
                             </span>
                         ) : null}
                     </div>
                 </div>
 
-                {chunk.summary && (
-                    <p className="mb-4 text-base italic text-muted-foreground">{chunk.summary}</p>
-                )}
+                {chunk.summary && <p className="text-muted-foreground mb-4 text-base italic">{chunk.summary}</p>}
 
                 {chunk.content && (
                     <div className="prose prose-sm dark:prose-invert max-w-none">
@@ -340,10 +330,10 @@ function ComposePage() {
 
                 {chunk.rationale && (
                     <div className="mt-4 rounded-md border-l-2 border-amber-500/40 bg-amber-500/5 px-4 py-3">
-                        <div className="text-xs font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400 mb-1">
+                        <div className="mb-1 text-xs font-semibold tracking-wider text-amber-600 uppercase dark:text-amber-400">
                             Rationale
                         </div>
-                        <div className="prose prose-sm dark:prose-invert max-w-none text-muted-foreground">
+                        <div className="prose prose-sm dark:prose-invert text-muted-foreground max-w-none">
                             <MarkdownRenderer>{chunk.rationale}</MarkdownRenderer>
                         </div>
                     </div>
@@ -354,14 +344,11 @@ function ComposePage() {
 
     return (
         <>
-        <div className="fixed top-0 left-0 right-0 z-50 h-0.5 bg-transparent print:hidden">
-            <div
-                className="h-full bg-primary transition-[width] duration-100 ease-out"
-                style={{ width: `${scrollProgress}%` }}
-            />
-        </div>
-        <div className="container mx-auto max-w-6xl px-4 py-8 print:py-4">
-            <style>{`
+            <div className="fixed top-0 right-0 left-0 z-50 h-0.5 bg-transparent print:hidden">
+                <div className="bg-primary h-full transition-[width] duration-100 ease-out" style={{ width: `${scrollProgress}%` }} />
+            </div>
+            <div className="container mx-auto max-w-6xl px-4 py-8 print:py-4">
+                <style>{`
                 @media print {
                     body { font-family: Georgia, 'Times New Roman', serif; }
                     .prose { max-width: none !important; }
@@ -370,199 +357,188 @@ function ComposePage() {
                     article { page-break-inside: avoid; }
                 }
             `}</style>
-            {/* Header */}
-            <div className="mb-6 flex items-center justify-between print:hidden">
-                <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => void navigate({ to: "/search", search: { q } as any })}
-                    className="gap-1.5"
-                >
-                    <ArrowLeft className="size-3.5" />
-                    Back to search
-                </Button>
-                <div className="flex items-center gap-2">
-                    <span className="hidden lg:inline text-[10px] text-muted-foreground/60 font-mono mr-2">
-                        press <kbd className="rounded border bg-muted px-1 py-0.5">j</kbd> / <kbd className="rounded border bg-muted px-1 py-0.5">k</kbd> to navigate
-                    </span>
-                    <Button variant="outline" size="sm" onClick={handleCopy} className="gap-1.5">
-                        {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
-                        {copied ? "Copied" : "Copy all"}
+                {/* Header */}
+                <div className="mb-6 flex items-center justify-between print:hidden">
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => void navigate({ to: "/search", search: { q } as any })}
+                        className="gap-1.5"
+                    >
+                        <ArrowLeft className="size-3.5" />
+                        Back to search
                     </Button>
-                    <Button variant="outline" size="sm" onClick={handleShare} className="gap-1.5">
-                        {shared ? <Check className="size-3.5" /> : <Share2 className="size-3.5" />}
-                        {shared ? "Copied" : "Share"}
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={handleDownload} className="gap-1.5">
-                        <Download className="size-3.5" />
-                        Download
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={handlePrint} className="gap-1.5">
-                        <Printer className="size-3.5" />
-                        Print
-                    </Button>
-                </div>
-            </div>
-
-            {/* Two-column layout */}
-            <div className="flex gap-8">
-                {/* ToC sidebar */}
-                <aside className="hidden lg:block w-56 shrink-0 print:hidden">
-                    <div className="sticky top-8">
-                        <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
-                            Contents
-                        </div>
-                        {sortedChunks.length > 0 ? (
-                            <nav className="space-y-1 max-h-[calc(100vh-8rem)] overflow-y-auto">
-                                {sortedChunks.map((chunk) => (
-                                    <a
-                                        key={chunk.id}
-                                        href={`#chunk-${chunk.id}`}
-                                        className="block truncate rounded px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-                                        title={chunk.title}
-                                    >
-                                        {chunk.title}
-                                    </a>
-                                ))}
-                            </nav>
-                        ) : (
-                            <p className="text-xs text-muted-foreground">No chunks</p>
-                        )}
+                    <div className="flex items-center gap-2">
+                        <span className="text-muted-foreground/60 mr-2 hidden font-mono text-[10px] lg:inline">
+                            press <kbd className="bg-muted rounded border px-1 py-0.5">j</kbd> /{" "}
+                            <kbd className="bg-muted rounded border px-1 py-0.5">k</kbd> to navigate
+                        </span>
+                        <Button variant="outline" size="sm" onClick={handleCopy} className="gap-1.5">
+                            {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+                            {copied ? "Copied" : "Copy all"}
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={handleShare} className="gap-1.5">
+                            {shared ? <Check className="size-3.5" /> : <Share2 className="size-3.5" />}
+                            {shared ? "Copied" : "Share"}
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={handleDownload} className="gap-1.5">
+                            <Download className="size-3.5" />
+                            Download
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={handlePrint} className="gap-1.5">
+                            <Printer className="size-3.5" />
+                            Print
+                        </Button>
                     </div>
-                </aside>
+                </div>
 
-                {/* Main content column */}
-                <div className="flex-1 min-w-0">
-                    {/* Title and filter summary */}
-                    <div className="mb-8 border-b pb-6">
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground uppercase tracking-wider mb-2">
-                            <FileText className="size-3.5" />
-                            Composite View
-                        </div>
-                        <h1 className="text-3xl font-bold tracking-tight mb-3">
-                            {loading ? "Loading…" : `${chunks.length} chunk${chunks.length === 1 ? "" : "s"}`}
-                        </h1>
-                        {q && (
-                            <div className="flex flex-wrap items-center gap-2">
-                                <span className="text-xs text-muted-foreground">Filters:</span>
-                                {parseSimpleQuery(q).map((clause, idx) => (
-                                    <span
-                                        key={idx}
-                                        className="inline-flex items-center gap-1 rounded border border-slate-500/30 bg-slate-500/15 text-slate-400 px-2 py-0.5 text-xs"
-                                    >
-                                        {clause.negate && <span className="font-semibold">NOT</span>}
-                                        <span className="font-semibold">{clause.field}</span>
-                                        <span className="text-muted-foreground">is</span>
-                                        <span>{clause.value}</span>
-                                        <button
-                                            type="button"
-                                            onClick={() => removeFilter(idx)}
-                                            className="opacity-50 hover:opacity-100 transition-opacity print:hidden"
-                                            aria-label={`Remove ${clause.field} filter`}
+                {/* Two-column layout */}
+                <div className="flex gap-8">
+                    {/* ToC sidebar */}
+                    <aside className="hidden w-56 shrink-0 lg:block print:hidden">
+                        <div className="sticky top-8">
+                            <div className="text-muted-foreground mb-3 text-xs font-semibold tracking-wider uppercase">Contents</div>
+                            {sortedChunks.length > 0 ? (
+                                <nav className="max-h-[calc(100vh-8rem)] space-y-1 overflow-y-auto">
+                                    {sortedChunks.map(chunk => (
+                                        <a
+                                            key={chunk.id}
+                                            href={`#chunk-${chunk.id}`}
+                                            className="text-muted-foreground hover:bg-muted hover:text-foreground block truncate rounded px-2 py-1 text-xs transition-colors"
+                                            title={chunk.title}
                                         >
-                                            ×
-                                        </button>
-                                    </span>
+                                            {chunk.title}
+                                        </a>
+                                    ))}
+                                </nav>
+                            ) : (
+                                <p className="text-muted-foreground text-xs">No chunks</p>
+                            )}
+                        </div>
+                    </aside>
+
+                    {/* Main content column */}
+                    <div className="min-w-0 flex-1">
+                        {/* Title and filter summary */}
+                        <div className="mb-8 border-b pb-6">
+                            <div className="text-muted-foreground mb-2 flex items-center gap-2 text-xs tracking-wider uppercase">
+                                <FileText className="size-3.5" />
+                                Composite View
+                            </div>
+                            <h1 className="mb-3 text-3xl font-bold tracking-tight">
+                                {loading ? "Loading…" : `${chunks.length} chunk${chunks.length === 1 ? "" : "s"}`}
+                            </h1>
+                            {q && (
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <span className="text-muted-foreground text-xs">Filters:</span>
+                                    {parseSimpleQuery(q).map((clause, idx) => (
+                                        <span
+                                            key={idx}
+                                            className="inline-flex items-center gap-1 rounded border border-slate-500/30 bg-slate-500/15 px-2 py-0.5 text-xs text-slate-400"
+                                        >
+                                            {clause.negate && <span className="font-semibold">NOT</span>}
+                                            <span className="font-semibold">{clause.field}</span>
+                                            <span className="text-muted-foreground">is</span>
+                                            <span>{clause.value}</span>
+                                            <button
+                                                type="button"
+                                                onClick={() => removeFilter(idx)}
+                                                className="opacity-50 transition-opacity hover:opacity-100 print:hidden"
+                                                aria-label={`Remove ${clause.field} filter`}
+                                            >
+                                                ×
+                                            </button>
+                                        </span>
+                                    ))}
+                                </div>
+                            )}
+                            <div className="mt-3 flex items-center gap-3 text-xs print:hidden">
+                                <label className="text-muted-foreground flex items-center gap-1.5">
+                                    Sort:
+                                    <select
+                                        value={sort}
+                                        onChange={e => updateParam("sort", e.target.value)}
+                                        className="bg-muted/50 rounded border px-2 py-1 text-xs"
+                                    >
+                                        <option value="updated">Recently updated</option>
+                                        <option value="newest">Newest</option>
+                                        <option value="oldest">Oldest</option>
+                                        <option value="title">Title A-Z</option>
+                                        <option value="type">By type</option>
+                                        <option value="connections">Most connected</option>
+                                    </select>
+                                </label>
+                                <label className="text-muted-foreground flex items-center gap-1.5">
+                                    Group by:
+                                    <select
+                                        value={group}
+                                        onChange={e => updateParam("group", e.target.value)}
+                                        className="bg-muted/50 rounded border px-2 py-1 text-xs"
+                                    >
+                                        <option value="none">None</option>
+                                        <option value="type">Type</option>
+                                        <option value="tag">Tag</option>
+                                    </select>
+                                </label>
+                                <label className="text-muted-foreground flex items-center gap-1.5">
+                                    Limit:
+                                    <select
+                                        value={limit}
+                                        onChange={e => updateParam("limit", e.target.value)}
+                                        className="bg-muted/50 rounded border px-2 py-1 text-xs"
+                                    >
+                                        <option value="10">10</option>
+                                        <option value="25">25</option>
+                                        <option value="50">50</option>
+                                        <option value="100">100</option>
+                                        <option value="all">All</option>
+                                    </select>
+                                </label>
+                            </div>
+                        </div>
+
+                        {/* Content */}
+                        {loading && <div className="text-muted-foreground py-16 text-center">Loading chunks…</div>}
+
+                        {error && <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-4 text-sm text-red-500">{error}</div>}
+
+                        {!loading && !error && chunks.length === 0 && (
+                            <div className="flex flex-col items-center gap-4 py-16">
+                                <div className="text-center">
+                                    <p className="text-muted-foreground mb-2">No chunks match the current filter.</p>
+                                    <p className="text-muted-foreground/70 text-xs">Try broadening your filters.</p>
+                                </div>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => void navigate({ to: "/search", search: { q } as any })}
+                                    className="gap-1.5"
+                                >
+                                    <ArrowLeft className="size-3.5" />
+                                    Back to search
+                                </Button>
+                            </div>
+                        )}
+
+                        {!loading && chunks.length > 0 && groupedChunks && (
+                            <div className="space-y-16">
+                                {groupedChunks.map(([groupKey, groupChunks]) => (
+                                    <section key={groupKey}>
+                                        <h2 className="text-muted-foreground mb-6 border-b pb-2 text-xs font-semibold tracking-wider uppercase">
+                                            {groupKey} <span className="text-muted-foreground/60">({groupChunks.length})</span>
+                                        </h2>
+                                        <div className="space-y-12">{groupChunks.map((chunk, i) => renderChunk(chunk, i, true))}</div>
+                                    </section>
                                 ))}
                             </div>
                         )}
-                        <div className="flex items-center gap-3 mt-3 text-xs print:hidden">
-                            <label className="flex items-center gap-1.5 text-muted-foreground">
-                                Sort:
-                                <select
-                                    value={sort}
-                                    onChange={e => updateParam("sort", e.target.value)}
-                                    className="bg-muted/50 rounded px-2 py-1 border text-xs"
-                                >
-                                    <option value="updated">Recently updated</option>
-                                    <option value="newest">Newest</option>
-                                    <option value="oldest">Oldest</option>
-                                    <option value="title">Title A-Z</option>
-                                    <option value="type">By type</option>
-                                    <option value="connections">Most connected</option>
-                                </select>
-                            </label>
-                            <label className="flex items-center gap-1.5 text-muted-foreground">
-                                Group by:
-                                <select
-                                    value={group}
-                                    onChange={e => updateParam("group", e.target.value)}
-                                    className="bg-muted/50 rounded px-2 py-1 border text-xs"
-                                >
-                                    <option value="none">None</option>
-                                    <option value="type">Type</option>
-                                    <option value="tag">Tag</option>
-                                </select>
-                            </label>
-                            <label className="flex items-center gap-1.5 text-muted-foreground">
-                                Limit:
-                                <select
-                                    value={limit}
-                                    onChange={e => updateParam("limit", e.target.value)}
-                                    className="bg-muted/50 rounded px-2 py-1 border text-xs"
-                                >
-                                    <option value="10">10</option>
-                                    <option value="25">25</option>
-                                    <option value="50">50</option>
-                                    <option value="100">100</option>
-                                    <option value="all">All</option>
-                                </select>
-                            </label>
-                        </div>
+
+                        {!loading && chunks.length > 0 && !groupedChunks && (
+                            <div className="space-y-12">{sortedChunks.map((chunk, i) => renderChunk(chunk, i, true))}</div>
+                        )}
                     </div>
-
-                    {/* Content */}
-                    {loading && (
-                        <div className="py-16 text-center text-muted-foreground">Loading chunks…</div>
-                    )}
-
-                    {error && (
-                        <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-4 text-sm text-red-500">
-                            {error}
-                        </div>
-                    )}
-
-                    {!loading && !error && chunks.length === 0 && (
-                        <div className="py-16 flex flex-col items-center gap-4">
-                            <div className="text-center">
-                                <p className="text-muted-foreground mb-2">No chunks match the current filter.</p>
-                                <p className="text-muted-foreground/70 text-xs">Try broadening your filters.</p>
-                            </div>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => void navigate({ to: "/search", search: { q } as any })}
-                                className="gap-1.5"
-                            >
-                                <ArrowLeft className="size-3.5" />
-                                Back to search
-                            </Button>
-                        </div>
-                    )}
-
-                    {!loading && chunks.length > 0 && groupedChunks && (
-                        <div className="space-y-16">
-                            {groupedChunks.map(([groupKey, groupChunks]) => (
-                                <section key={groupKey}>
-                                    <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-6 pb-2 border-b">
-                                        {groupKey} <span className="text-muted-foreground/60">({groupChunks.length})</span>
-                                    </h2>
-                                    <div className="space-y-12">
-                                        {groupChunks.map((chunk, i) => renderChunk(chunk, i, true))}
-                                    </div>
-                                </section>
-                            ))}
-                        </div>
-                    )}
-
-                    {!loading && chunks.length > 0 && !groupedChunks && (
-                        <div className="space-y-12">
-                            {sortedChunks.map((chunk, i) => renderChunk(chunk, i, true))}
-                        </div>
-                    )}
                 </div>
             </div>
-        </div>
         </>
     );
 }

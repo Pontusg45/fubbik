@@ -50,11 +50,7 @@ export function makeChunk(input: {
 }
 
 /** Builds a NewChunkConnection given both endpoint IDs + a relation slug. */
-export function makeConnection(
-    sourceId: string,
-    targetId: string,
-    relation: string
-): NewChunkConnection {
+export function makeConnection(sourceId: string, targetId: string, relation: string): NewChunkConnection {
     return {
         id: uuid(),
         sourceId,
@@ -74,12 +70,7 @@ export function makeTagType(input: { id?: string; name: string; color?: string; 
     };
 }
 
-export function makeTag(input: {
-    id?: string;
-    name: string;
-    tagTypeId?: string | null;
-    userId: string;
-}): NewTag {
+export function makeTag(input: { id?: string; name: string; tagTypeId?: string | null; userId: string }): NewTag {
     return {
         id: input.id ?? uuid(),
         name: input.name,
@@ -89,4 +80,3 @@ export function makeTag(input: {
         reviewStatus: "approved"
     };
 }
-

@@ -47,7 +47,10 @@ export function getSpaceById(spaceId: string, userId?: string) {
     return dbEffect(async () => {
         const conditions = [eq(space.id, spaceId)];
         if (userId) conditions.push(eq(space.userId, userId));
-        const [found] = await db.select().from(space).where(and(...conditions));
+        const [found] = await db
+            .select()
+            .from(space)
+            .where(and(...conditions));
         return found ?? null;
     });
 }
@@ -89,12 +92,7 @@ export function getCodeSpaceByLocalPath(localPath: string, userId: string) {
             .select({ space })
             .from(space)
             .innerJoin(spaceCodeMetadata, eq(spaceCodeMetadata.spaceId, space.id))
-            .where(
-                and(
-                    sql`${spaceCodeMetadata.localPaths} @> ${JSON.stringify([localPath])}::jsonb`,
-                    eq(space.userId, userId)
-                )
-            );
+            .where(and(sql`${spaceCodeMetadata.localPaths} @> ${JSON.stringify([localPath])}::jsonb`, eq(space.userId, userId)));
         return row?.space ?? null;
     });
 }
@@ -117,7 +115,10 @@ export function updateSpace(spaceId: string, userId: string, params: UpdateSpace
                   .set(setClause)
                   .where(and(eq(space.id, spaceId), eq(space.userId, userId)))
                   .returning()
-            : await db.select().from(space).where(and(eq(space.id, spaceId), eq(space.userId, userId)));
+            : await db
+                  .select()
+                  .from(space)
+                  .where(and(eq(space.id, spaceId), eq(space.userId, userId)));
 
         if (params.code) {
             await db

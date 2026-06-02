@@ -1,4 +1,12 @@
-import { detectCommunities, findBridgeChunks, getAllChunksMeta, getAllConnectionsForUser, getAllTagsWithTypes, getChunkSpaceMappings, getTagTypesForGraph } from "@fubbik/db/repository";
+import {
+    detectCommunities,
+    findBridgeChunks,
+    getAllChunksMeta,
+    getAllConnectionsForUser,
+    getAllTagsWithTypes,
+    getChunkSpaceMappings,
+    getTagTypesForGraph
+} from "@fubbik/db/repository";
 import { Effect } from "effect";
 
 export function getUserGraph(userId?: string, codebaseId?: string, workspaceId?: string) {
@@ -8,19 +16,17 @@ export function getUserGraph(userId?: string, codebaseId?: string, workspaceId?:
             connections: getAllConnectionsForUser(userId),
             chunkTags: getAllTagsWithTypes(userId),
             tagTypes: getTagTypesForGraph(userId),
-            chunkCodebases: workspaceId ? getChunkSpaceMappings(userId) : Effect.succeed([] as { chunkId: string; spaceId: string; spaceName: string }[])
+            chunkCodebases: workspaceId
+                ? getChunkSpaceMappings(userId)
+                : Effect.succeed([] as { chunkId: string; spaceId: string; spaceName: string }[])
         },
         { concurrency: "unbounded" }
     ).pipe(
         Effect.flatMap(result => {
             const chunkIds = result.chunks.map(c => c.id);
             return Effect.all({
-                communities: detectCommunities(chunkIds, 1).pipe(
-                    Effect.catchAll(() => Effect.succeed([]))
-                ),
-                bridges: findBridgeChunks(chunkIds).pipe(
-                    Effect.catchAll(() => Effect.succeed([] as string[]))
-                )
+                communities: detectCommunities(chunkIds, 1).pipe(Effect.catchAll(() => Effect.succeed([]))),
+                bridges: findBridgeChunks(chunkIds).pipe(Effect.catchAll(() => Effect.succeed([] as string[])))
             }).pipe(
                 Effect.map(({ communities, bridges }) => ({
                     ...result,

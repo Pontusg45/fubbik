@@ -10,11 +10,7 @@ export function getFileRefs(chunkId: string, userId: string) {
     );
 }
 
-export function setFileRefs(
-    chunkId: string,
-    userId: string,
-    refs: { path: string; anchor?: string | null; relation: string }[]
-) {
+export function setFileRefs(chunkId: string, userId: string, refs: { path: string; anchor?: string | null; relation: string }[]) {
     return getChunkById(chunkId, userId).pipe(
         Effect.flatMap(found => (found ? Effect.succeed(found) : Effect.fail(new NotFoundError({ resource: "Chunk" })))),
         Effect.flatMap(() => setFileRefsForChunk(chunkId, refs))

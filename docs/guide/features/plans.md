@@ -1,8 +1,8 @@
 ---
 tags:
-  - guide
-  - plans
-  - sessions
+    - guide
+    - plans
+    - sessions
 description: Implementation plans, sessions, and review workflow
 ---
 
@@ -28,7 +28,8 @@ Built-in templates: `feature-dev`, `bug-fix`, `migration`, `requirement-standard
 
 **From requirements:** Auto-generate a plan from selected requirements.
 
-**In the web UI:** Visit `/plans/new` for template selector, markdown paste mode, bulk step entry, requirement linking, and keyboard shortcuts.
+**In the web UI:** Visit `/plans/new` for template selector, markdown paste mode, bulk step entry, requirement linking, and keyboard
+shortcuts.
 
 ### Working with Steps
 
@@ -53,6 +54,7 @@ Steps can be nested, link to requirements and chunks, and have notes.
 Sessions track a focused work period — typically an AI agent implementing a plan.
 
 When a session completes:
+
 1. The linked plan is auto-completed (if all steps are done)
 2. Requirement statuses are auto-synced (marking them as passing)
 3. A **review brief** is generated summarizing what was done

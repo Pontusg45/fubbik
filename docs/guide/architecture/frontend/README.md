@@ -1,8 +1,8 @@
 ---
 tags:
-  - guide
-  - architecture
-  - frontend
+    - guide
+    - architecture
+    - frontend
 description: Frontend architecture — TanStack Start, React, and UI patterns
 ---
 

@@ -15,65 +15,72 @@ These are the foundation for AI-optimized features (system prompt export, CLAUDE
 
 ### New `chunk_applies_to` table
 
-| Column | Type | Notes |
-|--------|------|-------|
-| `id` | text (PK) | UUID as text |
-| `chunkId` | text (FK → chunk) | ON DELETE CASCADE |
-| `pattern` | text | Glob pattern, e.g. `src/auth/**` |
-| `note` | text (nullable) | Optional description, e.g. "auth module" |
+| Column    | Type              | Notes                                    |
+| --------- | ----------------- | ---------------------------------------- |
+| `id`      | text (PK)         | UUID as text                             |
+| `chunkId` | text (FK → chunk) | ON DELETE CASCADE                        |
+| `pattern` | text              | Glob pattern, e.g. `src/auth/**`         |
+| `note`    | text (nullable)   | Optional description, e.g. "auth module" |
 
 **Indexes:** `chunkId`
 
-**Authorization:** No `userId` column — ownership verified in the service layer by checking `chunk.userId` matches the session user before any mutation or read. Same pattern as `chunkTag`.
+**Authorization:** No `userId` column — ownership verified in the service layer by checking `chunk.userId` matches the session user before
+any mutation or read. Same pattern as `chunkTag`.
 
 ### New `chunk_file_ref` table
 
-| Column | Type | Notes |
-|--------|------|-------|
-| `id` | text (PK) | UUID as text |
-| `chunkId` | text (FK → chunk) | ON DELETE CASCADE |
-| `path` | text | File or directory path, e.g. `src/auth/session.ts` |
-| `anchor` | text (nullable) | Symbol name, e.g. `SessionManager` (not line numbers — resilient to edits) |
-| `relation` | text | One of: `documents`, `configures`, `tests`, `implements` |
+| Column     | Type              | Notes                                                                      |
+| ---------- | ----------------- | -------------------------------------------------------------------------- |
+| `id`       | text (PK)         | UUID as text                                                               |
+| `chunkId`  | text (FK → chunk) | ON DELETE CASCADE                                                          |
+| `path`     | text              | File or directory path, e.g. `src/auth/session.ts`                         |
+| `anchor`   | text (nullable)   | Symbol name, e.g. `SessionManager` (not line numbers — resilient to edits) |
+| `relation` | text              | One of: `documents`, `configures`, `tests`, `implements`                   |
 
 **Indexes:** `chunkId`, `path` (for reverse lookup: "which chunks reference this file?")
 
-**Authorization:** No `userId` column — ownership verified in the service layer by checking `chunk.userId` matches the session user before any mutation. The reverse lookup endpoint (`/file-refs/lookup`) must join through `chunk` to filter by `userId` to prevent cross-user data leaks.
+**Authorization:** No `userId` column — ownership verified in the service layer by checking `chunk.userId` matches the session user before
+any mutation. The reverse lookup endpoint (`/file-refs/lookup`) must join through `chunk` to filter by `userId` to prevent cross-user data
+leaks.
 
 ### New columns on `chunk` table
 
-| Column | Type | Notes |
-|--------|------|-------|
-| `rationale` | text (nullable) | Why this decision/convention exists |
+| Column         | Type             | Notes                                 |
+| -------------- | ---------------- | ------------------------------------- |
+| `rationale`    | text (nullable)  | Why this decision/convention exists   |
 | `alternatives` | jsonb (nullable) | `string[]` — other options considered |
-| `consequences` | text (nullable) | Impact and trade-offs |
+| `consequences` | text (nullable)  | Impact and trade-offs                 |
 
 These are optional "why" fields. Any chunk type can have them — they're not restricted to a specific type.
 
 ### New `chunk_template` table
 
-| Column | Type | Notes |
-|--------|------|-------|
-| `id` | text (PK) | UUID as text |
-| `name` | text | e.g. "Convention", "Architecture Decision" |
-| `description` | text (nullable) | What this template is for |
-| `type` | text | Default chunk type (note, document, etc.) |
-| `content` | text | Template body with placeholder text |
-| `isBuiltIn` | boolean | true for shipped defaults, false for user-created |
-| `userId` | text (FK → user, nullable) | null for built-in, set for user-created |
-| `createdAt` | timestamp | |
+| Column        | Type                       | Notes                                             |
+| ------------- | -------------------------- | ------------------------------------------------- |
+| `id`          | text (PK)                  | UUID as text                                      |
+| `name`        | text                       | e.g. "Convention", "Architecture Decision"        |
+| `description` | text (nullable)            | What this template is for                         |
+| `type`        | text                       | Default chunk type (note, document, etc.)         |
+| `content`     | text                       | Template body with placeholder text               |
+| `isBuiltIn`   | boolean                    | true for shipped defaults, false for user-created |
+| `userId`      | text (FK → user, nullable) | null for built-in, set for user-created           |
+| `createdAt`   | timestamp                  |                                                   |
 
 **Constraints:** Two partial unique indexes to handle the NULL userId correctly:
+
 - `uniqueIndex("template_user_name_idx").on(userId, name).where(isNotNull(userId))` — prevents duplicate names per user
 - `uniqueIndex("template_builtin_name_idx").on(name).where(isNull(userId))` — prevents duplicate built-in template names
 
-**Seeding:** Built-in templates are seeded via a SQL migration file in `run-sql-migrations.ts` using `INSERT ... ON CONFLICT (name) WHERE user_id IS NULL DO UPDATE SET content = EXCLUDED.content, description = EXCLUDED.description`. This is idempotent — runs on every deploy, updates content if templates are revised, never duplicates.
+**Seeding:** Built-in templates are seeded via a SQL migration file in `run-sql-migrations.ts` using
+`INSERT ... ON CONFLICT (name) WHERE user_id IS NULL DO UPDATE SET content = EXCLUDED.content, description = EXCLUDED.description`. This is
+idempotent — runs on every deploy, updates content if templates are revised, never duplicates.
 
 ## Built-in Templates
 
 Shipped with fubbik, read-only, seeded into the database:
 
 **Convention**
+
 ```
 ## Rule
 
@@ -93,6 +100,7 @@ Shipped with fubbik, read-only, seeded into the database:
 ```
 
 **Architecture Decision**
+
 ```
 ## Context
 
@@ -112,6 +120,7 @@ Shipped with fubbik, read-only, seeded into the database:
 ```
 
 **Runbook**
+
 ```
 ## When to Use
 
@@ -132,6 +141,7 @@ Shipped with fubbik, read-only, seeded into the database:
 ```
 
 **API Endpoint**
+
 ```
 ## Endpoint
 
@@ -158,41 +168,44 @@ Shipped with fubbik, read-only, seeded into the database:
 
 ### New endpoints
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/chunks/:id/applies-to` | List applies-to patterns for a chunk |
-| `PUT` | `/chunks/:id/applies-to` | Replace all applies-to patterns |
-| `GET` | `/chunks/:id/file-refs` | List file references for a chunk |
-| `PUT` | `/chunks/:id/file-refs` | Replace all file references |
-| `GET` | `/file-refs/lookup?path=<path>` | Reverse lookup: find chunks referencing a file |
-| `GET` | `/templates` | List all templates (built-in + user's custom) |
-| `POST` | `/templates` | Create custom template |
-| `PATCH` | `/templates/:id` | Update custom template |
-| `DELETE` | `/templates/:id` | Delete custom template (user-created only) |
+| Method   | Path                            | Description                                    |
+| -------- | ------------------------------- | ---------------------------------------------- |
+| `GET`    | `/chunks/:id/applies-to`        | List applies-to patterns for a chunk           |
+| `PUT`    | `/chunks/:id/applies-to`        | Replace all applies-to patterns                |
+| `GET`    | `/chunks/:id/file-refs`         | List file references for a chunk               |
+| `PUT`    | `/chunks/:id/file-refs`         | Replace all file references                    |
+| `GET`    | `/file-refs/lookup?path=<path>` | Reverse lookup: find chunks referencing a file |
+| `GET`    | `/templates`                    | List all templates (built-in + user's custom)  |
+| `POST`   | `/templates`                    | Create custom template                         |
+| `PATCH`  | `/templates/:id`                | Update custom template                         |
+| `DELETE` | `/templates/:id`                | Delete custom template (user-created only)     |
 
 ### Modified endpoints
 
-- `GET /chunks/:id` — response includes `appliesTo`, `fileReferences`, `rationale`, `alternatives`, `consequences`. These are fetched in the same `Effect.all` fan-out in `getChunkDetail` (alongside connections and codebases) to avoid extra round trips.
-- `POST /chunks` — accepts optional `rationale`, `alternatives`, `consequences`, `appliesTo`, `fileReferences`, `templateId`. Template pre-filling is a **client-side concern**: the client fetches the template via `GET /templates`, then submits the pre-filled content as part of the normal `POST /chunks` body. No server-side template resolution.
+- `GET /chunks/:id` — response includes `appliesTo`, `fileReferences`, `rationale`, `alternatives`, `consequences`. These are fetched in the
+  same `Effect.all` fan-out in `getChunkDetail` (alongside connections and codebases) to avoid extra round trips.
+- `POST /chunks` — accepts optional `rationale`, `alternatives`, `consequences`, `appliesTo`, `fileReferences`, `templateId`. Template
+  pre-filling is a **client-side concern**: the client fetches the template via `GET /templates`, then submits the pre-filled content as
+  part of the normal `POST /chunks` body. No server-side template resolution.
 - `PATCH /chunks/:id` — same optional fields for `rationale`, `alternatives`, `consequences`
 
 ### PUT semantics
 
-`PUT /chunks/:id/applies-to` and `PUT /chunks/:id/file-refs` use the replace-all pattern (same as `setChunkTags`): send the full desired list, server deletes existing rows and inserts the new ones.
+`PUT /chunks/:id/applies-to` and `PUT /chunks/:id/file-refs` use the replace-all pattern (same as `setChunkTags`): send the full desired
+list, server deletes existing rows and inserts the new ones.
 
 **Request body for applies-to:**
+
 ```json
-[
-  { "pattern": "src/auth/**", "note": "auth module" },
-  { "pattern": "src/middleware/*" }
-]
+[{ "pattern": "src/auth/**", "note": "auth module" }, { "pattern": "src/middleware/*" }]
 ```
 
 **Request body for file-refs:**
+
 ```json
 [
-  { "path": "src/auth/session.ts", "anchor": "SessionManager", "relation": "documents" },
-  { "path": "src/auth/", "relation": "configures" }
+    { "path": "src/auth/session.ts", "anchor": "SessionManager", "relation": "documents" },
+    { "path": "src/auth/", "relation": "configures" }
 ]
 ```
 
@@ -210,16 +223,20 @@ Follows existing Repository → Service → Route pattern:
 
 ### Chunk create/edit form
 
-- **Template selector** — dropdown at the top of create form. Selecting a template pre-fills content and type. Shows built-in + user templates.
+- **Template selector** — dropdown at the top of create form. Selecting a template pre-fills content and type. Shows built-in + user
+  templates.
 - **"Applies To" section** — repeatable field group: pattern input + optional note input. "Add pattern" button. Show below tags.
-- **"File References" section** — repeatable field group: path input + optional anchor input + relation dropdown (`documents`, `configures`, `tests`, `implements`). "Add reference" button.
-- **"Decision Context" section** — collapsible, collapsed by default. Expand via "Add decision context" link. Contains: rationale textarea, alternatives (repeatable text inputs), consequences textarea.
+- **"File References" section** — repeatable field group: path input + optional anchor input + relation dropdown (`documents`, `configures`,
+  `tests`, `implements`). "Add reference" button.
+- **"Decision Context" section** — collapsible, collapsed by default. Expand via "Add decision context" link. Contains: rationale textarea,
+  alternatives (repeatable text inputs), consequences textarea.
 
 ### Chunk detail page (`/chunks/:id`)
 
 - **Applies-to patterns** — list of code-styled monospace badges, each showing the pattern and optional note
 - **File references** — list with monospace path, anchor badge (if present), and relation label
-- **Decision context** — distinct section (if any fields are present): rationale, alternatives as a list, consequences. Styled differently (e.g., slight background tint) to visually separate from the main content.
+- **Decision context** — distinct section (if any fields are present): rationale, alternatives as a list, consequences. Styled differently
+  (e.g., slight background tint) to visually separate from the main content.
 
 ### Templates page (`/templates`)
 
@@ -232,7 +249,8 @@ New route. Nav link between "Health" and "Codebases".
 
 ### Built-in templates display
 
-Built-in templates are visually distinct (badge, no edit/delete actions). Users can "Duplicate" a built-in template to create a customizable copy. Duplication is client-side: fetch the template content via `GET /templates`, then `POST /templates` with the content and a new name.
+Built-in templates are visually distinct (badge, no edit/delete actions). Users can "Duplicate" a built-in template to create a customizable
+copy. Duplication is client-side: fetch the template content via `GET /templates`, then `POST /templates` with the content and a new name.
 
 ## Future Considerations (Out of Scope)
 

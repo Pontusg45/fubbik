@@ -9,8 +9,8 @@
 import { eq } from "drizzle-orm";
 
 import { tag, tagType } from "../../schema/tag";
-import { makeTag, makeTagType } from "../factories";
 import type { SeedContext } from "../context";
+import { makeTag, makeTagType } from "../factories";
 
 const TAG_TYPES = [
     { slug: "feature", color: "#3b82f6" },

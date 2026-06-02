@@ -2,9 +2,8 @@
 
 ## PG16 → PG18 (pgvector 0.8.0 → 0.8.2)
 
-PostgreSQL 18 changed the default data directory inside Docker from
-`/var/lib/postgresql/data` to `/var/lib/postgresql/18/docker`. This means you
-**cannot** simply change the image tag — the new container won't find your data.
+PostgreSQL 18 changed the default data directory inside Docker from `/var/lib/postgresql/data` to `/var/lib/postgresql/18/docker`. This
+means you **cannot** simply change the image tag — the new container won't find your data.
 
 ### Prerequisites
 
@@ -13,8 +12,7 @@ PostgreSQL 18 changed the default data directory inside Docker from
 
 ### Option A: Dump & Restore (recommended)
 
-Best for most fubbik installations. Downtime: a few seconds to minutes depending
-on data size.
+Best for most fubbik installations. Downtime: a few seconds to minutes depending on data size.
 
 **1. Dump the database from the running PG16 container:**
 

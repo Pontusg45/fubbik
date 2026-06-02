@@ -1,9 +1,9 @@
 ---
 tags:
-  - guide
-  - architecture
-  - frontend
-  - components
+    - guide
+    - architecture
+    - frontend
+    - components
 description: Feature structure, shared UI, and base-ui component patterns
 ---
 
@@ -30,10 +30,10 @@ Reusable components in `apps/web/src/components/ui/`:
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|-----------|
-| Framework | TanStack Start (SSR) |
-| Styling | Tailwind CSS |
-| UI Library | shadcn-ui (base-ui) |
-| API Client | Eden treaty |
-| State/Data | React Query |
+| Layer      | Technology           |
+| ---------- | -------------------- |
+| Framework  | TanStack Start (SSR) |
+| Styling    | Tailwind CSS         |
+| UI Library | shadcn-ui (base-ui)  |
+| API Client | Eden treaty          |
+| State/Data | React Query          |

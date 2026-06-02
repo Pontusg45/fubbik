@@ -1,41 +1,25 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import {
-    Archive,
-    GitMerge,
-    Layers,
-    MoreHorizontal,
-    Plus,
-    PowerOff,
-    Trash2,
-    Zap,
-} from "lucide-react";
+import { Archive, GitMerge, Layers, MoreHorizontal, Plus, PowerOff, Trash2, Zap } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { useApiQuery } from "@/hooks/use-api-query";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuSeparator,
-    DropdownMenuTrigger,
+    DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { PageContainer, PageEmpty, PageHeader, PageLoading } from "@/components/ui/page";
-import { getUser } from "@/functions/get-user";
 import { useActiveFeatures } from "@/features/feature-flags/use-active-features";
+import { getUser } from "@/functions/get-user";
+import { useApiQuery } from "@/hooks/use-api-query";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
@@ -47,7 +31,7 @@ export const Route = createFileRoute("/features")({
             session = await getUser();
         } catch {}
         return { session };
-    },
+    }
 });
 
 interface Feature {
@@ -62,13 +46,16 @@ interface Feature {
     updatedAt: string;
 }
 
-
 function statusBadgeVariant(status: string): "success" | "secondary" | "warning" | "outline" {
     switch (status) {
-        case "active": return "success";
-        case "archived": return "warning";
-        case "merged": return "secondary";
-        default: return "outline";
+        case "active":
+            return "success";
+        case "archived":
+            return "warning";
+        case "merged":
+            return "secondary";
+        default:
+            return "outline";
     }
 }
 
@@ -92,12 +79,11 @@ function FeaturesPage() {
     const featuresQuery = useApiQuery<Feature[]>({
         queryKey: ["features"],
         queryFn: () => api.api.features.get({ query: {} }),
-        fallback: [],
+        fallback: []
     });
 
     const createMutation = useMutation({
-        mutationFn: async (body: { name: string; description?: string; color?: string }) =>
-            unwrapEden(await api.api.features.post(body)),
+        mutationFn: async (body: { name: string; description?: string; color?: string }) => unwrapEden(await api.api.features.post(body)),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["features"] });
             setShowCreate(false);
@@ -109,7 +95,7 @@ function FeaturesPage() {
         onError: (err: unknown) => {
             const msg = err instanceof Error ? err.message : "Failed to create feature";
             toast.error(msg);
-        },
+        }
     });
 
     const patchMutation = useMutation({
@@ -122,12 +108,11 @@ function FeaturesPage() {
         onError: (err: unknown) => {
             const msg = err instanceof Error ? err.message : "Failed to update feature";
             toast.error(msg);
-        },
+        }
     });
 
     const mergeMutation = useMutation({
-        mutationFn: async (id: string) =>
-            unwrapEden(await api.api.features({ id }).merge.post({})),
+        mutationFn: async (id: string) => unwrapEden(await api.api.features({ id }).merge.post({})),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["features"] });
             queryClient.invalidateQueries({ queryKey: ["features", "active"] });
@@ -138,12 +123,11 @@ function FeaturesPage() {
         onError: (err: unknown) => {
             const msg = err instanceof Error ? err.message : "Failed to merge feature";
             toast.error(msg);
-        },
+        }
     });
 
     const deleteMutation = useMutation({
-        mutationFn: async (id: string) =>
-            unwrapEden(await api.api.features({ id }).delete()),
+        mutationFn: async (id: string) => unwrapEden(await api.api.features({ id }).delete()),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["features"] });
             queryClient.invalidateQueries({ queryKey: ["features", "active"] });
@@ -152,7 +136,7 @@ function FeaturesPage() {
         onError: (err: unknown) => {
             const msg = err instanceof Error ? err.message : "Failed to delete feature";
             toast.error(msg);
-        },
+        }
     });
 
     function handleCreateSubmit(e: React.FormEvent) {
@@ -161,7 +145,7 @@ function FeaturesPage() {
         createMutation.mutate({
             name: newName.trim(),
             ...(newDescription.trim() ? { description: newDescription.trim() } : {}),
-            color: newColor,
+            color: newColor
         });
     }
 
@@ -177,7 +161,7 @@ function FeaturesPage() {
                         onSuccess: () => {
                             toggleFeature(feature.id);
                             toast.success(`"${feature.name}" activated`);
-                        },
+                        }
                     }
                 );
             } else {
@@ -204,7 +188,7 @@ function FeaturesPage() {
                 onSuccess: () => {
                     setArchiveTarget(null);
                     toast.success(`"${feature.name}" archived`);
-                },
+                }
             }
         );
     }
@@ -227,7 +211,17 @@ function FeaturesPage() {
             />
 
             {/* Create dialog */}
-            <Dialog open={showCreate} onOpenChange={open => { if (!open) { setShowCreate(false); setNewName(""); setNewDescription(""); setNewColor("#8b5cf6"); } }}>
+            <Dialog
+                open={showCreate}
+                onOpenChange={open => {
+                    if (!open) {
+                        setShowCreate(false);
+                        setNewName("");
+                        setNewDescription("");
+                        setNewColor("#8b5cf6");
+                    }
+                }}
+            >
                 <DialogContent className="max-w-md">
                     <DialogHeader>
                         <DialogTitle>New Feature</DialogTitle>
@@ -238,7 +232,9 @@ function FeaturesPage() {
                     <form id="create-feature-form" onSubmit={handleCreateSubmit}>
                         <div className="space-y-4 py-2">
                             <div className="space-y-1.5">
-                                <label htmlFor="feature-name" className="text-sm font-medium">Name</label>
+                                <label htmlFor="feature-name" className="text-sm font-medium">
+                                    Name
+                                </label>
                                 <Input
                                     id="feature-name"
                                     placeholder="e.g. dark-mode-refactor"
@@ -258,11 +254,13 @@ function FeaturesPage() {
                                     value={newDescription}
                                     onChange={e => setNewDescription(e.target.value)}
                                     rows={3}
-                                    className="bg-background focus:ring-ring w-full rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:outline-none resize-none"
+                                    className="bg-background focus:ring-ring w-full resize-none rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
                                 />
                             </div>
                             <div className="flex items-center gap-3">
-                                <label htmlFor="feature-color" className="text-sm font-medium">Color</label>
+                                <label htmlFor="feature-color" className="text-sm font-medium">
+                                    Color
+                                </label>
                                 <input
                                     id="feature-color"
                                     type="color"
@@ -276,15 +274,16 @@ function FeaturesPage() {
                     <DialogFooter>
                         <Button
                             variant="ghost"
-                            onClick={() => { setShowCreate(false); setNewName(""); setNewDescription(""); setNewColor("#8b5cf6"); }}
+                            onClick={() => {
+                                setShowCreate(false);
+                                setNewName("");
+                                setNewDescription("");
+                                setNewColor("#8b5cf6");
+                            }}
                         >
                             Cancel
                         </Button>
-                        <Button
-                            type="submit"
-                            form="create-feature-form"
-                            disabled={!newName.trim() || createMutation.isPending}
-                        >
+                        <Button type="submit" form="create-feature-form" disabled={!newName.trim() || createMutation.isPending}>
                             {createMutation.isPending ? "Creating…" : "Create"}
                         </Button>
                     </DialogFooter>
@@ -294,15 +293,17 @@ function FeaturesPage() {
             {/* Merge confirmation dialog */}
             <Dialog
                 open={mergeTarget !== null}
-                onOpenChange={open => { if (!open) setMergeTarget(null); }}
+                onOpenChange={open => {
+                    if (!open) setMergeTarget(null);
+                }}
             >
                 <DialogContent className="max-w-md">
                     <DialogHeader>
                         <DialogTitle>Merge feature</DialogTitle>
                         <DialogDescription>
                             All {mergeTarget?.deltaCount ?? 0} chunk delta{(mergeTarget?.deltaCount ?? 0) !== 1 ? "s" : ""} in{" "}
-                            <span className="font-medium text-foreground">{mergeTarget?.name}</span> will be applied to
-                            their chunks and the feature will be marked as merged. This cannot be undone.
+                            <span className="text-foreground font-medium">{mergeTarget?.name}</span> will be applied to their chunks and the
+                            feature will be marked as merged. This cannot be undone.
                         </DialogDescription>
                     </DialogHeader>
                     <DialogFooter>
@@ -312,7 +313,9 @@ function FeaturesPage() {
                         <Button
                             variant="destructive"
                             disabled={mergeMutation.isPending}
-                            onClick={() => { if (mergeTarget) mergeMutation.mutate(mergeTarget.id); }}
+                            onClick={() => {
+                                if (mergeTarget) mergeMutation.mutate(mergeTarget.id);
+                            }}
                         >
                             {mergeMutation.isPending ? "Merging…" : "Merge"}
                         </Button>
@@ -323,20 +326,34 @@ function FeaturesPage() {
             {/* Archive confirmation */}
             <ConfirmDialog
                 open={archiveTarget !== null}
-                onOpenChange={open => { if (!open) setArchiveTarget(null); }}
+                onOpenChange={open => {
+                    if (!open) setArchiveTarget(null);
+                }}
                 title="Archive feature"
-                description={archiveTarget ? `Archive "${archiveTarget.name}"? The feature will be hidden from active lists but its deltas are preserved.` : ""}
+                description={
+                    archiveTarget
+                        ? `Archive "${archiveTarget.name}"? The feature will be hidden from active lists but its deltas are preserved.`
+                        : ""
+                }
                 confirmLabel="Archive"
-                onConfirm={() => { if (archiveTarget) handleArchive(archiveTarget); }}
+                onConfirm={() => {
+                    if (archiveTarget) handleArchive(archiveTarget);
+                }}
                 loading={patchMutation.isPending}
             />
 
             {/* Delete confirmation */}
             <ConfirmDialog
                 open={deleteTarget !== null}
-                onOpenChange={open => { if (!open) setDeleteTarget(null); }}
+                onOpenChange={open => {
+                    if (!open) setDeleteTarget(null);
+                }}
                 title="Delete feature"
-                description={deleteTarget ? `Delete "${deleteTarget.name}"? All ${deleteTarget.deltaCount} chunk delta${deleteTarget.deltaCount !== 1 ? "s" : ""} will also be permanently removed.` : ""}
+                description={
+                    deleteTarget
+                        ? `Delete "${deleteTarget.name}"? All ${deleteTarget.deltaCount} chunk delta${deleteTarget.deltaCount !== 1 ? "s" : ""} will also be permanently removed.`
+                        : ""
+                }
                 confirmLabel="Delete"
                 confirmVariant="destructive"
                 onConfirm={() => {
@@ -393,26 +410,15 @@ interface FeatureCardProps {
     onDelete: () => void;
 }
 
-function FeatureCard({
-    feature,
-    isActive,
-    onActivate,
-    onDeactivate,
-    onMerge,
-    onArchive,
-    onDelete,
-}: FeatureCardProps) {
+function FeatureCard({ feature, isActive, onActivate, onDeactivate, onMerge, onArchive, onDelete }: FeatureCardProps) {
     const isMerged = feature.status === "merged";
     const isArchived = feature.status === "archived";
     const canMerge = !isMerged && !isArchived && feature.deltaCount > 0;
 
     return (
-        <div className="group flex items-center gap-4 rounded-lg border px-4 py-3 transition-colors hover:bg-muted/40">
+        <div className="group hover:bg-muted/40 flex items-center gap-4 rounded-lg border px-4 py-3 transition-colors">
             {/* Colored dot */}
-            <div
-                className="size-3 shrink-0 rounded-full"
-                style={{ backgroundColor: feature.color ?? "#8b5cf6" }}
-            />
+            <div className="size-3 shrink-0 rounded-full" style={{ backgroundColor: feature.color ?? "#8b5cf6" }} />
 
             {/* Name + description */}
             <div className="min-w-0 flex-1">
@@ -431,13 +437,14 @@ function FeatureCard({
                         </Badge>
                     )}
                 </div>
-                {feature.description && (
-                    <p className="text-muted-foreground mt-0.5 text-sm line-clamp-1">{feature.description}</p>
-                )}
+                {feature.description && <p className="text-muted-foreground mt-0.5 line-clamp-1 text-sm">{feature.description}</p>}
             </div>
 
             {/* Delta count */}
-            <span className="text-muted-foreground shrink-0 text-xs tabular-nums" title={`${feature.deltaCount} chunk delta${feature.deltaCount !== 1 ? "s" : ""}`}>
+            <span
+                className="text-muted-foreground shrink-0 text-xs tabular-nums"
+                title={`${feature.deltaCount} chunk delta${feature.deltaCount !== 1 ? "s" : ""}`}
+            >
                 {feature.deltaCount} delta{feature.deltaCount !== 1 ? "s" : ""}
             </span>
 

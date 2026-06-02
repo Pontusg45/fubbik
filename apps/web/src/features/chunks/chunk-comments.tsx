@@ -86,10 +86,7 @@ export function ChunkComments({ chunkId }: { chunkId: string }) {
     return (
         <Card>
             <CardHeader>
-                <button
-                    className="flex w-full items-center justify-between text-left"
-                    onClick={() => setExpanded(!expanded)}
-                >
+                <button className="flex w-full items-center justify-between text-left" onClick={() => setExpanded(!expanded)}>
                     <CardTitle className="flex items-center gap-2 text-sm">
                         <MessageSquare className="size-4" />
                         Comments
@@ -129,7 +126,7 @@ export function ChunkComments({ chunkId }: { chunkId: string }) {
                                 <>
                                     <div className="flex items-start justify-between">
                                         <p className="text-sm whitespace-pre-wrap">{comment.content}</p>
-                                        <div className="flex shrink-0 items-center gap-1 ml-2">
+                                        <div className="ml-2 flex shrink-0 items-center gap-1">
                                             <button
                                                 className="text-muted-foreground hover:text-foreground p-0.5"
                                                 onClick={() => {
@@ -157,9 +154,7 @@ export function ChunkComments({ chunkId }: { chunkId: string }) {
                             )}
                         </div>
                     ))}
-                    {count === 0 && (
-                        <p className="text-muted-foreground text-sm">No comments yet</p>
-                    )}
+                    {count === 0 && <p className="text-muted-foreground text-sm">No comments yet</p>}
                     <div className="space-y-2 pt-2">
                         <textarea
                             className="border-input bg-background w-full rounded-md border px-3 py-2 text-sm"

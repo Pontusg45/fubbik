@@ -1,7 +1,4 @@
-import {
-    getTagsForChunks,
-    listChunks as listChunksRepo
-} from "@fubbik/db/repository";
+import { getTagsForChunks, listChunks as listChunksRepo } from "@fubbik/db/repository";
 import { Effect } from "effect";
 
 type InstructionFormat = "claude" | "agents" | "cursor";
@@ -110,15 +107,22 @@ function categorizeChunks(chunks: ChunkWithTags[]): CategorizedChunks {
             result.conventions.push(chunk);
         }
 
-        if (lowerContent.includes("pnpm ") || lowerContent.includes("npm ") || lowerContent.includes("bun ") || lowerTags.includes("commands") || lowerTags.includes("scripts")) {
+        if (
+            lowerContent.includes("pnpm ") ||
+            lowerContent.includes("npm ") ||
+            lowerContent.includes("bun ") ||
+            lowerTags.includes("commands") ||
+            lowerTags.includes("scripts")
+        ) {
             result.commands.push(chunk);
         }
 
         // If not categorized in any of the above
-        const isInAny = result.overview.includes(chunk)
-            || result.architecture.includes(chunk)
-            || result.conventions.includes(chunk)
-            || result.commands.includes(chunk);
+        const isInAny =
+            result.overview.includes(chunk) ||
+            result.architecture.includes(chunk) ||
+            result.conventions.includes(chunk) ||
+            result.commands.includes(chunk);
 
         if (!isInAny) {
             result.other.push(chunk);

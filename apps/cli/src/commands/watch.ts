@@ -35,9 +35,7 @@ export const watchCommand = new Command("watch")
                 setTimeout(async () => {
                     pending.delete(key);
                     try {
-                        const res = await fetch(
-                            `${serverUrl}/api/context/for-file?path=${encodeURIComponent(filename)}`
-                        );
+                        const res = await fetch(`${serverUrl}/api/context/for-file?path=${encodeURIComponent(filename)}`);
                         if (!res.ok) return;
                         const chunks = await res.json();
                         if (!Array.isArray(chunks) || chunks.length === 0) return;
@@ -50,9 +48,7 @@ export const watchCommand = new Command("watch")
                             title: string;
                             matchReason: string;
                         }>) {
-                            console.error(
-                                `  ${formatType(c.type)} ${c.title} ${formatDim(`(${c.matchReason})`)}`
-                            );
+                            console.error(`  ${formatType(c.type)} ${c.title} ${formatDim(`(${c.matchReason})`)}`);
                         }
                     } catch {
                         /* ignore fetch errors */

@@ -1,7 +1,7 @@
 ---
 tags:
-  - guide
-  - search
+    - guide
+    - search
 description: Search section index — full-text, semantic, and federated search
 ---
 

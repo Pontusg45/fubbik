@@ -14,8 +14,8 @@ import {
 } from "@fubbik/db/repository";
 import { Effect } from "effect";
 
-import { resolveChunks } from "../features/resolve";
 import { NotFoundError } from "../errors";
+import { resolveChunks } from "../features/resolve";
 import { computeHealthScore } from "./health-score";
 
 export * from "./chunk-mutations";
@@ -87,41 +87,43 @@ export function listChunks(
         reviewStatus: query.reviewStatus,
         limit,
         offset
-    }).pipe(
-        Effect.flatMap(result => {
-            if (!searchAllSpaces || result.chunks.length === 0) {
-                return Effect.succeed({ ...result, limit, offset });
-            }
-            return getSpacesForChunks(result.chunks.map(c => c.id)).pipe(
-                Effect.map(spaceMap => {
-                    const lookup = new Map<string, string[]>();
-                    for (const entry of spaceMap) {
-                        const existing = lookup.get(entry.chunkId) ?? [];
-                        existing.push(entry.spaceName);
-                        lookup.set(entry.chunkId, existing);
-                    }
-                    const chunks = result.chunks.map(c => ({
-                        ...c,
-                        spaceNames: lookup.get(c.id) ?? []
-                    }));
-                    return { ...result, chunks, limit, offset };
-                })
-            );
-        })
-    ).pipe(
-        Effect.flatMap(result => {
-            if (activeFeatureIds.length === 0 || result.chunks.length === 0) {
-                return Effect.succeed(result);
-            }
-            const chunkIds = result.chunks.map((c: { id: string }) => c.id);
-            return batchFetchDeltas(chunkIds, activeFeatureIds).pipe(
-                Effect.map(deltas => ({
-                    ...result,
-                    chunks: resolveChunks(result.chunks, activeFeatureIds, deltas)
-                }))
-            );
-        })
-    );
+    })
+        .pipe(
+            Effect.flatMap(result => {
+                if (!searchAllSpaces || result.chunks.length === 0) {
+                    return Effect.succeed({ ...result, limit, offset });
+                }
+                return getSpacesForChunks(result.chunks.map(c => c.id)).pipe(
+                    Effect.map(spaceMap => {
+                        const lookup = new Map<string, string[]>();
+                        for (const entry of spaceMap) {
+                            const existing = lookup.get(entry.chunkId) ?? [];
+                            existing.push(entry.spaceName);
+                            lookup.set(entry.chunkId, existing);
+                        }
+                        const chunks = result.chunks.map(c => ({
+                            ...c,
+                            spaceNames: lookup.get(c.id) ?? []
+                        }));
+                        return { ...result, chunks, limit, offset };
+                    })
+                );
+            })
+        )
+        .pipe(
+            Effect.flatMap(result => {
+                if (activeFeatureIds.length === 0 || result.chunks.length === 0) {
+                    return Effect.succeed(result);
+                }
+                const chunkIds = result.chunks.map((c: { id: string }) => c.id);
+                return batchFetchDeltas(chunkIds, activeFeatureIds).pipe(
+                    Effect.map(deltas => ({
+                        ...result,
+                        chunks: resolveChunks(result.chunks, activeFeatureIds, deltas)
+                    }))
+                );
+            })
+        );
 }
 
 export function getChunkDetail(chunkId: string, userId?: string, activeFeatureIds: string[] = []) {

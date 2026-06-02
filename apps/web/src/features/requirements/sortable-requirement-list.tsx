@@ -1,27 +1,14 @@
-import {
-    DndContext,
-    closestCenter,
-    KeyboardSensor,
-    PointerSensor,
-    useSensor,
-    useSensors,
-    type DragEndEvent
-} from "@dnd-kit/core";
-import {
-    SortableContext,
-    sortableKeyboardCoordinates,
-    useSortable,
-    verticalListSortingStrategy,
-    arrayMove
-} from "@dnd-kit/sortable";
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
+import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
-import { RequirementCard } from "./requirement-card";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
+
+import { RequirementCard } from "./requirement-card";
 
 export interface RequirementRecord {
     id: string;
@@ -48,13 +35,9 @@ function SortableItem({
     children
 }: {
     id: string;
-    children: (props: {
-        dragHandleProps: React.HTMLAttributes<HTMLDivElement>;
-        style: React.CSSProperties;
-    }) => React.ReactNode;
+    children: (props: { dragHandleProps: React.HTMLAttributes<HTMLDivElement>; style: React.CSSProperties }) => React.ReactNode;
 }) {
-    const { attributes, listeners, setNodeRef, transform, transition } =
-        useSortable({ id });
+    const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
     const style: React.CSSProperties = {
         transform: CSS.Transform.toString(transform),
         transition
@@ -123,11 +106,7 @@ export function SortableRequirementList({
     const ids = localOrder.map(r => r.id);
 
     return (
-        <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={handleDragEnd}
-        >
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={ids} strategy={verticalListSortingStrategy}>
                 {localOrder.map(req => {
                     const id = req.id;
@@ -147,9 +126,7 @@ export function SortableRequirementList({
                                     useCaseName={uc?.name}
                                     chunkCount={req.chunkCount}
                                     selected={selectedIds.includes(id)}
-                                    onSelectChange={selected =>
-                                        onToggleSelection(id, selected)
-                                    }
+                                    onSelectChange={selected => onToggleSelection(id, selected)}
                                     dragHandleProps={dragHandleProps}
                                     highlighted={highlightIndex !== undefined && highlightIndex === localOrder.indexOf(req)}
                                 />

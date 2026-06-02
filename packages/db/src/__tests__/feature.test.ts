@@ -69,7 +69,7 @@ async function createTestUser(suffix?: string) {
         name: "Test",
         emailVerified: false,
         createdAt: new Date(),
-        updatedAt: new Date(),
+        updatedAt: new Date()
     });
     return id;
 }
@@ -82,8 +82,8 @@ async function createTestFeature(userId: string, overrides?: Partial<{ name: str
             name: overrides?.name ?? `Feature-${id.slice(0, 8)}`,
             priority: overrides?.priority ?? 1,
             color: overrides?.color,
-            userId,
-        }),
+            userId
+        })
     );
     return created;
 }
@@ -95,7 +95,7 @@ async function createTestChunk(userId: string) {
         title: "Test Chunk",
         content: "content",
         type: "note",
-        userId,
+        userId
     });
     return id;
 }
@@ -142,8 +142,8 @@ describe("Feature CRUD", () => {
             featureRepo.updateFeature(created.id, testUserId, {
                 name: "Updated",
                 status: "active",
-                color: "#ff0000",
-            }),
+                color: "#ff0000"
+            })
         );
 
         expect(updated).not.toBeNull();
@@ -179,8 +179,8 @@ describe("Feature CRUD", () => {
                 id: crypto.randomUUID(),
                 chunkId,
                 featureId: f.id,
-                delta: { title: "Overridden" },
-            }),
+                delta: { title: "Overridden" }
+            })
         );
 
         const listAfter = await Effect.runPromise(featureRepo.listFeatures(testUserId));
@@ -240,8 +240,8 @@ describe("Delta operations", () => {
                 id: deltaId,
                 chunkId: testChunkId,
                 featureId: testFeatureId,
-                delta: { title: "Feature Title" },
-            }),
+                delta: { title: "Feature Title" }
+            })
         );
 
         const deltas = await Effect.runPromise(chunkDeltaRepo.getDeltasForChunk(testChunkId));
@@ -258,8 +258,8 @@ describe("Delta operations", () => {
                 id: deltaId,
                 chunkId: testChunkId,
                 featureId: testFeatureId,
-                delta: { title: "Initial Title" },
-            }),
+                delta: { title: "Initial Title" }
+            })
         );
 
         // Upsert again with same chunk+feature (different id, same conflict target)
@@ -268,8 +268,8 @@ describe("Delta operations", () => {
                 id: crypto.randomUUID(),
                 chunkId: testChunkId,
                 featureId: testFeatureId,
-                delta: { title: "Updated Title", content: "New content" },
-            }),
+                delta: { title: "Updated Title", content: "New content" }
+            })
         );
 
         const deltas = await Effect.runPromise(chunkDeltaRepo.getDeltasForChunk(testChunkId));
@@ -284,8 +284,8 @@ describe("Delta operations", () => {
                 id: crypto.randomUUID(),
                 chunkId: testChunkId,
                 featureId: testFeatureId,
-                delta: { content: "Different content" },
-            }),
+                delta: { content: "Different content" }
+            })
         );
 
         const deltas = await Effect.runPromise(chunkDeltaRepo.getDeltasForFeature(testFeatureId));
@@ -302,22 +302,25 @@ describe("Delta operations", () => {
 
         // Insert deltas for all 4 combinations
         await Effect.runPromise(
-            chunkDeltaRepo.upsertDelta({ id: crypto.randomUUID(), chunkId: testChunkId, featureId: testFeatureId, delta: { title: "c1f1" } }),
+            chunkDeltaRepo.upsertDelta({
+                id: crypto.randomUUID(),
+                chunkId: testChunkId,
+                featureId: testFeatureId,
+                delta: { title: "c1f1" }
+            })
         );
         await Effect.runPromise(
-            chunkDeltaRepo.upsertDelta({ id: crypto.randomUUID(), chunkId: testChunkId, featureId: f2.id, delta: { title: "c1f2" } }),
+            chunkDeltaRepo.upsertDelta({ id: crypto.randomUUID(), chunkId: testChunkId, featureId: f2.id, delta: { title: "c1f2" } })
         );
         await Effect.runPromise(
-            chunkDeltaRepo.upsertDelta({ id: crypto.randomUUID(), chunkId: chunkId2, featureId: testFeatureId, delta: { title: "c2f1" } }),
+            chunkDeltaRepo.upsertDelta({ id: crypto.randomUUID(), chunkId: chunkId2, featureId: testFeatureId, delta: { title: "c2f1" } })
         );
         await Effect.runPromise(
-            chunkDeltaRepo.upsertDelta({ id: crypto.randomUUID(), chunkId: chunkId2, featureId: f2.id, delta: { title: "c2f2" } }),
+            chunkDeltaRepo.upsertDelta({ id: crypto.randomUUID(), chunkId: chunkId2, featureId: f2.id, delta: { title: "c2f2" } })
         );
 
         // Only fetch for testChunkId + testFeatureId
-        const result = await Effect.runPromise(
-            chunkDeltaRepo.batchFetchDeltas([testChunkId], [testFeatureId]),
-        );
+        const result = await Effect.runPromise(chunkDeltaRepo.batchFetchDeltas([testChunkId], [testFeatureId]));
         expect(result).toHaveLength(1);
         expect(result[0]!.chunkId).toBe(testChunkId);
         expect(result[0]!.featureId).toBe(testFeatureId);
@@ -338,13 +341,11 @@ describe("Delta operations", () => {
                 id: crypto.randomUUID(),
                 chunkId: testChunkId,
                 featureId: testFeatureId,
-                delta: { title: "To be deleted" },
-            }),
+                delta: { title: "To be deleted" }
+            })
         );
 
-        const deleted = await Effect.runPromise(
-            chunkDeltaRepo.deleteDelta(testChunkId, testFeatureId),
-        );
+        const deleted = await Effect.runPromise(chunkDeltaRepo.deleteDelta(testChunkId, testFeatureId));
         expect(deleted).not.toBeNull();
 
         const deltas = await Effect.runPromise(chunkDeltaRepo.getDeltasForChunk(testChunkId));
@@ -357,17 +358,14 @@ describe("Delta operations", () => {
                 id: crypto.randomUUID(),
                 chunkId: testChunkId,
                 featureId: testFeatureId,
-                delta: { title: "Cascade test" },
-            }),
+                delta: { title: "Cascade test" }
+            })
         );
 
         // Delete the feature — cascade should remove deltas
         await Effect.runPromise(featureRepo.deleteFeature(testFeatureId, testUserId));
 
-        const remaining = await db
-            .select()
-            .from(chunkFeatureDelta)
-            .where(eq(chunkFeatureDelta.featureId, testFeatureId));
+        const remaining = await db.select().from(chunkFeatureDelta).where(eq(chunkFeatureDelta.featureId, testFeatureId));
         expect(remaining).toHaveLength(0);
     });
 
@@ -377,17 +375,14 @@ describe("Delta operations", () => {
                 id: crypto.randomUUID(),
                 chunkId: testChunkId,
                 featureId: testFeatureId,
-                delta: { title: "Chunk cascade test" },
-            }),
+                delta: { title: "Chunk cascade test" }
+            })
         );
 
         // Delete the chunk — cascade should remove deltas
         await db.delete(chunk).where(eq(chunk.id, testChunkId));
 
-        const remaining = await db
-            .select()
-            .from(chunkFeatureDelta)
-            .where(eq(chunkFeatureDelta.chunkId, testChunkId));
+        const remaining = await db.select().from(chunkFeatureDelta).where(eq(chunkFeatureDelta.chunkId, testChunkId));
         expect(remaining).toHaveLength(0);
     });
 });

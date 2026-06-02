@@ -4,8 +4,8 @@ import { Plus } from "lucide-react";
 import React, { useCallback, useMemo } from "react";
 import { toast } from "sonner";
 
-import { useActiveSpace } from "@/features/spaces/use-active-space";
 import { useRecentChunks } from "@/features/chunks/use-recent-chunks";
+import { useActiveSpace } from "@/features/spaces/use-active-space";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
@@ -21,7 +21,7 @@ import {
     buildRecentChunkItems,
     buildRecentPageItems,
     buildRequirementItems,
-    buildTagItems,
+    buildTagItems
 } from "./command-items";
 import type { CommandItem, RecentPage } from "./command-types";
 
@@ -44,7 +44,7 @@ export function useCommandSearch({
     close,
     setSubMode,
     setQuery,
-    setSelectedIndex,
+    setSelectedIndex
 }: UseCommandSearchOptions): { items: CommandItem[]; isLoading: boolean } {
     const navigate = useNavigate();
     const { recentIds } = useRecentChunks();
@@ -64,24 +64,24 @@ export function useCommandSearch({
                 await api.api.chunks.post({
                     title,
                     content: "",
-                    type: "note",
+                    type: "note"
                 })
             );
             return result;
         },
-        onSuccess: (data) => {
+        onSuccess: data => {
             const chunk = data as { id: string };
             toast.success(`Created "${query.trim()}"`, {
                 action: {
                     label: "Edit",
-                    onClick: () => navigate({ to: "/chunks/$chunkId/edit", params: { chunkId: chunk.id } }),
-                },
+                    onClick: () => navigate({ to: "/chunks/$chunkId/edit", params: { chunkId: chunk.id } })
+                }
             });
             close();
         },
         onError: () => {
             toast.error("Failed to create note");
-        },
+        }
     });
 
     // Search chunks via API
@@ -92,14 +92,14 @@ export function useCommandSearch({
             try {
                 return unwrapEden(
                     await api.api.chunks.get({
-                        query: { search: debouncedQuery, limit: "5" },
+                        query: { search: debouncedQuery, limit: "5" }
                     })
                 );
             } catch {
                 return null;
             }
         },
-        enabled: open && debouncedQuery.length > 1 && !isTagSearch && !isFederatedSearch,
+        enabled: open && debouncedQuery.length > 1 && !isTagSearch && !isFederatedSearch
     });
 
     // Federated search (across all codebases) when query starts with *
@@ -110,14 +110,14 @@ export function useCommandSearch({
             try {
                 return unwrapEden(
                     await api.api.chunks.search.federated.get({
-                        query: { search: debouncedFederatedQuery, limit: "8" },
+                        query: { search: debouncedFederatedQuery, limit: "8" }
                     })
                 );
             } catch {
                 return null;
             }
         },
-        enabled: open && isFederatedSearch && debouncedFederatedQuery.length > 0,
+        enabled: open && isFederatedSearch && debouncedFederatedQuery.length > 0
     });
 
     // Search tags via API when query starts with #
@@ -135,7 +135,7 @@ export function useCommandSearch({
                 return [];
             }
         },
-        enabled: open && isTagSearch,
+        enabled: open && isTagSearch
     });
 
     // Search requirements via API
@@ -146,14 +146,14 @@ export function useCommandSearch({
             try {
                 return unwrapEden(
                     await api.api.requirements.get({
-                        query: { search: debouncedQuery, limit: "5" },
+                        query: { search: debouncedQuery, limit: "5" }
                     })
                 ) as { requirements: Array<{ id: string; title: string; status: string; priority: string }>; total: number };
             } catch {
                 return null;
             }
         },
-        enabled: open && debouncedQuery.length > 1 && !isTagSearch && !isFederatedSearch && subMode === null,
+        enabled: open && debouncedQuery.length > 1 && !isTagSearch && !isFederatedSearch && subMode === null
     });
 
     // Fetch all plans and filter client-side (API doesn't support search param)
@@ -161,15 +161,13 @@ export function useCommandSearch({
         queryKey: ["command-palette-plans"],
         queryFn: async () => {
             try {
-                return unwrapEden(
-                    await api.api.plans.get({ query: {} })
-                ) as Array<{ id: string; title: string; status: string }>;
+                return unwrapEden(await api.api.plans.get({ query: {} })) as Array<{ id: string; title: string; status: string }>;
             } catch {
                 return [];
             }
         },
         enabled: open && debouncedQuery.length > 1 && !isTagSearch && !isFederatedSearch && subMode === null,
-        staleTime: 30_000,
+        staleTime: 30_000
     });
 
     // Fetch spaces for Switch Space sub-mode
@@ -189,7 +187,7 @@ export function useCommandSearch({
             }
         },
         enabled: open && subMode === "space",
-        staleTime: 60_000,
+        staleTime: 60_000
     });
 
     // Fetch all chunks for the chunk quick-open (Ctrl+O) mode
@@ -197,15 +195,15 @@ export function useCommandSearch({
         queryKey: ["command-palette-all-chunks"],
         queryFn: async () => {
             try {
-                return unwrapEden(
-                    await api.api.chunks.get({ query: { limit: "500" } })
-                ) as { chunks: Array<{ id: string; title: string; type: string }> };
+                return unwrapEden(await api.api.chunks.get({ query: { limit: "500" } })) as {
+                    chunks: Array<{ id: string; title: string; type: string }>;
+                };
             } catch {
                 return { chunks: [] };
             }
         },
         enabled: open && isChunkMode,
-        staleTime: 300_000,
+        staleTime: 300_000
     });
 
     // Fetch recent chunk details
@@ -215,11 +213,9 @@ export function useCommandSearch({
             if (recentIds.length === 0) return [];
             try {
                 const results = await Promise.all(
-                    recentIds.slice(0, 5).map(async (id) => {
+                    recentIds.slice(0, 5).map(async id => {
                         try {
-                            const data = unwrapEden(
-                                await api.api.chunks({ id }).get()
-                            );
+                            const data = unwrapEden(await api.api.chunks({ id }).get());
                             return data;
                         } catch {
                             return null;
@@ -231,7 +227,7 @@ export function useCommandSearch({
                 return [];
             }
         },
-        enabled: open && !query.trim() && recentIds.length > 0,
+        enabled: open && !query.trim() && recentIds.length > 0
     });
 
     const isLoading =
@@ -273,7 +269,7 @@ export function useCommandSearch({
 
         // Sub-mode: space switcher
         if (subMode === "space") {
-            return buildSpaceItems(spacesQuery.data ?? [], lowerQuery, (id) => {
+            return buildSpaceItems(spacesQuery.data ?? [], lowerQuery, id => {
                 setSpaceId(id);
                 close();
             });
@@ -281,22 +277,21 @@ export function useCommandSearch({
 
         // Sub-mode: chunk quick-open (Ctrl+O)
         if (isChunkMode) {
-            return buildChunkQuickOpenItems(
-                allChunksQuery.data?.chunks ?? [],
-                lowerQuery,
-                handleChunkNavigate
-            );
+            return buildChunkQuickOpenItems(allChunksQuery.data?.chunks ?? [], lowerQuery, handleChunkNavigate);
         }
 
         // Federated search mode: when query starts with *
         if (isFederatedSearch) {
             const chunks = federatedSearch.data?.chunks ?? [];
-            return buildFederatedItems(chunks as Array<{ id: string; title?: string | null; codebaseName?: string | null }>, handleChunkNavigate);
+            return buildFederatedItems(
+                chunks as Array<{ id: string; title?: string | null; codebaseName?: string | null }>,
+                handleChunkNavigate
+            );
         }
 
         // Tag search mode: when query starts with #
         if (isTagSearch) {
-            return buildTagItems(tagSearch.data ?? [], tagQuery, (name) => {
+            return buildTagItems(tagSearch.data ?? [], tagQuery, name => {
                 navigate({ to: "/chunks", search: { tags: name } });
                 close();
             });
@@ -305,37 +300,28 @@ export function useCommandSearch({
         // Recent items (shown when query is empty)
         if (!query.trim()) {
             result.push(
-                ...buildRecentPageItems(recentPages, (path) => {
+                ...buildRecentPageItems(recentPages, path => {
                     navigate({ to: path });
                     close();
                 })
             );
-            result.push(
-                ...buildRecentChunkItems(recentChunksQuery.data ?? [], handleChunkNavigate)
-            );
+            result.push(...buildRecentChunkItems(recentChunksQuery.data ?? [], handleChunkNavigate));
         }
 
         // Pages
         result.push(
-            ...buildPageItems(lowerQuery, (path) => {
+            ...buildPageItems(lowerQuery, path => {
                 navigate({ to: path });
                 close();
             })
         );
 
         // Chunks from API search
-        result.push(
-            ...buildChunkSearchItems(chunkSearch.data?.chunks ?? [], handleChunkNavigate)
-        );
+        result.push(...buildChunkSearchItems(chunkSearch.data?.chunks ?? [], handleChunkNavigate));
 
         // Requirements and Plans (only when query is long enough)
         if (debouncedQuery.length > 1) {
-            result.push(
-                ...buildRequirementItems(
-                    requirementsSearch.data?.requirements ?? [],
-                    handleRequirementNavigate
-                )
-            );
+            result.push(...buildRequirementItems(requirementsSearch.data?.requirements ?? [], handleRequirementNavigate));
 
             const allPlans = Array.isArray(plansSearch.data) ? plansSearch.data : [];
             result.push(...buildPlanItems(allPlans, lowerQuery, handlePlanNavigate));
@@ -343,7 +329,7 @@ export function useCommandSearch({
 
         // Actions
         result.push(
-            ...buildActionItems(lowerQuery, (action) => {
+            ...buildActionItems(lowerQuery, action => {
                 if (action.subMode) {
                     setSubMode(action.subMode);
                     setQuery("");
@@ -363,7 +349,7 @@ export function useCommandSearch({
                 group: "Actions",
                 icon: React.createElement(Plus, { className: "size-4" }),
                 badge: "Create",
-                onSelect: () => quickNoteMutation.mutate(query.trim()),
+                onSelect: () => quickNoteMutation.mutate(query.trim())
             });
         }
 
@@ -394,7 +380,7 @@ export function useCommandSearch({
         handlePlanNavigate,
         setSubMode,
         setQuery,
-        setSelectedIndex,
+        setSelectedIndex
     ]);
 
     return { items, isLoading };

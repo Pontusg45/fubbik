@@ -2,7 +2,10 @@
 
 ## Overview
 
-A per-codebase controlled vocabulary that defines the valid words and grammar for requirement steps. Each vocabulary entry has a category (actor, action, target, outcome, state, modifier) and optional typed slot expectations (e.g., "creates" expects a "target" to follow). The parser validates step text against the vocabulary, producing warnings for unknown words and unexpected category sequences. AI-powered seeding suggests vocabulary entries from existing chunks.
+A per-codebase controlled vocabulary that defines the valid words and grammar for requirement steps. Each vocabulary entry has a category
+(actor, action, target, outcome, state, modifier) and optional typed slot expectations (e.g., "creates" expects a "target" to follow). The
+parser validates step text against the vocabulary, producing warnings for unknown words and unexpected category sequences. AI-powered
+seeding suggests vocabulary entries from existing chunks.
 
 This extends the requirements system (spec: `2026-03-14-requirements-system-design.md`) with parseable, machine-verifiable steps.
 
@@ -10,36 +13,38 @@ This extends the requirements system (spec: `2026-03-14-requirements-system-desi
 
 ### New `vocabulary_entry` table
 
-| Column | Type | Notes |
-|--------|------|-------|
-| `id` | text (PK) | UUID as text |
-| `word` | text | The word or phrase, e.g. "creates", "logged in", "chunk" |
-| `category` | text | `actor`, `action`, `target`, `outcome`, `state`, `modifier`, `literal` |
-| `expects` | jsonb (nullable) | Array of categories this word expects to follow, e.g. `["target"]`. Null = no expectation. |
-| `codebaseId` | text (FK → codebase) | ON DELETE CASCADE |
-| `userId` | text (FK → user, nullable) | ON DELETE SET NULL (entry persists if creator is deleted) |
-| `createdAt` | timestamp | |
-| `updatedAt` | timestamp | Auto-updated via Drizzle `$onUpdate(() => new Date())` |
+| Column       | Type                       | Notes                                                                                      |
+| ------------ | -------------------------- | ------------------------------------------------------------------------------------------ |
+| `id`         | text (PK)                  | UUID as text                                                                               |
+| `word`       | text                       | The word or phrase, e.g. "creates", "logged in", "chunk"                                   |
+| `category`   | text                       | `actor`, `action`, `target`, `outcome`, `state`, `modifier`, `literal`                     |
+| `expects`    | jsonb (nullable)           | Array of categories this word expects to follow, e.g. `["target"]`. Null = no expectation. |
+| `codebaseId` | text (FK → codebase)       | ON DELETE CASCADE                                                                          |
+| `userId`     | text (FK → user, nullable) | ON DELETE SET NULL (entry persists if creator is deleted)                                  |
+| `createdAt`  | timestamp                  |                                                                                            |
+| `updatedAt`  | timestamp                  | Auto-updated via Drizzle `$onUpdate(() => new Date())`                                     |
 
 **Constraints:**
+
 - Unique on `(codebaseId, lower(word), category)` — case-insensitive uniqueness. Words are stored lowercase.
 - Index on `codebaseId`
 
-**Authorization:** All repository operations (list, create, update, delete) scope to the authenticated user's codebase ownership. The service verifies the user owns the codebase before any vocabulary operation.
+**Authorization:** All repository operations (list, create, update, delete) scope to the authenticated user's codebase ownership. The
+service verifies the user owns the codebase before any vocabulary operation.
 
 **Case sensitivity:** All matching is case-insensitive. Words are lowercased on insert and during tokenization.
 
 ### Categories
 
-| Category | Purpose | Examples |
-|----------|---------|---------|
-| `actor` | Who performs the action | user, admin, system, service |
-| `action` | What they do | clicks, creates, deletes, visits, searches |
-| `target` | What they act on | chunk, codebase, tag, dashboard, connection |
-| `outcome` | What they observe | sees, receives, is redirected to, is notified |
-| `state` | A condition | logged in, on the dashboard, has 3 chunks |
-| `modifier` | Connecting words (transparent to grammar) | a, an, the, with, on, their, not, is |
-| `literal` | Quoted values and numbers | Matched by pattern, no dictionary entry needed |
+| Category   | Purpose                                   | Examples                                       |
+| ---------- | ----------------------------------------- | ---------------------------------------------- |
+| `actor`    | Who performs the action                   | user, admin, system, service                   |
+| `action`   | What they do                              | clicks, creates, deletes, visits, searches     |
+| `target`   | What they act on                          | chunk, codebase, tag, dashboard, connection    |
+| `outcome`  | What they observe                         | sees, receives, is redirected to, is notified  |
+| `state`    | A condition                               | logged in, on the dashboard, has 3 chunks      |
+| `modifier` | Connecting words (transparent to grammar) | a, an, the, with, on, their, not, is           |
+| `literal`  | Quoted values and numbers                 | Matched by pattern, no dictionary entry needed |
 
 ### Slot expectations
 
@@ -53,7 +58,8 @@ Each entry can define `expects: string[]` — the categories that should follow 
 { "word": "the", "category": "modifier", "expects": null }
 ```
 
-Modifiers are transparent — they don't consume or satisfy `expects`. When checking expectations, the parser skips modifiers and checks the next non-modifier token.
+Modifiers are transparent — they don't consume or satisfy `expects`. When checking expectations, the parser skips modifiers and checks the
+next non-modifier token.
 
 Literals (quoted strings like `"hello"`, `'world'`, and numbers) satisfy any `expects` category — they're universal wildcards.
 
@@ -63,21 +69,27 @@ The parser validates a requirement step's text against the vocabulary for a give
 
 ### Tokenization
 
-1. Extract quoted strings and numbers, record their original positions, replace with `<literal_N>` indexed placeholders (preserving character offsets for position mapping)
+1. Extract quoted strings and numbers, record their original positions, replace with `<literal_N>` indexed placeholders (preserving
+   character offsets for position mapping)
 2. Lowercase the remaining text
 3. Sort vocabulary entries by word length descending (longest first)
-4. Scan left-to-right. At each position, try to match the longest vocabulary entry. On match, consume those characters and record the token with its **original-text position** (mapped back from placeholder offsets). On no match, consume one whitespace-delimited word and flag as `unknown_word`.
+4. Scan left-to-right. At each position, try to match the longest vocabulary entry. On match, consume those characters and record the token
+   with its **original-text position** (mapped back from placeholder offsets). On no match, consume one whitespace-delimited word and flag
+   as `unknown_word`.
 5. After tokenization, replace `<literal_N>` tokens with the original quoted values, preserving their recorded positions
 
-This greedy longest-match approach ensures "logged in user" matches `["logged in", "user"]` not `["logged", "in", "user"]`, because "logged in" (9 chars) is tried before "logged" (6 chars).
+This greedy longest-match approach ensures "logged in user" matches `["logged in", "user"]` not `["logged", "in", "user"]`, because "logged
+in" (9 chars) is tried before "logged" (6 chars).
 
 ### Validation pass
 
 For each matched token (left-to-right):
+
 - If the previous non-modifier token had `expects`, check that the current token's category is in the expected list
 - If not, produce an `unexpected_category` warning
 - Modifiers are skipped in this check — they never consume or satisfy expectations
-- **End-of-sequence check:** After processing all tokens, if the last non-modifier token had `expects` that was never satisfied, produce an `expects_not_satisfied` warning (e.g., "creates" expects [target] but step ended)
+- **End-of-sequence check:** After processing all tokens, if the last non-modifier token had `expects` that was never satisfied, produce an
+  `expects_not_satisfied` warning (e.g., "creates" expects [target] but step ended)
 
 ### Example
 
@@ -105,7 +117,7 @@ Step: `"When they creates the logged in"` (invalid)
 ```typescript
 interface ParsedToken {
     text: string;
-    category: string | null;  // null if unrecognized
+    category: string | null; // null if unrecognized
     position: { start: number; end: number };
 }
 
@@ -125,15 +137,21 @@ interface ParseResult {
 ### Integration with requirements
 
 When a requirement is created or updated (and `steps` is present in the body):
+
 1. Step sequence validation runs first (Given/When/Then order — existing validator)
 2. Vocabulary parsing runs on each step's text
 3. Both sets of warnings are returned in the response
 
-Vocabulary warnings do NOT block saving — they are informational. If the vocabulary fetch itself fails (DB error), the save proceeds with no vocabulary warnings rather than failing the entire operation.
+Vocabulary warnings do NOT block saving — they are informational. If the vocabulary fetch itself fails (DB error), the save proceeds with no
+vocabulary warnings rather than failing the entire operation.
 
-**Step text vs keyword:** The `POST /vocabulary/parse` endpoint receives the step's `text` field only (not the keyword). The keyword (`given`, `when`, `then`) is structural metadata, not part of the vocabulary. The parser does not need to recognize keywords as vocabulary entries.
+**Step text vs keyword:** The `POST /vocabulary/parse` endpoint receives the step's `text` field only (not the keyword). The keyword
+(`given`, `when`, `then`) is structural metadata, not part of the vocabulary. The parser does not need to recognize keywords as vocabulary
+entries.
 
-**Modifier pre-seeding:** When the first vocabulary entry is added to a codebase, a standard set of modifiers is auto-inserted: `a`, `an`, `the`, `is`, `are`, `was`, `were`, `with`, `on`, `to`, `their`, `not`, `has`, `have`, `they`, `it`. This prevents every codebase from manually adding common connecting words.
+**Modifier pre-seeding:** When the first vocabulary entry is added to a codebase, a standard set of modifiers is auto-inserted: `a`, `an`,
+`the`, `is`, `are`, `was`, `were`, `with`, `on`, `to`, `their`, `not`, `has`, `have`, `they`, `it`. This prevents every codebase from
+manually adding common connecting words.
 
 **Real-time parsing debounce:** The client-side parse call should be debounced at 300ms to avoid excessive API calls while typing.
 
@@ -164,25 +182,27 @@ Focus on domain-specific terms. Do not include common English words like "the", 
 
 ### Fallback
 
-If Ollama is not running, the endpoint returns `{ suggestions: [], message: "Ollama is not available" }`. The vocabulary works without AI — users add entries manually.
+If Ollama is not running, the endpoint returns `{ suggestions: [], message: "Ollama is not available" }`. The vocabulary works without AI —
+users add entries manually.
 
 ## API
 
 ### New endpoints
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/vocabulary?codebaseId=` | List all entries for a codebase |
-| `POST` | `/vocabulary` | Add entry |
-| `POST` | `/vocabulary/bulk` | Add multiple entries at once (for accepting AI suggestions) |
-| `PATCH` | `/vocabulary/:id` | Update entry |
-| `DELETE` | `/vocabulary/:id` | Remove entry |
-| `POST` | `/vocabulary/suggest` | AI-suggested entries (body: `{ codebaseId }`, requires Ollama) |
-| `POST` | `/vocabulary/parse` | Parse step text (body: `{ text, codebaseId }`, requires auth) |
+| Method   | Path                      | Description                                                    |
+| -------- | ------------------------- | -------------------------------------------------------------- |
+| `GET`    | `/vocabulary?codebaseId=` | List all entries for a codebase                                |
+| `POST`   | `/vocabulary`             | Add entry                                                      |
+| `POST`   | `/vocabulary/bulk`        | Add multiple entries at once (for accepting AI suggestions)    |
+| `PATCH`  | `/vocabulary/:id`         | Update entry                                                   |
+| `DELETE` | `/vocabulary/:id`         | Remove entry                                                   |
+| `POST`   | `/vocabulary/suggest`     | AI-suggested entries (body: `{ codebaseId }`, requires Ollama) |
+| `POST`   | `/vocabulary/parse`       | Parse step text (body: `{ text, codebaseId }`, requires auth)  |
 
 ### Modified endpoints
 
-- `POST /requirements` — after step validation, runs vocabulary parsing on each step. Response includes `vocabularyWarnings` alongside existing `warnings`.
+- `POST /requirements` — after step validation, runs vocabulary parsing on each step. Response includes `vocabularyWarnings` alongside
+  existing `warnings`.
 - `PATCH /requirements` — same, when `steps` is present.
 
 ### Route ordering
@@ -192,6 +212,7 @@ If Ollama is not running, the endpoint returns `{ suggestions: [], message: "Oll
 ### Request/response examples
 
 **POST /vocabulary:**
+
 ```json
 {
     "word": "creates",
@@ -202,18 +223,22 @@ If Ollama is not running, the endpoint returns `{ suggestions: [], message: "Oll
 ```
 
 **POST /vocabulary/parse:**
+
 ```json
 {
     "text": "a user creates the chunk",
     "codebaseId": "abc-123"
 }
 ```
+
 → Returns `ParseResult` with tokens and warnings.
 
 **POST /vocabulary/suggest:**
+
 ```json
 { "codebaseId": "abc-123" }
 ```
+
 → Returns `{ suggestions: [{ word, category, expects }...] }`
 
 ### Backend pattern
@@ -243,13 +268,16 @@ If Ollama is not running, the endpoint returns `{ suggestions: [], message: "Oll
 The existing step builder (in requirement create/edit pages) gets vocabulary-aware features:
 
 **Real-time parsing:** As the user types step text, run vocabulary parsing (debounced, client-side call to `POST /vocabulary/parse`):
+
 - Green highlight: recognized word
 - Yellow highlight: unknown word, with inline "Add to vocabulary?" action button
 - Red underline: unexpected category violation
 
-**Auto-complete:** After typing 2+ characters, show a dropdown of matching vocabulary entries. If the previous token has `expects`, filter suggestions to only those categories.
+**Auto-complete:** After typing 2+ characters, show a dropdown of matching vocabulary entries. If the previous token has `expects`, filter
+suggestions to only those categories.
 
-**"Add to vocabulary" quick action:** Clicking the yellow "Add?" button on an unknown word opens a small inline form (category dropdown + optional expects). Submits to `POST /vocabulary`, then re-parses the step.
+**"Add to vocabulary" quick action:** Clicking the yellow "Add?" button on an unknown word opens a small inline form (category dropdown +
+optional expects). Submits to `POST /vocabulary`, then re-parses the step.
 
 ### Nav
 

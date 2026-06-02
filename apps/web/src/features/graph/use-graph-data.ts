@@ -9,10 +9,9 @@ import { useQuery } from "@tanstack/react-query";
 import { useSearch } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 
-
-import { useActiveSpace } from "@/features/spaces/use-active-space";
 import { formIslands, type IslandFormationResult } from "@/features/graph/island-formation";
 import type { GraphAction } from "@/features/graph/use-graph-state";
+import { useActiveSpace } from "@/features/spaces/use-active-space";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
@@ -86,7 +85,10 @@ export function useGraphData(dispatch: React.Dispatch<GraphAction>) {
         let best: string | null = null;
         let bestCount = 0;
         for (const [id, count] of counts) {
-            if (count > bestCount) { best = id; bestCount = count; }
+            if (count > bestCount) {
+                best = id;
+                bestCount = count;
+            }
         }
         return best;
     }, [scopedChunkTags, availableTagTypeIds]);
@@ -113,13 +115,13 @@ export function useGraphData(dispatch: React.Dispatch<GraphAction>) {
             return { islands: [], bridges: [], chunkToIsland: new Map() };
         }
 
-        const chunkTags = (scopedChunkTags as Array<{ chunkId: string; tagTypeId: string | null; tagName: string }>);
+        const chunkTags = scopedChunkTags as Array<{ chunkId: string; tagTypeId: string | null; tagName: string }>;
 
         return formIslands({
             chunks: data.chunks,
             connections: data.connections ?? [],
             chunkTags,
-            groupingTagTypeId,
+            groupingTagTypeId
         });
     }, [data?.chunks, data?.connections, scopedChunkTags, groupingTagTypeId]);
 
@@ -145,7 +147,10 @@ export function useGraphData(dispatch: React.Dispatch<GraphAction>) {
         const map = new Map<string, number[]>();
         if (!islandData) return map;
         for (const island of islandData.islands) {
-            map.set(island.id, island.chunkIds.map(id => chunkHealthScores.get(id) ?? 50));
+            map.set(
+                island.id,
+                island.chunkIds.map(id => chunkHealthScores.get(id) ?? 50)
+            );
         }
         return map;
     }, [islandData, chunkHealthScores]);
@@ -163,6 +168,6 @@ export function useGraphData(dispatch: React.Dispatch<GraphAction>) {
         initialFocusChunkId,
         initialIslandId,
         chunkHealthScores,
-        islandHealthScores,
+        islandHealthScores
     };
 }

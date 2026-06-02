@@ -1,18 +1,22 @@
 # Markdown Docs Import Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to
+> implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Enable importing folders of markdown documents as chunks via API, CLI, and web UI.
 
-**Architecture:** API-first — a new `POST /api/chunks/import-docs` endpoint parses YAML frontmatter, extracts titles, derives tags from folder paths, and creates chunks. CLI and web UI are thin clients that read files and send `{path, content}` arrays to the endpoint.
+**Architecture:** API-first — a new `POST /api/chunks/import-docs` endpoint parses YAML frontmatter, extracts titles, derives tags from
+folder paths, and creates chunks. CLI and web UI are thin clients that read files and send `{path, content}` arrays to the endpoint.
 
-**Tech Stack:** Elysia routes, Effect for service composition, vitest for tests, Commander.js for CLI, TanStack Router/Query + base-ui for web.
+**Tech Stack:** Elysia routes, Effect for service composition, vitest for tests, Commander.js for CLI, TanStack Router/Query + base-ui for
+web.
 
 ---
 
 ### Task 1: Server-Side Markdown Parser
 
 **Files:**
+
 - Create: `packages/api/src/chunks/parse-docs.ts`
 - Create: `packages/api/src/chunks/parse-docs.test.ts`
 
@@ -93,8 +97,7 @@ describe("parseDocFile", () => {
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `cd packages/api && npx vitest run src/chunks/parse-docs.test.ts`
-Expected: FAIL — `parseDocFile` is not defined.
+Run: `cd packages/api && npx vitest run src/chunks/parse-docs.test.ts` Expected: FAIL — `parseDocFile` is not defined.
 
 - [ ] **Step 3: Implement the parser**
 
@@ -213,8 +216,7 @@ function extractFrontmatter(raw: string): { frontmatter: Record<string, unknown>
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `cd packages/api && npx vitest run src/chunks/parse-docs.test.ts`
-Expected: All 10 tests PASS.
+Run: `cd packages/api && npx vitest run src/chunks/parse-docs.test.ts` Expected: All 10 tests PASS.
 
 - [ ] **Step 5: Commit**
 
@@ -228,6 +230,7 @@ git commit -m "feat: add markdown doc parser with frontmatter and folder-tag ext
 ### Task 2: API Endpoint
 
 **Files:**
+
 - Modify: `packages/api/src/chunks/service.ts` — add `importDocs` function
 - Modify: `packages/api/src/chunks/routes.ts` — add `/chunks/import-docs` route
 
@@ -238,11 +241,7 @@ In `packages/api/src/chunks/service.ts`, add after the existing `importChunks` f
 ```typescript
 import { parseDocFile } from "./parse-docs";
 
-export function importDocs(
-    userId: string,
-    files: { path: string; content: string }[],
-    codebaseId: string
-) {
+export function importDocs(userId: string, files: { path: string; content: string }[], codebaseId: string) {
     const results: { created: number; skipped: number; errors: { path: string; error: string }[] } = {
         created: 0,
         skipped: 0,
@@ -313,13 +312,11 @@ In `packages/api/src/chunks/routes.ts`, add after the existing `.post("/chunks/i
 
 - [ ] **Step 3: Run type-check**
 
-Run: `cd packages/api && npx tsc --noEmit`
-Expected: No type errors.
+Run: `cd packages/api && npx tsc --noEmit` Expected: No type errors.
 
 - [ ] **Step 4: Run existing tests to verify no regressions**
 
-Run: `cd packages/api && npx vitest run`
-Expected: All tests pass.
+Run: `cd packages/api && npx vitest run` Expected: All tests pass.
 
 - [ ] **Step 5: Commit**
 
@@ -333,6 +330,7 @@ git commit -m "feat: add POST /api/chunks/import-docs endpoint"
 ### Task 3: CLI Command
 
 **Files:**
+
 - Create: `apps/cli/src/commands/import-docs.ts`
 - Modify: `apps/cli/src/index.ts` — register the command
 
@@ -429,13 +427,7 @@ export const importDocsCommand = new Command("import-docs")
             }
 
             outputQuiet(cmd, String(data.created));
-            output(
-                cmd,
-                data,
-                formatSuccess(
-                    `Created: ${data.created} | Skipped: ${data.skipped} | Errors: ${data.errors.length}`
-                )
-            );
+            output(cmd, data, formatSuccess(`Created: ${data.created} | Skipped: ${data.skipped} | Errors: ${data.errors.length}`));
         } catch (err) {
             outputError(`Failed to connect to server: ${err}`);
             process.exit(1);
@@ -459,8 +451,7 @@ program.addCommand(importDocsCommand);
 
 - [ ] **Step 3: Verify CLI builds**
 
-Run: `cd apps/cli && npx tsc --noEmit`
-Expected: No type errors.
+Run: `cd apps/cli && npx tsc --noEmit` Expected: No type errors.
 
 - [ ] **Step 4: Commit**
 
@@ -474,6 +465,7 @@ git commit -m "feat: add fubbik import-docs CLI command"
 ### Task 4: Web UI — Import Dialog on Chunks List
 
 **Files:**
+
 - Create: `apps/web/src/features/import/import-dialog.tsx`
 - Modify: `apps/web/src/routes/chunks.index.tsx` — add Import Docs button
 
@@ -660,7 +652,8 @@ import { ImportDocsDialog } from "@/features/import/import-dialog";
 
 Add the `FolderUp` icon to the existing lucide-react import.
 
-Find the header actions area (around line 526-535, the `<div className="flex items-center gap-2">` containing "View archived" and "New Chunk"). Add the import button before the "New Chunk" button:
+Find the header actions area (around line 526-535, the `<div className="flex items-center gap-2">` containing "View archived" and "New
+Chunk"). Add the import button before the "New Chunk" button:
 
 ```typescript
 <ImportDocsDialog
@@ -675,8 +668,7 @@ Find the header actions area (around line 526-535, the `<div className="flex ite
 
 - [ ] **Step 3: Verify web app builds**
 
-Run: `cd apps/web && npx tsc --noEmit`
-Expected: No type errors.
+Run: `cd apps/web && npx tsc --noEmit` Expected: No type errors.
 
 - [ ] **Step 4: Commit**
 
@@ -690,6 +682,7 @@ git commit -m "feat: add Import Docs dialog to chunks list page"
 ### Task 5: Web UI — Dedicated Import Page
 
 **Files:**
+
 - Create: `apps/web/src/routes/import.tsx`
 
 - [ ] **Step 1: Create the import page**
@@ -1029,8 +1022,7 @@ function ImportPage() {
 
 - [ ] **Step 2: Verify web app builds**
 
-Run: `cd apps/web && npx tsc --noEmit`
-Expected: No type errors.
+Run: `cd apps/web && npx tsc --noEmit` Expected: No type errors.
 
 - [ ] **Step 3: Commit**
 
@@ -1044,11 +1036,13 @@ git commit -m "feat: add dedicated /import page with preview table"
 ### Task 6: Navigation Link
 
 **Files:**
+
 - Modify: `apps/web/src/routes/__root.tsx` — add /import nav link
 
 - [ ] **Step 1: Add nav link**
 
-In `apps/web/src/routes/__root.tsx`, find the nav links section and add `/import` link alongside the other navigation items. Add it after an appropriate existing link (e.g., after "Chunks"):
+In `apps/web/src/routes/__root.tsx`, find the nav links section and add `/import` link alongside the other navigation items. Add it after an
+appropriate existing link (e.g., after "Chunks"):
 
 ```typescript
 <Link
@@ -1063,8 +1057,7 @@ Also add the same link to the mobile nav in `apps/web/src/features/nav/mobile-na
 
 - [ ] **Step 2: Verify web app builds**
 
-Run: `cd apps/web && npx tsc --noEmit`
-Expected: No type errors.
+Run: `cd apps/web && npx tsc --noEmit` Expected: No type errors.
 
 - [ ] **Step 3: Commit**
 
@@ -1079,17 +1072,16 @@ git commit -m "feat: add Import nav link"
 
 - [ ] **Step 1: Run full test suite**
 
-Run: `pnpm test`
-Expected: All tests pass.
+Run: `pnpm test` Expected: All tests pass.
 
 - [ ] **Step 2: Run type-check across all packages**
 
-Run: `pnpm run check-types`
-Expected: No type errors.
+Run: `pnpm run check-types` Expected: No type errors.
 
 - [ ] **Step 3: Manual verification checklist**
 
 If the dev server is running (`pnpm dev`):
+
 - Create a test folder with 3-4 `.md` files (some with frontmatter, some without, in nested subdirectories)
 - Test CLI: `fubbik import-docs ./test-docs --codebase <name>`
 - Test web dialog: Go to `/chunks`, click "Import Docs", select the folder, pick codebase, import

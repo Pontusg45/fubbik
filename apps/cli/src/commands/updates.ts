@@ -70,10 +70,7 @@ export const updatesCommand = new Command("updates")
                 return;
             }
 
-            const lines: string[] = [
-                formatSuccess(`${updates.length} update${updates.length !== 1 ? "s" : ""} tagged "${opts.tag}":`),
-                ""
-            ];
+            const lines: string[] = [formatSuccess(`${updates.length} update${updates.length !== 1 ? "s" : ""} tagged "${opts.tag}":`), ""];
 
             for (const u of updates) {
                 const isCreation = u.version === 0;

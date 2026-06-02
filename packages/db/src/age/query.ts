@@ -39,9 +39,7 @@ export function getNeighborhood(chunkId: string, maxHops: number) {
         `MATCH (c:chunk {id: '${chunkId}'})-[*1..${maxHops}]-(neighbor:chunk)
          RETURN DISTINCT neighbor.id AS id`,
         "id agtype"
-    ).pipe(
-        Effect.map(rows => rows.map(r => parseAgtypeId(ageField(r as Record<string, unknown>, "id"))))
-    );
+    ).pipe(Effect.map(rows => rows.map(r => parseAgtypeId(ageField(r as Record<string, unknown>, "id")))));
 }
 
 export function getTransitiveDeps(requirementId: string) {
@@ -86,9 +84,7 @@ export function checkCircular(requirementId: string, dependsOnId: string) {
         `MATCH (start:requirement {id: '${dependsOnId}'})-[:depends_on*]->(dest:requirement {id: '${requirementId}'})
          RETURN 1 AS found LIMIT 1`,
         "found agtype"
-    ).pipe(
-        Effect.map(rows => rows.length > 0)
-    );
+    ).pipe(Effect.map(rows => rows.length > 0));
 }
 
 export function getChunksAffectedByRequirement(requirementId: string, hops: number) {
@@ -96,9 +92,7 @@ export function getChunksAffectedByRequirement(requirementId: string, hops: numb
         `MATCH (r:requirement {id: '${requirementId}'})-[:covers]->(c:chunk)-[:connects*0..${hops}]-(related:chunk)
          RETURN DISTINCT related.id AS id`,
         "id agtype"
-    ).pipe(
-        Effect.map(rows => rows.map(r => parseAgtypeId(ageField(r as Record<string, unknown>, "id"))))
-    );
+    ).pipe(Effect.map(rows => rows.map(r => parseAgtypeId(ageField(r as Record<string, unknown>, "id")))));
 }
 
 export function getSubgraph(chunkIds: string[]) {
@@ -109,14 +103,16 @@ export function getSubgraph(chunkIds: string[]) {
          RETURN a.id AS source, e.relation AS relation, b.id AS target`,
         "source agtype, relation agtype, target agtype"
     ).pipe(
-        Effect.map(rows => rows.map(r => {
-            const row = r as Record<string, unknown>;
-            return {
-                source: parseAgtypeId(ageField(row, "source")),
-                relation: parseAgtypeId(ageField(row, "relation")),
-                target: parseAgtypeId(ageField(row, "target"))
-            };
-        }))
+        Effect.map(rows =>
+            rows.map(r => {
+                const row = r as Record<string, unknown>;
+                return {
+                    source: parseAgtypeId(ageField(row, "source")),
+                    relation: parseAgtypeId(ageField(row, "relation")),
+                    target: parseAgtypeId(ageField(row, "target"))
+                };
+            })
+        )
     );
 }
 
@@ -167,11 +163,7 @@ export function getConnectionDegrees(chunkIds: string[]) {
     );
 }
 
-export function getGraphProximityBoost(
-    anchorId: string,
-    candidateIds: string[],
-    maxHops: number
-) {
+export function getGraphProximityBoost(anchorId: string, candidateIds: string[], maxHops: number) {
     if (candidateIds.length === 0) return Effect.succeed(new Map<string, number>());
 
     const idList = candidateIds.map(id => `'${escCypher(id)}'`).join(",");
@@ -360,7 +352,10 @@ export function findShortestPathWithDetails(chunkIdA: string, chunkIdB: string) 
                     const adj = new Map<string, Array<{ neighbor: string; relation: string }>>();
                     const addEdge = (from: string, to: string, rel: string) => {
                         let list = adj.get(from);
-                        if (!list) { list = []; adj.set(from, list); }
+                        if (!list) {
+                            list = [];
+                            adj.set(from, list);
+                        }
                         list.push({ neighbor: to, relation: rel });
                     };
                     for (const row of edgeRows) {
@@ -429,10 +424,7 @@ export function getUpstreamChunks(chunkId: string, maxHops: number) {
 export function getOrphanChunkIds() {
     // AGE 1.x does not support the anonymous pattern `NOT (c)-[]-()`.
     // Use the EXISTS subquery form instead.
-    return cypher(
-        `MATCH (c:chunk) WHERE NOT EXISTS { MATCH (c)-[]-() } RETURN c.id AS id`,
-        "id agtype"
-    ).pipe(
+    return cypher(`MATCH (c:chunk) WHERE NOT EXISTS { MATCH (c)-[]-() } RETURN c.id AS id`, "id agtype").pipe(
         Effect.map(rows => rows.map(r => parseAgtypeId(ageField(r as Record<string, unknown>, "id"))))
     );
 }

@@ -46,9 +46,7 @@ export function createChunkType(userId: string, body: CreateChunkTypeBody) {
         }
         const existing = yield* findChunkTypeById(body.id);
         if (existing) {
-            return yield* Effect.fail(
-                new ValidationError({ message: `chunk type "${body.id}" already exists` })
-            );
+            return yield* Effect.fail(new ValidationError({ message: `chunk type "${body.id}" already exists` }));
         }
         return yield* createChunkTypeRepo({ ...body, userId });
     });
@@ -61,9 +59,7 @@ export function updateChunkType(id: string, userId: string, body: Partial<Omit<C
             return yield* Effect.fail(new NotFoundError({ resource: "ChunkType" }));
         }
         if (existing.builtIn) {
-            return yield* Effect.fail(
-                new ValidationError({ message: "builtin chunk types cannot be edited" })
-            );
+            return yield* Effect.fail(new ValidationError({ message: "builtin chunk types cannot be edited" }));
         }
         const updated = yield* updateChunkTypeRow(id, userId, body);
         if (!updated) {
@@ -80,9 +76,7 @@ export function deleteChunkType(id: string, userId: string) {
             return yield* Effect.fail(new NotFoundError({ resource: "ChunkType" }));
         }
         if (existing.builtIn) {
-            return yield* Effect.fail(
-                new ValidationError({ message: "builtin chunk types cannot be deleted" })
-            );
+            return yield* Effect.fail(new ValidationError({ message: "builtin chunk types cannot be deleted" }));
         }
         const deleted = yield* deleteChunkTypeRow(id, userId);
         if (!deleted) {
@@ -115,9 +109,7 @@ export function createConnectionRelation(userId: string, body: CreateRelationBod
         }
         const existing = yield* findConnectionRelationById(body.id);
         if (existing) {
-            return yield* Effect.fail(
-                new ValidationError({ message: `relation "${body.id}" already exists` })
-            );
+            return yield* Effect.fail(new ValidationError({ message: `relation "${body.id}" already exists` }));
         }
         return yield* createConnectionRelationRepo({ ...body, userId });
     });
@@ -127,20 +119,14 @@ export function updateConnectionRelation(id: string, userId: string, body: Parti
     return Effect.gen(function* () {
         const existing = yield* findConnectionRelationById(id);
         if (!existing) {
-            return yield* Effect.fail(
-                new NotFoundError({ resource: "ConnectionRelation" })
-            );
+            return yield* Effect.fail(new NotFoundError({ resource: "ConnectionRelation" }));
         }
         if (existing.builtIn) {
-            return yield* Effect.fail(
-                new ValidationError({ message: "builtin relations cannot be edited" })
-            );
+            return yield* Effect.fail(new ValidationError({ message: "builtin relations cannot be edited" }));
         }
         const updated = yield* updateConnectionRelationRow(id, userId, body);
         if (!updated) {
-            return yield* Effect.fail(
-                new NotFoundError({ resource: "ConnectionRelation" })
-            );
+            return yield* Effect.fail(new NotFoundError({ resource: "ConnectionRelation" }));
         }
         return updated;
     });
@@ -150,20 +136,14 @@ export function deleteConnectionRelation(id: string, userId: string) {
     return Effect.gen(function* () {
         const existing = yield* findConnectionRelationById(id);
         if (!existing) {
-            return yield* Effect.fail(
-                new NotFoundError({ resource: "ConnectionRelation" })
-            );
+            return yield* Effect.fail(new NotFoundError({ resource: "ConnectionRelation" }));
         }
         if (existing.builtIn) {
-            return yield* Effect.fail(
-                new ValidationError({ message: "builtin relations cannot be deleted" })
-            );
+            return yield* Effect.fail(new ValidationError({ message: "builtin relations cannot be deleted" }));
         }
         const deleted = yield* deleteConnectionRelationRow(id, userId);
         if (!deleted) {
-            return yield* Effect.fail(
-                new NotFoundError({ resource: "ConnectionRelation" })
-            );
+            return yield* Effect.fail(new NotFoundError({ resource: "ConnectionRelation" }));
         }
         return deleted;
     });

@@ -19,9 +19,8 @@ export const contextCommand = new Command("export")
             process.exit(1);
         }
 
-        const maxTokens = cmd.getOptionValueSource("maxTokens") === "default"
-            ? String(config.context?.maxTokens ?? opts.maxTokens)
-            : opts.maxTokens;
+        const maxTokens =
+            cmd.getOptionValueSource("maxTokens") === "default" ? String(config.context?.maxTokens ?? opts.maxTokens) : opts.maxTokens;
 
         const spaceId = opts.space ?? opts.codebase;
         const params = new URLSearchParams();

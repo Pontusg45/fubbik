@@ -12,11 +12,11 @@ vi.mock("@fubbik/db/repository", () => ({
     getConnectionDegrees: vi.fn().mockReturnValue(Effect.succeed(new Map())),
     getGraphProximityBoost: vi.fn().mockReturnValue(Effect.succeed(new Map())),
     incrementConnectionWeights: vi.fn().mockReturnValue(Effect.succeed(0)),
-    semanticSearch: vi.fn(),
+    semanticSearch: vi.fn()
 }));
 
 vi.mock("../ollama/client", () => ({
-    generateQueryEmbedding: vi.fn(),
+    generateQueryEmbedding: vi.fn()
 }));
 
 import {
@@ -25,8 +25,9 @@ import {
     listChunks,
     lookupChunksByFilePath,
     getRequirementsForChunks,
-    semanticSearch,
+    semanticSearch
 } from "@fubbik/db/repository";
+
 import { generateQueryEmbedding } from "../ollama/client";
 import { getContextForFile } from "./service";
 
@@ -36,7 +37,7 @@ function makeChunk(id: string, title: string) {
         title,
         content: `Content for ${title}`,
         type: "note",
-        summary: null,
+        summary: null
     };
 }
 
@@ -48,12 +49,8 @@ describe("getContextForFile", () => {
         const listMock = listChunks as ReturnType<typeof vi.fn>;
         listMock.mockReturnValue(
             Effect.succeed({
-                chunks: [
-                    makeChunk("c1", "Chunk 1"),
-                    makeChunk("c2", "Chunk 2"),
-                    makeChunk("c3", "Chunk 3"),
-                ],
-                total: 3,
+                chunks: [makeChunk("c1", "Chunk 1"), makeChunk("c2", "Chunk 2"), makeChunk("c3", "Chunk 3")],
+                total: 3
             })
         );
 
@@ -61,7 +58,7 @@ describe("getContextForFile", () => {
         batchMock.mockReturnValue(
             Effect.succeed([
                 { chunkId: "c1", pattern: "src/**/*.ts", note: null },
-                { chunkId: "c3", pattern: "lib/**/*.ts", note: null },
+                { chunkId: "c3", pattern: "lib/**/*.ts", note: null }
             ])
         );
 
@@ -74,9 +71,7 @@ describe("getContextForFile", () => {
         const reqMock = getRequirementsForChunks as ReturnType<typeof vi.fn>;
         reqMock.mockReturnValue(Effect.succeed([]));
 
-        const result = await Effect.runPromise(
-            getContextForFile("user-1", "src/auth/service.ts")
-        );
+        const result = await Effect.runPromise(getContextForFile("user-1", "src/auth/service.ts"));
 
         // Should have called batch function exactly once
         expect(batchMock).toHaveBeenCalledTimes(1);
@@ -108,7 +103,7 @@ describe("getContextForFile scoring", () => {
                         consequences: null,
                         embedding: null,
                         reviewStatus: null,
-                        updatedAt: now,
+                        updatedAt: now
                     },
                     {
                         ...makeChunk("c2", "Important Doc"),
@@ -118,10 +113,10 @@ describe("getContextForFile scoring", () => {
                         consequences: null,
                         embedding: null,
                         reviewStatus: "approved",
-                        updatedAt: now,
-                    },
+                        updatedAt: now
+                    }
                 ],
-                total: 2,
+                total: 2
             })
         );
 
@@ -129,7 +124,7 @@ describe("getContextForFile scoring", () => {
         batchMock.mockReturnValue(
             Effect.succeed([
                 { chunkId: "c1", pattern: "src/**/*.ts", note: null },
-                { chunkId: "c2", pattern: "src/**/*.ts", note: null },
+                { chunkId: "c2", pattern: "src/**/*.ts", note: null }
             ])
         );
 
@@ -142,9 +137,7 @@ describe("getContextForFile scoring", () => {
         const reqMock = getRequirementsForChunks as ReturnType<typeof vi.fn>;
         reqMock.mockReturnValue(Effect.succeed([]));
 
-        const result = await Effect.runPromise(
-            getContextForFile("user-1", "src/auth/service.ts")
-        );
+        const result = await Effect.runPromise(getContextForFile("user-1", "src/auth/service.ts"));
 
         expect(result.chunks).toHaveLength(2);
 
@@ -168,20 +161,18 @@ describe("getContextForFile scoring", () => {
             consequences: null,
             embedding: null,
             reviewStatus: null,
-            updatedAt: now,
+            updatedAt: now
         };
 
         const lookupMock = lookupChunksByFilePath as ReturnType<typeof vi.fn>;
-        lookupMock.mockReturnValue(
-            Effect.succeed([{ chunkId: "c-ref" }])
-        );
+        lookupMock.mockReturnValue(Effect.succeed([{ chunkId: "c-ref" }]));
 
         const { getChunkById } = await import("@fubbik/db/repository");
         const getByIdMock = getChunkById as ReturnType<typeof vi.fn>;
         getByIdMock.mockReturnValue(
             Effect.succeed({
                 ...makeChunk("c-ref", "File Ref Chunk"),
-                ...baseFields,
+                ...baseFields
             })
         );
 
@@ -191,19 +182,15 @@ describe("getContextForFile scoring", () => {
                 chunks: [
                     {
                         ...makeChunk("c-glob", "Glob Chunk"),
-                        ...baseFields,
-                    },
+                        ...baseFields
+                    }
                 ],
-                total: 1,
+                total: 1
             })
         );
 
         const batchMock = getAppliesToForChunks as ReturnType<typeof vi.fn>;
-        batchMock.mockReturnValue(
-            Effect.succeed([
-                { chunkId: "c-glob", pattern: "src/**/*.ts", note: null },
-            ])
-        );
+        batchMock.mockReturnValue(Effect.succeed([{ chunkId: "c-glob", pattern: "src/**/*.ts", note: null }]));
 
         const embeddingMock = generateQueryEmbedding as ReturnType<typeof vi.fn>;
         embeddingMock.mockReturnValue(Effect.fail(new Error("no ollama")));
@@ -214,9 +201,7 @@ describe("getContextForFile scoring", () => {
         const reqMock = getRequirementsForChunks as ReturnType<typeof vi.fn>;
         reqMock.mockReturnValue(Effect.succeed([]));
 
-        const result = await Effect.runPromise(
-            getContextForFile("user-1", "src/auth/service.ts")
-        );
+        const result = await Effect.runPromise(getContextForFile("user-1", "src/auth/service.ts"));
 
         expect(result.chunks).toHaveLength(2);
 
@@ -245,9 +230,11 @@ describe("getContextForFile semantic strategy", () => {
         embeddingMock.mockReturnValue(Effect.succeed([0.1, 0.2, 0.3]));
 
         const semanticMock = semanticSearch as ReturnType<typeof vi.fn>;
-        semanticMock.mockReturnValue(Effect.succeed([
-            { id: "s1", title: "Auth Middleware", type: "document", content: "auth content", summary: null, similarity: 0.85 },
-        ]));
+        semanticMock.mockReturnValue(
+            Effect.succeed([
+                { id: "s1", title: "Auth Middleware", type: "document", content: "auth content", summary: null, similarity: 0.85 }
+            ])
+        );
 
         const connMock = getConnectionsForChunks as ReturnType<typeof vi.fn>;
         connMock.mockReturnValue(Effect.succeed([]));
@@ -255,9 +242,7 @@ describe("getContextForFile semantic strategy", () => {
         const reqMock = getRequirementsForChunks as ReturnType<typeof vi.fn>;
         reqMock.mockReturnValue(Effect.succeed([]));
 
-        const result = await Effect.runPromise(
-            getContextForFile("user-1", "src/auth/middleware.ts")
-        );
+        const result = await Effect.runPromise(getContextForFile("user-1", "src/auth/middleware.ts"));
 
         expect(result.chunks).toHaveLength(1);
         expect(result.chunks[0]!.id).toBe("s1");
@@ -283,9 +268,7 @@ describe("getContextForFile semantic strategy", () => {
         const reqMock = getRequirementsForChunks as ReturnType<typeof vi.fn>;
         reqMock.mockReturnValue(Effect.succeed([]));
 
-        const result = await Effect.runPromise(
-            getContextForFile("user-1", "src/auth/middleware.ts")
-        );
+        const result = await Effect.runPromise(getContextForFile("user-1", "src/auth/middleware.ts"));
 
         expect(result.chunks).toHaveLength(0);
     });

@@ -1,16 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import {
-    AlertTriangle,
-    CheckCircle2,
-    ChevronDown,
-    ChevronRight,
-    FileText,
-    FolderUp,
-    Upload,
-    XCircle
-} from "lucide-react";
-import { useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
+import { AlertTriangle, CheckCircle2, ChevronDown, ChevronRight, FileText, FolderUp, Upload, XCircle } from "lucide-react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
@@ -114,7 +105,7 @@ export function ImportQuickMode() {
     const { data: spaces } = useApiQuery<Array<{ id: string; name: string }>>({
         queryKey: ["spaces"],
         queryFn: () => api.api.spaces.get(),
-        fallback: [],
+        fallback: []
     });
 
     const importMutation = useMutation({
@@ -221,15 +212,9 @@ export function ImportQuickMode() {
                 </div>
 
                 {previews.length > 0 && (
-                    <Button
-                        size="sm"
-                        onClick={handleImport}
-                        disabled={importMutation.isPending || selectedCount === 0 || !spaceId}
-                    >
+                    <Button size="sm" onClick={handleImport} disabled={importMutation.isPending || selectedCount === 0 || !spaceId}>
                         <Upload className="mr-1 size-3.5" />
-                        {importMutation.isPending
-                            ? "Importing..."
-                            : `Import ${selectedCount} file${selectedCount !== 1 ? "s" : ""}`}
+                        {importMutation.isPending ? "Importing..." : `Import ${selectedCount} file${selectedCount !== 1 ? "s" : ""}`}
                     </Button>
                 )}
             </div>
@@ -265,11 +250,7 @@ export function ImportQuickMode() {
                                     className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-sm"
                                     onClick={() => setShowErrors(!showErrors)}
                                 >
-                                    {showErrors ? (
-                                        <ChevronDown className="size-4" />
-                                    ) : (
-                                        <ChevronRight className="size-4" />
-                                    )}
+                                    {showErrors ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
                                     Show error details
                                 </button>
                                 {showErrors && (
@@ -304,9 +285,7 @@ export function ImportQuickMode() {
                     onClick={() => folderInputRef.current?.click()}
                 >
                     <FolderUp className="text-muted-foreground size-10" />
-                    <p className="text-muted-foreground text-sm">
-                        Select a folder of markdown files to preview and import
-                    </p>
+                    <p className="text-muted-foreground text-sm">Select a folder of markdown files to preview and import</p>
                 </div>
             )}
 
@@ -331,15 +310,9 @@ export function ImportQuickMode() {
                         </thead>
                         <tbody>
                             {previews.map((preview, index) => (
-                                <tr
-                                    key={preview.path}
-                                    className="hover:bg-muted/30 border-b last:border-b-0"
-                                >
+                                <tr key={preview.path} className="hover:bg-muted/30 border-b last:border-b-0">
                                     <td className="px-3 py-2">
-                                        <Checkbox
-                                            checked={preview.selected}
-                                            onCheckedChange={() => toggleRow(index)}
-                                        />
+                                        <Checkbox checked={preview.selected} onCheckedChange={() => toggleRow(index)} />
                                     </td>
                                     <td className="max-w-48 truncate px-3 py-2 font-mono text-xs">
                                         <span className="flex items-center gap-1.5">
@@ -371,8 +344,8 @@ export function ImportQuickMode() {
 
             {previews.length > 0 && (
                 <p className="text-muted-foreground mt-2 text-xs">
-                    {selectedCount} of {previews.length} file{previews.length !== 1 ? "s" : ""} selected
-                    for import. Tags and types shown are previews — the server does the final parsing.
+                    {selectedCount} of {previews.length} file{previews.length !== 1 ? "s" : ""} selected for import. Tags and types shown
+                    are previews — the server does the final parsing.
                 </p>
             )}
         </>

@@ -1,19 +1,5 @@
-import {
-    DndContext,
-    KeyboardSensor,
-    PointerSensor,
-    closestCenter,
-    useSensor,
-    useSensors,
-    type DragEndEvent,
-} from "@dnd-kit/core";
-import {
-    SortableContext,
-    arrayMove,
-    sortableKeyboardCoordinates,
-    useSortable,
-    verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
+import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
+import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useEffect, useState, type HTMLAttributes, type ReactNode } from "react";
 
@@ -39,19 +25,13 @@ export interface SortableListProps<TItem> {
  * Keeping the API minimal on purpose: the caller owns state + server sync.
  * Grid/horizontal strategies can land when we actually need them.
  */
-export function SortableList<TItem>({
-    items,
-    getId,
-    onReorder,
-    renderItem,
-    activationDistance = 4,
-}: SortableListProps<TItem>) {
+export function SortableList<TItem>({ items, getId, onReorder, renderItem, activationDistance = 4 }: SortableListProps<TItem>) {
     const [local, setLocal] = useState(items);
     useEffect(() => setLocal(items), [items]);
 
     const sensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: activationDistance } }),
-        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
     );
 
     function onDragEnd(event: DragEndEvent) {
@@ -80,18 +60,12 @@ export function SortableList<TItem>({
     );
 }
 
-function SortableRow({
-    id,
-    children,
-}: {
-    id: string;
-    children: (dragHandleProps: HTMLAttributes<HTMLElement>) => ReactNode;
-}) {
+function SortableRow({ id, children }: { id: string; children: (dragHandleProps: HTMLAttributes<HTMLElement>) => ReactNode }) {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
     const style: React.CSSProperties = {
         transform: CSS.Transform.toString(transform),
         transition,
-        opacity: isDragging ? 0.5 : undefined,
+        opacity: isDragging ? 0.5 : undefined
     };
     return (
         <div ref={setNodeRef} style={style}>

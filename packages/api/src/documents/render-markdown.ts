@@ -1,5 +1,5 @@
-import type { MarkdownSection } from "./split-markdown";
 import { tagsFromPath } from "../chunks/parse-docs";
+import type { MarkdownSection } from "./split-markdown";
 
 interface RenderOptions {
     title: string;

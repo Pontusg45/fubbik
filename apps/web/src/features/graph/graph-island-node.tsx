@@ -1,5 +1,5 @@
-import { memo } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
+import { memo } from "react";
 
 export interface IslandNodeData {
     name: string;
@@ -28,7 +28,9 @@ function IslandNodeComponent({ data }: NodeProps) {
             >
                 <Handle type="source" position={Position.Top} className="!invisible" />
                 <Handle type="target" position={Position.Bottom} className="!invisible" />
-                <div className="text-[11px] font-medium" style={{ color }}>{name}</div>
+                <div className="text-[11px] font-medium" style={{ color }}>
+                    {name}
+                </div>
                 <div className="mt-0.5 text-[9px] text-slate-500">1 chunk</div>
             </div>
         );
@@ -44,7 +46,7 @@ function IslandNodeComponent({ data }: NodeProps) {
             style={{
                 background: `${color}0a`,
                 border: `2px solid ${color}30`,
-                boxShadow: `0 0 30px ${color}08, inset 0 0 30px ${color}05`,
+                boxShadow: `0 0 30px ${color}08, inset 0 0 30px ${color}05`
             }}
         >
             <Handle type="source" position={Position.Top} className="!invisible" />
@@ -54,7 +56,7 @@ function IslandNodeComponent({ data }: NodeProps) {
 
             {/* Group label badge */}
             <div
-                className="absolute -top-2.5 left-1/2 -translate-x-1/2 rounded-full px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-wider whitespace-nowrap"
+                className="absolute -top-2.5 left-1/2 -translate-x-1/2 rounded-full px-2.5 py-0.5 text-[9px] font-bold tracking-wider whitespace-nowrap uppercase"
                 style={{ background: `${color}25`, color, border: `1px solid ${color}40` }}
             >
                 {name}
@@ -62,7 +64,7 @@ function IslandNodeComponent({ data }: NodeProps) {
 
             {/* Body */}
             <div className="px-4 pt-5 pb-3.5 text-center">
-                <div className="text-[22px] font-semibold leading-none" style={{ color }}>
+                <div className="text-[22px] leading-none font-semibold" style={{ color }}>
                     {chunkCount}
                 </div>
                 <div className="mt-0.5 text-[9px] text-slate-500">chunks</div>
@@ -70,15 +72,9 @@ function IslandNodeComponent({ data }: NodeProps) {
                 {displayDots.length > 0 && (
                     <div className="mt-2.5 flex flex-wrap justify-center gap-[3px]">
                         {displayDots.map((score, i) => (
-                            <div
-                                key={i}
-                                className="h-[6px] w-[6px] rounded-full"
-                                style={{ background: healthColor(score) }}
-                            />
+                            <div key={i} className="h-[6px] w-[6px] rounded-full" style={{ background: healthColor(score) }} />
                         ))}
-                        {overflow > 0 && (
-                            <span className="ml-0.5 text-[8px] text-slate-500">+{overflow}</span>
-                        )}
+                        {overflow > 0 && <span className="ml-0.5 text-[8px] text-slate-500">+{overflow}</span>}
                     </div>
                 )}
             </div>

@@ -1,9 +1,9 @@
 ---
 tags:
-  - guide
-  - features
-  - overlays
-  - merging
+    - guide
+    - features
+    - overlays
+    - merging
 description: Merging feature deltas permanently or archiving features
 ---
 
@@ -18,6 +18,7 @@ Merging permanently applies all of a feature's deltas to the base chunks:
 3. Confirm — this is irreversible
 
 What happens on merge:
+
 - Each delta is applied to its base chunk
 - Version snapshots are created for each modified chunk
 - The feature status changes to `merged`
@@ -35,7 +36,8 @@ Archived features are hidden from the main list but can still be viewed.
 
 ## Deleting a Feature
 
-Permanently removes the feature and all its deltas. This cascades — all delta records are deleted. Use archive instead if you want to preserve history.
+Permanently removes the feature and all its deltas. This cascades — all delta records are deleted. Use archive instead if you want to
+preserve history.
 
 ## Reordering Priority
 

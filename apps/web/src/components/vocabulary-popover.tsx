@@ -59,45 +59,40 @@ export function VocabularyPopover({ word, definition, category, expects, childre
                 ref={triggerRef}
                 onMouseEnter={show}
                 onMouseLeave={hide}
-                className="cursor-help underline decoration-dotted underline-offset-2 decoration-muted-foreground/50"
+                className="decoration-muted-foreground/50 cursor-help underline decoration-dotted underline-offset-2"
             >
                 {children}
             </span>
-            {open && position && createPortal(
-                <div
-                    ref={popoverRef}
-                    onMouseEnter={keepOpen}
-                    onMouseLeave={hide}
-                    className="fixed z-50 w-64 rounded-lg border border-border bg-popover p-3 shadow-md animate-in fade-in-0 zoom-in-95 duration-100"
-                    style={{
-                        top: position.top,
-                        left: position.left,
-                        transform: "translateX(-50%)"
-                    }}
-                >
-                    <div className="flex items-center justify-between gap-2 mb-1">
-                        <span className="text-sm font-medium text-foreground">{word}</span>
-                        <Badge variant="secondary" size="sm" className="text-[10px] shrink-0">
-                            {category}
-                        </Badge>
-                    </div>
-                    {definition && (
-                        <p className="text-xs text-muted-foreground mb-2">{definition}</p>
-                    )}
-                    {expects && expects.length > 0 && (
-                        <p className="text-xs text-muted-foreground mb-2">
-                            Expects: {expects.join(", ")}
-                        </p>
-                    )}
-                    <Link
-                        to="/vocabulary"
-                        className="text-xs text-primary hover:text-primary/80 transition-colors"
+            {open &&
+                position &&
+                createPortal(
+                    <div
+                        ref={popoverRef}
+                        onMouseEnter={keepOpen}
+                        onMouseLeave={hide}
+                        className="border-border bg-popover animate-in fade-in-0 zoom-in-95 fixed z-50 w-64 rounded-lg border p-3 shadow-md duration-100"
+                        style={{
+                            top: position.top,
+                            left: position.left,
+                            transform: "translateX(-50%)"
+                        }}
                     >
-                        View in vocabulary →
-                    </Link>
-                </div>,
-                document.body
-            )}
+                        <div className="mb-1 flex items-center justify-between gap-2">
+                            <span className="text-foreground text-sm font-medium">{word}</span>
+                            <Badge variant="secondary" size="sm" className="shrink-0 text-[10px]">
+                                {category}
+                            </Badge>
+                        </div>
+                        {definition && <p className="text-muted-foreground mb-2 text-xs">{definition}</p>}
+                        {expects && expects.length > 0 && (
+                            <p className="text-muted-foreground mb-2 text-xs">Expects: {expects.join(", ")}</p>
+                        )}
+                        <Link to="/vocabulary" className="text-primary hover:text-primary/80 text-xs transition-colors">
+                            View in vocabulary →
+                        </Link>
+                    </div>,
+                    document.body
+                )}
         </>
     );
 }

@@ -36,9 +36,7 @@ export function cypher(query: string, returnType = "v agtype") {
     return Effect.tryPromise({
         try: async () => {
             if (!(await checkAgeAvailable())) return [];
-            const result = await db.execute(
-                sql.raw(`SELECT * FROM cypher('knowledge', $$ ${query} $$) AS (${returnType})`)
-            );
+            const result = await db.execute(sql.raw(`SELECT * FROM cypher('knowledge', $$ ${query} $$) AS (${returnType})`));
             return result.rows;
         },
         catch: cause => new DatabaseError({ cause })
@@ -49,9 +47,7 @@ export function cypherVoid(query: string) {
     return Effect.tryPromise({
         try: async () => {
             if (!(await checkAgeAvailable())) return;
-            await db.execute(
-                sql.raw(`SELECT * FROM cypher('knowledge', $$ ${query} $$) AS (v agtype)`)
-            );
+            await db.execute(sql.raw(`SELECT * FROM cypher('knowledge', $$ ${query} $$) AS (v agtype)`));
         },
         catch: cause => new DatabaseError({ cause })
     });

@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { useApiQuery } from "@/hooks/use-api-query";
@@ -27,20 +27,19 @@ export function useTagsData() {
     const tagsQuery = useApiQuery<Tag[]>({
         queryKey: ["tags"],
         queryFn: () => api.api.tags.get(),
-        fallback: [],
+        fallback: []
     });
 
     const tagTypesQuery = useApiQuery<TagType[]>({
         queryKey: ["tag-types"],
         queryFn: () => api.api["tag-types"].get(),
-        fallback: [],
+        fallback: []
     });
 
     // --- Mutations ---
 
     const createTagMutation = useMutation({
-        mutationFn: async (body: { name: string; tagTypeId?: string }) =>
-            unwrapEden(await api.api.tags.post(body)),
+        mutationFn: async (body: { name: string; tagTypeId?: string }) => unwrapEden(await api.api.tags.post(body)),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["tags"] });
             toast.success("Tag created");
@@ -52,8 +51,7 @@ export function useTagsData() {
     });
 
     const renameTagMutation = useMutation({
-        mutationFn: async ({ id, name }: { id: string; name: string }) =>
-            unwrapEden(await api.api.tags({ id }).patch({ name })),
+        mutationFn: async ({ id, name }: { id: string; name: string }) => unwrapEden(await api.api.tags({ id }).patch({ name })),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["tags"] });
             setRenamingId(null);
@@ -99,8 +97,7 @@ export function useTagsData() {
     });
 
     const createTagTypeMutation = useMutation({
-        mutationFn: async (body: { name: string; color: string }) =>
-            unwrapEden(await api.api["tag-types"].post(body)),
+        mutationFn: async (body: { name: string; color: string }) => unwrapEden(await api.api["tag-types"].post(body)),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["tag-types"] });
             resetTagTypeForm();
@@ -184,11 +181,7 @@ export function useTagsData() {
         let list = tags;
         if (unusedOnly) list = list.filter(t => t.chunkCount === 0);
         if (!q) return list;
-        return list.filter(
-            t =>
-                t.name.toLowerCase().includes(q) ||
-                (t.tagTypeName?.toLowerCase().includes(q) ?? false)
-        );
+        return list.filter(t => t.name.toLowerCase().includes(q) || (t.tagTypeName?.toLowerCase().includes(q) ?? false));
     }, [tags, search, unusedOnly]);
 
     const sortedGroups = useMemo(() => {
@@ -197,17 +190,16 @@ export function useTagsData() {
             const key = t.tagTypeId ?? "__none__";
             if (!grouped.has(key)) {
                 grouped.set(key, {
-                    tagType: t.tagTypeId
-                        ? { id: t.tagTypeId, name: t.tagTypeName ?? "Unknown", color: t.tagTypeColor ?? "#888" }
-                        : null,
+                    tagType: t.tagTypeId ? { id: t.tagTypeId, name: t.tagTypeName ?? "Unknown", color: t.tagTypeColor ?? "#888" } : null,
                     tags: []
                 });
             }
             grouped.get(key)!.tags.push(t);
         }
-        const cmp = sortMode === "usage"
-            ? (a: Tag, b: Tag) => b.chunkCount - a.chunkCount || a.name.localeCompare(b.name)
-            : (a: Tag, b: Tag) => a.name.localeCompare(b.name);
+        const cmp =
+            sortMode === "usage"
+                ? (a: Tag, b: Tag) => b.chunkCount - a.chunkCount || a.name.localeCompare(b.name)
+                : (a: Tag, b: Tag) => a.name.localeCompare(b.name);
         for (const group of grouped.values()) group.tags.sort(cmp);
         return [...grouped.entries()].sort((a, b) => {
             if (!a[1].tagType) return 1;
@@ -241,7 +233,10 @@ export function useTagsData() {
         setRenameValue,
         startRename,
         commitRename,
-        cancelRename: () => { setRenamingId(null); setRenameValue(""); },
+        cancelRename: () => {
+            setRenamingId(null);
+            setRenameValue("");
+        },
         // Tag type form state
         showTagTypeForm,
         setShowTagTypeForm,
@@ -261,6 +256,6 @@ export function useTagsData() {
         deleteTagMutation,
         createTagTypeMutation,
         updateTagTypeMutation,
-        deleteTagTypeMutation,
+        deleteTagTypeMutation
     };
 }

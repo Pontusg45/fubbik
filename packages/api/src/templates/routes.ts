@@ -27,8 +27,12 @@ const MatchRulesSchema = t.Object({
 });
 
 const ExtractionTargetSchema = t.Union([
-    t.Literal("rationale"), t.Literal("alternatives"), t.Literal("consequences"),
-    t.Literal("summary"), t.Literal("scope"), t.Literal("content")
+    t.Literal("rationale"),
+    t.Literal("alternatives"),
+    t.Literal("consequences"),
+    t.Literal("summary"),
+    t.Literal("scope"),
+    t.Literal("content")
 ]);
 
 const FieldMappingSchema = t.Object({

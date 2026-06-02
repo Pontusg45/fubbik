@@ -1,10 +1,12 @@
 # General Improvements Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to
+> implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Improve code quality, performance, testing, UX, CI, and security across the fubbik codebase.
 
-**Architecture:** Seven independent phases, each producing a shippable improvement. Phases can be executed in any order, though Phase 1 (component splitting) reduces file sizes that make later phases easier.
+**Architecture:** Seven independent phases, each producing a shippable improvement. Phases can be executed in any order, though Phase 1
+(component splitting) reduces file sizes that make later phases easier.
 
 **Tech Stack:** vitest, drizzle, Effect, Elysia, React/TanStack, Turbo, GitHub Actions.
 
@@ -19,6 +21,7 @@ Split the two largest files (`graph-view.tsx` at 1,916 lines and `chunks.index.t
 ### Task 1: Extract graph utility functions
 
 **Files:**
+
 - Create: `apps/web/src/features/graph/graph-utils.ts`
 - Modify: `apps/web/src/features/graph/graph-view.tsx`
 
@@ -30,12 +33,7 @@ Extract `findShortestPath` (lines 77-98) and `getMostConnected` (lines 100-115) 
 // apps/web/src/features/graph/graph-utils.ts
 import type { Node, Edge } from "@xyflow/react";
 
-export function findShortestPath(
-    nodes: Node[],
-    edges: Edge[],
-    startId: string,
-    endId: string
-): string[] | null {
+export function findShortestPath(nodes: Node[], edges: Edge[], startId: string, endId: string): string[] | null {
     const adj = new Map<string, string[]>();
     for (const n of nodes) adj.set(n.id, []);
     for (const e of edges) {
@@ -89,8 +87,7 @@ Delete lines 77-115 from `graph-view.tsx`.
 
 - [ ] **Step 3: Verify the app builds**
 
-Run: `pnpm --filter web check-types`
-Expected: No new type errors.
+Run: `pnpm --filter web check-types` Expected: No new type errors.
 
 - [ ] **Step 4: Commit**
 
@@ -104,6 +101,7 @@ git commit -m "refactor: extract graph utility functions to graph-utils.ts"
 ### Task 2: Extract graph keyboard shortcuts hook
 
 **Files:**
+
 - Create: `apps/web/src/features/graph/use-graph-keyboard.ts`
 - Modify: `apps/web/src/features/graph/graph-view.tsx`
 
@@ -122,9 +120,14 @@ interface UseGraphKeyboardOptions {
 }
 
 export function useGraphKeyboard(options: UseGraphKeyboardOptions) {
-    useEffect(() => {
-        // Move the keyboard event listener from graph-view.tsx lines 1092-1137 here
-    }, [/* deps */]);
+    useEffect(
+        () => {
+            // Move the keyboard event listener from graph-view.tsx lines 1092-1137 here
+        },
+        [
+            /* deps */
+        ]
+    );
 }
 ```
 
@@ -146,12 +149,14 @@ git commit -m "refactor: extract graph keyboard shortcuts to custom hook"
 ### Task 3: Extract graph settings panel
 
 **Files:**
+
 - Create: `apps/web/src/features/graph/graph-settings-panel.tsx`
 - Modify: `apps/web/src/features/graph/graph-view.tsx`
 
 - [ ] **Step 1: Create the settings panel component**
 
-Extract lines 1481-1628 from `graph-view.tsx` (the settings menu with layout, tools, views, custom graphs sections) into a dedicated component. Read those lines to determine the exact props interface needed.
+Extract lines 1481-1628 from `graph-view.tsx` (the settings menu with layout, tools, views, custom graphs sections) into a dedicated
+component. Read those lines to determine the exact props interface needed.
 
 - [ ] **Step 2: Replace inline JSX with component in graph-view.tsx**
 
@@ -171,12 +176,14 @@ git commit -m "refactor: extract graph settings panel to separate component"
 ### Task 4: Extract graph dialog components
 
 **Files:**
+
 - Create: `apps/web/src/features/graph/graph-dialogs.tsx`
 - Modify: `apps/web/src/features/graph/graph-view.tsx`
 
 - [ ] **Step 1: Create graph-dialogs.tsx**
 
 Extract these dialog sections from `graph-view.tsx`:
+
 - Change connection type dialog (lines 1664-1703)
 - Save view dialog (lines 1762-1815)
 - Save custom graph dialog (lines 1817-1888)
@@ -201,12 +208,15 @@ git commit -m "refactor: extract graph dialog components"
 ### Task 5: Extract chunk filters popover
 
 **Files:**
+
 - Create: `apps/web/src/features/chunks/chunk-filters-popover.tsx`
 - Modify: `apps/web/src/routes/chunks.index.tsx`
 
 - [ ] **Step 1: Create chunk-filters-popover.tsx**
 
-Extract the filters popover content (lines 571-895 of `chunks.index.tsx`) — the Popover containing 10+ filter sections (type, sort, tags, date, size, enrichment, connections, origin, review status, saved filters). Read those lines and create a component that accepts the filter state and callbacks as props.
+Extract the filters popover content (lines 571-895 of `chunks.index.tsx`) — the Popover containing 10+ filter sections (type, sort, tags,
+date, size, enrichment, connections, origin, review status, saved filters). Read those lines and create a component that accepts the filter
+state and callbacks as props.
 
 - [ ] **Step 2: Replace inline popover with component in chunks.index.tsx**
 
@@ -226,12 +236,14 @@ git commit -m "refactor: extract chunk filters popover to separate component"
 ### Task 6: Extract chunk bulk action bar
 
 **Files:**
+
 - Create: `apps/web/src/features/chunks/chunk-bulk-action-bar.tsx`
 - Modify: `apps/web/src/routes/chunks.index.tsx`
 
 - [ ] **Step 1: Create chunk-bulk-action-bar.tsx**
 
-Extract the floating bulk action bar (lines 1362-1517 of `chunks.index.tsx`) — the bottom bar with select count, delete/archive/tag/connect actions. Read those lines and create a component.
+Extract the floating bulk action bar (lines 1362-1517 of `chunks.index.tsx`) — the bottom bar with select count, delete/archive/tag/connect
+actions. Read those lines and create a component.
 
 - [ ] **Step 2: Replace inline bar with component in chunks.index.tsx**
 
@@ -251,6 +263,7 @@ git commit -m "refactor: extract chunk bulk action bar to separate component"
 ### Task 7: Extract chunk list hooks
 
 **Files:**
+
 - Create: `apps/web/src/features/chunks/use-chunk-filters.ts`
 - Create: `apps/web/src/features/chunks/use-bulk-chunk-operations.ts`
 - Modify: `apps/web/src/routes/chunks.index.tsx`
@@ -258,6 +271,7 @@ git commit -m "refactor: extract chunk bulk action bar to separate component"
 - [ ] **Step 1: Create use-chunk-filters.ts**
 
 Extract filter/search state management from `chunks.index.tsx`:
+
 - `updateSearch()` function (lines 314-350)
 - `clearAllFilters()` function (lines 352-372)
 - `toggleTag()` function (lines 192-196)
@@ -268,6 +282,7 @@ Return a hook that wraps URL search params and provides filter helpers.
 - [ ] **Step 2: Create use-bulk-chunk-operations.ts**
 
 Extract bulk operation mutations and handlers from `chunks.index.tsx`:
+
 - `bulkUpdateMutation` (lines 393-420)
 - `singleDeleteMutation` (lines 422-432)
 - `reviewMutation` (lines ~455-475)
@@ -298,6 +313,7 @@ Add missing indexes and batch-loading functions to eliminate N+1 queries.
 ### Task 8: Add missing database indexes
 
 **Files:**
+
 - Modify: `packages/db/src/schema/chunk.ts`
 - Modify: `packages/db/src/schema/tag.ts`
 
@@ -321,8 +337,7 @@ chunkTagTagIdIdx: index("chunk_tag_tagId_idx").on(chunkTag.tagId),
 
 - [ ] **Step 3: Push schema changes**
 
-Run: `pnpm db:push`
-Expected: Schema updates applied successfully.
+Run: `pnpm db:push` Expected: Schema updates applied successfully.
 
 - [ ] **Step 4: Commit**
 
@@ -336,6 +351,7 @@ git commit -m "perf: add missing database indexes for chunk and tag queries"
 ### Task 9: Add batch-loading repository functions
 
 **Files:**
+
 - Modify: `packages/db/src/repository/file-ref.ts` — add `getFileRefsForChunks()`
 - Modify: `packages/db/src/repository/applies-to.ts` — add `getAppliesToForChunks()`
 - Modify: `packages/db/src/repository/connection.ts` — add `getConnectionsForChunks()`
@@ -351,11 +367,7 @@ In `packages/db/src/repository/file-ref.ts`, add (following the pattern of exist
 ```typescript
 export function getFileRefsForChunks(chunkIds: string[]) {
     return Effect.tryPromise({
-        try: () =>
-            db
-                .select()
-                .from(chunkFileRef)
-                .where(inArray(chunkFileRef.chunkId, chunkIds)),
+        try: () => db.select().from(chunkFileRef).where(inArray(chunkFileRef.chunkId, chunkIds)),
         catch: err => new DatabaseError({ cause: err })
     });
 }
@@ -368,11 +380,7 @@ In `packages/db/src/repository/applies-to.ts`, add:
 ```typescript
 export function getAppliesToForChunks(chunkIds: string[]) {
     return Effect.tryPromise({
-        try: () =>
-            db
-                .select()
-                .from(chunkAppliesTo)
-                .where(inArray(chunkAppliesTo.chunkId, chunkIds)),
+        try: () => db.select().from(chunkAppliesTo).where(inArray(chunkAppliesTo.chunkId, chunkIds)),
         catch: err => new DatabaseError({ cause: err })
     });
 }
@@ -380,7 +388,8 @@ export function getAppliesToForChunks(chunkIds: string[]) {
 
 - [ ] **Step 4: Implement getConnectionsForChunks**
 
-In `packages/db/src/repository/connection.ts`, add a function that loads all connections where either source or target is in the given chunk IDs:
+In `packages/db/src/repository/connection.ts`, add a function that loads all connections where either source or target is in the given chunk
+IDs:
 
 ```typescript
 export function getConnectionsForChunks(chunkIds: string[]) {
@@ -389,12 +398,7 @@ export function getConnectionsForChunks(chunkIds: string[]) {
             db
                 .select()
                 .from(chunkConnection)
-                .where(
-                    or(
-                        inArray(chunkConnection.sourceId, chunkIds),
-                        inArray(chunkConnection.targetId, chunkIds)
-                    )
-                ),
+                .where(or(inArray(chunkConnection.sourceId, chunkIds), inArray(chunkConnection.targetId, chunkIds))),
         catch: err => new DatabaseError({ cause: err })
     });
 }
@@ -406,8 +410,7 @@ Add the new exports to `packages/db/src/repository/index.ts`.
 
 - [ ] **Step 6: Run tests**
 
-Run: `pnpm --filter @fubbik/db test`
-Expected: All tests pass.
+Run: `pnpm --filter @fubbik/db test` Expected: All tests pass.
 
 - [ ] **Step 7: Commit**
 
@@ -427,6 +430,7 @@ Add tests for the most important untested service functions.
 ### Task 10: Test plan generation from requirements
 
 **Files:**
+
 - Create: `packages/api/src/plans/generate-from-requirements.test.ts`
 
 - [ ] **Step 1: Read the source**
@@ -436,6 +440,7 @@ Read `packages/api/src/plans/generate-from-requirements.ts` to understand the fu
 - [ ] **Step 2: Write tests**
 
 Test cases:
+
 - Generates a plan with steps from a list of requirement IDs
 - Each requirement produces at least one plan step
 - Plan title is derived from requirements
@@ -460,15 +465,18 @@ git commit -m "test: add tests for plan generation from requirements"
 ### Task 11: Test bulk operations service
 
 **Files:**
+
 - Create: `packages/api/src/chunks/bulk-service.test.ts`
 
 - [ ] **Step 1: Read the source**
 
-Read `packages/api/src/chunks/bulk-service.ts` to understand bulk update operations (add_tags, remove_tags, set_type, set_codebase, set_review_status).
+Read `packages/api/src/chunks/bulk-service.ts` to understand bulk update operations (add_tags, remove_tags, set_type, set_codebase,
+set_review_status).
 
 - [ ] **Step 2: Write tests**
 
 Test each bulk action type with mocked repository calls:
+
 - `add_tags` creates tags and links them to all specified chunks
 - `remove_tags` removes tag associations
 - `set_type` updates the type field on all chunks
@@ -493,6 +501,7 @@ git commit -m "test: add tests for chunk bulk operations"
 ### Task 12: Test context export service
 
 **Files:**
+
 - Create: `packages/api/src/context-export/service.test.ts`
 
 - [ ] **Step 1: Read the source**
@@ -502,6 +511,7 @@ Read `packages/api/src/context-export/service.ts` and `packages/api/src/context-
 - [ ] **Step 2: Write tests**
 
 Test:
+
 - Token-budgeted context export respects token limits
 - `forPath` relevance boosting prioritizes matching chunks
 - Claude MD generation produces valid markdown
@@ -525,6 +535,7 @@ Add error boundaries, loading states, and empty states to routes that are missin
 ### Task 13: Add nested error boundaries
 
 **Files:**
+
 - Create: `apps/web/src/components/route-error-boundary.tsx`
 - Modify: `apps/web/src/routes/graph.tsx`
 - Modify: `apps/web/src/routes/settings.tsx`
@@ -606,6 +617,7 @@ git commit -m "feat: add nested error boundaries for graph and settings routes"
 ### Task 14: Add loading state to settings page
 
 **Files:**
+
 - Modify: `apps/web/src/routes/settings.tsx`
 
 - [ ] **Step 1: Read the settings route**
@@ -628,6 +640,7 @@ git commit -m "feat: add loading state to settings page"
 ### Task 15: Add loading state to landing page stats
 
 **Files:**
+
 - Modify: `apps/web/src/routes/index.tsx`
 
 - [ ] **Step 1: Read the landing page**
@@ -656,6 +669,7 @@ Optimize CI pipeline and Turbo configuration.
 ### Task 16: Enable Turbo test caching
 
 **Files:**
+
 - Modify: `turbo.json`
 
 - [ ] **Step 1: Enable test caching with proper inputs**
@@ -689,6 +703,7 @@ git commit -m "perf: enable Turbo test caching with source file inputs"
 ### Task 17: Parallelize CI jobs
 
 **Files:**
+
 - Modify: `.github/workflows/ci.yml`
 
 - [ ] **Step 1: Split CI into parallel jobs**
@@ -756,6 +771,7 @@ git commit -m "perf: parallelize CI jobs (lint/format || types/test, then build)
 ### Task 18: Add path filtering for docs-only PRs
 
 **Files:**
+
 - Modify: `.github/workflows/ci.yml`
 
 - [ ] **Step 1: Add paths-ignore for documentation changes**
@@ -792,6 +808,7 @@ Add input validation for JSONB fields and rate limiting for expensive operations
 ### Task 19: Validate JSONB fields before persistence
 
 **Files:**
+
 - Create: `packages/api/src/validation/jsonb-schemas.ts`
 - Modify: `packages/api/src/chunks/routes.ts`
 
@@ -803,27 +820,21 @@ Using Elysia's `t` schema (consistent with the rest of the codebase):
 // packages/api/src/validation/jsonb-schemas.ts
 import { t } from "elysia";
 
-export const scopeSchema = t.Optional(
-    t.Record(t.String({ maxLength: 100 }), t.String({ maxLength: 500 }), { maxProperties: 20 })
-);
+export const scopeSchema = t.Optional(t.Record(t.String({ maxLength: 100 }), t.String({ maxLength: 500 }), { maxProperties: 20 }));
 
-export const aliasesSchema = t.Optional(
-    t.Array(t.String({ maxLength: 200 }), { maxItems: 20 })
-);
+export const aliasesSchema = t.Optional(t.Array(t.String({ maxLength: 200 }), { maxItems: 20 }));
 
-export const alternativesSchema = t.Optional(
-    t.Array(t.String({ maxLength: 2000 }), { maxItems: 10 })
-);
+export const alternativesSchema = t.Optional(t.Array(t.String({ maxLength: 2000 }), { maxItems: 10 }));
 ```
 
 - [ ] **Step 2: Apply schemas to chunk create/update routes**
 
-In `packages/api/src/chunks/routes.ts`, import the schemas and add them to the `POST /chunks` and `PATCH /chunks/:id` body validation where `scope`, `aliases`, and `alternatives` are accepted.
+In `packages/api/src/chunks/routes.ts`, import the schemas and add them to the `POST /chunks` and `PATCH /chunks/:id` body validation where
+`scope`, `aliases`, and `alternatives` are accepted.
 
 - [ ] **Step 3: Run existing tests**
 
-Run: `pnpm --filter @fubbik/api test`
-Expected: All existing tests pass (validation is additive, not breaking).
+Run: `pnpm --filter @fubbik/api test` Expected: All existing tests pass (validation is additive, not breaking).
 
 - [ ] **Step 4: Commit**
 
@@ -837,6 +848,7 @@ git commit -m "security: add schema validation for JSONB fields (scope, aliases,
 ### Task 20: Add rate limiting for expensive operations
 
 **Files:**
+
 - Create: `packages/api/src/middleware/rate-limit.ts`
 - Modify: `packages/api/src/index.ts`
 
@@ -867,17 +879,21 @@ export function checkRateLimit(
 }
 
 // Cleanup old entries every 5 minutes
-setInterval(() => {
-    const now = Date.now();
-    for (const [key, entry] of windows) {
-        if (now > entry.resetAt) windows.delete(key);
-    }
-}, 5 * 60 * 1000);
+setInterval(
+    () => {
+        const now = Date.now();
+        for (const [key, entry] of windows) {
+            if (now > entry.resetAt) windows.delete(key);
+        }
+    },
+    5 * 60 * 1000
+);
 ```
 
 - [ ] **Step 2: Apply rate limiting to expensive routes**
 
 In `packages/api/src/index.ts` or at the route level, add rate limiting to:
+
 - `POST /api/chunks/:id/enrich` — 10 requests per minute per user
 - `POST /api/chunks/import-docs` — 5 requests per minute per user
 - `GET /api/chunks/search/semantic` — 30 requests per minute per user
@@ -906,6 +922,7 @@ Remove dead patterns and update CLAUDE.md.
 ### Task 21: Audit and document context-export vs context-for-file
 
 **Files:**
+
 - Modify: `CLAUDE.md`
 
 - [ ] **Step 1: Read both directories**
@@ -915,6 +932,7 @@ Read `packages/api/src/context-export/` and `packages/api/src/context-for-file/`
 - [ ] **Step 2: Document the distinction in CLAUDE.md**
 
 Add a note under the Architecture Patterns section explaining:
+
 - `context-export/` — token-budgeted context export and CLAUDE.md generation
 - `context-for-file/` — file-specific context lookup with dependency detection
 
@@ -930,11 +948,13 @@ git commit -m "docs: clarify context-export vs context-for-file architecture"
 ### Task 22: Update CLAUDE.md with new features and patterns
 
 **Files:**
+
 - Modify: `CLAUDE.md`
 
 - [ ] **Step 1: Add import-docs to API endpoints section**
 
 Add under Chunks endpoints:
+
 ```
 - `POST /api/chunks/import-docs` — bulk import from markdown files with frontmatter parsing
 ```
@@ -942,6 +962,7 @@ Add under Chunks endpoints:
 - [ ] **Step 2: Add import-docs to CLI commands section**
 
 Add:
+
 ```
 - `fubbik import-docs <path> --codebase <name>` — import folder of markdown docs as chunks
 ```
@@ -949,6 +970,7 @@ Add:
 - [ ] **Step 3: Add /import to Web Pages section**
 
 Add:
+
 ```
 - `/import` — dedicated markdown docs import with folder upload, preview table, codebase selection
 ```

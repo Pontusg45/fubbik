@@ -9,10 +9,7 @@ import * as spaceService from "../spaces/service";
 export const codebaseRoutes = new Elysia()
     .get(
         "/codebases/detect",
-        ctx =>
-            Effect.runPromise(
-                requireSession(ctx).pipe(Effect.flatMap(session => spaceService.detectSpace(session.user.id, ctx.query)))
-            ),
+        ctx => Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(session => spaceService.detectSpace(session.user.id, ctx.query)))),
         { query: t.Object({ remoteUrl: t.Optional(t.String()), localPath: t.Optional(t.String()) }) }
     )
     .get("/codebases", ctx =>
@@ -46,9 +43,7 @@ export const codebaseRoutes = new Elysia()
         "/codebases/:id",
         ctx =>
             Effect.runPromise(
-                requireSession(ctx).pipe(
-                    Effect.flatMap(session => spaceService.updateSpace(ctx.params.id, session.user.id, ctx.body))
-                )
+                requireSession(ctx).pipe(Effect.flatMap(session => spaceService.updateSpace(ctx.params.id, session.user.id, ctx.body)))
             ),
         {
             body: t.Object({

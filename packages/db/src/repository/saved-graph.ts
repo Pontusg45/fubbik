@@ -28,66 +28,66 @@ export interface UpdateSavedGraphParams {
 
 export function createSavedGraph(params: CreateSavedGraphParams) {
     return dbEffect(async () => {
-            const [created] = await db.insert(savedGraph).values(params).returning();
-            return created!;
-        });
+        const [created] = await db.insert(savedGraph).values(params).returning();
+        return created!;
+    });
 }
 
 export function getSavedGraphById(id: string, userId?: string) {
     return dbEffect(async () => {
-            const conditions = [eq(savedGraph.id, id)];
-            if (userId) conditions.push(eq(savedGraph.userId, userId));
-            const [found] = await db
-                .select()
-                .from(savedGraph)
-                .where(and(...conditions));
-            return found ?? null;
-        });
+        const conditions = [eq(savedGraph.id, id)];
+        if (userId) conditions.push(eq(savedGraph.userId, userId));
+        const [found] = await db
+            .select()
+            .from(savedGraph)
+            .where(and(...conditions));
+        return found ?? null;
+    });
 }
 
 export function listSavedGraphs(userId: string, spaceId?: string | null) {
     return dbEffect(() => {
-            const conditions = [eq(savedGraph.userId, userId)];
-            if (spaceId) conditions.push(eq(savedGraph.spaceId, spaceId));
-            return db
-                .select()
-                .from(savedGraph)
-                .where(and(...conditions));
-        });
+        const conditions = [eq(savedGraph.userId, userId)];
+        if (spaceId) conditions.push(eq(savedGraph.spaceId, spaceId));
+        return db
+            .select()
+            .from(savedGraph)
+            .where(and(...conditions));
+    });
 }
 
 export function updateSavedGraph(id: string, userId: string, params: UpdateSavedGraphParams) {
     return dbEffect(async () => {
-            const setClause: Record<string, unknown> = {};
-            if (params.name !== undefined) setClause.name = params.name;
-            if (params.description !== undefined) setClause.description = params.description;
-            if (params.chunkIds !== undefined) setClause.chunkIds = params.chunkIds;
-            if (params.positions !== undefined) setClause.positions = params.positions;
-            if (params.layoutAlgorithm !== undefined) setClause.layoutAlgorithm = params.layoutAlgorithm;
+        const setClause: Record<string, unknown> = {};
+        if (params.name !== undefined) setClause.name = params.name;
+        if (params.description !== undefined) setClause.description = params.description;
+        if (params.chunkIds !== undefined) setClause.chunkIds = params.chunkIds;
+        if (params.positions !== undefined) setClause.positions = params.positions;
+        if (params.layoutAlgorithm !== undefined) setClause.layoutAlgorithm = params.layoutAlgorithm;
 
-            if (Object.keys(setClause).length === 0) {
-                const [found] = await db
-                    .select()
-                    .from(savedGraph)
-                    .where(and(eq(savedGraph.id, id), eq(savedGraph.userId, userId)));
-                return found ?? null;
-            }
+        if (Object.keys(setClause).length === 0) {
+            const [found] = await db
+                .select()
+                .from(savedGraph)
+                .where(and(eq(savedGraph.id, id), eq(savedGraph.userId, userId)));
+            return found ?? null;
+        }
 
-            const [updated] = await db
-                .update(savedGraph)
-                .set(setClause)
-                .where(and(eq(savedGraph.id, id), eq(savedGraph.userId, userId)))
-                .returning();
-            return updated ?? null;
-        });
+        const [updated] = await db
+            .update(savedGraph)
+            .set(setClause)
+            .where(and(eq(savedGraph.id, id), eq(savedGraph.userId, userId)))
+            .returning();
+        return updated ?? null;
+    });
 }
 
 export function deleteSavedGraph(id: string, userId: string) {
     return dbEffect(async () => {
-            const [deleted] = await db
-                .delete(savedGraph)
-                .where(and(eq(savedGraph.id, id), eq(savedGraph.userId, userId)))
-                .returning();
-            return deleted ?? null;
-        });
+        const [deleted] = await db
+            .delete(savedGraph)
+            .where(and(eq(savedGraph.id, id), eq(savedGraph.userId, userId)))
+            .returning();
+        return deleted ?? null;
+    });
 }

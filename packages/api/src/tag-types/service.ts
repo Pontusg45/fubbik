@@ -1,4 +1,9 @@
-import { createTagType as createTagTypeRepo, deleteTagType as deleteTagTypeRepo, getTagTypesForUser, updateTagType as updateTagTypeRepo } from "@fubbik/db/repository";
+import {
+    createTagType as createTagTypeRepo,
+    deleteTagType as deleteTagTypeRepo,
+    getTagTypesForUser,
+    updateTagType as updateTagTypeRepo
+} from "@fubbik/db/repository";
 import { Effect } from "effect";
 
 import { NotFoundError } from "../errors";

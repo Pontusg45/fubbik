@@ -1,13 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import {
-    Background,
-    BackgroundVariant,
-    ReactFlow,
-    ReactFlowProvider,
-    type Edge,
-    type Node,
-} from "@xyflow/react";
+import { Background, BackgroundVariant, ReactFlow, ReactFlowProvider, type Edge, type Node } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { Handle, Position } from "@xyflow/react";
 import { useTheme } from "next-themes";
@@ -28,7 +21,7 @@ const TYPE_COLORS_DARK: Record<string, { bg: string; border: string; text: strin
     reference: { bg: "#042f2e", border: "#14b8a6", text: "#5eead4" },
     document: { bg: "#172554", border: "#3b82f6", text: "#93c5fd" },
     schema: { bg: "#1c1917", border: "#f59e0b", text: "#fcd34d" },
-    checklist: { bg: "#1a2e05", border: "#84cc16", text: "#bef264" },
+    checklist: { bg: "#1a2e05", border: "#84cc16", text: "#bef264" }
 };
 
 const TYPE_COLORS_LIGHT: Record<string, { bg: string; border: string; text: string }> = {
@@ -37,7 +30,7 @@ const TYPE_COLORS_LIGHT: Record<string, { bg: string; border: string; text: stri
     reference: { bg: "#f0fdfa", border: "#14b8a6", text: "#0f766e" },
     document: { bg: "#eff6ff", border: "#3b82f6", text: "#1d4ed8" },
     schema: { bg: "#fefce8", border: "#f59e0b", text: "#b45309" },
-    checklist: { bg: "#f7fee7", border: "#84cc16", text: "#4d7c0f" },
+    checklist: { bg: "#f7fee7", border: "#84cc16", text: "#4d7c0f" }
 };
 
 const DEFAULT_COLOR_DARK = { bg: "#1e293b", border: "#475569", text: "#94a3b8" };
@@ -53,11 +46,11 @@ function SearchMiniNode({ data }: { data: Record<string, unknown> }) {
             <Handle type="source" position={Position.Right} id="right-source" style={{ opacity: 0 }} />
             <Handle type="source" position={Position.Bottom} style={{ opacity: 0 }} />
             <div
-                className="max-w-[120px] truncate rounded px-2 py-1 text-[10px] font-medium leading-tight"
+                className="max-w-[120px] truncate rounded px-2 py-1 text-[10px] leading-tight font-medium"
                 style={{
                     background: nodeData.colors.bg,
                     border: `1px solid ${nodeData.colors.border}`,
-                    color: nodeData.colors.text,
+                    color: nodeData.colors.text
                 }}
                 title={nodeData.label}
             >
@@ -81,22 +74,17 @@ function SearchGraphInner({ chunkIds, chunks }: SearchGraphProps) {
         queryFn: async () => {
             return unwrapEden(await api.api.graph.get({ query: {} }));
         },
-        staleTime: 30_000,
+        staleTime: 30_000
     });
 
     const chunkIdSet = useMemo(() => new Set(chunkIds), [chunkIds]);
-    const chunkMap = useMemo(
-        () => new Map(chunks.map(c => [c.id, c])),
-        [chunks]
-    );
+    const chunkMap = useMemo(() => new Map(chunks.map(c => [c.id, c])), [chunks]);
 
     const { nodes, edges } = useMemo(() => {
         if (!graphData) return { nodes: [], edges: [] };
 
         // Filter connections to only those between result chunks
-        const relevantEdges = (graphData.connections ?? []).filter(
-            c => chunkIdSet.has(c.sourceId) && chunkIdSet.has(c.targetId)
-        );
+        const relevantEdges = (graphData.connections ?? []).filter(c => chunkIdSet.has(c.sourceId) && chunkIdSet.has(c.targetId));
 
         // Simple circle layout for search results
         const positions: Record<string, { x: number; y: number }> = {};
@@ -105,7 +93,7 @@ function SearchGraphInner({ chunkIds, chunks }: SearchGraphProps) {
             const angle = (2 * Math.PI * i) / chunkIds.length;
             positions[chunkIds[i]!] = {
                 x: Math.cos(angle) * radius,
-                y: Math.sin(angle) * radius,
+                y: Math.sin(angle) * radius
             };
         }
 
@@ -119,8 +107,8 @@ function SearchGraphInner({ chunkIds, chunks }: SearchGraphProps) {
                 position: pos,
                 data: {
                     label: chunk?.title ?? id,
-                    colors,
-                },
+                    colors
+                }
             };
         });
 
@@ -131,8 +119,8 @@ function SearchGraphInner({ chunkIds, chunks }: SearchGraphProps) {
             style: {
                 stroke: relationColor(c.relation),
                 strokeWidth: 1.5,
-                strokeOpacity: 0.7,
-            },
+                strokeOpacity: 0.7
+            }
         }));
 
         return { nodes: rfNodes, edges: rfEdges };
@@ -140,22 +128,16 @@ function SearchGraphInner({ chunkIds, chunks }: SearchGraphProps) {
 
     if (isLoading) {
         return (
-            <div
-                className="flex items-center justify-center rounded-lg border bg-muted/30"
-                style={{ height: 220 }}
-            >
-                <span className="text-xs text-muted-foreground">Loading graph...</span>
+            <div className="bg-muted/30 flex items-center justify-center rounded-lg border" style={{ height: 220 }}>
+                <span className="text-muted-foreground text-xs">Loading graph...</span>
             </div>
         );
     }
 
     if (nodes.length === 0) {
         return (
-            <div
-                className="flex items-center justify-center rounded-lg border bg-muted/30"
-                style={{ height: 220 }}
-            >
-                <span className="text-xs text-muted-foreground">No graph data for these results</span>
+            <div className="bg-muted/30 flex items-center justify-center rounded-lg border" style={{ height: 220 }}>
+                <span className="text-muted-foreground text-xs">No graph data for these results</span>
             </div>
         );
     }
@@ -183,13 +165,8 @@ function SearchGraphInner({ chunkIds, chunks }: SearchGraphProps) {
                 proOptions={{ hideAttribution: true }}
                 colorMode={isDark ? "dark" : "light"}
             >
-                <Background
-                    variant={BackgroundVariant.Dots}
-                    gap={16}
-                    size={1}
-                    color={isDark ? "#334155" : "#e2e8f0"}
-                />
-                <div className="absolute bottom-2 left-2 z-10 rounded bg-background/80 px-2 py-1 text-[10px] text-muted-foreground backdrop-blur-sm">
+                <Background variant={BackgroundVariant.Dots} gap={16} size={1} color={isDark ? "#334155" : "#e2e8f0"} />
+                <div className="bg-background/80 text-muted-foreground absolute bottom-2 left-2 z-10 rounded px-2 py-1 text-[10px] backdrop-blur-sm">
                     {nodes.length} chunks · {connectedCount} connection{connectedCount !== 1 ? "s" : ""}
                 </div>
             </ReactFlow>

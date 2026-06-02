@@ -1,5 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
+
 import { apiFetch } from "./api-client.js";
 import type { McpPlugin } from "./plugin.js";
 
@@ -52,7 +53,7 @@ export function registerContextTools(server: McpServer): void {
             concept: z.string().optional().describe("Concept or topic to get context about"),
             filePath: z.string().optional().describe("File path to get context for"),
             maxTokens: z.number().optional().describe("Max tokens (default 8000)"),
-            spaceId: z.string().optional().describe("Space ID to scope context"),
+            spaceId: z.string().optional().describe("Space ID to scope context")
         },
         async ({ planId, concept, filePath, maxTokens, spaceId }) => {
             const tokens = maxTokens ?? 8000;
@@ -63,29 +64,29 @@ export function registerContextTools(server: McpServer): void {
                 const planParams = new URLSearchParams({ planId, maxTokens: String(tokens), format: "structured-md" });
                 if (spaceId) planParams.set("spaceId", spaceId);
                 const planData = (await apiFetch(`/context/for-plan?${planParams}`)) as { content?: string } | string;
-                const planText = typeof planData === "string" ? planData : (planData as { content?: string }).content ?? "";
+                const planText = typeof planData === "string" ? planData : ((planData as { content?: string }).content ?? "");
 
                 const fileParams = new URLSearchParams({ paths: filePath, maxTokens: String(tokens), format: "structured-md" });
                 if (spaceId) fileParams.set("spaceId", spaceId);
                 const fileData = (await apiFetch(`/context/for-files?${fileParams}`)) as { content?: string } | string;
-                const fileText = typeof fileData === "string" ? fileData : (fileData as { content?: string }).content ?? "";
+                const fileText = typeof fileData === "string" ? fileData : ((fileData as { content?: string }).content ?? "");
 
                 parts.push(planText, fileText);
             } else if (planId) {
                 const params = new URLSearchParams({ planId, maxTokens: String(tokens), format: "structured-md" });
                 if (spaceId) params.set("spaceId", spaceId);
                 const data = (await apiFetch(`/context/for-plan?${params}`)) as { content?: string } | string;
-                parts.push(typeof data === "string" ? data : (data as { content?: string }).content ?? "");
+                parts.push(typeof data === "string" ? data : ((data as { content?: string }).content ?? ""));
             } else if (concept) {
                 const params = new URLSearchParams({ q: concept, maxTokens: String(tokens), format: "structured-md" });
                 if (spaceId) params.set("spaceId", spaceId);
                 const data = (await apiFetch(`/context/about?${params}`)) as { content?: string } | string;
-                parts.push(typeof data === "string" ? data : (data as { content?: string }).content ?? "");
+                parts.push(typeof data === "string" ? data : ((data as { content?: string }).content ?? ""));
             } else if (filePath) {
                 const params = new URLSearchParams({ paths: filePath, maxTokens: String(tokens), format: "structured-md" });
                 if (spaceId) params.set("spaceId", spaceId);
                 const data = (await apiFetch(`/context/for-files?${params}`)) as { content?: string } | string;
-                parts.push(typeof data === "string" ? data : (data as { content?: string }).content ?? "");
+                parts.push(typeof data === "string" ? data : ((data as { content?: string }).content ?? ""));
             } else {
                 return {
                     content: [{ type: "text" as const, text: "Provide at least one of: planId, concept, or filePath." }]
@@ -104,7 +105,7 @@ export function registerContextTools(server: McpServer): void {
         {
             planId: z.string().describe("Plan ID"),
             taskId: z.string().describe("Task (step) ID within the plan"),
-            maxTokens: z.number().optional().describe("Max tokens (default 4000)"),
+            maxTokens: z.number().optional().describe("Max tokens (default 4000)")
         },
         async ({ planId, taskId, maxTokens }) => {
             const tokens = maxTokens ?? 4000;
@@ -117,7 +118,7 @@ export function registerContextTools(server: McpServer): void {
             };
 
             // Find the specific task
-            const task = planDetail.tasks?.find((t) => t.id === taskId);
+            const task = planDetail.tasks?.find(t => t.id === taskId);
 
             // Collect chunk IDs from task + plan analyze
             const chunkIds = new Set<string>();
@@ -131,7 +132,7 @@ export function registerContextTools(server: McpServer): void {
             // Use for-plan endpoint as the context source (v1 approximation)
             const params = new URLSearchParams({ planId, maxTokens: String(tokens), format: "structured-md" });
             const data = (await apiFetch(`/context/for-plan?${params}`)) as { content?: string } | string;
-            const contextText = typeof data === "string" ? data : (data as { content?: string }).content ?? "";
+            const contextText = typeof data === "string" ? data : ((data as { content?: string }).content ?? "");
 
             const header = task
                 ? `# Context for Task: ${taskId}\n\nRelevant chunk IDs: ${[...chunkIds].join(", ") || "none"}\n\n`
@@ -152,7 +153,7 @@ export function registerContextTools(server: McpServer): void {
             filePaths: z.array(z.string()).optional().describe("File paths to snapshot context for"),
             concept: z.string().optional().describe("Concept or topic to snapshot context about"),
             maxTokens: z.number().optional().describe("Max tokens (default 8000)"),
-            spaceId: z.string().optional().describe("Space ID to scope context"),
+            spaceId: z.string().optional().describe("Space ID to scope context")
         },
         async ({ planId, taskId, filePaths, concept, maxTokens, spaceId }) => {
             const body: Record<string, unknown> = {};
@@ -165,25 +166,25 @@ export function registerContextTools(server: McpServer): void {
 
             const data = (await apiFetch("/context/snapshot", {
                 method: "POST",
-                body: JSON.stringify(body),
+                body: JSON.stringify(body)
             })) as { snapshotId: string; tokenCount: number; chunkCount: number; createdAt: string };
 
             return {
                 content: [
                     {
                         type: "text" as const,
-                        text: `Snapshot created.\nsnapshotId: ${data.snapshotId}\nchunks: ${data.chunkCount}\ntokens: ${data.tokenCount}\ncreatedAt: ${data.createdAt}\n\nUse get_context_snapshot with this ID to retrieve the frozen content.`,
-                    },
-                ],
+                        text: `Snapshot created.\nsnapshotId: ${data.snapshotId}\nchunks: ${data.chunkCount}\ntokens: ${data.tokenCount}\ncreatedAt: ${data.createdAt}\n\nUse get_context_snapshot with this ID to retrieve the frozen content.`
+                    }
+                ]
             };
-        },
+        }
     );
 
     server.tool(
         "get_context_snapshot",
         "Retrieve a previously created context snapshot by ID. Returns the frozen chunk content exactly as it was when the snapshot was created.",
         {
-            snapshotId: z.string().describe("Snapshot ID returned by create_context_snapshot"),
+            snapshotId: z.string().describe("Snapshot ID returned by create_context_snapshot")
         },
         async ({ snapshotId }) => {
             const data = (await apiFetch(`/context/snapshot/${snapshotId}`)) as {
@@ -197,7 +198,7 @@ export function registerContextTools(server: McpServer): void {
             const lines: string[] = [
                 `# Context Snapshot: ${data.id}`,
                 `> Created: ${data.createdAt} | Tokens: ${data.tokenCount} | Chunks: ${data.chunks.length}`,
-                "",
+                ""
             ];
 
             for (const chunk of data.chunks) {
@@ -208,14 +209,14 @@ export function registerContextTools(server: McpServer): void {
             }
 
             return {
-                content: [{ type: "text" as const, text: lines.join("\n").trimEnd() }],
+                content: [{ type: "text" as const, text: lines.join("\n").trimEnd() }]
             };
-        },
+        }
     );
 }
 
 export const contextPlugin: McpPlugin = {
     name: "context",
     description: "Context export and CLAUDE.md sync tools",
-    register: registerContextTools,
+    register: registerContextTools
 };

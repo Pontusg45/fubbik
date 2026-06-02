@@ -1,7 +1,7 @@
 ---
 tags:
-  - guide
-  - settings
+    - guide
+    - settings
 description: User and instance settings — theme, defaults, and preferences
 ---
 
@@ -19,6 +19,7 @@ Configure your fubbik experience at `/settings`.
 ## Codebase Settings
 
 Per-codebase configuration:
+
 - Staleness scan thresholds
 - Default tags for new chunks
 - Vocabulary preferences
@@ -26,10 +27,12 @@ Per-codebase configuration:
 ## Instance Settings
 
 Admin-level settings:
+
 - Ollama connection configuration
 - Staleness scan intervals
 - Feature flags for optional capabilities
 
 ## Vocabulary Settings
 
-Additional vocabulary settings at `/settings/vocabulary` for configuring how the controlled vocabulary system behaves in your requirements workflow.
+Additional vocabulary settings at `/settings/vocabulary` for configuring how the controlled vocabulary system behaves in your requirements
+workflow.

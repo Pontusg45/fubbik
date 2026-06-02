@@ -1,7 +1,8 @@
-import { memo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { Bot, Clock, FileText, Pin, Server } from "lucide-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { memo } from "react";
+
 import { Badge } from "@/components/ui/badge";
 import { CardPanel } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -16,7 +17,7 @@ import { getChunkSize } from "@/features/chunks/chunk-size";
 
 export function ChunkPreviewPopup({
     chunk,
-    queryClient,
+    queryClient
 }: {
     chunk: { id: string; content?: string | null; type: string; summary?: string | null };
     queryClient: ReturnType<typeof useQueryClient>;
@@ -30,18 +31,17 @@ export function ChunkPreviewPopup({
 
     return (
         <TooltipPopup side="bottom" align="start" className="max-w-[300px] p-2.5">
-            {summary && (
-                <p className="text-xs font-medium text-foreground">{summary}</p>
-            )}
+            {summary && <p className="text-foreground text-xs font-medium">{summary}</p>}
             {content && (
-                <p className={`text-xs text-muted-foreground ${summary ? "mt-1.5" : ""}`}>
-                    {content.slice(0, 150)}{content.length > 150 ? "..." : ""}
+                <p className={`text-muted-foreground text-xs ${summary ? "mt-1.5" : ""}`}>
+                    {content.slice(0, 150)}
+                    {content.length > 150 ? "..." : ""}
                 </p>
             )}
             {tags && tags.length > 0 && (
                 <div className="mt-2 flex flex-wrap gap-1">
                     {tags.map(tag => (
-                        <span key={tag.name} className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                        <span key={tag.name} className="bg-muted text-muted-foreground rounded px-1.5 py-0.5 text-[10px]">
                             {tag.name}
                         </span>
                     ))}
@@ -121,7 +121,7 @@ export const ChunkRow = memo(function ChunkRow({
     onTogglePin,
     onSelectionClick,
     onDelete,
-    onReviewCycle,
+    onReviewCycle
 }: ChunkRowProps) {
     const queryClient = useQueryClient();
     const chunkSize = getChunkSize(chunk.content ?? "");
@@ -131,15 +131,15 @@ export const ChunkRow = memo(function ChunkRow({
             {showSeparator && <Separator />}
             <CardPanel
                 className={`flex items-center gap-3 p-4 transition-colors ${
-                    isKeyboardSelected
-                        ? "bg-muted/50 ring-primary/50 ring-2 ring-inset"
-                        : "hover:bg-muted/50"
+                    isKeyboardSelected ? "bg-muted/50 ring-primary/50 ring-2 ring-inset" : "hover:bg-muted/50"
                 }`}
                 onMouseEnter={() => onHover(chunk.id)}
             >
                 <Checkbox
                     checked={isSelected}
-                    onCheckedChange={() => { /* handled in onClick */ }}
+                    onCheckedChange={() => {
+                        /* handled in onClick */
+                    }}
                     onClick={(e: React.MouseEvent) => {
                         e.stopPropagation();
                         onSelectionClick(chunk.id, index, allChunkIds, e);
@@ -155,24 +155,29 @@ export const ChunkRow = memo(function ChunkRow({
                 >
                     <Pin className={`size-3 ${isPinned ? "fill-current" : ""}`} />
                 </button>
-                <Link
-                    to="/chunks/$chunkId"
-                    params={{ chunkId: chunk.id }}
-                    className="flex flex-1 items-center justify-between gap-4"
-                >
+                <Link to="/chunks/$chunkId" params={{ chunkId: chunk.id }} className="flex flex-1 items-center justify-between gap-4">
                     <div className="min-w-0">
                         {editingChunkId === chunk.id ? (
                             <input
                                 autoFocus
-                                className="bg-background w-full rounded border px-1 py-0.5 text-sm font-medium focus:ring-2 focus:ring-ring focus:outline-none"
+                                className="bg-background focus:ring-ring w-full rounded border px-1 py-0.5 text-sm font-medium focus:ring-2 focus:outline-none"
                                 value={editTitle}
                                 onChange={e => onEditTitleChange(e.target.value)}
                                 onKeyDown={e => {
-                                    if (e.key === "Enter") { e.preventDefault(); onCommitEdit(); }
-                                    if (e.key === "Escape") { e.preventDefault(); onCancelEdit(); }
+                                    if (e.key === "Enter") {
+                                        e.preventDefault();
+                                        onCommitEdit();
+                                    }
+                                    if (e.key === "Escape") {
+                                        e.preventDefault();
+                                        onCancelEdit();
+                                    }
                                 }}
                                 onBlur={onCommitEdit}
-                                onClick={e => { e.preventDefault(); e.stopPropagation(); }}
+                                onClick={e => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                }}
                             />
                         ) : (
                             <TooltipProvider delay={300}>
@@ -221,17 +226,20 @@ export const ChunkRow = memo(function ChunkRow({
                                         onClick={e => {
                                             e.preventDefault();
                                             e.stopPropagation();
-                                            const next = { draft: "reviewed", reviewed: "approved", approved: "draft" }[
-                                                chunk.reviewStatus ?? "draft"
-                                            ] ?? "reviewed";
+                                            const next =
+                                                { draft: "reviewed", reviewed: "approved", approved: "draft" }[
+                                                    chunk.reviewStatus ?? "draft"
+                                                ] ?? "reviewed";
                                             onReviewCycle?.(chunk.id, next);
                                         }}
                                         className="size-2.5 shrink-0 rounded-full"
                                         style={{
                                             backgroundColor:
-                                                chunk.reviewStatus === "approved" ? "#22c55e"
-                                                : chunk.reviewStatus === "reviewed" ? "#3b82f6"
-                                                : "#f59e0b"
+                                                chunk.reviewStatus === "approved"
+                                                    ? "#22c55e"
+                                                    : chunk.reviewStatus === "reviewed"
+                                                      ? "#3b82f6"
+                                                      : "#f59e0b"
                                         }}
                                         title={`Review: ${chunk.reviewStatus ?? "draft"} (click to change)`}
                                     />

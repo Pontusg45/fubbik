@@ -1,10 +1,12 @@
 # Richer Chunks Implementation Plan
 
-> **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to
+> implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Enrich chunks with structured metadata (appliesTo), file references, decision context fields, and templates.
 
-**Architecture:** Four vertical slices, each going schema → repository → service → routes → UI. Decision fields are JSONB columns on the chunk table. AppliesTo, file references, and templates each get their own tables. Built-in templates seeded via SQL migration.
+**Architecture:** Four vertical slices, each going schema → repository → service → routes → UI. Decision fields are JSONB columns on the
+chunk table. AppliesTo, file references, and templates each get their own tables. Built-in templates seeded via SQL migration.
 
 **Tech Stack:** Drizzle ORM, Effect, Elysia, TanStack Router/Query, Vitest
 
@@ -15,6 +17,7 @@
 ## File Structure
 
 ### New files
+
 - `packages/db/src/schema/applies-to.ts` — chunk_applies_to table
 - `packages/db/src/schema/file-ref.ts` — chunk_file_ref table
 - `packages/db/src/schema/template.ts` — chunk_template table
@@ -33,6 +36,7 @@
 - `apps/web/src/routes/templates.tsx` — templates management page
 
 ### Modified files
+
 - `packages/db/src/schema/chunk.ts` — add rationale, alternatives, consequences columns
 - `packages/db/src/schema/index.ts` — export new schemas
 - `packages/db/src/repository/index.ts` — export new repositories
@@ -53,6 +57,7 @@
 ### Task 1: Add decision columns to chunk schema
 
 **Files:**
+
 - Modify: `packages/db/src/schema/chunk.ts`
 
 - [ ] **Step 1: Add columns**
@@ -69,8 +74,7 @@ These are all nullable — no `.notNull()`.
 
 - [ ] **Step 2: Run tests**
 
-Run: `cd packages/db && pnpm vitest run`
-Expected: PASS (existing tests don't assert specific column lists exhaustively for chunk)
+Run: `cd packages/db && pnpm vitest run` Expected: PASS (existing tests don't assert specific column lists exhaustively for chunk)
 
 - [ ] **Step 3: Push schema**
 
@@ -88,12 +92,14 @@ git commit -m "feat(db): add rationale, alternatives, consequences columns to ch
 ### Task 2: Extend chunk service and routes for decision fields
 
 **Files:**
+
 - Modify: `packages/api/src/chunks/routes.ts`
 - Modify: `packages/api/src/chunks/service.ts`
 
 - [ ] **Step 1: Add decision fields to POST /chunks body schema**
 
 In `packages/api/src/chunks/routes.ts`, add to the POST body `t.Object`:
+
 ```typescript
 rationale: t.Optional(t.String({ maxLength: 5000 })),
 alternatives: t.Optional(t.Array(t.String({ maxLength: 500 }), { maxItems: 10 })),
@@ -105,12 +111,15 @@ Same fields for the PATCH body.
 - [ ] **Step 2: Pass decision fields through service to repository**
 
 In `packages/api/src/chunks/service.ts`:
+
 - `createChunk`: pass `rationale`, `alternatives`, `consequences` to `createChunkRepo`
 - `updateChunk`: include them in the repo body (they're already passed through via spread, but verify the destructure doesn't strip them)
 
-Read the current service code to understand the destructure pattern. The `updateChunk` does `const { tags: _tags, codebaseIds: _codebaseIds, ...repoBody } = body` — the new fields will flow through in `repoBody` automatically.
+Read the current service code to understand the destructure pattern. The `updateChunk` does
+`const { tags: _tags, codebaseIds: _codebaseIds, ...repoBody } = body` — the new fields will flow through in `repoBody` automatically.
 
 For `createChunk`, the repo call currently only passes `id, title, content, type, userId`. Add the three new fields:
+
 ```typescript
 return createChunkRepo({
     id,
@@ -121,13 +130,12 @@ return createChunkRepo({
     rationale: body.rationale,
     alternatives: body.alternatives,
     consequences: body.consequences
-})
+});
 ```
 
 - [ ] **Step 3: Run tests**
 
-Run: `cd packages/api && pnpm vitest run src/codebases/normalize-url.test.ts`
-Expected: PASS
+Run: `cd packages/api && pnpm vitest run src/codebases/normalize-url.test.ts` Expected: PASS
 
 - [ ] **Step 4: Commit**
 
@@ -143,6 +151,7 @@ git commit -m "feat(api): support decision context fields on chunk create/update
 ### Task 3: Applies-to schema and repository
 
 **Files:**
+
 - Create: `packages/db/src/schema/applies-to.ts`
 - Create: `packages/db/src/repository/applies-to.ts`
 - Create: `packages/db/src/__tests__/applies-to.test.ts`
@@ -250,6 +259,7 @@ git commit -m "feat(db): add chunk_applies_to schema and repository"
 ### Task 4: Applies-to service and routes
 
 **Files:**
+
 - Create: `packages/api/src/applies-to/service.ts`
 - Create: `packages/api/src/applies-to/routes.ts`
 - Modify: `packages/api/src/index.ts`
@@ -265,14 +275,14 @@ import { NotFoundError } from "../errors";
 
 export function getAppliesTo(chunkId: string, userId: string) {
     return getChunkById(chunkId, userId).pipe(
-        Effect.flatMap(found => found ? Effect.succeed(found) : Effect.fail(new NotFoundError({ resource: "Chunk" }))),
+        Effect.flatMap(found => (found ? Effect.succeed(found) : Effect.fail(new NotFoundError({ resource: "Chunk" })))),
         Effect.flatMap(() => getAppliesToForChunk(chunkId))
     );
 }
 
 export function setAppliesTo(chunkId: string, userId: string, patterns: { pattern: string; note?: string | null }[]) {
     return getChunkById(chunkId, userId).pipe(
-        Effect.flatMap(found => found ? Effect.succeed(found) : Effect.fail(new NotFoundError({ resource: "Chunk" }))),
+        Effect.flatMap(found => (found ? Effect.succeed(found) : Effect.fail(new NotFoundError({ resource: "Chunk" })))),
         Effect.flatMap(() => setAppliesToForChunk(chunkId, patterns))
     );
 }
@@ -290,18 +300,14 @@ import * as appliesToService from "./service";
 export const appliesToRoutes = new Elysia()
     .get("/chunks/:id/applies-to", ctx =>
         Effect.runPromise(
-            requireSession(ctx).pipe(
-                Effect.flatMap(session => appliesToService.getAppliesTo(ctx.params.id, session.user.id))
-            )
+            requireSession(ctx).pipe(Effect.flatMap(session => appliesToService.getAppliesTo(ctx.params.id, session.user.id)))
         )
     )
     .put(
         "/chunks/:id/applies-to",
         ctx =>
             Effect.runPromise(
-                requireSession(ctx).pipe(
-                    Effect.flatMap(session => appliesToService.setAppliesTo(ctx.params.id, session.user.id, ctx.body))
-                )
+                requireSession(ctx).pipe(Effect.flatMap(session => appliesToService.setAppliesTo(ctx.params.id, session.user.id, ctx.body)))
             ),
         {
             body: t.Array(
@@ -320,11 +326,12 @@ export const appliesToRoutes = new Elysia()
 In `packages/api/src/index.ts`, import and `.use(appliesToRoutes)`.
 
 In `packages/api/src/chunks/service.ts`, extend `getChunkDetail` to include applies-to:
+
 ```typescript
 import { getAppliesToForChunk } from "@fubbik/db/repository";
 
 // In getChunkDetail, add to Effect.all:
-appliesTo: getAppliesToForChunk(chunkId)
+appliesTo: getAppliesToForChunk(chunkId);
 ```
 
 - [ ] **Step 4: Run tests**
@@ -345,6 +352,7 @@ git commit -m "feat(api): add applies-to service, routes, and include in chunk d
 ### Task 5: File-ref schema and repository
 
 **Files:**
+
 - Create: `packages/db/src/schema/file-ref.ts`
 - Create: `packages/db/src/repository/file-ref.ts`
 - Create: `packages/db/src/__tests__/file-ref.test.ts`
@@ -390,10 +398,7 @@ export const chunkFileRef = pgTable(
         anchor: text("anchor"),
         relation: text("relation").notNull().default("documents")
     },
-    table => [
-        index("chunk_file_ref_chunkId_idx").on(table.chunkId),
-        index("chunk_file_ref_path_idx").on(table.path)
-    ]
+    table => [index("chunk_file_ref_chunkId_idx").on(table.chunkId), index("chunk_file_ref_path_idx").on(table.path)]
 );
 
 export const chunkFileRefRelations = relations(chunkFileRef, ({ one }) => ({
@@ -428,10 +433,7 @@ export function getFileRefsForChunk(chunkId: string) {
     });
 }
 
-export function setFileRefsForChunk(
-    chunkId: string,
-    refs: { path: string; anchor?: string | null; relation: string }[]
-) {
+export function setFileRefsForChunk(chunkId: string, refs: { path: string; anchor?: string | null; relation: string }[]) {
     return Effect.tryPromise({
         try: async () => {
             await db.delete(chunkFileRef).where(eq(chunkFileRef.chunkId, chunkId));
@@ -488,6 +490,7 @@ git commit -m "feat(db): add chunk_file_ref schema and repository with reverse l
 ### Task 6: File-ref service and routes
 
 **Files:**
+
 - Create: `packages/api/src/file-refs/service.ts`
 - Create: `packages/api/src/file-refs/routes.ts`
 - Modify: `packages/api/src/index.ts`
@@ -495,7 +498,8 @@ git commit -m "feat(db): add chunk_file_ref schema and repository with reverse l
 
 - [ ] **Step 1: Write service**
 
-Same pattern as applies-to service: ownership check via `getChunkById` before mutations. Reverse lookup uses `lookupChunksByFilePath` which already filters by userId.
+Same pattern as applies-to service: ownership check via `getChunkById` before mutations. Reverse lookup uses `lookupChunksByFilePath` which
+already filters by userId.
 
 - [ ] **Step 2: Write routes**
 
@@ -506,13 +510,9 @@ GET /file-refs/lookup?path=<path>
 ```
 
 The `relation` field validation:
+
 ```typescript
-relation: t.Union([
-    t.Literal("documents"),
-    t.Literal("configures"),
-    t.Literal("tests"),
-    t.Literal("implements")
-])
+relation: t.Union([t.Literal("documents"), t.Literal("configures"), t.Literal("tests"), t.Literal("implements")]);
 ```
 
 IMPORTANT: Register `/file-refs/lookup` as a standalone route, not under `/chunks/:id`. It's a top-level reverse lookup endpoint.
@@ -541,6 +541,7 @@ git commit -m "feat(api): add file-refs service, routes, reverse lookup, and inc
 ### Task 7: Template schema, repository, and seed migration
 
 **Files:**
+
 - Create: `packages/db/src/schema/template.ts`
 - Create: `packages/db/src/repository/template.ts`
 - Create: `packages/db/src/__tests__/template.test.ts`
@@ -588,16 +589,18 @@ export const chunkTemplateRelations = relations(chunkTemplate, ({ one }) => ({
 
 - [ ] **Step 3: Write repository**
 
-Functions: `listTemplates(userId)` (returns built-in + user's), `getTemplateById(id)`, `createTemplate(params)`, `updateTemplate(id, userId, params)`, `deleteTemplate(id, userId)`.
+Functions: `listTemplates(userId)` (returns built-in + user's), `getTemplateById(id)`, `createTemplate(params)`,
+`updateTemplate(id, userId, params)`, `deleteTemplate(id, userId)`.
 
-`listTemplates` returns all where `isBuiltIn = true` OR `userId = <userId>`.
-`deleteTemplate` must check `isBuiltIn = false` before deleting.
+`listTemplates` returns all where `isBuiltIn = true` OR `userId = <userId>`. `deleteTemplate` must check `isBuiltIn = false` before
+deleting.
 
 - [ ] **Step 4: Create seed migration**
 
 Create a SQL migration file for built-in templates. Add it to the migration runner in `packages/db/src/run-sql-migrations.ts`.
 
-The SQL uses `INSERT ... ON CONFLICT (name) WHERE user_id IS NULL DO UPDATE SET content = EXCLUDED.content, description = EXCLUDED.description, type = EXCLUDED.type`.
+The SQL uses
+`INSERT ... ON CONFLICT (name) WHERE user_id IS NULL DO UPDATE SET content = EXCLUDED.content, description = EXCLUDED.description, type = EXCLUDED.type`.
 
 Include the 4 built-in templates from the spec: Convention, Architecture Decision, Runbook, API Endpoint.
 
@@ -617,6 +620,7 @@ git commit -m "feat(db): add chunk_template schema, repository, and seed migrati
 ### Task 8: Template service and routes
 
 **Files:**
+
 - Create: `packages/api/src/templates/service.ts`
 - Create: `packages/api/src/templates/routes.ts`
 - Modify: `packages/api/src/index.ts`
@@ -658,6 +662,7 @@ git commit -m "feat(api): add template CRUD service and routes"
 ### Task 9: Chunk detail — display new fields
 
 **Files:**
+
 - Modify: `apps/web/src/routes/chunks.$chunkId.tsx`
 
 - [ ] **Step 1: Read the current chunk detail page**
@@ -667,18 +672,21 @@ Read `apps/web/src/routes/chunks.$chunkId.tsx` to understand the layout.
 - [ ] **Step 2: Add applies-to section**
 
 After the content section, if `chunk.appliesTo` has items, render a section:
+
 - Label: "Applies To"
 - List of monospace code badges: `pattern` with optional note in parentheses
 
 - [ ] **Step 3: Add file references section**
 
 If `chunk.fileReferences` has items:
+
 - Label: "File References"
 - List with monospace path, anchor badge (if present), relation label
 
 - [ ] **Step 4: Add decision context section**
 
 If any of `rationale`, `alternatives`, `consequences` is present:
+
 - Section with subtle background tint
 - "Rationale" — paragraph
 - "Alternatives Considered" — bullet list
@@ -700,6 +708,7 @@ git commit -m "feat(web): display applies-to, file-refs, and decision context on
 ### Task 10: Chunk create/edit — new form fields
 
 **Files:**
+
 - Modify: `apps/web/src/routes/chunks.new.tsx` (or wherever the create form is)
 - Modify: `apps/web/src/routes/chunks.$chunkId.edit.tsx` (edit form)
 
@@ -710,6 +719,7 @@ Read the create and edit pages to understand the form structure.
 - [ ] **Step 2: Add template selector to create form**
 
 At the top of the create form, add a dropdown that:
+
 - Fetches templates via `api.api.templates.get()`
 - On selection, pre-fills content and type fields
 - Shows "(none)" as default option
@@ -717,6 +727,7 @@ At the top of the create form, add a dropdown that:
 - [ ] **Step 3: Add applies-to repeatable field**
 
 After tags, add an "Applies To" section:
+
 - List of pattern/note input pairs
 - "Add pattern" button
 - Remove button per row
@@ -724,12 +735,13 @@ After tags, add an "Applies To" section:
 
 - [ ] **Step 4: Add file references repeatable field**
 
-Same pattern: path input + optional anchor + relation dropdown. "Add reference" button.
-On submit, call `PUT /chunks/:id/file-refs` after chunk creation.
+Same pattern: path input + optional anchor + relation dropdown. "Add reference" button. On submit, call `PUT /chunks/:id/file-refs` after
+chunk creation.
 
 - [ ] **Step 5: Add decision context collapsible**
 
 "Add decision context" link that expands:
+
 - Rationale textarea
 - Alternatives — repeatable text inputs
 - Consequences textarea
@@ -756,6 +768,7 @@ git commit -m "feat(web): add template selector, applies-to, file-refs, and deci
 ### Task 11: Templates management page
 
 **Files:**
+
 - Create: `apps/web/src/routes/templates.tsx`
 - Modify: `apps/web/src/routes/__root.tsx`
 - Modify: `apps/web/src/features/nav/mobile-nav.tsx`
@@ -767,6 +780,7 @@ Read `apps/web/src/routes/codebases.tsx` or `apps/web/src/routes/tags.tsx`.
 - [ ] **Step 2: Create templates page**
 
 `/templates` route with:
+
 - List all templates (query `api.api.templates.get()`)
 - Built-in templates: "Built-in" badge, read-only, "Duplicate" button
 - User templates: editable, deletable
@@ -795,8 +809,7 @@ git commit -m "feat(web): add templates management page with built-in and custom
 
 - [ ] **Step 1: Run full CI**
 
-Run: `pnpm ci`
-Expected: Same baseline as before (only pre-existing errors)
+Run: `pnpm ci` Expected: Same baseline as before (only pre-existing errors)
 
 - [ ] **Step 2: Fix any issues**
 

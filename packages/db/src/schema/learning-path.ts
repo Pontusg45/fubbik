@@ -17,11 +17,11 @@ export const learningPath = pgTable(
         updatedAt: timestamp("updated_at")
             .defaultNow()
             .$onUpdate(() => new Date())
-            .notNull(),
+            .notNull()
     },
-    table => [index("learning_path_userId_idx").on(table.userId)],
+    table => [index("learning_path_userId_idx").on(table.userId)]
 );
 
 export const learningPathRelations = relations(learningPath, ({ one }) => ({
-    user: one(user, { fields: [learningPath.userId], references: [user.id] }),
+    user: one(user, { fields: [learningPath.userId], references: [user.id] })
 }));

@@ -20,18 +20,18 @@ export interface TimelineParams {
 
 export function fetchTimeline(params: TimelineParams) {
     return dbEffect(async (): Promise<TimelineEvent[]> => {
-            const codebaseFilter = params.spaceId
-                ? sql`AND c.id IN (SELECT chunk_id FROM chunk_space WHERE space_id = ${params.spaceId})`
-                : sql``;
-            const tagFilter = params.tag
-                ? sql`AND c.id IN (
+        const codebaseFilter = params.spaceId
+            ? sql`AND c.id IN (SELECT chunk_id FROM chunk_space WHERE space_id = ${params.spaceId})`
+            : sql``;
+        const tagFilter = params.tag
+            ? sql`AND c.id IN (
                     SELECT ct.chunk_id FROM chunk_tag ct
                     INNER JOIN tag t ON t.id = ct.tag_id
                     WHERE t.name = ${params.tag}
                 )`
-                : sql``;
+            : sql``;
 
-            const result = await db.execute(sql`
+        const result = await db.execute(sql`
                 SELECT chunk_id, chunk_title, chunk_type, kind, at, version
                 FROM (
                     SELECT
@@ -69,22 +69,22 @@ export function fetchTimeline(params: TimelineParams) {
                 LIMIT 500
             `);
 
-            const rows = result.rows as Array<{
-                chunk_id: string;
-                chunk_title: string;
-                chunk_type: string;
-                kind: "created" | "updated";
-                at: string | Date;
-                version: number | null;
-            }>;
+        const rows = result.rows as Array<{
+            chunk_id: string;
+            chunk_title: string;
+            chunk_type: string;
+            kind: "created" | "updated";
+            at: string | Date;
+            version: number | null;
+        }>;
 
-            return rows.map(r => ({
-                chunkId: r.chunk_id,
-                chunkTitle: r.chunk_title,
-                chunkType: r.chunk_type,
-                kind: r.kind,
-                at: typeof r.at === "string" ? r.at : r.at.toISOString(),
-                version: r.version
-            }));
-        });
+        return rows.map(r => ({
+            chunkId: r.chunk_id,
+            chunkTitle: r.chunk_title,
+            chunkType: r.chunk_type,
+            kind: r.kind,
+            at: typeof r.at === "string" ? r.at : r.at.toISOString(),
+            version: r.version
+        }));
+    });
 }

@@ -7,7 +7,7 @@ import {
     DropdownMenuItem,
     DropdownMenuLabel,
     DropdownMenuSeparator,
-    DropdownMenuTrigger,
+    DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 
@@ -50,9 +50,7 @@ export function FilterPresets({ currentFilters, onApplyPreset }: FilterPresetsPr
         <div className="border-t pt-3">
             <div className="flex items-center gap-1">
                 <DropdownMenu>
-                    <DropdownMenuTrigger
-                        className="text-muted-foreground hover:text-foreground flex cursor-pointer items-center gap-1 text-[10px] font-medium uppercase transition-colors"
-                    >
+                    <DropdownMenuTrigger className="text-muted-foreground hover:text-foreground flex cursor-pointer items-center gap-1 text-[10px] font-medium uppercase transition-colors">
                         <Bookmark className="size-3" />
                         Presets
                     </DropdownMenuTrigger>
@@ -60,9 +58,7 @@ export function FilterPresets({ currentFilters, onApplyPreset }: FilterPresetsPr
                         <DropdownMenuLabel>Saved Presets</DropdownMenuLabel>
                         <DropdownMenuSeparator />
                         {presets.length === 0 ? (
-                            <div className="text-muted-foreground px-2 py-3 text-center text-xs">
-                                No saved presets yet
-                            </div>
+                            <div className="text-muted-foreground px-2 py-3 text-center text-xs">No saved presets yet</div>
                         ) : (
                             presets.map((preset, i) => (
                                 <DropdownMenuItem
@@ -74,7 +70,7 @@ export function FilterPresets({ currentFilters, onApplyPreset }: FilterPresetsPr
                                     <button
                                         type="button"
                                         className="text-muted-foreground hover:text-destructive shrink-0 rounded p-0.5 transition-colors"
-                                        onClick={(e) => handleDelete(i, e)}
+                                        onClick={e => handleDelete(i, e)}
                                         aria-label={`Delete preset ${preset.name}`}
                                     >
                                         <Trash2 className="size-3" />
@@ -100,7 +96,7 @@ export function FilterPresets({ currentFilters, onApplyPreset }: FilterPresetsPr
                             }
                         }}
                         placeholder="Preset name..."
-                        className="bg-background border-input min-w-0 flex-1 rounded border px-1.5 py-0.5 text-[10px] outline-none focus:ring-1 focus:ring-ring"
+                        className="bg-background border-input focus:ring-ring min-w-0 flex-1 rounded border px-1.5 py-0.5 text-[10px] outline-none focus:ring-1"
                         autoFocus
                     />
                     <button
@@ -114,7 +110,10 @@ export function FilterPresets({ currentFilters, onApplyPreset }: FilterPresetsPr
                     </button>
                     <button
                         type="button"
-                        onClick={() => { setIsSaving(false); setPresetName(""); }}
+                        onClick={() => {
+                            setIsSaving(false);
+                            setPresetName("");
+                        }}
                         className="text-muted-foreground hover:text-foreground"
                         aria-label="Cancel save"
                     >

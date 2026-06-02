@@ -48,18 +48,16 @@ export function MoreContextLinksTab({ chunkId, chunkTitle, outgoing, incoming }:
             {/* Connected — the source of truth */}
             <section>
                 <div className="mb-2 flex items-center justify-between">
-                    <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                        Connected
-                    </h3>
+                    <h3 className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">Connected</h3>
                     {hasConnections && (
-                        <span className="text-[10px] text-muted-foreground font-mono">
+                        <span className="text-muted-foreground font-mono text-[10px]">
                             {outgoing.length} out · {incoming.length} in
                         </span>
                     )}
                 </div>
 
                 {!hasConnections ? (
-                    <p className="text-xs text-muted-foreground">No connections yet. Use suggestions below to discover links.</p>
+                    <p className="text-muted-foreground text-xs">No connections yet. Use suggestions below to discover links.</p>
                 ) : (
                     <div className="space-y-1">
                         {outgoing.map(conn => {
@@ -69,15 +67,13 @@ export function MoreContextLinksTab({ chunkId, chunkTitle, outgoing, incoming }:
                             return (
                                 <div key={conn.id} className="flex items-center gap-2 rounded border px-3 py-2 text-sm">
                                     <span title="Outgoing">
-                                        <ArrowRight className="size-3 shrink-0 text-muted-foreground/60" />
+                                        <ArrowRight className="text-muted-foreground/60 size-3 shrink-0" />
                                     </span>
                                     <Badge variant="outline" size="sm" style={{ borderColor: color }}>
                                         {label}
                                     </Badge>
                                     <span className="flex-1 truncate">
-                                        <ChunkLink chunkId={conn.targetId}>
-                                            {conn.title ?? conn.targetId}
-                                        </ChunkLink>
+                                        <ChunkLink chunkId={conn.targetId}>{conn.title ?? conn.targetId}</ChunkLink>
                                     </span>
                                     <DeleteConnectionButton connectionId={conn.id} chunkId={chunkId} />
                                 </div>
@@ -88,7 +84,7 @@ export function MoreContextLinksTab({ chunkId, chunkTitle, outgoing, incoming }:
                             return (
                                 <div key={conn.id} className="flex items-center gap-2 rounded border px-3 py-2 text-sm">
                                     <span title="Incoming">
-                                        <ArrowLeft className="size-3 shrink-0 text-muted-foreground/60" />
+                                        <ArrowLeft className="text-muted-foreground/60 size-3 shrink-0" />
                                     </span>
                                     <Badge
                                         variant="outline"
@@ -99,9 +95,7 @@ export function MoreContextLinksTab({ chunkId, chunkTitle, outgoing, incoming }:
                                         {inverse.label}
                                     </Badge>
                                     <span className="flex-1 truncate">
-                                        <ChunkLink chunkId={conn.sourceId}>
-                                            {conn.title ?? conn.sourceId}
-                                        </ChunkLink>
+                                        <ChunkLink chunkId={conn.sourceId}>{conn.title ?? conn.sourceId}</ChunkLink>
                                     </span>
                                 </div>
                             );
@@ -112,19 +106,19 @@ export function MoreContextLinksTab({ chunkId, chunkTitle, outgoing, incoming }:
 
             {/* Discover — unified suggestions */}
             <section>
-                <h3 className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                <h3 className="text-muted-foreground mb-2 flex items-center gap-1.5 text-xs font-semibold tracking-wider uppercase">
                     <Lightbulb className="size-3.5" />
                     Discover
                 </h3>
 
                 <div className="space-y-3">
                     <div>
-                        <div className="mb-1 text-[10px] text-muted-foreground/70">By content similarity</div>
+                        <div className="text-muted-foreground/70 mb-1 text-[10px]">By content similarity</div>
                         <RelatedSuggestions chunkId={chunkId} chunkTitle={chunkTitle} connectedIds={connectedIds} />
                     </div>
 
                     <div>
-                        <div className="mb-1 text-[10px] text-muted-foreground/70">By rule-based analysis</div>
+                        <div className="text-muted-foreground/70 mb-1 text-[10px]">By rule-based analysis</div>
                         <SuggestedConnections chunkId={chunkId} />
                     </div>
                 </div>

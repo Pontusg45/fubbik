@@ -1,10 +1,8 @@
-import {
-    listChunks as listChunksRepo,
-} from "@fubbik/db/repository";
+import { listChunks as listChunksRepo } from "@fubbik/db/repository";
 import { Effect } from "effect";
 
-import { enrichChunks, resolveForFiles } from "../context/resolvers";
 import { formatStructured, formatStructuredMarkdown } from "../context/formatter";
+import { enrichChunks, resolveForFiles } from "../context/resolvers";
 import { budgetChunks, estimateTokens, formatChunkText } from "../context/utils";
 
 interface ContextExportQuery {
@@ -23,14 +21,14 @@ export function exportContext(userId: string, query: ContextExportQuery) {
         reviewStatus: "approved",
         spaceId: query.spaceId,
         limit: 500,
-        offset: 0,
+        offset: 0
     });
 
     const fetchOthers = listChunksRepo({
         userId,
         spaceId: query.spaceId,
         limit: 500,
-        offset: 0,
+        offset: 0
     });
 
     return Effect.all({ approved: fetchApproved, all: fetchOthers }).pipe(
@@ -44,11 +42,7 @@ export function exportContext(userId: string, query: ContextExportQuery) {
                 Effect.flatMap(enriched =>
                     Effect.gen(function* () {
                         if (query.forPath) {
-                            const fileIds = yield* resolveForFiles(
-                                [query.forPath],
-                                userId,
-                                query.spaceId,
-                            );
+                            const fileIds = yield* resolveForFiles([query.forPath], userId, query.spaceId);
                             const fileIdSet = new Set(fileIds);
                             for (const item of enriched) {
                                 if (fileIdSet.has(item.id)) {
@@ -64,15 +58,15 @@ export function exportContext(userId: string, query: ContextExportQuery) {
                                 format: "json" as const,
                                 tokens: budgeted.reduce(
                                     (sum, c) => sum + estimateTokens(formatChunkText(c)),
-                                    estimateTokens("# Project Context\n\n"),
+                                    estimateTokens("# Project Context\n\n")
                                 ),
                                 chunks: budgeted.map(c => ({
                                     title: c.title,
                                     content: c.content,
                                     type: c.type,
-                                    tags: c.tags,
+                                    tags: c.tags
                                 })),
-                                content: undefined as string | undefined,
+                                content: undefined as string | undefined
                             };
                         }
 
@@ -82,14 +76,12 @@ export function exportContext(userId: string, query: ContextExportQuery) {
                         return {
                             format: "markdown" as const,
                             tokens: estimateTokens(content),
-                            chunks: undefined as
-                                | { title: string; content: string; type: string; tags: string[] }[]
-                                | undefined,
-                            content,
+                            chunks: undefined as { title: string; content: string; type: string; tags: string[] }[] | undefined,
+                            content
                         };
-                    }),
-                ),
+                    })
+                )
             );
-        }),
+        })
     );
 }

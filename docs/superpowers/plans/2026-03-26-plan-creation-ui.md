@@ -1,14 +1,18 @@
 # Plan Creation UI Improvements
 
-> **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to
+> implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Make the plan creation form richer with templates, markdown paste, bulk entry, requirement linking, and keyboard shortcuts.
 
-**Architecture:** All changes in `apps/web/src/routes/plans.new.tsx` and supporting components. The form currently has title + description + simple step list. We add: template selector (fetches from API), markdown paste mode (uses existing parser), bulk paste mode, requirement linking per step, codebase selector, autosave, step reorder, and keyboard improvements.
+**Architecture:** All changes in `apps/web/src/routes/plans.new.tsx` and supporting components. The form currently has title + description +
+simple step list. We add: template selector (fetches from API), markdown paste mode (uses existing parser), bulk paste mode, requirement
+linking per step, codebase selector, autosave, step reorder, and keyboard improvements.
 
 **Tech Stack:** React, TanStack Query, Eden treaty, shadcn-ui (base-ui), existing `useAutosave` hook, existing `parsePlanMarkdown`
 
 **Codebase notes:**
+
 - Plan templates API: `GET /plans/templates` returns `Record<string, { title, description, steps }>`
 - Markdown parser: `packages/api/src/plans/parse-plan-markdown.ts` → `parsePlanMarkdown(md)` returns `{ title, description, steps }`
 - `useAutosave` hook: `apps/web/src/features/chunks/use-autosave.ts`
@@ -21,6 +25,7 @@
 ## File Structure
 
 ### Files to modify:
+
 - `apps/web/src/routes/plans.new.tsx` — Main form page (all features)
 
 ---
@@ -28,6 +33,7 @@
 ## Task 1: Input Components + Codebase Selector + Autosave
 
 **Files:**
+
 - Modify: `apps/web/src/routes/plans.new.tsx`
 
 - [ ] **Step 1: Read the file**
@@ -36,13 +42,16 @@ Read `apps/web/src/routes/plans.new.tsx` fully to understand the current form st
 
 - [ ] **Step 2: Replace raw inputs with `<Input />` and `<Textarea />`**
 
-Import `Input` from `@/components/ui/input`. Replace all raw `<input>` elements with `<Input />`. Replace the raw `<textarea>` with a proper textarea (check if `@/components/ui/textarea` exists; if not, keep `<textarea>` but use `Input`'s styling pattern).
+Import `Input` from `@/components/ui/input`. Replace all raw `<input>` elements with `<Input />`. Replace the raw `<textarea>` with a proper
+textarea (check if `@/components/ui/textarea` exists; if not, keep `<textarea>` but use `Input`'s styling pattern).
 
 - [ ] **Step 3: Add codebase selector**
 
 Import `useActiveCodebase` from `@/features/codebases/use-active-codebase`. Pass the active `codebaseId` to the create mutation:
 
-**NOTE:** `useActiveCodebase().codebaseId` reads from the URL `?codebase=` param. On `/plans/new` this will be `null` unless the user navigated with the param (e.g., from the requirements page which carries it). This is expected behavior — the plan will be global unless a codebase is active.
+**NOTE:** `useActiveCodebase().codebaseId` reads from the URL `?codebase=` param. On `/plans/new` this will be `null` unless the user
+navigated with the param (e.g., from the requirements page which carries it). This is expected behavior — the plan will be global unless a
+codebase is active.
 
 ```tsx
 const { codebaseId } = useActiveCodebase();
@@ -87,15 +96,19 @@ git commit -m "feat(web): standardize plan form inputs, add codebase selector an
 ## Task 2: Template Selector
 
 **Files:**
+
 - Modify: `apps/web/src/routes/plans.new.tsx`
 
 - [ ] **Step 1: Fetch templates**
 
-**CRITICAL:** The templates API returns `{ templates: Array<{ key, title, description, stepCount }> }` — an ARRAY wrapped in an object, NOT a Record. And it does NOT include step descriptions (only `stepCount`).
+**CRITICAL:** The templates API returns `{ templates: Array<{ key, title, description, stepCount }> }` — an ARRAY wrapped in an object, NOT
+a Record. And it does NOT include step descriptions (only `stepCount`).
 
-To pre-fill steps from a template, use the `POST /plans` endpoint with the `template` field and let the server expand steps. The template selector should create the plan server-side, then redirect to the detail page where the user can edit.
+To pre-fill steps from a template, use the `POST /plans` endpoint with the `template` field and let the server expand steps. The template
+selector should create the plan server-side, then redirect to the detail page where the user can edit.
 
-Alternatively, extend the API to return step descriptions in templates (simpler for the UI). Read `packages/api/src/plans/service.ts` `listPlanTemplates` to understand the current shape and extend it to include `steps: string[]`.
+Alternatively, extend the API to return step descriptions in templates (simpler for the UI). Read `packages/api/src/plans/service.ts`
+`listPlanTemplates` to understand the current shape and extend it to include `steps: string[]`.
 
 ```tsx
 const templatesQuery = useQuery({
@@ -104,13 +117,14 @@ const templatesQuery = useQuery({
         const result = unwrapEden(await api.api.plans.templates.get());
         return (result as any)?.templates ?? [];
     },
-    staleTime: 60_000,
+    staleTime: 60_000
 });
 ```
 
 - [ ] **Step 2: Extend templates API to return step strings**
 
-In `packages/api/src/plans/service.ts`, modify `listPlanTemplates` to include `steps: string[]` (the actual step descriptions) alongside `stepCount`. Then the frontend can pre-fill.
+In `packages/api/src/plans/service.ts`, modify `listPlanTemplates` to include `steps: string[]` (the actual step descriptions) alongside
+`stepCount`. Then the frontend can pre-fill.
 
 - [ ] **Step 3: Add template selector UI**
 
@@ -154,6 +168,7 @@ git commit -m "feat(web): add template selector to plan creation form"
 ## Task 3: Markdown Paste Mode
 
 **Files:**
+
 - Modify: `apps/web/src/routes/plans.new.tsx`
 
 - [ ] **Step 1: Add mode toggle**
@@ -247,6 +262,7 @@ git commit -m "feat(web): add markdown paste mode to plan creation"
 ## Task 4: Bulk Step Entry + Step Count
 
 **Files:**
+
 - Modify: `apps/web/src/routes/plans.new.tsx`
 
 - [ ] **Step 1: Add bulk paste button**
@@ -257,35 +273,44 @@ Add a "Paste steps" button below the step list that shows a textarea for multi-l
 const [showBulkEntry, setShowBulkEntry] = useState(false);
 const [bulkText, setBulkText] = useState("");
 
-{showBulkEntry ? (
-    <div className="mt-2 space-y-2">
-        <textarea
-            value={bulkText}
-            onChange={(e) => setBulkText(e.target.value)}
-            placeholder="Paste one step per line..."
-            rows={6}
-            className="w-full rounded-md border bg-background px-3 py-2 text-sm"
-        />
-        <div className="flex gap-2">
-            <Button type="button" size="sm" onClick={() => {
-                const newSteps = bulkText.split("\n").filter(l => l.trim()).map(l => ({ description: l.trim() }));
-                setSteps(prev => [...prev.filter(s => s.description.trim()), ...newSteps]);
-                setBulkText("");
-                setShowBulkEntry(false);
-                toast.success(`Added ${newSteps.length} steps`);
-            }}>
-                Add {bulkText.split("\n").filter(l => l.trim()).length} steps
-            </Button>
-            <Button type="button" variant="outline" size="sm" onClick={() => setShowBulkEntry(false)}>
-                Cancel
-            </Button>
+{
+    showBulkEntry ? (
+        <div className="mt-2 space-y-2">
+            <textarea
+                value={bulkText}
+                onChange={e => setBulkText(e.target.value)}
+                placeholder="Paste one step per line..."
+                rows={6}
+                className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+            />
+            <div className="flex gap-2">
+                <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => {
+                        const newSteps = bulkText
+                            .split("\n")
+                            .filter(l => l.trim())
+                            .map(l => ({ description: l.trim() }));
+                        setSteps(prev => [...prev.filter(s => s.description.trim()), ...newSteps]);
+                        setBulkText("");
+                        setShowBulkEntry(false);
+                        toast.success(`Added ${newSteps.length} steps`);
+                    }}
+                >
+                    Add {bulkText.split("\n").filter(l => l.trim()).length} steps
+                </Button>
+                <Button type="button" variant="outline" size="sm" onClick={() => setShowBulkEntry(false)}>
+                    Cancel
+                </Button>
+            </div>
         </div>
-    </div>
-) : (
-    <Button type="button" variant="ghost" size="sm" onClick={() => setShowBulkEntry(true)}>
-        Paste multiple steps
-    </Button>
-)}
+    ) : (
+        <Button type="button" variant="ghost" size="sm" onClick={() => setShowBulkEntry(true)}>
+            Paste multiple steps
+        </Button>
+    );
+}
 ```
 
 - [ ] **Step 2: Add step count indicator**
@@ -295,9 +320,7 @@ Show a count next to the "Steps" label:
 ```tsx
 <label className="mb-2 flex items-center gap-2 text-sm font-medium">
     Steps
-    <span className="text-muted-foreground text-xs">
-        ({steps.filter(s => s.description.trim()).length} valid)
-    </span>
+    <span className="text-muted-foreground text-xs">({steps.filter(s => s.description.trim()).length} valid)</span>
 </label>
 ```
 
@@ -320,6 +343,7 @@ git commit -m "feat(web): add bulk step entry, step count, and empty step indica
 ## Task 5: Requirement Linking on Steps
 
 **Files:**
+
 - Modify: `apps/web/src/routes/plans.new.tsx`
 
 - [ ] **Step 1: Extend StepRow with requirementId**
@@ -334,41 +358,52 @@ interface StepRow {
 - [ ] **Step 2: Add requirement search per step**
 
 Fetch requirements:
+
 ```tsx
 const reqsQuery = useQuery({
     queryKey: ["requirements-for-linking"],
     queryFn: async () => unwrapEden(await api.api.requirements.get({ query: {} })),
-    staleTime: 30_000,
+    staleTime: 30_000
 });
 ```
 
 On each step row, add a small "Link" button that shows a dropdown of requirements:
 
 ```tsx
-<Button type="button" variant="ghost" size="sm" className="size-8 p-0" title="Link requirement"
-    onClick={() => setLinkingStepIndex(i)}>
+<Button type="button" variant="ghost" size="sm" className="size-8 p-0" title="Link requirement" onClick={() => setLinkingStepIndex(i)}>
     <LinkIcon className="size-3.5" />
-</Button>
+</Button>;
 
-{linkingStepIndex === i && (
-    <div className="absolute z-10 mt-1 w-64 rounded-md border bg-background p-2 shadow-lg">
-        {(reqsQuery.data?.requirements ?? []).slice(0, 10).map((req: any) => (
-            <button key={req.id} onClick={() => {
-                updateStep(i, step.description, req.id);
-                setLinkingStepIndex(null);
-            }} className="block w-full text-left px-2 py-1 text-sm hover:bg-muted rounded">
-                {req.title}
-            </button>
-        ))}
-    </div>
-)}
+{
+    linkingStepIndex === i && (
+        <div className="absolute z-10 mt-1 w-64 rounded-md border bg-background p-2 shadow-lg">
+            {(reqsQuery.data?.requirements ?? []).slice(0, 10).map((req: any) => (
+                <button
+                    key={req.id}
+                    onClick={() => {
+                        updateStep(i, step.description, req.id);
+                        setLinkingStepIndex(null);
+                    }}
+                    className="block w-full text-left px-2 py-1 text-sm hover:bg-muted rounded"
+                >
+                    {req.title}
+                </button>
+            ))}
+        </div>
+    );
+}
 ```
 
 Show a small badge when a step has a linked requirement:
+
 ```tsx
-{step.requirementId && (
-    <Badge variant="outline" size="sm" className="text-[10px] shrink-0">req</Badge>
-)}
+{
+    step.requirementId && (
+        <Badge variant="outline" size="sm" className="text-[10px] shrink-0">
+            req
+        </Badge>
+    );
+}
 ```
 
 Pass `requirementId` through to the create mutation.
@@ -384,6 +419,7 @@ git commit -m "feat(web): add requirement linking on plan creation steps"
 ## Task 6: Step Reorder + Keyboard Shortcuts
 
 **Files:**
+
 - Modify: `apps/web/src/routes/plans.new.tsx`
 
 - [ ] **Step 1: Add up/down arrows for reorder**
@@ -455,10 +491,9 @@ data-step-input
 ```
 
 Add a small hint below the steps:
+
 ```tsx
-<p className="text-muted-foreground text-xs mt-1">
-    Enter: add step · Backspace on empty: remove · Alt+↑/↓: reorder
-</p>
+<p className="text-muted-foreground text-xs mt-1">Enter: add step · Backspace on empty: remove · Alt+↑/↓: reorder</p>
 ```
 
 - [ ] **Step 3: Commit**

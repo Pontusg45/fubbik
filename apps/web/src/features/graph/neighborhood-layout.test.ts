@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { layoutNeighborhood } from "./neighborhood-layout";
 
 describe("layoutNeighborhood", () => {
@@ -6,7 +7,7 @@ describe("layoutNeighborhood", () => {
         const result = layoutNeighborhood({
             focusChunkId: "c1",
             chunks: [{ id: "c1" }, { id: "c2" }],
-            connections: [{ sourceId: "c1", targetId: "c2", relation: "depends_on" }],
+            connections: [{ sourceId: "c1", targetId: "c2", relation: "depends_on" }]
         });
         expect(result.positions.c1).toEqual({ x: 0, y: 0 });
     });
@@ -17,8 +18,8 @@ describe("layoutNeighborhood", () => {
             chunks: [{ id: "c1" }, { id: "c2" }, { id: "c3" }],
             connections: [
                 { sourceId: "c1", targetId: "c2", relation: "depends_on" },
-                { sourceId: "c1", targetId: "c3", relation: "part_of" },
-            ],
+                { sourceId: "c1", targetId: "c3", relation: "part_of" }
+            ]
         });
         expect(result.hops.get("c2")).toBe(1);
         expect(result.hops.get("c3")).toBe(1);
@@ -33,8 +34,8 @@ describe("layoutNeighborhood", () => {
             chunks: [{ id: "c1" }, { id: "c2" }, { id: "c3" }],
             connections: [
                 { sourceId: "c1", targetId: "c2", relation: "depends_on" },
-                { sourceId: "c2", targetId: "c3", relation: "part_of" },
-            ],
+                { sourceId: "c2", targetId: "c3", relation: "part_of" }
+            ]
         });
         expect(result.hops.get("c3")).toBe(2);
         const dist2 = Math.hypot(result.positions.c2!.x, result.positions.c2!.y);
@@ -49,8 +50,8 @@ describe("layoutNeighborhood", () => {
             connections: [
                 { sourceId: "c1", targetId: "c2", relation: "depends_on" },
                 { sourceId: "c2", targetId: "c3", relation: "part_of" },
-                { sourceId: "c3", targetId: "c4", relation: "references" },
-            ],
+                { sourceId: "c3", targetId: "c4", relation: "references" }
+            ]
         });
         expect(result.positions).toHaveProperty("c1");
         expect(result.positions).toHaveProperty("c2");
@@ -62,7 +63,7 @@ describe("layoutNeighborhood", () => {
         const result = layoutNeighborhood({
             focusChunkId: "c1",
             chunks: [{ id: "c1" }],
-            connections: [],
+            connections: []
         });
         expect(result.positions).toEqual({ c1: { x: 0, y: 0 } });
         expect(result.hops.get("c1")).toBe(0);

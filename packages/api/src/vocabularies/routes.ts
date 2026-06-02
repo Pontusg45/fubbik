@@ -50,9 +50,7 @@ export const vocabularyCatalogRoutes = new Elysia()
         ctx =>
             Effect.runPromise(
                 requireSession(ctx).pipe(
-                    Effect.flatMap(session =>
-                        vocabularyService.getChunkTypes(session.user.id, ctx.query.spaceId || undefined)
-                    )
+                    Effect.flatMap(session => vocabularyService.getChunkTypes(session.user.id, ctx.query.spaceId || undefined))
                 )
             ),
         { query: t.Object({ spaceId: t.Optional(t.String()) }) }
@@ -63,7 +61,11 @@ export const vocabularyCatalogRoutes = new Elysia()
             Effect.runPromise(
                 requireSession(ctx).pipe(
                     Effect.flatMap(session => vocabularyService.createChunkType(session.user.id, ctx.body)),
-                    Effect.tap(() => Effect.sync(() => { ctx.set.status = 201; }))
+                    Effect.tap(() =>
+                        Effect.sync(() => {
+                            ctx.set.status = 201;
+                        })
+                    )
                 )
             ),
         { body: chunkTypeBodySchema }
@@ -91,9 +93,7 @@ export const vocabularyCatalogRoutes = new Elysia()
         ctx =>
             Effect.runPromise(
                 requireSession(ctx).pipe(
-                    Effect.flatMap(session =>
-                        vocabularyService.getConnectionRelations(session.user.id, ctx.query.spaceId || undefined)
-                    )
+                    Effect.flatMap(session => vocabularyService.getConnectionRelations(session.user.id, ctx.query.spaceId || undefined))
                 )
             ),
         { query: t.Object({ spaceId: t.Optional(t.String()) }) }
@@ -104,7 +104,11 @@ export const vocabularyCatalogRoutes = new Elysia()
             Effect.runPromise(
                 requireSession(ctx).pipe(
                     Effect.flatMap(session => vocabularyService.createConnectionRelation(session.user.id, ctx.body)),
-                    Effect.tap(() => Effect.sync(() => { ctx.set.status = 201; }))
+                    Effect.tap(() =>
+                        Effect.sync(() => {
+                            ctx.set.status = 201;
+                        })
+                    )
                 )
             ),
         { body: relationBodySchema }
@@ -114,9 +118,7 @@ export const vocabularyCatalogRoutes = new Elysia()
         ctx =>
             Effect.runPromise(
                 requireSession(ctx).pipe(
-                    Effect.flatMap(session =>
-                        vocabularyService.updateConnectionRelation(ctx.params.id, session.user.id, ctx.body)
-                    )
+                    Effect.flatMap(session => vocabularyService.updateConnectionRelation(ctx.params.id, session.user.id, ctx.body))
                 )
             ),
         { body: relationPatchSchema }

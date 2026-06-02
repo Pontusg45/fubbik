@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { splitMarkdown } from "./split-markdown";
 
 describe("document import flow", () => {

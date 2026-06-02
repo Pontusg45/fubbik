@@ -8,10 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardPanel } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import { useActiveSpace } from "@/features/spaces/use-active-space";
 import { ChunkLinker } from "@/features/requirements/chunk-linker";
 import { StepBuilder } from "@/features/requirements/step-builder";
 import { validateSteps, type Keyword, type StepRow, type StepError } from "@/features/requirements/validation";
+import { useActiveSpace } from "@/features/spaces/use-active-space";
 import { getUser } from "@/functions/get-user";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
@@ -86,8 +86,7 @@ function NewRequirement() {
             try {
                 const query: { spaceId?: string } = {};
                 if (spaceId) query.spaceId = spaceId;
-                const result = unwrapEden(await api.api["use-cases"].get({ query })) as
-                    Array<{ id: string; name: string }>;
+                const result = unwrapEden(await api.api["use-cases"].get({ query })) as Array<{ id: string; name: string }>;
                 return result ?? [];
             } catch {
                 return [];
@@ -186,7 +185,9 @@ function NewRequirement() {
                 <CardPanel className="space-y-4 p-6">
                     {/* Title */}
                     <div>
-                        <label htmlFor="req-title" className="mb-1.5 block text-sm font-medium">Title</label>
+                        <label htmlFor="req-title" className="mb-1.5 block text-sm font-medium">
+                            Title
+                        </label>
                         <Input
                             id="req-title"
                             value={title}
@@ -199,7 +200,9 @@ function NewRequirement() {
 
                     {/* Description */}
                     <div>
-                        <label htmlFor="req-description" className="mb-1.5 block text-sm font-medium">Description (optional)</label>
+                        <label htmlFor="req-description" className="mb-1.5 block text-sm font-medium">
+                            Description (optional)
+                        </label>
                         <textarea
                             id="req-description"
                             value={description}
@@ -212,7 +215,9 @@ function NewRequirement() {
 
                     {/* Priority */}
                     <div>
-                        <label htmlFor="req-priority" className="mb-1.5 block text-sm font-medium">Priority</label>
+                        <label htmlFor="req-priority" className="mb-1.5 block text-sm font-medium">
+                            Priority
+                        </label>
                         <select
                             id="req-priority"
                             value={priority}
@@ -230,7 +235,9 @@ function NewRequirement() {
                     {/* Use Case */}
                     {allUseCases.length > 0 && (
                         <div>
-                            <label htmlFor="req-use-case" className="mb-1.5 block text-sm font-medium">Use Case (optional)</label>
+                            <label htmlFor="req-use-case" className="mb-1.5 block text-sm font-medium">
+                                Use Case (optional)
+                            </label>
                             <select
                                 id="req-use-case"
                                 value={useCaseId}
@@ -257,11 +264,7 @@ function NewRequirement() {
                             onClick={() => setAiExpanded(!aiExpanded)}
                             className="mb-2 flex items-center gap-1.5 text-sm font-medium"
                         >
-                            {aiExpanded ? (
-                                <ChevronDown className="size-3.5" />
-                            ) : (
-                                <ChevronRight className="size-3.5" />
-                            )}
+                            {aiExpanded ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}
                             <Sparkles className="size-3.5" />
                             Describe in plain English
                         </button>
@@ -302,21 +305,12 @@ function NewRequirement() {
                     </div>
 
                     {/* Steps builder */}
-                    <StepBuilder
-                        steps={steps}
-                        onStepsChange={setSteps}
-                        spaceId={spaceId}
-                        stepErrors={stepErrors}
-                    />
+                    <StepBuilder steps={steps} onStepsChange={setSteps} spaceId={spaceId} stepErrors={stepErrors} />
 
                     <Separator />
 
                     {/* Linked chunks */}
-                    <ChunkLinker
-                        selectedChunkIds={selectedChunkIds}
-                        onSelectedChunkIdsChange={setSelectedChunkIds}
-                        codebaseId={spaceId}
-                    />
+                    <ChunkLinker selectedChunkIds={selectedChunkIds} onSelectedChunkIdsChange={setSelectedChunkIds} codebaseId={spaceId} />
 
                     <Separator />
 

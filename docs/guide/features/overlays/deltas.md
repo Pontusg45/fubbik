@@ -1,9 +1,9 @@
 ---
 tags:
-  - guide
-  - features
-  - overlays
-  - deltas
+    - guide
+    - features
+    - overlays
+    - deltas
 description: Editing chunks within a feature context — how deltas work
 ---
 
@@ -21,7 +21,8 @@ A delta is a sparse JSONB object containing only the fields that a feature chang
 
 ## Creating Deltas
 
-When features are active and you edit a chunk, a "Save to Feature" dialog appears offering to save your changes as a delta rather than modifying the base chunk directly.
+When features are active and you edit a chunk, a "Save to Feature" dialog appears offering to save your changes as a delta rather than
+modifying the base chunk directly.
 
 You can also manage deltas via the API:
 
@@ -39,4 +40,5 @@ Body: `{ "delta": { "content": "New proposed content..." } }`
 
 ## How Overlays Apply
 
-The enrichment pipeline applies active feature overlays automatically. All context paths (for-file, for-plan, about) get overlays applied, so AI tools always see the feature-modified version when features are active.
+The enrichment pipeline applies active feature overlays automatically. All context paths (for-file, for-plan, about) get overlays applied,
+so AI tools always see the feature-modified version when features are active.

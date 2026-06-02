@@ -5,8 +5,8 @@
  * path highlight, selection opacity, tag-group opacity, and multi-select outlines.
  */
 
-import { useEffect } from "react";
 import type { Edge, Node } from "@xyflow/react";
+import { useEffect } from "react";
 
 import { isGroupNodeId } from "@/features/graph/group-strategies";
 
@@ -39,7 +39,7 @@ export function useGraphStyling({
     chunkTagGroupMap,
     selectedChunkId,
     mergeNodes,
-    setEdges,
+    setEdges
 }: UseGraphStylingParams) {
     useEffect(() => {
         const hasSearch = debouncedSearchQuery.trim().length > 0;
@@ -71,7 +71,9 @@ export function useGraphStyling({
                     style: {
                         ...node.style,
                         opacity: isMatch ? 1 : 0.15,
-                        boxShadow: isMatch ? `0 0 12px 2px ${(node.style as React.CSSProperties | undefined)?.borderColor ?? "#475569"}` : "none",
+                        boxShadow: isMatch
+                            ? `0 0 12px 2px ${(node.style as React.CSSProperties | undefined)?.borderColor ?? "#475569"}`
+                            : "none",
                         transition: "opacity 0.2s, box-shadow 0.2s"
                     }
                 };
@@ -143,7 +145,9 @@ export function useGraphStyling({
                 style: {
                     ...edge.style,
                     opacity: pathResult.pathEdgeIds.has(edge.id) ? 1 : 0.05,
-                    strokeWidth: pathResult.pathEdgeIds.has(edge.id) ? 3 : ((edge.style as React.CSSProperties | undefined)?.strokeWidth ?? 2),
+                    strokeWidth: pathResult.pathEdgeIds.has(edge.id)
+                        ? 3
+                        : ((edge.style as React.CSSProperties | undefined)?.strokeWidth ?? 2),
                     transition: "opacity 0.2s"
                 }
             }));
@@ -195,7 +199,10 @@ export function useGraphStyling({
                 let sameGroup = false;
                 if (sourceGroups && targetGroups) {
                     for (const g of sourceGroups) {
-                        if (targetGroups.has(g)) { sameGroup = true; break; }
+                        if (targetGroups.has(g)) {
+                            sameGroup = true;
+                            break;
+                        }
                     }
                 }
                 return {

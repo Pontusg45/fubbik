@@ -14,7 +14,7 @@ export function formatChunkTable(chunks: ChunkRow[]): string {
     const table = new Table({
         head: ["ID", "Type", "Title", "Tags", "Updated"],
         colWidths: [12, 12, 40, 20, 12],
-        wordWrap: true,
+        wordWrap: true
     });
 
     for (const c of chunks) {
@@ -23,7 +23,7 @@ export function formatChunkTable(chunks: ChunkRow[]): string {
             c.type,
             c.title.length > 38 ? c.title.slice(0, 35) + "..." : c.title,
             (c.tags || []).join(", "),
-            c.updatedAt ? new Date(c.updatedAt).toLocaleDateString() : "",
+            c.updatedAt ? new Date(c.updatedAt).toLocaleDateString() : ""
         ]);
     }
 
@@ -43,16 +43,11 @@ export function formatSemanticTable(results: SemanticRow[]): string {
     const table = new Table({
         head: ["ID", "Type", "Title", "Score"],
         colWidths: [12, 12, 44, 10],
-        wordWrap: true,
+        wordWrap: true
     });
 
     for (const r of results) {
-        table.push([
-            r.id.slice(0, 10),
-            r.type,
-            r.title.length > 42 ? r.title.slice(0, 39) + "..." : r.title,
-            r.similarity.toFixed(3),
-        ]);
+        table.push([r.id.slice(0, 10), r.type, r.title.length > 42 ? r.title.slice(0, 39) + "..." : r.title, r.similarity.toFixed(3)]);
     }
 
     return table.toString();

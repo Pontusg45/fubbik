@@ -31,7 +31,11 @@ export const matrixRoutes = new Elysia()
             Effect.runPromise(
                 requireSession(ctx).pipe(
                     Effect.flatMap(session => matrixService.createMatrix(session.user.id, ctx.body)),
-                    Effect.tap(() => Effect.sync(() => { ctx.set.status = 201; }))
+                    Effect.tap(() =>
+                        Effect.sync(() => {
+                            ctx.set.status = 201;
+                        })
+                    )
                 )
             ),
         {
@@ -45,25 +49,19 @@ export const matrixRoutes = new Elysia()
     )
     .get("/matrices/:id", ctx =>
         Effect.runPromise(
-            requireSession(ctx).pipe(
-                Effect.flatMap(session => matrixService.getMatrixDetail(ctx.params.id, session.user.id))
-            )
+            requireSession(ctx).pipe(Effect.flatMap(session => matrixService.getMatrixDetail(ctx.params.id, session.user.id)))
         )
     )
     .get("/matrices/:id/view", ctx =>
         Effect.runPromise(
-            requireSession(ctx).pipe(
-                Effect.flatMap(session => matrixService.getMatrixViewService(ctx.params.id, session.user.id))
-            )
+            requireSession(ctx).pipe(Effect.flatMap(session => matrixService.getMatrixViewService(ctx.params.id, session.user.id)))
         )
     )
     .patch(
         "/matrices/:id",
         ctx =>
             Effect.runPromise(
-                requireSession(ctx).pipe(
-                    Effect.flatMap(session => matrixService.updateMatrix(ctx.params.id, session.user.id, ctx.body))
-                )
+                requireSession(ctx).pipe(Effect.flatMap(session => matrixService.updateMatrix(ctx.params.id, session.user.id, ctx.body)))
             ),
         {
             body: t.Object({
@@ -86,7 +84,11 @@ export const matrixRoutes = new Elysia()
             Effect.runPromise(
                 requireSession(ctx).pipe(
                     Effect.flatMap(session => matrixService.addDimension(ctx.params.id, session.user.id, ctx.body)),
-                    Effect.tap(() => Effect.sync(() => { ctx.set.status = 201; }))
+                    Effect.tap(() =>
+                        Effect.sync(() => {
+                            ctx.set.status = 201;
+                        })
+                    )
                 )
             ),
         {
@@ -137,7 +139,11 @@ export const matrixRoutes = new Elysia()
             Effect.runPromise(
                 requireSession(ctx).pipe(
                     Effect.flatMap(session => matrixService.addRule(ctx.params.id, session.user.id, ctx.body)),
-                    Effect.tap(() => Effect.sync(() => { ctx.set.status = 201; }))
+                    Effect.tap(() =>
+                        Effect.sync(() => {
+                            ctx.set.status = 201;
+                        })
+                    )
                 )
             ),
         {
@@ -190,9 +196,7 @@ export const matrixRoutes = new Elysia()
         "/matrices/:id/cells",
         ctx =>
             Effect.runPromise(
-                requireSession(ctx).pipe(
-                    Effect.flatMap(() => matrixService.toggleCell(ctx.body.ruleId, ctx.body.dimensionId))
-                )
+                requireSession(ctx).pipe(Effect.flatMap(() => matrixService.toggleCell(ctx.body.ruleId, ctx.body.dimensionId)))
             ),
         {
             body: t.Object({
@@ -207,7 +211,11 @@ export const matrixRoutes = new Elysia()
             Effect.runPromise(
                 requireSession(ctx).pipe(
                     Effect.flatMap(() => matrixService.linkRequirementToCell(ctx.params.cellId, ctx.body.requirementId)),
-                    Effect.tap(() => Effect.sync(() => { ctx.set.status = 201; }))
+                    Effect.tap(() =>
+                        Effect.sync(() => {
+                            ctx.set.status = 201;
+                        })
+                    )
                 )
             ),
         {
@@ -225,9 +233,5 @@ export const matrixRoutes = new Elysia()
         )
     )
     .get("/matrices/:id/cells/:cellId/requirements", ctx =>
-        Effect.runPromise(
-            requireSession(ctx).pipe(
-                Effect.flatMap(() => matrixService.getRequirementsForCell(ctx.params.cellId))
-            )
-        )
+        Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(() => matrixService.getRequirementsForCell(ctx.params.cellId))))
     );

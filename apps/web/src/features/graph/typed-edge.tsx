@@ -1,15 +1,12 @@
-import { memo } from "react";
 import { type EdgeProps, useInternalNode } from "@xyflow/react";
+import { memo } from "react";
 
 interface TypedEdgeData {
     relation: string;
     [key: string]: unknown;
 }
 
-const EDGE_STYLES: Record<
-    string,
-    { color: string; strokeWidth: number; strokeDasharray?: string; markerEnd?: string }
-> = {
+const EDGE_STYLES: Record<string, { color: string; strokeWidth: number; strokeDasharray?: string; markerEnd?: string }> = {
     depends_on: { color: "#3b82f6", strokeWidth: 2, markerEnd: "arrow-filled" },
     part_of: { color: "#22c55e", strokeWidth: 2.5, markerEnd: "dot" },
     extends: { color: "#a78bfa", strokeWidth: 1.5, markerEnd: "arrow-open" },
@@ -17,10 +14,13 @@ const EDGE_STYLES: Record<
     related_to: { color: "#94a3b8", strokeWidth: 1, strokeDasharray: "6 4" },
     contradicts: { color: "#ef4444", strokeWidth: 2, strokeDasharray: "4 4" },
     alternative_to: { color: "#f59e0b", strokeWidth: 1.5 },
-    supports: { color: "#06b6d4", strokeWidth: 1.5, strokeDasharray: "8 3" },
+    supports: { color: "#06b6d4", strokeWidth: 1.5, strokeDasharray: "8 3" }
 };
 
-const DEFAULT_STYLE: { color: string; strokeWidth: number; strokeDasharray?: string; markerEnd?: string } = { color: "#6b7280", strokeWidth: 1 };
+const DEFAULT_STYLE: { color: string; strokeWidth: number; strokeDasharray?: string; markerEnd?: string } = {
+    color: "#6b7280",
+    strokeWidth: 1
+};
 
 function getNodeCenter(node: { position: { x: number; y: number }; measured?: { width?: number; height?: number } }) {
     const w = node.measured?.width ?? 100;
@@ -28,10 +28,7 @@ function getNodeCenter(node: { position: { x: number; y: number }; measured?: { 
     return { x: node.position.x + w / 2, y: node.position.y + h / 2, w, h };
 }
 
-function getEdgePoint(
-    center: { x: number; y: number; w: number; h: number },
-    otherCenter: { x: number; y: number },
-) {
+function getEdgePoint(center: { x: number; y: number; w: number; h: number }, otherCenter: { x: number; y: number }) {
     const dx = otherCenter.x - center.x;
     const dy = otherCenter.y - center.y;
     const hw = center.w / 2;

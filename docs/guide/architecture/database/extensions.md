@@ -1,9 +1,9 @@
 ---
 tags:
-  - guide
-  - architecture
-  - database
-  - extensions
+    - guide
+    - architecture
+    - database
+    - extensions
 description: pgvector for embeddings and pg_trgm for fuzzy text search
 ---
 
@@ -32,4 +32,5 @@ Trigram indexes power the "did you mean?" and partial match features in full-tex
 
 ## Extension Versions
 
-Both extensions come pre-installed in the `pgvector/pgvector:0.8.2-pg18` Docker image. No manual extension creation is needed — the migration handles `CREATE EXTENSION IF NOT EXISTS`.
+Both extensions come pre-installed in the `pgvector/pgvector:0.8.2-pg18` Docker image. No manual extension creation is needed — the
+migration handles `CREATE EXTENSION IF NOT EXISTS`.

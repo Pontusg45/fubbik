@@ -14,9 +14,7 @@ export const appliesToRoutes = new Elysia()
         "/chunks/:id/applies-to",
         ctx =>
             Effect.runPromise(
-                requireSession(ctx).pipe(
-                    Effect.flatMap(session => appliesToService.setAppliesTo(ctx.params.id, session.user.id, ctx.body))
-                )
+                requireSession(ctx).pipe(Effect.flatMap(session => appliesToService.setAppliesTo(ctx.params.id, session.user.id, ctx.body)))
             ),
         {
             body: t.Array(

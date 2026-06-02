@@ -6,13 +6,7 @@ import { NotFoundError } from "../errors";
 import { requireSession } from "../require-session";
 
 export const scopeKeyRoutes = new Elysia()
-    .get("/scope-keys", ctx =>
-        Effect.runPromise(
-            requireSession(ctx).pipe(
-                Effect.flatMap(session => listScopeKeys(session.user.id))
-            )
-        )
-    )
+    .get("/scope-keys", ctx => Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(session => listScopeKeys(session.user.id)))))
     .post(
         "/scope-keys",
         ctx =>
@@ -25,7 +19,7 @@ export const scopeKeyRoutes = new Elysia()
                             key: ctx.body.key,
                             description: ctx.body.description,
                             valueType: ctx.body.valueType,
-                            allowedValues: ctx.body.allowedValues,
+                            allowedValues: ctx.body.allowedValues
                         })
                     )
                 )
@@ -34,16 +28,9 @@ export const scopeKeyRoutes = new Elysia()
             body: t.Object({
                 key: t.String(),
                 description: t.Optional(t.String()),
-                valueType: t.Optional(
-                    t.Union([
-                        t.Literal("string"),
-                        t.Literal("number"),
-                        t.Literal("boolean"),
-                        t.Literal("enum"),
-                    ])
-                ),
-                allowedValues: t.Optional(t.Array(t.String())),
-            }),
+                valueType: t.Optional(t.Union([t.Literal("string"), t.Literal("number"), t.Literal("boolean"), t.Literal("enum")])),
+                allowedValues: t.Optional(t.Array(t.String()))
+            })
         }
     )
     .delete(
@@ -54,15 +41,13 @@ export const scopeKeyRoutes = new Elysia()
                     Effect.flatMap(session =>
                         deleteScopeKey(ctx.params.id, session.user.id).pipe(
                             Effect.flatMap(deleted =>
-                                deleted
-                                    ? Effect.succeed({ deleted: true })
-                                    : Effect.fail(new NotFoundError({ resource: "ScopeKey" }))
+                                deleted ? Effect.succeed({ deleted: true }) : Effect.fail(new NotFoundError({ resource: "ScopeKey" }))
                             )
                         )
                     )
                 )
             ),
         {
-            params: t.Object({ id: t.String() }),
+            params: t.Object({ id: t.String() })
         }
     );

@@ -16,14 +16,10 @@ export function suggestTagsFromGraph(chunkId: string, maxHops = 1, minFrequency 
         const emptyResult: TagSuggestion[] = [];
         if (neighborIds.length === 0) return emptyResult;
 
-        const existingTags = yield* getTagsForChunk(chunkId).pipe(
-            Effect.catchAll(() => Effect.succeed([]))
-        );
+        const existingTags = yield* getTagsForChunk(chunkId).pipe(Effect.catchAll(() => Effect.succeed([])));
         const existingTagIds = new Set(existingTags.map(t => t.id));
 
-        const neighborTags = yield* getTagsForChunks(neighborIds).pipe(
-            Effect.catchAll(() => Effect.succeed([]))
-        );
+        const neighborTags = yield* getTagsForChunks(neighborIds).pipe(Effect.catchAll(() => Effect.succeed([])));
 
         const tagCounts = new Map<string, { tagName: string; count: number }>();
         for (const nt of neighborTags) {

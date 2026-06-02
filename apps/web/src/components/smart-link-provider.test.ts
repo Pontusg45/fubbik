@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { buildChunkIndex, buildVocabularyIndex, buildFileRefIndex, matchInCode, matchVocabularyInText } from "./smart-link-provider";
 
 describe("buildChunkIndex", () => {
@@ -12,17 +13,13 @@ describe("buildChunkIndex", () => {
     });
 
     it("indexes aliases", () => {
-        const index = buildChunkIndex([
-            { id: "c1", title: "UserService", aliases: ["UserSvc", "user-service"] }
-        ]);
+        const index = buildChunkIndex([{ id: "c1", title: "UserService", aliases: ["UserSvc", "user-service"] }]);
         expect(index.get("usersvc")).toEqual({ id: "c1", title: "UserService" });
         expect(index.get("user-service")).toEqual({ id: "c1", title: "UserService" });
     });
 
     it("skips short titles (< 4 chars)", () => {
-        const index = buildChunkIndex([
-            { id: "c1", title: "API", aliases: [] }
-        ]);
+        const index = buildChunkIndex([{ id: "c1", title: "API", aliases: [] }]);
         expect(index.get("api")).toBeUndefined();
     });
 
@@ -38,9 +35,7 @@ describe("buildChunkIndex", () => {
 
 describe("buildVocabularyIndex", () => {
     it("indexes by lowercase word", () => {
-        const index = buildVocabularyIndex([
-            { word: "UserService", category: "actor", expects: ["class"] }
-        ]);
+        const index = buildVocabularyIndex([{ word: "UserService", category: "actor", expects: ["class"] }]);
         expect(index.get("userservice")).toEqual({
             word: "UserService",
             category: "actor",
@@ -52,9 +47,7 @@ describe("buildVocabularyIndex", () => {
 
 describe("buildFileRefIndex", () => {
     it("indexes by filename and full path", () => {
-        const index = buildFileRefIndex([
-            { chunkId: "c1", chunkTitle: "Auth Module", path: "src/auth/service.ts", anchor: null }
-        ]);
+        const index = buildFileRefIndex([{ chunkId: "c1", chunkTitle: "Auth Module", path: "src/auth/service.ts", anchor: null }]);
         expect(index.get("src/auth/service.ts")).toEqual({ chunkId: "c1", chunkTitle: "Auth Module", path: "src/auth/service.ts" });
         expect(index.get("service.ts")).toEqual({ chunkId: "c1", chunkTitle: "Auth Module", path: "src/auth/service.ts" });
     });
@@ -65,12 +58,8 @@ describe("matchInCode", () => {
         { id: "c1", title: "UserService", aliases: [] },
         { id: "c2", title: "AuthFlow", aliases: [] }
     ]);
-    const vocab = buildVocabularyIndex([
-        { word: "Repository", category: "actor", expects: ["class"] }
-    ]);
-    const fileRefs = buildFileRefIndex([
-        { chunkId: "c3", chunkTitle: "Config", path: "src/config.ts", anchor: null }
-    ]);
+    const vocab = buildVocabularyIndex([{ word: "Repository", category: "actor", expects: ["class"] }]);
+    const fileRefs = buildFileRefIndex([{ chunkId: "c3", chunkTitle: "Config", path: "src/config.ts", anchor: null }]);
 
     it("returns chunk match (highest priority)", () => {
         const result = matchInCode("UserService", chunks, fileRefs, vocab);

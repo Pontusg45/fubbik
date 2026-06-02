@@ -1,16 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import {
-    BookOpen,
-    CheckSquare,
-    Compass,
-    Database,
-    FileText,
-    Lightbulb,
-    Scale,
-    StickyNote,
-    Wrench,
-    type LucideIcon
-} from "lucide-react";
+import { BookOpen, CheckSquare, Compass, Database, FileText, Lightbulb, Scale, StickyNote, Wrench, type LucideIcon } from "lucide-react";
 
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
@@ -142,10 +131,7 @@ export function useRelationColor(relationSlug: string | null | undefined, spaceI
  * edges with the inverse label — e.g., "depends_on" shown as "required_by" on the
  * target chunk's page. Returns null for bidirectional or unlinked relations.
  */
-export function useInverseRelationMeta(
-    relationSlug: string | null | undefined,
-    spaceId?: string
-): ConnectionRelationMeta | null {
+export function useInverseRelationMeta(relationSlug: string | null | undefined, spaceId?: string): ConnectionRelationMeta | null {
     const { data } = useConnectionRelations(spaceId);
     if (!relationSlug || !data) return null;
     const forward = data.find(r => r.id === relationSlug);

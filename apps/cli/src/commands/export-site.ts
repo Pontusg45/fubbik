@@ -1,6 +1,8 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+
 import { Command } from "commander";
+
 import { formatSuccess } from "../lib/colors";
 import { output, outputError } from "../lib/output";
 import { getServerUrl } from "../lib/store";
@@ -61,9 +63,7 @@ ul { padding-left: 1.5rem; margin: 0.5rem 0; }
 
 function generateIndex(chunks: any[]): string {
     const types = [...new Set(chunks.map((c: any) => c.type))];
-    const typeButtons = types
-        .map((t) => `<button class="filter-btn" onclick="filterByType('${t}')">${t}</button>`)
-        .join("");
+    const typeButtons = types.map(t => `<button class="filter-btn" onclick="filterByType('${t}')">${t}</button>`).join("");
 
     const cards = chunks
         .map((c: any) => {
@@ -168,7 +168,7 @@ export const exportSiteCommand = new Command("export-site")
             const cbRes = await fetch(`${serverUrl}/api/spaces`);
             if (cbRes.ok) {
                 const spaces = (await cbRes.json()) as { id: string; name: string }[];
-                const match = spaces.find((c) => c.name === spaceName);
+                const match = spaces.find(c => c.name === spaceName);
                 if (match) params.set("spaceId", match.id);
             }
         }

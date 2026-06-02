@@ -2,8 +2,8 @@ import { Effect } from "effect";
 import { Elysia, t } from "elysia";
 
 import { requireSession } from "../require-session";
-import { executeSearch, autocomplete, listSavedQueries, createSavedQuery, deleteSavedQuery } from "./service";
 import { parseQueryString } from "./parser";
+import { executeSearch, autocomplete, listSavedQueries, createSavedQuery, deleteSavedQuery } from "./service";
 
 const ClauseSchema = t.Object({
     field: t.String(),
@@ -35,14 +35,7 @@ export const searchRoutes = new Elysia()
             body: t.Object({
                 clauses: t.Array(ClauseSchema),
                 join: t.Optional(t.Union([t.Literal("and"), t.Literal("or")])),
-                sort: t.Optional(
-                    t.Union([
-                        t.Literal("relevance"),
-                        t.Literal("newest"),
-                        t.Literal("oldest"),
-                        t.Literal("updated")
-                    ])
-                ),
+                sort: t.Optional(t.Union([t.Literal("relevance"), t.Literal("newest"), t.Literal("oldest"), t.Literal("updated")])),
                 limit: t.Optional(t.Number()),
                 offset: t.Optional(t.Number()),
                 spaceId: t.Optional(t.String())
@@ -51,12 +44,7 @@ export const searchRoutes = new Elysia()
     )
     .get(
         "/search/parse",
-        ctx =>
-            Effect.runPromise(
-                requireSession(ctx).pipe(
-                    Effect.map(() => ({ clauses: parseQueryString(ctx.query.q) }))
-                )
-            ),
+        ctx => Effect.runPromise(requireSession(ctx).pipe(Effect.map(() => ({ clauses: parseQueryString(ctx.query.q) })))),
         {
             query: t.Object({
                 q: t.String()
@@ -67,11 +55,7 @@ export const searchRoutes = new Elysia()
         "/search/autocomplete",
         ctx =>
             Effect.runPromise(
-                requireSession(ctx).pipe(
-                    Effect.flatMap(session =>
-                        autocomplete(session.user.id, ctx.query.field, ctx.query.prefix)
-                    )
-                )
+                requireSession(ctx).pipe(Effect.flatMap(session => autocomplete(session.user.id, ctx.query.field, ctx.query.prefix)))
             ),
         {
             query: t.Object({
@@ -82,14 +66,7 @@ export const searchRoutes = new Elysia()
     )
     .get(
         "/search/saved",
-        ctx =>
-            Effect.runPromise(
-                requireSession(ctx).pipe(
-                    Effect.flatMap(session =>
-                        listSavedQueries(session.user.id, ctx.query.spaceId)
-                    )
-                )
-            ),
+        ctx => Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(session => listSavedQueries(session.user.id, ctx.query.spaceId)))),
         {
             query: t.Object({
                 spaceId: t.Optional(t.String())
@@ -125,15 +102,11 @@ export const searchRoutes = new Elysia()
             })
         }
     )
-    .delete(
-        "/search/saved/:id",
-        ctx =>
-            Effect.runPromise(
-                requireSession(ctx).pipe(
-                    Effect.flatMap(session =>
-                        deleteSavedQuery(ctx.params.id, session.user.id)
-                    ),
-                    Effect.map(() => ({ message: "Deleted" }))
-                )
+    .delete("/search/saved/:id", ctx =>
+        Effect.runPromise(
+            requireSession(ctx).pipe(
+                Effect.flatMap(session => deleteSavedQuery(ctx.params.id, session.user.id)),
+                Effect.map(() => ({ message: "Deleted" }))
             )
+        )
     );

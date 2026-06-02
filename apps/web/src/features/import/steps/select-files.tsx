@@ -1,4 +1,3 @@
-
 import { FolderUp } from "lucide-react";
 import { useMemo, useRef } from "react";
 
@@ -6,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useApiQuery } from "@/hooks/use-api-query";
 import { api } from "@/utils/api";
+
 import { buildTree, FileTree } from "../file-tree";
 import type { FileEntry } from "../types";
 
@@ -49,14 +49,7 @@ interface StepSelectFilesProps {
 // Component
 // ---------------------------------------------------------------------------
 
-export function StepSelectFiles({
-    files,
-    onFilesChange,
-    selectedPaths,
-    onSelectionChange,
-    spaceId,
-    onSpaceChange
-}: StepSelectFilesProps) {
+export function StepSelectFiles({ files, onFilesChange, selectedPaths, onSelectionChange, spaceId, onSpaceChange }: StepSelectFilesProps) {
     const folderInputRef = useRef<HTMLInputElement>(null);
 
     const { data: spaces } = useApiQuery<{ id: string; name: string }[]>({
@@ -100,11 +93,7 @@ export function StepSelectFiles({
                     onChange={handleFolderSelect}
                 />
 
-                <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => folderInputRef.current?.click()}
-                >
+                <Button variant="outline" size="sm" onClick={() => folderInputRef.current?.click()}>
                     <FolderUp className="mr-1 size-3.5" />
                     Select Folder...
                 </Button>
@@ -133,24 +122,16 @@ export function StepSelectFiles({
 
             {/* Summary bar + select/deselect links */}
             {files.length > 0 && (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <div className="text-muted-foreground flex items-center gap-2 text-sm">
                     <span>
                         {selectedCount} selected, {deselectedCount} deselected
                     </span>
                     <span>·</span>
-                    <button
-                        type="button"
-                        className="text-primary hover:underline"
-                        onClick={handleSelectAll}
-                    >
+                    <button type="button" className="text-primary hover:underline" onClick={handleSelectAll}>
                         Select all
                     </button>
                     <span>/</span>
-                    <button
-                        type="button"
-                        className="text-primary hover:underline"
-                        onClick={handleDeselectAll}
-                    >
+                    <button type="button" className="text-primary hover:underline" onClick={handleDeselectAll}>
                         Deselect all
                     </button>
                 </div>
@@ -162,19 +143,12 @@ export function StepSelectFiles({
                     className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed p-12"
                     onClick={() => folderInputRef.current?.click()}
                 >
-                    <FolderUp className="size-10 text-muted-foreground" />
-                    <p className="text-sm text-muted-foreground">
-                        Select a folder of markdown files to get started
-                    </p>
+                    <FolderUp className="text-muted-foreground size-10" />
+                    <p className="text-muted-foreground text-sm">Select a folder of markdown files to get started</p>
                 </div>
             ) : (
-                <div className="overflow-auto rounded-md border max-h-[480px]">
-                    <FileTree
-                        nodes={tree}
-                        selected={selectedPaths}
-                        onSelectionChange={onSelectionChange}
-                        mode="checkbox"
-                    />
+                <div className="max-h-[480px] overflow-auto rounded-md border">
+                    <FileTree nodes={tree} selected={selectedPaths} onSelectionChange={onSelectionChange} mode="checkbox" />
                 </div>
             )}
         </div>

@@ -1,19 +1,21 @@
 # Behavioral Specification Matrix
 
-**Date**: 2026-05-14
-**Status**: Draft
+**Date**: 2026-05-14 **Status**: Draft
 
 ## Problem
 
-Fubbik's requirements are BDD scenarios (Given/When/Then) — concrete and detailed, but impossible to zoom out from. ADRs are narrative chunks with rationale fields. Neither gives a scannable, structured view of what the system should do. This creates three problems:
+Fubbik's requirements are BDD scenarios (Given/When/Then) — concrete and detailed, but impossible to zoom out from. ADRs are narrative
+chunks with rationale fields. Neither gives a scannable, structured view of what the system should do. This creates three problems:
 
 1. **Gaps in coverage**: no way to see which behaviors are specified and which are missing.
-2. **Communicating behavior**: no single view where a human or AI can understand "here is exactly what this system does" without reading all the docs.
+2. **Communicating behavior**: no single view where a human or AI can understand "here is exactly what this system does" without reading all
+   the docs.
 3. **Verifying correctness**: no way to check whether the implementation matches what was decided.
 
 ## Solution
 
-A **Behavioral Specification Matrix** — a first-class spec layer above BDD requirements. The matrix is the top-level declaration of what the system should do. BDD requirements are the concrete scenarios that prove individual cells.
+A **Behavioral Specification Matrix** — a first-class spec layer above BDD requirements. The matrix is the top-level declaration of what the
+system should do. BDD requirements are the concrete scenarios that prove individual cells.
 
 ### Hierarchy
 
@@ -49,14 +51,15 @@ Capabilities the system offers, mapped against actors/contexts.
 
 Cells are status flags, not content. The detail lives in linked requirements.
 
-| State | Meaning | Color |
-|-------|---------|-------|
-| **Specified** | Cell has linked requirements, none failing | Green |
-| **Unspecified** | Cell exists but has no linked requirements (a gap) | Yellow |
-| **Violated** | Cell has at least one failing requirement | Red |
-| **N/A** | No cell at this intersection (intentionally irrelevant) | Gray |
+| State           | Meaning                                                 | Color  |
+| --------------- | ------------------------------------------------------- | ------ |
+| **Specified**   | Cell has linked requirements, none failing              | Green  |
+| **Unspecified** | Cell exists but has no linked requirements (a gap)      | Yellow |
+| **Violated**    | Cell has at least one failing requirement               | Red    |
+| **N/A**         | No cell at this intersection (intentionally irrelevant) | Gray   |
 
-The distinction between "unspecified" (yellow) and "N/A" (gray) is critical: an unspecified cell is a declared gap — "this should be specified but isn't yet." A missing cell means "this intersection doesn't matter."
+The distinction between "unspecified" (yellow) and "N/A" (gray) is critical: an unspecified cell is a declared gap — "this should be
+specified but isn't yet." A missing cell means "this intersection doesn't matter."
 
 Status is computed at query time from linked requirement statuses, never stored.
 
@@ -64,28 +67,28 @@ Status is computed at query time from linked requirement statuses, never stored.
 
 ### `behavior_matrix`
 
-| Column | Type | Notes |
-|--------|------|-------|
-| `id` | text PK | nanoid |
-| `name` | text, required | e.g., "Domain Invariants" |
-| `layer` | text, required | `invariant` \| `contract` |
-| `description` | text, nullable | |
-| `codebaseId` | FK → codebase, nullable | optional scoping |
-| `userId` | FK → user, required | owner |
-| `createdAt` | timestamp | |
-| `updatedAt` | timestamp | |
+| Column        | Type                    | Notes                     |
+| ------------- | ----------------------- | ------------------------- |
+| `id`          | text PK                 | nanoid                    |
+| `name`        | text, required          | e.g., "Domain Invariants" |
+| `layer`       | text, required          | `invariant` \| `contract` |
+| `description` | text, nullable          |                           |
+| `codebaseId`  | FK → codebase, nullable | optional scoping          |
+| `userId`      | FK → user, required     | owner                     |
+| `createdAt`   | timestamp               |                           |
+| `updatedAt`   | timestamp               |                           |
 
 ### `behavior_dimension`
 
 Column in the matrix (entity or actor).
 
-| Column | Type | Notes |
-|--------|------|-------|
-| `id` | text PK | nanoid |
-| `matrixId` | FK → behavior_matrix | cascade delete |
-| `name` | text, required | e.g., "Chunk", "AI Agent" |
-| `order` | integer | display order |
-| `createdAt` | timestamp | |
+| Column      | Type                 | Notes                     |
+| ----------- | -------------------- | ------------------------- |
+| `id`        | text PK              | nanoid                    |
+| `matrixId`  | FK → behavior_matrix | cascade delete            |
+| `name`      | text, required       | e.g., "Chunk", "AI Agent" |
+| `order`     | integer              | display order             |
+| `createdAt` | timestamp            |                           |
 
 Unique constraint: `(matrixId, name)`.
 
@@ -93,27 +96,27 @@ Unique constraint: `(matrixId, name)`.
 
 Row in the matrix (invariant or contract).
 
-| Column | Type | Notes |
-|--------|------|-------|
-| `id` | text PK | nanoid |
-| `matrixId` | FK → behavior_matrix | cascade delete |
-| `title` | text, required | e.g., "Cascade deletes to children" |
-| `description` | text, nullable | brief elaboration |
-| `category` | text, nullable | grouping within the matrix |
-| `order` | integer | display order |
-| `createdAt` | timestamp | |
-| `updatedAt` | timestamp | |
+| Column        | Type                 | Notes                               |
+| ------------- | -------------------- | ----------------------------------- |
+| `id`          | text PK              | nanoid                              |
+| `matrixId`    | FK → behavior_matrix | cascade delete                      |
+| `title`       | text, required       | e.g., "Cascade deletes to children" |
+| `description` | text, nullable       | brief elaboration                   |
+| `category`    | text, nullable       | grouping within the matrix          |
+| `order`       | integer              | display order                       |
+| `createdAt`   | timestamp            |                                     |
+| `updatedAt`   | timestamp            |                                     |
 
 ### `behavior_cell`
 
 Explicit intersection of a rule and a dimension.
 
-| Column | Type | Notes |
-|--------|------|-------|
-| `id` | text PK | nanoid |
-| `ruleId` | FK → behavior_rule | cascade delete |
+| Column        | Type                    | Notes          |
+| ------------- | ----------------------- | -------------- |
+| `id`          | text PK                 | nanoid         |
+| `ruleId`      | FK → behavior_rule      | cascade delete |
 | `dimensionId` | FK → behavior_dimension | cascade delete |
-| `createdAt` | timestamp | |
+| `createdAt`   | timestamp               |                |
 
 Unique constraint: `(ruleId, dimensionId)`.
 
@@ -121,69 +124,69 @@ Unique constraint: `(ruleId, dimensionId)`.
 
 Links cells to BDD requirements.
 
-| Column | Type | Notes |
-|--------|------|-------|
-| `cellId` | FK → behavior_cell | cascade delete |
-| `requirementId` | FK → requirement | cascade delete |
-| PK | `(cellId, requirementId)` | |
+| Column          | Type                      | Notes          |
+| --------------- | ------------------------- | -------------- |
+| `cellId`        | FK → behavior_cell        | cascade delete |
+| `requirementId` | FK → requirement          | cascade delete |
+| PK              | `(cellId, requirementId)` |                |
 
 ## API Endpoints
 
 ### Matrix CRUD
 
-| Method | Path | Notes |
-|--------|------|-------|
-| `GET` | `/api/matrices` | List (filter: `codebaseId`, `layer`) |
-| `POST` | `/api/matrices` | Create |
-| `GET` | `/api/matrices/:id` | Detail |
-| `PATCH` | `/api/matrices/:id` | Update name/description |
-| `DELETE` | `/api/matrices/:id` | Cascade all children |
+| Method   | Path                | Notes                                |
+| -------- | ------------------- | ------------------------------------ |
+| `GET`    | `/api/matrices`     | List (filter: `codebaseId`, `layer`) |
+| `POST`   | `/api/matrices`     | Create                               |
+| `GET`    | `/api/matrices/:id` | Detail                               |
+| `PATCH`  | `/api/matrices/:id` | Update name/description              |
+| `DELETE` | `/api/matrices/:id` | Cascade all children                 |
 
 ### Dimensions
 
-| Method | Path | Notes |
-|--------|------|-------|
-| `POST` | `/api/matrices/:id/dimensions` | Add column |
-| `PATCH` | `/api/matrices/:id/dimensions/:dimId` | Rename |
-| `DELETE` | `/api/matrices/:id/dimensions/:dimId` | Cascades cells |
-| `POST` | `/api/matrices/:id/dimensions/reorder` | Reorder |
+| Method   | Path                                   | Notes          |
+| -------- | -------------------------------------- | -------------- |
+| `POST`   | `/api/matrices/:id/dimensions`         | Add column     |
+| `PATCH`  | `/api/matrices/:id/dimensions/:dimId`  | Rename         |
+| `DELETE` | `/api/matrices/:id/dimensions/:dimId`  | Cascades cells |
+| `POST`   | `/api/matrices/:id/dimensions/reorder` | Reorder        |
 
 ### Rules
 
-| Method | Path | Notes |
-|--------|------|-------|
-| `POST` | `/api/matrices/:id/rules` | Add row |
-| `PATCH` | `/api/matrices/:id/rules/:ruleId` | Update |
+| Method   | Path                              | Notes          |
+| -------- | --------------------------------- | -------------- |
+| `POST`   | `/api/matrices/:id/rules`         | Add row        |
+| `PATCH`  | `/api/matrices/:id/rules/:ruleId` | Update         |
 | `DELETE` | `/api/matrices/:id/rules/:ruleId` | Cascades cells |
-| `POST` | `/api/matrices/:id/rules/reorder` | Reorder |
+| `POST`   | `/api/matrices/:id/rules/reorder` | Reorder        |
 
 ### Cells
 
-| Method | Path | Notes |
-|--------|------|-------|
-| `PUT` | `/api/matrices/:id/cells` | Upsert/delete cell (body: `ruleId`, `dimensionId`). Creates if absent, deletes if present AND has no linked requirements. Returns 409 if cell has linked requirements — unlink first. |
-| `POST` | `/api/matrices/:id/cells/:cellId/requirements` | Link requirement |
-| `DELETE` | `/api/matrices/:id/cells/:cellId/requirements/:reqId` | Unlink |
+| Method   | Path                                                  | Notes                                                                                                                                                                                 |
+| -------- | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PUT`    | `/api/matrices/:id/cells`                             | Upsert/delete cell (body: `ruleId`, `dimensionId`). Creates if absent, deletes if present AND has no linked requirements. Returns 409 if cell has linked requirements — unlink first. |
+| `POST`   | `/api/matrices/:id/cells/:cellId/requirements`        | Link requirement                                                                                                                                                                      |
+| `DELETE` | `/api/matrices/:id/cells/:cellId/requirements/:reqId` | Unlink                                                                                                                                                                                |
 
 ### Matrix View
 
-| Method | Path | Notes |
-|--------|------|-------|
-| `GET` | `/api/matrices/:id/view` | Full grid with computed statuses |
+| Method | Path                     | Notes                            |
+| ------ | ------------------------ | -------------------------------- |
+| `GET`  | `/api/matrices/:id/view` | Full grid with computed statuses |
 
 Response shape:
 
 ```json
 {
-  "matrix": { "id": "...", "name": "Domain Invariants", "layer": "invariant" },
-  "dimensions": [{ "id": "...", "name": "Chunk", "order": 0 }],
-  "rules": [{ "id": "...", "title": "Cascade deletes", "category": "Lifecycle", "order": 0 }],
-  "cells": {
-    "rule-1:dim-1": { "id": "...", "status": "specified", "requirementCount": 2 },
-    "rule-1:dim-2": null,
-    "rule-2:dim-1": { "id": "...", "status": "unspecified", "requirementCount": 0 }
-  },
-  "summary": { "specified": 12, "unspecified": 5, "violated": 1, "total": 18 }
+    "matrix": { "id": "...", "name": "Domain Invariants", "layer": "invariant" },
+    "dimensions": [{ "id": "...", "name": "Chunk", "order": 0 }],
+    "rules": [{ "id": "...", "title": "Cascade deletes", "category": "Lifecycle", "order": 0 }],
+    "cells": {
+        "rule-1:dim-1": { "id": "...", "status": "specified", "requirementCount": 2 },
+        "rule-1:dim-2": null,
+        "rule-2:dim-1": { "id": "...", "status": "unspecified", "requirementCount": 0 }
+    },
+    "summary": { "specified": 12, "unspecified": 5, "violated": 1, "total": 18 }
 }
 ```
 
@@ -192,10 +195,12 @@ Response shape:
 ### Pages
 
 **`/matrices`** — list page
+
 - Cards per matrix: name, layer badge, coverage bar (stacked green/yellow/red), codebase scope
 - Create button → form (name, layer, optional codebase)
 
 **`/matrices/:id`** — matrix view (core experience)
+
 - Grid layout: dimensions as column headers, rules as row headers, cells at intersections
 - Cell colors: green/yellow/red/gray per status
 - Click a cell → slide-over panel: linked requirements with status badges, "Link Requirement" button
@@ -224,16 +229,16 @@ Response shape:
 
 ## MCP Tools
 
-| Tool | Purpose |
-|------|---------|
-| `list_matrices` | List available matrices (filter by codebase) |
-| `get_matrix_view` | Full grid with computed statuses |
-| `create_matrix` | Create a new matrix |
-| `add_dimension` | Add a column |
-| `add_rule` | Add a row |
-| `toggle_cell` | Mark an intersection as relevant |
-| `link_cell_requirement` | Connect a requirement to a cell |
-| `get_matrix_gaps` | Return only unspecified/violated cells |
+| Tool                    | Purpose                                      |
+| ----------------------- | -------------------------------------------- |
+| `list_matrices`         | List available matrices (filter by codebase) |
+| `get_matrix_view`       | Full grid with computed statuses             |
+| `create_matrix`         | Create a new matrix                          |
+| `add_dimension`         | Add a column                                 |
+| `add_rule`              | Add a row                                    |
+| `toggle_cell`           | Mark an intersection as relevant             |
+| `link_cell_requirement` | Connect a requirement to a cell              |
+| `get_matrix_gaps`       | Return only unspecified/violated cells       |
 
 ## CLI Commands
 
@@ -256,11 +261,12 @@ The `sync-claude-md` command includes a matrix summary section:
 ## Behavioral Coverage
 
 ### Domain Invariants — 78% specified (14/18), 1 violated
+
 | ⚠ VIOLATED | "Cascade deletes" × "Feature" — requirement R-42 failing
 
 ### API Contracts — 60% specified (12/20), 0 violated
-| GAP | "Bulk delete" × "AI Agent" — unspecified
-| GAP | "Export to Gherkin" × "System" — unspecified
+
+| GAP | "Bulk delete" × "AI Agent" — unspecified | GAP | "Export to Gherkin" × "System" — unspecified
 ```
 
 ## Architecture

@@ -33,7 +33,7 @@ export function PlanTasksSection({ planId, tasks, dependencies, onUpdate }: Plan
         mutationFn: async ({ taskIds }) => await (api.api as any).plans[planId].tasks.reorder.post({ taskIds }),
         successToast: false,
         errorToast: "Failed to reorder tasks",
-        onSuccess: () => onUpdate(),
+        onSuccess: () => onUpdate()
     });
 
     const addMutation = useApiMutation<unknown, { title: string; description: string }>({
@@ -50,7 +50,7 @@ export function PlanTasksSection({ planId, tasks, dependencies, onUpdate }: Plan
             setShowDescription(false);
             setAdding(false);
             onUpdate();
-        },
+        }
     });
 
     const submit = () => {
@@ -80,8 +80,11 @@ export function PlanTasksSection({ planId, tasks, dependencies, onUpdate }: Plan
     return (
         <section className="space-y-2">
             <div className="flex items-center justify-between">
-                <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    Tasks <span className="ml-1 font-mono text-muted-foreground/60">{doneCount}/{tasks.length} done</span>
+                <h2 className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">
+                    Tasks{" "}
+                    <span className="text-muted-foreground/60 ml-1 font-mono">
+                        {doneCount}/{tasks.length} done
+                    </span>
                 </h2>
                 <Button size="sm" variant="ghost" onClick={() => setAdding(a => !a)} data-plan-add-task>
                     <Plus className="size-3.5" />
@@ -89,7 +92,7 @@ export function PlanTasksSection({ planId, tasks, dependencies, onUpdate }: Plan
                 </Button>
             </div>
             {adding && (
-                <div className="rounded-md border bg-card p-2 space-y-2">
+                <div className="bg-card space-y-2 rounded-md border p-2">
                     <div className="flex gap-2">
                         <Input
                             autoFocus
@@ -97,9 +100,13 @@ export function PlanTasksSection({ planId, tasks, dependencies, onUpdate }: Plan
                             value={draftTitle}
                             onChange={e => setDraftTitle(e.target.value)}
                             onKeyDown={e => {
-                                if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(); }
-                                else if (e.key === "Enter" && e.shiftKey) { e.preventDefault(); setShowDescription(true); }
-                                else if (e.key === "Escape") cancel();
+                                if (e.key === "Enter" && !e.shiftKey) {
+                                    e.preventDefault();
+                                    submit();
+                                } else if (e.key === "Enter" && e.shiftKey) {
+                                    e.preventDefault();
+                                    setShowDescription(true);
+                                } else if (e.key === "Escape") cancel();
                             }}
                             className="h-8 text-sm"
                         />
@@ -119,7 +126,7 @@ export function PlanTasksSection({ planId, tasks, dependencies, onUpdate }: Plan
                         <button
                             type="button"
                             onClick={() => setShowDescription(true)}
-                            className="text-xs text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
+                            className="text-muted-foreground hover:text-foreground text-xs underline-offset-2 hover:underline"
                         >
                             + add description
                         </button>
@@ -127,7 +134,7 @@ export function PlanTasksSection({ planId, tasks, dependencies, onUpdate }: Plan
                 </div>
             )}
             {tasks.length === 0 && !adding ? (
-                <div className="rounded-md border border-dashed p-4 text-center text-xs text-muted-foreground">
+                <div className="text-muted-foreground rounded-md border border-dashed p-4 text-center text-xs">
                     No tasks yet. Add the first one to start executing.
                 </div>
             ) : (

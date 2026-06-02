@@ -4,15 +4,7 @@
  * Adding a type or relation should be a one-line change.
  */
 
-export const CHUNK_TYPES = [
-    "note",
-    "document",
-    "guide",
-    "reference",
-    "schema",
-    "checklist",
-    "convention"
-] as const;
+export const CHUNK_TYPES = ["note", "document", "guide", "reference", "schema", "checklist", "convention"] as const;
 
 export type ChunkType = (typeof CHUNK_TYPES)[number];
 

@@ -33,10 +33,7 @@ export const connectionRelation = pgTable(
             .$onUpdate(() => new Date())
             .notNull()
     },
-    table => [
-        index("connection_relation_userId_idx").on(table.userId),
-        index("connection_relation_spaceId_idx").on(table.spaceId)
-    ]
+    table => [index("connection_relation_userId_idx").on(table.userId), index("connection_relation_spaceId_idx").on(table.spaceId)]
 );
 
 export const connectionRelationRelations = relations(connectionRelation, ({ one }) => ({

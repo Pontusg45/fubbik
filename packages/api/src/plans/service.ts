@@ -1,11 +1,6 @@
-import { Effect } from "effect";
-
 import * as planRepo from "@fubbik/db/repository/plan";
-import type {
-    PlanAnalyzeKind,
-    PlanStatus,
-    PlanTaskChunkRelation,
-} from "@fubbik/db/schema/plan";
+import type { PlanAnalyzeKind, PlanStatus, PlanTaskChunkRelation } from "@fubbik/db/schema/plan";
+import { Effect } from "effect";
 
 import { NotFoundError, ValidationError } from "../errors";
 
@@ -48,7 +43,7 @@ export function listPlans(input: ListPlansInput) {
             spaceId: input.spaceId,
             status: input.status as PlanStatus | undefined,
             requirementId: input.requirementId,
-            includeArchived: input.includeArchived,
+            includeArchived: input.includeArchived
         });
     });
 }
@@ -61,11 +56,9 @@ export function duplicatePlan(userId: string, sourceId: string) {
 }
 
 export function getPlan(id: string) {
-    return planRepo.getPlan(id).pipe(
-        Effect.flatMap(plan =>
-            plan ? Effect.succeed(plan) : Effect.fail(new NotFoundError({ resource: `Plan(${id})` })),
-        ),
-    );
+    return planRepo
+        .getPlan(id)
+        .pipe(Effect.flatMap(plan => (plan ? Effect.succeed(plan) : Effect.fail(new NotFoundError({ resource: `Plan(${id})` })))));
 }
 
 /**
@@ -85,7 +78,7 @@ export function getPlanDetail(id: string) {
             file: [],
             risk: [],
             assumption: [],
-            question: [],
+            question: []
         };
         for (const item of analyzeItems) {
             if (isAnalyzeKind(item.kind)) {
@@ -97,7 +90,7 @@ export function getPlanDetail(id: string) {
         const tasksWithChunks = tasks.map((t, i) => ({
             ...t,
             acceptanceCriteria: normaliseAcceptanceCriteria(t.acceptanceCriteria),
-            chunks: taskChunks[i] ?? [],
+            chunks: taskChunks[i] ?? []
         }));
 
         return { plan, requirements, analyze, tasks: tasksWithChunks, dependencies };
@@ -121,7 +114,7 @@ export function normaliseAcceptanceCriteria(raw: unknown): AcceptanceCriterion[]
         if (item && typeof item === "object" && "text" in item) {
             return {
                 text: String(item.text ?? ""),
-                done: Boolean("done" in item ? item.done : false),
+                done: Boolean("done" in item ? item.done : false)
             };
         }
         return { text: "", done: false };
@@ -140,7 +133,7 @@ export function createPlan(userId: string, input: CreatePlanInput) {
             spaceId: input.spaceId ?? null,
             userId,
             status: "draft",
-            metadata: input.metadata ?? {},
+            metadata: input.metadata ?? {}
         });
         if (input.requirementIds) {
             for (const rid of input.requirementIds) {
@@ -155,7 +148,7 @@ export function createPlan(userId: string, input: CreatePlanInput) {
                     title: t.title,
                     description: t.description ?? null,
                     acceptanceCriteria: normaliseAcceptanceCriteria(t.acceptanceCriteria ?? []),
-                    status: "pending",
+                    status: "pending"
                 });
             }
         }

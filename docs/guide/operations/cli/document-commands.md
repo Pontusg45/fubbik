@@ -1,8 +1,8 @@
 ---
 tags:
-  - guide
-  - cli
-  - documents
+    - guide
+    - cli
+    - documents
 description: CLI commands for importing, syncing, and rendering documents
 ---
 

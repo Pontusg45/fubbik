@@ -1,13 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
+
 import { AlphabeticalIndex } from "@/features/browse/alphabetical-index";
 import { TagCloud } from "@/features/browse/tag-cloud";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 export const Route = createFileRoute("/browse")({
-    component: BrowsePage,
+    component: BrowsePage
 });
 
 function BrowsePage() {
@@ -15,13 +16,13 @@ function BrowsePage() {
 
     const chunksQuery = useQuery({
         queryKey: ["browse-chunks"],
-        queryFn: async () => unwrapEden(await api.api.chunks.get({ query: { limit: "1000" } as any })),
+        queryFn: async () => unwrapEden(await api.api.chunks.get({ query: { limit: "1000" } as any }))
     });
 
     const graphQuery = useQuery({
         queryKey: ["browse-graph-tags"],
         queryFn: async () => unwrapEden(await api.api.graph.get({ query: {} })),
-        enabled: view === "tags",
+        enabled: view === "tags"
     });
 
     const chunks = ((chunksQuery.data as any)?.chunks ?? []) as Array<{ id: string; title: string; type: string }>;
@@ -50,24 +51,20 @@ function BrowsePage() {
                 <button
                     type="button"
                     onClick={() => setView("alphabetical")}
-                    className={`text-sm rounded px-3 py-1.5 transition-colors ${view === "alphabetical" ? "bg-muted font-semibold" : "hover:bg-muted/50"}`}
+                    className={`rounded px-3 py-1.5 text-sm transition-colors ${view === "alphabetical" ? "bg-muted font-semibold" : "hover:bg-muted/50"}`}
                 >
                     A-Z
                 </button>
                 <button
                     type="button"
                     onClick={() => setView("tags")}
-                    className={`text-sm rounded px-3 py-1.5 transition-colors ${view === "tags" ? "bg-muted font-semibold" : "hover:bg-muted/50"}`}
+                    className={`rounded px-3 py-1.5 text-sm transition-colors ${view === "tags" ? "bg-muted font-semibold" : "hover:bg-muted/50"}`}
                 >
                     Tag cloud
                 </button>
             </div>
 
-            {view === "alphabetical" ? (
-                <AlphabeticalIndex chunks={chunks} />
-            ) : (
-                <TagCloud tags={tagsForCloud} />
-            )}
+            {view === "alphabetical" ? <AlphabeticalIndex chunks={chunks} /> : <TagCloud tags={tagsForCloud} />}
         </div>
     );
 }

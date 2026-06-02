@@ -7,9 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardPanel } from "@/components/ui/card";
 import { PageContainer, PageHeader, PageLoading } from "@/components/ui/page";
+import { BrokenLinkChecker } from "@/features/health/broken-link-checker";
 import { useActiveSpace } from "@/features/spaces/use-active-space";
 import { getUser } from "@/functions/get-user";
-import { BrokenLinkChecker } from "@/features/health/broken-link-checker";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
@@ -41,7 +41,7 @@ function KnowledgeHealthPage() {
         queryFn: async () => {
             const result = unwrapEden(await (api.api as any).sessions["knowledge-gaps"].get());
             // db.execute() returns { rows: [...] } — extract the rows array
-            const rows = Array.isArray(result) ? result : (result as any)?.rows ?? [];
+            const rows = Array.isArray(result) ? result : ((result as any)?.rows ?? []);
             return rows as Array<{ description: string; frequency: number; session_ids: string[] }>;
         }
     });
@@ -77,23 +77,19 @@ function KnowledgeHealthPage() {
                                 <Badge variant="secondary">{data.orphans.count}</Badge>
                             </div>
                             <p className="text-muted-foreground mb-4 text-sm">
-                                These chunks have no connections. Link them to other chunks or delete them if no longer
-                                needed.
+                                These chunks have no connections. Link them to other chunks or delete them if no longer needed.
                             </p>
                             {data.orphans.chunks.length === 0 ? (
                                 <p className="text-muted-foreground text-sm">No orphan chunks found.</p>
                             ) : (
                                 <div className="divide-y">
                                     {data.orphans.chunks.map(c => (
-                                        <div
-                                            key={c.id}
-                                            className="flex items-center justify-between py-3 first:pt-0 last:pb-0"
-                                        >
+                                        <div key={c.id} className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
                                             <div className="min-w-0 flex-1">
                                                 <Link
                                                     to="/chunks/$chunkId"
                                                     params={{ chunkId: c.id }}
-                                                    className="hover:underline font-medium"
+                                                    className="font-medium hover:underline"
                                                 >
                                                     {c.title}
                                                 </Link>
@@ -101,12 +97,14 @@ function KnowledgeHealthPage() {
                                                     <Badge variant="outline" className="text-xs">
                                                         {c.type}
                                                     </Badge>
-                                                    <span className="text-muted-foreground text-xs">
-                                                        Created {daysAgo(c.createdAt)}
-                                                    </span>
+                                                    <span className="text-muted-foreground text-xs">Created {daysAgo(c.createdAt)}</span>
                                                 </div>
                                             </div>
-                                            <Button variant="ghost" size="sm" render={<Link to="/chunks/$chunkId" params={{ chunkId: c.id }} />}>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                render={<Link to="/chunks/$chunkId" params={{ chunkId: c.id }} />}
+                                            >
                                                 View
                                             </Button>
                                         </div>
@@ -124,23 +122,19 @@ function KnowledgeHealthPage() {
                                 <Badge variant="secondary">{data.stale.count}</Badge>
                             </div>
                             <p className="text-muted-foreground mb-4 text-sm">
-                                These chunks haven't been updated recently but are connected to chunks that have. They
-                                may need a refresh.
+                                These chunks haven't been updated recently but are connected to chunks that have. They may need a refresh.
                             </p>
                             {data.stale.chunks.length === 0 ? (
                                 <p className="text-muted-foreground text-sm">No stale chunks found.</p>
                             ) : (
                                 <div className="divide-y">
                                     {data.stale.chunks.map(c => (
-                                        <div
-                                            key={c.id}
-                                            className="flex items-center justify-between py-3 first:pt-0 last:pb-0"
-                                        >
+                                        <div key={c.id} className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
                                             <div className="min-w-0 flex-1">
                                                 <Link
                                                     to="/chunks/$chunkId"
                                                     params={{ chunkId: c.id }}
-                                                    className="hover:underline font-medium"
+                                                    className="font-medium hover:underline"
                                                 >
                                                     {c.title}
                                                 </Link>
@@ -148,9 +142,7 @@ function KnowledgeHealthPage() {
                                                     <Badge variant="outline" className="text-xs">
                                                         {c.type}
                                                     </Badge>
-                                                    <span className="text-muted-foreground text-xs">
-                                                        Updated {daysAgo(c.updatedAt)}
-                                                    </span>
+                                                    <span className="text-muted-foreground text-xs">Updated {daysAgo(c.updatedAt)}</span>
                                                     {c.newestNeighborUpdate && (
                                                         <span className="text-muted-foreground text-xs">
                                                             Neighbor updated {daysAgo(c.newestNeighborUpdate)}
@@ -158,7 +150,11 @@ function KnowledgeHealthPage() {
                                                     )}
                                                 </div>
                                             </div>
-                                            <Button variant="ghost" size="sm" render={<Link to="/chunks/$chunkId/edit" params={{ chunkId: c.id }} />}>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                render={<Link to="/chunks/$chunkId/edit" params={{ chunkId: c.id }} />}
+                                            >
                                                 Edit
                                             </Button>
                                         </div>
@@ -176,23 +172,19 @@ function KnowledgeHealthPage() {
                                 <Badge variant="secondary">{data.thin.count}</Badge>
                             </div>
                             <p className="text-muted-foreground mb-4 text-sm">
-                                These chunks have very little content. Consider expanding them or merging with related
-                                chunks.
+                                These chunks have very little content. Consider expanding them or merging with related chunks.
                             </p>
                             {data.thin.chunks.length === 0 ? (
                                 <p className="text-muted-foreground text-sm">No thin chunks found.</p>
                             ) : (
                                 <div className="divide-y">
                                     {data.thin.chunks.map(c => (
-                                        <div
-                                            key={c.id}
-                                            className="flex items-center justify-between py-3 first:pt-0 last:pb-0"
-                                        >
+                                        <div key={c.id} className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
                                             <div className="min-w-0 flex-1">
                                                 <Link
                                                     to="/chunks/$chunkId"
                                                     params={{ chunkId: c.id }}
-                                                    className="hover:underline font-medium"
+                                                    className="font-medium hover:underline"
                                                 >
                                                     {c.title}
                                                 </Link>
@@ -200,12 +192,14 @@ function KnowledgeHealthPage() {
                                                     <Badge variant="outline" className="text-xs">
                                                         {c.type}
                                                     </Badge>
-                                                    <span className="text-muted-foreground text-xs">
-                                                        {c.contentLength} characters
-                                                    </span>
+                                                    <span className="text-muted-foreground text-xs">{c.contentLength} characters</span>
                                                 </div>
                                             </div>
-                                            <Button variant="ghost" size="sm" render={<Link to="/chunks/$chunkId/edit" params={{ chunkId: c.id }} />}>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                render={<Link to="/chunks/$chunkId/edit" params={{ chunkId: c.id }} />}
+                                            >
                                                 Edit
                                             </Button>
                                         </div>
@@ -215,9 +209,7 @@ function KnowledgeHealthPage() {
                         </CardPanel>
                     </Card>
                     {/* Stale Embeddings */}
-                    {data.staleEmbeddings && (
-                        <StaleEmbeddingsCard staleEmbeddings={data.staleEmbeddings} />
-                    )}
+                    {data.staleEmbeddings && <StaleEmbeddingsCard staleEmbeddings={data.staleEmbeddings} />}
 
                     {/* File References */}
                     {data.fileRefs && (
@@ -236,10 +228,7 @@ function KnowledgeHealthPage() {
                                 ) : (
                                     <div className="divide-y">
                                         {data.fileRefs.refs.map(ref => (
-                                            <div
-                                                key={ref.refId}
-                                                className="flex items-center justify-between py-3 first:pt-0 last:pb-0"
-                                            >
+                                            <div key={ref.refId} className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
                                                 <div className="min-w-0 flex-1">
                                                     <code className="text-sm">{ref.path}</code>
                                                     <div className="mt-1 flex items-center gap-2">
@@ -249,7 +238,7 @@ function KnowledgeHealthPage() {
                                                         <Link
                                                             to="/chunks/$chunkId"
                                                             params={{ chunkId: ref.chunkId }}
-                                                            className="text-muted-foreground hover:underline text-xs"
+                                                            className="text-muted-foreground text-xs hover:underline"
                                                         >
                                                             {ref.chunkTitle}
                                                         </Link>
@@ -258,12 +247,7 @@ function KnowledgeHealthPage() {
                                                 <Button
                                                     variant="ghost"
                                                     size="sm"
-                                                    render={
-                                                        <Link
-                                                            to="/chunks/$chunkId"
-                                                            params={{ chunkId: ref.chunkId }}
-                                                        />
-                                                    }
+                                                    render={<Link to="/chunks/$chunkId" params={{ chunkId: ref.chunkId }} />}
                                                 >
                                                     View chunk
                                                 </Button>
@@ -288,7 +272,8 @@ function KnowledgeHealthPage() {
                                     <Badge variant="secondary">{gapsQuery.data.length}</Badge>
                                 </div>
                                 <p className="text-muted-foreground mb-4 text-sm">
-                                    These knowledge gaps were identified during AI review sessions. Consider creating chunks to address them.
+                                    These knowledge gaps were identified during AI review sessions. Consider creating chunks to address
+                                    them.
                                 </p>
                                 <div className="divide-y">
                                     {gapsQuery.data.map((gap: any, i: number) => (
@@ -309,13 +294,15 @@ function GapRow({ gap, spaceId }: { gap: { description: string; frequency: numbe
 
     const createReqMutation = useMutation({
         mutationFn: async () => {
-            await unwrapEden(await api.api.requirements.post({
-                title: gap.description.slice(0, 100),
-                description: `Knowledge gap from ${gap.frequency} session(s).\n\n${gap.description}`,
-                priority: "should",
-                steps: [{ keyword: "given" as const, text: gap.description }],
-                spaceId: spaceId ?? undefined,
-            }));
+            await unwrapEden(
+                await api.api.requirements.post({
+                    title: gap.description.slice(0, 100),
+                    description: `Knowledge gap from ${gap.frequency} session(s).\n\n${gap.description}`,
+                    priority: "should",
+                    steps: [{ keyword: "given" as const, text: gap.description }],
+                    spaceId: spaceId ?? undefined
+                })
+            );
         },
         onSuccess: () => {
             toast.success("Requirement created");
@@ -334,12 +321,7 @@ function GapRow({ gap, spaceId }: { gap: { description: string; frequency: numbe
                 </span>
             </div>
             <div className="flex gap-1.5">
-                <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => createReqMutation.mutate()}
-                    disabled={createReqMutation.isPending}
-                >
+                <Button variant="outline" size="sm" onClick={() => createReqMutation.mutate()} disabled={createReqMutation.isPending}>
                     {createReqMutation.isPending ? "Creating..." : "Create Requirement"}
                 </Button>
                 <Button variant="outline" size="sm" render={<Link to="/chunks/new" />}>
@@ -353,7 +335,10 @@ function GapRow({ gap, spaceId }: { gap: { description: string; frequency: numbe
 function StaleEmbeddingsCard({
     staleEmbeddings
 }: {
-    staleEmbeddings: { chunks: Array<{ id: string; title: string; type: string; updatedAt: string | Date; embeddingUpdatedAt: string | Date | null }>; count: number };
+    staleEmbeddings: {
+        chunks: Array<{ id: string; title: string; type: string; updatedAt: string | Date; embeddingUpdatedAt: string | Date | null }>;
+        count: number;
+    };
 }) {
     const queryClient = useQueryClient();
     const enrichMutation = useMutation({
@@ -380,24 +365,17 @@ function StaleEmbeddingsCard({
                     <Badge variant="secondary">{staleEmbeddings.count}</Badge>
                 </div>
                 <p className="text-muted-foreground mb-4 text-sm">
-                    These chunks have been updated since their embeddings were last generated. Re-enrich them to keep
-                    semantic search accurate.
+                    These chunks have been updated since their embeddings were last generated. Re-enrich them to keep semantic search
+                    accurate.
                 </p>
                 {staleEmbeddings.chunks.length === 0 ? (
                     <p className="text-muted-foreground text-sm">No stale embeddings found.</p>
                 ) : (
                     <div className="divide-y">
                         {staleEmbeddings.chunks.map(c => (
-                            <div
-                                key={c.id}
-                                className="flex items-center justify-between py-3 first:pt-0 last:pb-0"
-                            >
+                            <div key={c.id} className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
                                 <div className="min-w-0 flex-1">
-                                    <Link
-                                        to="/chunks/$chunkId"
-                                        params={{ chunkId: c.id }}
-                                        className="hover:underline font-medium"
-                                    >
+                                    <Link to="/chunks/$chunkId" params={{ chunkId: c.id }} className="font-medium hover:underline">
                                         {c.title}
                                     </Link>
                                     <div className="mt-1 flex items-center gap-2">
@@ -405,13 +383,9 @@ function StaleEmbeddingsCard({
                                             {c.type}
                                         </Badge>
                                         {c.embeddingUpdatedAt && (
-                                            <span className="text-muted-foreground text-xs">
-                                                Embedding {daysAgo(c.embeddingUpdatedAt)}
-                                            </span>
+                                            <span className="text-muted-foreground text-xs">Embedding {daysAgo(c.embeddingUpdatedAt)}</span>
                                         )}
-                                        <span className="text-muted-foreground text-xs">
-                                            Content updated {daysAgo(c.updatedAt)}
-                                        </span>
+                                        <span className="text-muted-foreground text-xs">Content updated {daysAgo(c.updatedAt)}</span>
                                     </div>
                                 </div>
                                 <Button

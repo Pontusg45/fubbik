@@ -57,19 +57,10 @@ const TYPE_COLORS: Record<string, string> = {
     document: "bg-purple-500/10 text-purple-400 border-purple-500/20",
     reference: "bg-green-500/10 text-green-400 border-green-500/20",
     schema: "bg-orange-500/10 text-orange-400 border-orange-500/20",
-    checklist: "bg-pink-500/10 text-pink-400 border-pink-500/20",
+    checklist: "bg-pink-500/10 text-pink-400 border-pink-500/20"
 };
 
-const RELATION_TYPES = [
-    "related_to",
-    "part_of",
-    "depends_on",
-    "extends",
-    "references",
-    "supports",
-    "contradicts",
-    "alternative_to",
-];
+const RELATION_TYPES = ["related_to", "part_of", "depends_on", "extends", "references", "supports", "contradicts", "alternative_to"];
 
 function formatRelativeTime(dateStr: string): string {
     const date = new Date(dateStr);
@@ -107,7 +98,7 @@ function SearchBulkActionBar({ selectedIds, onClear }: BulkActionBarProps) {
             const { data, error } = await api.api.chunks["bulk-update"].post({
                 ids: [...selectedIds],
                 action: "add_tags",
-                value: tags,
+                value: tags
             });
             if (error) throw new Error("Failed to add tags");
             return data;
@@ -120,18 +111,18 @@ function SearchBulkActionBar({ selectedIds, onClear }: BulkActionBarProps) {
         },
         onError: () => {
             toast.error("Failed to add tags");
-        },
+        }
     });
 
     const reqSearchQuery = useQuery({
         queryKey: ["requirements", "search-bulk", reqSearch],
         queryFn: async () => {
-            const result = unwrapEden(
-                await api.api.requirements.get({ query: { search: reqSearch, limit: "10" } })
-            ) as { requirements?: Array<{ id: string; title: string }> } | null;
+            const result = unwrapEden(await api.api.requirements.get({ query: { search: reqSearch, limit: "10" } })) as {
+                requirements?: Array<{ id: string; title: string }>;
+            } | null;
             return result?.requirements ?? [];
         },
-        enabled: showReqSearch && reqSearch.trim().length > 0,
+        enabled: showReqSearch && reqSearch.trim().length > 0
     });
 
     const linkRequirementMutation = useMutation({
@@ -148,7 +139,7 @@ function SearchBulkActionBar({ selectedIds, onClear }: BulkActionBarProps) {
         },
         onError: () => {
             toast.error("Failed to link to requirement");
-        },
+        }
     });
 
     const createConnectionsMutation = useMutation({
@@ -158,7 +149,7 @@ function SearchBulkActionBar({ selectedIds, onClear }: BulkActionBarProps) {
                 const { error } = await api.api.connections.post({
                     sourceId: ids[i]!,
                     targetId: ids[i + 1]!,
-                    relation: connectRelation,
+                    relation: connectRelation
                 });
                 if (error) throw new Error("Failed to create connection");
             }
@@ -171,16 +162,14 @@ function SearchBulkActionBar({ selectedIds, onClear }: BulkActionBarProps) {
         },
         onError: () => {
             toast.error("Failed to create connections");
-        },
+        }
     });
 
     if (selectedIds.size === 0) return null;
 
     async function handleLinkRequirement(req: { id: string; title: string }) {
         try {
-            const result = unwrapEden(
-                await (api.api.requirements as any)[req.id].get()
-            ) as { chunkIds?: string[] } | null;
+            const result = unwrapEden(await (api.api.requirements as any)[req.id].get()) as { chunkIds?: string[] } | null;
             linkRequirementMutation.mutate({ reqId: req.id, existingChunkIds: result?.chunkIds ?? [] });
         } catch {
             linkRequirementMutation.mutate({ reqId: req.id, existingChunkIds: [] });
@@ -240,7 +229,10 @@ function SearchBulkActionBar({ selectedIds, onClear }: BulkActionBarProps) {
                 open={showReqSearch}
                 onOpenChange={open => {
                     setShowReqSearch(open);
-                    if (open) { setShowTagInput(false); setShowConnectPanel(false); }
+                    if (open) {
+                        setShowTagInput(false);
+                        setShowConnectPanel(false);
+                    }
                 }}
             >
                 <PopoverTrigger render={<Button variant="outline" size="sm" />}>
@@ -257,7 +249,7 @@ function SearchBulkActionBar({ selectedIds, onClear }: BulkActionBarProps) {
                                 value={reqSearch}
                                 onChange={e => setReqSearch(e.target.value)}
                                 placeholder="Requirement title..."
-                                className="bg-background w-full rounded-md border py-1.5 pl-8 pr-3 text-sm"
+                                className="bg-background w-full rounded-md border py-1.5 pr-3 pl-8 text-sm"
                                 autoFocus
                             />
                         </div>
@@ -288,7 +280,10 @@ function SearchBulkActionBar({ selectedIds, onClear }: BulkActionBarProps) {
                     open={showConnectPanel}
                     onOpenChange={open => {
                         setShowConnectPanel(open);
-                        if (open) { setShowTagInput(false); setShowReqSearch(false); }
+                        if (open) {
+                            setShowTagInput(false);
+                            setShowReqSearch(false);
+                        }
                     }}
                 >
                     <PopoverTrigger render={<Button variant="outline" size="sm" />}>
@@ -298,8 +293,8 @@ function SearchBulkActionBar({ selectedIds, onClear }: BulkActionBarProps) {
                     <PopoverContent side="top" align="center" className="w-64">
                         <div className="space-y-3">
                             <p className="text-muted-foreground text-xs">
-                                Creates sequential connections between the {selectedIds.size} selected chunks (
-                                {selectedIds.size - 1} connection{selectedIds.size - 1 !== 1 ? "s" : ""}).
+                                Creates sequential connections between the {selectedIds.size} selected chunks ({selectedIds.size - 1}{" "}
+                                connection{selectedIds.size - 1 !== 1 ? "s" : ""}).
                             </p>
                             <div>
                                 <label className="text-muted-foreground mb-1.5 block text-xs font-medium">Relation type</label>
@@ -309,7 +304,9 @@ function SearchBulkActionBar({ selectedIds, onClear }: BulkActionBarProps) {
                                     className="bg-background w-full rounded-md border px-2.5 py-1.5 text-sm"
                                 >
                                     {RELATION_TYPES.map(r => (
-                                        <option key={r} value={r}>{r.replace(/_/g, " ")}</option>
+                                        <option key={r} value={r}>
+                                            {r.replace(/_/g, " ")}
+                                        </option>
                                     ))}
                                 </select>
                             </div>
@@ -368,11 +365,9 @@ export function SearchResults({ chunks, total, graphMeta, duplicateHints, isLoad
     if (chunks.length === 0) {
         return (
             <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
-                <Search className="size-10 text-muted-foreground opacity-40" />
-                <p className="text-sm font-medium text-muted-foreground">No results found</p>
-                <p className="text-xs text-muted-foreground opacity-70">
-                    Try adjusting your filters or search query
-                </p>
+                <Search className="text-muted-foreground size-10 opacity-40" />
+                <p className="text-muted-foreground text-sm font-medium">No results found</p>
+                <p className="text-muted-foreground text-xs opacity-70">Try adjusting your filters or search query</p>
             </div>
         );
     }
@@ -384,23 +379,21 @@ export function SearchResults({ chunks, total, graphMeta, duplicateHints, isLoad
                 <input
                     type="checkbox"
                     checked={allSelected}
-                    ref={el => { if (el) el.indeterminate = someSelected; }}
+                    ref={el => {
+                        if (el) el.indeterminate = someSelected;
+                    }}
                     onChange={toggleAll}
-                    className="size-3.5 cursor-pointer rounded accent-primary"
+                    className="accent-primary size-3.5 cursor-pointer rounded"
                     aria-label="Select all results"
                 />
-                <span className="text-xs text-muted-foreground">
+                <span className="text-muted-foreground text-xs">
                     {total} result{total !== 1 ? "s" : ""}
                 </span>
                 {graphMeta && (
                     <Badge variant="outline" size="sm" className="border-amber-500/30 bg-amber-500/10 text-amber-400">
                         Graph filtered
-                        {graphMeta.type === "near" && graphMeta.referenceChunk
-                            ? ` · near ${graphMeta.referenceChunk}`
-                            : null}
-                        {graphMeta.type === "path" && graphMeta.pathChunks?.length
-                            ? ` · path (${graphMeta.pathChunks.length} hops)`
-                            : null}
+                        {graphMeta.type === "near" && graphMeta.referenceChunk ? ` · near ${graphMeta.referenceChunk}` : null}
+                        {graphMeta.type === "path" && graphMeta.pathChunks?.length ? ` · path (${graphMeta.pathChunks.length} hops)` : null}
                     </Badge>
                 )}
                 <Button
@@ -418,29 +411,27 @@ export function SearchResults({ chunks, total, graphMeta, duplicateHints, isLoad
             {/* Minimap graph */}
             {showGraph && (
                 <div className="mb-4">
-                    <SearchGraph
-                        chunkIds={chunks.map(c => c.id)}
-                        chunks={chunks.map(c => ({ id: c.id, title: c.title, type: c.type }))}
-                    />
+                    <SearchGraph chunkIds={chunks.map(c => c.id)} chunks={chunks.map(c => ({ id: c.id, title: c.title, type: c.type }))} />
                 </div>
             )}
 
             {/* Path visualization — shown when a path query is active */}
-            {graphMeta?.type === "path" && graphMeta.pathChunks && graphMeta.pathChunks.length > 0 && (() => {
-                const chunkMap = new Map(chunks.map(c => [c.id, c]));
-                const pathNodes = graphMeta.pathChunks
-                    .map(id => chunkMap.get(id))
-                    .filter((c): c is ChunkResult => c !== undefined)
-                    .map(c => ({ id: c.id, title: c.title, type: c.type }));
-                return pathNodes.length > 0 ? (
-                    <div className="mb-4">
-                        <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                            Path
-                        </p>
-                        <PathView nodes={pathNodes} />
-                    </div>
-                ) : null;
-            })()}
+            {graphMeta?.type === "path" &&
+                graphMeta.pathChunks &&
+                graphMeta.pathChunks.length > 0 &&
+                (() => {
+                    const chunkMap = new Map(chunks.map(c => [c.id, c]));
+                    const pathNodes = graphMeta.pathChunks
+                        .map(id => chunkMap.get(id))
+                        .filter((c): c is ChunkResult => c !== undefined)
+                        .map(c => ({ id: c.id, title: c.title, type: c.type }));
+                    return pathNodes.length > 0 ? (
+                        <div className="mb-4">
+                            <p className="text-muted-foreground mb-2 text-[10px] font-semibold tracking-wider uppercase">Path</p>
+                            <PathView nodes={pathNodes} />
+                        </div>
+                    ) : null;
+                })()}
 
             {/* Duplicate hints */}
             {duplicateHints && duplicateHints.length > 0 && (
@@ -454,7 +445,7 @@ export function SearchResults({ chunks, total, graphMeta, duplicateHints, isLoad
                             const chunkA = chunks.find(c => c.id === hint.chunkIdA);
                             const chunkB = chunks.find(c => c.id === hint.chunkIdB);
                             return (
-                                <div key={i} className="text-xs text-muted-foreground">
+                                <div key={i} className="text-muted-foreground text-xs">
                                     "{chunkA?.title}" and "{chunkB?.title}" — {Math.round(hint.similarity * 100)}% similar
                                 </div>
                             );
@@ -464,16 +455,21 @@ export function SearchResults({ chunks, total, graphMeta, duplicateHints, isLoad
             )}
 
             {/* Chunk rows */}
-            <div className="divide-y divide-border rounded-md border">
+            <div className="divide-border divide-y rounded-md border">
                 {chunks.map(chunk => {
                     const typeColor = TYPE_COLORS[chunk.type] ?? "bg-slate-500/10 text-slate-400 border-slate-500/20";
                     const isSelected = selectedIds.has(chunk.id);
-                    const dotColor = typeColor.includes("blue") ? "#60a5fa"
-                        : typeColor.includes("purple") ? "#c084fc"
-                        : typeColor.includes("green") ? "#4ade80"
-                        : typeColor.includes("orange") ? "#fb923c"
-                        : typeColor.includes("pink") ? "#f472b6"
-                        : "#94a3b8";
+                    const dotColor = typeColor.includes("blue")
+                        ? "#60a5fa"
+                        : typeColor.includes("purple")
+                          ? "#c084fc"
+                          : typeColor.includes("green")
+                            ? "#4ade80"
+                            : typeColor.includes("orange")
+                              ? "#fb923c"
+                              : typeColor.includes("pink")
+                                ? "#f472b6"
+                                : "#94a3b8";
                     return (
                         <div
                             key={chunk.id}
@@ -486,31 +482,29 @@ export function SearchResults({ chunks, total, graphMeta, duplicateHints, isLoad
                                     checked={isSelected}
                                     onChange={() => toggleId(chunk.id)}
                                     onClick={e => e.stopPropagation()}
-                                    className="size-3.5 cursor-pointer rounded accent-primary"
+                                    className="accent-primary size-3.5 cursor-pointer rounded"
                                     aria-label={`Select ${chunk.title}`}
                                 />
                                 <div className="mt-0.5 size-2 shrink-0 rounded-full bg-current opacity-60" style={{ color: dotColor }} />
                             </div>
 
                             {/* Content — clicking navigates */}
-                            <Link
-                                to="/chunks/$chunkId"
-                                params={{ chunkId: chunk.id }}
-                                className="min-w-0 flex-1"
-                            >
+                            <Link to="/chunks/$chunkId" params={{ chunkId: chunk.id }} className="min-w-0 flex-1">
                                 <div className="flex flex-wrap items-center gap-2">
-                                    <span className="truncate text-sm font-medium text-foreground">
-                                        {chunk.title}
-                                    </span>
+                                    <span className="text-foreground truncate text-sm font-medium">{chunk.title}</span>
                                     <span className={`shrink-0 rounded border px-1.5 py-0.5 text-[10px] font-medium ${typeColor}`}>
                                         {chunk.type}
                                     </span>
                                     {typeof chunk.healthScore === "number" && (
-                                        <span className={`shrink-0 text-[10px] font-mono font-bold ${
-                                            chunk.healthScore >= 70 ? "text-emerald-500" :
-                                            chunk.healthScore >= 40 ? "text-amber-500" :
-                                            "text-red-500"
-                                        }`}>
+                                        <span
+                                            className={`shrink-0 font-mono text-[10px] font-bold ${
+                                                chunk.healthScore >= 70
+                                                    ? "text-emerald-500"
+                                                    : chunk.healthScore >= 40
+                                                      ? "text-amber-500"
+                                                      : "text-red-500"
+                                            }`}
+                                        >
                                             {chunk.healthScore}
                                         </span>
                                     )}
@@ -519,17 +513,13 @@ export function SearchResults({ chunks, total, graphMeta, duplicateHints, isLoad
                                             {typeof chunk.graphContext.hopDistance === "number"
                                                 ? `${chunk.graphContext.hopDistance} hop${chunk.graphContext.hopDistance !== 1 ? "s" : ""} away`
                                                 : typeof chunk.graphContext.pathPosition === "number"
-                                                ? `path pos ${chunk.graphContext.pathPosition}`
-                                                : "in neighborhood"}
+                                                  ? `path pos ${chunk.graphContext.pathPosition}`
+                                                  : "in neighborhood"}
                                         </span>
                                     )}
                                 </div>
 
-                                {chunk.summary && (
-                                    <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
-                                        {chunk.summary}
-                                    </p>
-                                )}
+                                {chunk.summary && <p className="text-muted-foreground mt-0.5 line-clamp-1 text-xs">{chunk.summary}</p>}
 
                                 <div className="mt-1.5 flex flex-wrap items-center gap-2">
                                     {chunk.tags && chunk.tags.length > 0 && (
@@ -537,28 +527,26 @@ export function SearchResults({ chunks, total, graphMeta, duplicateHints, isLoad
                                             {chunk.tags.slice(0, 4).map((tag, idx) => (
                                                 <span
                                                     key={`${tag.name}-${idx}`}
-                                                    className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground"
+                                                    className="bg-muted text-muted-foreground rounded px-1.5 py-0.5 text-[10px]"
                                                 >
                                                     {tag.name}
                                                 </span>
                                             ))}
                                             {chunk.tags.length > 4 && (
-                                                <span className="text-[10px] text-muted-foreground">
-                                                    +{chunk.tags.length - 4}
-                                                </span>
+                                                <span className="text-muted-foreground text-[10px]">+{chunk.tags.length - 4}</span>
                                             )}
                                         </div>
                                     )}
 
                                     {typeof chunk.connectionCount === "number" && chunk.connectionCount > 0 && (
-                                        <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground">
+                                        <span className="text-muted-foreground flex items-center gap-0.5 text-[10px]">
                                             <Cable className="size-2.5" />
                                             {chunk.connectionCount}
                                         </span>
                                     )}
 
                                     {chunk.updatedAt && (
-                                        <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground">
+                                        <span className="text-muted-foreground flex items-center gap-0.5 text-[10px]">
                                             <Clock className="size-2.5" />
                                             {formatRelativeTime(chunk.updatedAt)}
                                         </span>

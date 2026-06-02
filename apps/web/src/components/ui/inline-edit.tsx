@@ -23,9 +23,7 @@ type BaseProps = {
     disabled?: boolean;
 };
 
-export type InlineEditProps =
-    | (BaseProps & { as?: "input"; rows?: never })
-    | (BaseProps & { as: "textarea"; rows?: number });
+export type InlineEditProps = (BaseProps & { as?: "input"; rows?: never }) | (BaseProps & { as: "textarea"; rows?: number });
 
 /**
  * Click-to-edit text field. Enter commits, Escape cancels, blur commits.
@@ -38,19 +36,9 @@ export type InlineEditProps =
  * and halves the touchable surface area for future bugs.
  */
 export function InlineEdit(props: InlineEditProps) {
-    const {
-        value,
-        onSave,
-        placeholder,
-        className,
-        inputClassName,
-        startEditing = false,
-        onEditingChange,
-        renderDisplay,
-        disabled,
-    } = props;
+    const { value, onSave, placeholder, className, inputClassName, startEditing = false, onEditingChange, renderDisplay, disabled } = props;
     const as = props.as ?? "input";
-    const rows = props.as === "textarea" ? props.rows ?? 4 : undefined;
+    const rows = props.as === "textarea" ? (props.rows ?? 4) : undefined;
 
     const [editing, setEditingState] = useState(startEditing);
     const [draft, setDraft] = useState(value);
@@ -90,13 +78,15 @@ export function InlineEdit(props: InlineEditProps) {
                 onClick={() => !disabled && setEditing(true)}
                 className={cn(
                     "cursor-text rounded-md border border-transparent p-2 text-left hover:border-border disabled:cursor-default disabled:opacity-60",
-                    className,
+                    className
                 )}
                 title="Click to edit"
             >
-                {value
-                    ? renderDisplay?.(value) ?? <span>{value}</span>
-                    : <span className="text-muted-foreground">{placeholder ?? "Click to edit"}</span>}
+                {value ? (
+                    (renderDisplay?.(value) ?? <span>{value}</span>)
+                ) : (
+                    <span className="text-muted-foreground">{placeholder ?? "Click to edit"}</span>
+                )}
             </button>
         );
     }
@@ -127,10 +117,7 @@ export function InlineEdit(props: InlineEditProps) {
             }
         },
         placeholder,
-        className: cn(
-            "w-full rounded-md border bg-background p-2 text-sm outline-none focus:ring-1 focus:ring-ring",
-            inputClassName,
-        ),
+        className: cn("w-full rounded-md border bg-background p-2 text-sm outline-none focus:ring-1 focus:ring-ring", inputClassName)
     };
 
     if (as === "textarea") {

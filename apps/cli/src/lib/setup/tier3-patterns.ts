@@ -10,18 +10,7 @@ export interface PatternResult {
 
 // --- Constants ---
 
-const IGNORE_DIRS = new Set([
-    "node_modules",
-    ".git",
-    ".turbo",
-    "dist",
-    "build",
-    ".next",
-    ".output",
-    ".cache",
-    "coverage",
-    ".fubbik",
-]);
+const IGNORE_DIRS = new Set(["node_modules", ".git", ".turbo", "dist", "build", ".next", ".output", ".cache", "coverage", ".fubbik"]);
 
 // --- Types ---
 
@@ -49,7 +38,7 @@ export function searchDirs(
     dir: string,
     visitor: (entryPath: string, isDir: boolean, name: string) => boolean | void,
     maxDepth = 4,
-    _depth = 0,
+    _depth = 0
 ): void {
     if (_depth >= maxDepth) return;
     let entries;
@@ -111,7 +100,7 @@ function findDep(pkg: PackageJson, deps: string[]): { name: string; version: str
     const all: Record<string, string> = {
         ...pkg.dependencies,
         ...pkg.devDependencies,
-        ...pkg.peerDependencies,
+        ...pkg.peerDependencies
     };
     for (const dep of deps) {
         if (dep in all) {
@@ -156,28 +145,28 @@ const DETECTORS: Detector[] = [
                     "## Route Directories",
                     ...files.map(f => `- \`${f}\``),
                     "",
-                    "Add route handler files following the framework's conventions for this directory.",
+                    "Add route handler files following the framework's conventions for this directory."
                 ].join("\n"),
                 type: "convention",
                 tags: ["routing", "conventions", depName],
                 tier: 3,
                 category: "conventions",
                 source: `detected:routing:${depName}`,
-                appliesTo: files.map(f => `${f}/**`),
+                appliesTo: files.map(f => `${f}/**`)
             };
         },
         buildTipFromDep(depName) {
             return {
                 title: "Consider documenting your routing structure",
-                detail: `Found \`${depName}\` in dependencies. Once you add a \`routes/\`, \`pages/\`, or \`api/\` directory, fubbik can auto-generate a routing conventions chunk.`,
+                detail: `Found \`${depName}\` in dependencies. Once you add a \`routes/\`, \`pages/\`, or \`api/\` directory, fubbik can auto-generate a routing conventions chunk.`
             };
         },
         buildTipFromFiles(files) {
             return {
                 title: "Consider adding a routing framework",
-                detail: `Found route directories (${files.join(", ")}) but no recognized routing framework in package.json. Consider documenting your routing approach manually.`,
+                detail: `Found route directories (${files.join(", ")}) but no recognized routing framework in package.json. Consider documenting your routing approach manually.`
             };
-        },
+        }
     },
 
     // 2. Test patterns
@@ -200,8 +189,7 @@ const DETECTORS: Detector[] = [
             return { found: found.length > 0, paths: found };
         },
         buildChunk(_dir, depName, version, files) {
-            const runner =
-                depName === "vitest" ? "vitest" : depName === "jest" ? "jest" : "mocha";
+            const runner = depName === "vitest" ? "vitest" : depName === "jest" ? "jest" : "mocha";
             return {
                 title: "Testing Conventions",
                 content: [
@@ -210,43 +198,33 @@ const DETECTORS: Detector[] = [
                     "## Test Locations",
                     ...files.map(f => `- \`${f}\``),
                     "",
-                    `Run tests with \`${runner}\`.`,
+                    `Run tests with \`${runner}\`.`
                 ].join("\n"),
                 type: "convention",
                 tags: ["testing", "conventions", depName],
                 tier: 3,
                 category: "conventions",
-                source: `detected:testing:${depName}`,
+                source: `detected:testing:${depName}`
             };
         },
         buildTipFromDep(depName) {
             return {
                 title: "Consider documenting your test conventions",
-                detail: `Found \`${depName}\` in dependencies. Once you add \`__tests__/\` directories or \`*.test.ts\` files, fubbik can auto-generate a testing conventions chunk.`,
+                detail: `Found \`${depName}\` in dependencies. Once you add \`__tests__/\` directories or \`*.test.ts\` files, fubbik can auto-generate a testing conventions chunk.`
             };
         },
         buildTipFromFiles(files) {
             return {
                 title: "Consider adding a test runner",
-                detail: `Found test files (${files.slice(0, 2).join(", ")}${files.length > 2 ? "…" : ""}) but no recognized test runner in package.json. Consider adding vitest or jest.`,
+                detail: `Found test files (${files.slice(0, 2).join(", ")}${files.length > 2 ? "…" : ""}) but no recognized test runner in package.json. Consider adding vitest or jest.`
             };
-        },
+        }
     },
 
     // 3. Database / ORM
     {
         name: "database",
-        deps: [
-            "drizzle-orm",
-            "prisma",
-            "@prisma/client",
-            "mongoose",
-            "sequelize",
-            "typeorm",
-            "mikro-orm",
-            "@mikro-orm/core",
-            "knex",
-        ],
+        deps: ["drizzle-orm", "prisma", "@prisma/client", "mongoose", "sequelize", "typeorm", "mikro-orm", "@mikro-orm/core", "knex"],
         findFiles(dir) {
             const found: string[] = [];
             // schema.ts / schema.js files anywhere in the tree
@@ -269,27 +247,27 @@ const DETECTORS: Detector[] = [
                     "## Database Files",
                     ...files.map(f => `- \`${f}\``),
                     "",
-                    "Define schema changes in migrations and keep schema definitions co-located with database logic.",
+                    "Define schema changes in migrations and keep schema definitions co-located with database logic."
                 ].join("\n"),
                 type: "convention",
                 tags: ["database", "conventions", depName],
                 tier: 3,
                 category: "conventions",
-                source: `detected:database:${depName}`,
+                source: `detected:database:${depName}`
             };
         },
         buildTipFromDep(depName) {
             return {
                 title: "Consider documenting your database conventions",
-                detail: `Found \`${depName}\` in dependencies. Once you add schema files or a \`migrations/\` directory, fubbik can auto-generate a database conventions chunk.`,
+                detail: `Found \`${depName}\` in dependencies. Once you add schema files or a \`migrations/\` directory, fubbik can auto-generate a database conventions chunk.`
             };
         },
         buildTipFromFiles(files) {
             return {
                 title: "Consider adding a database ORM",
-                detail: `Found database-related files (${files.slice(0, 2).join(", ")}${files.length > 2 ? "…" : ""}) but no recognized ORM in package.json.`,
+                detail: `Found database-related files (${files.slice(0, 2).join(", ")}${files.length > 2 ? "…" : ""}) but no recognized ORM in package.json.`
             };
-        },
+        }
     },
 
     // 4. Component structure
@@ -323,44 +301,34 @@ const DETECTORS: Detector[] = [
                     "## Component Directories",
                     ...files.map(f => `- \`${f}\``),
                     "",
-                    "Organize components by feature or domain. Co-locate styles, tests, and types with each component.",
+                    "Organize components by feature or domain. Co-locate styles, tests, and types with each component."
                 ].join("\n"),
                 type: "reference",
                 tags: ["components", "structure", depName],
                 tier: 3,
                 category: "structure",
                 source: `detected:components:${depName}`,
-                appliesTo: files.map(f => `${f}/**`),
+                appliesTo: files.map(f => `${f}/**`)
             };
         },
         buildTipFromDep(depName) {
             return {
                 title: "Consider documenting your component structure",
-                detail: `Found \`${depName}\` in dependencies. Once you add a \`components/\`, \`features/\`, or \`ui/\` directory, fubbik can auto-generate a component structure chunk.`,
+                detail: `Found \`${depName}\` in dependencies. Once you add a \`components/\`, \`features/\`, or \`ui/\` directory, fubbik can auto-generate a component structure chunk.`
             };
         },
         buildTipFromFiles(files) {
             return {
                 title: "Consider adding a UI framework",
-                detail: `Found component directories (${files.join(", ")}) but no recognized UI framework in package.json.`,
+                detail: `Found component directories (${files.join(", ")}) but no recognized UI framework in package.json.`
             };
-        },
+        }
     },
 
     // 5. Auth
     {
         name: "auth",
-        deps: [
-            "better-auth",
-            "next-auth",
-            "passport",
-            "@auth/core",
-            "lucia",
-            "oslo",
-            "clerk",
-            "@clerk/nextjs",
-            "supabase",
-        ],
+        deps: ["better-auth", "next-auth", "passport", "@auth/core", "lucia", "oslo", "clerk", "@clerk/nextjs", "supabase"],
         findFiles(dir) {
             const found: string[] = [];
             // auth.ts / auth.js
@@ -383,28 +351,28 @@ const DETECTORS: Detector[] = [
                     "## Auth Files",
                     ...files.map(f => `- \`${f}\``),
                     "",
-                    "Document your session strategy, protected route patterns, and token handling approach.",
+                    "Document your session strategy, protected route patterns, and token handling approach."
                 ].join("\n"),
                 type: "convention",
                 tags: ["auth", "conventions", depName],
                 tier: 3,
                 category: "conventions",
-                source: `detected:auth:${depName}`,
+                source: `detected:auth:${depName}`
             };
         },
         buildTipFromDep(depName) {
             return {
                 title: "Consider documenting your auth conventions",
-                detail: `Found \`${depName}\` in dependencies. Once you add \`auth.ts\` or an \`auth/\` directory, fubbik can auto-generate an authentication conventions chunk.`,
+                detail: `Found \`${depName}\` in dependencies. Once you add \`auth.ts\` or an \`auth/\` directory, fubbik can auto-generate an authentication conventions chunk.`
             };
         },
         buildTipFromFiles(files) {
             return {
                 title: "Consider adding an auth library",
-                detail: `Found auth-related files (${files.slice(0, 2).join(", ")}${files.length > 2 ? "…" : ""}) but no recognized auth library in package.json.`,
+                detail: `Found auth-related files (${files.slice(0, 2).join(", ")}${files.length > 2 ? "…" : ""}) but no recognized auth library in package.json.`
             };
-        },
-    },
+        }
+    }
 ];
 
 // --- Main export ---
@@ -421,9 +389,7 @@ export function scanPatterns(dir: string): PatternResult {
 
         if (depMatch && fileResult.found) {
             // Both signals → emit a chunk
-            chunks.push(
-                detector.buildChunk(dir, depMatch.name, depMatch.version, fileResult.paths),
-            );
+            chunks.push(detector.buildChunk(dir, depMatch.name, depMatch.version, fileResult.paths));
         } else if (depMatch && !fileResult.found) {
             // Dep only → emit a tip
             tips.push(detector.buildTipFromDep(depMatch.name));

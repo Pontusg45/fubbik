@@ -1,10 +1,14 @@
 # Grouping at Scale Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to
+> implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Make chunk grouping fast and usable on codebases with thousands of chunks — server-side aggregation, lazy loading, virtual scrolling, graph clustering, and compound grouping.
+**Goal:** Make chunk grouping fast and usable on codebases with thousands of chunks — server-side aggregation, lazy loading, virtual
+scrolling, graph clustering, and compound grouping.
 
-**Architecture:** Five layered improvements: (1) a new server-side grouped query endpoint that returns group headers + counts with per-group pagination, (2) lazy-expand UI that only fetches chunks on group open, (3) virtual scrolling within expanded groups, (4) graph server-side cluster aggregation, (5) compound two-level grouping. Each builds on the previous but is independently shippable.
+**Architecture:** Five layered improvements: (1) a new server-side grouped query endpoint that returns group headers + counts with per-group
+pagination, (2) lazy-expand UI that only fetches chunks on group open, (3) virtual scrolling within expanded groups, (4) graph server-side
+cluster aggregation, (5) compound two-level grouping. Each builds on the previous but is independently shippable.
 
 **Tech Stack:** Drizzle ORM (SQL GROUP BY), Elysia routes, Effect, @tanstack/react-virtual, @tanstack/react-query, React Flow
 
@@ -13,35 +17,39 @@
 ## File Map
 
 ### New files
-| File | Responsibility |
-|------|---------------|
-| `packages/db/src/repository/chunk-groups.ts` | DB queries for grouped counts and per-group chunk pages |
-| `packages/api/src/chunks/group-routes.ts` | Elysia routes for `/api/chunks/grouped` and `/api/chunks/grouped/:group/chunks` |
-| `packages/api/src/chunks/group-service.ts` | Service layer for grouped queries |
-| `apps/web/src/features/chunks/lazy-group-list.tsx` | Lazy-expand group list with virtual scrolling |
-| `apps/web/src/features/graph/cluster-strategy.ts` | Server-side cluster aggregation strategy |
-| `packages/db/src/repository/chunk-groups.test.ts` | Repository tests |
-| `packages/api/src/chunks/group-service.test.ts` | Service tests |
+
+| File                                               | Responsibility                                                                  |
+| -------------------------------------------------- | ------------------------------------------------------------------------------- |
+| `packages/db/src/repository/chunk-groups.ts`       | DB queries for grouped counts and per-group chunk pages                         |
+| `packages/api/src/chunks/group-routes.ts`          | Elysia routes for `/api/chunks/grouped` and `/api/chunks/grouped/:group/chunks` |
+| `packages/api/src/chunks/group-service.ts`         | Service layer for grouped queries                                               |
+| `apps/web/src/features/chunks/lazy-group-list.tsx` | Lazy-expand group list with virtual scrolling                                   |
+| `apps/web/src/features/graph/cluster-strategy.ts`  | Server-side cluster aggregation strategy                                        |
+| `packages/db/src/repository/chunk-groups.test.ts`  | Repository tests                                                                |
+| `packages/api/src/chunks/group-service.test.ts`    | Service tests                                                                   |
 
 ### Modified files
-| File | Changes |
-|------|---------|
-| `packages/api/src/index.ts` | Register group routes |
-| `apps/web/src/routes/chunks.index.tsx` | Use lazy group list when grouping is active |
-| `apps/web/src/features/graph/graph-view.tsx` | Add cluster aggregation path |
-| `apps/web/src/features/graph/group-strategies.ts` | Add cluster strategy |
-| `apps/web/src/features/graph/graph-filter-form.tsx` | Add compound grouping UI |
-| `apps/web/package.json` | Add `@tanstack/react-virtual` dependency |
+
+| File                                                | Changes                                     |
+| --------------------------------------------------- | ------------------------------------------- |
+| `packages/api/src/index.ts`                         | Register group routes                       |
+| `apps/web/src/routes/chunks.index.tsx`              | Use lazy group list when grouping is active |
+| `apps/web/src/features/graph/graph-view.tsx`        | Add cluster aggregation path                |
+| `apps/web/src/features/graph/group-strategies.ts`   | Add cluster strategy                        |
+| `apps/web/src/features/graph/graph-filter-form.tsx` | Add compound grouping UI                    |
+| `apps/web/package.json`                             | Add `@tanstack/react-virtual` dependency    |
 
 ---
 
 ## Task 1: Server-Side Grouped Counts (Repository)
 
 **Files:**
+
 - Create: `packages/db/src/repository/chunk-groups.ts`
 - Test: `packages/db/src/repository/chunk-groups.test.ts`
 
-This task adds the SQL queries that return `{ groupName, count }[]` for each grouping dimension. All existing filter conditions (codebase, type, search, tags, etc.) are reused.
+This task adds the SQL queries that return `{ groupName, count }[]` for each grouping dimension. All existing filter conditions (codebase,
+type, search, tags, etc.) are reused.
 
 - [ ] **Step 1: Write the failing test for type grouping**
 
@@ -52,17 +60,17 @@ import { describe, it, expect, vi } from "vitest";
 vi.mock("../index", () => {
     const mockRows = [
         { groupName: "document", count: 42 },
-        { groupName: "note", count: 15 },
+        { groupName: "note", count: 15 }
     ];
     return {
         db: {
             select: () => ({ from: () => ({ where: () => ({ groupBy: () => ({ orderBy: () => mockRows }) }) }) }),
-            execute: () => Promise.resolve(mockRows),
+            execute: () => Promise.resolve(mockRows)
         },
         dbEffect: (fn: () => Promise<unknown>) => {
             const { Effect } = require("effect");
             return Effect.tryPromise({ try: fn, catch: (e: unknown) => ({ _tag: "DatabaseError" as const, cause: e }) });
-        },
+        }
     };
 });
 
@@ -71,12 +79,10 @@ import { getGroupedCounts } from "./chunk-groups";
 
 describe("getGroupedCounts", () => {
     it("returns counts grouped by chunk type", async () => {
-        const result = await Effect.runPromise(
-            getGroupedCounts({ groupBy: "type", userId: "u1" })
-        );
+        const result = await Effect.runPromise(getGroupedCounts({ groupBy: "type", userId: "u1" }));
         expect(result).toEqual([
             { groupName: "document", count: 42 },
-            { groupName: "note", count: 15 },
+            { groupName: "note", count: 15 }
         ]);
     });
 });
@@ -84,8 +90,7 @@ describe("getGroupedCounts", () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd packages/db && npx vitest run src/repository/chunk-groups.test.ts`
-Expected: FAIL — module not found
+Run: `cd packages/db && npx vitest run src/repository/chunk-groups.test.ts` Expected: FAIL — module not found
 
 - [ ] **Step 3: Implement getGroupedCounts**
 
@@ -227,13 +232,15 @@ export function getGroupedCounts(params: GroupedCountsParams): Effect.Effect<Gro
                 })
                 .from(chunk)
                 .where(where)
-                .groupBy(sql`
+                .groupBy(
+                    sql`
                     CASE
                         WHEN ${chunk.updatedAt} > now() - interval '7 days' THEN 'This week'
                         WHEN ${chunk.updatedAt} > now() - interval '30 days' THEN 'This month'
                         WHEN ${chunk.updatedAt} > now() - interval '90 days' THEN 'Last 3 months'
                         ELSE 'Older'
-                    END`)
+                    END`
+                )
                 .orderBy(desc(sql`count(*)`));
             return rows;
         }
@@ -290,7 +297,7 @@ export function getChunksInGroup(params: GroupChunksParams) {
             const freshnessCase: Record<string, string> = {
                 "This week": "7 days",
                 "This month": "30 days",
-                "Last 3 months": "90 days",
+                "Last 3 months": "90 days"
             };
             const interval = freshnessCase[params.groupName];
             if (interval) {
@@ -314,10 +321,14 @@ export function getChunksInGroup(params: GroupChunksParams) {
 
         const orderClause = (() => {
             switch (params.sort) {
-                case "oldest": return sql`${chunk.createdAt} ASC`;
-                case "alpha": return sql`${chunk.title} ASC`;
-                case "updated": return sql`${chunk.updatedAt} DESC`;
-                default: return sql`${chunk.createdAt} DESC`;
+                case "oldest":
+                    return sql`${chunk.createdAt} ASC`;
+                case "alpha":
+                    return sql`${chunk.title} ASC`;
+                case "updated":
+                    return sql`${chunk.updatedAt} DESC`;
+                default:
+                    return sql`${chunk.createdAt} DESC`;
             }
         })();
 
@@ -325,7 +336,10 @@ export function getChunksInGroup(params: GroupChunksParams) {
 
         const [chunks, totalResult] = await Promise.all([
             db.select().from(chunk).where(where).orderBy(orderClause).limit(params.limit).offset(params.offset),
-            db.select({ count: sql<number>`count(*)::int` }).from(chunk).where(where),
+            db
+                .select({ count: sql<number>`count(*)::int` })
+                .from(chunk)
+                .where(where)
         ]);
 
         return { chunks, total: Number(totalResult[0]?.count ?? 0) };
@@ -335,8 +349,7 @@ export function getChunksInGroup(params: GroupChunksParams) {
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `cd packages/db && npx vitest run src/repository/chunk-groups.test.ts`
-Expected: PASS
+Run: `cd packages/db && npx vitest run src/repository/chunk-groups.test.ts` Expected: PASS
 
 - [ ] **Step 5: Export from repository barrel**
 
@@ -358,6 +371,7 @@ git commit -m "feat: add server-side grouped count and per-group chunk queries"
 ## Task 2: Server-Side Grouped API Routes
 
 **Files:**
+
 - Create: `packages/api/src/chunks/group-service.ts`
 - Create: `packages/api/src/chunks/group-routes.ts`
 - Create: `packages/api/src/chunks/group-service.test.ts`
@@ -374,16 +388,16 @@ vi.mock("@fubbik/db/repository", () => ({
         const { Effect } = require("effect");
         return Effect.succeed([
             { groupName: "document", count: 42 },
-            { groupName: "note", count: 15 },
+            { groupName: "note", count: 15 }
         ]);
     }),
     getChunksInGroup: vi.fn(() => {
         const { Effect } = require("effect");
         return Effect.succeed({
             chunks: [{ id: "c1", title: "Test", type: "document" }],
-            total: 1,
+            total: 1
         });
-    }),
+    })
 }));
 
 import { Effect } from "effect";
@@ -391,24 +405,20 @@ import { listGroupedCounts, listGroupChunks } from "./group-service";
 
 describe("listGroupedCounts", () => {
     it("parses query params and returns group counts", async () => {
-        const result = await Effect.runPromise(
-            listGroupedCounts("user1", { groupBy: "type" })
-        );
+        const result = await Effect.runPromise(listGroupedCounts("user1", { groupBy: "type" }));
         expect(result).toEqual({
             groups: [
                 { groupName: "document", count: 42 },
-                { groupName: "note", count: 15 },
+                { groupName: "note", count: 15 }
             ],
-            totalGroups: 2,
+            totalGroups: 2
         });
     });
 });
 
 describe("listGroupChunks", () => {
     it("returns chunks within a group", async () => {
-        const result = await Effect.runPromise(
-            listGroupChunks("user1", "document", { groupBy: "type" })
-        );
+        const result = await Effect.runPromise(listGroupChunks("user1", "document", { groupBy: "type" }));
         expect(result.chunks).toHaveLength(1);
         expect(result.total).toBe(1);
     });
@@ -417,8 +427,7 @@ describe("listGroupChunks", () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd packages/api && npx vitest run src/chunks/group-service.test.ts`
-Expected: FAIL — module not found
+Run: `cd packages/api && npx vitest run src/chunks/group-service.test.ts` Expected: FAIL — module not found
 
 - [ ] **Step 3: Implement group-service.ts**
 
@@ -443,7 +452,10 @@ export function listGroupedCounts(
         reviewStatus?: string;
     }
 ) {
-    const parsedTags = query.tags?.split(",").map(s => s.trim()).filter(Boolean);
+    const parsedTags = query.tags
+        ?.split(",")
+        .map(s => s.trim())
+        .filter(Boolean);
     const groupBy = parseGroupBy(query.groupBy);
     const tagTypeId = groupBy === "tagtype" ? query.tagTypeId : undefined;
 
@@ -459,10 +471,8 @@ export function listGroupedCounts(
         tags: parsedTags?.length ? parsedTags : undefined,
         tagMode: query.tagMode,
         origin: query.origin,
-        reviewStatus: query.reviewStatus,
-    }).pipe(
-        Effect.map(groups => ({ groups, totalGroups: groups.length }))
-    );
+        reviewStatus: query.reviewStatus
+    }).pipe(Effect.map(groups => ({ groups, totalGroups: groups.length })));
 }
 
 export function listGroupChunks(
@@ -487,7 +497,10 @@ export function listGroupChunks(
 ) {
     const limit = Math.min(Number(query.limit ?? 20), 100);
     const offset = Number(query.offset ?? 0);
-    const parsedTags = query.tags?.split(",").map(s => s.trim()).filter(Boolean);
+    const parsedTags = query.tags
+        ?.split(",")
+        .map(s => s.trim())
+        .filter(Boolean);
     const groupBy = parseGroupBy(query.groupBy);
     const tagTypeId = groupBy === "tagtype" ? query.tagTypeId : undefined;
 
@@ -507,10 +520,8 @@ export function listGroupChunks(
         reviewStatus: query.reviewStatus,
         sort: query.sort,
         limit,
-        offset,
-    }).pipe(
-        Effect.map(result => ({ ...result, limit, offset }))
-    );
+        offset
+    }).pipe(Effect.map(result => ({ ...result, limit, offset })));
 }
 
 function parseGroupBy(raw: string): "type" | "status" | "origin" | "freshness" | "tagtype" {
@@ -522,8 +533,7 @@ function parseGroupBy(raw: string): "type" | "status" | "origin" | "freshness" |
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `cd packages/api && npx vitest run src/chunks/group-service.test.ts`
-Expected: PASS
+Run: `cd packages/api && npx vitest run src/chunks/group-service.test.ts` Expected: PASS
 
 - [ ] **Step 5: Implement group-routes.ts**
 
@@ -535,13 +545,7 @@ import { Elysia, t } from "elysia";
 import { requireSession } from "../require-session";
 import * as groupService from "./group-service";
 
-const groupBySchema = t.Union([
-    t.Literal("type"),
-    t.Literal("status"),
-    t.Literal("origin"),
-    t.Literal("freshness"),
-    t.Literal("tagtype"),
-]);
+const groupBySchema = t.Union([t.Literal("type"), t.Literal("status"), t.Literal("origin"), t.Literal("freshness"), t.Literal("tagtype")]);
 
 const sharedQuery = {
     groupBy: groupBySchema,
@@ -554,36 +558,34 @@ const sharedQuery = {
     tags: t.Optional(t.String()),
     tagMode: t.Optional(t.Union([t.Literal("any"), t.Literal("all")])),
     origin: t.Optional(t.Union([t.Literal("human"), t.Literal("ai")])),
-    reviewStatus: t.Optional(t.Union([t.Literal("draft"), t.Literal("reviewed"), t.Literal("approved")])),
+    reviewStatus: t.Optional(t.Union([t.Literal("draft"), t.Literal("reviewed"), t.Literal("approved")]))
 };
 
 export const chunkGroupRoutes = new Elysia()
     .get(
         "/chunks/grouped",
-        ctx => Effect.runPromise(
-            requireSession(ctx).pipe(
-                Effect.flatMap(session => groupService.listGroupedCounts(session.user.id, ctx.query))
-            )
-        ),
+        ctx =>
+            Effect.runPromise(
+                requireSession(ctx).pipe(Effect.flatMap(session => groupService.listGroupedCounts(session.user.id, ctx.query)))
+            ),
         { query: t.Object(sharedQuery) }
     )
     .get(
         "/chunks/grouped/:groupName/chunks",
-        ctx => Effect.runPromise(
-            requireSession(ctx).pipe(
-                Effect.flatMap(session =>
-                    groupService.listGroupChunks(session.user.id, ctx.params.groupName, ctx.query)
+        ctx =>
+            Effect.runPromise(
+                requireSession(ctx).pipe(
+                    Effect.flatMap(session => groupService.listGroupChunks(session.user.id, ctx.params.groupName, ctx.query))
                 )
-            )
-        ),
+            ),
         {
             params: t.Object({ groupName: t.String() }),
             query: t.Object({
                 ...sharedQuery,
                 sort: t.Optional(t.Union([t.Literal("newest"), t.Literal("oldest"), t.Literal("alpha"), t.Literal("updated")])),
                 limit: t.Optional(t.String()),
-                offset: t.Optional(t.String()),
-            }),
+                offset: t.Optional(t.String())
+            })
         }
     );
 ```
@@ -602,8 +604,7 @@ The group routes must be registered **before** `chunkRoutes` because `/chunks/gr
 
 - [ ] **Step 7: Run tests**
 
-Run: `pnpm test --filter=@fubbik/api`
-Expected: All tests pass
+Run: `pnpm test --filter=@fubbik/api` Expected: All tests pass
 
 - [ ] **Step 8: Commit**
 
@@ -617,6 +618,7 @@ git commit -m "feat: add /api/chunks/grouped endpoint for server-side group coun
 ## Task 3: Install @tanstack/react-virtual
 
 **Files:**
+
 - Modify: `apps/web/package.json`
 
 - [ ] **Step 1: Install the dependency**
@@ -627,8 +629,7 @@ cd apps/web && pnpm add @tanstack/react-virtual
 
 - [ ] **Step 2: Verify installation**
 
-Run: `pnpm run check-types --filter=web`
-Expected: PASS
+Run: `pnpm run check-types --filter=web` Expected: PASS
 
 - [ ] **Step 3: Commit**
 
@@ -642,9 +643,11 @@ git commit -m "chore: add @tanstack/react-virtual for virtualized lists"
 ## Task 4: Lazy-Expand Group List Component
 
 **Files:**
+
 - Create: `apps/web/src/features/chunks/lazy-group-list.tsx`
 
 This component:
+
 1. Fetches group headers + counts from `/api/chunks/grouped` (single query)
 2. Shows collapsed group headers with counts
 3. On expand, fetches that group's chunks from `/api/chunks/grouped/:groupName/chunks`
@@ -691,7 +694,7 @@ export function LazyGroupList({
     selectedIds,
     pinnedIds,
     isPinned,
-    onSelectionClick,
+    onSelectionClick
 }: LazyGroupListProps) {
     const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
@@ -707,7 +710,7 @@ export function LazyGroupList({
             }
             return unwrapEden(await api.api.chunks.grouped.get({ query: query as never }));
         },
-        staleTime: 30_000,
+        staleTime: 30_000
     });
 
     const toggleGroup = (name: string) => {
@@ -730,13 +733,8 @@ export function LazyGroupList({
             )}
             {groups.map(g => (
                 <div key={g.groupName}>
-                    <button
-                        onClick={() => toggleGroup(g.groupName)}
-                        className="mb-2 flex items-center gap-2"
-                    >
-                        <ChevronRight
-                            className={`size-3 transition-transform ${expanded.has(g.groupName) && "rotate-90"}`}
-                        />
+                    <button onClick={() => toggleGroup(g.groupName)} className="mb-2 flex items-center gap-2">
+                        <ChevronRight className={`size-3 transition-transform ${expanded.has(g.groupName) && "rotate-90"}`} />
                         <Badge variant="secondary">{g.groupName}</Badge>
                         <span className="text-muted-foreground text-xs tabular-nums">({g.count})</span>
                     </button>
@@ -786,7 +784,7 @@ function VirtualGroupChunks({
     chunkRowProps,
     selectedIds,
     isPinned,
-    onSelectionClick,
+    onSelectionClick
 }: VirtualGroupChunksProps) {
     const parentRef = useRef<HTMLDivElement>(null);
 
@@ -796,7 +794,7 @@ function VirtualGroupChunks({
             const query: Record<string, string> = {
                 groupBy,
                 offset: String(pageParam),
-                limit: "50",
+                limit: "50"
             };
             if (tagTypeId) query.tagTypeId = tagTypeId;
             if (codebaseId && codebaseId !== "global") query.codebaseId = codebaseId;
@@ -805,15 +803,13 @@ function VirtualGroupChunks({
             for (const [k, v] of Object.entries(filters)) {
                 if (v) query[k] = v;
             }
-            return unwrapEden(
-                await api.api.chunks.grouped({ groupName }).chunks.get({ query: query as never })
-            );
+            return unwrapEden(await api.api.chunks.grouped({ groupName }).chunks.get({ query: query as never }));
         },
         initialPageParam: 0,
         getNextPageParam: (lastPage, allPages) => {
             const loaded = allPages.reduce((sum, p) => sum + (p?.chunks?.length ?? 0), 0);
             return loaded < (lastPage?.total ?? 0) ? loaded : undefined;
-        },
+        }
     });
 
     const allChunks = chunksQuery.data?.pages.flatMap(p => p?.chunks ?? []) ?? [];
@@ -826,7 +822,7 @@ function VirtualGroupChunks({
         count: allChunks.length,
         getScrollElement: () => parentRef.current,
         estimateSize: () => ROW_HEIGHT,
-        overscan: 10,
+        overscan: 10
     });
 
     const fetchMore = useCallback(() => {
@@ -851,15 +847,12 @@ function VirtualGroupChunks({
 
     return (
         <Card>
-            <div
-                ref={parentRef}
-                style={{ maxHeight, overflow: "auto" }}
-            >
+            <div ref={parentRef} style={{ maxHeight, overflow: "auto" }}>
                 <div
                     style={{
                         height: virtualizer.getTotalSize(),
                         width: "100%",
-                        position: "relative",
+                        position: "relative"
                     }}
                 >
                     {items.map(virtualRow => {
@@ -874,7 +867,7 @@ function VirtualGroupChunks({
                                     left: 0,
                                     width: "100%",
                                     height: `${virtualRow.size}px`,
-                                    transform: `translateY(${virtualRow.start}px)`,
+                                    transform: `translateY(${virtualRow.start}px)`
                                 }}
                             >
                                 <ChunkRow
@@ -893,12 +886,7 @@ function VirtualGroupChunks({
             </div>
             {hasMore && (
                 <div className="border-t p-2 text-center">
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => chunksQuery.fetchNextPage()}
-                        disabled={chunksQuery.isFetchingNextPage}
-                    >
+                    <Button variant="ghost" size="sm" onClick={() => chunksQuery.fetchNextPage()} disabled={chunksQuery.isFetchingNextPage}>
                         {chunksQuery.isFetchingNextPage ? "Loading..." : "Load more"}
                     </Button>
                 </div>
@@ -910,8 +898,8 @@ function VirtualGroupChunks({
 
 - [ ] **Step 2: Run type check**
 
-Run: `pnpm run check-types --filter=web`
-Expected: PASS (may need minor type adjustments to `ChunkRowProps` — make the props type exported if not already)
+Run: `pnpm run check-types --filter=web` Expected: PASS (may need minor type adjustments to `ChunkRowProps` — make the props type exported
+if not already)
 
 - [ ] **Step 3: Commit**
 
@@ -925,6 +913,7 @@ git commit -m "feat: add LazyGroupList component with virtual scrolling"
 ## Task 5: Wire Lazy Group List into Chunks Page
 
 **Files:**
+
 - Modify: `apps/web/src/routes/chunks.index.tsx`
 
 Replace the client-side grouping path with the server-side lazy group list when a group is active.
@@ -986,12 +975,13 @@ Replace with:
 
 - [ ] **Step 3: Remove client-side grouping code that is no longer needed**
 
-The `groupedChunks` useMemo, the `chunkTagsQuery`, and the `collapsed`/`toggleCollapsed` state can be removed since the `LazyGroupList` handles all of that internally. The `isTagTypeGroup` and `selectedTagTypeId` derived values are still needed for the dropdown and the `LazyGroupList` props.
+The `groupedChunks` useMemo, the `chunkTagsQuery`, and the `collapsed`/`toggleCollapsed` state can be removed since the `LazyGroupList`
+handles all of that internally. The `isTagTypeGroup` and `selectedTagTypeId` derived values are still needed for the dropdown and the
+`LazyGroupList` props.
 
 - [ ] **Step 4: Run type check and tests**
 
-Run: `pnpm run check-types --filter=web && pnpm test --filter=web`
-Expected: PASS
+Run: `pnpm run check-types --filter=web && pnpm test --filter=web` Expected: PASS
 
 - [ ] **Step 5: Commit**
 
@@ -1005,11 +995,13 @@ git commit -m "feat: wire lazy server-side grouping into chunks list page"
 ## Task 6: Graph Server-Side Cluster Aggregation
 
 **Files:**
+
 - Create: `apps/web/src/features/graph/cluster-strategy.ts`
 - Modify: `apps/web/src/features/graph/group-strategies.ts`
 - Modify: `apps/web/src/features/graph/graph-view.tsx`
 
-For large graphs (500+ nodes), instead of rendering all individual nodes inside a group bounding box, collapse each group into a single "cluster node" showing the group name + count. Clicking a cluster node expands it to show the individual nodes.
+For large graphs (500+ nodes), instead of rendering all individual nodes inside a group bounding box, collapse each group into a single
+"cluster node" showing the group name + count. Clicking a cluster node expands it to show the individual nodes.
 
 - [ ] **Step 1: Add cluster node types**
 
@@ -1044,18 +1036,14 @@ export function buildClusterNodes(
             groupName,
             count: chunkIds.length,
             color: groupResult.colorFor(groupName),
-            expanded: expandedGroups.has(groupName),
+            expanded: expandedGroups.has(groupName)
         });
     }
 
     return { clusters, shouldCluster: true };
 }
 
-export function getVisibleChunkIds(
-    groupResult: GroupStrategyResult,
-    expandedGroups: Set<string>,
-    shouldCluster: boolean
-): Set<string> {
+export function getVisibleChunkIds(groupResult: GroupStrategyResult, expandedGroups: Set<string>, shouldCluster: boolean): Set<string> {
     if (!shouldCluster) {
         const all = new Set<string>();
         for (const ids of groupResult.groups.values()) {
@@ -1120,12 +1108,13 @@ const visibleChunkIds = useMemo(() => {
 }, [groupResult, expandedClusters, shouldCluster]);
 ```
 
-Then, in the node-building pipeline, filter out chunks not in `visibleChunkIds` when clustering is active, and add cluster nodes to the React Flow nodes array. Each cluster node should use a custom node type that renders as a larger pill with the group name and count, and dispatches `TOGGLE_CLUSTER` on click.
+Then, in the node-building pipeline, filter out chunks not in `visibleChunkIds` when clustering is active, and add cluster nodes to the
+React Flow nodes array. Each cluster node should use a custom node type that renders as a larger pill with the group name and count, and
+dispatches `TOGGLE_CLUSTER` on click.
 
 - [ ] **Step 4: Run type check**
 
-Run: `pnpm run check-types --filter=web`
-Expected: PASS
+Run: `pnpm run check-types --filter=web` Expected: PASS
 
 - [ ] **Step 5: Commit**
 
@@ -1139,6 +1128,7 @@ git commit -m "feat: add graph cluster aggregation for large graphs"
 ## Task 7: Compound Grouping (Two-Level)
 
 **Files:**
+
 - Modify: `packages/db/src/repository/chunk-groups.ts` — add `subGroupBy` support
 - Modify: `packages/api/src/chunks/group-service.ts` — pass through sub-group
 - Modify: `packages/api/src/chunks/group-routes.ts` — add sub-group query param
@@ -1146,7 +1136,8 @@ git commit -m "feat: add graph cluster aggregation for large graphs"
 - Modify: `apps/web/src/routes/chunks.index.tsx` — compound group selector
 - Modify: `apps/web/src/features/graph/graph-filter-form.tsx` — compound group selector
 
-Compound grouping adds a second dimension: "Group by Domain, then by Type". The server returns a two-level structure: `{ groups: [{ groupName, count, subGroups: [{ groupName, count }] }] }`.
+Compound grouping adds a second dimension: "Group by Domain, then by Type". The server returns a two-level structure:
+`{ groups: [{ groupName, count, subGroups: [{ groupName, count }] }] }`.
 
 - [ ] **Step 1: Add compound counts query**
 
@@ -1170,14 +1161,14 @@ export function getCompoundGroupedCounts(
                     const subParams: GroupedCountsParams = {
                         ...params,
                         groupBy: params.subGroupBy,
-                        tagTypeId: params.subTagTypeId,
+                        tagTypeId: params.subTagTypeId
                     };
                     // Add the parent group as an additional filter
                     return getFilteredSubGroupCounts(subParams, params.groupBy, group.groupName, params.tagTypeId).pipe(
                         Effect.map(subGroups => ({
                             groupName: group.groupName,
                             count: group.count,
-                            subGroups,
+                            subGroups
                         }))
                     );
                 },
@@ -1188,28 +1179,32 @@ export function getCompoundGroupedCounts(
 }
 ```
 
-The `getFilteredSubGroupCounts` function runs the sub-group query with an additional WHERE clause filtering to only chunks in the parent group. Implementation follows the same pattern as `getGroupedCounts` but with the parent-group constraint injected.
+The `getFilteredSubGroupCounts` function runs the sub-group query with an additional WHERE clause filtering to only chunks in the parent
+group. Implementation follows the same pattern as `getGroupedCounts` but with the parent-group constraint injected.
 
 - [ ] **Step 2: Add compound route parameter**
 
-In `group-routes.ts`, add optional `subGroupBy` and `subTagTypeId` query params to the `/chunks/grouped` endpoint. When present, call `getCompoundGroupedCounts` instead.
+In `group-routes.ts`, add optional `subGroupBy` and `subTagTypeId` query params to the `/chunks/grouped` endpoint. When present, call
+`getCompoundGroupedCounts` instead.
 
 - [ ] **Step 3: Update LazyGroupList for nested rendering**
 
-In `lazy-group-list.tsx`, when sub-groups are present, render a nested accordion: parent group header → sub-group headers → chunks. Each sub-group header is independently expandable and lazy-loads its chunks.
+In `lazy-group-list.tsx`, when sub-groups are present, render a nested accordion: parent group header → sub-group headers → chunks. Each
+sub-group header is independently expandable and lazy-loads its chunks.
 
 - [ ] **Step 4: Add compound group UI to chunks page**
 
-In the `TagTypeGroupSelect` component in `chunks.index.tsx`, when a primary group is selected, show a secondary "then by" dropdown. Store the compound group as `group=tagtype:<id>&subGroup=type` in the URL search params.
+In the `TagTypeGroupSelect` component in `chunks.index.tsx`, when a primary group is selected, show a secondary "then by" dropdown. Store
+the compound group as `group=tagtype:<id>&subGroup=type` in the URL search params.
 
 - [ ] **Step 5: Add compound group UI to graph filter form**
 
-In `graph-filter-form.tsx`, when a tag type is selected for grouping, show an optional "Sub-group by" section with the same options (type, status, another tag type). This maps to visual sub-clusters within each group bounding box.
+In `graph-filter-form.tsx`, when a tag type is selected for grouping, show an optional "Sub-group by" section with the same options (type,
+status, another tag type). This maps to visual sub-clusters within each group bounding box.
 
 - [ ] **Step 6: Run tests and type check**
 
-Run: `pnpm run check-types && pnpm test`
-Expected: All pass
+Run: `pnpm run check-types && pnpm test` Expected: All pass
 
 - [ ] **Step 7: Commit**
 
@@ -1250,6 +1245,7 @@ Expected: Both build successfully
 - [ ] **Step 4: Manual smoke test**
 
 Start dev server (`pnpm dev`) and verify:
+
 1. Navigate to `/chunks`, select a tag type grouping → see group headers with counts, no chunks loaded
 2. Expand a group → chunks load on demand with virtual scrolling
 3. Navigate to `/graph`, select tag grouping with a tag type → groups render

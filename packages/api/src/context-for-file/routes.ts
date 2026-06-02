@@ -1,10 +1,10 @@
 import { Effect } from "effect";
 import { Elysia, t } from "elysia";
 
-import { requireSession } from "../require-session";
 import { formatStructured, formatStructuredMarkdown } from "../context/formatter";
 import { enrichChunks, resolveForFiles } from "../context/resolvers";
 import { budgetChunks } from "../context/utils";
+import { requireSession } from "../require-session";
 import { getContextForFile } from "./service";
 
 const DEFAULT_MAX_TOKENS = 4000;
@@ -27,15 +27,9 @@ export const contextForFileRoutes = new Elysia().get(
                         ).pipe(Effect.map(result => ({ ...result })));
                     }
 
-                    const maxTokens = ctx.query.maxTokens
-                        ? Number(ctx.query.maxTokens)
-                        : DEFAULT_MAX_TOKENS;
+                    const maxTokens = ctx.query.maxTokens ? Number(ctx.query.maxTokens) : DEFAULT_MAX_TOKENS;
 
-                    return resolveForFiles(
-                        [ctx.query.path],
-                        session.user.id,
-                        ctx.query.spaceId,
-                    ).pipe(
+                    return resolveForFiles([ctx.query.path], session.user.id, ctx.query.spaceId).pipe(
                         Effect.flatMap(ids => enrichChunks(ids, session.user.id)),
                         Effect.map(chunks => {
                             const budgeted = budgetChunks(chunks, maxTokens);
@@ -46,26 +40,20 @@ export const contextForFileRoutes = new Elysia().get(
                             return {
                                 format: "structured-md" as const,
                                 content: formatStructuredMarkdown(structured),
-                                totalChunks: structured.totalChunks,
+                                totalChunks: structured.totalChunks
                             };
-                        }),
+                        })
                     );
-                }),
-            ),
+                })
+            )
         ),
     {
         query: t.Object({
             path: t.String(),
             spaceId: t.Optional(t.String()),
             deps: t.Optional(t.String()),
-            format: t.Optional(
-                t.Union([
-                    t.Literal("structured-md"),
-                    t.Literal("structured-json"),
-                    t.Literal("json-legacy"),
-                ]),
-            ),
-            maxTokens: t.Optional(t.String()),
-        }),
-    },
+            format: t.Optional(t.Union([t.Literal("structured-md"), t.Literal("structured-json"), t.Literal("json-legacy")])),
+            maxTokens: t.Optional(t.String())
+        })
+    }
 );

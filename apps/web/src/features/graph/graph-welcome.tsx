@@ -34,9 +34,7 @@ export function GraphWelcome({ onDismiss }: GraphWelcomeProps) {
                     <div className="flex items-center gap-3">
                         <Search className="text-muted-foreground size-4 shrink-0" />
                         <span>
-                            Press{" "}
-                            <kbd className="bg-muted rounded border px-1 text-xs">?</kbd> for
-                            all shortcuts.
+                            Press <kbd className="bg-muted rounded border px-1 text-xs">?</kbd> for all shortcuts.
                         </span>
                     </div>
                 </div>

@@ -1,7 +1,7 @@
 import { Bot, Clock, Star } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
 import { MarkdownRenderer } from "@/components/markdown-renderer";
+import { Badge } from "@/components/ui/badge";
 import { ChunkTypeIcon } from "@/features/chunks/chunk-type-icon";
 import { estimateReadingTime } from "@/features/chunks/reading-time";
 import { StalenessBanner } from "@/features/staleness/staleness-banner";
@@ -42,15 +42,15 @@ export function ChunkDetailContent({
     reviewStatus,
     isFavorite,
     onToggleFavorite,
-    readerClasses,
+    readerClasses
 }: ChunkDetailContentProps) {
     const updated = new Date(updatedAt);
     const reading = estimateReadingTime(content);
 
     return (
-        <div className="flex-1 min-w-0 max-w-[760px] mx-auto" data-focus-main="true">
+        <div className="mx-auto max-w-[760px] min-w-0 flex-1" data-focus-main="true">
             {/* Meta row */}
-            <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+            <div className="text-muted-foreground mb-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
                 <span className="inline-flex items-center gap-1.5">
                     <ChunkTypeIcon type={type} className="size-3.5" />
                     <span className="font-mono">{type}</span>
@@ -85,12 +85,12 @@ export function ChunkDetailContent({
 
             {/* Title with favorite */}
             <div className="mb-3 flex items-start gap-3">
-                <h1 className="text-3xl font-bold tracking-tight leading-tight flex-1">{title}</h1>
+                <h1 className="flex-1 text-3xl leading-tight font-bold tracking-tight">{title}</h1>
                 {onToggleFavorite && (
                     <button
                         type="button"
                         onClick={onToggleFavorite}
-                        className="mt-1.5 text-muted-foreground hover:text-yellow-500 transition-colors"
+                        className="text-muted-foreground mt-1.5 transition-colors hover:text-yellow-500"
                         title={isFavorite ? "Remove from favorites" : "Add to favorites"}
                     >
                         <Star className={`size-5 ${isFavorite ? "fill-yellow-500 text-yellow-500" : ""}`} />
@@ -99,9 +99,7 @@ export function ChunkDetailContent({
             </div>
 
             {/* Summary */}
-            {summary && (
-                <p className="mb-6 text-lg italic text-muted-foreground leading-relaxed">{summary}</p>
-            )}
+            {summary && <p className="text-muted-foreground mb-6 text-lg leading-relaxed italic">{summary}</p>}
 
             {/* Staleness banner */}
             <StalenessBanner chunkId={chunkId} />

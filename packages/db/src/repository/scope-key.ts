@@ -4,13 +4,7 @@ import { db, dbEffect } from "../index";
 import { scopeKey } from "../schema/scope-key";
 
 export function listScopeKeys(userId: string) {
-    return dbEffect(() =>
-        db
-            .select()
-            .from(scopeKey)
-            .where(eq(scopeKey.userId, userId))
-            .orderBy(scopeKey.key)
-    );
+    return dbEffect(() => db.select().from(scopeKey).where(eq(scopeKey.userId, userId)).orderBy(scopeKey.key));
 }
 
 export function createScopeKey(params: {
@@ -30,7 +24,7 @@ export function createScopeKey(params: {
                 key: params.key,
                 description: params.description ?? null,
                 valueType: params.valueType ?? "string",
-                allowedValues: params.allowedValues ?? null,
+                allowedValues: params.allowedValues ?? null
             })
             .returning();
         return created!;

@@ -1,9 +1,9 @@
 ---
 tags:
-  - guide
-  - chunks
-  - enrichment
-  - search
+    - guide
+    - chunks
+    - enrichment
+    - search
 description: Negative keywords that improve search precision
 ---
 
@@ -13,9 +13,11 @@ The "not about" field contains terms that a chunk is explicitly NOT about, gener
 
 ## Why It Matters
 
-Without negative keywords, a chunk about "JWT session management" might appear in searches for "JWT vulnerabilities" or "session storage" even though it only covers the management lifecycle.
+Without negative keywords, a chunk about "JWT session management" might appear in searches for "JWT vulnerabilities" or "session storage"
+even though it only covers the management lifecycle.
 
-Not-about terms like "security vulnerabilities", "localStorage", "session storage backends" tell the search system to deprioritize this chunk for those queries.
+Not-about terms like "security vulnerabilities", "localStorage", "session storage backends" tell the search system to deprioritize this
+chunk for those queries.
 
 ## How It's Used
 
@@ -24,4 +26,5 @@ Not-about terms like "security vulnerabilities", "localStorage", "session storag
 
 ## Generation
 
-Not-about terms are generated automatically during enrichment alongside summaries and aliases. The AI examines what the chunk covers and infers what it doesn't cover based on commonly confused or related topics.
+Not-about terms are generated automatically during enrichment alongside summaries and aliases. The AI examines what the chunk covers and
+infers what it doesn't cover based on commonly confused or related topics.

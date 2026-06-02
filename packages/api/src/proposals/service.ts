@@ -4,19 +4,15 @@ import {
     getPendingCount as getPendingCountRepo,
     listProposals as listProposalsRepo,
     listProposalsForChunk as listProposalsForChunkRepo,
-    updateProposalStatus,
+    updateProposalStatus
 } from "@fubbik/db/repository";
 import type { ProposedChanges } from "@fubbik/db/repository";
 import { Effect } from "effect";
 
-import { NotFoundError, ValidationError } from "../errors";
 import { updateChunk } from "../chunks/service";
+import { NotFoundError, ValidationError } from "../errors";
 
-export function createProposal(
-    chunkId: string,
-    proposedBy: string,
-    body: { changes: ProposedChanges; reason?: string }
-) {
+export function createProposal(chunkId: string, proposedBy: string, body: { changes: ProposedChanges; reason?: string }) {
     return Effect.gen(function* () {
         if (!body.changes || Object.keys(body.changes).length === 0) {
             return yield* Effect.fail(new ValidationError({ message: "changes must not be empty" }));
@@ -27,25 +23,18 @@ export function createProposal(
             proposedBy,
             changes: body.changes,
             reason: body.reason ?? null,
-            status: "pending",
+            status: "pending"
         });
     });
 }
 
 export function getProposal(proposalId: string) {
     return getProposalById(proposalId).pipe(
-        Effect.flatMap(found =>
-            found ? Effect.succeed(found) : Effect.fail(new NotFoundError({ resource: "Proposal" }))
-        )
+        Effect.flatMap(found => (found ? Effect.succeed(found) : Effect.fail(new NotFoundError({ resource: "Proposal" }))))
     );
 }
 
-export function listProposals(filter: {
-    chunkId?: string;
-    status?: string;
-    limit?: number;
-    offset?: number;
-}) {
+export function listProposals(filter: { chunkId?: string; status?: string; limit?: number; offset?: number }) {
     return Effect.gen(function* () {
         const validStatuses = ["pending", "approved", "rejected"];
         if (filter.status && !validStatuses.includes(filter.status)) {
@@ -55,7 +44,7 @@ export function listProposals(filter: {
             chunkId: filter.chunkId,
             status: filter.status ?? "pending",
             limit: filter.limit,
-            offset: filter.offset,
+            offset: filter.offset
         });
     });
 }
@@ -66,14 +55,10 @@ export function listProposalsForChunk(chunkId: string, status?: string) {
 
 export function approveProposal(proposalId: string, reviewerId: string, note?: string) {
     return getProposalById(proposalId).pipe(
-        Effect.flatMap(found =>
-            found ? Effect.succeed(found) : Effect.fail(new NotFoundError({ resource: "Proposal" }))
-        ),
+        Effect.flatMap(found => (found ? Effect.succeed(found) : Effect.fail(new NotFoundError({ resource: "Proposal" })))),
         Effect.flatMap(proposal =>
             proposal.status !== "pending"
-                ? Effect.fail(
-                    new ValidationError({ message: `Proposal is already ${proposal.status}` })
-                )
+                ? Effect.fail(new ValidationError({ message: `Proposal is already ${proposal.status}` }))
                 : Effect.succeed(proposal)
         ),
         Effect.flatMap(proposal => {
@@ -86,40 +71,29 @@ export function approveProposal(proposalId: string, reviewerId: string, note?: s
                 ...(changes.rationale !== undefined && { rationale: changes.rationale }),
                 ...(changes.alternatives !== undefined && { alternatives: changes.alternatives }),
                 ...(changes.consequences !== undefined && { consequences: changes.consequences }),
-                ...(changes.scope !== undefined && { scope: changes.scope }),
-            }).pipe(
-                Effect.flatMap(() => updateProposalStatus(proposalId, "approved", reviewerId, note))
-            );
+                ...(changes.scope !== undefined && { scope: changes.scope })
+            }).pipe(Effect.flatMap(() => updateProposalStatus(proposalId, "approved", reviewerId, note)));
         })
     );
 }
 
 export function rejectProposal(proposalId: string, reviewerId: string, note?: string) {
     return getProposalById(proposalId).pipe(
-        Effect.flatMap(found =>
-            found ? Effect.succeed(found) : Effect.fail(new NotFoundError({ resource: "Proposal" }))
-        ),
+        Effect.flatMap(found => (found ? Effect.succeed(found) : Effect.fail(new NotFoundError({ resource: "Proposal" })))),
         Effect.flatMap(proposal =>
             proposal.status !== "pending"
-                ? Effect.fail(
-                    new ValidationError({ message: `Proposal is already ${proposal.status}` })
-                )
+                ? Effect.fail(new ValidationError({ message: `Proposal is already ${proposal.status}` }))
                 : Effect.succeed(proposal)
         ),
         Effect.flatMap(() => updateProposalStatus(proposalId, "rejected", reviewerId, note))
     );
 }
 
-export function bulkAction(
-    actions: Array<{ proposalId: string; action: "approve" | "reject"; note?: string }>,
-    reviewerId: string
-) {
+export function bulkAction(actions: Array<{ proposalId: string; action: "approve" | "reject"; note?: string }>, reviewerId: string) {
     return Effect.forEach(
         actions,
         ({ proposalId, action, note }) =>
-            action === "approve"
-                ? approveProposal(proposalId, reviewerId, note)
-                : rejectProposal(proposalId, reviewerId, note),
+            action === "approve" ? approveProposal(proposalId, reviewerId, note) : rejectProposal(proposalId, reviewerId, note),
         { concurrency: 1 }
     );
 }

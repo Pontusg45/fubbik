@@ -1,9 +1,9 @@
-
 import { Check, X } from "lucide-react";
 import { useRef, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+
 import type { FileConfig, PreviewFileResult } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -65,23 +65,19 @@ export function FileDetailPanel({
     const activeTemplateId = config.templateId;
 
     return (
-        <div className="flex flex-col gap-4 p-4 overflow-y-auto h-full">
+        <div className="flex h-full flex-col gap-4 overflow-y-auto p-4">
             {/* File path breadcrumb */}
-            <div className="text-xs text-muted-foreground truncate">
-                {pathParts.join(" / ")}
-            </div>
+            <div className="text-muted-foreground truncate text-xs">{pathParts.join(" / ")}</div>
 
             {/* Title heading */}
-            <h3 className="font-semibold text-base leading-tight">{preview.parsed.title}</h3>
+            <h3 className="text-base leading-tight font-semibold">{preview.parsed.title}</h3>
 
             {/* Title field */}
             <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                    Title
-                </label>
+                <label className="text-muted-foreground text-xs font-medium tracking-wide uppercase">Title</label>
                 <input
                     type="text"
-                    className="border-input bg-background block w-full rounded-md border px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    className="border-input bg-background focus:ring-ring block w-full rounded-md border px-3 py-1.5 text-sm focus:ring-2 focus:outline-none"
                     value={config.title}
                     onChange={e => update({ title: e.target.value })}
                 />
@@ -89,11 +85,9 @@ export function FileDetailPanel({
 
             {/* Type field */}
             <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                    Type
-                </label>
+                <label className="text-muted-foreground text-xs font-medium tracking-wide uppercase">Type</label>
                 <select
-                    className="border-input bg-background block w-full rounded-md border px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    className="border-input bg-background focus:ring-ring block w-full rounded-md border px-3 py-1.5 text-sm focus:ring-2 focus:outline-none"
                     value={config.type}
                     onChange={e => update({ type: e.target.value })}
                 >
@@ -107,10 +101,8 @@ export function FileDetailPanel({
 
             {/* Tags field */}
             <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                    Tags
-                </label>
-                <div className="flex flex-wrap gap-1.5 rounded-md border border-input bg-background px-2 py-1.5 min-h-9">
+                <label className="text-muted-foreground text-xs font-medium tracking-wide uppercase">Tags</label>
+                <div className="border-input bg-background flex min-h-9 flex-wrap gap-1.5 rounded-md border px-2 py-1.5">
                     {config.tags.map(tag => {
                         const isFolderTag = config.folderTags.includes(tag);
                         return (
@@ -120,11 +112,7 @@ export function FileDetailPanel({
                                 className={isFolderTag ? "border-dashed" : undefined}
                             >
                                 {tag}
-                                <button
-                                    type="button"
-                                    onClick={() => handleRemoveTag(tag)}
-                                    className="ml-0.5 hover:opacity-70"
-                                >
+                                <button type="button" onClick={() => handleRemoveTag(tag)} className="ml-0.5 hover:opacity-70">
                                     <X className="size-3" />
                                 </button>
                             </Badge>
@@ -133,7 +121,7 @@ export function FileDetailPanel({
                     <input
                         ref={tagInputRef}
                         type="text"
-                        className="min-w-16 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                        className="placeholder:text-muted-foreground min-w-16 flex-1 bg-transparent text-sm outline-none"
                         placeholder="Add tag..."
                         value={tagInput}
                         onChange={e => setTagInput(e.target.value)}
@@ -144,14 +132,12 @@ export function FileDetailPanel({
 
             {/* Template section */}
             <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                    Template
-                </label>
+                <label className="text-muted-foreground text-xs font-medium tracking-wide uppercase">Template</label>
 
                 {suggestedTemplate ? (
-                    <div className="rounded-md border border-emerald-500/20 bg-emerald-500/5 p-3 flex flex-col gap-2">
+                    <div className="flex flex-col gap-2 rounded-md border border-emerald-500/20 bg-emerald-500/5 p-3">
                         <div className="flex items-center gap-2">
-                            <Check className="size-4 text-emerald-600 shrink-0" />
+                            <Check className="size-4 shrink-0 text-emerald-600" />
                             <span className="text-sm font-medium">{suggestedTemplate.name}</span>
                             <Badge variant="success" size="sm" className="ml-auto shrink-0">
                                 {Math.round(suggestedTemplate.score * 100)}%
@@ -160,10 +146,10 @@ export function FileDetailPanel({
 
                         {/* Extracted fields */}
                         {Object.keys(suggestedTemplate.extractedFields).length > 0 && (
-                            <div className="flex flex-col gap-0.5 text-xs text-muted-foreground">
+                            <div className="text-muted-foreground flex flex-col gap-0.5 text-xs">
                                 {Object.entries(suggestedTemplate.extractedFields).map(([k, v]) => (
                                     <div key={k} className="flex gap-1.5">
-                                        <span className="font-medium shrink-0">{k}:</span>
+                                        <span className="shrink-0 font-medium">{k}:</span>
                                         <span className="truncate">{String(v)}</span>
                                     </div>
                                 ))}
@@ -172,9 +158,9 @@ export function FileDetailPanel({
 
                         {/* Override dropdown */}
                         <div className="flex items-center gap-2">
-                            <span className="text-xs text-muted-foreground">Override:</span>
+                            <span className="text-muted-foreground text-xs">Override:</span>
                             <select
-                                className="border-input bg-background flex-1 rounded border px-2 py-0.5 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+                                className="border-input bg-background focus:ring-ring flex-1 rounded border px-2 py-0.5 text-xs focus:ring-1 focus:outline-none"
                                 value={activeTemplateId ?? suggestedTemplate.id}
                                 onChange={e => handleTemplateOverride(e.target.value)}
                             >
@@ -193,16 +179,14 @@ export function FileDetailPanel({
                         {/* Apply to folder hint */}
                         {onApplyToFolder && siblingCount != null && siblingCount > 1 && (
                             <div className="flex items-center gap-2 pt-0.5">
-                                <span className="text-xs text-muted-foreground">
+                                <span className="text-muted-foreground text-xs">
                                     {siblingCount - 1} other file{siblingCount - 1 !== 1 ? "s" : ""} in this folder —
                                 </span>
                                 <Button
                                     variant="outline"
                                     size="sm"
                                     className="h-5 px-2 text-xs"
-                                    onClick={() =>
-                                        onApplyToFolder(activeTemplateId ?? suggestedTemplate.id)
-                                    }
+                                    onClick={() => onApplyToFolder(activeTemplateId ?? suggestedTemplate.id)}
                                 >
                                     Apply to folder
                                 </Button>
@@ -211,9 +195,9 @@ export function FileDetailPanel({
                     </div>
                 ) : (
                     <div className="flex flex-col gap-1.5">
-                        <p className="text-xs text-muted-foreground">No template matched. Choose manually:</p>
+                        <p className="text-muted-foreground text-xs">No template matched. Choose manually:</p>
                         <select
-                            className="border-input bg-background block w-full rounded-md border px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                            className="border-input bg-background focus:ring-ring block w-full rounded-md border px-3 py-1.5 text-sm focus:ring-2 focus:outline-none"
                             value={activeTemplateId ?? ""}
                             onChange={e => handleTemplateOverride(e.target.value)}
                         >
@@ -230,14 +214,10 @@ export function FileDetailPanel({
 
             {/* Content preview */}
             <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                    Content preview
-                </label>
-                <div className="rounded-md border border-input bg-muted/30 px-3 py-2 text-xs text-muted-foreground overflow-y-auto max-h-32 whitespace-pre-wrap font-mono">
+                <label className="text-muted-foreground text-xs font-medium tracking-wide uppercase">Content preview</label>
+                <div className="border-input bg-muted/30 text-muted-foreground max-h-32 overflow-y-auto rounded-md border px-3 py-2 font-mono text-xs whitespace-pre-wrap">
                     {preview.parsed.content.slice(0, 500)}
-                    {preview.parsed.content.length > 500 && (
-                        <span className="opacity-50">…</span>
-                    )}
+                    {preview.parsed.content.length > 500 && <span className="opacity-50">…</span>}
                 </div>
             </div>
         </div>

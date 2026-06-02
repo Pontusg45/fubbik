@@ -17,7 +17,7 @@ const ACTION_LABEL: Record<string, string> = {
     updated: "edited",
     status_changed: "changed status",
     deleted: "deleted",
-    duplicated: "duplicated",
+    duplicated: "duplicated"
 };
 
 function relativeTime(iso: string): string {
@@ -47,7 +47,7 @@ export function PlanActivitySidebar({ planId }: { planId: string }) {
                 return [];
             }
         },
-        staleTime: 10_000,
+        staleTime: 10_000
     });
 
     const events = activityQuery.data ?? [];
@@ -64,39 +64,26 @@ export function PlanActivitySidebar({ planId }: { planId: string }) {
     return (
         <aside className="hidden w-64 shrink-0 lg:block">
             <div className="sticky top-20 space-y-3">
-                <h3 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    Activity
-                </h3>
-                {activityQuery.isLoading && (
-                    <p className="text-muted-foreground text-xs">Loading…</p>
-                )}
-                {!activityQuery.isLoading && events.length === 0 && (
-                    <p className="text-muted-foreground text-xs">No activity yet.</p>
-                )}
+                <h3 className="text-muted-foreground text-[10px] font-semibold tracking-wider uppercase">Activity</h3>
+                {activityQuery.isLoading && <p className="text-muted-foreground text-xs">Loading…</p>}
+                {!activityQuery.isLoading && events.length === 0 && <p className="text-muted-foreground text-xs">No activity yet.</p>}
                 <div className="max-h-[calc(100vh-180px)] space-y-3 overflow-y-auto pr-1">
                     {groups.map(g => (
                         <div key={g.day}>
-                            <div className="text-muted-foreground/70 mb-1 text-[10px] font-medium uppercase tracking-wide">
+                            <div className="text-muted-foreground/70 mb-1 text-[10px] font-medium tracking-wide uppercase">
                                 {new Date(g.day).toLocaleDateString(undefined, {
                                     month: "short",
-                                    day: "numeric",
+                                    day: "numeric"
                                 })}
                             </div>
-                            <ul className="space-y-1.5 border-l border-muted pl-3">
+                            <ul className="border-muted space-y-1.5 border-l pl-3">
                                 {g.events.map(e => (
                                     <li key={e.id} className="text-xs leading-snug">
                                         <span className="text-muted-foreground">
-                                            {e.entityType === "plan" ? "Plan" : "Task"}{" "}
-                                            {ACTION_LABEL[e.action] ?? e.action}
+                                            {e.entityType === "plan" ? "Plan" : "Task"} {ACTION_LABEL[e.action] ?? e.action}
                                         </span>
-                                        {e.entityTitle && (
-                                            <span className="block text-foreground">
-                                                {e.entityTitle}
-                                            </span>
-                                        )}
-                                        <span className="text-muted-foreground/70 text-[10px]">
-                                            {relativeTime(e.createdAt)}
-                                        </span>
+                                        {e.entityTitle && <span className="text-foreground block">{e.entityTitle}</span>}
+                                        <span className="text-muted-foreground/70 text-[10px]">{relativeTime(e.createdAt)}</span>
                                     </li>
                                 ))}
                             </ul>

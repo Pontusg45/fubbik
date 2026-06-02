@@ -1,8 +1,8 @@
 ---
 tags:
-  - guide
-  - graph
-  - layouts
+    - guide
+    - graph
+    - layouts
 description: Graph layout algorithms — force-directed, hierarchical, and radial
 ---
 
@@ -12,7 +12,8 @@ Three layout algorithms are available:
 
 ## Force-Directed (Default)
 
-Nodes repel each other, connections attract. Natural clustering emerges. Tag grouping clusters related chunks visually — enable a tag type to see chunks grouped by their tags.
+Nodes repel each other, connections attract. Natural clustering emerges. Tag grouping clusters related chunks visually — enable a tag type
+to see chunks grouped by their tags.
 
 ## Hierarchical
 
@@ -24,4 +25,5 @@ Spoke pattern radiating from the most-connected node. Useful for seeing which ch
 
 ## Saved Graph Views
 
-Save your current graph configuration (layout, filters, positions) as a named view that you can return to later. Useful for recurring review sessions or onboarding walkthroughs.
+Save your current graph configuration (layout, filters, positions) as a named view that you can return to later. Useful for recurring review
+sessions or onboarding walkthroughs.

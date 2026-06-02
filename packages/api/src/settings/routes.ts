@@ -5,24 +5,16 @@ import { requireSession } from "../require-session";
 import * as settingsService from "./service";
 
 export const settingsRoutes = new Elysia()
-    .get("/settings/features", () =>
-        Effect.runPromise(settingsService.getFeatureFlags())
-    )
+    .get("/settings/features", () => Effect.runPromise(settingsService.getFeatureFlags()))
     .get("/settings/user", ctx =>
-        Effect.runPromise(
-            requireSession(ctx).pipe(
-                Effect.flatMap(session => settingsService.getAllUserSettings(session.user.id))
-            )
-        )
+        Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(session => settingsService.getAllUserSettings(session.user.id))))
     )
     .patch(
         "/settings/user",
         ctx =>
             Effect.runPromise(
                 requireSession(ctx).pipe(
-                    Effect.flatMap(session =>
-                        settingsService.setUserSetting(session.user.id, ctx.body.key, ctx.body.value)
-                    ),
+                    Effect.flatMap(session => settingsService.setUserSetting(session.user.id, ctx.body.key, ctx.body.value)),
                     Effect.map(() => ({ message: "Updated" }))
                 )
             ),
@@ -36,13 +28,7 @@ export const settingsRoutes = new Elysia()
     .get(
         "/settings/codebase",
         ctx =>
-            Effect.runPromise(
-                requireSession(ctx).pipe(
-                    Effect.flatMap(() =>
-                        settingsService.getAllCodebaseSettings(ctx.query.codebaseId)
-                    )
-                )
-            ),
+            Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(() => settingsService.getAllCodebaseSettings(ctx.query.codebaseId)))),
         {
             query: t.Object({
                 codebaseId: t.String()
@@ -54,9 +40,7 @@ export const settingsRoutes = new Elysia()
         ctx =>
             Effect.runPromise(
                 requireSession(ctx).pipe(
-                    Effect.flatMap(() =>
-                        settingsService.setCodebaseSetting(ctx.body.codebaseId, ctx.body.key, ctx.body.value)
-                    ),
+                    Effect.flatMap(() => settingsService.setCodebaseSetting(ctx.body.codebaseId, ctx.body.key, ctx.body.value)),
                     Effect.map(() => ({ message: "Updated" }))
                 )
             ),
@@ -68,17 +52,13 @@ export const settingsRoutes = new Elysia()
             })
         }
     )
-    .get("/settings/instance", () =>
-        Effect.runPromise(settingsService.getAllInstanceSettings())
-    )
+    .get("/settings/instance", () => Effect.runPromise(settingsService.getAllInstanceSettings()))
     .patch(
         "/settings/instance",
         ctx =>
             Effect.runPromise(
                 requireSession(ctx).pipe(
-                    Effect.flatMap(() =>
-                        settingsService.setInstanceSetting(ctx.body.key, ctx.body.value)
-                    ),
+                    Effect.flatMap(() => settingsService.setInstanceSetting(ctx.body.key, ctx.body.value)),
                     Effect.map(() => ({ message: "Updated" }))
                 )
             ),

@@ -21,8 +21,8 @@ interface DependencyTreeProps {
 export function DependencyTree({ chunkId, connections }: DependencyTreeProps) {
     if (connections.length === 0) return null;
 
-    const outgoing = connections.filter((c) => c.sourceId === chunkId);
-    const incoming = connections.filter((c) => c.targetId === chunkId);
+    const outgoing = connections.filter(c => c.sourceId === chunkId);
+    const incoming = connections.filter(c => c.targetId === chunkId);
 
     const groupByRelation = (conns: Connection[]) => {
         const groups: Record<string, Connection[]> = {};
@@ -44,9 +44,7 @@ export function DependencyTree({ chunkId, connections }: DependencyTreeProps) {
                     <ArrowDownRight className="size-3.5" />
                     Outgoing ({outgoing.length})
                 </h4>
-                {outgoing.length === 0 && (
-                    <p className="text-muted-foreground text-sm">None</p>
-                )}
+                {outgoing.length === 0 && <p className="text-muted-foreground text-sm">None</p>}
                 <div className="space-y-3">
                     {Object.entries(outgoingGroups).map(([relation, conns]) => (
                         <div key={relation}>
@@ -56,13 +54,13 @@ export function DependencyTree({ chunkId, connections }: DependencyTreeProps) {
                                 className="mb-1.5 text-[10px]"
                                 style={{
                                     borderColor: relationColor(relation),
-                                    color: relationColor(relation),
+                                    color: relationColor(relation)
                                 }}
                             >
                                 {relation}
                             </Badge>
                             <ul className="border-muted space-y-1 border-l-2 pl-3">
-                                {conns.map((conn) => (
+                                {conns.map(conn => (
                                     <li key={conn.id} className="text-sm">
                                         <Link
                                             to="/chunks/$chunkId"
@@ -84,9 +82,7 @@ export function DependencyTree({ chunkId, connections }: DependencyTreeProps) {
                     <ArrowUpRight className="size-3.5" />
                     Incoming ({incoming.length})
                 </h4>
-                {incoming.length === 0 && (
-                    <p className="text-muted-foreground text-sm">None</p>
-                )}
+                {incoming.length === 0 && <p className="text-muted-foreground text-sm">None</p>}
                 <div className="space-y-3">
                     {Object.entries(incomingGroups).map(([relation, conns]) => (
                         <div key={relation}>
@@ -96,13 +92,13 @@ export function DependencyTree({ chunkId, connections }: DependencyTreeProps) {
                                 className="mb-1.5 text-[10px]"
                                 style={{
                                     borderColor: relationColor(relation),
-                                    color: relationColor(relation),
+                                    color: relationColor(relation)
                                 }}
                             >
                                 {relation}
                             </Badge>
                             <ul className="border-muted space-y-1 border-l-2 pl-3">
-                                {conns.map((conn) => (
+                                {conns.map(conn => (
                                     <li key={conn.id} className="text-sm">
                                         <Link
                                             to="/chunks/$chunkId"

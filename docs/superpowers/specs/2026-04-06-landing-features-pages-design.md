@@ -2,12 +2,16 @@
 
 ## Problem
 
-The current landing page (463 lines) has good content but lacks the sharp developer-tool aesthetic that would resonate with the open-source community discovering Fubbik. There is no dedicated features page — all conceptual content is crammed into the single landing route, making it hard to both give a quick overview and explain the mental model in depth.
+The current landing page (463 lines) has good content but lacks the sharp developer-tool aesthetic that would resonate with the open-source
+community discovering Fubbik. There is no dedicated features page — all conceptual content is crammed into the single landing route, making
+it hard to both give a quick overview and explain the mental model in depth.
 
 ## Approach
 
-- **Developer tool aesthetic**: Clean, minimal, code-forward. Think Linear/Raycast. Terminal snippets, sharp typography, dark theme emphasis.
-- **Two-page strategy**: Landing page is tight and punchy (hook + demo + install). Features page explains the mental model (Chunks → Connections → Context → Health) then groups features by concept.
+- **Developer tool aesthetic**: Clean, minimal, code-forward. Think Linear/Raycast. Terminal snippets, sharp typography, dark theme
+  emphasis.
+- **Two-page strategy**: Landing page is tight and punchy (hook + demo + install). Features page explains the mental model (Chunks →
+  Connections → Context → Health) then groups features by concept.
 
 ## Design
 
@@ -24,6 +28,7 @@ Replace the current abstract constellation canvas with an evolved version that f
 - Reduced-motion: static snapshot, no animation
 
 Content overlay:
+
 - Bold tagline: "Structured knowledge for your codebase"
 - One-line value prop: "Store, connect, and evolve what your team knows — where your code lives."
 - Two CTAs: "Get Started" (primary, scrolls to install section) and "How it works" (secondary, links to `/features`)
@@ -54,14 +59,14 @@ Found 5 relevant chunks (2,400 tokens)
 
 6 cards in a 3x2 (md) / 2x3 (sm) / 1-col (mobile) grid:
 
-| Card | Icon | Description |
-|------|------|-------------|
-| CLI | Terminal | Full-featured command line with quick-add and context export |
-| Web UI | LayoutDashboard | Dashboard, graph visualization, chunk editor |
-| VS Code | Code2 | File-aware chunk browsing and inline editing |
-| MCP Server | Bot | AI agent integration with implementation tracking |
-| API | FileCode | REST endpoints with Eden treaty type-safe client |
-| Semantic Search | Search | Ollama-powered vector search across codebases |
+| Card            | Icon            | Description                                                  |
+| --------------- | --------------- | ------------------------------------------------------------ |
+| CLI             | Terminal        | Full-featured command line with quick-add and context export |
+| Web UI          | LayoutDashboard | Dashboard, graph visualization, chunk editor                 |
+| VS Code         | Code2           | File-aware chunk browsing and inline editing                 |
+| MCP Server      | Bot             | AI agent integration with implementation tracking            |
+| API             | FileCode        | REST endpoints with Eden treaty type-safe client             |
+| Semantic Search | Search          | Ollama-powered vector search across codebases                |
 
 Styling: bordered cards, subtle hover (`bg-muted/40`), icon + name + one-line description.
 
@@ -81,6 +86,7 @@ Each card: bold title, one sentence, arrow icon on hover. No screenshots.
 Three install paths in a tab component:
 
 **Tab 1: Docker (coming soon)**
+
 ```bash
 git clone https://github.com/your-org/fubbik.git
 cd fubbik
@@ -88,6 +94,7 @@ docker compose up
 ```
 
 **Tab 2: Local**
+
 ```bash
 git clone https://github.com/your-org/fubbik.git
 cd fubbik
@@ -97,6 +104,7 @@ pnpm dev     # localhost:3001
 ```
 
 **Tab 3: npm (coming soon)**
+
 ```bash
 npx create-fubbik my-knowledge-base
 cd my-knowledge-base
@@ -128,23 +136,27 @@ Horizontal flow diagram rendered with HTML/CSS (not an image):
  units      between them    retrieval    use it
 ```
 
-Each node is a card with an icon, name, and one-line description. Arrows between cards. On mobile, stacks vertically. This diagram is the conceptual anchor — every section below references back to it.
+Each node is a card with an icon, name, and one-line description. Arrows between cards. On mobile, stacks vertically. This diagram is the
+conceptual anchor — every section below references back to it.
 
 #### Concept Section 1: Chunks (anchor: `#chunks`)
 
 Heading: "Atomic units of knowledge"
 
-Explanation (2-3 sentences): What a chunk is and why atomic units beat monolithic docs. Each chunk is typed, tagged, scoped to codebases, and linked to files.
+Explanation (2-3 sentences): What a chunk is and why atomic units beat monolithic docs. Each chunk is typed, tagged, scoped to codebases,
+and linked to files.
 
 **Example chunk** rendered as a styled card:
+
 - Title: "Always use Effect for typed errors"
 - Type badge: "Convention"
 - Tags: `#backend`, `#error-handling`
-- Content preview: "Use Effect.tryPromise with tagged error types. The global error handler maps _tag to HTTP status codes..."
+- Content preview: "Use Effect.tryPromise with tagged error types. The global error handler maps \_tag to HTTP status codes..."
 - Health score: 82/100 with colored bar
 - Metadata: appliesTo `packages/api/**`, 3 connections
 
 **Feature list** (compact, no cards):
+
 - 5 chunk types: note, document, reference, schema, checklist
 - Tags with typed categories
 - Scope (JSONB metadata) and appliesTo (glob patterns)
@@ -158,9 +170,11 @@ Explanation (2-3 sentences): What a chunk is and why atomic units beat monolithi
 
 Heading: "Typed relationships between knowledge"
 
-Explanation: Connections are directed edges with semantic meaning. They're global (not codebase-scoped), enabling cross-project knowledge linking.
+Explanation: Connections are directed edges with semantic meaning. They're global (not codebase-scoped), enabling cross-project knowledge
+linking.
 
 **Mini graph** rendered with CSS (5-6 nodes, 6-8 edges with labeled relation types). Shows a realistic example:
+
 - "Auth Middleware" —depends_on→ "Session Token Format"
 - "Auth Middleware" —part_of→ "Authentication System"
 - "JWT Tokens" —contradicts→ "Session Cookies"
@@ -169,6 +183,7 @@ Explanation: Connections are directed edges with semantic meaning. They're globa
 Relation type badges shown below: depends_on, part_of, extends, references, supports, contradicts, alternative_to, related_to.
 
 **Feature list:**
+
 - Dependency tree view (incoming/outgoing grouped by type)
 - Related chunk suggestions (embedding similarity)
 - Connection creation with relation picker
@@ -179,9 +194,11 @@ Relation type badges shown below: depends_on, part_of, extends, references, supp
 
 Heading: "The right knowledge at the right time"
 
-Explanation: Fubbik doesn't just store knowledge — it delivers it where you need it. File-aware context matching, token-budgeted exports, and AI agent integration.
+Explanation: Fubbik doesn't just store knowledge — it delivers it where you need it. File-aware context matching, token-budgeted exports,
+and AI agent integration.
 
 **Visual: context flow diagram**
+
 ```
 File path (src/api/auth.ts)
     ↓ file refs + glob matching + dependency analysis
@@ -191,6 +208,7 @@ Context export (CLAUDE.md, MCP tool response, CLI output)
 ```
 
 **Feature list:**
+
 - File-aware context: file references, appliesTo globs, dependency matching
 - Semantic search: Ollama embeddings, cosine similarity
 - Federated search: cross-codebase queries
@@ -203,9 +221,11 @@ Context export (CLAUDE.md, MCP tool response, CLI output)
 
 Heading: "Knowledge that maintains itself"
 
-Explanation: Knowledge rots silently. Fubbik detects staleness, flags duplicates, scores health, and surfaces what needs attention — before you discover outdated docs in production.
+Explanation: Knowledge rots silently. Fubbik detects staleness, flags duplicates, scores health, and surfaces what needs attention — before
+you discover outdated docs in production.
 
 **Visual: health score breakdown card**
+
 - Freshness: 20/25 (updated 12 days ago)
 - Completeness: 25/25 (has rationale, alternatives, consequences)
 - Richness: 18/25 (has summary, missing embedding)
@@ -215,6 +235,7 @@ Explanation: Knowledge rots silently. Fubbik detects staleness, flags duplicates
 Plus a staleness banner example: "Files linked to this chunk changed 3 days ago: src/auth/middleware.ts"
 
 **Feature list:**
+
 - Health scores: freshness + completeness + richness + connectivity (0-100)
 - Staleness detection: age-based (90-day), file-change, duplicate divergence
 - Dashboard "Attention Needed" widget with grouped flags
@@ -229,29 +250,34 @@ Heading: "Where you interact"
 Grid of 5 integration points, more detailed than landing page:
 
 **Web UI**
+
 - Dashboard with stats, favorites, activity, attention widget
 - Knowledge graph with focus mode, filter presets, path finding
 - Chunk editor with templates, autosave, duplicate detection
 - Requirements with BDD steps, plans with interactive checklists
 
 **CLI**
+
 - `fubbik quick` for instant capture
 - `fubbik search` / `fubbik context` for retrieval
 - `fubbik plan` for implementation tracking
 - `fubbik sync-claude-md` for AI context generation
 
 **VS Code**
+
 - Sidebar with type/tag/sort filtering
 - File-aware chunk surfacing in active editor
 - Inline editing, quick-add, status bar
 
 **MCP Server**
+
 - 15+ tools for AI agents
 - Implementation sessions with review briefs
 - Plan creation and step tracking
 - Context retrieval and CLAUDE.md sync
 
 **API**
+
 - REST endpoints with Swagger/OpenAPI docs
 - Eden treaty for type-safe client
 - Effect-based error handling with tagged types

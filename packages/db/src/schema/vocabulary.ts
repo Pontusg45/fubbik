@@ -1,5 +1,6 @@
 import { relations, sql } from "drizzle-orm";
 import { index, jsonb, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+
 import { user } from "./auth";
 import { space } from "./space";
 
@@ -22,11 +23,7 @@ export const vocabularyEntry = pgTable(
             .notNull()
     },
     table => [
-        uniqueIndex("vocabulary_space_word_cat_idx").on(
-            table.spaceId,
-            table.category,
-            sql`lower(${table.word})`
-        ),
+        uniqueIndex("vocabulary_space_word_cat_idx").on(table.spaceId, table.category, sql`lower(${table.word})`),
         index("vocabulary_spaceId_idx").on(table.spaceId)
     ]
 );

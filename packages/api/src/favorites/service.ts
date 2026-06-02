@@ -16,9 +16,7 @@ export function listFavorites(userId: string) {
 
 export function addFavorite(userId: string, chunkId: string) {
     return getChunkById(chunkId, userId).pipe(
-        Effect.flatMap(chunk =>
-            chunk ? Effect.succeed(chunk) : Effect.fail(new NotFoundError({ resource: "Chunk" }))
-        ),
+        Effect.flatMap(chunk => (chunk ? Effect.succeed(chunk) : Effect.fail(new NotFoundError({ resource: "Chunk" })))),
         Effect.flatMap(() => listFavoritesRepo(userId)),
         Effect.flatMap(existing => {
             const nextOrder = existing.length > 0 ? Math.max(...existing.map(f => f.order)) + 1 : 0;

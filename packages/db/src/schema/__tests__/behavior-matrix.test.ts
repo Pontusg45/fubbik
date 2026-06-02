@@ -1,12 +1,7 @@
-import { describe, expect, it } from "vitest";
 import { getTableColumns } from "drizzle-orm";
-import {
-    behaviorMatrix,
-    behaviorDimension,
-    behaviorRule,
-    behaviorCell,
-    behaviorCellRequirement
-} from "../behavior-matrix";
+import { describe, expect, it } from "vitest";
+
+import { behaviorMatrix, behaviorDimension, behaviorRule, behaviorCell, behaviorCellRequirement } from "../behavior-matrix";
 
 describe("behavior-matrix schema", () => {
     it("behaviorMatrix has expected columns", () => {

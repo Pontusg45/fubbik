@@ -75,8 +75,8 @@ export const setupCommand = new Command("setup")
                     body: JSON.stringify({
                         name: spaceName,
                         remoteUrl: remoteUrl ?? undefined,
-                        localPaths: [localPath],
-                    }),
+                        localPaths: [localPath]
+                    })
                 });
                 if (res.ok) {
                     const data = (await res.json()) as { id: string };
@@ -125,7 +125,7 @@ export const setupCommand = new Command("setup")
         const result = discover(localPath, {
             name: spaceName,
             remoteUrl,
-            localPath,
+            localPath
         });
 
         if (result.chunks.length === 0) {
@@ -177,7 +177,7 @@ export const setupCommand = new Command("setup")
             result.chunks,
             result.connections,
             localPath,
-            jsonMode ? undefined : (msg) => console.log(`  ${formatDim(msg)}`),
+            jsonMode ? undefined : msg => console.log(`  ${formatDim(msg)}`)
         );
 
         if (!jsonMode) {
@@ -211,11 +211,15 @@ export const setupCommand = new Command("setup")
         }
 
         if (jsonMode) {
-            output(cmd, {
-                chunksCreated: importResult.chunksCreated,
-                connectionsCreated: importResult.connectionsCreated,
-                errors: importResult.errors,
-                tips: result.tips,
-            }, "");
+            output(
+                cmd,
+                {
+                    chunksCreated: importResult.chunksCreated,
+                    connectionsCreated: importResult.connectionsCreated,
+                    errors: importResult.errors,
+                    tips: result.tips
+                },
+                ""
+            );
         }
     });

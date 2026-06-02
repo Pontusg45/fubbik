@@ -1,14 +1,15 @@
 ---
 tags:
-  - guide
-  - scope
-  - metadata
+    - guide
+    - scope
+    - metadata
 description: Scope schema registry for chunk metadata validation
 ---
 
 # Scope Schema Registry
 
-The scope registry is an optional system for defining expected scope keys on chunks. While chunk scope is free-form JSONB, the registry provides autocomplete and validation guidance.
+The scope registry is an optional system for defining expected scope keys on chunks. While chunk scope is free-form JSONB, the registry
+provides autocomplete and validation guidance.
 
 ## Registering Scope Keys
 
@@ -26,12 +27,12 @@ POST /api/scope-keys
 
 ## Supported Value Types
 
-| Type | Description | Example |
-|------|-------------|---------|
-| `string` | Free-form text | `"team": "platform"` |
-| `number` | Numeric value | `"priority": 1` |
-| `boolean` | True/false | `"deprecated": true` |
-| `enum` | Constrained values | `"environment": "production"` |
+| Type      | Description        | Example                       |
+| --------- | ------------------ | ----------------------------- |
+| `string`  | Free-form text     | `"team": "platform"`          |
+| `number`  | Numeric value      | `"priority": 1`               |
+| `boolean` | True/false         | `"deprecated": true`          |
+| `enum`    | Constrained values | `"environment": "production"` |
 
 ## How It's Used
 

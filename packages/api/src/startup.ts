@@ -27,7 +27,7 @@ async function runStaleScan() {
         const duration = Date.now() - start;
         logger.info("Staleness scan completed", {
             flagged: result.flagged,
-            durationMs: duration,
+            durationMs: duration
         });
     } catch (err) {
         logger.error("Staleness scan failed", { error: err });

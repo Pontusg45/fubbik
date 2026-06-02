@@ -54,7 +54,7 @@ export function MoreContextDrawer({
     consequences,
     deltas,
     appliedFeatures,
-    initialTab,
+    initialTab
 }: MoreContextDrawerProps) {
     const [tab, setTab] = useState<DrawerTab>(initialTab ?? "links");
 
@@ -122,12 +122,7 @@ export function MoreContextDrawer({
 
                 <SheetPanel>
                     {tab === "links" && (
-                        <MoreContextLinksTab
-                            chunkId={chunkId}
-                            chunkTitle={chunkTitle}
-                            outgoing={outgoing}
-                            incoming={incoming}
-                        />
+                        <MoreContextLinksTab chunkId={chunkId} chunkTitle={chunkTitle} outgoing={outgoing} incoming={incoming} />
                     )}
                     {tab === "context" && (
                         <MoreContextContextTab
@@ -149,15 +144,7 @@ export function MoreContextDrawer({
     );
 }
 
-function TabButton({
-    active,
-    onClick,
-    children,
-}: {
-    active: boolean;
-    onClick: () => void;
-    children: React.ReactNode;
-}) {
+function TabButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
     return (
         <button
             type="button"

@@ -1,7 +1,7 @@
 import { Command } from "commander";
 
-import { formatBold, formatDim, formatSuccess, formatType } from "../lib/colors";
 import { fetchApiJson } from "../lib/api";
+import { formatBold, formatDim, formatSuccess, formatType } from "../lib/colors";
 import { isJson, outputError } from "../lib/output";
 
 export const taskCommand = new Command("task")
@@ -32,30 +32,26 @@ export const taskCommand = new Command("task")
     )
 
     .addCommand(
-        new Command("list")
-            .description("List open tasks")
-            .action(async (_opts, cmd) => {
-                try {
-                    const tasks = await fetchApiJson("/tasks");
-                    if (isJson(cmd)) {
-                        console.log(JSON.stringify(tasks, null, 2));
-                        return;
-                    }
-                    if (!Array.isArray(tasks) || tasks.length === 0) {
-                        console.error(formatDim("No open tasks"));
-                        return;
-                    }
-                    for (const t of tasks) {
-                        const step = t.steps?.[0];
-                        const status = step?.status ?? t.status;
-                        console.error(
-                            `  ${formatType(status)} ${formatBold(t.title)} ${formatDim(`(${t.id.slice(0, 8)})`)}`
-                        );
-                    }
-                } catch (e: any) {
-                    outputError(e.message);
+        new Command("list").description("List open tasks").action(async (_opts, cmd) => {
+            try {
+                const tasks = await fetchApiJson("/tasks");
+                if (isJson(cmd)) {
+                    console.log(JSON.stringify(tasks, null, 2));
+                    return;
                 }
-            })
+                if (!Array.isArray(tasks) || tasks.length === 0) {
+                    console.error(formatDim("No open tasks"));
+                    return;
+                }
+                for (const t of tasks) {
+                    const step = t.steps?.[0];
+                    const status = step?.status ?? t.status;
+                    console.error(`  ${formatType(status)} ${formatBold(t.title)} ${formatDim(`(${t.id.slice(0, 8)})`)}`);
+                }
+            } catch (e: any) {
+                outputError(e.message);
+            }
+        })
     )
 
     .addCommand(

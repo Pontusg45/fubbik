@@ -1,10 +1,14 @@
 # MCP Review Workflow — Implementation Plan
 
-> **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to
+> implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build a structured AI implementer / human reviewer workflow where the AI records its context and assumptions during implementation, Fubbik generates a review brief, and the developer reviews against that brief with interactive tools.
+**Goal:** Build a structured AI implementer / human reviewer workflow where the AI records its context and assumptions during
+implementation, Fubbik generates a review brief, and the developer reviews against that brief with interactive tools.
 
-**Architecture:** New `implementation_session` schema with related tables for chunk refs, assumptions, and requirement refs. New API routes under `/api/sessions`. New MCP tools in `packages/mcp/src/session-tools.ts`. New web pages at `/reviews` and `/reviews/:sessionId`. Integration with existing requirements, chunks, and knowledge health.
+**Architecture:** New `implementation_session` schema with related tables for chunk refs, assumptions, and requirement refs. New API routes
+under `/api/sessions`. New MCP tools in `packages/mcp/src/session-tools.ts`. New web pages at `/reviews` and `/reviews/:sessionId`.
+Integration with existing requirements, chunks, and knowledge health.
 
 **Tech Stack:** Drizzle ORM, Effect, Elysia, @modelcontextprotocol/sdk, TanStack Start, React Query, Tailwind/shadcn-ui
 
@@ -15,6 +19,7 @@
 Create the schema for sessions, chunk refs, assumptions, and requirement refs.
 
 **Files:**
+
 - Create: `packages/db/src/schema/implementation-session.ts`
 - Modify: `packages/db/src/schema/index.ts`
 
@@ -130,6 +135,7 @@ export const sessionRequirementRefRelations = relations(sessionRequirementRef, (
 - [ ] **Step 2: Add to schema barrel export**
 
 In `packages/db/src/schema/index.ts`, add:
+
 ```typescript
 export * from "./implementation-session";
 ```
@@ -153,6 +159,7 @@ git commit -m "feat: add implementation session schema"
 ### Task 2: Repository — session CRUD and ref management
 
 **Files:**
+
 - Create: `packages/db/src/repository/implementation-session.ts`
 - Modify: `packages/db/src/repository/index.ts`
 
@@ -166,12 +173,7 @@ import { Effect } from "effect";
 import { DatabaseError } from "../errors";
 import { db } from "../index";
 import { chunk } from "../schema/chunk";
-import {
-    implementationSession,
-    sessionAssumption,
-    sessionChunkRef,
-    sessionRequirementRef
-} from "../schema/implementation-session";
+import { implementationSession, sessionAssumption, sessionChunkRef, sessionRequirementRef } from "../schema/implementation-session";
 import { requirement } from "../schema/requirement";
 ```
 
@@ -185,15 +187,18 @@ Functions:
 - `addAssumption(params: { id, sessionId, description })` → insert into session_assumption
 - `resolveAssumption(id, params: { resolved, resolution? })` → update assumption
 - `addRequirementRef(sessionId, requirementId, stepsAddressed?)` → insert into session_requirement_ref with onConflictDoNothing
-- `getSessionDetail(id)` → fetches session plus all chunk refs (with chunk title), assumptions, and requirement refs (with requirement title/status/steps)
+- `getSessionDetail(id)` → fetches session plus all chunk refs (with chunk title), assumptions, and requirement refs (with requirement
+  title/status/steps)
 
-Use three separate queries for `getSessionDetail` (chunk refs, assumptions, requirement refs) joined with their parent tables, then combine the results.
+Use three separate queries for `getSessionDetail` (chunk refs, assumptions, requirement refs) joined with their parent tables, then combine
+the results.
 
 All functions follow the `Effect.tryPromise({ try, catch: cause => new DatabaseError({ cause }) })` pattern.
 
 - [ ] **Step 2: Add to repository barrel export**
 
 In `packages/db/src/repository/index.ts`, add:
+
 ```typescript
 export * from "./implementation-session";
 ```
@@ -211,6 +216,7 @@ git commit -m "feat: add implementation session repository"
 ### Task 3: Service — session logic and review brief generation
 
 **Files:**
+
 - Create: `packages/api/src/sessions/service.ts`
 - Create: `packages/api/src/sessions/brief-generator.ts`
 
@@ -240,6 +246,7 @@ export function generateReviewBrief(input: BriefInput): string { ... }
 ```
 
 Generates markdown sections:
+
 - **Summary Stats** — requirements addressed count / total, chunks referenced, assumptions count, duration
 - **Requirements Addressed** — each with title, status, steps addressed/total. Flag partial coverage.
 - **Requirements Not Addressed** — requirements in the codebase that weren't referenced (collapsed)
@@ -271,12 +278,16 @@ import { generateReviewBrief } from "./brief-generator";
 
 Functions:
 
-- `createSession(userId, body: { title, codebaseId? })` — creates session with `crypto.randomUUID()`, then fetches and returns context bundle:
-  - Conventions: fetch chunks with convention tags or rationale (reuse the tag-based filtering from the existing `get_conventions` MCP tool logic)
-  - Requirements: fetch all requirements for the codebase
-  - Architecture decisions: fetch chunks with type='document' and rationale, filtered by architecture-related tags
+- `createSession(userId, body: { title, codebaseId? })` — creates session with `crypto.randomUUID()`, then fetches and returns context
+  bundle:
+    - Conventions: fetch chunks with convention tags or rationale (reuse the tag-based filtering from the existing `get_conventions` MCP
+      tool logic)
+    - Requirements: fetch all requirements for the codebase
+    - Architecture decisions: fetch chunks with type='document' and rationale, filtered by architecture-related tags
 
-- `getSession(id, userId)` — calls `getSessionDetail(id)`, then also fetches all requirements and convention chunks for the session's codebase (so the detail page can render "Not addressed" and "Not checked" sections). Returns `{ session, chunkRefs, assumptions, requirementRefs, allRequirements, allConventions }`
+- `getSession(id, userId)` — calls `getSessionDetail(id)`, then also fetches all requirements and convention chunks for the session's
+  codebase (so the detail page can render "Not addressed" and "Not checked" sections). Returns
+  `{ session, chunkRefs, assumptions, requirementRefs, allRequirements, allConventions }`
 
 - `listSessions(userId, query)` — pagination wrapper
 
@@ -288,9 +299,11 @@ Functions:
 
 - `addRequirementRef(sessionId, userId, requirementId, stepsAddressed?)` — validates session
 
-- `completeSession(sessionId, userId, prUrl?)` — sets status='completed', completedAt=now(), generates review brief from session data + all requirements/conventions, stores brief in session
+- `completeSession(sessionId, userId, prUrl?)` — sets status='completed', completedAt=now(), generates review brief from session data + all
+  requirements/conventions, stores brief in session
 
-- `reviewSession(sessionId, userId, requirementStatuses?)` — sets status='reviewed', reviewedAt=now(), updates requirement statuses if provided
+- `reviewSession(sessionId, userId, requirementStatuses?)` — sets status='reviewed', reviewedAt=now(), updates requirement statuses if
+  provided
 
 - [ ] **Step 3: Verify types and commit**
 
@@ -305,6 +318,7 @@ git commit -m "feat: add session service with review brief generation"
 ### Task 4: API routes — session endpoints
 
 **Files:**
+
 - Create: `packages/api/src/sessions/routes.ts`
 - Modify: `packages/api/src/index.ts`
 
@@ -333,17 +347,20 @@ export const sessionRoutes = new Elysia()
 ```
 
 Body schemas using Elysia's `t.Object()`:
+
 - Create: `t.Object({ title: t.String(), codebaseId: t.Optional(t.String()) })`
 - Complete: `t.Object({ prUrl: t.Optional(t.String()) })`
 - Chunk ref: `t.Object({ chunkId: t.String(), reason: t.String() })`
 - Assumption: `t.Object({ description: t.String() })`
 - Resolve: `t.Object({ resolved: t.Boolean(), resolution: t.Optional(t.String()) })`
 - Req ref: `t.Object({ requirementId: t.String(), stepsAddressed: t.Optional(t.Array(t.Number())) })`
-- Review: `t.Object({ requirementStatuses: t.Optional(t.Array(t.Object({ requirementId: t.String(), status: t.Union([t.Literal("passing"), t.Literal("failing"), t.Literal("untested")]) }))) })`
+- Review:
+  `t.Object({ requirementStatuses: t.Optional(t.Array(t.Object({ requirementId: t.String(), status: t.Union([t.Literal("passing"), t.Literal("failing"), t.Literal("untested")]) }))) })`
 
 - [ ] **Step 2: Register routes in API index**
 
 In `packages/api/src/index.ts`, add import and `.use(sessionRoutes)`:
+
 ```typescript
 import { sessionRoutes } from "./sessions/routes";
 ```
@@ -361,6 +378,7 @@ git commit -m "feat: add session API endpoints"
 ### Task 5: MCP tools — session workflow tools
 
 **Files:**
+
 - Create: `packages/mcp/src/session-tools.ts`
 - Modify: `packages/mcp/src/index.ts`
 
@@ -373,34 +391,42 @@ Follow the exact same pattern as `tools.ts` — use `apiFetch` helper, `z` for s
 Export a `registerSessionTools(server: McpServer)` function with 5 tools:
 
 **`begin_implementation`:**
+
 - Input: `{ title: z.string(), codebaseId: z.string().optional() }`
 - Calls `POST /api/sessions` with `{ title, codebaseId }`
 - Returns the session ID + context bundle (conventions, requirements, architecture decisions)
 - Format response as structured text showing the context
 
 **`record_chunk_reference`:**
+
 - Input: `{ sessionId: z.string(), chunkId: z.string(), reason: z.string() }`
 - Calls `POST /api/sessions/:id/chunk-refs`
 - Returns confirmation
 
 **`record_assumption`:**
+
 - Input: `{ sessionId: z.string(), description: z.string() }`
 - Calls `POST /api/sessions/:id/assumptions`
 - Returns confirmation
 
 **`record_requirement_addressed`:**
+
 - Input: `{ sessionId: z.string(), requirementId: z.string(), stepsAddressed: z.array(z.number()).optional() }`
 - Calls `POST /api/sessions/:id/requirement-refs`
 - Returns confirmation
 
 **`complete_implementation`:**
+
 - Input: `{ sessionId: z.string(), prUrl: z.string().optional() }`
 - Calls `PATCH /api/sessions/:id/complete`
 - Returns the generated review brief
 
-**Required prerequisite:** Extract `apiFetch`, `getServerUrl`, and `truncate` from `packages/mcp/src/tools.ts` into a new `packages/mcp/src/api-client.ts` file. Update `tools.ts` to import from `api-client.ts`. Then `session-tools.ts` also imports from `api-client.ts`.
+**Required prerequisite:** Extract `apiFetch`, `getServerUrl`, and `truncate` from `packages/mcp/src/tools.ts` into a new
+`packages/mcp/src/api-client.ts` file. Update `tools.ts` to import from `api-client.ts`. Then `session-tools.ts` also imports from
+`api-client.ts`.
 
 Create `packages/mcp/src/api-client.ts`:
+
 ```typescript
 export function getServerUrl(): string {
     return process.env["FUBBIK_SERVER_URL"] ?? "http://localhost:3000";
@@ -430,6 +456,7 @@ Update `tools.ts` to remove these functions and import from `./api-client.js`.
 - [ ] **Step 2: Register session tools in MCP server**
 
 In `packages/mcp/src/index.ts`, add:
+
 ```typescript
 import { registerSessionTools } from "./session-tools.js";
 
@@ -450,6 +477,7 @@ git commit -m "feat: add MCP session workflow tools"
 ### Task 6: Web UI — reviews list page
 
 **Files:**
+
 - Create: `apps/web/src/routes/reviews.tsx`
 - Create: `apps/web/src/features/reviews/session-card.tsx`
 - Modify: `apps/web/src/routes/__root.tsx` (add Reviews to nav)
@@ -460,6 +488,7 @@ git commit -m "feat: add MCP session workflow tools"
 Create `apps/web/src/features/reviews/session-card.tsx`:
 
 Props:
+
 ```typescript
 interface SessionCardProps {
     id: string;
@@ -474,6 +503,7 @@ interface SessionCardProps {
 ```
 
 Card layout:
+
 - Title as clickable Link to `/reviews/$sessionId`
 - Status badge: in_progress=blue, completed=amber, reviewed=green
 - Codebase name badge if set
@@ -486,6 +516,7 @@ Create `apps/web/src/routes/reviews.tsx`:
 Route: `createFileRoute("/reviews")`
 
 Features:
+
 - Fetches from `GET /api/sessions` with pagination (limit=20)
 - Filter by status (All, In Progress, Completed, Reviewed)
 - Filter by codebase (using `useActiveCodebase`)
@@ -495,9 +526,11 @@ Features:
 
 - [ ] **Step 3: Add Reviews to nav**
 
-In `apps/web/src/routes/__root.tsx`, add a "Reviews" link in the desktop nav (between Requirements and other items). Use `ClipboardList` icon from lucide-react.
+In `apps/web/src/routes/__root.tsx`, add a "Reviews" link in the desktop nav (between Requirements and other items). Use `ClipboardList`
+icon from lucide-react.
 
 In `apps/web/src/features/nav/mobile-nav.tsx`, add to the `primaryItems` array:
+
 ```typescript
 { label: "Reviews", to: "/reviews" as const, icon: ClipboardList }
 ```
@@ -515,6 +548,7 @@ git commit -m "feat: add reviews list page"
 ### Task 7: Web UI — review detail page
 
 **Files:**
+
 - Create: `apps/web/src/routes/reviews_.$sessionId.tsx`
 - Create: `apps/web/src/features/reviews/assumption-resolver.tsx`
 
@@ -523,6 +557,7 @@ git commit -m "feat: add reviews list page"
 Create `apps/web/src/features/reviews/assumption-resolver.tsx`:
 
 Props:
+
 ```typescript
 interface AssumptionResolverProps {
     assumption: { id: string; description: string; resolved: boolean; resolution: string | null };
@@ -531,10 +566,12 @@ interface AssumptionResolverProps {
 ```
 
 Features:
+
 - Shows description text
 - Resolved indicator (checkmark if resolved, warning if not)
 - "Resolve" button → expands inline form with resolution text input + Save/Cancel
-- "Create chunk" button → navigates to `/chunks/new` with description pre-filled as content (via URL query param or stored in sessionStorage)
+- "Create chunk" button → navigates to `/chunks/new` with description pre-filled as content (via URL query param or stored in
+  sessionStorage)
 - On resolve, calls `PATCH /api/sessions/:id/assumptions/:assumptionId`
 - Mutation invalidates `["session", sessionId]`
 
@@ -547,6 +584,7 @@ Route: `createFileRoute("/reviews_/$sessionId")`
 Fetches from `GET /api/sessions/:id` which returns the full session detail including refs, assumptions, and review brief.
 
 Layout:
+
 - BackLink to `/reviews`
 - Header: title, status badge, codebase, creation date, PR link if set
 - If review brief exists, render it as markdown (or structured sections)
@@ -555,21 +593,26 @@ Layout:
 **Structured sections (rendered from session data, not markdown):**
 
 **Requirements Addressed:**
+
 - Each requirement as a Link to `/requirements/$requirementId` with status badge
 - Show "N/M steps addressed"
 
 **Conventions Applied:**
+
 - Each chunk ref as a Link to `/chunks/$chunkId` with the AI's reason
 
 **Assumptions:**
+
 - Render each via `AssumptionResolver` component
 
 **Knowledge Gaps:**
+
 - Show conventions from `allConventions` that were NOT in `chunkRefs` — collapsed "Not checked" section
 - Show requirements from `allRequirements` that were NOT in `requirementRefs` — collapsed "Not addressed" section
 - Each item links to its detail page
 
 **Actions (when status = completed):**
+
 - "Mark as Reviewed" button
 - Shows requirement status form: for each addressed requirement, a dropdown to set status (passing/failing/untested)
 - On submit, calls `PATCH /api/sessions/:id/review` with requirementStatuses
@@ -587,6 +630,7 @@ git commit -m "feat: add review detail page with assumption resolver"
 ### Task 8: Integration — requirement detail + knowledge health
 
 **Files:**
+
 - Modify: `apps/web/src/routes/requirements_.$requirementId.tsx`
 - Modify: `apps/web/src/routes/knowledge-health.tsx` (if it exists, otherwise the knowledge health page)
 
@@ -594,24 +638,29 @@ git commit -m "feat: add review detail page with assumption resolver"
 
 In `apps/web/src/routes/requirements_.$requirementId.tsx`:
 
-Add a new section "Implementation Sessions" after the existing linked chunks section (in view mode only). Fetch from `GET /api/sessions` filtered by... actually, there's no direct API to get sessions by requirement. Add a simple approach: the `session_requirement_ref` data is available when viewing a session, but for the reverse lookup we need a query.
+Add a new section "Implementation Sessions" after the existing linked chunks section (in view mode only). Fetch from `GET /api/sessions`
+filtered by... actually, there's no direct API to get sessions by requirement. Add a simple approach: the `session_requirement_ref` data is
+available when viewing a session, but for the reverse lookup we need a query.
 
-Simplest approach: add a small query that fetches sessions referencing this requirement. Add a repository function `getSessionsByRequirementId(requirementId)` that joins `session_requirement_ref` with `implementation_session`.
+Simplest approach: add a small query that fetches sessions referencing this requirement. Add a repository function
+`getSessionsByRequirementId(requirementId)` that joins `session_requirement_ref` with `implementation_session`.
 
 Add to repository: `packages/db/src/repository/implementation-session.ts`:
+
 ```typescript
 export function getSessionsForRequirement(requirementId: string) {
     return Effect.tryPromise({
         try: () =>
-            db.select({
-                id: implementationSession.id,
-                title: implementationSession.title,
-                status: implementationSession.status,
-                createdAt: implementationSession.createdAt
-            })
-            .from(sessionRequirementRef)
-            .innerJoin(implementationSession, eq(sessionRequirementRef.sessionId, implementationSession.id))
-            .where(eq(sessionRequirementRef.requirementId, requirementId)),
+            db
+                .select({
+                    id: implementationSession.id,
+                    title: implementationSession.title,
+                    status: implementationSession.status,
+                    createdAt: implementationSession.createdAt
+                })
+                .from(sessionRequirementRef)
+                .innerJoin(implementationSession, eq(sessionRequirementRef.sessionId, implementationSession.id))
+                .where(eq(sessionRequirementRef.requirementId, requirementId)),
         catch: cause => new DatabaseError({ cause })
     });
 }
@@ -619,13 +668,15 @@ export function getSessionsForRequirement(requirementId: string) {
 
 Add an API endpoint: `GET /api/sessions/by-requirement/:requirementId` in `sessions/routes.ts`.
 
-On the requirement detail page, fetch and show a small list of sessions that referenced this requirement, each linking to `/reviews/$sessionId`.
+On the requirement detail page, fetch and show a small list of sessions that referenced this requirement, each linking to
+`/reviews/$sessionId`.
 
 - [ ] **Step 2: Add knowledge gaps section to knowledge health**
 
 Read the knowledge health page file first. Then add a "Knowledge Gaps from AI Sessions" section.
 
 Fetch unresolved assumptions aggregated across all sessions. Query:
+
 ```sql
 SELECT description, count(*) as frequency, array_agg(session_id) as session_ids
 FROM session_assumption
@@ -635,10 +686,11 @@ ORDER BY count(*) DESC
 LIMIT 20
 ```
 
-Add this as a repository function: `getUnresolvedAssumptionsSummary(userId)`.
-Add this as an API endpoint: `GET /api/sessions/knowledge-gaps`.
+Add this as a repository function: `getUnresolvedAssumptionsSummary(userId)`. Add this as an API endpoint:
+`GET /api/sessions/knowledge-gaps`.
 
 On the knowledge health page, add a section showing:
+
 - Each gap with frequency count ("AI assumed this N times")
 - Links to the sessions where it appeared
 - "Create chunk" shortcut button per gap
@@ -672,6 +724,7 @@ pnpm db:push
 - [ ] **Step 4: Manual verification checklist**
 
 Run `pnpm dev` and verify:
+
 - [ ] MCP server starts with `npx tsx packages/mcp/src/index.ts`
 - [ ] `begin_implementation` returns a context bundle
 - [ ] `record_chunk_reference` works

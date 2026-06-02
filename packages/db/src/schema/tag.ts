@@ -47,10 +47,7 @@ export const chunkTag = pgTable(
             .notNull()
             .references(() => tag.id, { onDelete: "cascade" })
     },
-    table => [
-        primaryKey({ columns: [table.chunkId, table.tagId] }),
-        index("chunk_tag_tagId_idx").on(table.tagId)
-    ]
+    table => [primaryKey({ columns: [table.chunkId, table.tagId] }), index("chunk_tag_tagId_idx").on(table.tagId)]
 );
 
 export const tagTypeRelations = relations(tagType, ({ one, many }) => ({

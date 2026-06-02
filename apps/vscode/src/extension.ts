@@ -44,18 +44,13 @@ export async function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(statusBar);
 
     // Register sidebar
-    context.subscriptions.push(
-        vscode.window.registerWebviewViewProvider(SidebarProvider.viewType, sidebarProvider)
-    );
+    context.subscriptions.push(vscode.window.registerWebviewViewProvider(SidebarProvider.viewType, sidebarProvider));
 
     // Refresh command
     async function refreshChunks() {
         sidebarProvider.setState({ loading: true, error: null });
         try {
-            const [chunksRes, tags] = await Promise.all([
-                api.getChunks(spaceId ?? undefined),
-                api.getTags(),
-            ]);
+            const [chunksRes, tags] = await Promise.all([api.getChunks(spaceId ?? undefined), api.getTags()]);
             sidebarProvider.setState({ chunks: chunksRes.chunks, total: chunksRes.total, tags, loading: false });
             statusBar.update(api, spaceId ?? undefined);
         } catch {
@@ -69,14 +64,10 @@ export async function activate(context: vscode.ExtensionContext) {
         }
     }
 
-    context.subscriptions.push(
-        vscode.commands.registerCommand("fubbik.refreshSidebar", refreshChunks)
-    );
+    context.subscriptions.push(vscode.commands.registerCommand("fubbik.refreshSidebar", refreshChunks));
 
     // Create chunk command
-    context.subscriptions.push(
-        registerCreateChunkCommand(context, api, () => spaceId, refreshChunks)
-    );
+    context.subscriptions.push(registerCreateChunkCommand(context, api, () => spaceId, refreshChunks));
 
     // Search chunks command
     context.subscriptions.push(
@@ -85,7 +76,7 @@ export async function activate(context: vscode.ExtensionContext) {
             quickPick.placeholder = "Search chunks...";
             quickPick.matchOnDescription = true;
 
-            quickPick.onDidChangeValue(async (value) => {
+            quickPick.onDidChangeValue(async value => {
                 if (value.length < 2) {
                     quickPick.items = [];
                     return;
@@ -93,11 +84,11 @@ export async function activate(context: vscode.ExtensionContext) {
                 quickPick.busy = true;
                 try {
                     const result = await api.searchChunks(value, spaceId ?? undefined);
-                    quickPick.items = result.chunks.map((chunk) => ({
+                    quickPick.items = result.chunks.map(chunk => ({
                         label: chunk.title || "Untitled",
                         description: `${chunk.source || "note"} ${(chunk.tags || []).join(", ")}`,
                         detail: chunk.content?.substring(0, 100),
-                        id: chunk.id,
+                        id: chunk.id
                     }));
                 } catch {
                     quickPick.items = [];
@@ -139,13 +130,13 @@ export async function activate(context: vscode.ExtensionContext) {
         vscode.commands.registerCommand("fubbik.quickAddNote", async () => {
             const title = await vscode.window.showInputBox({
                 prompt: "Note title",
-                placeHolder: "Enter a title for the note",
+                placeHolder: "Enter a title for the note"
             });
             if (!title) return;
 
             const content = await vscode.window.showInputBox({
                 prompt: "Note content",
-                placeHolder: "Enter note content",
+                placeHolder: "Enter note content"
             });
             if (!content) return;
 
@@ -153,7 +144,7 @@ export async function activate(context: vscode.ExtensionContext) {
                 const body: Parameters<typeof api.createChunk>[0] = {
                     content,
                     title,
-                    source: "note",
+                    source: "note"
                 };
                 if (spaceId) body.spaceIds = [spaceId];
                 await api.createChunk(body);
@@ -168,7 +159,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
     // File-aware chunk surfacing
     context.subscriptions.push(
-        vscode.window.onDidChangeActiveTextEditor(async (editor) => {
+        vscode.window.onDidChangeActiveTextEditor(async editor => {
             if (editor) {
                 try {
                     const fileChunks = await getChunksForFile(api, editor.document.uri);

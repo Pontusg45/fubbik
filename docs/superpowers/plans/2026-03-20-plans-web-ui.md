@@ -1,10 +1,12 @@
 # Plans Feature — Web UI Implementation Plan
 
-> **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to
+> implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Add web pages for creating, viewing, and managing plans with interactive step checklists.
 
-**Architecture:** Three new routes: `/plans` (list), `/plans/new` (create), `/plans/:id` (detail with step management). Uses Eden treaty client for API calls. Step status updates are inline — no page navigation required. Progress bar shows completion percentage.
+**Architecture:** Three new routes: `/plans` (list), `/plans/new` (create), `/plans/:id` (detail with step management). Uses Eden treaty
+client for API calls. Step status updates are inline — no page navigation required. Progress bar shows completion percentage.
 
 **Tech Stack:** React, TanStack Router, TanStack Query, shadcn-ui (base-ui), Tailwind CSS, Eden treaty
 
@@ -15,6 +17,7 @@
 ## File Structure
 
 ### New files:
+
 - `apps/web/src/routes/plans.index.tsx` — Plan list page
 - `apps/web/src/routes/plans.new.tsx` — Create plan form
 - `apps/web/src/routes/plans.$planId.tsx` — Plan detail with steps
@@ -22,6 +25,7 @@
 - `apps/web/src/features/plans/plan-progress-bar.tsx` — Progress bar component
 
 ### Files to modify:
+
 - `apps/web/src/routes/__root.tsx` — Add Plans to navigation
 - `apps/web/src/features/nav/mobile-nav.tsx` — Add to mobile nav
 
@@ -30,6 +34,7 @@
 ## Task 1: Plan List Page
 
 **Files:**
+
 - Create: `apps/web/src/routes/plans.index.tsx`
 
 - [ ] **Step 1: Create list route**
@@ -51,7 +56,7 @@ import { unwrapEden } from "@/utils/eden";
 import { useActiveCodebase } from "@/features/codebases/use-active-codebase";
 
 export const Route = createFileRoute("/plans/")({
-    component: PlansListPage,
+    component: PlansListPage
 });
 
 function PlansListPage() {
@@ -63,7 +68,7 @@ function PlansListPage() {
             const query: Record<string, string> = {};
             if (codebaseId) query.codebaseId = codebaseId;
             return unwrapEden(await api.api.plans.get({ query }));
-        },
+        }
     });
 
     const plans = plansQuery.data ?? [];
@@ -73,12 +78,12 @@ function PlansListPage() {
             <div className="mb-6 flex items-center justify-between">
                 <div>
                     <h1 className="text-xl font-bold">Plans</h1>
-                    <p className="text-muted-foreground text-sm">
-                        Track implementation progress with structured checklists.
-                    </p>
+                    <p className="text-muted-foreground text-sm">Track implementation progress with structured checklists.</p>
                 </div>
                 <Button asChild size="sm">
-                    <Link to="/plans/new"><Plus className="mr-1.5 size-3.5" /> New Plan</Link>
+                    <Link to="/plans/new">
+                        <Plus className="mr-1.5 size-3.5" /> New Plan
+                    </Link>
                 </Button>
             </div>
 
@@ -86,11 +91,15 @@ function PlansListPage() {
                 <SkeletonList count={4} />
             ) : plans.length === 0 ? (
                 <Empty>
-                    <EmptyMedia variant="icon"><FileText className="size-10" /></EmptyMedia>
+                    <EmptyMedia variant="icon">
+                        <FileText className="size-10" />
+                    </EmptyMedia>
                     <EmptyTitle>No plans yet</EmptyTitle>
                     <EmptyDescription>Create a plan to track implementation steps.</EmptyDescription>
                     <EmptyAction>
-                        <Button asChild><Link to="/plans/new">Create Plan</Link></Button>
+                        <Button asChild>
+                            <Link to="/plans/new">Create Plan</Link>
+                        </Button>
                     </EmptyAction>
                 </Empty>
             ) : (
@@ -148,11 +157,13 @@ git commit -m "feat(web): add plans list page"
 ## Task 2: Create Plan Form
 
 **Files:**
+
 - Create: `apps/web/src/routes/plans.new.tsx`
 
 - [ ] **Step 1: Create form route**
 
 Read `apps/web/src/routes/chunks.new.tsx` for form patterns. The plan create form needs:
+
 - Title input
 - Description textarea
 - Steps: dynamic list of inputs with drag-to-reorder (or simple add/remove)
@@ -171,16 +182,18 @@ const [steps, setSteps] = useState<Array<{ description: string }>>([{ descriptio
 // Submit:
 const createMutation = useMutation({
     mutationFn: async () => {
-        return unwrapEden(await api.api.plans.post({
-            title,
-            description: description || undefined,
-            codebaseId: codebaseId || undefined,
-            steps: steps.filter(s => s.description.trim()).map((s, i) => ({ description: s.description, order: i })),
-        }));
+        return unwrapEden(
+            await api.api.plans.post({
+                title,
+                description: description || undefined,
+                codebaseId: codebaseId || undefined,
+                steps: steps.filter(s => s.description.trim()).map((s, i) => ({ description: s.description, order: i }))
+            })
+        );
     },
-    onSuccess: (data) => {
+    onSuccess: data => {
         navigate({ to: "/plans/$planId", params: { planId: data.id } });
-    },
+    }
 });
 ```
 
@@ -198,6 +211,7 @@ git commit -m "feat(web): add plan creation form"
 ## Task 3: Plan Detail Page with Interactive Steps
 
 **Files:**
+
 - Create: `apps/web/src/features/plans/plan-step-item.tsx`
 - Create: `apps/web/src/features/plans/plan-progress-bar.tsx`
 - Create: `apps/web/src/routes/plans.$planId.tsx`
@@ -216,14 +230,13 @@ export function PlanProgressBar({ progress, stepCount, doneCount }: PlanProgress
     return (
         <div className="space-y-1">
             <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <span>{doneCount} of {stepCount} steps complete</span>
+                <span>
+                    {doneCount} of {stepCount} steps complete
+                </span>
                 <span>{progress}%</span>
             </div>
             <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
-                <div
-                    className="h-full rounded-full bg-primary transition-all duration-300"
-                    style={{ width: `${progress}%` }}
-                />
+                <div className="h-full rounded-full bg-primary transition-all duration-300" style={{ width: `${progress}%` }} />
             </div>
         </div>
     );
@@ -264,17 +277,17 @@ export function PlanStepItem({ step, onStatusChange, onNoteChange, disabled }: P
                 <Checkbox
                     checked={isDone}
                     disabled={disabled}
-                    onCheckedChange={(checked) => {
+                    onCheckedChange={checked => {
                         onStatusChange(step.id, checked ? "done" : "pending");
                     }}
                     className="mt-0.5"
                 />
                 <div className="flex-1 min-w-0">
-                    <p className={`text-sm ${isDone ? "line-through text-muted-foreground" : ""}`}>
-                        {step.description}
-                    </p>
+                    <p className={`text-sm ${isDone ? "line-through text-muted-foreground" : ""}`}>{step.description}</p>
                     {step.status !== "done" && step.status !== "pending" && (
-                        <Badge variant="outline" size="sm" className="mt-1 text-[10px]">{step.status}</Badge>
+                        <Badge variant="outline" size="sm" className="mt-1 text-[10px]">
+                            {step.status}
+                        </Badge>
                     )}
                     {step.chunkId && (
                         <span className="text-muted-foreground text-xs flex items-center gap-1 mt-1">
@@ -290,7 +303,7 @@ export function PlanStepItem({ step, onStatusChange, onNoteChange, disabled }: P
                 <div className="mt-2 ml-6">
                     <textarea
                         value={step.note ?? ""}
-                        onChange={(e) => onNoteChange(step.id, e.target.value)}
+                        onChange={e => onNoteChange(step.id, e.target.value)}
                         placeholder="Add a note..."
                         className="w-full rounded-md border bg-transparent px-3 py-2 text-xs resize-none"
                         rows={2}
@@ -319,6 +332,7 @@ export function PlanStepItem({ step, onStatusChange, onNoteChange, disabled }: P
 - [ ] **Step 3: Create plan detail route**
 
 Create `apps/web/src/routes/plans.$planId.tsx` with:
+
 - Plan title, description, status badge
 - Progress bar
 - Step list with PlanStepItem components
@@ -342,14 +356,18 @@ git commit -m "feat(web): add plan detail page with interactive step checklist"
 ## Task 4: Navigation
 
 **Files:**
+
 - Modify: `apps/web/src/routes/__root.tsx`
 - Modify: `apps/web/src/features/nav/mobile-nav.tsx`
 
 - [ ] **Step 1: Add Plans to navigation**
 
 In `__root.tsx`, add "Plans" to the main nav (alongside Dashboard, Chunks, Graph, etc.):
+
 ```tsx
-<Link to="/plans" className="...">Plans</Link>
+<Link to="/plans" className="...">
+    Plans
+</Link>
 ```
 
 Or add to the Manage dropdown if the main nav is too crowded. Read the file to decide.

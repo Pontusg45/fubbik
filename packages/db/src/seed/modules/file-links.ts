@@ -7,8 +7,8 @@
 
 import { chunkAppliesTo } from "../../schema/applies-to";
 import { chunkFileRef } from "../../schema/file-ref";
-import { uuid } from "../factories";
 import type { SeedContext } from "../context";
+import { uuid } from "../factories";
 
 export async function seed(ctx: SeedContext): Promise<void> {
     const c = ctx.ids.chunks;

@@ -1,10 +1,14 @@
 # Traceability UI — Web Plan
 
-> **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to
+> implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Show plan progress on requirement detail, rewrite coverage dashboard as requirement→plan→session traceability, and add assumption→requirement conversion.
+**Goal:** Show plan progress on requirement detail, rewrite coverage dashboard as requirement→plan→session traceability, and add
+assumption→requirement conversion.
 
-**Architecture:** Three UI features. The requirement detail page gets a "Plans" section showing linked plan steps. The coverage page is rewritten to show requirement traceability instead of chunk coverage. The knowledge health page gets a "Convert to requirement" action on assumptions.
+**Architecture:** Three UI features. The requirement detail page gets a "Plans" section showing linked plan steps. The coverage page is
+rewritten to show requirement traceability instead of chunk coverage. The knowledge health page gets a "Convert to requirement" action on
+assumptions.
 
 **Tech Stack:** React, TanStack Router, TanStack Query, Eden treaty, shadcn-ui
 
@@ -15,10 +19,12 @@
 ## File Structure
 
 ### New files:
+
 - `apps/web/src/features/requirements/requirement-plans.tsx` — Plan coverage section for requirement detail
 - `packages/api/src/coverage/traceability.ts` — Traceability query service
 
 ### Files to modify:
+
 - `apps/web/src/routes/requirements_.$requirementId.tsx` — Add plans section
 - `apps/web/src/routes/coverage.tsx` — Rewrite as traceability dashboard
 - `packages/api/src/coverage/routes.ts` — Add traceability endpoint
@@ -30,6 +36,7 @@
 ## Task 1: Plan Progress on Requirement Detail
 
 **Files:**
+
 - Create: `apps/web/src/features/requirements/requirement-plans.tsx`
 - Modify: `apps/web/src/routes/requirements_.$requirementId.tsx`
 
@@ -70,21 +77,19 @@ export function RequirementPlans({ requirementId }: RequirementPlansProps) {
             for (const plan of plans) {
                 // Fetch plan detail to get steps with requirementId
                 const detail = unwrapEden(await api.api.plans({ id: plan.id }).get());
-                const matchingSteps = (detail?.steps ?? []).filter(
-                    (s: any) => s.requirementId === requirementId
-                );
+                const matchingSteps = (detail?.steps ?? []).filter((s: any) => s.requirementId === requirementId);
                 if (matchingSteps.length > 0) {
                     relevant.push({
                         planId: plan.id,
                         planTitle: plan.title,
                         planStatus: plan.status,
-                        steps: matchingSteps,
+                        steps: matchingSteps
                     });
                 }
             }
             return relevant;
         },
-        staleTime: 30_000,
+        staleTime: 30_000
     });
 
     const plans = plansQuery.data ?? [];
@@ -106,7 +111,9 @@ export function RequirementPlans({ requirementId }: RequirementPlansProps) {
                         <Link to="/plans/$planId" params={{ planId: p.planId }} className="text-sm font-medium hover:underline">
                             {p.planTitle}
                         </Link>
-                        <Badge variant="secondary" size="sm">{p.planStatus}</Badge>
+                        <Badge variant="secondary" size="sm">
+                            {p.planStatus}
+                        </Badge>
                     </div>
                     <div className="space-y-1">
                         {p.steps.map(s => (
@@ -123,11 +130,13 @@ export function RequirementPlans({ requirementId }: RequirementPlansProps) {
 }
 ```
 
-**Note:** This N+1 query approach is simple but slow for many plans. A proper solution would be a dedicated API endpoint. For now, this works for typical knowledge bases (<50 plans).
+**Note:** This N+1 query approach is simple but slow for many plans. A proper solution would be a dedicated API endpoint. For now, this
+works for typical knowledge bases (<50 plans).
 
 - [ ] **Step 2: Add to requirement detail page**
 
-In `apps/web/src/routes/requirements_.$requirementId.tsx`, import and render `<RequirementPlans requirementId={requirementId} />` in a section after the steps/description area.
+In `apps/web/src/routes/requirements_.$requirementId.tsx`, import and render `<RequirementPlans requirementId={requirementId} />` in a
+section after the steps/description area.
 
 Read the file first to find the right placement.
 
@@ -142,6 +151,7 @@ git commit -m "feat(web): show plan step coverage on requirement detail page"
 ## Task 2: Traceability Dashboard (Coverage Rewrite)
 
 **Files:**
+
 - Create: `packages/api/src/coverage/traceability.ts`
 - Modify: `packages/api/src/coverage/routes.ts`
 - Modify: `packages/db/src/repository/coverage.ts`
@@ -158,65 +168,67 @@ export function getTraceabilityMatrix(userId: string, codebaseId?: string) {
             // For each requirement, find:
             // 1. Plan steps linked to it (via planStep.requirementId)
             // 2. Sessions that addressed it (via sessionRequirementRef)
-            const reqs = await db.select({
-                id: requirement.id,
-                title: requirement.title,
-                status: requirement.status,
-                priority: requirement.priority,
-            })
-            .from(requirement)
-            .where(and(
-                eq(requirement.userId, userId),
-                ...(codebaseId ? [eq(requirement.codebaseId, codebaseId)] : [])
-            ))
-            .orderBy(asc(requirement.order));
+            const reqs = await db
+                .select({
+                    id: requirement.id,
+                    title: requirement.title,
+                    status: requirement.status,
+                    priority: requirement.priority
+                })
+                .from(requirement)
+                .where(and(eq(requirement.userId, userId), ...(codebaseId ? [eq(requirement.codebaseId, codebaseId)] : [])))
+                .orderBy(asc(requirement.order));
 
             // For each requirement, fetch linked plan steps and sessions
             // (This could be optimized into joins but is clearer as separate queries)
             const matrix = [];
             for (const req of reqs) {
-                const steps = await db.select({
-                    stepId: planStep.id,
-                    stepDescription: planStep.description,
-                    stepStatus: planStep.status,
-                    planId: plan.id,
-                    planTitle: plan.title,
-                    planStatus: plan.status,
-                })
-                .from(planStep)
-                .innerJoin(plan, eq(planStep.planId, plan.id))
-                .where(eq(planStep.requirementId, req.id));
+                const steps = await db
+                    .select({
+                        stepId: planStep.id,
+                        stepDescription: planStep.description,
+                        stepStatus: planStep.status,
+                        planId: plan.id,
+                        planTitle: plan.title,
+                        planStatus: plan.status
+                    })
+                    .from(planStep)
+                    .innerJoin(plan, eq(planStep.planId, plan.id))
+                    .where(eq(planStep.requirementId, req.id));
 
-                const sessions = await db.select({
-                    sessionId: sessionRequirementRef.sessionId,
-                    stepsAddressed: sessionRequirementRef.stepsAddressed,
-                    sessionTitle: implementationSession.title,
-                    sessionStatus: implementationSession.status,
-                })
-                .from(sessionRequirementRef)
-                .innerJoin(implementationSession, eq(sessionRequirementRef.sessionId, implementationSession.id))
-                .where(eq(sessionRequirementRef.requirementId, req.id));
+                const sessions = await db
+                    .select({
+                        sessionId: sessionRequirementRef.sessionId,
+                        stepsAddressed: sessionRequirementRef.stepsAddressed,
+                        sessionTitle: implementationSession.title,
+                        sessionStatus: implementationSession.status
+                    })
+                    .from(sessionRequirementRef)
+                    .innerJoin(implementationSession, eq(sessionRequirementRef.sessionId, implementationSession.id))
+                    .where(eq(sessionRequirementRef.requirementId, req.id));
 
                 matrix.push({
                     requirement: req,
                     planSteps: steps,
                     sessions,
                     hasPlan: steps.length > 0,
-                    hasSession: sessions.length > 0,
+                    hasSession: sessions.length > 0
                 });
             }
             return matrix;
         },
-        catch: cause => new DatabaseError({ cause }),
+        catch: cause => new DatabaseError({ cause })
     });
 }
 ```
 
-Read existing coverage.ts to understand imports and patterns. You'll need to import `planStep`, `plan`, `sessionRequirementRef`, `implementationSession`, `requirement` from their respective schema files.
+Read existing coverage.ts to understand imports and patterns. You'll need to import `planStep`, `plan`, `sessionRequirementRef`,
+`implementationSession`, `requirement` from their respective schema files.
 
 - [ ] **Step 2: Add API endpoint**
 
 In `packages/api/src/coverage/routes.ts`, add:
+
 ```ts
 .get("/requirements/traceability", ctx => Effect.runPromise(
     requireSession(ctx).pipe(
@@ -230,6 +242,7 @@ In `packages/api/src/coverage/routes.ts`, add:
 In `apps/web/src/routes/coverage.tsx`, add a "Traceability" tab or replace the existing content:
 
 Show a table/list where each row is a requirement with columns:
+
 - Requirement title + status badge
 - Plan coverage: "Covered by Plan X (2/3 steps done)" or "No plan"
 - Session coverage: "Addressed in Session Y" or "Not addressed"
@@ -237,7 +250,8 @@ Show a table/list where each row is a requirement with columns:
 
 Stats at top: "X requirements covered by plans, Y addressed in sessions, Z gaps"
 
-**IMPORTANT:** The new API endpoint path is `/requirements/traceability` (NOT `/requirements/coverage`). The Eden treaty client call must be `api.api.requirements.traceability.get(...)`, not `api.api.requirements.coverage.get(...)` which hits the existing chunk-coverage endpoint.
+**IMPORTANT:** The new API endpoint path is `/requirements/traceability` (NOT `/requirements/coverage`). The Eden treaty client call must be
+`api.api.requirements.traceability.get(...)`, not `api.api.requirements.coverage.get(...)` which hits the existing chunk-coverage endpoint.
 
 Read the existing coverage page to understand the current layout and preserve the chunk coverage view as a secondary tab.
 
@@ -252,6 +266,7 @@ git commit -m "feat: add requirement traceability dashboard (requirement → pla
 ## Task 3: Assumption → Requirement Conversion
 
 **Files:**
+
 - Modify: `apps/web/src/routes/knowledge-health.tsx`
 
 - [ ] **Step 1: Read the knowledge gaps section**
@@ -271,7 +286,7 @@ Next to each gap, add a button that creates a requirement from the assumption te
             title: gap.description.slice(0, 100),
             description: `Identified as knowledge gap from ${gap.frequency} implementation session(s).\n\nOriginal assumption: ${gap.description}`,
             priority: "should",
-            codebaseId: codebaseId ?? undefined,
+            codebaseId: codebaseId ?? undefined
         });
         toast.success("Requirement created from assumption");
         queryClient.invalidateQueries({ queryKey: ["knowledge-gaps"] });

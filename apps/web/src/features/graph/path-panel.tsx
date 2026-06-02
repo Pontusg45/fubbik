@@ -40,7 +40,7 @@ function ChunkSelect({
         return chunks.filter(c => c.title.toLowerCase().includes(q)).slice(0, 50);
     }, [chunks, query]);
 
-    const selectedTitle = value ? chunks.find(c => c.id === value)?.title ?? value.slice(0, 8) : null;
+    const selectedTitle = value ? (chunks.find(c => c.id === value)?.title ?? value.slice(0, 8)) : null;
 
     return (
         <div className="relative">
@@ -73,7 +73,7 @@ function ChunkSelect({
                             setTimeout(() => setOpen(false), 150);
                         }}
                         placeholder="Search chunks..."
-                        className="bg-background w-full rounded-md border px-2.5 py-1.5 text-xs focus:ring-2 focus:ring-ring focus:outline-none"
+                        className="bg-background focus:ring-ring w-full rounded-md border px-2.5 py-1.5 text-xs focus:ring-2 focus:outline-none"
                     />
                     {open && filtered.length > 0 && (
                         <div className="bg-popover absolute z-50 mt-1 max-h-48 w-full overflow-y-auto rounded-md border shadow-lg">
@@ -109,7 +109,14 @@ export function PathPanel({ chunks, pathStartId, pathEndId, pathResult, edges, o
     // Build relation chain when path exists
     const relationChain = useMemo(() => {
         if (!pathResult?.path || pathResult.path.length < 2) return null;
-        const chain: Array<{ fromId: string; toId: string; fromTitle: string; toTitle: string; relations: string[]; direction: "forward" | "backward" }> = [];
+        const chain: Array<{
+            fromId: string;
+            toId: string;
+            fromTitle: string;
+            toTitle: string;
+            relations: string[];
+            direction: "forward" | "backward";
+        }> = [];
 
         for (let i = 0; i < pathResult.path.length - 1; i++) {
             const a = pathResult.path[i]!;
@@ -126,7 +133,7 @@ export function PathPanel({ chunks, pathStartId, pathEndId, pathResult, edges, o
             }
 
             const relations = forwardRels.length > 0 ? forwardRels : backwardRels;
-            const direction = forwardRels.length > 0 ? "forward" as const : "backward" as const;
+            const direction = forwardRels.length > 0 ? ("forward" as const) : ("backward" as const);
 
             chain.push({
                 fromId: a,
@@ -208,9 +215,7 @@ export function PathPanel({ chunks, pathStartId, pathEndId, pathResult, edges, o
                 </div>
             )}
 
-            {pathStartId && pathEndId && !pathResult && (
-                <p className="text-xs text-red-500">No path found between these chunks.</p>
-            )}
+            {pathStartId && pathEndId && !pathResult && <p className="text-xs text-red-500">No path found between these chunks.</p>}
         </div>
     );
 }

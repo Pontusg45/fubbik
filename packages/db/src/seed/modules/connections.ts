@@ -6,8 +6,8 @@
  * chunk so the graph structure around any given chunk is visible at a glance.
  */
 
-import { loadConnectionFixtures, type ConnectionFixture } from "../fixtures";
 import type { SeedContext } from "../context";
+import { loadConnectionFixtures, type ConnectionFixture } from "../fixtures";
 
 const LINKS: ConnectionFixture[] = [
     // Architecture as the hub

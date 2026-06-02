@@ -1,7 +1,7 @@
 ---
 tags:
-  - guide
-  - requirements
+    - guide
+    - requirements
 description: BDD requirements, vocabulary, plans, sessions, and traceability
 ---
 
@@ -45,4 +45,5 @@ Requirements export to three formats:
 
 ## Traceability
 
-The traceability view at `/coverage` shows the full chain: requirements > plan steps > implementation sessions > chunks. This helps you verify that every requirement has been addressed and every chunk links back to a reason for existing.
+The traceability view at `/coverage` shows the full chain: requirements > plan steps > implementation sessions > chunks. This helps you
+verify that every requirement has been addressed and every chunk links back to a reason for existing.

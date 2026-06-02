@@ -30,22 +30,20 @@ export function DocumentFilterBar({
     onToggleType,
     onSetGroupBy,
     onClearAll,
-    onApplyPreset,
+    onApplyPreset
 }: DocumentFilterBarProps) {
     const [expanded, setExpanded] = useState(false);
     const hasActiveFilters = activeTags.length > 0 || activeTypes.length > 0;
 
     return (
-        <div className="border-b border-border/50 px-3 py-2">
+        <div className="border-border/50 border-b px-3 py-2">
             {/* Group-by toggle */}
             <div className="mb-2 flex items-center gap-1.5">
                 <button
                     type="button"
                     onClick={() => onSetGroupBy("folder")}
                     className={`flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-medium transition-colors ${
-                        groupBy === "folder"
-                            ? "bg-muted text-foreground"
-                            : "text-muted-foreground hover:text-foreground"
+                        groupBy === "folder" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"
                     }`}
                 >
                     <FolderOpen className="size-3" />
@@ -55,9 +53,7 @@ export function DocumentFilterBar({
                     type="button"
                     onClick={() => onSetGroupBy("tag")}
                     className={`flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-medium transition-colors ${
-                        groupBy === "tag"
-                            ? "bg-muted text-foreground"
-                            : "text-muted-foreground hover:text-foreground"
+                        groupBy === "tag" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"
                     }`}
                 >
                     <Tag className="size-3" />
@@ -66,11 +62,11 @@ export function DocumentFilterBar({
                 <button
                     type="button"
                     onClick={() => setExpanded(e => !e)}
-                    className="ml-auto flex items-center gap-0.5 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+                    className="text-muted-foreground hover:text-foreground ml-auto flex items-center gap-0.5 text-[11px] transition-colors"
                 >
                     Filters
                     {hasActiveFilters && (
-                        <span className="ml-0.5 rounded-full bg-primary/20 px-1 text-[9px] text-primary">
+                        <span className="bg-primary/20 text-primary ml-0.5 rounded-full px-1 text-[9px]">
                             {activeTags.length + activeTypes.length}
                         </span>
                     )}
@@ -80,11 +76,11 @@ export function DocumentFilterBar({
 
             {/* Expanded filter area */}
             {expanded && (
-                <div className="space-y-2 border-t border-border/30 pt-2">
+                <div className="border-border/30 space-y-2 border-t pt-2">
                     {/* Tags */}
                     {allTags.length > 0 && (
                         <div>
-                            <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Tags</div>
+                            <div className="text-muted-foreground mb-1 text-[10px] font-semibold tracking-wider uppercase">Tags</div>
                             <div className="flex flex-wrap gap-1">
                                 {allTags.map(tag => {
                                     const active = activeTags.includes(tag);
@@ -95,7 +91,7 @@ export function DocumentFilterBar({
                                             onClick={() => onToggleTag(tag)}
                                             className={`flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[11px] transition-colors ${
                                                 active
-                                                    ? "bg-primary/20 text-primary border border-primary/40"
+                                                    ? "bg-primary/20 text-primary border-primary/40 border"
                                                     : "bg-muted/50 text-muted-foreground hover:text-foreground border border-transparent"
                                             }`}
                                         >
@@ -111,7 +107,7 @@ export function DocumentFilterBar({
                     {/* Types */}
                     {allTypes.length > 0 && (
                         <div>
-                            <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Type</div>
+                            <div className="text-muted-foreground mb-1 text-[10px] font-semibold tracking-wider uppercase">Type</div>
                             <div className="flex flex-wrap gap-1">
                                 {allTypes.map(type => {
                                     const active = activeTypes.includes(type);
@@ -122,7 +118,7 @@ export function DocumentFilterBar({
                                             onClick={() => onToggleType(type)}
                                             className={`flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[11px] transition-colors ${
                                                 active
-                                                    ? "bg-primary/20 text-primary border border-primary/40"
+                                                    ? "bg-primary/20 text-primary border-primary/40 border"
                                                     : "bg-muted/50 text-muted-foreground hover:text-foreground border border-transparent"
                                             }`}
                                         >
@@ -137,15 +133,12 @@ export function DocumentFilterBar({
 
                     {/* Presets + clear */}
                     <div className="flex items-center justify-between pt-1">
-                        <DocFilterPresets
-                            currentFilters={{ activeTags, activeTypes, groupBy }}
-                            onApplyPreset={onApplyPreset}
-                        />
+                        <DocFilterPresets currentFilters={{ activeTags, activeTypes, groupBy }} onApplyPreset={onApplyPreset} />
                         {hasActiveFilters && (
                             <button
                                 type="button"
                                 onClick={onClearAll}
-                                className="text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+                                className="text-muted-foreground hover:text-foreground text-[11px] transition-colors"
                             >
                                 Clear all
                             </button>
@@ -154,7 +147,7 @@ export function DocumentFilterBar({
 
                     {/* Result count */}
                     {hasActiveFilters && (
-                        <div className="text-[11px] text-muted-foreground">
+                        <div className="text-muted-foreground text-[11px]">
                             Showing {filteredCount} of {totalCount} documents
                         </div>
                     )}

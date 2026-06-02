@@ -1,7 +1,7 @@
 import { Command } from "commander";
 
-import { formatBold, formatDim, formatSuccess } from "../lib/colors";
 import { fetchApi } from "../lib/api";
+import { formatBold, formatDim, formatSuccess } from "../lib/colors";
 import { isJson, output, outputError, outputQuiet } from "../lib/output";
 
 interface PlanTask {

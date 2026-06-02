@@ -26,7 +26,7 @@ export function useGraphKeyboard({
     multiSelectedIds,
     layoutEdges,
     dispatch,
-    onGoBack,
+    onGoBack
 }: UseGraphKeyboardOptions) {
     useEffect(() => {
         function handleKeyDown(e: KeyboardEvent) {

@@ -1,15 +1,6 @@
-import type {
-    MatchRules,
-    ParsedHeading,
-    TemplateWithRules,
-    TemplateMatch,
-} from "./types";
+import type { MatchRules, ParsedHeading, TemplateWithRules, TemplateMatch } from "./types";
 
-export function matchHeading(
-    pattern: string,
-    heading: ParsedHeading,
-    mode: "exact" | "prefix" | "contains",
-): boolean {
+export function matchHeading(pattern: string, heading: ParsedHeading, mode: "exact" | "prefix" | "contains"): boolean {
     const p = pattern.toLowerCase();
     const h = heading.text.toLowerCase();
     switch (mode) {
@@ -22,17 +13,13 @@ export function matchHeading(
     }
 }
 
-export function scoreTemplate(
-    rules: MatchRules,
-    headings: ParsedHeading[],
-    frontmatter: Record<string, unknown>,
-): number {
+export function scoreTemplate(rules: MatchRules, headings: ParsedHeading[], frontmatter: Record<string, unknown>): number {
     let score = 0;
 
     for (const rule of rules.headings) {
-        const matched = headings.some((h) => {
+        const matched = headings.some(h => {
             if (rule.level !== undefined && h.level !== rule.level) return false;
-            return rule.patterns.some((p) => matchHeading(p, h, rule.match));
+            return rule.patterns.some(p => matchHeading(p, h, rule.match));
         });
         if (rule.required && !matched) return 0;
         if (matched) score += rule.required ? 1 : 0.5;
@@ -60,22 +47,21 @@ export function scoreTemplate(
 
 export function matchTemplates(
     doc: { headings: ParsedHeading[]; frontmatter: Record<string, unknown> },
-    templates: TemplateWithRules[],
+    templates: TemplateWithRules[]
 ): TemplateMatch | null {
     if (templates.length === 0) return null;
 
     const scored = templates
-        .map((t) => ({
+        .map(t => ({
             template: t,
-            score: scoreTemplate(t.matchRules, doc.headings, doc.frontmatter),
+            score: scoreTemplate(t.matchRules, doc.headings, doc.frontmatter)
         }))
-        .filter((s) => s.score > 0)
+        .filter(s => s.score > 0)
         .sort((a, b) => {
             if (b.score !== a.score) return b.score - a.score;
-            if (b.template.priority !== a.template.priority)
-                return b.template.priority - a.template.priority;
-            const aReq = a.template.matchRules.headings.filter((h) => h.required).length;
-            const bReq = b.template.matchRules.headings.filter((h) => h.required).length;
+            if (b.template.priority !== a.template.priority) return b.template.priority - a.template.priority;
+            const aReq = a.template.matchRules.headings.filter(h => h.required).length;
+            const bReq = b.template.matchRules.headings.filter(h => h.required).length;
             return bReq - aReq;
         });
 
@@ -88,6 +74,6 @@ export function matchTemplates(
         score: best.score,
         type: best.template.type,
         tags: best.template.tags ?? [],
-        extractedFields: {},
+        extractedFields: {}
     };
 }

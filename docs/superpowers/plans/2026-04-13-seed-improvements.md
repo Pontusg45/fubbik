@@ -1,10 +1,13 @@
 # Seed Script Improvements Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to
+> implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Fix bugs in the seed script (global deletes, bad column inserts, stale content), add seed data for 15 empty tables, and add missing variety in chunk types, plan statuses, and task statuses.
+**Goal:** Fix bugs in the seed script (global deletes, bad column inserts, stale content), add seed data for 15 empty tables, and add
+missing variety in chunk types, plan statuses, and task statuses.
 
-**Architecture:** Single file modification (`packages/db/src/seed.ts`). Four tasks: fix bugs, update stale content, add missing seed data, verify.
+**Architecture:** Single file modification (`packages/db/src/seed.ts`). Four tasks: fix bugs, update stale content, add missing seed data,
+verify.
 
 **Tech Stack:** Drizzle ORM, PostgreSQL, Bun
 
@@ -14,8 +17,8 @@
 
 ### Modified
 
-| Path | Responsibility |
-|---|---|
+| Path                      | Responsibility                                          |
+| ------------------------- | ------------------------------------------------------- |
 | `packages/db/src/seed.ts` | All changes — bug fixes, new imports, new seed sections |
 
 ---
@@ -23,24 +26,31 @@
 ### Task 1: Fix Bugs
 
 **Files:**
+
 - Modify: `packages/db/src/seed.ts`
 
-**Context:** Three bugs need fixing: (1) global deletes without user scoping wipe other users' data, (2) document chunk connections insert a `userId` column that doesn't exist on `chunkConnection`, (3) hardcoded `/Users/pontus/projects/fubbik` path.
+**Context:** Three bugs need fixing: (1) global deletes without user scoping wipe other users' data, (2) document chunk connections insert a
+`userId` column that doesn't exist on `chunkConnection`, (3) hardcoded `/Users/pontus/projects/fubbik` path.
 
 - [ ] **Step 1: Read the seed file to identify exact line numbers for each bug**
 
 Read the full file. Locate:
+
 - The delete sweep section (around lines 40-62) — find `db.delete(chunkConnection)` and `db.delete(chunkTag)` which lack `where` clauses
 - The document chunk connection insert (around line 1957) — find `{ ...conn, userId: DEV_USER_ID }`
 - The codebase seeding (around line 1489) — find `localPaths: ["/Users/pontus/projects/fubbik"]`
 
 - [ ] **Step 2: Fix the global `chunkConnection` delete**
 
-The `chunkConnection` table has no `userId` column, so we can't scope the delete by user. However, since all connections in a dev seed are between seeded chunks (which ARE user-scoped), the cascade from `db.delete(chunk).where(eq(chunk.userId, DEV_USER_ID))` will handle connection cleanup via foreign key cascade.
+The `chunkConnection` table has no `userId` column, so we can't scope the delete by user. However, since all connections in a dev seed are
+between seeded chunks (which ARE user-scoped), the cascade from `db.delete(chunk).where(eq(chunk.userId, DEV_USER_ID))` will handle
+connection cleanup via foreign key cascade.
 
-**Fix:** Remove the explicit `db.delete(chunkConnection)` line from the delete sweep entirely. The FK cascade from chunk deletion handles it.
+**Fix:** Remove the explicit `db.delete(chunkConnection)` line from the delete sweep entirely. The FK cascade from chunk deletion handles
+it.
 
 Find the line:
+
 ```typescript
 await db.delete(chunkConnection);
 ```
@@ -49,20 +59,25 @@ Delete it.
 
 - [ ] **Step 3: Fix the `chunkTag` global delete**
 
-Same issue — `chunkTag` has no `userId`. But `chunkTag` has an FK to `chunk.id` and `tag.id`. Deleting chunks (user-scoped) and tags (user-scoped) will cascade-delete `chunkTag` rows.
+Same issue — `chunkTag` has no `userId`. But `chunkTag` has an FK to `chunk.id` and `tag.id`. Deleting chunks (user-scoped) and tags
+(user-scoped) will cascade-delete `chunkTag` rows.
 
 **Fix:** Remove the explicit `db.delete(chunkTag)` line. FK cascades from chunk + tag deletion handle it.
 
 Find the line:
+
 ```typescript
 await db.delete(chunkTag);
 ```
 
 Delete it.
 
-Also check: `db.delete(chunkAppliesTo)`, `db.delete(chunkFileRef)`, `db.delete(chunkCodebase)`, `db.delete(requirementChunk)`, `db.delete(chunkTag)` — these all reference `chunk.id` and should cascade. Remove any that lack user scoping and rely on FK cascades. Keep any that DO have `where(eq(..., userId))` guards.
+Also check: `db.delete(chunkAppliesTo)`, `db.delete(chunkFileRef)`, `db.delete(chunkCodebase)`, `db.delete(requirementChunk)`,
+`db.delete(chunkTag)` — these all reference `chunk.id` and should cascade. Remove any that lack user scoping and rely on FK cascades. Keep
+any that DO have `where(eq(..., userId))` guards.
 
-**Important:** Read each table's schema to confirm ON DELETE CASCADE exists on the FK before removing the explicit delete. If a table uses ON DELETE SET NULL or no cascade, keep the explicit delete.
+**Important:** Read each table's schema to confirm ON DELETE CASCADE exists on the FK before removing the explicit delete. If a table uses
+ON DELETE SET NULL or no cascade, keep the explicit delete.
 
 - [ ] **Step 4: Fix the document chunk connection `userId` bug**
 
@@ -83,13 +98,15 @@ Or if `conn` is a spread object, just remove the `userId` key.
 - [ ] **Step 5: Fix the hardcoded local path**
 
 Find:
+
 ```typescript
-localPaths: ["/Users/pontus/projects/fubbik"]
+localPaths: ["/Users/pontus/projects/fubbik"];
 ```
 
 Replace with:
+
 ```typescript
-localPaths: [process.cwd()]
+localPaths: [process.cwd()];
 ```
 
 This uses the working directory at seed time, which is correct for local development.
@@ -116,13 +133,16 @@ Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>"
 ### Task 2: Update Stale Chunk Content
 
 **Files:**
+
 - Modify: `packages/db/src/seed.ts`
 
-**Context:** Several chunks describe features that have been removed from the codebase. The CLAUDE.md is the source of truth — read it to confirm what's current.
+**Context:** Several chunks describe features that have been removed from the codebase. The CLAUDE.md is the source of truth — read it to
+confirm what's current.
 
 - [ ] **Step 1: Read CLAUDE.md to confirm current tech stack**
 
 Key facts:
+
 - AI: Ollama only (vercel-ai SDK removed, no OpenAI)
 - Embeddings: Ollama nomic-embed-text
 - Validation: Elysia `t` schema (NOT Arktype)
@@ -132,9 +152,10 @@ Key facts:
 
 - [ ] **Step 2: Fix the architecture overview chunk**
 
-Find the chunk with id `ids.arch` (around line 141). Its content mentions "AI: OpenAI (gpt-4o-mini), Ollama". 
+Find the chunk with id `ids.arch` (around line 141). Its content mentions "AI: OpenAI (gpt-4o-mini), Ollama".
 
 Update to:
+
 ```
 AI: Ollama (local LLM for enrichment + embeddings via nomic-embed-text)
 ```
@@ -146,6 +167,7 @@ Remove any mention of OpenAI, gpt-4o-mini, or vercel-ai.
 Find the chunk with id `ids.apiAI` (around line 451). It references `@ai-sdk/openai` and `gpt-4o-mini`.
 
 Rewrite the content to describe the current Ollama-only setup:
+
 - Enrichment via Ollama (llama3.2): generates summary, aliases, notAbout
 - Embeddings via Ollama (nomic-embed-text): 768-dim vectors for semantic search
 - No external AI APIs — fully local
@@ -164,11 +186,13 @@ Update to `pnpm install` and `pnpm dev`.
 
 - [ ] **Step 6: Fix the CLI store chunk**
 
-Find the chunk with id `ids.cliStore` (around line 968). Check if it references `.fubbik/store.json` or an outdated path. Update to match the current CLI config location (`fubbik.config.json`).
+Find the chunk with id `ids.cliStore` (around line 968). Check if it references `.fubbik/store.json` or an outdated path. Update to match
+the current CLI config location (`fubbik.config.json`).
 
 - [ ] **Step 7: Fix the schema chunk**
 
-Find the chunk with id `ids.schemaChunks` (around line 186). It mentions a `guide` chunk type. The valid types are: note, document, reference, schema, checklist.
+Find the chunk with id `ids.schemaChunks` (around line 186). It mentions a `guide` chunk type. The valid types are: note, document,
+reference, schema, checklist.
 
 Replace `guide` with `checklist` (or remove the mention).
 
@@ -194,9 +218,11 @@ Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>"
 ### Task 3: Add Missing Seed Data + Variety
 
 **Files:**
+
 - Modify: `packages/db/src/seed.ts`
 
-**Context:** 15 tables have no seed data. Also missing: note/checklist chunk types, draft/ready/archived plan statuses, blocked/skipped task statuses, plan task chunks, plan task dependencies.
+**Context:** 15 tables have no seed data. Also missing: note/checklist chunk types, draft/ready/archived plan statuses, blocked/skipped task
+statuses, plan task chunks, plan task dependencies.
 
 - [ ] **Step 1: Add new imports at the top of the seed file**
 
@@ -217,11 +243,14 @@ import { planTaskChunk } from "./schema/plan";
 import { planTaskDependency } from "./schema/plan";
 ```
 
-**Verify each import path** by reading the schema index file (`packages/db/src/schema/index.ts`) to confirm the exact export names. The table names above are guesses — adapt to the actual exported names. For example, `activity` might be `activityLog`, `chunkComment` might be `comment`, etc.
+**Verify each import path** by reading the schema index file (`packages/db/src/schema/index.ts`) to confirm the exact export names. The
+table names above are guesses — adapt to the actual exported names. For example, `activity` might be `activityLog`, `chunkComment` might be
+`comment`, etc.
 
 - [ ] **Step 2: Add deletes for the new tables in the cleanup section**
 
-Add before the existing delete sweep (at the very top, before any plan/chunk deletes). These must come first because some FK-reference other tables:
+Add before the existing delete sweep (at the very top, before any plan/chunk deletes). These must come first because some FK-reference other
+tables:
 
 ```typescript
 // New tables cleanup
@@ -237,7 +266,8 @@ await db.delete(savedGraph).where(eq(savedGraph.userId, DEV_USER_ID));
 await db.delete(savedQuery).where(eq(savedQuery.userId, DEV_USER_ID));
 ```
 
-**Read each schema** to confirm which tables have `userId` columns. Use `where(eq(..., DEV_USER_ID))` where available; omit the where clause only for tables that FK-cascade from user-scoped parent tables.
+**Read each schema** to confirm which tables have `userId` columns. Use `where(eq(..., DEV_USER_ID))` where available; omit the where clause
+only for tables that FK-cascade from user-scoped parent tables.
 
 - [ ] **Step 3: Add note + checklist type chunks**
 
@@ -249,33 +279,36 @@ const noteChunk1Id = crypto.randomUUID();
 await db.insert(chunk).values({
     id: noteChunk1Id,
     title: "Authentication convention",
-    content: "All API routes require a valid session token via Better Auth. The session is resolved in the Elysia middleware and injected into the request context via `requireSession(ctx)`. Routes that need public access (health check, login) skip this middleware.",
+    content:
+        "All API routes require a valid session token via Better Auth. The session is resolved in the Elysia middleware and injected into the request context via `requireSession(ctx)`. Routes that need public access (health check, login) skip this middleware.",
     type: "note",
     userId: DEV_USER_ID,
     origin: "human",
-    reviewStatus: "approved",
+    reviewStatus: "approved"
 });
 
 const noteChunk2Id = crypto.randomUUID();
 await db.insert(chunk).values({
     id: noteChunk2Id,
     title: "Error handling convention",
-    content: "All service functions return Effect<T, TaggedError>. The global Elysia error handler extracts the _tag from FiberFailure and maps to HTTP status codes: ValidationError→400, AuthError→401, NotFoundError→404, DatabaseError→500.",
+    content:
+        "All service functions return Effect<T, TaggedError>. The global Elysia error handler extracts the _tag from FiberFailure and maps to HTTP status codes: ValidationError→400, AuthError→401, NotFoundError→404, DatabaseError→500.",
     type: "note",
     userId: DEV_USER_ID,
     origin: "human",
-    reviewStatus: "approved",
+    reviewStatus: "approved"
 });
 
 const checklistChunkId = crypto.randomUUID();
 await db.insert(chunk).values({
     id: checklistChunkId,
     title: "New feature checklist",
-    content: "- [ ] Add schema in packages/db/src/schema/\n- [ ] Add repository in packages/db/src/repository/\n- [ ] Add service in packages/api/src/\n- [ ] Add routes in packages/api/src/\n- [ ] Add MCP tool in packages/mcp/src/\n- [ ] Add CLI command in apps/cli/src/commands/\n- [ ] Add web page in apps/web/src/routes/\n- [ ] Update CLAUDE.md\n- [ ] Run pnpm ci",
+    content:
+        "- [ ] Add schema in packages/db/src/schema/\n- [ ] Add repository in packages/db/src/repository/\n- [ ] Add service in packages/api/src/\n- [ ] Add routes in packages/api/src/\n- [ ] Add MCP tool in packages/mcp/src/\n- [ ] Add CLI command in apps/cli/src/commands/\n- [ ] Add web page in apps/web/src/routes/\n- [ ] Update CLAUDE.md\n- [ ] Run pnpm ci",
     type: "checklist",
     userId: DEV_USER_ID,
     origin: "human",
-    reviewStatus: "approved",
+    reviewStatus: "approved"
 });
 ```
 
@@ -296,7 +329,7 @@ await db.insert(chunkVersion).values([
         content: "Initial architecture notes before the plans rewrite.",
         type: "document",
         tags: [],
-        createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // 7 days ago
+        createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) // 7 days ago
     },
     {
         id: crypto.randomUUID(),
@@ -306,8 +339,8 @@ await db.insert(chunkVersion).values([
         content: "Updated after session removal and plans-as-central-entity rewrite.",
         type: "document",
         tags: [],
-        createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), // 2 days ago
-    },
+        createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000) // 2 days ago
+    }
 ]);
 ```
 
@@ -348,24 +381,25 @@ await db.insert(chunkProposal).values([
         chunkId: ids.arch, // propose changes to the architecture chunk
         changes: {
             title: "Architecture Overview (updated)",
-            content: "Updated architecture overview reflecting the plans-as-central-entity rewrite and session removal.",
+            content: "Updated architecture overview reflecting the plans-as-central-entity rewrite and session removal."
         },
         reason: "Architecture chunk is stale after the plans rewrite removed the sessions subsystem",
         status: "pending",
         proposedBy: "ai",
-        createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
+        createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000) // 2 hours ago
     },
     {
         id: crypto.randomUUID(),
         chunkId: noteChunk1Id, // propose an edit to the auth convention
         changes: {
-            content: "All API routes require a valid session token via Better Auth. Routes use requireSession(ctx) from the shared middleware. Public routes (health, login) are explicitly excluded.",
-            tags: ["convention", "auth"],
+            content:
+                "All API routes require a valid session token via Better Auth. Routes use requireSession(ctx) from the shared middleware. Public routes (health, login) are explicitly excluded.",
+            tags: ["convention", "auth"]
         },
         reason: "Simplified wording and added tags",
         status: "pending",
         proposedBy: "ai",
-        createdAt: new Date(Date.now() - 30 * 60 * 1000), // 30 minutes ago
+        createdAt: new Date(Date.now() - 30 * 60 * 1000) // 30 minutes ago
     },
     {
         id: crypto.randomUUID(),
@@ -377,7 +411,7 @@ await db.insert(chunkProposal).values([
         reviewedBy: DEV_USER_ID,
         reviewedAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
         reviewNote: "Good rename",
-        createdAt: new Date(Date.now() - 48 * 60 * 60 * 1000),
+        createdAt: new Date(Date.now() - 48 * 60 * 60 * 1000)
     },
     {
         id: crypto.randomUUID(),
@@ -389,8 +423,8 @@ await db.insert(chunkProposal).values([
         reviewedBy: DEV_USER_ID,
         reviewedAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
         reviewNote: "It's correctly a document",
-        createdAt: new Date(Date.now() - 72 * 60 * 60 * 1000),
-    },
+        createdAt: new Date(Date.now() - 72 * 60 * 60 * 1000)
+    }
 ]);
 ```
 
@@ -402,55 +436,70 @@ After the existing plan section, add:
 
 ```typescript
 // Draft plan — just a title, no tasks yet
-const [planDraft] = await db.insert(plan).values({
-    title: "Improve graph visualization performance",
-    description: "The force-directed graph slows down with 200+ nodes. Investigate WebGL rendering or spatial partitioning.",
-    status: "draft",
-    userId: DEV_USER_ID,
-    codebaseId: fubbikCodebaseId,
-}).returning();
+const [planDraft] = await db
+    .insert(plan)
+    .values({
+        title: "Improve graph visualization performance",
+        description: "The force-directed graph slows down with 200+ nodes. Investigate WebGL rendering or spatial partitioning.",
+        status: "draft",
+        userId: DEV_USER_ID,
+        codebaseId: fubbikCodebaseId
+    })
+    .returning();
 
 // Ready plan — analyzed + tasks drafted, not yet started
-const [planReady] = await db.insert(plan).values({
-    title: "Add chunk templates for common patterns",
-    description: "Create a template system so users can quickly create chunks for conventions, API endpoints, runbooks, etc.",
-    status: "ready",
-    userId: DEV_USER_ID,
-    codebaseId: fubbikCodebaseId,
-}).returning();
+const [planReady] = await db
+    .insert(plan)
+    .values({
+        title: "Add chunk templates for common patterns",
+        description: "Create a template system so users can quickly create chunks for conventions, API endpoints, runbooks, etc.",
+        status: "ready",
+        userId: DEV_USER_ID,
+        codebaseId: fubbikCodebaseId
+    })
+    .returning();
 
 if (planReady) {
-    const [readyTask1] = await db.insert(planTask).values({
-        planId: planReady.id,
-        title: "Design template schema",
-        status: "pending",
-        order: 0,
-        acceptanceCriteria: ["Templates stored in DB", "Built-in templates are read-only", "Users can duplicate and customize"],
-    }).returning();
+    const [readyTask1] = await db
+        .insert(planTask)
+        .values({
+            planId: planReady.id,
+            title: "Design template schema",
+            status: "pending",
+            order: 0,
+            acceptanceCriteria: ["Templates stored in DB", "Built-in templates are read-only", "Users can duplicate and customize"]
+        })
+        .returning();
 
-    const [readyTask2] = await db.insert(planTask).values({
-        planId: planReady.id,
-        title: "Build template picker UI",
-        status: "blocked",
-        order: 1,
-        description: "Blocked by template schema task",
-    }).returning();
+    const [readyTask2] = await db
+        .insert(planTask)
+        .values({
+            planId: planReady.id,
+            title: "Build template picker UI",
+            status: "blocked",
+            order: 1,
+            description: "Blocked by template schema task"
+        })
+        .returning();
 
     // Task dependency: task2 depends on task1
     if (readyTask1 && readyTask2) {
         await db.insert(planTaskDependency).values({
             taskId: readyTask2.id,
-            dependsOnTaskId: readyTask1.id,
+            dependsOnTaskId: readyTask1.id
         });
     }
 
-    const [readyTask3] = await db.insert(planTask).values({
-        planId: planReady.id,
-        title: "Add CLI template support",
-        status: "skipped",
-        order: 2,
-        description: "Decided to defer CLI support to a follow-up",
-    }).returning();
+    const [readyTask3] = await db
+        .insert(planTask)
+        .values({
+            planId: planReady.id,
+            title: "Add CLI template support",
+            status: "skipped",
+            order: 2,
+            description: "Decided to defer CLI support to a follow-up"
+        })
+        .returning();
 }
 
 // Archived plan
@@ -459,7 +508,7 @@ await db.insert(plan).values({
     description: "Explored but decided to stick with REST + Eden for now.",
     status: "archived",
     userId: DEV_USER_ID,
-    codebaseId: fubbikCodebaseId,
+    codebaseId: fubbikCodebaseId
 });
 
 // Add task-chunk links to the in_progress plan's tasks
@@ -481,7 +530,8 @@ if (/* first task ID from planInProgress */) {
 }
 ```
 
-**Adapt:** The exact variable names for the in_progress plan's tasks depend on what the current seed code uses. Read the plan seeding section to find them.
+**Adapt:** The exact variable names for the in_progress plan's tasks depend on what the current seed code uses. Read the plan seeding
+section to find them.
 
 - [ ] **Step 8: Add activity_log, favorite, notification, comment, saved_query seed data**
 
@@ -591,7 +641,9 @@ await db.insert(savedQuery).values([
 ]);
 ```
 
-**IMPORTANT:** Read every schema file before inserting to confirm exact column names. The code above uses guessed column names (`action`, `entityType`, `message`, `read`, etc.). The actual schemas may differ. Read:
+**IMPORTANT:** Read every schema file before inserting to confirm exact column names. The code above uses guessed column names (`action`,
+`entityType`, `message`, `read`, etc.). The actual schemas may differ. Read:
+
 - `packages/db/src/schema/activity.ts` (or wherever `activityLog` is defined)
 - `packages/db/src/schema/favorite.ts`
 - `packages/db/src/schema/notification.ts`
@@ -602,7 +654,8 @@ Adapt all column names to match.
 
 - [ ] **Step 9: Fix section numbering in comments**
 
-Read through the file's section comments. They should be numbered sequentially: 1, 2, 3, ... N. Fix any jumps, duplicates, or dead references like "Second plan seeding moved to section 6".
+Read through the file's section comments. They should be numbered sequentially: 1, 2, 3, ... N. Fix any jumps, duplicates, or dead
+references like "Second plan seeding moved to section 6".
 
 - [ ] **Step 10: Run the seed**
 

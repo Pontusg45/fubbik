@@ -1,24 +1,18 @@
-import { Elysia, t } from "elysia";
-import { Effect } from "effect";
-
 import * as planRepo from "@fubbik/db/repository/plan";
 import type { PlanTaskChunkRelation, PlanTaskStatus } from "@fubbik/db/schema/plan";
+import { Effect } from "effect";
+import { Elysia, t } from "elysia";
 
-import { requireSession } from "../require-session";
-import { ValidationError } from "../errors";
 import { createActivity } from "../activity/service";
+import { ValidationError } from "../errors";
+import { requireSession } from "../require-session";
 import { VALID_TASK_RELATIONS, getPlan } from "./service";
 
 /**
  * Body schema for acceptance criteria. Legacy callers send `string[]`; new
  * callers send `{text, done}[]`. We accept both and normalise before persist.
  */
-const acceptanceCriteriaBodySchema = t.Array(
-    t.Union([
-        t.String(),
-        t.Object({ text: t.String(), done: t.Boolean() }),
-    ])
-);
+const acceptanceCriteriaBodySchema = t.Array(t.Union([t.String(), t.Object({ text: t.String(), done: t.Boolean() })]));
 
 function normaliseCriteriaForWrite(raw: Array<string | { text: string; done: boolean }> | undefined) {
     if (!raw) return undefined;
@@ -64,7 +58,7 @@ export const planTaskRoutes = new Elysia({ prefix: "/plans/:id/tasks" })
                                 description: ctx.body.description ?? null,
                                 acceptanceCriteria: normaliseCriteriaForWrite(ctx.body.acceptanceCriteria) ?? [],
                                 status: "pending",
-                                metadata: ctx.body.metadata ?? {},
+                                metadata: ctx.body.metadata ?? {}
                             });
                             if (ctx.body.chunks) {
                                 for (const c of ctx.body.chunks) {
@@ -83,12 +77,12 @@ export const planTaskRoutes = new Elysia({ prefix: "/plans/:id/tasks" })
                                 entityId: task.id,
                                 entityTitle: task.title,
                                 action: "created",
-                                spaceId: plan.spaceId ?? undefined,
+                                spaceId: plan.spaceId ?? undefined
                             });
                             return task;
-                        }),
-                    ),
-                ),
+                        })
+                    )
+                )
             );
         },
         {
@@ -98,9 +92,9 @@ export const planTaskRoutes = new Elysia({ prefix: "/plans/:id/tasks" })
                 acceptanceCriteria: t.Optional(acceptanceCriteriaBodySchema),
                 chunks: t.Optional(t.Array(t.Object({ chunkId: t.String(), relation: t.String() }))),
                 dependsOnTaskIds: t.Optional(t.Array(t.String())),
-                metadata: t.Optional(t.Record(t.String(), t.Unknown())),
-            }),
-        },
+                metadata: t.Optional(t.Record(t.String(), t.Unknown()))
+            })
+        }
     )
     .patch(
         "/:taskId",
@@ -132,12 +126,12 @@ export const planTaskRoutes = new Elysia({ prefix: "/plans/:id/tasks" })
                                 entityId: updated.id,
                                 entityTitle: updated.title,
                                 action: ctx.body.status !== undefined ? "status_changed" : "updated",
-                                spaceId: plan.spaceId ?? undefined,
+                                spaceId: plan.spaceId ?? undefined
                             });
                             return updated;
-                        }),
-                    ),
-                ),
+                        })
+                    )
+                )
             );
         },
         {
@@ -146,9 +140,9 @@ export const planTaskRoutes = new Elysia({ prefix: "/plans/:id/tasks" })
                 description: t.Optional(t.Union([t.String(), t.Null()])),
                 acceptanceCriteria: t.Optional(acceptanceCriteriaBodySchema),
                 status: t.Optional(t.String()),
-                metadata: t.Optional(t.Record(t.String(), t.Unknown())),
-            }),
-        },
+                metadata: t.Optional(t.Record(t.String(), t.Unknown()))
+            })
+        }
     )
     .delete("/:taskId", async ctx => {
         await Effect.runPromise(
@@ -162,11 +156,11 @@ export const planTaskRoutes = new Elysia({ prefix: "/plans/:id/tasks" })
                             entityType: "plan_task",
                             entityId: ctx.params.taskId,
                             action: "deleted",
-                            spaceId: plan.spaceId ?? undefined,
+                            spaceId: plan.spaceId ?? undefined
                         });
-                    }),
-                ),
-            ),
+                    })
+                )
+            )
         );
         return { ok: true };
     })
@@ -176,12 +170,12 @@ export const planTaskRoutes = new Elysia({ prefix: "/plans/:id/tasks" })
             await Effect.runPromise(
                 requireSession(ctx).pipe(
                     Effect.flatMap(() => getPlan(ctx.params.id)),
-                    Effect.flatMap(() => planRepo.reorderTasks(ctx.params.id, ctx.body.taskIds)),
-                ),
+                    Effect.flatMap(() => planRepo.reorderTasks(ctx.params.id, ctx.body.taskIds))
+                )
             );
             return { ok: true };
         },
-        { body: t.Object({ taskIds: t.Array(t.String()) }) },
+        { body: t.Object({ taskIds: t.Array(t.String()) }) }
     )
     .post(
         "/:taskId/chunks",
@@ -190,18 +184,18 @@ export const planTaskRoutes = new Elysia({ prefix: "/plans/:id/tasks" })
                 requireSession(ctx).pipe(
                     Effect.flatMap(() => getPlan(ctx.params.id)),
                     Effect.flatMap(() => validateRelation(ctx.body.relation)),
-                    Effect.flatMap(rel => planRepo.addTaskChunk(ctx.params.taskId, ctx.body.chunkId, rel)),
-                ),
+                    Effect.flatMap(rel => planRepo.addTaskChunk(ctx.params.taskId, ctx.body.chunkId, rel))
+                )
             );
         },
-        { body: t.Object({ chunkId: t.String(), relation: t.String() }) },
+        { body: t.Object({ chunkId: t.String(), relation: t.String() }) }
     )
     .delete("/:taskId/chunks/:linkId", async ctx => {
         await Effect.runPromise(
             requireSession(ctx).pipe(
                 Effect.flatMap(() => getPlan(ctx.params.id)),
-                Effect.flatMap(() => planRepo.removeTaskChunk(ctx.params.linkId)),
-            ),
+                Effect.flatMap(() => planRepo.removeTaskChunk(ctx.params.linkId))
+            )
         );
         return { ok: true };
     })
@@ -213,19 +207,17 @@ export const planTaskRoutes = new Elysia({ prefix: "/plans/:id/tasks" })
             Effect.runPromise(
                 requireSession(ctx).pipe(
                     Effect.flatMap(() => getPlan(ctx.params.id)),
-                    Effect.flatMap(() =>
-                        planRepo.addTaskDependency(ctx.params.taskId, ctx.body.dependsOnTaskId)
-                    ),
-                ),
+                    Effect.flatMap(() => planRepo.addTaskDependency(ctx.params.taskId, ctx.body.dependsOnTaskId))
+                )
             ),
-        { body: t.Object({ dependsOnTaskId: t.String() }) },
+        { body: t.Object({ dependsOnTaskId: t.String() }) }
     )
     .delete("/:taskId/dependencies/:depId", async ctx => {
         await Effect.runPromise(
             requireSession(ctx).pipe(
                 Effect.flatMap(() => getPlan(ctx.params.id)),
-                Effect.flatMap(() => planRepo.removeTaskDependency(ctx.params.depId)),
-            ),
+                Effect.flatMap(() => planRepo.removeTaskDependency(ctx.params.depId))
+            )
         );
         return { ok: true };
     })
@@ -234,9 +226,9 @@ export const planTaskRoutes = new Elysia({ prefix: "/plans/:id/tasks" })
         Effect.runPromise(
             requireSession(ctx).pipe(
                 Effect.flatMap(() => getPlan(ctx.params.id)),
-                Effect.flatMap(() => planRepo.listTaskLinks(ctx.params.taskId)),
-            ),
-        ),
+                Effect.flatMap(() => planRepo.listTaskLinks(ctx.params.taskId))
+            )
+        )
     )
     .post(
         "/:taskId/links",
@@ -249,25 +241,25 @@ export const planTaskRoutes = new Elysia({ prefix: "/plans/:id/tasks" })
                             taskId: ctx.params.taskId,
                             system: ctx.body.system ?? "url",
                             url: ctx.body.url,
-                            label: ctx.body.label ?? null,
-                        }),
-                    ),
-                ),
+                            label: ctx.body.label ?? null
+                        })
+                    )
+                )
             ),
         {
             body: t.Object({
                 url: t.String({ maxLength: 2000 }),
                 system: t.Optional(t.String({ maxLength: 40 })),
-                label: t.Optional(t.String({ maxLength: 200 })),
-            }),
-        },
+                label: t.Optional(t.String({ maxLength: 200 }))
+            })
+        }
     )
     .delete("/:taskId/links/:linkId", async ctx => {
         await Effect.runPromise(
             requireSession(ctx).pipe(
                 Effect.flatMap(() => getPlan(ctx.params.id)),
-                Effect.flatMap(() => planRepo.removeTaskLink(ctx.params.linkId)),
-            ),
+                Effect.flatMap(() => planRepo.removeTaskLink(ctx.params.linkId))
+            )
         );
         return { ok: true };
     });

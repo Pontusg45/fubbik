@@ -5,16 +5,18 @@ import { requireSession } from "../require-session";
 import * as tagService from "./service-new";
 
 export const tagRoutes = new Elysia()
-    .get("/tags", ctx =>
-        Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(session => tagService.getUserTags(session.user.id))))
-    )
+    .get("/tags", ctx => Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(session => tagService.getUserTags(session.user.id)))))
     .post(
         "/tags",
         ctx =>
             Effect.runPromise(
                 requireSession(ctx).pipe(
                     Effect.flatMap(session => tagService.createUserTag(session.user.id, ctx.body)),
-                    Effect.tap(() => Effect.sync(() => { ctx.set.status = 201; }))
+                    Effect.tap(() =>
+                        Effect.sync(() => {
+                            ctx.set.status = 201;
+                        })
+                    )
                 )
             ),
         {
@@ -28,9 +30,7 @@ export const tagRoutes = new Elysia()
         "/tags/:id",
         ctx =>
             Effect.runPromise(
-                requireSession(ctx).pipe(
-                    Effect.flatMap(session => tagService.updateUserTag(ctx.params.id, session.user.id, ctx.body))
-                )
+                requireSession(ctx).pipe(Effect.flatMap(session => tagService.updateUserTag(ctx.params.id, session.user.id, ctx.body)))
             ),
         {
             body: t.Object({
@@ -53,9 +53,7 @@ export const tagRoutes = new Elysia()
         ctx =>
             Effect.runPromise(
                 requireSession(ctx).pipe(
-                    Effect.flatMap(session =>
-                        tagService.mergeUserTags(session.user.id, ctx.body.sourceId, ctx.body.targetId)
-                    )
+                    Effect.flatMap(session => tagService.mergeUserTags(session.user.id, ctx.body.sourceId, ctx.body.targetId))
                 )
             ),
         {

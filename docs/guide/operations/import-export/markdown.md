@@ -1,8 +1,8 @@
 ---
 tags:
-  - guide
-  - import
-  - markdown
+    - guide
+    - import
+    - markdown
 description: Importing markdown files as chunks with frontmatter parsing
 ---
 
@@ -27,8 +27,8 @@ Frontmatter is parsed for metadata:
 title: My Document
 type: document
 tags:
-  - backend
-  - architecture
+    - backend
+    - architecture
 description: Overview of the backend architecture
 ---
 
@@ -40,6 +40,7 @@ Supported frontmatter fields: `title`, `type`, `tags`, `description`.
 ## Web UI Import
 
 The `/import` page provides a drag-and-drop interface for importing markdown files with:
+
 - File preview table
 - Codebase selection
 - Frontmatter extraction preview

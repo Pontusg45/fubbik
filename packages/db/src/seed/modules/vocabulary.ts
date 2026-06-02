@@ -1,8 +1,8 @@
 import { eq } from "drizzle-orm";
 
 import { vocabularyEntry } from "../../schema/vocabulary";
-import { uuid } from "../factories";
 import type { SeedContext } from "../context";
+import { uuid } from "../factories";
 
 export async function seed(ctx: SeedContext): Promise<void> {
     const spaceId = ctx.ids.codebases["fubbik"];

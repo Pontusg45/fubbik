@@ -1,9 +1,10 @@
 import { Command } from "commander";
 import pc from "picocolors";
+
 import { formatError, formatSuccess } from "../lib/colors";
+import { detectSpace } from "../lib/detect-space";
 import { output } from "../lib/output";
 import { getServerUrl, readStore, storeExists } from "../lib/store";
-import { detectSpace } from "../lib/detect-space";
 
 const warn = (msg: string) => `${pc.yellow("\u26A0")} ${msg}`;
 

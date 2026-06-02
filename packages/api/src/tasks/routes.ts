@@ -1,8 +1,8 @@
 import { Effect } from "effect";
 import { Elysia, t } from "elysia";
 
-import { requireSession } from "../require-session";
 import * as planService from "../plans/service";
+import { requireSession } from "../require-session";
 
 export const taskQueueRoutes = new Elysia()
     // Create a task (creates a single-task plan)
@@ -16,34 +16,30 @@ export const taskQueueRoutes = new Elysia()
                             title: ctx.body.title,
                             description: ctx.body.description,
                             spaceId: ctx.body.spaceId,
-                            tasks: [{ title: ctx.body.title }],
-                        }),
+                            tasks: [{ title: ctx.body.title }]
+                        })
                     ),
                     Effect.tap(() =>
                         Effect.sync(() => {
                             ctx.set.status = 201;
-                        }),
-                    ),
-                ),
+                        })
+                    )
+                )
             ),
         {
             body: t.Object({
                 title: t.String({ maxLength: 200 }),
                 description: t.Optional(t.String()),
                 priority: t.Optional(t.String()),
-                spaceId: t.Optional(t.String()),
-            }),
-        },
+                spaceId: t.Optional(t.String())
+            })
+        }
     )
     // List open tasks (in_progress plans)
     .get("/tasks", ctx =>
         Effect.runPromise(
-            requireSession(ctx).pipe(
-                Effect.flatMap(session =>
-                    planService.listPlans({ userId: session.user.id, status: "in_progress" }),
-                ),
-            ),
-        ),
+            requireSession(ctx).pipe(Effect.flatMap(session => planService.listPlans({ userId: session.user.id, status: "in_progress" })))
+        )
     )
     // Claim a task (mark first plan_task as in_progress)
     .post("/tasks/:id/claim", ctx =>
@@ -57,10 +53,10 @@ export const taskQueueRoutes = new Elysia()
                             yield* planService.updateTask(firstTask.id, { status: "in_progress" });
                         }
                         return yield* planService.getPlanDetail(ctx.params.id);
-                    }),
-                ),
-            ),
-        ),
+                    })
+                )
+            )
+        )
     )
     // Complete a task
     .post(
@@ -76,13 +72,13 @@ export const taskQueueRoutes = new Elysia()
                                 yield* planService.updateTask(firstTask.id, { status: "done" });
                             }
                             return yield* planService.updatePlan(ctx.params.id, { status: "completed" });
-                        }),
-                    ),
-                ),
+                        })
+                    )
+                )
             ),
         {
             body: t.Object({
-                note: t.Optional(t.String()),
-            }),
-        },
+                note: t.Optional(t.String())
+            })
+        }
     );

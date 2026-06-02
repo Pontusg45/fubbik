@@ -1,8 +1,8 @@
 ---
 tags:
-  - guide
-  - ai
-  - context
+    - guide
+    - ai
+    - context
 description: Token-budgeted knowledge delivery for AI tools
 ---
 

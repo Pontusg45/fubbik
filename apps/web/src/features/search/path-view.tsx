@@ -12,7 +12,7 @@ const TYPE_COLORS: Record<string, string> = {
     document: "bg-purple-500/10 text-purple-400 border-purple-500/20",
     reference: "bg-green-500/10 text-green-400 border-green-500/20",
     schema: "bg-orange-500/10 text-orange-400 border-orange-500/20",
-    checklist: "bg-pink-500/10 text-pink-400 border-pink-500/20",
+    checklist: "bg-pink-500/10 text-pink-400 border-pink-500/20"
 };
 
 export function PathView({ nodes }: { nodes: PathNode[] }) {
@@ -20,7 +20,7 @@ export function PathView({ nodes }: { nodes: PathNode[] }) {
 
     return (
         <div className="overflow-x-auto rounded-lg border border-indigo-500/20 bg-indigo-500/5 p-4">
-            <div className="flex items-center gap-0 min-w-max">
+            <div className="flex min-w-max items-center gap-0">
                 {nodes.map((node, i) => {
                     const typeColor = TYPE_COLORS[node.type] ?? "bg-slate-500/10 text-slate-400 border-slate-500/20";
                     const isLast = i === nodes.length - 1;
@@ -31,12 +31,10 @@ export function PathView({ nodes }: { nodes: PathNode[] }) {
                             <Link
                                 to="/chunks/$chunkId"
                                 params={{ chunkId: node.id }}
-                                className="flex flex-col items-center gap-1.5 rounded-lg border bg-card px-3 py-2.5 transition-colors hover:bg-muted/50 w-[130px]"
+                                className="bg-card hover:bg-muted/50 flex w-[130px] flex-col items-center gap-1.5 rounded-lg border px-3 py-2.5 transition-colors"
                             >
-                                <span className="w-full truncate text-center text-sm font-medium leading-tight">
-                                    {node.title}
-                                </span>
-                                <span className={`rounded border px-1.5 py-0.5 text-[9px] font-medium font-mono ${typeColor}`}>
+                                <span className="w-full truncate text-center text-sm leading-tight font-medium">{node.title}</span>
+                                <span className={`rounded border px-1.5 py-0.5 font-mono text-[9px] font-medium ${typeColor}`}>
                                     {node.type}
                                 </span>
                             </Link>
@@ -44,7 +42,7 @@ export function PathView({ nodes }: { nodes: PathNode[] }) {
                             {/* Arrow connector */}
                             {!isLast && (
                                 <div className="flex items-center px-2">
-                                    <ArrowRight className="size-4 text-muted-foreground/40" />
+                                    <ArrowRight className="text-muted-foreground/40 size-4" />
                                 </div>
                             )}
                         </div>

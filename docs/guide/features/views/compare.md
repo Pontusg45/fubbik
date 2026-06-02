@@ -1,8 +1,8 @@
 ---
 tags:
-  - guide
-  - views
-  - compare
+    - guide
+    - views
+    - compare
 description: Side-by-side chunk comparison and diffing
 ---
 

@@ -5,18 +5,7 @@ import { DEFAULT_THRESHOLDS } from "@fubbik/api/chunk-size";
 
 import type { DiscoveredChunk } from "./types";
 
-const IGNORE_DIRS = new Set([
-    "node_modules",
-    ".git",
-    ".turbo",
-    "dist",
-    "build",
-    ".next",
-    ".output",
-    ".cache",
-    "coverage",
-    ".fubbik",
-]);
+const IGNORE_DIRS = new Set(["node_modules", ".git", ".turbo", "dist", "build", ".next", ".output", ".cache", "coverage", ".fubbik"]);
 
 const DOC_FILES = ["README.md", "CLAUDE.md", "CONTRIBUTING.md", "Agents.md", "CHANGELOG.md"];
 
@@ -36,7 +25,7 @@ export function scanDocs(dir: string): DiscoveredChunk[] {
                     tags: ["documentation", "project"],
                     tier: 1,
                     category: "documents",
-                    source: docFile,
+                    source: docFile
                 });
             }
         }
@@ -56,7 +45,7 @@ export function scanDocs(dir: string): DiscoveredChunk[] {
                 tags: ["documentation", "docs", ...pathTags(rel)],
                 tier: 1,
                 category: "documents",
-                source: rel,
+                source: rel
             });
         }
     }
@@ -79,7 +68,7 @@ export function scanDocs(dir: string): DiscoveredChunk[] {
             tags: ["documentation", ...pathTags(rel)],
             tier: 1,
             category: "documents",
-            source: rel,
+            source: rel
         });
     }
 
@@ -89,10 +78,7 @@ export function scanDocs(dir: string): DiscoveredChunk[] {
 // --- Auto-split ---
 
 function exceedsWarning(content: string): boolean {
-    return (
-        content.split("\n").length > DEFAULT_THRESHOLDS.warningLines ||
-        content.length > DEFAULT_THRESHOLDS.warningChars
-    );
+    return content.split("\n").length > DEFAULT_THRESHOLDS.warningLines || content.length > DEFAULT_THRESHOLDS.warningChars;
 }
 
 function splitByHeadings(content: string): { title: string; content: string }[] | null {
@@ -134,7 +120,7 @@ function addChunkWithAutoSplit(chunks: DiscoveredChunk[], chunk: DiscoveredChunk
     const indexContent = sections.map(s => `- ${s.title || "(intro)"}`).join("\n");
     chunks.push({
         ...chunk,
-        content: `Sections:\n\n${indexContent}`,
+        content: `Sections:\n\n${indexContent}`
     });
 
     // Create sub-chunks
@@ -147,7 +133,7 @@ function addChunkWithAutoSplit(chunks: DiscoveredChunk[], chunk: DiscoveredChunk
             tags: chunk.tags,
             tier: chunk.tier,
             category: chunk.category,
-            source: chunk.source,
+            source: chunk.source
         });
     }
 }
@@ -160,7 +146,7 @@ function docFileName(file: string): string {
         "CLAUDE.md": "AI Assistant Instructions (CLAUDE.md)",
         "CONTRIBUTING.md": "Contributing Guide",
         "Agents.md": "AI Agents Documentation",
-        "CHANGELOG.md": "Changelog",
+        "CHANGELOG.md": "Changelog"
     };
     return map[file] ?? file;
 }
@@ -172,9 +158,7 @@ function extractMarkdownTitle(content: string): string | null {
 
 function pathTags(relPath: string): string[] {
     const parts = relPath.split("/").filter(Boolean);
-    return parts
-        .filter(p => !["src", "lib", "index.ts", "package.json"].includes(p))
-        .slice(0, 3);
+    return parts.filter(p => !["src", "lib", "index.ts", "package.json"].includes(p)).slice(0, 3);
 }
 
 function findFiles(dir: string, ext: string, maxDepth = 5, depth = 0): string[] {

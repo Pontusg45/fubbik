@@ -1,10 +1,14 @@
 # Workflow Automation — Plan Generation + MCP Full Loop
 
-> **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to
+> implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Generate plans from requirements with template steps, add requirement-driven plan templates, and create MCP tools for the full requirement→plan→session workflow.
+**Goal:** Generate plans from requirements with template steps, add requirement-driven plan templates, and create MCP tools for the full
+requirement→plan→session workflow.
 
-**Architecture:** New API endpoint to generate a plan from selected requirements. Each requirement becomes a group of steps (verify/implement/test/document) linked via `requirementId`. New MCP tools wrap the full workflow. Templates are server-side constants (like plan templates).
+**Architecture:** New API endpoint to generate a plan from selected requirements. Each requirement becomes a group of steps
+(verify/implement/test/document) linked via `requirementId`. New MCP tools wrap the full workflow. Templates are server-side constants (like
+plan templates).
 
 **Tech Stack:** Elysia, Effect, MCP (Zod), existing plan and requirement services
 
@@ -15,10 +19,12 @@
 ## File Structure
 
 ### New files:
+
 - `packages/api/src/plans/generate-from-requirements.ts` — Service for requirement-to-plan generation
 - `packages/mcp/src/requirement-tools.ts` — MCP tools for requirement operations
 
 ### Files to modify:
+
 - `packages/api/src/plans/routes.ts` — Add plan generation endpoint
 - `packages/api/src/plans/service.ts` — Add requirement-driven template logic
 - `packages/mcp/src/index.ts` — Register requirement tools
@@ -29,6 +35,7 @@
 ## Task 1: Plan Generation from Requirements
 
 **Files:**
+
 - Create: `packages/api/src/plans/generate-from-requirements.ts`
 - Modify: `packages/api/src/plans/routes.ts`
 
@@ -82,7 +89,7 @@ export function generatePlanFromRequirements(params: {
                         steps.push({
                             description: `  ${bddStep.keyword}: ${bddStep.text}`,
                             requirementId: req.id,
-                            order: order++,
+                            order: order++
                         });
                     }
                 }
@@ -94,7 +101,7 @@ export function generatePlanFromRequirements(params: {
         return {
             title: params.title,
             description: params.description ?? `Plan generated from ${params.requirements.length} requirement(s)`,
-            steps,
+            steps
         };
     });
 }
@@ -149,7 +156,8 @@ In `packages/api/src/plans/routes.ts`, add (BEFORE `/:id` routes):
 })
 ```
 
-Import `generatePlanFromRequirements` and whatever requirement repo function fetches by ID. Read the requirement repo to find the correct function name.
+Import `generatePlanFromRequirements` and whatever requirement repo function fetches by ID. Read the requirement repo to find the correct
+function name.
 
 - [ ] **Step 3: Commit**
 
@@ -162,6 +170,7 @@ git commit -m "feat: add /plans/generate-from-requirements endpoint"
 ## Task 2: Requirement-Driven Plan Templates (#6)
 
 **Files:**
+
 - Modify: `packages/api/src/plans/service.ts`
 
 - [ ] **Step 1: Read the existing PLAN_TEMPLATES**
@@ -200,13 +209,15 @@ git commit -m "feat: add requirement-driven plan templates"
 ## Task 3: MCP Full-Loop Tools (#10)
 
 **Files:**
+
 - Create: `packages/mcp/src/requirement-tools.ts`
 - Modify: `packages/mcp/src/plan-tools.ts`
 - Modify: `packages/mcp/src/index.ts`
 
 - [ ] **Step 1: Create requirement MCP tools**
 
-Read existing MCP tools (`packages/mcp/src/tools.ts` and `plan-tools.ts`) for the exact pattern. **CRITICAL:** All tools must be wrapped in an exported function matching the pattern:
+Read existing MCP tools (`packages/mcp/src/tools.ts` and `plan-tools.ts`) for the exact pattern. **CRITICAL:** All tools must be wrapped in
+an exported function matching the pattern:
 
 ```ts
 // packages/mcp/src/requirement-tools.ts
@@ -239,19 +250,24 @@ server.tool(
     {
         title: z.string().describe("Plan title"),
         requirementIds: z.array(z.string()).describe("Requirement IDs to include"),
-        template: z.enum(["standard", "detailed"]).optional().describe("Step template: standard (implement+verify) or detailed (verify+implement+test+document)"),
-        codebaseId: z.string().optional(),
+        template: z
+            .enum(["standard", "detailed"])
+            .optional()
+            .describe("Step template: standard (implement+verify) or detailed (verify+implement+test+document)"),
+        codebaseId: z.string().optional()
     },
     async ({ title, requirementIds, template, codebaseId }) => {
         const plan = await apiFetch("/plans/generate-from-requirements", {
             method: "POST",
-            body: JSON.stringify({ title, requirementIds, template, codebaseId }),
+            body: JSON.stringify({ title, requirementIds, template, codebaseId })
         });
         return {
-            content: [{
-                type: "text",
-                text: `Created plan "${plan.title}" with ${plan.steps?.length ?? 0} steps from ${requirementIds.length} requirement(s). Plan ID: ${plan.id}`
-            }]
+            content: [
+                {
+                    type: "text",
+                    text: `Created plan "${plan.title}" with ${plan.steps?.length ?? 0} steps from ${requirementIds.length} requirement(s). Plan ID: ${plan.id}`
+                }
+            ]
         };
     }
 );
@@ -260,6 +276,7 @@ server.tool(
 - [ ] **Step 3: Register requirement tools**
 
 In `packages/mcp/src/index.ts`:
+
 ```ts
 import { registerRequirementTools } from "./requirement-tools";
 registerRequirementTools(server);

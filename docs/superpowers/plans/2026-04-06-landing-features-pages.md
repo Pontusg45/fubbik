@@ -1,10 +1,14 @@
 # Landing Page & Features Page Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to
+> implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Redesign the landing page with a developer-tool aesthetic and knowledge-graph background, and create a new `/features` page that explains Fubbik's mental model then groups features by concept.
+**Goal:** Redesign the landing page with a developer-tool aesthetic and knowledge-graph background, and create a new `/features` page that
+explains Fubbik's mental model then groups features by concept.
 
-**Architecture:** Two frontend routes (`/` and `/features`) sharing reusable components (knowledge graph canvas, terminal demo, install tabs, fade-in sections). The landing page is a complete rewrite of the existing `index.tsx`. The features page is a new route. No backend changes needed.
+**Architecture:** Two frontend routes (`/` and `/features`) sharing reusable components (knowledge graph canvas, terminal demo, install
+tabs, fade-in sections). The landing page is a complete rewrite of the existing `index.tsx`. The features page is a new route. No backend
+changes needed.
 
 **Tech Stack:** TanStack Router, React, Tailwind CSS, Lucide icons, canvas API
 
@@ -13,9 +17,11 @@
 ### Task 1: Knowledge Graph Canvas Background
 
 **Files:**
+
 - Create: `apps/web/src/features/landing/knowledge-graph-canvas.tsx`
 
-This replaces the existing `ConstellationCanvas` with a knowledge-graph-styled animated background. Nodes are small rounded rectangles with labels; edges show relation types.
+This replaces the existing `ConstellationCanvas` with a knowledge-graph-styled animated background. Nodes are small rounded rectangles with
+labels; edges show relation types.
 
 - [ ] **Step 1: Create the knowledge graph canvas component**
 
@@ -56,7 +62,7 @@ const NODE_LABELS = [
     { label: "API Auth", type: "reference" },
     { label: "Migrations", type: "schema" },
     { label: "CI Pipeline", type: "checklist" },
-    { label: "Code Style", type: "guide" },
+    { label: "Code Style", type: "guide" }
 ];
 
 const EDGE_TEMPLATES = [
@@ -71,15 +77,15 @@ const EDGE_TEMPLATES = [
     { from: 12, to: 7, relation: "depends_on" },
     { from: 13, to: 0, relation: "extends" },
     { from: 1, to: 4, relation: "part_of" },
-    { from: 7, to: 12, relation: "related_to" },
+    { from: 7, to: 12, relation: "related_to" }
 ];
 
 const TYPE_COLORS: Record<string, string> = {
-    guide: "99, 102, 241",      // indigo
-    document: "59, 130, 246",   // blue
-    reference: "20, 184, 166",  // teal
-    schema: "245, 158, 11",     // amber
-    checklist: "132, 204, 22",  // lime
+    guide: "99, 102, 241", // indigo
+    document: "59, 130, 246", // blue
+    reference: "20, 184, 166", // teal
+    schema: "245, 158, 11", // amber
+    checklist: "132, 204, 22" // lime
 };
 
 function measureText(ctx: CanvasRenderingContext2D, text: string, fontSize: number): number {
@@ -111,13 +117,11 @@ export function KnowledgeGraphCanvas() {
                 w: textW + 16,
                 h: 24,
                 pulse: Math.random() * Math.PI * 2,
-                pulseSpeed: Math.random() * 0.01 + 0.003,
+                pulseSpeed: Math.random() * 0.01 + 0.003
             };
         });
 
-        edgesRef.current = EDGE_TEMPLATES.filter(
-            e => e.from < nodesRef.current.length && e.to < nodesRef.current.length
-        );
+        edgesRef.current = EDGE_TEMPLATES.filter(e => e.from < nodesRef.current.length && e.to < nodesRef.current.length);
     }, []);
 
     useEffect(() => {
@@ -161,10 +165,22 @@ export function KnowledgeGraphCanvas() {
                     n.x += n.vx;
                     n.y += n.vy;
                     n.pulse += n.pulseSpeed;
-                    if (n.x < 20) { n.x = 20; n.vx *= -1; }
-                    if (n.x > w - 20) { n.x = w - 20; n.vx *= -1; }
-                    if (n.y < 15) { n.y = 15; n.vy *= -1; }
-                    if (n.y > h - 15) { n.y = h - 15; n.vy *= -1; }
+                    if (n.x < 20) {
+                        n.x = 20;
+                        n.vx *= -1;
+                    }
+                    if (n.x > w - 20) {
+                        n.x = w - 20;
+                        n.vx *= -1;
+                    }
+                    if (n.y < 15) {
+                        n.y = 15;
+                        n.vy *= -1;
+                    }
+                    if (n.y > h - 15) {
+                        n.y = h - 15;
+                        n.vy *= -1;
+                    }
                 }
             }
 
@@ -264,6 +280,7 @@ git commit -m "feat(landing): add knowledge graph canvas background component"
 ### Task 2: Terminal Demo Component
 
 **Files:**
+
 - Create: `apps/web/src/features/landing/terminal-demo.tsx`
 
 Animated terminal showing a realistic Fubbik CLI workflow with typewriter effect.
@@ -288,14 +305,14 @@ const DEMO_LINES: TerminalLine[] = [
     { text: "3 chunks found across 2 codebases", type: "success", delay: 700 },
     { text: "", type: "muted", delay: 400 },
     { text: "$ fubbik context --for src/api/auth.ts", type: "command", delay: 600 },
-    { text: "Found 5 relevant chunks (2,400 tokens)", type: "success", delay: 700 },
+    { text: "Found 5 relevant chunks (2,400 tokens)", type: "success", delay: 700 }
 ];
 
 const LINE_COLORS: Record<string, string> = {
     command: "text-foreground",
     output: "text-muted-foreground",
     success: "text-emerald-400",
-    muted: "text-muted-foreground/50",
+    muted: "text-muted-foreground/50"
 };
 
 export function TerminalDemo() {
@@ -345,14 +362,17 @@ export function TerminalDemo() {
                 const charDelay = 25;
                 for (let c = 0; c <= text.length; c++) {
                     const charIndex = c;
-                    setTimeout(() => {
-                        setTypingIndex(lineIndex);
-                        setTyping(text.slice(0, charIndex));
-                        if (charIndex === text.length) {
-                            setVisibleLines(lineIndex + 1);
-                            setTyping("");
-                        }
-                    }, totalDelay + c * charDelay);
+                    setTimeout(
+                        () => {
+                            setTypingIndex(lineIndex);
+                            setTyping(text.slice(0, charIndex));
+                            if (charIndex === text.length) {
+                                setVisibleLines(lineIndex + 1);
+                                setTyping("");
+                            }
+                        },
+                        totalDelay + c * charDelay
+                    );
                 }
                 totalDelay += text.length * charDelay;
             } else {
@@ -426,6 +446,7 @@ git commit -m "feat(landing): add animated terminal demo component"
 ### Task 3: Install Tabs Component
 
 **Files:**
+
 - Create: `apps/web/src/features/landing/install-tabs.tsx`
 
 Tabbed component showing three install paths: Docker (coming soon), Local, npm (coming soon).
@@ -465,29 +486,21 @@ const TABS = [
             "cd fubbik",
             "pnpm install",
             "pnpm seed    # sample data",
-            "pnpm dev     # localhost:3001",
-        ],
+            "pnpm dev     # localhost:3001"
+        ]
     },
     {
         id: "docker",
         label: "Docker",
         badge: "soon",
-        lines: [
-            "git clone https://github.com/Pontusg45/fubbik.git",
-            "cd fubbik",
-            "docker compose up",
-        ],
+        lines: ["git clone https://github.com/Pontusg45/fubbik.git", "cd fubbik", "docker compose up"]
     },
     {
         id: "npm",
         label: "npm",
         badge: "soon",
-        lines: [
-            "npx create-fubbik my-knowledge-base",
-            "cd my-knowledge-base",
-            "pnpm dev",
-        ],
-    },
+        lines: ["npx create-fubbik my-knowledge-base", "cd my-knowledge-base", "pnpm dev"]
+    }
 ];
 
 export function InstallTabs() {
@@ -504,9 +517,7 @@ export function InstallTabs() {
                         key={t.id}
                         onClick={() => setActiveTab(t.id)}
                         className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 font-mono text-xs transition-colors ${
-                            activeTab === t.id
-                                ? "bg-background text-foreground shadow-sm"
-                                : "text-muted-foreground hover:text-foreground"
+                            activeTab === t.id ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
                         }`}
                     >
                         {t.label}
@@ -553,15 +564,18 @@ git commit -m "feat(landing): add install tabs component with copy support"
 ### Task 4: Landing Page Rewrite
 
 **Files:**
+
 - Modify: `apps/web/src/routes/index.tsx` (full rewrite)
 
 Replace the entire landing page with the new developer-tool aesthetic design.
 
 - [ ] **Step 1: Rewrite index.tsx**
 
-Rewrite `apps/web/src/routes/index.tsx` keeping the reusable utilities (`useInView`, `FadeInSection`, `AnimatedNumber`, `LiveStats`) but replacing the structure with:
+Rewrite `apps/web/src/routes/index.tsx` keeping the reusable utilities (`useInView`, `FadeInSection`, `AnimatedNumber`, `LiveStats`) but
+replacing the structure with:
 
-1. **Hero**: KnowledgeGraphCanvas background, bold tagline "Structured knowledge for your codebase", value prop line, two CTAs ("Get Started" scrolls to `#install`, "How it works" links to `/features`)
+1. **Hero**: KnowledgeGraphCanvas background, bold tagline "Structured knowledge for your codebase", value prop line, two CTAs ("Get
+   Started" scrolls to `#install`, "How it works" links to `/features`)
 2. **Stats bar**: Keep the existing `LiveStats` component
 3. **Terminal demo**: `TerminalDemo` component
 4. **Integration grid**: "Works where you work" — 6 cards (CLI, Web UI, VS Code, MCP Server, API, Semantic Search) in 3x2 grid
@@ -570,6 +584,7 @@ Rewrite `apps/web/src/routes/index.tsx` keeping the reusable utilities (`useInVi
 7. **Footer**: Minimal — logo, tech stack, GitHub link
 
 Key changes from current:
+
 - Replace `ConstellationCanvas` with `KnowledgeGraphCanvas`
 - Replace gradient text headline with clean bold text
 - Replace "Open Dashboard" primary CTA with "Get Started" (scroll to install)
@@ -584,9 +599,19 @@ Key changes from current:
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
-    ArrowRight, Bot, Check, Code2, Copy, Github,
-    Heart, Layers, LayoutDashboard, Network,
-    Search, Sparkles, Terminal
+    ArrowRight,
+    Bot,
+    Check,
+    Code2,
+    Copy,
+    Github,
+    Heart,
+    Layers,
+    LayoutDashboard,
+    Network,
+    Search,
+    Sparkles,
+    Terminal
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
@@ -697,7 +722,7 @@ const INTEGRATIONS = [
     { icon: Code2, label: "VS Code", desc: "File-aware chunk browsing and inline editing" },
     { icon: Bot, label: "MCP Server", desc: "AI agent integration with implementation tracking" },
     { icon: Network, label: "API", desc: "REST endpoints with Eden treaty type-safe client" },
-    { icon: Search, label: "Semantic Search", desc: "Ollama-powered vector search across codebases" },
+    { icon: Search, label: "Semantic Search", desc: "Ollama-powered vector search across codebases" }
 ];
 
 /* ─── Feature teasers data ─── */
@@ -706,7 +731,7 @@ const FEATURE_TEASERS = [
     { title: "Knowledge Graph", desc: "Visualize how your knowledge connects", anchor: "connections", icon: Network },
     { title: "Health Monitoring", desc: "Know when knowledge goes stale", anchor: "health", icon: Heart },
     { title: "AI-Native Context", desc: "Right knowledge at the right time", anchor: "context", icon: Sparkles },
-    { title: "Capture & Create", desc: "From quick notes to structured decisions", anchor: "chunks", icon: Layers },
+    { title: "Capture & Create", desc: "From quick notes to structured decisions", anchor: "chunks", icon: Layers }
 ];
 
 /* ─── Main ─── */
@@ -749,7 +774,11 @@ function LandingPage() {
                         <Button variant="outline" size="lg" render={<Link to="/features" />}>
                             How it works
                         </Button>
-                        <Button variant="outline" size="lg" render={<a href="https://github.com/Pontusg45/fubbik" target="_blank" rel="noopener noreferrer" />}>
+                        <Button
+                            variant="outline"
+                            size="lg"
+                            render={<a href="https://github.com/Pontusg45/fubbik" target="_blank" rel="noopener noreferrer" />}
+                        >
                             <Github className="size-4" />
                             GitHub
                         </Button>
@@ -778,10 +807,7 @@ function LandingPage() {
 
                         <div className="grid gap-3 sm:grid-cols-3">
                             {INTEGRATIONS.map(cap => (
-                                <div
-                                    key={cap.label}
-                                    className="bg-muted/20 hover:bg-muted/40 rounded-lg border p-4 transition-colors"
-                                >
+                                <div key={cap.label} className="bg-muted/20 hover:bg-muted/40 rounded-lg border p-4 transition-colors">
                                     <div className="mb-2 flex items-center gap-2">
                                         <cap.icon className="text-muted-foreground size-4" />
                                         <span className="text-foreground text-sm font-semibold">{cap.label}</span>
@@ -842,7 +868,12 @@ function LandingPage() {
                             <span>Drizzle</span>
                             <span>Effect</span>
                         </div>
-                        <a href="https://github.com/Pontusg45/fubbik" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors">
+                        <a
+                            href="https://github.com/Pontusg45/fubbik"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-muted-foreground hover:text-foreground transition-colors"
+                        >
                             <Github className="size-4" />
                         </a>
                     </div>
@@ -855,8 +886,8 @@ function LandingPage() {
 
 - [ ] **Step 2: Verify visually**
 
-Run: `pnpm dev`, navigate to `/`.
-Expected: Knowledge graph background, clean hero, terminal demo, integration grid, feature teasers, install tabs, footer.
+Run: `pnpm dev`, navigate to `/`. Expected: Knowledge graph background, clean hero, terminal demo, integration grid, feature teasers,
+install tabs, footer.
 
 - [ ] **Step 3: Commit**
 
@@ -870,6 +901,7 @@ git commit -m "feat(landing): redesign with developer-tool aesthetic and knowled
 ### Task 5: Features Page — Header and Model Diagram
 
 **Files:**
+
 - Create: `apps/web/src/routes/features.tsx`
 
 Create the features page with the header and mental model flow diagram. Subsequent tasks will add the concept sections.
@@ -880,8 +912,19 @@ Create the features page with the header and mental model flow diagram. Subseque
 // apps/web/src/routes/features.tsx
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
-    ArrowRight, Bot, Code2, GitFork, Heart, Layers, LayoutDashboard,
-    Link2, Network, Search, Sparkles, Terminal, Zap
+    ArrowRight,
+    Bot,
+    Code2,
+    GitFork,
+    Heart,
+    Layers,
+    LayoutDashboard,
+    Link2,
+    Network,
+    Search,
+    Sparkles,
+    Terminal,
+    Zap
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
@@ -985,27 +1028,36 @@ function FeaturesPage() {
                         <div className="mb-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground">The Model</div>
                         <h2 className="text-foreground mb-3 text-2xl font-bold tracking-tight">Atomic units of knowledge</h2>
                         <p className="text-muted-foreground mb-8 max-w-xl text-sm leading-relaxed">
-                            Each chunk is a self-contained piece of knowledge — a convention, architecture decision, runbook, or API reference.
-                            Unlike monolithic docs, chunks are typed, tagged, scoped to codebases, and linked to the files they describe.
+                            Each chunk is a self-contained piece of knowledge — a convention, architecture decision, runbook, or API
+                            reference. Unlike monolithic docs, chunks are typed, tagged, scoped to codebases, and linked to the files they
+                            describe.
                         </p>
 
                         {/* Example chunk card */}
                         <div className="mb-8 rounded-xl border bg-muted/10 p-5">
                             <div className="mb-3 flex items-center gap-2">
-                                <Badge variant="outline" size="sm">Convention</Badge>
+                                <Badge variant="outline" size="sm">
+                                    Convention
+                                </Badge>
                                 <span className="text-muted-foreground text-xs">packages/api/**</span>
                             </div>
                             <h3 className="text-foreground mb-1 text-base font-semibold">Always use Effect for typed errors</h3>
                             <div className="mb-3 flex gap-1.5">
-                                <Badge variant="secondary" size="sm">#backend</Badge>
-                                <Badge variant="secondary" size="sm">#error-handling</Badge>
+                                <Badge variant="secondary" size="sm">
+                                    #backend
+                                </Badge>
+                                <Badge variant="secondary" size="sm">
+                                    #error-handling
+                                </Badge>
                             </div>
                             <p className="text-muted-foreground mb-3 text-sm leading-relaxed">
-                                Use Effect.tryPromise with tagged error types (DatabaseError, NotFoundError, AuthError).
-                                The global error handler extracts the _tag and maps to HTTP status codes.
+                                Use Effect.tryPromise with tagged error types (DatabaseError, NotFoundError, AuthError). The global error
+                                handler extracts the _tag and maps to HTTP status codes.
                             </p>
                             <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                                <span>Health: <span className="text-emerald-400 font-semibold">82/100</span></span>
+                                <span>
+                                    Health: <span className="text-emerald-400 font-semibold">82/100</span>
+                                </span>
                                 <span>3 connections</span>
                                 <span>Updated 5 days ago</span>
                             </div>
@@ -1021,7 +1073,7 @@ function FeaturesPage() {
                                 "Decision context: rationale, alternatives, consequences",
                                 "Version history (append-only)",
                                 "Templates (built-in + custom)",
-                                "AI enrichment: summary, aliases, notAbout",
+                                "AI enrichment: summary, aliases, notAbout"
                             ].map(item => (
                                 <div key={item} className="text-muted-foreground flex items-start gap-2 py-1">
                                     <span className="mt-1.5 size-1 shrink-0 rounded-full bg-muted-foreground/50" />
@@ -1041,7 +1093,8 @@ function FeaturesPage() {
                         <h2 className="text-foreground mb-3 text-2xl font-bold tracking-tight">Typed relationships between knowledge</h2>
                         <p className="text-muted-foreground mb-8 max-w-xl text-sm leading-relaxed">
                             Connections are directed edges with semantic meaning. They're global — not codebase-scoped — enabling
-                            cross-project knowledge linking. A convention in your backend can reference a schema in your infrastructure repo.
+                            cross-project knowledge linking. A convention in your backend can reference a schema in your infrastructure
+                            repo.
                         </p>
 
                         {/* Mini graph example */}
@@ -1051,11 +1104,13 @@ function FeaturesPage() {
                                     { from: "Auth Middleware", rel: "depends_on", to: "Session Token Format" },
                                     { from: "Auth Middleware", rel: "part_of", to: "Authentication System" },
                                     { from: "JWT Tokens", rel: "contradicts", to: "Session Cookies" },
-                                    { from: "OAuth2 Flow", rel: "extends", to: "Auth Middleware" },
+                                    { from: "OAuth2 Flow", rel: "extends", to: "Auth Middleware" }
                                 ].map((edge, i) => (
                                     <div key={i} className="flex items-center gap-2">
                                         <span className="text-foreground font-medium min-w-0 truncate">{edge.from}</span>
-                                        <Badge variant="outline" size="sm" className="shrink-0 font-mono text-[10px]">{edge.rel}</Badge>
+                                        <Badge variant="outline" size="sm" className="shrink-0 font-mono text-[10px]">
+                                            {edge.rel}
+                                        </Badge>
                                         <ArrowRight className="size-3 shrink-0 text-muted-foreground" />
                                         <span className="text-foreground font-medium min-w-0 truncate">{edge.to}</span>
                                     </div>
@@ -1065,8 +1120,19 @@ function FeaturesPage() {
 
                         {/* Relation types */}
                         <div className="mb-6 flex flex-wrap gap-2">
-                            {["depends_on", "part_of", "extends", "references", "supports", "contradicts", "alternative_to", "related_to"].map(r => (
-                                <Badge key={r} variant="outline" size="sm" className="font-mono text-[10px]">{r}</Badge>
+                            {[
+                                "depends_on",
+                                "part_of",
+                                "extends",
+                                "references",
+                                "supports",
+                                "contradicts",
+                                "alternative_to",
+                                "related_to"
+                            ].map(r => (
+                                <Badge key={r} variant="outline" size="sm" className="font-mono text-[10px]">
+                                    {r}
+                                </Badge>
                             ))}
                         </div>
 
@@ -1078,7 +1144,7 @@ function FeaturesPage() {
                                 "Connection creation with relation picker",
                                 "Cross-codebase connections",
                                 "Graph visualization with focus mode",
-                                "Saveable filter presets",
+                                "Saveable filter presets"
                             ].map(item => (
                                 <div key={item} className="text-muted-foreground flex items-start gap-2 py-1">
                                     <span className="mt-1.5 size-1 shrink-0 rounded-full bg-muted-foreground/50" />
@@ -1105,7 +1171,9 @@ function FeaturesPage() {
                         <div className="mb-8 rounded-xl border bg-muted/10 p-5">
                             <div className="space-y-4">
                                 <div className="flex items-start gap-3">
-                                    <div className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded bg-muted/50 text-xs font-bold text-muted-foreground">1</div>
+                                    <div className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded bg-muted/50 text-xs font-bold text-muted-foreground">
+                                        1
+                                    </div>
                                     <div>
                                         <div className="text-foreground text-sm font-medium">File path</div>
                                         <code className="text-muted-foreground text-xs">src/api/auth.ts</code>
@@ -1113,18 +1181,26 @@ function FeaturesPage() {
                                 </div>
                                 <div className="ml-3 h-4 border-l border-dashed border-border/50" />
                                 <div className="flex items-start gap-3">
-                                    <div className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded bg-muted/50 text-xs font-bold text-muted-foreground">2</div>
+                                    <div className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded bg-muted/50 text-xs font-bold text-muted-foreground">
+                                        2
+                                    </div>
                                     <div>
                                         <div className="text-foreground text-sm font-medium">Match</div>
-                                        <div className="text-muted-foreground text-xs">File refs + glob patterns + dependency analysis → 5 relevant chunks</div>
+                                        <div className="text-muted-foreground text-xs">
+                                            File refs + glob patterns + dependency analysis → 5 relevant chunks
+                                        </div>
                                     </div>
                                 </div>
                                 <div className="ml-3 h-4 border-l border-dashed border-border/50" />
                                 <div className="flex items-start gap-3">
-                                    <div className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded bg-muted/50 text-xs font-bold text-muted-foreground">3</div>
+                                    <div className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded bg-muted/50 text-xs font-bold text-muted-foreground">
+                                        3
+                                    </div>
                                     <div>
                                         <div className="text-foreground text-sm font-medium">Deliver</div>
-                                        <div className="text-muted-foreground text-xs">Token-budgeted export → CLAUDE.md, MCP response, or CLI output</div>
+                                        <div className="text-muted-foreground text-xs">
+                                            Token-budgeted export → CLAUDE.md, MCP response, or CLI output
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -1139,7 +1215,7 @@ function FeaturesPage() {
                                 "Token-budgeted export with relevance scoring",
                                 "CLAUDE.md generation from tagged chunks",
                                 "MCP server with 15+ AI agent tools",
-                                "Context-for-file API endpoint",
+                                "Context-for-file API endpoint"
                             ].map(item => (
                                 <div key={item} className="text-muted-foreground flex items-start gap-2 py-1">
                                     <span className="mt-1.5 size-1 shrink-0 rounded-full bg-muted-foreground/50" />
@@ -1158,8 +1234,8 @@ function FeaturesPage() {
                         <div className="mb-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground">The Model</div>
                         <h2 className="text-foreground mb-3 text-2xl font-bold tracking-tight">Knowledge that maintains itself</h2>
                         <p className="text-muted-foreground mb-8 max-w-xl text-sm leading-relaxed">
-                            Knowledge rots silently. Fubbik detects staleness, flags duplicates, scores health, and surfaces what
-                            needs attention — before you discover outdated docs in production.
+                            Knowledge rots silently. Fubbik detects staleness, flags duplicates, scores health, and surfaces what needs
+                            attention — before you discover outdated docs in production.
                         </p>
 
                         {/* Health score breakdown */}
@@ -1170,12 +1246,14 @@ function FeaturesPage() {
                                     { label: "Freshness", score: 20, max: 25, desc: "Updated 12 days ago" },
                                     { label: "Completeness", score: 25, max: 25, desc: "Has rationale, alternatives, consequences" },
                                     { label: "Richness", score: 18, max: 25, desc: "Has summary, missing embedding" },
-                                    { label: "Connectivity", score: 25, max: 25, desc: "4 connections" },
+                                    { label: "Connectivity", score: 25, max: 25, desc: "4 connections" }
                                 ].map(item => (
                                     <div key={item.label}>
                                         <div className="mb-1 flex items-center justify-between text-xs">
                                             <span className="text-foreground font-medium">{item.label}</span>
-                                            <span className="text-muted-foreground">{item.score}/{item.max}</span>
+                                            <span className="text-muted-foreground">
+                                                {item.score}/{item.max}
+                                            </span>
                                         </div>
                                         <div className="h-1.5 rounded-full bg-muted/50">
                                             <div
@@ -1197,7 +1275,10 @@ function FeaturesPage() {
                         <div className="mb-8 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3">
                             <div className="flex items-start gap-2 text-sm">
                                 <Heart className="mt-0.5 size-4 shrink-0 text-amber-500" />
-                                <span className="text-foreground">Files linked to this chunk changed 3 days ago: <code className="text-muted-foreground">src/auth/middleware.ts</code></span>
+                                <span className="text-foreground">
+                                    Files linked to this chunk changed 3 days ago:{" "}
+                                    <code className="text-muted-foreground">src/auth/middleware.ts</code>
+                                </span>
                             </div>
                         </div>
 
@@ -1209,7 +1290,7 @@ function FeaturesPage() {
                                 "Dashboard Attention Needed widget",
                                 "Nav badge showing stale chunk count",
                                 "Chunk detail banners with dismiss/suppress",
-                                "Knowledge health page: orphans, stale, thin chunks",
+                                "Knowledge health page: orphans, stale, thin chunks"
                             ].map(item => (
                                 <div key={item} className="text-muted-foreground flex items-start gap-2 py-1">
                                     <span className="mt-1.5 size-1 shrink-0 rounded-full bg-muted-foreground/50" />
@@ -1233,25 +1314,53 @@ function FeaturesPage() {
                         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                             {[
                                 {
-                                    icon: LayoutDashboard, title: "Web UI",
-                                    items: ["Dashboard with stats, favorites, and attention widget", "Knowledge graph with focus mode and filter presets", "Chunk editor with templates, autosave, and duplicate detection", "Requirements with BDD steps and interactive plan checklists"]
+                                    icon: LayoutDashboard,
+                                    title: "Web UI",
+                                    items: [
+                                        "Dashboard with stats, favorites, and attention widget",
+                                        "Knowledge graph with focus mode and filter presets",
+                                        "Chunk editor with templates, autosave, and duplicate detection",
+                                        "Requirements with BDD steps and interactive plan checklists"
+                                    ]
                                 },
                                 {
-                                    icon: Terminal, title: "CLI",
-                                    items: ["fubbik quick for instant capture", "fubbik search / fubbik context for retrieval", "fubbik plan for implementation tracking", "fubbik sync-claude-md for AI context generation"]
+                                    icon: Terminal,
+                                    title: "CLI",
+                                    items: [
+                                        "fubbik quick for instant capture",
+                                        "fubbik search / fubbik context for retrieval",
+                                        "fubbik plan for implementation tracking",
+                                        "fubbik sync-claude-md for AI context generation"
+                                    ]
                                 },
                                 {
-                                    icon: Code2, title: "VS Code",
-                                    items: ["Sidebar with type/tag/sort filtering", "File-aware chunk surfacing in active editor", "Inline editing, quick-add, status bar"]
+                                    icon: Code2,
+                                    title: "VS Code",
+                                    items: [
+                                        "Sidebar with type/tag/sort filtering",
+                                        "File-aware chunk surfacing in active editor",
+                                        "Inline editing, quick-add, status bar"
+                                    ]
                                 },
                                 {
-                                    icon: Bot, title: "MCP Server",
-                                    items: ["15+ tools for AI agents", "Implementation sessions with review briefs", "Plan creation and step tracking", "Context retrieval and CLAUDE.md sync"]
+                                    icon: Bot,
+                                    title: "MCP Server",
+                                    items: [
+                                        "15+ tools for AI agents",
+                                        "Implementation sessions with review briefs",
+                                        "Plan creation and step tracking",
+                                        "Context retrieval and CLAUDE.md sync"
+                                    ]
                                 },
                                 {
-                                    icon: Network, title: "API",
-                                    items: ["REST endpoints with Swagger/OpenAPI docs", "Eden treaty for type-safe client", "Effect-based error handling with tagged types"]
-                                },
+                                    icon: Network,
+                                    title: "API",
+                                    items: [
+                                        "REST endpoints with Swagger/OpenAPI docs",
+                                        "Eden treaty for type-safe client",
+                                        "Effect-based error handling with tagged types"
+                                    ]
+                                }
                             ].map(surface => (
                                 <div key={surface.title} className="rounded-lg border bg-muted/10 p-5">
                                     <div className="mb-3 flex items-center gap-2">
@@ -1292,8 +1401,8 @@ function FeaturesPage() {
 
 - [ ] **Step 2: Verify visually**
 
-Run: `pnpm dev`, navigate to `/features`.
-Expected: Header, model diagram, 4 concept sections with examples and feature lists, surfaces grid, install CTA.
+Run: `pnpm dev`, navigate to `/features`. Expected: Header, model diagram, 4 concept sections with examples and feature lists, surfaces
+grid, install CTA.
 
 - [ ] **Step 3: Commit**
 
@@ -1307,14 +1416,18 @@ git commit -m "feat: add /features page with mental model, concept sections, and
 ### Task 6: Navigation Link and Final Polish
 
 **Files:**
+
 - Modify: `apps/web/src/routes/__root.tsx` (add Features nav link)
 
 - [ ] **Step 1: Add Features link to nav**
 
-In `apps/web/src/routes/__root.tsx`, find the nav links section and add a "Features" link. Look for where other links like "Dashboard", "Chunks", "Graph" are defined. Add after the existing links or in the appropriate position:
+In `apps/web/src/routes/__root.tsx`, find the nav links section and add a "Features" link. Look for where other links like "Dashboard",
+"Chunks", "Graph" are defined. Add after the existing links or in the appropriate position:
 
 ```tsx
-<Link to="/features" className="...same classes as other nav links...">Features</Link>
+<Link to="/features" className="...same classes as other nav links...">
+    Features
+</Link>
 ```
 
 Also add it to the mobile nav sheet if one exists.
@@ -1336,13 +1449,14 @@ git commit -m "feat(nav): add Features link to navigation"
 
 - [ ] **Step 1: Run type checks**
 
-Run: `pnpm run check-types --filter=web`
-Expected: No type errors.
+Run: `pnpm run check-types --filter=web` Expected: No type errors.
 
 - [ ] **Step 2: Visual smoke test**
 
-1. Landing page (`/`): Knowledge graph background animates, hero text is clean, terminal demo auto-plays, integration grid renders 6 cards, feature teasers link to `/features#section`, install tabs switch between Local/Docker/npm, footer shows
-2. Features page (`/features`): Model diagram shows 4 steps with arrows, each concept section has example + feature list, surfaces grid shows 5 cards, bottom CTA has install tabs
+1. Landing page (`/`): Knowledge graph background animates, hero text is clean, terminal demo auto-plays, integration grid renders 6 cards,
+   feature teasers link to `/features#section`, install tabs switch between Local/Docker/npm, footer shows
+2. Features page (`/features`): Model diagram shows 4 steps with arrows, each concept section has example + feature list, surfaces grid
+   shows 5 cards, bottom CTA has install tabs
 3. Mobile: Both pages are responsive, terminal demo scales, grids collapse
 4. Hash navigation: `/features#chunks`, `/features#connections`, `/features#context`, `/features#health` all scroll to correct sections
 

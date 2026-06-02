@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+
 import type { Chunk, FubbikApi } from "./api";
 import { getBaseHtml, getNonce } from "./webview-utils";
 
@@ -34,10 +35,10 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
         this.view = webviewView;
 
         webviewView.webview.options = {
-            enableScripts: true,
+            enableScripts: true
         };
 
-        webviewView.webview.onDidReceiveMessage(async (message) => {
+        webviewView.webview.onDidReceiveMessage(async message => {
             switch (message.type) {
                 case "openChunk": {
                     if (this.api) {
@@ -75,12 +76,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
         const body = this.buildBody();
         const script = this.buildScript();
 
-        this.view.webview.html = getBaseHtml(
-            this.view.webview,
-            nonce,
-            body,
-            script
-        );
+        this.view.webview.html = getBaseHtml(this.view.webview, nonce, body, script);
     }
 
     private buildBody(): string {
@@ -248,17 +244,9 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
 }
 
 function escapeHtml(text: string): string {
-    return text
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;");
+    return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
 function escapeAttr(text: string): string {
-    return text
-        .replace(/&/g, "&amp;")
-        .replace(/"/g, "&quot;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;");
+    return text.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }

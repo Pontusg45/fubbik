@@ -2,26 +2,29 @@
 
 ## Overview
 
-A structured requirements system for fubbik that enables writing verifiable Given/When/Then specifications. Requirements are a separate entity (not chunks) that can be linked to chunks, statically validated, cross-referenced against the codebase, and exported to multiple test formats (Gherkin, Vitest, markdown checklists).
+A structured requirements system for fubbik that enables writing verifiable Given/When/Then specifications. Requirements are a separate
+entity (not chunks) that can be linked to chunks, statically validated, cross-referenced against the codebase, and exported to multiple test
+formats (Gherkin, Vitest, markdown checklists).
 
-This is sub-project 1 of the requirements feature. Future sub-projects: CI integration for automated status updates, requirement coverage reporting.
+This is sub-project 1 of the requirements feature. Future sub-projects: CI integration for automated status updates, requirement coverage
+reporting.
 
 ## Data Model
 
 ### New `requirement` table
 
-| Column | Type | Notes |
-|--------|------|-------|
-| `id` | text (PK) | UUID as text |
-| `title` | text | Short description, e.g. "Authenticated user can view dashboard" |
-| `description` | text (nullable) | Longer context / acceptance criteria prose |
-| `steps` | jsonb | Structured Given/When/Then steps (see below) |
-| `status` | text | `untested`, `passing`, `failing` — default `untested` |
-| `priority` | text (nullable) | `must`, `should`, `could`, `wont` (MoSCoW) |
-| `codebaseId` | text (FK → codebase, nullable) | ON DELETE SET NULL |
-| `userId` | text (FK → user) | ON DELETE CASCADE |
-| `createdAt` | timestamp | |
-| `updatedAt` | timestamp | Auto-updated via Drizzle `$onUpdate(() => new Date())` |
+| Column        | Type                           | Notes                                                           |
+| ------------- | ------------------------------ | --------------------------------------------------------------- |
+| `id`          | text (PK)                      | UUID as text                                                    |
+| `title`       | text                           | Short description, e.g. "Authenticated user can view dashboard" |
+| `description` | text (nullable)                | Longer context / acceptance criteria prose                      |
+| `steps`       | jsonb                          | Structured Given/When/Then steps (see below)                    |
+| `status`      | text                           | `untested`, `passing`, `failing` — default `untested`           |
+| `priority`    | text (nullable)                | `must`, `should`, `could`, `wont` (MoSCoW)                      |
+| `codebaseId`  | text (FK → codebase, nullable) | ON DELETE SET NULL                                              |
+| `userId`      | text (FK → user)               | ON DELETE CASCADE                                               |
+| `createdAt`   | timestamp                      |                                                                 |
+| `updatedAt`   | timestamp                      | Auto-updated via Drizzle `$onUpdate(() => new Date())`          |
 
 **Indexes:** `userId`, `codebaseId`, `status`
 
@@ -29,16 +32,17 @@ This is sub-project 1 of the requirements feature. Future sub-projects: CI integ
 
 ### New `requirement_chunk` join table
 
-| Column | Type | Notes |
-|--------|------|-------|
+| Column          | Type                    | Notes             |
+| --------------- | ----------------------- | ----------------- |
 | `requirementId` | text (FK → requirement) | ON DELETE CASCADE |
-| `chunkId` | text (FK → chunk) | ON DELETE CASCADE |
+| `chunkId`       | text (FK → chunk)       | ON DELETE CASCADE |
 
 **Composite PK:** `(requirementId, chunkId)`
 
 Links requirements to related chunks (e.g., "this requirement documents behavior described in the 'Auth Flow' chunk").
 
-**Authorization:** The service layer must verify all supplied `chunkId` values belong to the authenticated user before inserting into the join table, to prevent cross-user data leaks.
+**Authorization:** The service layer must verify all supplied `chunkId` values belong to the authenticated user before inserting into the
+join table, to prevent cross-user data leaks.
 
 ### Steps JSONB structure
 
@@ -70,7 +74,8 @@ interface RequirementStep {
 4. `and`/`but` inherit the semantic role of the preceding non-and/but step
 5. `when` must come after all `given` steps (and their `and`/`but` continuations)
 6. `then` must come after all `when` steps (and their `and`/`but` continuations)
-7. Valid sequence: `given` block → `when` block → `then` block, where each block is one keyword step followed by zero or more `and`/`but` steps
+7. Valid sequence: `given` block → `when` block → `then` block, where each block is one keyword step followed by zero or more `and`/`but`
+   steps
 
 Validation returns specific error messages with step index, e.g.: `{ step: 0, error: "First step must be 'given'" }`.
 
@@ -80,15 +85,18 @@ When a requirement is saved, an optional validation pass checks step text agains
 
 ### What it checks
 
-- **File paths** — regex extracts paths like `src/auth/session.ts` from step text, checked via exact match against `chunk_file_ref.path`. Does NOT glob-match against `chunk_applies_to` patterns (too ambiguous).
+- **File paths** — regex extracts paths like `src/auth/session.ts` from step text, checked via exact match against `chunk_file_ref.path`.
+  Does NOT glob-match against `chunk_applies_to` patterns (too ambiguous).
 - **API endpoints** — regex extracts HTTP method + path patterns like `GET /api/chunks`, matched as prefix against known route patterns
 - **Chunk references** — quoted strings like `'Auth Flow'` matched case-insensitively against existing chunk titles
 
 ### How it works
 
-Simple regex extraction on each step's text. Matched against the database — not the filesystem. Fubbik checks what it knows about, not what's on disk.
+Simple regex extraction on each step's text. Matched against the database — not the filesystem. Fubbik checks what it knows about, not
+what's on disk.
 
-Returns **warnings, not errors** — a missing reference doesn't block saving. This keeps the system usable even when the knowledge base is incomplete.
+Returns **warnings, not errors** — a missing reference doesn't block saving. This keeps the system usable even when the knowledge base is
+incomplete.
 
 ### Response shape
 
@@ -152,31 +160,34 @@ describe("Authenticated user can view dashboard", () => {
 
 ### Export notes
 
-- Step `params` are interpolated into the text if present (e.g., `"a user with email {email}"` + `{ email: "test@example.com" }` → `"a user with email test@example.com"`)
+- Step `params` are interpolated into the text if present (e.g., `"a user with email {email}"` + `{ email: "test@example.com" }` →
+  `"a user with email test@example.com"`)
 - Gherkin uses proper indentation and keyword capitalization
-- Vitest generates a `describe` block per requirement with a single `it` containing all steps as comments and a `throw new Error("Not implemented")` placeholder
+- Vitest generates a `describe` block per requirement with a single `it` containing all steps as comments and a
+  `throw new Error("Not implemented")` placeholder
 - Markdown uses the requirement title as heading and steps as a checklist
 
 ## API
 
 ### New endpoints
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/requirements` | List (filter by `codebaseId`, `status`, `priority`) |
-| `POST` | `/requirements` | Create (validates steps, returns warnings) |
-| `GET` | `/requirements/:id` | Detail with linked chunks |
-| `PATCH` | `/requirements/:id` | Update (re-validates, returns warnings) |
-| `DELETE` | `/requirements/:id` | Delete |
-| `PATCH` | `/requirements/:id/status` | Update status only (`passing`/`failing`/`untested`) |
-| `PUT` | `/requirements/:id/chunks` | Set linked chunks (replace-all) |
-| `GET` | `/requirements/:id/export` | Export single (`?format=gherkin\|vitest\|markdown`) |
-| `GET` | `/requirements/export` | Bulk export (`?format=...&codebaseId=`) |
-| `GET` | `/requirements/stats` | Summary counts by status |
+| Method   | Path                       | Description                                         |
+| -------- | -------------------------- | --------------------------------------------------- |
+| `GET`    | `/requirements`            | List (filter by `codebaseId`, `status`, `priority`) |
+| `POST`   | `/requirements`            | Create (validates steps, returns warnings)          |
+| `GET`    | `/requirements/:id`        | Detail with linked chunks                           |
+| `PATCH`  | `/requirements/:id`        | Update (re-validates, returns warnings)             |
+| `DELETE` | `/requirements/:id`        | Delete                                              |
+| `PATCH`  | `/requirements/:id/status` | Update status only (`passing`/`failing`/`untested`) |
+| `PUT`    | `/requirements/:id/chunks` | Set linked chunks (replace-all)                     |
+| `GET`    | `/requirements/:id/export` | Export single (`?format=gherkin\|vitest\|markdown`) |
+| `GET`    | `/requirements/export`     | Bulk export (`?format=...&codebaseId=`)             |
+| `GET`    | `/requirements/stats`      | Summary counts by status                            |
 
 ### Route declaration order
 
 In `routes.ts`, declare in this exact order:
+
 1. `GET /requirements/stats`
 2. `GET /requirements/export`
 3. `GET /requirements` (list)
@@ -192,7 +203,9 @@ Static paths (`/stats`, `/export`) must come before `/:id` or Elysia will match 
 
 ### PATCH semantics
 
-PATCH fetches the existing record first (following the `updateChunk` pattern). Step validation only runs if `steps` is present in the body. Cross-reference warnings are only returned when `steps` is included. If only `title` or `description` is updated, no validation or cross-referencing occurs.
+PATCH fetches the existing record first (following the `updateChunk` pattern). Step validation only runs if `steps` is present in the body.
+Cross-reference warnings are only returned when `steps` is included. If only `title` or `description` is updated, no validation or
+cross-referencing occurs.
 
 ### Error handling
 
@@ -221,9 +234,11 @@ Follows Repository → Service → Route:
 ## CLI
 
 - `fubbik requirements list` — list requirements (`--status`, `--codebase`, `--priority`)
-- `fubbik requirements add <title> --step "given: ..." --step "when: ..." --step "then: ..."` — create via flags (non-interactive, consistent with existing CLI patterns). Steps use `keyword: text` format.
+- `fubbik requirements add <title> --step "given: ..." --step "when: ..." --step "then: ..."` — create via flags (non-interactive,
+  consistent with existing CLI patterns). Steps use `keyword: text` format.
 - `fubbik requirements status <id> passing|failing|untested` — update status
-- `fubbik requirements export --format gherkin|vitest|markdown` — export to stdout (all requirements for detected codebase, or `--codebase` override)
+- `fubbik requirements export --format gherkin|vitest|markdown` — export to stdout (all requirements for detected codebase, or `--codebase`
+  override)
 - `fubbik requirements verify` — re-run cross-reference checks, report warnings
 
 ## Web UI
@@ -242,12 +257,12 @@ Follows Repository → Service → Route:
 - Priority selector (must/should/could/won't)
 - Codebase selector
 - **Step builder:**
-  - Ordered list of steps
-  - Each step: keyword dropdown (given/when/then/and/but) + text input + optional params
-  - "Add step" button
-  - Drag to reorder
-  - Remove button per step
-  - Real-time validation — highlights invalid sequences
+    - Ordered list of steps
+    - Each step: keyword dropdown (given/when/then/and/but) + text input + optional params
+    - "Add step" button
+    - Drag to reorder
+    - Remove button per step
+    - Real-time validation — highlights invalid sequences
 - Linked chunks: multi-select search
 - On save: shows cross-reference warnings if any
 

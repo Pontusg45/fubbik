@@ -1,14 +1,9 @@
+import { findSimilarByEmbedding } from "@fubbik/db/repository";
 import { Effect } from "effect";
 
 import { generateDocumentEmbedding, isOllamaAvailable } from "../ollama/client";
-import { findSimilarByEmbedding } from "@fubbik/db/repository";
 
-export function checkSimilar(params: {
-    title: string;
-    content: string;
-    userId: string;
-    excludeId?: string;
-}) {
+export function checkSimilar(params: { title: string; content: string; userId: string; excludeId?: string }) {
     return Effect.gen(function* () {
         const available = yield* isOllamaAvailable();
         if (!available) return [];
@@ -18,7 +13,7 @@ export function checkSimilar(params: {
             userId: params.userId,
             excludeId: params.excludeId,
             threshold: 0.75,
-            limit: 3,
+            limit: 3
         });
     });
 }

@@ -5,52 +5,63 @@ import { ensureVertex, createEdge, deleteEdge } from "../age/sync";
 import { db, dbEffect } from "../index";
 import { chunkConnection } from "../schema/chunk";
 
-export function createConnection(params: { id: string; sourceId: string; targetId: string; relation: string; origin?: string; reviewStatus?: string }) {
+export function createConnection(params: {
+    id: string;
+    sourceId: string;
+    targetId: string;
+    relation: string;
+    origin?: string;
+    reviewStatus?: string;
+}) {
     return dbEffect(async () => {
-            const [created] = await db.insert(chunkConnection).values(params).returning();
-            await Effect.runPromise(
-                ensureVertex("chunk", params.sourceId).pipe(
-                    Effect.flatMap(() => ensureVertex("chunk", params.targetId)),
-                    Effect.flatMap(() => createEdge("connects", "chunk", params.sourceId, "chunk", params.targetId, { id: params.id, relation: params.relation })),
-                    Effect.catchAll(() => Effect.succeed(undefined))
-                )
-            );
-            return created;
-        });
+        const [created] = await db.insert(chunkConnection).values(params).returning();
+        await Effect.runPromise(
+            ensureVertex("chunk", params.sourceId).pipe(
+                Effect.flatMap(() => ensureVertex("chunk", params.targetId)),
+                Effect.flatMap(() =>
+                    createEdge("connects", "chunk", params.sourceId, "chunk", params.targetId, { id: params.id, relation: params.relation })
+                ),
+                Effect.catchAll(() => Effect.succeed(undefined))
+            )
+        );
+        return created;
+    });
 }
 
 export function getConnectionsForChunks(chunkIds: string[]) {
     return dbEffect(() =>
-            db
-                .select()
-                .from(chunkConnection)
-                .where(
-                    or(inArray(chunkConnection.sourceId, chunkIds), inArray(chunkConnection.targetId, chunkIds))
-                ));
+        db
+            .select()
+            .from(chunkConnection)
+            .where(or(inArray(chunkConnection.sourceId, chunkIds), inArray(chunkConnection.targetId, chunkIds)))
+    );
 }
 
 export function deleteConnection(connectionId: string) {
     return dbEffect(async () => {
-            const [deleted] = await db.delete(chunkConnection).where(eq(chunkConnection.id, connectionId)).returning();
-            if (deleted) {
-                await Effect.runPromise(
-                    deleteEdge("connects", { id: connectionId }).pipe(
-                        Effect.catchAll(() => Effect.succeed(undefined))
-                    )
-                );
-            }
-            return deleted ?? null;
-        });
+        const [deleted] = await db.delete(chunkConnection).where(eq(chunkConnection.id, connectionId)).returning();
+        if (deleted) {
+            await Effect.runPromise(deleteEdge("connects", { id: connectionId }).pipe(Effect.catchAll(() => Effect.succeed(undefined))));
+        }
+        return deleted ?? null;
+    });
 }
 
 export function getConnectionById(connectionId: string) {
     return dbEffect(async () => {
-            const [found] = await db.select().from(chunkConnection).where(eq(chunkConnection.id, connectionId));
-            return found ?? null;
-        });
+        const [found] = await db.select().from(chunkConnection).where(eq(chunkConnection.id, connectionId));
+        return found ?? null;
+    });
 }
 
-export function createConnectionIfNotExists(params: { id: string; sourceId: string; targetId: string; relation: string; origin?: string; reviewStatus?: string }) {
+export function createConnectionIfNotExists(params: {
+    id: string;
+    sourceId: string;
+    targetId: string;
+    relation: string;
+    origin?: string;
+    reviewStatus?: string;
+}) {
     return dbEffect(async () => {
         const [created] = await db
             .insert(chunkConnection)
@@ -61,7 +72,12 @@ export function createConnectionIfNotExists(params: { id: string; sourceId: stri
             await Effect.runPromise(
                 ensureVertex("chunk", params.sourceId).pipe(
                     Effect.flatMap(() => ensureVertex("chunk", params.targetId)),
-                    Effect.flatMap(() => createEdge("connects", "chunk", params.sourceId, "chunk", params.targetId, { id: params.id, relation: params.relation })),
+                    Effect.flatMap(() =>
+                        createEdge("connects", "chunk", params.sourceId, "chunk", params.targetId, {
+                            id: params.id,
+                            relation: params.relation
+                        })
+                    ),
                     Effect.catchAll(() => Effect.succeed(undefined))
                 )
             );
@@ -77,12 +93,7 @@ export function incrementConnectionWeights(chunkIds: string[]) {
         const result = await db
             .update(chunkConnection)
             .set({ weight: sql`${chunkConnection.weight} + 1` })
-            .where(
-                and(
-                    inArray(chunkConnection.sourceId, chunkIds),
-                    inArray(chunkConnection.targetId, chunkIds)
-                )
-            );
+            .where(and(inArray(chunkConnection.sourceId, chunkIds), inArray(chunkConnection.targetId, chunkIds)));
         return result.rowCount ?? 0;
     });
 }

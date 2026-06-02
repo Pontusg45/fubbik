@@ -108,7 +108,7 @@ export const contextForCommand = new Command("for")
                 const params = new URLSearchParams({
                     paths: filePath,
                     maxTokens: "8000",
-                    format: isJson(cmd) ? "structured-json" : "structured-md",
+                    format: isJson(cmd) ? "structured-json" : "structured-md"
                 });
                 if (spaceName) params.set("spaceId", spaceName);
 

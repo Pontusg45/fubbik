@@ -1,10 +1,14 @@
 # AI Context Improvements Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to
+> implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add 8 context retrieval improvements for AI agents: plan-scoped, concept-based, multi-file, diff-aware context; structured output with metadata; plan-aware and task-scoped MCP tools; context snapshots.
+**Goal:** Add 8 context retrieval improvements for AI agents: plan-scoped, concept-based, multi-file, diff-aware context; structured output
+with metadata; plan-aware and task-scoped MCP tools; context snapshots.
 
-**Architecture:** Extract shared scoring/budgeting/formatting utils from the existing `context-export` service. Each new feature adds a resolver function (plan, concept, multi-file) that feeds into the shared pipeline. New `context/` module under the API holds resolvers, formatter, and routes. Snapshots get their own table + CRUD. MCP tools and CLI commands wrap the API endpoints.
+**Architecture:** Extract shared scoring/budgeting/formatting utils from the existing `context-export` service. Each new feature adds a
+resolver function (plan, concept, multi-file) that feeds into the shared pipeline. New `context/` module under the API holds resolvers,
+formatter, and routes. Snapshots get their own table + CRUD. MCP tools and CLI commands wrap the API endpoints.
 
 **Tech Stack:** Drizzle ORM (PostgreSQL), Elysia + Effect, Model Context Protocol SDK, Commander.js, Vitest
 
@@ -16,48 +20,51 @@
 
 ### Created
 
-| Path | Responsibility |
-|---|---|
-| `packages/api/src/context/utils.ts` | Shared `scoreChunk`, `estimateTokens`, `budgetChunks` extracted from context-export |
-| `packages/api/src/context/formatter.ts` | Structured section formatter with health/stale/proposal metadata |
-| `packages/api/src/context/resolvers.ts` | Resolver functions: `resolveForPlan`, `resolveForConcept`, `resolveForFiles` |
-| `packages/api/src/context/routes.ts` | New endpoints: `/api/context/for-plan`, `/api/context/about`, `/api/context/for-files` |
-| `packages/db/src/schema/context-snapshot.ts` | Snapshot table schema |
-| `packages/db/src/repository/context-snapshot.ts` | Snapshot CRUD |
-| `packages/api/src/context/snapshot-service.ts` | Snapshot create/get/list/delete |
-| `packages/api/src/context/snapshot-routes.ts` | Snapshot API endpoints |
-| `apps/cli/src/commands/context-for-plan.ts` | CLI: `context for-plan <planId>` |
-| `apps/cli/src/commands/context-about.ts` | CLI: `context about "<concept>"` |
-| `apps/cli/src/commands/context-for-diff.ts` | CLI: `context for-diff [--staged]` |
-| `apps/cli/src/commands/context-snapshot.ts` | CLI: `context snapshot [create|get|list|delete]` |
+| Path                                             | Responsibility                                                                         |
+| ------------------------------------------------ | -------------------------------------------------------------------------------------- | --- | ---- | -------- |
+| `packages/api/src/context/utils.ts`              | Shared `scoreChunk`, `estimateTokens`, `budgetChunks` extracted from context-export    |
+| `packages/api/src/context/formatter.ts`          | Structured section formatter with health/stale/proposal metadata                       |
+| `packages/api/src/context/resolvers.ts`          | Resolver functions: `resolveForPlan`, `resolveForConcept`, `resolveForFiles`           |
+| `packages/api/src/context/routes.ts`             | New endpoints: `/api/context/for-plan`, `/api/context/about`, `/api/context/for-files` |
+| `packages/db/src/schema/context-snapshot.ts`     | Snapshot table schema                                                                  |
+| `packages/db/src/repository/context-snapshot.ts` | Snapshot CRUD                                                                          |
+| `packages/api/src/context/snapshot-service.ts`   | Snapshot create/get/list/delete                                                        |
+| `packages/api/src/context/snapshot-routes.ts`    | Snapshot API endpoints                                                                 |
+| `apps/cli/src/commands/context-for-plan.ts`      | CLI: `context for-plan <planId>`                                                       |
+| `apps/cli/src/commands/context-about.ts`         | CLI: `context about "<concept>"`                                                       |
+| `apps/cli/src/commands/context-for-diff.ts`      | CLI: `context for-diff [--staged]`                                                     |
+| `apps/cli/src/commands/context-snapshot.ts`      | CLI: `context snapshot [create                                                         | get | list | delete]` |
 
 ### Modified
 
-| Path | Change |
-|---|---|
-| `packages/api/src/context-export/service.ts` | Extract `scoreChunk`, `estimateTokens` into shared utils (keep re-exports for compat) |
-| `packages/api/src/context-for-file/service.ts` | Export resolver for reuse |
-| `packages/api/src/index.ts` | Mount new context routes + snapshot routes |
-| `packages/mcp/src/context-tools.ts` | Add `get_context`, `get_context_for_task`, `create_context_snapshot`, `get_context_snapshot` tools |
-| `packages/db/src/schema/index.ts` | Add snapshot export |
-| `packages/db/src/repository/index.ts` | Add snapshot export |
-| `apps/cli/src/commands/context-group.ts` | Add new subcommands |
-| `apps/cli/src/commands/context-for.ts` | Extend for glob patterns |
+| Path                                           | Change                                                                                             |
+| ---------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `packages/api/src/context-export/service.ts`   | Extract `scoreChunk`, `estimateTokens` into shared utils (keep re-exports for compat)              |
+| `packages/api/src/context-for-file/service.ts` | Export resolver for reuse                                                                          |
+| `packages/api/src/index.ts`                    | Mount new context routes + snapshot routes                                                         |
+| `packages/mcp/src/context-tools.ts`            | Add `get_context`, `get_context_for_task`, `create_context_snapshot`, `get_context_snapshot` tools |
+| `packages/db/src/schema/index.ts`              | Add snapshot export                                                                                |
+| `packages/db/src/repository/index.ts`          | Add snapshot export                                                                                |
+| `apps/cli/src/commands/context-group.ts`       | Add new subcommands                                                                                |
+| `apps/cli/src/commands/context-for.ts`         | Extend for glob patterns                                                                           |
 
 ---
 
 ### Task 1: Extract Shared Utils + Create Structured Formatter
 
 **Files:**
+
 - Create: `packages/api/src/context/utils.ts`
 - Create: `packages/api/src/context/formatter.ts`
 - Modify: `packages/api/src/context-export/service.ts`
 
-**Context:** The existing `context-export/service.ts` has `scoreChunk()`, `estimateTokens()`, and a greedy budgeting loop. These need to be shared by all new resolvers. The structured formatter groups chunks by type and adds metadata.
+**Context:** The existing `context-export/service.ts` has `scoreChunk()`, `estimateTokens()`, and a greedy budgeting loop. These need to be
+shared by all new resolvers. The structured formatter groups chunks by type and adds metadata.
 
 - [ ] **Step 1: Read the existing context-export service**
 
 Read `packages/api/src/context-export/service.ts` fully. Identify:
+
 - `scoreChunk(c, connectionCount)` function
 - `estimateTokens(text)` function
 - The greedy budgeting loop in `exportContext()`
@@ -98,15 +105,18 @@ export function estimateTokens(text: string): number {
  * Score a chunk for context relevance.
  * Higher score = more likely to be included in the budget.
  */
-export function scoreChunk(chunk: {
-    content: string;
-    type: string;
-    rationale: string | null;
-    summary: string | null;
-    alternatives: unknown;
-    consequences: string | null;
-    reviewStatus?: string;
-}, connectionCount: number): number {
+export function scoreChunk(
+    chunk: {
+        content: string;
+        type: string;
+        rationale: string | null;
+        summary: string | null;
+        alternatives: unknown;
+        consequences: string | null;
+        reviewStatus?: string;
+    },
+    connectionCount: number
+): number {
     // Health approximation: content length / freshness
     const contentScore = Math.min(chunk.content.length / 200, 10);
 
@@ -130,10 +140,7 @@ export function scoreChunk(chunk: {
  * Greedy token-budgeted selection from a scored chunk list.
  * Returns chunks sorted by score that fit within the token budget.
  */
-export function budgetChunks(
-    chunks: ScoredChunk[],
-    maxTokens: number,
-): ScoredChunk[] {
+export function budgetChunks(chunks: ScoredChunk[], maxTokens: number): ScoredChunk[] {
     const sorted = [...chunks].sort((a, b) => b.score - a.score);
     const selected: ScoredChunk[] = [];
     let usedTokens = 0;
@@ -160,7 +167,8 @@ export function formatChunkText(chunk: ScoredChunk): string {
 }
 ```
 
-**Adapt:** The exact fields on the chunk type depend on what `context-export/service.ts` uses. Read it and match the type. If it uses `computeHealthScore()` from the chunks service, import that instead of the approximation above.
+**Adapt:** The exact fields on the chunk type depend on what `context-export/service.ts` uses. Read it and match the type. If it uses
+`computeHealthScore()` from the chunks service, import that instead of the approximation above.
 
 - [ ] **Step 3: Create `packages/api/src/context/formatter.ts`**
 
@@ -180,7 +188,7 @@ const TYPE_SECTIONS: Record<string, string> = {
     document: "Architecture",
     reference: "API Reference",
     schema: "Schemas",
-    checklist: "Checklists",
+    checklist: "Checklists"
 };
 
 export interface ChunkWithMetadata extends ScoredChunk {
@@ -243,8 +251,8 @@ export function formatStructured(chunks: ChunkWithMetadata[]): StructuredContext
     return {
         sections,
         knownIssues,
-        totalTokens: chunks.reduce((sum, c) => sum + (c.content.length / 4), 0),
-        chunkCount: chunks.length,
+        totalTokens: chunks.reduce((sum, c) => sum + c.content.length / 4, 0),
+        chunkCount: chunks.length
     };
 }
 
@@ -282,17 +290,20 @@ export function formatStructuredMarkdown(ctx: StructuredContext): string {
 - [ ] **Step 4: Update `context-export/service.ts` to import from shared utils**
 
 In `packages/api/src/context-export/service.ts`:
+
 - Keep the existing `scoreChunk` and `estimateTokens` functions for now (avoid breaking the existing endpoint)
 - Add a comment: `// TODO: Migrate to use packages/api/src/context/utils.ts`
 - This avoids a risky refactor of the working endpoint. New code uses the shared utils; old code keeps working.
 
-Alternatively, if you're confident: replace `scoreChunk` and `estimateTokens` with re-exports from `../context/utils`. This is cleaner but riskier.
+Alternatively, if you're confident: replace `scoreChunk` and `estimateTokens` with re-exports from `../context/utils`. This is cleaner but
+riskier.
 
 - [ ] **Step 5: Type check**
 
 Run: `pnpm --filter @fubbik/api run check-types 2>&1 | grep -E "context/" | head -20`
 
-Expected: zero errors in the new files. If `getProposalCountForChunk` is not a per-chunk function (it's currently a global pending count), remove that import and compute it differently in the resolver step (batch query).
+Expected: zero errors in the new files. If `getProposalCountForChunk` is not a per-chunk function (it's currently a global pending count),
+remove that import and compute it differently in the resolver step (batch query).
 
 - [ ] **Step 6: Commit**
 
@@ -308,6 +319,7 @@ Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>"
 ### Task 2: Plan-Scoped Resolver + Route
 
 **Files:**
+
 - Create: `packages/api/src/context/resolvers.ts`
 - Create: `packages/api/src/context/routes.ts`
 - Modify: `packages/api/src/index.ts`
@@ -315,14 +327,18 @@ Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>"
 - [ ] **Step 1: Read plan repository to confirm function signatures**
 
 Read `packages/db/src/repository/plan.ts` to confirm:
+
 - `listAnalyzeItems(planId)` — returns items where you filter `kind=chunk` to get chunkIds
 - `listPlanRequirements(planId)` — returns `{ requirementId }`
 - `listTasks(planId)` → then for each task, `listTaskChunks(taskId)` — returns `{ chunkId }`
 
 Read `packages/db/src/repository/requirement.ts` to confirm:
-- `getRequirementsForChunks(chunkIds)` — but we need the reverse: chunks for a requirement. Search for a function like `getChunksForRequirement(requirementId)` or `getRequirementChunks`. If it doesn't exist, query `requirement_chunk` table directly.
+
+- `getRequirementsForChunks(chunkIds)` — but we need the reverse: chunks for a requirement. Search for a function like
+  `getChunksForRequirement(requirementId)` or `getRequirementChunks`. If it doesn't exist, query `requirement_chunk` table directly.
 
 Read `packages/db/src/repository/chunk.ts` to confirm:
+
 - How to fetch chunks by ID list (is there a `getChunksByIds(ids)` function, or do you need to build a query with `inArray`?)
 
 - [ ] **Step 2: Create `packages/api/src/context/resolvers.ts`**
@@ -359,19 +375,18 @@ export function enrichChunks(chunkIds: string[]): Effect.Effect<ChunkWithMetadat
             const staleFlags = await db
                 .select({ chunkId: chunkStaleness.chunkId })
                 .from(chunkStaleness)
-                .where(and(
-                    inArray(chunkStaleness.chunkId, uniqueIds),
-                    eq(chunkStaleness.dismissedAt as any, null), // undismissed only
-                ));
+                .where(
+                    and(
+                        inArray(chunkStaleness.chunkId, uniqueIds),
+                        eq(chunkStaleness.dismissedAt as any, null) // undismissed only
+                    )
+                );
             const staleSet = new Set(staleFlags.map(f => f.chunkId));
 
             const proposals = await db
                 .select({ chunkId: chunkProposal.chunkId })
                 .from(chunkProposal)
-                .where(and(
-                    inArray(chunkProposal.chunkId, uniqueIds),
-                    eq(chunkProposal.status, "pending"),
-                ));
+                .where(and(inArray(chunkProposal.chunkId, uniqueIds), eq(chunkProposal.status, "pending")));
             const proposalSet = new Set(proposals.map(p => p.chunkId));
 
             return chunks.map(c => ({
@@ -387,10 +402,10 @@ export function enrichChunks(chunkIds: string[]): Effect.Effect<ChunkWithMetadat
                 health: 0, // computed below
                 stale: staleSet.has(c.id),
                 pendingProposal: proposalSet.has(c.id),
-                tags: [], // filled below if needed
+                tags: [] // filled below if needed
             }));
         },
-        catch: e => new DatabaseError({ cause: e }),
+        catch: e => new DatabaseError({ cause: e })
     });
 }
 
@@ -428,18 +443,14 @@ export function resolveForPlan(planId: string): Effect.Effect<string[], Database
 
             return [...ids];
         },
-        catch: e => new DatabaseError({ cause: e }),
+        catch: e => new DatabaseError({ cause: e })
     });
 }
 
 /**
  * Resolve chunks for a concept: semantic search + tag match + text match.
  */
-export function resolveForConcept(
-    query: string,
-    userId?: string,
-    codebaseId?: string,
-): Effect.Effect<string[], DatabaseError> {
+export function resolveForConcept(query: string, userId?: string, codebaseId?: string): Effect.Effect<string[], DatabaseError> {
     return Effect.tryPromise({
         try: async () => {
             const ids = new Set<string>();
@@ -450,9 +461,7 @@ export function resolveForConcept(
                 const { semanticSearch: semanticSearchRepo } = await import("@fubbik/db/repository/semantic");
                 const embedding = await generateQueryEmbedding(query);
                 if (embedding) {
-                    const results = await Effect.runPromise(
-                        semanticSearchRepo({ embedding, userId, limit: 20 }),
-                    );
+                    const results = await Effect.runPromise(semanticSearchRepo({ embedding, userId, limit: 20 }));
                     for (const r of results) ids.add(r.id);
                 }
             } catch {
@@ -466,15 +475,14 @@ export function resolveForConcept(
                 .where(
                     // Use SQL template for pg_trgm similarity
                     // This is a simplified version — adapt to match the existing search pattern
-                    inArray(chunk.id, db.select({ id: chunk.id }).from(chunk)
-                        .where(eq(chunk.title, query))), // placeholder — see adaptation note
+                    inArray(chunk.id, db.select({ id: chunk.id }).from(chunk).where(eq(chunk.title, query))) // placeholder — see adaptation note
                 )
                 .limit(20);
             for (const r of textResults) ids.add(r.id);
 
             return [...ids];
         },
-        catch: e => new DatabaseError({ cause: e }),
+        catch: e => new DatabaseError({ cause: e })
     });
 }
 
@@ -482,11 +490,7 @@ export function resolveForConcept(
  * Resolve chunks for multiple file paths.
  * Calls the existing getContextForFile resolver for each path, deduplicates.
  */
-export function resolveForFiles(
-    paths: string[],
-    userId: string,
-    codebaseId?: string,
-): Effect.Effect<string[], DatabaseError> {
+export function resolveForFiles(paths: string[], userId: string, codebaseId?: string): Effect.Effect<string[], DatabaseError> {
     return Effect.tryPromise({
         try: async () => {
             const { getContextForFile } = await import("../../context-for-file/service");
@@ -494,9 +498,7 @@ export function resolveForFiles(
 
             for (const path of paths) {
                 try {
-                    const result = await Effect.runPromise(
-                        getContextForFile(userId, path, codebaseId),
-                    );
+                    const result = await Effect.runPromise(getContextForFile(userId, path, codebaseId));
                     for (const c of result.chunks) ids.add(c.id);
                 } catch {
                     // Skip paths that error
@@ -505,15 +507,18 @@ export function resolveForFiles(
 
             return [...ids];
         },
-        catch: e => new DatabaseError({ cause: e }),
+        catch: e => new DatabaseError({ cause: e })
     });
 }
 ```
 
 **IMPORTANT adaptation notes:**
-- The `requirementChunk` table/schema import path needs to be verified. Search: `grep -rn "requirementChunk\|requirement_chunk" packages/db/src/schema/ | head`. It might be in `requirement.ts` or a separate file.
+
+- The `requirementChunk` table/schema import path needs to be verified. Search:
+  `grep -rn "requirementChunk\|requirement_chunk" packages/db/src/schema/ | head`. It might be in `requirement.ts` or a separate file.
 - The `chunkStaleness` import needs the same check: `grep -rn "chunkStaleness\|chunk_staleness" packages/db/src/schema/ | head`.
-- The text search in `resolveForConcept` is a placeholder. Read how the existing search service does `pg_trgm` queries and replicate that pattern. If there's a `searchChunks(query)` repo function, use it instead.
+- The text search in `resolveForConcept` is a placeholder. Read how the existing search service does `pg_trgm` queries and replicate that
+  pattern. If there's a `searchChunks(query)` repo function, use it instead.
 - The `semanticSearch` repo function signature needs verification — check imports.
 - The `db` import path is `@fubbik/db` or `@fubbik/db/index` — verify.
 
@@ -528,12 +533,7 @@ import { enrichChunks, resolveForPlan, resolveForConcept, resolveForFiles } from
 import { formatStructured, formatStructuredMarkdown, type ChunkWithMetadata } from "./formatter";
 import { budgetChunks, scoreChunk } from "./utils";
 
-async function buildContext(
-    chunkIds: string[],
-    maxTokens: number,
-    format: string,
-    boosts?: Map<string, number>,
-) {
+async function buildContext(chunkIds: string[], maxTokens: number, format: string, boosts?: Map<string, number>) {
     const enriched = await Effect.runPromise(enrichChunks(chunkIds));
 
     // Score each chunk
@@ -559,11 +559,7 @@ export const contextRoutes = new Elysia()
             const maxTokens = Number(ctx.query.maxTokens ?? 8000);
             const format = ctx.query.format ?? "structured-md";
 
-            const chunkIds = await Effect.runPromise(
-                requireSession(ctx).pipe(
-                    Effect.flatMap(() => resolveForPlan(planId)),
-                ),
-            );
+            const chunkIds = await Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(() => resolveForPlan(planId))));
             return buildContext(chunkIds, maxTokens, format);
         },
         {
@@ -571,9 +567,9 @@ export const contextRoutes = new Elysia()
                 planId: t.String(),
                 maxTokens: t.Optional(t.String()),
                 format: t.Optional(t.String()),
-                codebaseId: t.Optional(t.String()),
-            }),
-        },
+                codebaseId: t.Optional(t.String())
+            })
+        }
     )
     .get(
         "/api/context/about",
@@ -582,11 +578,7 @@ export const contextRoutes = new Elysia()
             const format = ctx.query.format ?? "structured-md";
 
             const result = await Effect.runPromise(
-                requireSession(ctx).pipe(
-                    Effect.flatMap(session =>
-                        resolveForConcept(ctx.query.q, session.user.id, ctx.query.codebaseId),
-                    ),
-                ),
+                requireSession(ctx).pipe(Effect.flatMap(session => resolveForConcept(ctx.query.q, session.user.id, ctx.query.codebaseId)))
             );
 
             // Semantic matches get a boost
@@ -600,23 +592,22 @@ export const contextRoutes = new Elysia()
                 q: t.String(),
                 maxTokens: t.Optional(t.String()),
                 format: t.Optional(t.String()),
-                codebaseId: t.Optional(t.String()),
-            }),
-        },
+                codebaseId: t.Optional(t.String())
+            })
+        }
     )
     .get(
         "/api/context/for-files",
         async ctx => {
-            const paths = ctx.query.paths.split(",").map(p => p.trim()).filter(Boolean);
+            const paths = ctx.query.paths
+                .split(",")
+                .map(p => p.trim())
+                .filter(Boolean);
             const maxTokens = Number(ctx.query.maxTokens ?? 8000);
             const format = ctx.query.format ?? "structured-md";
 
             const chunkIds = await Effect.runPromise(
-                requireSession(ctx).pipe(
-                    Effect.flatMap(session =>
-                        resolveForFiles(paths, session.user.id, ctx.query.codebaseId),
-                    ),
-                ),
+                requireSession(ctx).pipe(Effect.flatMap(session => resolveForFiles(paths, session.user.id, ctx.query.codebaseId)))
             );
             return buildContext(chunkIds, maxTokens, format);
         },
@@ -625,15 +616,16 @@ export const contextRoutes = new Elysia()
                 paths: t.String(),
                 maxTokens: t.Optional(t.String()),
                 format: t.Optional(t.String()),
-                codebaseId: t.Optional(t.String()),
-            }),
-        },
+                codebaseId: t.Optional(t.String())
+            })
+        }
     );
 ```
 
 - [ ] **Step 4: Mount routes in `packages/api/src/index.ts`**
 
 Add import:
+
 ```typescript
 import { contextRoutes } from "./context/routes";
 ```
@@ -660,6 +652,7 @@ Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>"
 ### Task 3: MCP Context Tools
 
 **Files:**
+
 - Modify: `packages/mcp/src/context-tools.ts`
 
 - [ ] **Step 1: Read the current context-tools.ts**
@@ -679,7 +672,7 @@ server.tool(
         filePath: z.string().optional().describe("Scope to a file path"),
         concept: z.string().optional().describe("Scope to a concept via semantic search"),
         maxTokens: z.number().optional().describe("Token budget (default 8000)"),
-        codebaseId: z.string().optional(),
+        codebaseId: z.string().optional()
     },
     async ({ planId, filePath, concept, maxTokens, codebaseId }) => {
         let endpoint: string;
@@ -702,9 +695,9 @@ server.tool(
         }
 
         const result = await apiFetch(endpoint);
-        const text = typeof result === "string" ? result : (result as any).content ?? JSON.stringify(result, null, 2);
+        const text = typeof result === "string" ? result : ((result as any).content ?? JSON.stringify(result, null, 2));
         return { content: [{ type: "text" as const, text }] };
-    },
+    }
 );
 
 server.tool(
@@ -713,7 +706,7 @@ server.tool(
     {
         planId: z.string(),
         taskId: z.string(),
-        maxTokens: z.number().optional().describe("Token budget (default 4000)"),
+        maxTokens: z.number().optional().describe("Token budget (default 4000)")
     },
     async ({ planId, taskId, maxTokens }) => {
         // Fetch the plan detail to get task chunks + analyze chunks
@@ -738,9 +731,9 @@ server.tool(
         params.set("format", "structured-md");
         const result = await apiFetch(`/context/for-plan?${params}`);
 
-        const text = typeof result === "string" ? result : (result as any).content ?? JSON.stringify(result, null, 2);
+        const text = typeof result === "string" ? result : ((result as any).content ?? JSON.stringify(result, null, 2));
         return { content: [{ type: "text" as const, text }] };
-    },
+    }
 );
 ```
 
@@ -762,6 +755,7 @@ Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>"
 ### Task 4: CLI Context Commands (for-plan, about, for-diff)
 
 **Files:**
+
 - Create: `apps/cli/src/commands/context-for-plan.ts`
 - Create: `apps/cli/src/commands/context-about.ts`
 - Create: `apps/cli/src/commands/context-for-diff.ts`
@@ -771,6 +765,7 @@ Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>"
 - [ ] **Step 1: Read the existing context-for.ts for the CLI pattern**
 
 Read `apps/cli/src/commands/context-for.ts` to learn:
+
 - How it calls the API
 - How it formats output (markdown vs JSON)
 - The `fetchApi` import from `lib/api`
@@ -794,7 +789,7 @@ export const contextForPlanCommand = new Command("for-plan")
             const params = new URLSearchParams({
                 planId,
                 maxTokens: opts.maxTokens,
-                format: isJson(cmd) ? "structured-json" : opts.format,
+                format: isJson(cmd) ? "structured-json" : opts.format
             });
             if (opts.codebase) params.set("codebaseId", opts.codebase);
 
@@ -837,7 +832,7 @@ export const contextAboutCommand = new Command("about")
             const params = new URLSearchParams({
                 q: concept,
                 maxTokens: opts.maxTokens,
-                format: isJson(cmd) ? "structured-json" : opts.format,
+                format: isJson(cmd) ? "structured-json" : opts.format
             });
             if (opts.codebase) params.set("codebaseId", opts.codebase);
 
@@ -892,7 +887,7 @@ export const contextForDiffCommand = new Command("for-diff")
             const params = new URLSearchParams({
                 paths: paths.join(","),
                 maxTokens: opts.maxTokens,
-                format: isJson(cmd) ? "structured-json" : opts.format,
+                format: isJson(cmd) ? "structured-json" : opts.format
             });
             if (opts.codebase) params.set("codebaseId", opts.codebase);
 
@@ -927,7 +922,7 @@ Find the action handler. Add a check at the top:
 if (filePath.includes("*")) {
     const params = new URLSearchParams({
         paths: filePath,
-        maxTokens: opts.maxTokens ?? "8000",
+        maxTokens: opts.maxTokens ?? "8000"
     });
     if (opts.codebase) params.set("codebaseId", opts.codebase);
     const res = await fetchApi(`/context/for-files?${params}`);
@@ -975,6 +970,7 @@ Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>"
 ### Task 5: Context Snapshot Schema + Repository
 
 **Files:**
+
 - Create: `packages/db/src/schema/context-snapshot.ts`
 - Create: `packages/db/src/repository/context-snapshot.ts`
 - Modify: `packages/db/src/schema/index.ts`
@@ -989,18 +985,20 @@ import { integer, jsonb, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 import { user } from "./auth";
 
 export const contextSnapshot = pgTable("context_snapshot", {
-    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    id: text("id")
+        .primaryKey()
+        .$defaultFn(() => crypto.randomUUID()),
     userId: text("user_id")
         .notNull()
         .references(() => user.id, { onDelete: "cascade" }),
     query: jsonb("query").notNull(),
     chunks: jsonb("chunks").notNull(),
     tokenCount: integer("token_count").notNull(),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
+    createdAt: timestamp("created_at").notNull().defaultNow()
 });
 
 export const contextSnapshotRelations = relations(contextSnapshot, ({ one }) => ({
-    user: one(user, { fields: [contextSnapshot.userId], references: [user.id] }),
+    user: one(user, { fields: [contextSnapshot.userId], references: [user.id] })
 }));
 
 export type ContextSnapshot = typeof contextSnapshot.$inferSelect;
@@ -1024,7 +1022,7 @@ export function createSnapshot(input: NewContextSnapshot): Effect.Effect<Context
             if (!row) throw new Error("Insert returned no row");
             return row;
         },
-        catch: e => new DatabaseError({ cause: e }),
+        catch: e => new DatabaseError({ cause: e })
     });
 }
 
@@ -1034,20 +1032,15 @@ export function getSnapshotById(id: string): Effect.Effect<ContextSnapshot | nul
             const [row] = await db.select().from(contextSnapshot).where(eq(contextSnapshot.id, id)).limit(1);
             return row ?? null;
         },
-        catch: e => new DatabaseError({ cause: e }),
+        catch: e => new DatabaseError({ cause: e })
     });
 }
 
 export function listSnapshots(userId: string): Effect.Effect<ContextSnapshot[], DatabaseError> {
     return Effect.tryPromise({
         try: async () =>
-            db
-                .select()
-                .from(contextSnapshot)
-                .where(eq(contextSnapshot.userId, userId))
-                .orderBy(desc(contextSnapshot.createdAt))
-                .limit(50),
-        catch: e => new DatabaseError({ cause: e }),
+            db.select().from(contextSnapshot).where(eq(contextSnapshot.userId, userId)).orderBy(desc(contextSnapshot.createdAt)).limit(50),
+        catch: e => new DatabaseError({ cause: e })
     });
 }
 
@@ -1056,7 +1049,7 @@ export function deleteSnapshot(id: string): Effect.Effect<void, DatabaseError> {
         try: async () => {
             await db.delete(contextSnapshot).where(eq(contextSnapshot.id, id));
         },
-        catch: e => new DatabaseError({ cause: e }),
+        catch: e => new DatabaseError({ cause: e })
     });
 }
 ```
@@ -1091,6 +1084,7 @@ Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>"
 ### Task 6: Snapshot Service + Routes + MCP + CLI
 
 **Files:**
+
 - Create: `packages/api/src/context/snapshot-service.ts`
 - Create: `packages/api/src/context/snapshot-routes.ts`
 - Modify: `packages/api/src/context/routes.ts` (or `packages/api/src/index.ts`)
@@ -1148,24 +1142,22 @@ export function createSnapshot(userId: string, input: CreateSnapshotInput) {
             type: c.type,
             health: (c as any).health ?? 0,
             stale: (c as any).stale ?? false,
-            pendingProposal: (c as any).pendingProposal ?? false,
+            pendingProposal: (c as any).pendingProposal ?? false
         }));
 
         return yield* snapshotRepo.createSnapshot({
             userId,
             query: input,
             chunks: frozenChunks,
-            tokenCount,
+            tokenCount
         });
     });
 }
 
 export function getSnapshot(id: string) {
-    return snapshotRepo.getSnapshotById(id).pipe(
-        Effect.flatMap(s =>
-            s ? Effect.succeed(s) : Effect.fail(new NotFoundError({ resource: "Snapshot" })),
-        ),
-    );
+    return snapshotRepo
+        .getSnapshotById(id)
+        .pipe(Effect.flatMap(s => (s ? Effect.succeed(s) : Effect.fail(new NotFoundError({ resource: "Snapshot" })))));
 }
 
 export function listSnapshots(userId: string) {
@@ -1198,10 +1190,10 @@ export const snapshotRoutes = new Elysia()
                             taskId: ctx.body.taskId,
                             filePaths: ctx.body.filePaths,
                             concept: ctx.body.concept,
-                            maxTokens: ctx.body.maxTokens,
-                        }),
-                    ),
-                ),
+                            maxTokens: ctx.body.maxTokens
+                        })
+                    )
+                )
             );
         },
         {
@@ -1210,30 +1202,18 @@ export const snapshotRoutes = new Elysia()
                 taskId: t.Optional(t.String()),
                 filePaths: t.Optional(t.Array(t.String())),
                 concept: t.Optional(t.String()),
-                maxTokens: t.Optional(t.Number()),
-            }),
-        },
+                maxTokens: t.Optional(t.Number())
+            })
+        }
     )
     .get("/api/context/snapshot/:id", async ctx => {
-        return await Effect.runPromise(
-            requireSession(ctx).pipe(
-                Effect.flatMap(() => snapshotService.getSnapshot(ctx.params.id)),
-            ),
-        );
+        return await Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(() => snapshotService.getSnapshot(ctx.params.id))));
     })
     .get("/api/context/snapshots", async ctx => {
-        return await Effect.runPromise(
-            requireSession(ctx).pipe(
-                Effect.flatMap(session => snapshotService.listSnapshots(session.user.id)),
-            ),
-        );
+        return await Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(session => snapshotService.listSnapshots(session.user.id))));
     })
     .delete("/api/context/snapshot/:id", async ctx => {
-        await Effect.runPromise(
-            requireSession(ctx).pipe(
-                Effect.flatMap(() => snapshotService.deleteSnapshot(ctx.params.id)),
-            ),
-        );
+        await Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(() => snapshotService.deleteSnapshot(ctx.params.id))));
         return { ok: true };
     });
 ```
@@ -1241,9 +1221,11 @@ export const snapshotRoutes = new Elysia()
 - [ ] **Step 3: Mount snapshot routes**
 
 In `packages/api/src/index.ts`, add:
+
 ```typescript
 import { snapshotRoutes } from "./context/snapshot-routes";
 ```
+
 And `.use(snapshotRoutes)`.
 
 - [ ] **Step 4: Add MCP snapshot tools**
@@ -1259,21 +1241,23 @@ server.tool(
         taskId: z.string().optional(),
         filePaths: z.array(z.string()).optional(),
         concept: z.string().optional(),
-        maxTokens: z.number().optional(),
+        maxTokens: z.number().optional()
     },
-    async (params) => {
+    async params => {
         const snapshot = await apiFetch("/context/snapshot", {
             method: "POST",
-            body: JSON.stringify(params),
+            body: JSON.stringify(params)
         });
         const s = snapshot as any;
         return {
-            content: [{
-                type: "text" as const,
-                text: `Snapshot created: ${s.id} (${s.tokenCount} tokens, ${(s.chunks as any[])?.length ?? 0} chunks)`,
-            }],
+            content: [
+                {
+                    type: "text" as const,
+                    text: `Snapshot created: ${s.id} (${s.tokenCount} tokens, ${(s.chunks as any[])?.length ?? 0} chunks)`
+                }
+            ]
         };
-    },
+    }
 );
 
 server.tool(
@@ -1283,7 +1267,7 @@ server.tool(
     async ({ snapshotId }) => {
         const snapshot = await apiFetch(`/context/snapshot/${snapshotId}`);
         return { content: [{ type: "text" as const, text: JSON.stringify(snapshot, null, 2) }] };
-    },
+    }
 );
 ```
 
@@ -1313,7 +1297,7 @@ const createSnapshot = new Command("create")
 
             const res = await fetchApi("/context/snapshot", {
                 method: "POST",
-                body: JSON.stringify(body),
+                body: JSON.stringify(body)
             });
             if (!res.ok) {
                 outputError(`Failed: ${res.status} ${await res.text()}`);
@@ -1365,7 +1349,9 @@ const listSnapshots = new Command("list")
                 return;
             }
             for (const s of snapshots) {
-                console.log(`  ${s.id.slice(0, 8)} ${formatDim(`${s.tokenCount} tokens`)} ${formatDim(new Date(s.createdAt).toLocaleString())}`);
+                console.log(
+                    `  ${s.id.slice(0, 8)} ${formatDim(`${s.tokenCount} tokens`)} ${formatDim(new Date(s.createdAt).toLocaleString())}`
+                );
             }
         } catch (err) {
             outputError(String(err));

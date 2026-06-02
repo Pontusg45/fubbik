@@ -1,14 +1,15 @@
 ---
 tags:
-  - guide
-  - editing
-  - autosave
+    - guide
+    - editing
+    - autosave
 description: Draft auto-saving for chunk creation and editing
 ---
 
 # Autosave
 
-Fubbik automatically saves drafts to localStorage while you're creating or editing chunks, protecting against data loss from accidental navigation or browser crashes.
+Fubbik automatically saves drafts to localStorage while you're creating or editing chunks, protecting against data loss from accidental
+navigation or browser crashes.
 
 ## How It Works
 
@@ -20,6 +21,7 @@ Fubbik automatically saves drafts to localStorage while you're creating or editi
 ## Draft Recovery
 
 If you navigate away from an unsaved chunk:
+
 1. The draft is preserved in localStorage
 2. When you return to the page, you'll see a "Resume draft?" prompt
 3. Click to restore your previous content, or dismiss to start fresh

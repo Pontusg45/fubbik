@@ -1,40 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
-import {
-    ArrowUpDown,
-    Palette,
-    Pencil,
-    Plus,
-    Search,
-    Tag as TagIcon,
-    Tags as TagsIcon,
-    Trash2,
-    X,
-} from "lucide-react";
+import { ArrowUpDown, Palette, Pencil, Plus, Search, Tag as TagIcon, Tags as TagsIcon, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Button } from "@/components/ui/button";
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { PageContainer, PageEmpty, PageHeader, PageLoading } from "@/components/ui/page";
-import {
-    Select,
-    SelectItem,
-    SelectPopup,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
-import { getUser } from "@/functions/get-user";
-
+import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TagPill } from "@/features/tags/tag-pill";
-import { useTagsData } from "@/features/tags/use-tags-data";
 import type { Tag, SortMode } from "@/features/tags/tag-types";
+import { useTagsData } from "@/features/tags/use-tags-data";
+import { getUser } from "@/functions/get-user";
 
 export const Route = createFileRoute("/tags")({
     component: TagsPage,
@@ -82,7 +58,7 @@ function TagsPage() {
         assignTypeMutation,
         mergeMutation,
         deleteTagMutation,
-        deleteTagTypeMutation,
+        deleteTagTypeMutation
     } = useTagsData();
 
     // Create-tag form state
@@ -129,18 +105,11 @@ function TagsPage() {
         );
     }
 
-    const mergeCandidates = useMemo(
-        () => tags.filter(t => t.id !== mergeSource?.id),
-        [tags, mergeSource]
-    );
+    const mergeCandidates = useMemo(() => tags.filter(t => t.id !== mergeSource?.id), [tags, mergeSource]);
 
     return (
         <PageContainer>
-            <PageHeader
-                icon={TagsIcon}
-                title="Tags"
-                count={tags.length}
-            />
+            <PageHeader icon={TagsIcon} title="Tags" count={tags.length} />
 
             <div className="grid gap-6 lg:grid-cols-[1fr_220px]">
                 {/* Main content */}
@@ -155,16 +124,24 @@ function TagsPage() {
                                 placeholder="Filter tags or types...  ( / )"
                                 value={search}
                                 onChange={e => setSearch(e.target.value)}
-                                className="bg-background focus:ring-ring w-full rounded-lg border py-2 pl-9 pr-3 text-sm focus:ring-2 focus:outline-none"
+                                className="bg-background focus:ring-ring w-full rounded-lg border py-2 pr-3 pl-9 text-sm focus:ring-2 focus:outline-none"
                             />
                             {search && (
-                                <button onClick={() => setSearch("")} className="text-muted-foreground absolute top-1/2 right-3 -translate-y-1/2">
+                                <button
+                                    onClick={() => setSearch("")}
+                                    className="text-muted-foreground absolute top-1/2 right-3 -translate-y-1/2"
+                                >
                                     <X className="size-3.5" />
                                 </button>
                             )}
                         </div>
 
-                        <Select value={sortMode} onValueChange={v => { if (v) setSortMode(v as SortMode); }}>
+                        <Select
+                            value={sortMode}
+                            onValueChange={v => {
+                                if (v) setSortMode(v as SortMode);
+                            }}
+                        >
                             <SelectTrigger size="sm" className="w-[150px]">
                                 <ArrowUpDown className="size-3.5 opacity-70" />
                                 <SelectValue />
@@ -196,7 +173,7 @@ function TagsPage() {
 
                     {/* Inline create form */}
                     {showCreate && (
-                        <form onSubmit={handleCreateTagSubmit} className="mb-4 rounded-lg border p-3 space-y-2">
+                        <form onSubmit={handleCreateTagSubmit} className="mb-4 space-y-2 rounded-lg border p-3">
                             <div className="flex gap-2">
                                 <input
                                     type="text"
@@ -214,7 +191,9 @@ function TagsPage() {
                                 >
                                     <option value="">No type</option>
                                     {tagTypes.map(tt => (
-                                        <option key={tt.id} value={tt.id}>{tt.name}</option>
+                                        <option key={tt.id} value={tt.id}>
+                                            {tt.name}
+                                        </option>
                                     ))}
                                 </select>
                             </div>
@@ -223,7 +202,11 @@ function TagsPage() {
                                     type="button"
                                     variant="ghost"
                                     size="sm"
-                                    onClick={() => { setShowCreate(false); setNewTagName(""); setNewTagTypeId(""); }}
+                                    onClick={() => {
+                                        setShowCreate(false);
+                                        setNewTagName("");
+                                        setNewTagTypeId("");
+                                    }}
                                 >
                                     Cancel
                                 </Button>
@@ -260,10 +243,7 @@ function TagsPage() {
                                     <div className="mb-2 flex items-center gap-2">
                                         {tagType ? (
                                             <>
-                                                <div
-                                                    className="size-3 rounded-full"
-                                                    style={{ backgroundColor: tagType.color }}
-                                                />
+                                                <div className="size-3 rounded-full" style={{ backgroundColor: tagType.color }} />
                                                 <span className="text-sm font-semibold">{tagType.name}</span>
                                             </>
                                         ) : (
@@ -313,7 +293,7 @@ function TagsPage() {
                     </div>
 
                     {showTagTypeForm && (
-                        <form onSubmit={handleTagTypeSubmit} className="mb-4 rounded-lg border p-3 space-y-2">
+                        <form onSubmit={handleTagTypeSubmit} className="mb-4 space-y-2 rounded-lg border p-3">
                             <div className="flex gap-2">
                                 <input
                                     type="text"
@@ -331,7 +311,9 @@ function TagsPage() {
                                 />
                             </div>
                             <div className="flex justify-end gap-1.5">
-                                <Button type="button" variant="ghost" size="sm" onClick={resetTagTypeForm}>Cancel</Button>
+                                <Button type="button" variant="ghost" size="sm" onClick={resetTagTypeForm}>
+                                    Cancel
+                                </Button>
                                 <Button type="submit" size="sm" disabled={!ttName.trim()}>
                                     {editingTagType ? "Save" : "Create"}
                                 </Button>
@@ -350,12 +332,9 @@ function TagsPage() {
                                 return (
                                     <div
                                         key={tt.id}
-                                        className="group flex items-center gap-2 rounded-md px-2.5 py-2 transition-colors hover:bg-muted/50"
+                                        className="group hover:bg-muted/50 flex items-center gap-2 rounded-md px-2.5 py-2 transition-colors"
                                     >
-                                        <div
-                                            className="size-3 shrink-0 rounded-full"
-                                            style={{ backgroundColor: tt.color }}
-                                        />
+                                        <div className="size-3 shrink-0 rounded-full" style={{ backgroundColor: tt.color }} />
                                         <span className="flex-1 text-sm">{tt.name}</span>
                                         <span className="text-muted-foreground text-xs tabular-nums">{count}</span>
                                         <div className="flex gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
@@ -381,14 +360,22 @@ function TagsPage() {
             </div>
 
             {/* Merge dialog */}
-            <Dialog open={mergeSource !== null} onOpenChange={open => { if (!open) { setMergeSource(null); setMergeTargetId(""); } }}>
+            <Dialog
+                open={mergeSource !== null}
+                onOpenChange={open => {
+                    if (!open) {
+                        setMergeSource(null);
+                        setMergeTargetId("");
+                    }
+                }}
+            >
                 <DialogContent className="max-w-md">
                     <DialogHeader>
                         <DialogTitle>Merge tag</DialogTitle>
                         <DialogDescription>
-                            All {mergeSource?.chunkCount ?? 0} chunks tagged
-                            {" "}<span className="font-medium text-foreground">{mergeSource?.name}</span>{" "}
-                            will be re-tagged with the target. The source tag is then deleted. This cannot be undone.
+                            All {mergeSource?.chunkCount ?? 0} chunks tagged{" "}
+                            <span className="text-foreground font-medium">{mergeSource?.name}</span> will be re-tagged with the target. The
+                            source tag is then deleted. This cannot be undone.
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-2 py-2">
@@ -409,7 +396,10 @@ function TagsPage() {
                     <DialogFooter>
                         <Button
                             variant="ghost"
-                            onClick={() => { setMergeSource(null); setMergeTargetId(""); }}
+                            onClick={() => {
+                                setMergeSource(null);
+                                setMergeTargetId("");
+                            }}
                         >
                             Cancel
                         </Button>
@@ -420,7 +410,12 @@ function TagsPage() {
                                 if (mergeSource && mergeTargetId) {
                                     mergeMutation.mutate(
                                         { sourceId: mergeSource.id, targetId: mergeTargetId },
-                                        { onSuccess: () => { setMergeSource(null); setMergeTargetId(""); } }
+                                        {
+                                            onSuccess: () => {
+                                                setMergeSource(null);
+                                                setMergeTargetId("");
+                                            }
+                                        }
                                     );
                                 }
                             }}
@@ -433,7 +428,9 @@ function TagsPage() {
 
             <ConfirmDialog
                 open={deleteTagTarget !== null}
-                onOpenChange={(open) => { if (!open) setDeleteTagTarget(null); }}
+                onOpenChange={open => {
+                    if (!open) setDeleteTagTarget(null);
+                }}
                 title="Delete tag"
                 description={deleteTagTarget ? `Delete tag "${deleteTagTarget.name}"? Chunk associations will be removed.` : ""}
                 confirmLabel="Delete"
@@ -449,9 +446,13 @@ function TagsPage() {
 
             <ConfirmDialog
                 open={deleteTagTypeTarget !== null}
-                onOpenChange={(open) => { if (!open) setDeleteTagTypeTarget(null); }}
+                onOpenChange={open => {
+                    if (!open) setDeleteTagTypeTarget(null);
+                }}
                 title="Delete tag type"
-                description={deleteTagTypeTarget ? `Delete tag type "${deleteTagTypeTarget.name}"? Tags in this type will become uncategorized.` : ""}
+                description={
+                    deleteTagTypeTarget ? `Delete tag type "${deleteTagTypeTarget.name}"? Tags in this type will become uncategorized.` : ""
+                }
                 confirmLabel="Delete"
                 confirmVariant="destructive"
                 onConfirm={() => {

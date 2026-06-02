@@ -31,7 +31,7 @@ const KIND_LABELS: Record<AnalyzeKind, string> = {
     file: "Files",
     risk: "Risks",
     assumption: "Assumptions",
-    question: "Questions",
+    question: "Questions"
 };
 
 const KIND_ORDER: AnalyzeKind[] = ["chunk", "file", "risk", "assumption", "question"];
@@ -55,7 +55,7 @@ export function PlanAnalyzeSection({ planId, analyze, onUpdate }: PlanAnalyzeSec
 
     return (
         <section className="space-y-3">
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Analyze</h2>
+            <h2 className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">Analyze</h2>
             <div className="space-y-2 rounded-md border p-2">
                 {KIND_ORDER.map(kind => (
                     <AnalyzeKindBlock
@@ -79,7 +79,7 @@ function AnalyzeKindBlock({
     planId,
     open,
     onToggle,
-    onUpdate,
+    onUpdate
 }: {
     kind: AnalyzeKind;
     items: AnalyzeItem[];
@@ -118,13 +118,12 @@ function AnalyzeKindBlock({
             setDraftText("");
             setDraftFilePath("");
             onUpdate();
-        },
+        }
     });
 
     const deleteMutation = useMutation({
-        mutationFn: async (itemId: string) =>
-            unwrapEden(await (api.api as any).plans[planId].analyze[itemId].delete()),
-        onSuccess: () => onUpdate(),
+        mutationFn: async (itemId: string) => unwrapEden(await (api.api as any).plans[planId].analyze[itemId].delete()),
+        onSuccess: () => onUpdate()
     });
 
     return (
@@ -132,11 +131,11 @@ function AnalyzeKindBlock({
             <button
                 type="button"
                 onClick={onToggle}
-                className="flex w-full items-center gap-2 px-2 py-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground"
+                className="text-muted-foreground hover:text-foreground flex w-full items-center gap-2 px-2 py-1.5 text-xs font-semibold tracking-wider uppercase"
             >
                 {open ? <ChevronDown className="size-3" /> : <ChevronRight className="size-3" />}
                 {KIND_LABELS[kind]}
-                <span className="ml-1 font-mono text-muted-foreground/60">({items.length})</span>
+                <span className="text-muted-foreground/60 ml-1 font-mono">({items.length})</span>
                 <div className="ml-auto" />
                 {open && (
                     <span
@@ -155,7 +154,7 @@ function AnalyzeKindBlock({
             {open && (
                 <div className="space-y-1 px-2 pb-2">
                     {adding && (
-                        <div className="space-y-2 rounded border bg-muted/30 p-2">
+                        <div className="bg-muted/30 space-y-2 rounded border p-2">
                             {kind === "file" && (
                                 <Input
                                     placeholder="File path, e.g. src/foo.ts"
@@ -185,7 +184,7 @@ function AnalyzeKindBlock({
                                 <select
                                     value={draftSeverity}
                                     onChange={e => setDraftSeverity(e.target.value as any)}
-                                    className="h-7 w-full rounded border bg-background px-2 text-xs"
+                                    className="bg-background h-7 w-full rounded border px-2 text-xs"
                                 >
                                     <option value="low">Low</option>
                                     <option value="medium">Medium</option>
@@ -193,25 +192,29 @@ function AnalyzeKindBlock({
                                 </select>
                             )}
                             <div className="flex gap-2">
-                                <Button size="sm" onClick={() => addMutation.mutate()}>Add</Button>
-                                <Button size="sm" variant="ghost" onClick={() => setAdding(false)}>Cancel</Button>
+                                <Button size="sm" onClick={() => addMutation.mutate()}>
+                                    Add
+                                </Button>
+                                <Button size="sm" variant="ghost" onClick={() => setAdding(false)}>
+                                    Cancel
+                                </Button>
                             </div>
                         </div>
                     )}
                     {items.map(item => (
-                        <div key={item.id} className="flex items-center gap-2 rounded px-2 py-1 text-xs hover:bg-muted/40">
+                        <div key={item.id} className="hover:bg-muted/40 flex items-center gap-2 rounded px-2 py-1 text-xs">
                             <span className="flex-1 truncate">
                                 {kind === "file" && item.filePath ? (
                                     <>
                                         <span className="font-mono">{item.filePath}</span>
-                                        {item.text && <span className="ml-2 text-muted-foreground">— {item.text}</span>}
+                                        {item.text && <span className="text-muted-foreground ml-2">— {item.text}</span>}
                                     </>
                                 ) : (
-                                    item.text ?? item.chunkId ?? "(empty)"
+                                    (item.text ?? item.chunkId ?? "(empty)")
                                 )}
                             </span>
                             {kind === "risk" && (
-                                <span className="text-[9px] uppercase text-muted-foreground">
+                                <span className="text-muted-foreground text-[9px] uppercase">
                                     {(item.metadata as any)?.severity ?? "medium"}
                                 </span>
                             )}
@@ -225,9 +228,7 @@ function AnalyzeKindBlock({
                             </button>
                         </div>
                     ))}
-                    {items.length === 0 && !adding && (
-                        <div className="py-2 text-center text-[10px] text-muted-foreground">None yet</div>
-                    )}
+                    {items.length === 0 && !adding && <div className="text-muted-foreground py-2 text-center text-[10px]">None yet</div>}
                 </div>
             )}
         </div>

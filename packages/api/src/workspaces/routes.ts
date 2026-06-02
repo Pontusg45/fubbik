@@ -6,20 +6,14 @@ import * as workspaceService from "./service";
 
 export const workspaceRoutes = new Elysia()
     .get("/workspaces", ctx =>
-        Effect.runPromise(
-            requireSession(ctx).pipe(
-                Effect.flatMap(session => workspaceService.listWorkspaces(session.user.id))
-            )
-        )
+        Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(session => workspaceService.listWorkspaces(session.user.id))))
     )
     .post(
         "/workspaces",
         ctx =>
             Effect.runPromise(
                 requireSession(ctx).pipe(
-                    Effect.flatMap(session =>
-                        workspaceService.createWorkspace(session.user.id, ctx.body)
-                    ),
+                    Effect.flatMap(session => workspaceService.createWorkspace(session.user.id, ctx.body)),
                     Effect.tap(() =>
                         Effect.sync(() => {
                             ctx.set.status = 201;
@@ -36,11 +30,7 @@ export const workspaceRoutes = new Elysia()
     )
     .get("/workspaces/:id", ctx =>
         Effect.runPromise(
-            requireSession(ctx).pipe(
-                Effect.flatMap(session =>
-                    workspaceService.getWorkspaceDetail(ctx.params.id, session.user.id)
-                )
-            )
+            requireSession(ctx).pipe(Effect.flatMap(session => workspaceService.getWorkspaceDetail(ctx.params.id, session.user.id)))
         )
     )
     .patch(
@@ -48,9 +38,7 @@ export const workspaceRoutes = new Elysia()
         ctx =>
             Effect.runPromise(
                 requireSession(ctx).pipe(
-                    Effect.flatMap(session =>
-                        workspaceService.updateWorkspace(ctx.params.id, session.user.id, ctx.body)
-                    )
+                    Effect.flatMap(session => workspaceService.updateWorkspace(ctx.params.id, session.user.id, ctx.body))
                 )
             ),
         {
@@ -63,9 +51,7 @@ export const workspaceRoutes = new Elysia()
     .delete("/workspaces/:id", ctx =>
         Effect.runPromise(
             requireSession(ctx).pipe(
-                Effect.flatMap(session =>
-                    workspaceService.deleteWorkspace(ctx.params.id, session.user.id)
-                ),
+                Effect.flatMap(session => workspaceService.deleteWorkspace(ctx.params.id, session.user.id)),
                 Effect.map(() => ({ message: "Deleted" }))
             )
         )
@@ -76,13 +62,7 @@ export const workspaceRoutes = new Elysia()
         ctx =>
             Effect.runPromise(
                 requireSession(ctx).pipe(
-                    Effect.flatMap(session =>
-                        workspaceService.addSpaceToWorkspace(
-                            ctx.params.id,
-                            session.user.id,
-                            ctx.body.spaceId
-                        )
-                    ),
+                    Effect.flatMap(session => workspaceService.addSpaceToWorkspace(ctx.params.id, session.user.id, ctx.body.spaceId)),
                     Effect.tap(() =>
                         Effect.sync(() => {
                             ctx.set.status = 201;
@@ -99,13 +79,7 @@ export const workspaceRoutes = new Elysia()
     .delete("/workspaces/:id/spaces/:spaceId", ctx =>
         Effect.runPromise(
             requireSession(ctx).pipe(
-                Effect.flatMap(session =>
-                    workspaceService.removeSpaceFromWorkspace(
-                        ctx.params.id,
-                        session.user.id,
-                        ctx.params.spaceId
-                    )
-                ),
+                Effect.flatMap(session => workspaceService.removeSpaceFromWorkspace(ctx.params.id, session.user.id, ctx.params.spaceId)),
                 Effect.map(() => ({ message: "Deleted" }))
             )
         )

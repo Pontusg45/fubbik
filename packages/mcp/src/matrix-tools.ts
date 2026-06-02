@@ -1,5 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
+
 import { apiFetch } from "./api-client.js";
 import type { McpPlugin } from "./plugin.js";
 
@@ -40,11 +41,7 @@ export function registerMatrixTools(server: McpServer): void {
         "Create a new behavioral specification matrix",
         {
             name: z.string().describe("Matrix name"),
-            layer: z
-                .enum(["invariant", "contract"])
-                .describe(
-                    "invariant (rules x entities) or contract (capabilities x actors)"
-                ),
+            layer: z.enum(["invariant", "contract"]).describe("invariant (rules x entities) or contract (capabilities x actors)"),
             description: z.string().optional(),
             spaceId: z.string().optional()
         },
@@ -125,13 +122,10 @@ export function registerMatrixTools(server: McpServer): void {
             requirementId: z.string().describe("Requirement ID to link")
         },
         async ({ matrixId, cellId, requirementId }) => {
-            const result = await apiFetch(
-                `/matrices/${matrixId}/cells/${cellId}/requirements`,
-                {
-                    method: "POST",
-                    body: JSON.stringify({ requirementId })
-                }
-            );
+            const result = await apiFetch(`/matrices/${matrixId}/cells/${cellId}/requirements`, {
+                method: "POST",
+                body: JSON.stringify({ requirementId })
+            });
             return {
                 content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }]
             };
@@ -147,10 +141,7 @@ export function registerMatrixTools(server: McpServer): void {
                 matrix: { name: string };
                 dimensions: Array<{ id: string; name: string }>;
                 rules: Array<{ id: string; title: string }>;
-                cells: Record<
-                    string,
-                    { status: string; requirementCount: number } | null
-                >;
+                cells: Record<string, { status: string; requirementCount: number } | null>;
                 summary: {
                     specified: number;
                     unspecified: number;
@@ -159,16 +150,12 @@ export function registerMatrixTools(server: McpServer): void {
                 };
             };
 
-            const dimMap = new Map(view.dimensions.map((d) => [d.id, d.name]));
-            const ruleMap = new Map(view.rules.map((r) => [r.id, r.title]));
+            const dimMap = new Map(view.dimensions.map(d => [d.id, d.name]));
+            const ruleMap = new Map(view.rules.map(r => [r.id, r.title]));
 
-            const gaps: Array<{ rule: string; dimension: string; status: string }> =
-                [];
+            const gaps: Array<{ rule: string; dimension: string; status: string }> = [];
             for (const [key, cell] of Object.entries(view.cells)) {
-                if (
-                    cell &&
-                    (cell.status === "unspecified" || cell.status === "violated")
-                ) {
+                if (cell && (cell.status === "unspecified" || cell.status === "violated")) {
                     const parts = key.split(":");
                     const ruleId = parts[0] ?? "";
                     const dimId = parts[1] ?? "";
@@ -184,11 +171,7 @@ export function registerMatrixTools(server: McpServer): void {
                 content: [
                     {
                         type: "text" as const,
-                        text: JSON.stringify(
-                            { matrix: view.matrix.name, summary: view.summary, gaps },
-                            null,
-                            2
-                        )
+                        text: JSON.stringify({ matrix: view.matrix.name, summary: view.summary, gaps }, null, 2)
                     }
                 ]
             };

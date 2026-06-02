@@ -7,10 +7,7 @@ import * as spaceService from "./service";
 export const spaceRoutes = new Elysia()
     .get(
         "/spaces/detect",
-        ctx =>
-            Effect.runPromise(
-                requireSession(ctx).pipe(Effect.flatMap(session => spaceService.detectSpace(session.user.id, ctx.query)))
-            ),
+        ctx => Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(session => spaceService.detectSpace(session.user.id, ctx.query)))),
         {
             query: t.Object({
                 remoteUrl: t.Optional(t.String()),
@@ -18,9 +15,7 @@ export const spaceRoutes = new Elysia()
             })
         }
     )
-    .get("/spaces", ctx =>
-        Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(session => spaceService.listSpaces(session.user.id))))
-    )
+    .get("/spaces", ctx => Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(session => spaceService.listSpaces(session.user.id)))))
     .post(
         "/spaces",
         ctx =>
@@ -51,9 +46,7 @@ export const spaceRoutes = new Elysia()
         "/spaces/:id",
         ctx =>
             Effect.runPromise(
-                requireSession(ctx).pipe(
-                    Effect.flatMap(session => spaceService.updateSpace(ctx.params.id, session.user.id, ctx.body))
-                )
+                requireSession(ctx).pipe(Effect.flatMap(session => spaceService.updateSpace(ctx.params.id, session.user.id, ctx.body)))
             ),
         {
             body: t.Object({
@@ -65,9 +58,7 @@ export const spaceRoutes = new Elysia()
         }
     )
     .post("/spaces/:id/reset", ctx =>
-        Effect.runPromise(
-            requireSession(ctx).pipe(Effect.flatMap(session => spaceService.resetSpace(ctx.params.id, session.user.id)))
-        )
+        Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(session => spaceService.resetSpace(ctx.params.id, session.user.id))))
     )
     .delete("/spaces/:id", ctx =>
         Effect.runPromise(

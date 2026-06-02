@@ -2,11 +2,15 @@
 
 ## Problem
 
-The current dashboard has 12 widgets, 9 API queries, and a 2000+ pixel scroll depth. The right sidebar alone has 8 stacked cards with equal visual weight. There's no information hierarchy — knowledge health, featured chunk, smart collections, and activity feed all compete for attention equally.
+The current dashboard has 12 widgets, 9 API queries, and a 2000+ pixel scroll depth. The right sidebar alone has 8 stacked cards with equal
+visual weight. There's no information hierarchy — knowledge health, featured chunk, smart collections, and activity feed all compete for
+attention equally.
 
 ## Goal
 
-Replace the cluttered multi-widget dashboard with a single-column "Focus Stream" layout: a compact stats bar, an active plan focus card, and a unified chronological feed that interleaves proposals, staleness alerts, and activity. Reduce from 12 widgets / 770 lines to 3 zones / ~250 lines.
+Replace the cluttered multi-widget dashboard with a single-column "Focus Stream" layout: a compact stats bar, an active plan focus card, and
+a unified chronological feed that interleaves proposals, staleness alerts, and activity. Reduce from 12 widgets / 770 lines to 3 zones /
+~250 lines.
 
 ---
 
@@ -30,8 +34,10 @@ Compact inline row showing key numbers:
 
 Indigo-tinted card showing the current in-progress plan:
 
-- **Selection logic:** first plan with `status=in_progress`. If none, first with `status=ready`. If none, collapses to a one-line "No active plan — Start one →" link.
-- **Card contents:** plan title, status pill, task progress counter (`2/5`), thin progress bar, and task checklist (max 8 tasks visible, "and N more" if overflow)
+- **Selection logic:** first plan with `status=in_progress`. If none, first with `status=ready`. If none, collapses to a one-line "No active
+  plan — Start one →" link.
+- **Card contents:** plan title, status pill, task progress counter (`2/5`), thin progress bar, and task checklist (max 8 tasks visible,
+  "and N more" if overflow)
 - **Interactive:** task checkboxes toggle `pending ↔ done` via `PATCH /api/plans/:id/tasks/:taskId`. On toggle, refetch the plan query.
 - **Data:** `GET /api/plans?status=in_progress` (fallback: `GET /api/plans?status=ready`)
 
@@ -41,35 +47,39 @@ Reverse-chronological feed interleaving three item types:
 
 **Item types:**
 
-| Type | Dot color | Badge | Content | Actions |
-|---|---|---|---|---|
-| Proposal (pending) | Amber (bright) | `PROPOSAL` amber bg | Chunk title + reason | Approve / Reject buttons inline |
-| Staleness flag | Amber (muted) | `STALE` amber bg | Chunk title + reason | Click navigates to chunk |
-| Activity | Gray | `CREATED` / `UPDATED` / `DELETED` | Entity title + type | Click navigates to entity |
+| Type               | Dot color      | Badge                             | Content              | Actions                         |
+| ------------------ | -------------- | --------------------------------- | -------------------- | ------------------------------- |
+| Proposal (pending) | Amber (bright) | `PROPOSAL` amber bg               | Chunk title + reason | Approve / Reject buttons inline |
+| Staleness flag     | Amber (muted)  | `STALE` amber bg                  | Chunk title + reason | Click navigates to chunk        |
+| Activity           | Gray           | `CREATED` / `UPDATED` / `DELETED` | Entity title + type  | Click navigates to entity       |
 
-**Filter tabs** above the feed: `All | Proposals | Stale | Activity`. Default: `All`. Tabs are inclusive filters — selecting "Proposals" shows only proposal items. Selecting "All" shows everything.
+**Filter tabs** above the feed: `All | Proposals | Stale | Activity`. Default: `All`. Tabs are inclusive filters — selecting "Proposals"
+shows only proposal items. Selecting "All" shows everything.
 
 **Data sources (merged client-side):**
+
 - `GET /api/proposals?status=pending` — all pending proposals
 - `GET /api/chunks/stale?limit=10` — undismissed staleness flags
 - `GET /api/activity?limit=20` — recent activity log
 
 All three responses are merged into one array, sorted by timestamp (descending), and rendered as a flat list.
 
-**Inline proposal actions:** Approve/Reject buttons call `POST /api/proposals/:id/approve` and `POST /api/proposals/:id/reject` directly from the feed. On success, the item transitions to a "Approved ✓" / "Rejected" state and fades out after 2 seconds.
+**Inline proposal actions:** Approve/Reject buttons call `POST /api/proposals/:id/approve` and `POST /api/proposals/:id/reject` directly
+from the feed. On success, the item transitions to a "Approved ✓" / "Rejected" state and fades out after 2 seconds.
 
-**Pagination:** "Load more" button at the bottom fetches the next 20 activity items. Proposals and stale flags are always fully loaded (bounded — typically < 10 items each).
+**Pagination:** "Load more" button at the bottom fetches the next 20 activity items. Proposals and stale flags are always fully loaded
+(bounded — typically < 10 items each).
 
 ---
 
 ## 2. Empty States
 
-| Condition | Behavior |
-|---|---|
-| No active plan (no in_progress or ready plans) | Zone 2 collapses to: "No active plan — [Start one →](/plans/new)" |
-| Plan with 0 tasks | Shows plan title + status pill, no checklist. Link: "+ Add task" |
-| Empty feed (all three sources empty) | "Nothing happening yet. Create your first chunk or plan to get started." with links |
-| Feed with only one type | Filter tabs still visible, empty types show 0 items |
+| Condition                                      | Behavior                                                                            |
+| ---------------------------------------------- | ----------------------------------------------------------------------------------- |
+| No active plan (no in_progress or ready plans) | Zone 2 collapses to: "No active plan — [Start one →](/plans/new)"                   |
+| Plan with 0 tasks                              | Shows plan title + status pill, no checklist. Link: "+ Add task"                    |
+| Empty feed (all three sources empty)           | "Nothing happening yet. Create your first chunk or plan to get started." with links |
+| Feed with only one type                        | Filter tabs still visible, empty types show 0 items                                 |
 
 ---
 
@@ -83,29 +93,29 @@ Single column is already mobile-friendly. Stats bar wraps to 2 rows on small scr
 
 ### Rewritten
 
-| Path | Change |
-|---|---|
+| Path                                | Change                                                                                    |
+| ----------------------------------- | ----------------------------------------------------------------------------------------- |
 | `apps/web/src/routes/dashboard.tsx` | Complete rewrite — 770 lines → ~250 lines. Imports StatsBar, ActivePlanCard, UnifiedFeed. |
 
 ### Created
 
-| Path | Responsibility |
-|---|---|
-| `apps/web/src/features/dashboard/stats-bar.tsx` | Compact inline stats row with amber highlights |
-| `apps/web/src/features/dashboard/active-plan-card.tsx` | Plan focus card with interactive task checklist |
-| `apps/web/src/features/dashboard/unified-feed.tsx` | Merged feed with filter tabs |
-| `apps/web/src/features/dashboard/feed-item.tsx` | Single feed item — type-specific rendering for proposal/stale/activity |
+| Path                                                   | Responsibility                                                         |
+| ------------------------------------------------------ | ---------------------------------------------------------------------- |
+| `apps/web/src/features/dashboard/stats-bar.tsx`        | Compact inline stats row with amber highlights                         |
+| `apps/web/src/features/dashboard/active-plan-card.tsx` | Plan focus card with interactive task checklist                        |
+| `apps/web/src/features/dashboard/unified-feed.tsx`     | Merged feed with filter tabs                                           |
+| `apps/web/src/features/dashboard/feed-item.tsx`        | Single feed item — type-specific rendering for proposal/stale/activity |
 
 ### Deleted
 
-| Path | Reason |
-|---|---|
-| `apps/web/src/features/dashboard/featured-chunk-widget.tsx` | Cut — low value |
-| `apps/web/src/features/dashboard/smart-collections.tsx` | Cut — static UI, low usage |
-| `apps/web/src/features/dashboard/missed-chunks-widget.tsx` | Cut — low value |
-| `apps/web/src/features/dashboard/milestone-cards.tsx` | Cut — clutters the page |
-| `apps/web/src/features/dashboard/welcome-wizard.tsx` | Cut — can return as a dismissible banner later |
-| `apps/web/src/features/dashboard/attention-needed.tsx` | Absorbed into unified feed |
+| Path                                                        | Reason                                         |
+| ----------------------------------------------------------- | ---------------------------------------------- |
+| `apps/web/src/features/dashboard/featured-chunk-widget.tsx` | Cut — low value                                |
+| `apps/web/src/features/dashboard/smart-collections.tsx`     | Cut — static UI, low usage                     |
+| `apps/web/src/features/dashboard/missed-chunks-widget.tsx`  | Cut — low value                                |
+| `apps/web/src/features/dashboard/milestone-cards.tsx`       | Cut — clutters the page                        |
+| `apps/web/src/features/dashboard/welcome-wizard.tsx`        | Cut — can return as a dismissible banner later |
+| `apps/web/src/features/dashboard/attention-needed.tsx`      | Absorbed into unified feed                     |
 
 ### Unchanged
 

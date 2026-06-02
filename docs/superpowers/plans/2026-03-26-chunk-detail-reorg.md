@@ -1,26 +1,33 @@
 # Chunk Detail Reorganization Plan
 
-> **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to
+> implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Reorganize the chunk detail page from a 12-section vertical scroll into collapsible sections for better navigation.
 
-**Architecture:** Convert existing sections into an accordion-style layout where primary content (tags, content, decision context) is always visible, and secondary sections (connections, comments, AI tools, version history, suggested/related) are collapsible. Uses the existing Collapsible component from shadcn/base-ui.
+**Architecture:** Convert existing sections into an accordion-style layout where primary content (tags, content, decision context) is always
+visible, and secondary sections (connections, comments, AI tools, version history, suggested/related) are collapsible. Uses the existing
+Collapsible component from shadcn/base-ui.
 
 **Tech Stack:** React, Tailwind CSS, shadcn-ui (base-ui Collapsible)
 
 **Codebase notes:**
+
 - Chunk detail is at `apps/web/src/routes/chunks.$chunkId.tsx` (lines 207-559)
 - 12 sections separated by 9 `<Separator>` elements
-- Sections: Header → Metadata → Tags → Content → AppliesTo → FileRefs → DecisionContext → AI → Comments → Connections → Suggested → Related → VersionHistory
+- Sections: Header → Metadata → Tags → Content → AppliesTo → FileRefs → DecisionContext → AI → Comments → Connections → Suggested → Related
+  → VersionHistory
 
 ---
 
 ## File Structure
 
 ### New files:
+
 - `apps/web/src/features/chunks/collapsible-section.tsx` — Reusable collapsible section component
 
 ### Files to modify:
+
 - `apps/web/src/routes/chunks.$chunkId.tsx` — Wrap secondary sections in collapsible wrappers
 
 ---
@@ -28,12 +35,13 @@
 ## Task 1: Create CollapsibleSection Component
 
 **Files:**
+
 - Create: `apps/web/src/features/chunks/collapsible-section.tsx`
 
 - [ ] **Step 1: Check if Collapsible component exists**
 
-Run: `ls apps/web/src/components/ui/collapsible.tsx`
-If not, check for an accordion or disclosure component. If none exist, create a simple collapsible using useState + CSS transition.
+Run: `ls apps/web/src/components/ui/collapsible.tsx` If not, check for an accordion or disclosure component. If none exist, create a simple
+collapsible using useState + CSS transition.
 
 - [ ] **Step 2: Create CollapsibleSection**
 
@@ -63,9 +71,7 @@ export function CollapsibleSection({ title, icon: Icon, count, defaultOpen = fal
                 {open ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
                 {Icon && <Icon className="size-4" />}
                 {title}
-                {count != null && (
-                    <span className="ml-auto rounded-full bg-muted px-2 py-0.5 text-xs">{count}</span>
-                )}
+                {count != null && <span className="ml-auto rounded-full bg-muted px-2 py-0.5 text-xs">{count}</span>}
             </button>
             {open && <div className="mt-3">{children}</div>}
         </div>
@@ -84,6 +90,7 @@ git commit -m "feat(web): add CollapsibleSection component"
 ## Task 2: Wrap Secondary Sections in Collapsibles
 
 **Files:**
+
 - Modify: `apps/web/src/routes/chunks.$chunkId.tsx`
 
 - [ ] **Step 1: Read the full component**
@@ -91,6 +98,7 @@ git commit -m "feat(web): add CollapsibleSection component"
 Understand the 12 sections and identify which are primary (always visible) vs secondary (collapsible).
 
 **Primary (always visible):**
+
 - Header with actions
 - Metadata + health badge
 - Tags (inline editor)
@@ -98,6 +106,7 @@ Understand the 12 sections and identify which are primary (always visible) vs se
 - Decision Context (if present)
 
 **Secondary (collapsible, default closed):**
+
 - Applies To (default open if has items)
 - File References (default open if has items)
 - AI Section (default closed)
@@ -131,10 +140,13 @@ Replace the `<Separator>` + section pattern with `<CollapsibleSection>`:
 ```
 
 Apply to each secondary section:
-- AppliesTo: `title="Applies To"`, `icon={Code}` (existing codebase uses `Code` icon, NOT `FolderTree`), `count={appliesTo.length}`, `defaultOpen={appliesTo.length > 0}`
+
+- AppliesTo: `title="Applies To"`, `icon={Code}` (existing codebase uses `Code` icon, NOT `FolderTree`), `count={appliesTo.length}`,
+  `defaultOpen={appliesTo.length > 0}`
 - FileRefs: `title="File References"`, `icon={FileCode}`, `count={fileReferences.length}`, `defaultOpen={fileReferences.length > 0}`
 - AI Section: `title="AI Tools"`, `icon={Sparkles}`, `defaultOpen={false}`
-- Comments: `title="Comments"`, `icon={MessageSquare}`, `defaultOpen={false}` — **NOTE: ChunkComments already has its own expand/collapse toggle. Strip that internal toggle when wrapping, or the UI will have double-nested collapsibles.**
+- Comments: `title="Comments"`, `icon={MessageSquare}`, `defaultOpen={false}` — **NOTE: ChunkComments already has its own expand/collapse
+  toggle. Strip that internal toggle when wrapping, or the UI will have double-nested collapsibles.**
 - Connections: `title="Connections"`, `icon={Network}`, `count={connections.length}`, `defaultOpen={true}`
 - Suggested: `title="Suggested Connections"`, `icon={Lightbulb}`, `defaultOpen={false}`
 - Related: `title="Related Chunks"`, `icon={LinkIcon}`, `defaultOpen={false}`

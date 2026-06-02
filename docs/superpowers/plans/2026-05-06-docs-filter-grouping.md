@@ -1,24 +1,31 @@
 # Docs Page Filter & Grouping Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to
+> implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Add tag/type filtering, folder/tag grouping, and saveable filter presets to the existing `/docs` document browser page.
 
-**Architecture:** Enrich the `listDocuments` repository query to include tags and chunk type per document. Add a pure client-side filter/group module (`filter-documents.ts`). Build a compact filter bar component stacked above the existing folder tree sidebar. Modify `document-browser.tsx` to wire filter state through URL params, apply filtering/grouping via `useMemo`, and render tag groups when selected.
+**Architecture:** Enrich the `listDocuments` repository query to include tags and chunk type per document. Add a pure client-side
+filter/group module (`filter-documents.ts`). Build a compact filter bar component stacked above the existing folder tree sidebar. Modify
+`document-browser.tsx` to wire filter state through URL params, apply filtering/grouping via `useMemo`, and render tag groups when selected.
 
-**Tech Stack:** Drizzle (repository query joins), Effect (service layer), React (filter bar component, useMemo), TanStack Router (URL search params), localStorage (presets)
+**Tech Stack:** Drizzle (repository query joins), Effect (service layer), React (filter bar component, useMemo), TanStack Router (URL search
+params), localStorage (presets)
 
 ---
 
 ### Task 1: Enrich `listDocuments` with tags and type
 
 **Files:**
+
 - Modify: `packages/db/src/repository/document.ts:45-70`
 - Test: `packages/api/src/documents/service.test.ts` (existing, add test)
 
 - [ ] **Step 1: Write a failing test**
 
-Create or append to `packages/api/src/documents/service.test.ts`. Since the repository is hard to unit test (needs DB), we'll test the enrichment at the service level with a simple integration-style check. Actually — since this project uses `vi.mock` at the repository boundary, add a test for the new service function:
+Create or append to `packages/api/src/documents/service.test.ts`. Since the repository is hard to unit test (needs DB), we'll test the
+enrichment at the service level with a simple integration-style check. Actually — since this project uses `vi.mock` at the repository
+boundary, add a test for the new service function:
 
 Add to the end of the existing `packages/api/src/documents/service.test.ts`:
 
@@ -34,7 +41,8 @@ describe("listDocumentsEnriched", () => {
 });
 ```
 
-Wait — the enrichment is a repository-level SQL change. We can't easily unit test the SQL join. Instead, let's write the implementation first and verify with the full test suite + type-check. Skip TDD for this database query change.
+Wait — the enrichment is a repository-level SQL change. We can't easily unit test the SQL join. Instead, let's write the implementation
+first and verify with the full test suite + type-check. Skip TDD for this database query change.
 
 - [ ] **Step 2: Add `listDocumentsWithTags` to the document repository**
 
@@ -70,7 +78,7 @@ export function listDocumentsWithTags(userId: string, codebaseId?: string) {
                 lastChunkUpdatedAt: sql<Date>`max(${chunk.updatedAt})`.as("last_chunk_updated_at"),
                 oldestChunkUpdatedAt: sql<Date>`min(${chunk.updatedAt})`.as("oldest_chunk_updated_at"),
                 type: sql<string>`min(case when ${chunk.documentOrder} = 0 then ${chunk.type} end)`.as("type"),
-                tagsRaw: sql<string>`string_agg(distinct ${tag.name}, ',')`.as("tags_raw"),
+                tagsRaw: sql<string>`string_agg(distinct ${tag.name}, ',')`.as("tags_raw")
             })
             .from(document)
             .leftJoin(chunk, eq(chunk.documentId, document.id))
@@ -84,7 +92,7 @@ export function listDocumentsWithTags(userId: string, codebaseId?: string) {
             ...d,
             type: d.type ?? "document",
             tags: d.tagsRaw ? d.tagsRaw.split(",").filter(Boolean) : [],
-            tagsRaw: undefined,
+            tagsRaw: undefined
         }));
     });
 }
@@ -92,16 +100,18 @@ export function listDocumentsWithTags(userId: string, codebaseId?: string) {
 
 - [ ] **Step 3: Export the new function**
 
-The repository file's exports are picked up automatically by `packages/db/src/repository/index.ts` via `export * from "./document"`. Verify the function is accessible.
+The repository file's exports are picked up automatically by `packages/db/src/repository/index.ts` via `export * from "./document"`. Verify
+the function is accessible.
 
 - [ ] **Step 4: Add a service wrapper and update the route**
 
-In `packages/api/src/documents/service.ts`, the existing `listDocuments` function delegates to `listDocumentsRepo`. Add an import for the new function:
+In `packages/api/src/documents/service.ts`, the existing `listDocuments` function delegates to `listDocumentsRepo`. Add an import for the
+new function:
 
 ```typescript
 import {
     // ... existing imports ...
-    listDocumentsWithTags as listDocumentsWithTagsRepo,
+    listDocumentsWithTags as listDocumentsWithTagsRepo
 } from "@fubbik/db/repository";
 ```
 
@@ -136,8 +146,8 @@ In `packages/api/src/documents/routes.ts`, update the `GET /documents` handler t
 
 - [ ] **Step 5: Run type-check and tests**
 
-Run: `pnpm run check-types && pnpm test`
-Expected: All pass. The enriched response is a superset of the old one (adds `type` and `tags` fields).
+Run: `pnpm run check-types && pnpm test` Expected: All pass. The enriched response is a superset of the old one (adds `type` and `tags`
+fields).
 
 - [ ] **Step 6: Commit**
 
@@ -151,6 +161,7 @@ git commit -m "feat: enrich listDocuments with tags and chunk type"
 ### Task 2: Pure filter and group functions
 
 **Files:**
+
 - Create: `apps/web/src/features/documents/filter-documents.ts`
 - Create: `apps/web/src/features/documents/filter-documents.test.ts`
 
@@ -166,7 +177,7 @@ const docs: EnrichedDocument[] = [
     { id: "1", title: "Auth Guide", sourcePath: "docs/guides/auth.md", tags: ["auth", "guides"], type: "document", chunkCount: 3 },
     { id: "2", title: "API Endpoints", sourcePath: "docs/api/endpoints.md", tags: ["api", "reference"], type: "reference", chunkCount: 5 },
     { id: "3", title: "Architecture", sourcePath: "docs/architecture.md", tags: ["backend"], type: "document", chunkCount: 4 },
-    { id: "4", title: "Errors", sourcePath: "docs/api/errors.md", tags: [], type: "document", chunkCount: 2 },
+    { id: "4", title: "Errors", sourcePath: "docs/api/errors.md", tags: [], type: "document", chunkCount: 2 }
 ];
 
 describe("filterDocuments", () => {
@@ -224,8 +235,7 @@ describe("groupDocuments", () => {
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `pnpm --filter web test -- --reporter verbose src/features/documents/filter-documents.test.ts`
-Expected: Fails — module not found.
+Run: `pnpm --filter web test -- --reporter verbose src/features/documents/filter-documents.test.ts` Expected: Fails — module not found.
 
 - [ ] **Step 3: Implement the pure functions**
 
@@ -247,10 +257,7 @@ export interface DocFilters {
     activeTypes: string[];
 }
 
-export function filterDocuments(
-    documents: EnrichedDocument[],
-    filters: DocFilters
-): EnrichedDocument[] {
+export function filterDocuments(documents: EnrichedDocument[], filters: DocFilters): EnrichedDocument[] {
     const { activeTags, activeTypes } = filters;
 
     return documents.filter(doc => {
@@ -272,10 +279,7 @@ function folderFromPath(sourcePath: string): string {
     return parts.slice(0, -1).join("/");
 }
 
-export function groupDocuments(
-    documents: EnrichedDocument[],
-    groupBy: "folder" | "tag"
-): Map<string, EnrichedDocument[]> {
+export function groupDocuments(documents: EnrichedDocument[], groupBy: "folder" | "tag"): Map<string, EnrichedDocument[]> {
     const groups = new Map<string, EnrichedDocument[]>();
 
     if (groupBy === "folder") {
@@ -301,11 +305,13 @@ export function groupDocuments(
         }
     }
 
-    return new Map([...groups.entries()].sort((a, b) => {
-        if (a[0] === "Untagged") return 1;
-        if (b[0] === "Untagged") return -1;
-        return a[0].localeCompare(b[0]);
-    }));
+    return new Map(
+        [...groups.entries()].sort((a, b) => {
+            if (a[0] === "Untagged") return 1;
+            if (b[0] === "Untagged") return -1;
+            return a[0].localeCompare(b[0]);
+        })
+    );
 }
 
 export function collectAllTags(documents: EnrichedDocument[]): string[] {
@@ -325,8 +331,7 @@ export function collectAllTypes(documents: EnrichedDocument[]): string[] {
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `pnpm --filter web test -- --reporter verbose src/features/documents/filter-documents.test.ts`
-Expected: All 8 tests pass.
+Run: `pnpm --filter web test -- --reporter verbose src/features/documents/filter-documents.test.ts` Expected: All 8 tests pass.
 
 - [ ] **Step 5: Commit**
 
@@ -340,6 +345,7 @@ git commit -m "feat: pure filter and group functions for document browser"
 ### Task 3: Filter presets component
 
 **Files:**
+
 - Create: `apps/web/src/features/documents/document-filter-presets.tsx`
 
 - [ ] **Step 1: Create the presets component**
@@ -469,8 +475,7 @@ export function DocFilterPresets({ currentFilters, onApplyPreset }: DocFilterPre
 
 - [ ] **Step 2: Run type-check**
 
-Run: `pnpm run check-types`
-Expected: Pass.
+Run: `pnpm run check-types` Expected: Pass.
 
 - [ ] **Step 3: Commit**
 
@@ -484,6 +489,7 @@ git commit -m "feat: filter presets component for docs page"
 ### Task 4: Filter bar component
 
 **Files:**
+
 - Create: `apps/web/src/features/documents/document-filter-bar.tsx`
 
 - [ ] **Step 1: Create the filter bar component**
@@ -660,8 +666,7 @@ export function DocumentFilterBar({
 
 - [ ] **Step 2: Run type-check**
 
-Run: `pnpm run check-types`
-Expected: Pass.
+Run: `pnpm run check-types` Expected: Pass.
 
 - [ ] **Step 3: Commit**
 
@@ -675,10 +680,12 @@ git commit -m "feat: filter bar component for docs page"
 ### Task 5: Integrate filtering and grouping into document browser
 
 **Files:**
+
 - Modify: `apps/web/src/features/documents/document-browser.tsx`
 - Modify: `apps/web/src/routes/docs.tsx`
 
-This is the largest task — wiring the filter bar, filter logic, tag grouping, and URL state into the existing 1112-line document browser. The changes are additive.
+This is the largest task — wiring the filter bar, filter logic, tag grouping, and URL state into the existing 1112-line document browser.
+The changes are additive.
 
 - [ ] **Step 1: Add URL search params for filters**
 
@@ -747,15 +754,31 @@ import type { DocPresetFilters } from "./document-filter-presets";
 Add the `Tag` icon to the lucide imports:
 
 ```typescript
-import { Check, ChevronDown, ChevronLeft, ChevronRight, Eye, FileText, FolderOpen, Link2, Menu, Pencil, Plus, Printer, Search, Tag, X } from "lucide-react";
+import {
+    Check,
+    ChevronDown,
+    ChevronLeft,
+    ChevronRight,
+    Eye,
+    FileText,
+    FolderOpen,
+    Link2,
+    Menu,
+    Pencil,
+    Plus,
+    Printer,
+    Search,
+    Tag,
+    X
+} from "lucide-react";
 ```
 
 Add filter state after the existing state declarations (around line 308):
 
 ```typescript
-    const [activeTags, setActiveTags] = useState<string[]>(initialTags ?? []);
-    const [activeTypes, setActiveTypes] = useState<string[]>(initialTypes ?? []);
-    const [groupBy, setGroupBy] = useState<"folder" | "tag">(initialGroupBy ?? "folder");
+const [activeTags, setActiveTags] = useState<string[]>(initialTags ?? []);
+const [activeTypes, setActiveTypes] = useState<string[]>(initialTypes ?? []);
+const [groupBy, setGroupBy] = useState<"folder" | "tag">(initialGroupBy ?? "folder");
 ```
 
 - [ ] **Step 3: Update `DocumentListItem` type to include tags and type**
@@ -782,55 +805,52 @@ interface DocumentListItem {
 After the existing `const documents = listQuery.data ?? [];` line, add the filter/group computations:
 
 ```typescript
-    const allTags = useMemo(() => collectAllTags(documents as EnrichedDocument[]), [documents]);
-    const allTypes = useMemo(() => collectAllTypes(documents as EnrichedDocument[]), [documents]);
+const allTags = useMemo(() => collectAllTags(documents as EnrichedDocument[]), [documents]);
+const allTypes = useMemo(() => collectAllTypes(documents as EnrichedDocument[]), [documents]);
 
-    const filteredDocuments = useMemo(
-        () => filterDocuments(documents as EnrichedDocument[], { activeTags, activeTypes }),
-        [documents, activeTags, activeTypes]
-    );
+const filteredDocuments = useMemo(
+    () => filterDocuments(documents as EnrichedDocument[], { activeTags, activeTypes }),
+    [documents, activeTags, activeTypes]
+);
 
-    const groupedDocuments = useMemo(
-        () => groupDocuments(filteredDocuments, groupBy),
-        [filteredDocuments, groupBy]
-    );
+const groupedDocuments = useMemo(() => groupDocuments(filteredDocuments, groupBy), [filteredDocuments, groupBy]);
 ```
 
 Add URL sync — after the filter state declarations, add a `useEffect` that syncs filter state to URL:
 
 ```typescript
-    useEffect(() => {
-        navigate({
-            to: "/docs",
-            search: (prev: Record<string, unknown>) => ({
-                ...prev,
-                groupBy: groupBy !== "folder" ? groupBy : undefined,
-                tags: activeTags.length > 0 ? activeTags.join(",") : undefined,
-                types: activeTypes.length > 0 ? activeTypes.join(",") : undefined,
-            }),
-            replace: true,
-        });
-    }, [activeTags, activeTypes, groupBy]);
+useEffect(() => {
+    navigate({
+        to: "/docs",
+        search: (prev: Record<string, unknown>) => ({
+            ...prev,
+            groupBy: groupBy !== "folder" ? groupBy : undefined,
+            tags: activeTags.length > 0 ? activeTags.join(",") : undefined,
+            types: activeTypes.length > 0 ? activeTypes.join(",") : undefined
+        }),
+        replace: true
+    });
+}, [activeTags, activeTypes, groupBy]);
 ```
 
 Add filter action handlers:
 
 ```typescript
-    const toggleTag = (tag: string) => {
-        setActiveTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]);
-    };
-    const toggleType = (type: string) => {
-        setActiveTypes(prev => prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type]);
-    };
-    const clearFilters = () => {
-        setActiveTags([]);
-        setActiveTypes([]);
-    };
-    const applyPreset = (preset: DocPresetFilters) => {
-        setActiveTags(preset.activeTags);
-        setActiveTypes(preset.activeTypes);
-        setGroupBy(preset.groupBy);
-    };
+const toggleTag = (tag: string) => {
+    setActiveTags(prev => (prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]));
+};
+const toggleType = (type: string) => {
+    setActiveTypes(prev => (prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type]));
+};
+const clearFilters = () => {
+    setActiveTags([]);
+    setActiveTypes([]);
+};
+const applyPreset = (preset: DocPresetFilters) => {
+    setActiveTags(preset.activeTags);
+    setActiveTypes(preset.activeTypes);
+    setGroupBy(preset.groupBy);
+};
 ```
 
 - [ ] **Step 5: Update `sidebarFiltered` and `folderTree` to use filtered documents**
@@ -838,23 +858,22 @@ Add filter action handlers:
 Replace the existing `sidebarFiltered` and `folderTree` memos:
 
 ```typescript
-    const sidebarFiltered = useMemo(() => {
-        let docs = filteredDocuments as DocumentListItem[];
-        if (searchQuery && !isSearching) {
-            const q = searchQuery.toLowerCase();
-            docs = docs.filter(
-                d => d.title.toLowerCase().includes(q) || d.sourcePath.toLowerCase().includes(q)
-            );
-        }
-        return docs;
-    }, [filteredDocuments, searchQuery, isSearching]);
+const sidebarFiltered = useMemo(() => {
+    let docs = filteredDocuments as DocumentListItem[];
+    if (searchQuery && !isSearching) {
+        const q = searchQuery.toLowerCase();
+        docs = docs.filter(d => d.title.toLowerCase().includes(q) || d.sourcePath.toLowerCase().includes(q));
+    }
+    return docs;
+}, [filteredDocuments, searchQuery, isSearching]);
 
-    const folderTree = useMemo(() => buildFolderTree(sidebarFiltered), [sidebarFiltered]);
+const folderTree = useMemo(() => buildFolderTree(sidebarFiltered), [sidebarFiltered]);
 ```
 
 - [ ] **Step 6: Render the filter bar in the sidebar**
 
-Find the sidebar rendering section in the JSX. The sidebar currently has the search input and the folder tree. Add the `DocumentFilterBar` between the search input and the folder tree/tag groups.
+Find the sidebar rendering section in the JSX. The sidebar currently has the search input and the folder tree. Add the `DocumentFilterBar`
+between the search input and the folder tree/tag groups.
 
 Look for the sidebar `<div>` that contains the search input (`data-docs-search`). After the search input's container `<div>`, add:
 
@@ -877,7 +896,8 @@ Look for the sidebar `<div>` that contains the search input (`data-docs-search`)
 
 - [ ] **Step 7: Add tag group sidebar rendering**
 
-Below the `FolderTreeNode` rendering in the sidebar, add a conditional for tag grouping. Find where the folder tree nodes are rendered (the `{folderTree.children.map(child => (...FolderTreeNode...))}` section) and wrap it:
+Below the `FolderTreeNode` rendering in the sidebar, add a conditional for tag grouping. Find where the folder tree nodes are rendered (the
+`{folderTree.children.map(child => (...FolderTreeNode...))}` section) and wrap it:
 
 ```tsx
 {groupBy === "folder" ? (
@@ -973,54 +993,54 @@ function TagGroupNode({
 Find the `IndexTree` usage in the main content area (the view when no document is selected). Wrap it with a conditional:
 
 ```tsx
-{!selectedId && !isSearching && (
-    groupBy === "folder" ? (
-        <IndexTree node={folderTree} depth={0} onSelect={setSelectedId} />
-    ) : (
-        <div className="space-y-4">
-            {[...groupedDocuments.entries()].map(([groupName, groupDocs]) => (
-                <div key={groupName}>
-                    <h3 className="text-sm font-semibold text-muted-foreground mb-2 flex items-center gap-1.5">
-                        <Tag className="size-3.5" />
-                        {groupName}
-                    </h3>
-                    <div className="space-y-1 pl-5">
-                        {(groupDocs as DocumentListItem[]).map(doc => {
-                            const staleness = getStaleness(doc);
-                            return (
-                                <button
-                                    key={doc.id}
-                                    onClick={() => setSelectedId(doc.id)}
-                                    className="text-foreground hover:text-foreground/80 flex items-center gap-2 text-sm w-full text-left"
-                                >
-                                    <FileText className="size-3.5 text-muted-foreground shrink-0" />
-                                    <span>{doc.title}</span>
-                                    {doc.description && (
-                                        <span className="text-muted-foreground text-xs truncate">— {doc.description}</span>
-                                    )}
-                                    <span className={`text-xs ml-auto shrink-0 ${staleness.color}`} title={staleness.tooltip}>
-                                        {staleness.label}
-                                    </span>
-                                </button>
-                            );
-                        })}
+{
+    !selectedId &&
+        !isSearching &&
+        (groupBy === "folder" ? (
+            <IndexTree node={folderTree} depth={0} onSelect={setSelectedId} />
+        ) : (
+            <div className="space-y-4">
+                {[...groupedDocuments.entries()].map(([groupName, groupDocs]) => (
+                    <div key={groupName}>
+                        <h3 className="text-sm font-semibold text-muted-foreground mb-2 flex items-center gap-1.5">
+                            <Tag className="size-3.5" />
+                            {groupName}
+                        </h3>
+                        <div className="space-y-1 pl-5">
+                            {(groupDocs as DocumentListItem[]).map(doc => {
+                                const staleness = getStaleness(doc);
+                                return (
+                                    <button
+                                        key={doc.id}
+                                        onClick={() => setSelectedId(doc.id)}
+                                        className="text-foreground hover:text-foreground/80 flex items-center gap-2 text-sm w-full text-left"
+                                    >
+                                        <FileText className="size-3.5 text-muted-foreground shrink-0" />
+                                        <span>{doc.title}</span>
+                                        {doc.description && (
+                                            <span className="text-muted-foreground text-xs truncate">— {doc.description}</span>
+                                        )}
+                                        <span className={`text-xs ml-auto shrink-0 ${staleness.color}`} title={staleness.tooltip}>
+                                            {staleness.label}
+                                        </span>
+                                    </button>
+                                );
+                            })}
+                        </div>
                     </div>
-                </div>
-            ))}
-        </div>
-    )
-)}
+                ))}
+            </div>
+        ));
+}
 ```
 
 - [ ] **Step 9: Run type-check**
 
-Run: `pnpm run check-types`
-Expected: All packages pass.
+Run: `pnpm run check-types` Expected: All packages pass.
 
 - [ ] **Step 10: Run full test suite**
 
-Run: `pnpm test`
-Expected: All tests pass.
+Run: `pnpm test` Expected: All tests pass.
 
 - [ ] **Step 11: Commit**
 
@@ -1037,14 +1057,14 @@ git commit -m "feat: integrate filter bar, tag grouping, and URL state into docu
 
 - [ ] **Step 1: Run full CI pipeline**
 
-Run: `pnpm ci`
-Expected: type-check, lint, test, build, format check, sherif all pass.
+Run: `pnpm ci` Expected: type-check, lint, test, build, format check, sherif all pass.
 
 - [ ] **Step 2: Manual browser verification**
 
 Run: `pnpm dev`
 
 Verify:
+
 1. Navigate to `/docs` — filter bar appears above folder tree in sidebar
 2. Click "Filters ▸" — expands to show tag and type pills
 3. Click a tag pill — sidebar narrows to matching documents, result count updates

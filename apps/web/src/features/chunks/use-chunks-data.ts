@@ -1,5 +1,6 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
+
 import { getChunkSize } from "@/features/chunks/chunk-size";
 import { usePinnedChunks } from "@/features/chunks/use-pinned-chunks";
 import { api } from "@/utils/api";
@@ -19,7 +20,7 @@ export function useChunksData({
     spaceId,
     origin,
     reviewStatus,
-    isFederated,
+    isFederated
 }: {
     type?: string;
     q?: string;
@@ -82,7 +83,7 @@ export function useChunksData({
                         sort: sort as "newest" | "oldest" | "alpha" | "updated" | undefined,
                         tags,
                         limit: String(LIMIT),
-                        offset: String((pageParam - 1) * LIMIT),
+                        offset: String((pageParam - 1) * LIMIT)
                     }
                 });
                 return unwrapEden(res);
@@ -132,8 +133,7 @@ export function useChunksData({
     const [editTitle, setEditTitle] = useState("");
 
     const editMutation = useMutation({
-        mutationFn: async ({ id, title }: { id: string; title: string }) =>
-            unwrapEden(await api.api.chunks({ id }).patch({ title })),
+        mutationFn: async ({ id, title }: { id: string; title: string }) => unwrapEden(await api.api.chunks({ id }).patch({ title })),
         onSuccess: () => queryClient.invalidateQueries({ queryKey: ["chunks-list"] })
     });
 
@@ -180,6 +180,6 @@ export function useChunksData({
         handleChunkHover,
         // pinning
         togglePin,
-        isPinned,
+        isPinned
     };
 }

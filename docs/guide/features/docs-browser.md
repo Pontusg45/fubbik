@@ -1,8 +1,8 @@
 ---
 tags:
-  - guide
-  - documents
-  - browser
+    - guide
+    - documents
+    - browser
 description: Imported documentation browser with full-text search
 ---
 
@@ -20,6 +20,7 @@ The docs browser at `/docs` provides a dedicated interface for browsing imported
 ## Importing Documents
 
 Documents can be imported via:
+
 - CLI: `fubbik docs import <file>` or `fubbik docs import-dir <dir>`
 - Web UI: `/import` page with drag-and-drop
 - API: `POST /api/chunks/import-docs`

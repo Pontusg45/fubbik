@@ -1,7 +1,7 @@
 ---
 tags:
-  - guide
-  - connections
+    - guide
+    - connections
 description: How to create connections via web UI, CLI, and graph
 ---
 

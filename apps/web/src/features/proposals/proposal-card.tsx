@@ -38,19 +38,17 @@ export function ProposalCard({ proposal, showChunkInfo = true, onUpdate }: Propo
     const chunkQuery = useQuery({
         queryKey: ["chunk-for-diff", proposal.chunkId],
         queryFn: async () => unwrapEden(await (api.api as any).chunks[proposal.chunkId].get()),
-        enabled: expanded,
+        enabled: expanded
     });
 
     const approveMutation = useMutation({
-        mutationFn: async () =>
-            unwrapEden(await (api.api as any).proposals[proposal.id].approve.post({})),
-        onSuccess: () => onUpdate(),
+        mutationFn: async () => unwrapEden(await (api.api as any).proposals[proposal.id].approve.post({})),
+        onSuccess: () => onUpdate()
     });
 
     const rejectMutation = useMutation({
-        mutationFn: async () =>
-            unwrapEden(await (api.api as any).proposals[proposal.id].reject.post({})),
-        onSuccess: () => onUpdate(),
+        mutationFn: async () => unwrapEden(await (api.api as any).proposals[proposal.id].reject.post({})),
+        onSuccess: () => onUpdate()
     });
 
     const changedFields = Object.keys(proposal.changes);
@@ -58,38 +56,36 @@ export function ProposalCard({ proposal, showChunkInfo = true, onUpdate }: Propo
     const age = getRelativeTime(proposal.createdAt);
 
     return (
-        <div className="rounded-md border bg-card">
+        <div className="bg-card rounded-md border">
             <div className="flex items-start gap-3 p-3">
-                <button type="button" onClick={() => setExpanded(e => !e)} className="mt-0.5 text-muted-foreground">
+                <button type="button" onClick={() => setExpanded(e => !e)} className="text-muted-foreground mt-0.5">
                     {expanded ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
                 </button>
                 <div className="flex-1">
                     {showChunkInfo && (
                         <div className="mb-1 flex items-center gap-2">
-                            <Link
-                                to="/chunks/$chunkId"
-                                params={{ chunkId: proposal.chunkId }}
-                                className="font-medium hover:underline"
-                            >
+                            <Link to="/chunks/$chunkId" params={{ chunkId: proposal.chunkId }} className="font-medium hover:underline">
                                 {proposal.chunkTitle ?? proposal.chunkId.slice(0, 8)}
                             </Link>
                             {proposal.chunkType && (
-                                <Badge variant="secondary" size="sm">{proposal.chunkType}</Badge>
+                                <Badge variant="secondary" size="sm">
+                                    {proposal.chunkType}
+                                </Badge>
                             )}
                         </div>
                     )}
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <div className="text-muted-foreground flex items-center gap-2 text-xs">
                         <span>{age}</span>
                         {proposal.reason && (
                             <>
                                 <span>•</span>
-                                <span className="truncate max-w-[300px]">{proposal.reason}</span>
+                                <span className="max-w-[300px] truncate">{proposal.reason}</span>
                             </>
                         )}
                     </div>
                     <div className="mt-1 flex flex-wrap gap-1">
                         {changedFields.map(f => (
-                            <span key={f} className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-mono">
+                            <span key={f} className="bg-muted rounded px-1.5 py-0.5 font-mono text-[10px]">
                                 {f}
                             </span>
                         ))}
@@ -126,14 +122,11 @@ export function ProposalCard({ proposal, showChunkInfo = true, onUpdate }: Propo
             {expanded && (
                 <div className="border-t px-3 py-3">
                     {chunkQuery.isLoading ? (
-                        <div className="text-xs text-muted-foreground">Loading chunk...</div>
+                        <div className="text-muted-foreground text-xs">Loading chunk...</div>
                     ) : chunkQuery.data ? (
-                        <ProposalDiff
-                            currentChunk={(chunkQuery.data as any).chunk ?? chunkQuery.data}
-                            changes={proposal.changes}
-                        />
+                        <ProposalDiff currentChunk={(chunkQuery.data as any).chunk ?? chunkQuery.data} changes={proposal.changes} />
                     ) : (
-                        <div className="text-xs text-muted-foreground">Could not load chunk data</div>
+                        <div className="text-muted-foreground text-xs">Could not load chunk data</div>
                     )}
                 </div>
             )}

@@ -18,6 +18,6 @@ import { DatabaseError } from "./errors";
 export function dbEffect<T>(fn: () => Promise<T>): Effect.Effect<T, DatabaseError> {
     return Effect.tryPromise({
         try: fn,
-        catch: cause => new DatabaseError({ cause }),
+        catch: cause => new DatabaseError({ cause })
     });
 }

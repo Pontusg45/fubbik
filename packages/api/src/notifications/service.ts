@@ -28,13 +28,7 @@ export function markAllAsRead(userId: string) {
     return markAllAsReadRepo(userId);
 }
 
-export function createNotification(params: {
-    userId: string;
-    type: string;
-    title: string;
-    message: string;
-    linkTo?: string;
-}) {
+export function createNotification(params: { userId: string; type: string; title: string; message: string; linkTo?: string }) {
     return createNotificationRepo({
         id: crypto.randomUUID(),
         ...params

@@ -1,10 +1,13 @@
 # Dashboard Redesign Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to
+> implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Replace the cluttered 12-widget dashboard with a Focus Stream layout: compact stats bar, active plan card, and unified chronological feed.
+**Goal:** Replace the cluttered 12-widget dashboard with a Focus Stream layout: compact stats bar, active plan card, and unified
+chronological feed.
 
-**Architecture:** Three new component files (`stats-bar`, `active-plan-card`, `unified-feed`) composed in a rewritten `dashboard.tsx`. Six old widget files deleted. No backend changes.
+**Architecture:** Three new component files (`stats-bar`, `active-plan-card`, `unified-feed`) composed in a rewritten `dashboard.tsx`. Six
+old widget files deleted. No backend changes.
 
 **Tech Stack:** React, TanStack Query, TanStack Router, Tailwind CSS, shadcn-ui on base-ui
 
@@ -16,34 +19,35 @@
 
 ### Created
 
-| Path | Responsibility |
-|---|---|
-| `apps/web/src/features/dashboard/stats-bar.tsx` | Compact inline stats row |
-| `apps/web/src/features/dashboard/active-plan-card.tsx` | Plan focus card with interactive task checklist |
-| `apps/web/src/features/dashboard/unified-feed.tsx` | Merged feed with filter tabs + feed item rendering |
+| Path                                                   | Responsibility                                     |
+| ------------------------------------------------------ | -------------------------------------------------- |
+| `apps/web/src/features/dashboard/stats-bar.tsx`        | Compact inline stats row                           |
+| `apps/web/src/features/dashboard/active-plan-card.tsx` | Plan focus card with interactive task checklist    |
+| `apps/web/src/features/dashboard/unified-feed.tsx`     | Merged feed with filter tabs + feed item rendering |
 
 ### Rewritten
 
-| Path | Change |
-|---|---|
+| Path                                | Change                                          |
+| ----------------------------------- | ----------------------------------------------- |
 | `apps/web/src/routes/dashboard.tsx` | Complete rewrite — compose the 3 new components |
 
 ### Deleted
 
-| Path |
-|---|
+| Path                                                        |
+| ----------------------------------------------------------- |
 | `apps/web/src/features/dashboard/featured-chunk-widget.tsx` |
-| `apps/web/src/features/dashboard/smart-collections.tsx` |
-| `apps/web/src/features/dashboard/missed-chunks-widget.tsx` |
-| `apps/web/src/features/dashboard/milestone-cards.tsx` |
-| `apps/web/src/features/dashboard/welcome-wizard.tsx` |
-| `apps/web/src/features/dashboard/attention-needed.tsx` |
+| `apps/web/src/features/dashboard/smart-collections.tsx`     |
+| `apps/web/src/features/dashboard/missed-chunks-widget.tsx`  |
+| `apps/web/src/features/dashboard/milestone-cards.tsx`       |
+| `apps/web/src/features/dashboard/welcome-wizard.tsx`        |
+| `apps/web/src/features/dashboard/attention-needed.tsx`      |
 
 ---
 
 ### Task 1: Stats Bar + Active Plan Card
 
 **Files:**
+
 - Create: `apps/web/src/features/dashboard/stats-bar.tsx`
 - Create: `apps/web/src/features/dashboard/active-plan-card.tsx`
 
@@ -52,6 +56,7 @@
 - [ ] **Step 1: Read reference files**
 
 Read to confirm API patterns and types:
+
 - `apps/web/src/routes/dashboard.tsx` lines 1-40 (imports, route declaration)
 - `apps/web/src/routes/dashboard.tsx` — find the stats query (`api.api.stats.get`) and the plans query
 - `apps/web/src/features/plans/plan-status-pill.tsx` — for reuse
@@ -111,8 +116,11 @@ export function StatsBar() {
 ```
 
 **Adaptation notes:**
-- The `stats` response shape may differ — read the actual `GET /api/stats` response. It might have `chunks`, `connections`, `tags` but NOT `requirements`. If so, add a separate requirements count query via `api.api.requirements.get` or similar.
-- The stale count endpoint may return `{ count: N }` instead of an array. The existing `GET /api/chunks/stale/count` endpoint (used by the nav badge) returns `{ count: N }`. Use that instead if it exists: `api.api.chunks.stale.count.get()`. Check what's available.
+
+- The `stats` response shape may differ — read the actual `GET /api/stats` response. It might have `chunks`, `connections`, `tags` but NOT
+  `requirements`. If so, add a separate requirements count query via `api.api.requirements.get` or similar.
+- The stale count endpoint may return `{ count: N }` instead of an array. The existing `GET /api/chunks/stale/count` endpoint (used by the
+  nav badge) returns `{ count: N }`. Use that instead if it exists: `api.api.chunks.stale.count.get()`. Check what's available.
 
 - [ ] **Step 3: Create `apps/web/src/features/dashboard/active-plan-card.tsx`**
 
@@ -303,13 +311,16 @@ Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>"
 ### Task 2: Unified Feed
 
 **Files:**
+
 - Create: `apps/web/src/features/dashboard/unified-feed.tsx`
 
-**Context:** The feed merges three data sources (proposals, stale flags, activity) into one chronological list. Feed items have type-specific rendering with inline actions for proposals.
+**Context:** The feed merges three data sources (proposals, stale flags, activity) into one chronological list. Feed items have
+type-specific rendering with inline actions for proposals.
 
 - [ ] **Step 1: Read reference patterns**
 
 Read to confirm response shapes:
+
 - `apps/web/src/features/proposals/proposal-card.tsx` — `Proposal` type
 - `apps/web/src/routes/dashboard.tsx` — find the activity query and the Activity type shape
 - `apps/web/src/features/dashboard/attention-needed.tsx` — stale flag shape
@@ -595,10 +606,12 @@ function formatRelativeTime(date: Date): string {
 ```
 
 **Adaptation notes:**
+
 - The activity response shape may be `{ activities: [...] }` or a flat array — the code handles both.
 - The stale flags response may be an array or `{ flags: [...] }` — handle both.
 - `Button` component — check if it accepts `className` for custom styling. If not, use a plain `<button>` with Tailwind classes.
-- The `Link to="/chunks/$chunkId"` pattern needs the `chunkId` param. For activity items that link to plans or requirements, the link path differs by `entityType`. For v1, only link chunk types.
+- The `Link to="/chunks/$chunkId"` pattern needs the `chunkId` param. For activity items that link to plans or requirements, the link path
+  differs by `entityType`. For v1, only link chunk types.
 
 - [ ] **Step 3: Type check**
 
@@ -620,6 +633,7 @@ Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>"
 ### Task 3: Rewrite Dashboard Route + Delete Old Widgets
 
 **Files:**
+
 - Rewrite: `apps/web/src/routes/dashboard.tsx`
 - Delete: 6 old widget files
 
@@ -639,6 +653,7 @@ Some of these may not exist (they may have been moved or renamed). The `rm -f` w
 - [ ] **Step 2: Read the current dashboard.tsx**
 
 Read `apps/web/src/routes/dashboard.tsx` fully. Note:
+
 - The route declaration pattern (`createFileRoute`, `beforeLoad`)
 - Any logic we need to preserve (e.g., codebase filtering, session check)
 - The `getUser` or session helper import
@@ -682,7 +697,8 @@ function DashboardPage() {
 
 That's it — ~30 lines. The three components handle their own data fetching.
 
-**Adaptation:** If `PageContainer` expects specific props (like `maxWidth`), pass them. If `getUser` is imported differently, match the current pattern. If the `beforeLoad` isn't needed (dev mode skips auth), keep it anyway for production parity.
+**Adaptation:** If `PageContainer` expects specific props (like `maxWidth`), pass them. If `getUser` is imported differently, match the
+current pattern. If the `beforeLoad` isn't needed (dev mode skips auth), keep it anyway for production parity.
 
 - [ ] **Step 4: Check for any remaining imports of deleted files**
 
@@ -705,6 +721,7 @@ Expected: success. The route tree regenerates automatically during build.
 Start dev: `pnpm dev`
 
 Navigate to `/dashboard`. Verify:
+
 1. Stats bar shows at top with inline numbers
 2. Active plan card shows "Federated chunk search" (from seed) with task checklist
 3. Click a task checkbox — toggles done/pending

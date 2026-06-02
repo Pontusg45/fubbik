@@ -23,7 +23,7 @@ function extractConventions(markdown: string): Convention[] {
             content:
                 "shadcn-ui is built on @base-ui/react which uses the `render` prop pattern, NOT Radix `asChild`. All dialog triggers, menu items, and interactive components must use `render={<Component />}` instead of `asChild`.",
             tags: ["convention", "ui", "base-ui"],
-            appliesTo: ["apps/web/src/**/*.tsx"],
+            appliesTo: ["apps/web/src/**/*.tsx"]
         });
     }
 
@@ -33,7 +33,7 @@ function extractConventions(markdown: string): Convention[] {
             content:
                 "DropdownMenuSeparator and DropdownMenuLabel use plain HTML elements (NOT base-ui primitives) to avoid Menu.Group context requirement.",
             tags: ["convention", "ui"],
-            appliesTo: ["apps/web/src/**/*.tsx"],
+            appliesTo: ["apps/web/src/**/*.tsx"]
         });
     }
 
@@ -44,7 +44,7 @@ function extractConventions(markdown: string): Convention[] {
             content:
                 "Repositories (packages/db/src/repository/) return Effect<T, DatabaseError>. Services (packages/api/src/*/service.ts) compose repository Effects, add business logic, introduce NotFoundError/AuthError/ValidationError. Routes (packages/api/src/*/routes.ts) call Effect.runPromise(requireSession(ctx).pipe(...)). Errors propagate to global .onError handler.",
             tags: ["convention", "architecture", "backend"],
-            appliesTo: ["packages/api/src/**/*.ts", "packages/db/src/repository/**/*.ts"],
+            appliesTo: ["packages/api/src/**/*.ts", "packages/db/src/repository/**/*.ts"]
         });
     }
 
@@ -55,7 +55,7 @@ function extractConventions(markdown: string): Convention[] {
             content:
                 "Use the Effect library for typed errors in the service layer. Repositories return Effect<T, DatabaseError>. Services introduce NotFoundError, AuthError, ValidationError. The global error handler extracts Effect errors from FiberFailure and maps _tag to HTTP status codes (ValidationError->400, AuthError->401, NotFoundError->404, DatabaseError->500).",
             tags: ["convention", "error-handling", "effect"],
-            appliesTo: ["packages/api/src/**/*.ts"],
+            appliesTo: ["packages/api/src/**/*.ts"]
         });
     }
 
@@ -66,7 +66,7 @@ function extractConventions(markdown: string): Convention[] {
             content:
                 "Use Elysia's built-in `t` schema for request validation. Arktype was removed from the project. All body/query validation should use t.Object, t.String, t.Optional, etc.",
             tags: ["convention", "validation", "backend"],
-            appliesTo: ["packages/api/src/**/routes.ts"],
+            appliesTo: ["packages/api/src/**/routes.ts"]
         });
     }
 
@@ -77,7 +77,7 @@ function extractConventions(markdown: string): Convention[] {
             content:
                 "Route files in apps/web/src/routes/. Feature components in apps/web/src/features/ (e.g., features/auth/, features/graph/). Shared UI in apps/web/src/components/ui/. Shared page components: PageContainer, PageHeader, PageLoading, PageEmpty in components/ui/page.tsx.",
             tags: ["convention", "frontend", "architecture"],
-            appliesTo: ["apps/web/src/**/*.tsx"],
+            appliesTo: ["apps/web/src/**/*.tsx"]
         });
     }
 
@@ -88,7 +88,7 @@ function extractConventions(markdown: string): Convention[] {
             content:
                 "AI features use Ollama directly for embeddings (nomic-embed-text) and generation (llama3.2). The Vercel AI SDK was removed. OLLAMA_URL env var defaults to http://localhost:11434.",
             tags: ["convention", "ai", "ollama"],
-            appliesTo: ["packages/api/src/ollama/**/*.ts", "packages/api/src/enrich/**/*.ts"],
+            appliesTo: ["packages/api/src/ollama/**/*.ts", "packages/api/src/enrich/**/*.ts"]
         });
     }
 
@@ -99,7 +99,7 @@ function extractConventions(markdown: string): Convention[] {
             content:
                 "The VS Code extension at apps/vscode/ does NOT import from other fubbik packages. It communicates with the fubbik API via HTTP (fetch-based) and is bundled to CJS via esbuild.",
             tags: ["convention", "vscode", "architecture"],
-            appliesTo: ["apps/vscode/**/*.ts"],
+            appliesTo: ["apps/vscode/**/*.ts"]
         });
     }
 
@@ -110,7 +110,7 @@ function extractConventions(markdown: string): Convention[] {
             content:
                 "Use pnpm for package management (pnpm install, pnpm add). Use bun for runtime execution (bun run, bun test). TypeScript checking uses tsgo (pnpm run check-types).",
             tags: ["convention", "tooling"],
-            appliesTo: ["package.json", "pnpm-workspace.yaml"],
+            appliesTo: ["package.json", "pnpm-workspace.yaml"]
         });
     }
 
@@ -121,7 +121,7 @@ function extractConventions(markdown: string): Convention[] {
             content:
                 "Database schema defined with drizzle ORM. Uses pgvector extension for embeddings and pg_trgm for fuzzy text search. Schema push via pnpm db:push. Studio via pnpm db:studio.",
             tags: ["convention", "database", "drizzle"],
-            appliesTo: ["packages/db/src/**/*.ts"],
+            appliesTo: ["packages/db/src/**/*.ts"]
         });
     }
 
@@ -171,8 +171,8 @@ export const seedConventionsCommand = new Command("seed-conventions")
                         title: c.title,
                         content: c.content,
                         type: "convention",
-                        tags: c.tags,
-                    }),
+                        tags: c.tags
+                    })
                 });
                 if (res.ok) {
                     const chunk = (await res.json()) as { id: string };
@@ -181,7 +181,7 @@ export const seedConventionsCommand = new Command("seed-conventions")
                         await fetch(`${serverUrl}/api/chunks/${chunk.id}/applies-to`, {
                             method: "PUT",
                             headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ patterns: c.appliesTo.map((p) => ({ pattern: p })) }),
+                            body: JSON.stringify({ patterns: c.appliesTo.map(p => ({ pattern: p })) })
                         });
                     }
                     created++;

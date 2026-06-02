@@ -1,10 +1,15 @@
 # Smart Link Renderer Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to
+> implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Extend `MarkdownRenderer` with a `SmartLinkProvider` context so all markdown surfaces auto-link backticked terms to chunks/file-refs and highlight vocabulary terms with hover popovers — without callsite changes.
+**Goal:** Extend `MarkdownRenderer` with a `SmartLinkProvider` context so all markdown surfaces auto-link backticked terms to
+chunks/file-refs and highlight vocabulary terms with hover popovers — without callsite changes.
 
-**Architecture:** A `SmartLinkProvider` near the app root fetches chunk titles, vocabulary entries, and file refs into cached lookup maps. `MarkdownRenderer` consumes this context via `useContext` and does matching inside component overrides (`components.code` for backticked terms, a rehype text-node plugin for vocabulary in prose). `ChunkLinkRenderer` is deleted; its sole callsite switches to plain `<MarkdownRenderer>`.
+**Architecture:** A `SmartLinkProvider` near the app root fetches chunk titles, vocabulary entries, and file refs into cached lookup maps.
+`MarkdownRenderer` consumes this context via `useContext` and does matching inside component overrides (`components.code` for backticked
+terms, a rehype text-node plugin for vocabulary in prose). `ChunkLinkRenderer` is deleted; its sole callsite switches to plain
+`<MarkdownRenderer>`.
 
 **Tech Stack:** React context, TanStack Query, react-markdown component overrides, custom rehype plugin, Tailwind CSS
 
@@ -12,27 +17,29 @@
 
 ## File Structure
 
-| File | Action | Responsibility |
-|---|---|---|
-| `apps/web/src/components/smart-link-provider.tsx` | **Create** | Context + provider + three cached queries + matching functions |
-| `apps/web/src/components/smart-link-provider.test.ts` | **Create** | Unit tests for matching logic (pure functions) |
-| `apps/web/src/components/vocabulary-popover.tsx` | **Create** | Hover card for vocabulary terms |
-| `apps/web/src/components/markdown-renderer.tsx` | **Modify** | Consume context, update `code` override, add rehype plugin for vocabulary text matching |
-| `apps/web/src/features/chunks/chunk-link-renderer.tsx` | **Delete** | Replaced by MarkdownRenderer internals |
-| `apps/web/src/features/chunks/detail/chunk-detail-content.tsx` | **Modify** | Replace `ChunkLinkRenderer` with `MarkdownRenderer` |
-| `apps/web/src/features/documents/document-browser.tsx` | **Modify** | Remove `handleContentClick`, `docTitleMap`, `allDocsQuery` |
-| `apps/web/src/routes/__root.tsx` | **Modify** | Add `<SmartLinkProvider>` |
-| `packages/api/src/file-refs/routes.ts` | **Modify** | Add `GET /api/file-refs` list-all endpoint |
-| `packages/api/src/file-refs/service.ts` | **Modify** | Add `listAllFileRefs` function |
-| `packages/db/src/repository/file-ref.ts` | **Modify** | Add `listAllFileRefsForUser` query |
+| File                                                           | Action     | Responsibility                                                                          |
+| -------------------------------------------------------------- | ---------- | --------------------------------------------------------------------------------------- |
+| `apps/web/src/components/smart-link-provider.tsx`              | **Create** | Context + provider + three cached queries + matching functions                          |
+| `apps/web/src/components/smart-link-provider.test.ts`          | **Create** | Unit tests for matching logic (pure functions)                                          |
+| `apps/web/src/components/vocabulary-popover.tsx`               | **Create** | Hover card for vocabulary terms                                                         |
+| `apps/web/src/components/markdown-renderer.tsx`                | **Modify** | Consume context, update `code` override, add rehype plugin for vocabulary text matching |
+| `apps/web/src/features/chunks/chunk-link-renderer.tsx`         | **Delete** | Replaced by MarkdownRenderer internals                                                  |
+| `apps/web/src/features/chunks/detail/chunk-detail-content.tsx` | **Modify** | Replace `ChunkLinkRenderer` with `MarkdownRenderer`                                     |
+| `apps/web/src/features/documents/document-browser.tsx`         | **Modify** | Remove `handleContentClick`, `docTitleMap`, `allDocsQuery`                              |
+| `apps/web/src/routes/__root.tsx`                               | **Modify** | Add `<SmartLinkProvider>`                                                               |
+| `packages/api/src/file-refs/routes.ts`                         | **Modify** | Add `GET /api/file-refs` list-all endpoint                                              |
+| `packages/api/src/file-refs/service.ts`                        | **Modify** | Add `listAllFileRefs` function                                                          |
+| `packages/db/src/repository/file-ref.ts`                       | **Modify** | Add `listAllFileRefsForUser` query                                                      |
 
 ---
 
 ### Task 1: Add list-all file refs API endpoint
 
-The `SmartLinkProvider` needs all file refs in a single query. Currently only per-chunk and per-path lookups exist. Add a lightweight `GET /api/file-refs` endpoint.
+The `SmartLinkProvider` needs all file refs in a single query. Currently only per-chunk and per-path lookups exist. Add a lightweight
+`GET /api/file-refs` endpoint.
 
 **Files:**
+
 - Modify: `packages/db/src/repository/file-ref.ts`
 - Modify: `packages/api/src/file-refs/service.ts`
 - Modify: `packages/api/src/file-refs/routes.ts`
@@ -116,6 +123,7 @@ git commit -m "feat: add GET /api/file-refs list-all endpoint for smart link pro
 Build the pure matching functions first, test them, then wire up the provider.
 
 **Files:**
+
 - Create: `apps/web/src/components/smart-link-provider.tsx`
 - Create: `apps/web/src/components/smart-link-provider.test.ts`
 
@@ -138,17 +146,13 @@ describe("buildChunkIndex", () => {
     });
 
     it("indexes aliases", () => {
-        const index = buildChunkIndex([
-            { id: "c1", title: "UserService", aliases: ["UserSvc", "user-service"] }
-        ]);
+        const index = buildChunkIndex([{ id: "c1", title: "UserService", aliases: ["UserSvc", "user-service"] }]);
         expect(index.get("usersvc")).toEqual({ id: "c1", title: "UserService" });
         expect(index.get("user-service")).toEqual({ id: "c1", title: "UserService" });
     });
 
     it("skips short titles (< 4 chars)", () => {
-        const index = buildChunkIndex([
-            { id: "c1", title: "API", aliases: [] }
-        ]);
+        const index = buildChunkIndex([{ id: "c1", title: "API", aliases: [] }]);
         expect(index.get("api")).toBeUndefined();
     });
 
@@ -164,9 +168,7 @@ describe("buildChunkIndex", () => {
 
 describe("buildVocabularyIndex", () => {
     it("indexes by lowercase word", () => {
-        const index = buildVocabularyIndex([
-            { word: "UserService", category: "actor", expects: ["class"] }
-        ]);
+        const index = buildVocabularyIndex([{ word: "UserService", category: "actor", expects: ["class"] }]);
         expect(index.get("userservice")).toEqual({
             word: "UserService",
             category: "actor",
@@ -177,9 +179,7 @@ describe("buildVocabularyIndex", () => {
 
 describe("buildFileRefIndex", () => {
     it("indexes by filename and full path", () => {
-        const index = buildFileRefIndex([
-            { chunkId: "c1", chunkTitle: "Auth Module", path: "src/auth/service.ts", anchor: null }
-        ]);
+        const index = buildFileRefIndex([{ chunkId: "c1", chunkTitle: "Auth Module", path: "src/auth/service.ts", anchor: null }]);
         expect(index.get("src/auth/service.ts")).toEqual({ chunkId: "c1", chunkTitle: "Auth Module", path: "src/auth/service.ts" });
         expect(index.get("service.ts")).toEqual({ chunkId: "c1", chunkTitle: "Auth Module", path: "src/auth/service.ts" });
     });
@@ -190,12 +190,8 @@ describe("matchInCode", () => {
         { id: "c1", title: "UserService", aliases: [] },
         { id: "c2", title: "AuthFlow", aliases: [] }
     ]);
-    const vocab = buildVocabularyIndex([
-        { word: "Repository", category: "actor", expects: ["class"] }
-    ]);
-    const fileRefs = buildFileRefIndex([
-        { chunkId: "c3", chunkTitle: "Config", path: "src/config.ts", anchor: null }
-    ]);
+    const vocab = buildVocabularyIndex([{ word: "Repository", category: "actor", expects: ["class"] }]);
+    const fileRefs = buildFileRefIndex([{ chunkId: "c3", chunkTitle: "Config", path: "src/config.ts", anchor: null }]);
 
     it("returns chunk match (highest priority)", () => {
         const result = matchInCode("UserService", chunks, fileRefs, vocab);
@@ -292,9 +288,7 @@ export interface VocabularyTextMatch extends VocabularyMatch {
 
 /* ─── Index builders (exported for testing) ─── */
 
-export function buildChunkIndex(
-    chunks: { id: string; title: string; aliases: string[] }[]
-): Map<string, ChunkMatch> {
+export function buildChunkIndex(chunks: { id: string; title: string; aliases: string[] }[]): Map<string, ChunkMatch> {
     const map = new Map<string, ChunkMatch>();
     for (const c of chunks) {
         if (c.title.length >= 4) {
@@ -372,10 +366,7 @@ export function matchInCode(
  * Find all vocabulary term matches in a plain text string.
  * Returns matches sorted by position, longest-first for overlapping matches.
  */
-export function matchVocabularyInText(
-    text: string,
-    vocabIndex: Map<string, VocabularyMatch>
-): VocabularyTextMatch[] {
+export function matchVocabularyInText(text: string, vocabIndex: Map<string, VocabularyMatch>): VocabularyTextMatch[] {
     if (vocabIndex.size === 0) return [];
 
     const words = Array.from(vocabIndex.keys()).sort((a, b) => b.length - a.length);
@@ -462,11 +453,7 @@ export function SmartLinkProvider({ children }: { children: ReactNode }) {
         return { chunkIndex, vocabIndex, fileRefIndex };
     }, [chunksQuery.data, vocabQuery.data, fileRefsQuery.data]);
 
-    return (
-        <SmartLinkContext.Provider value={value}>
-            {children}
-        </SmartLinkContext.Provider>
-    );
+    return <SmartLinkContext.Provider value={value}>{children}</SmartLinkContext.Provider>;
 }
 ```
 
@@ -490,6 +477,7 @@ git commit -m "feat: add SmartLinkProvider with chunk, vocabulary, and file-ref 
 A custom hover card that shows vocabulary term metadata.
 
 **Files:**
+
 - Create: `apps/web/src/components/vocabulary-popover.tsx`
 
 - [ ] **Step 1: Create the component**
@@ -561,38 +549,35 @@ export function VocabularyPopover({ word, category, expects, children }: Vocabul
             >
                 {children}
             </span>
-            {open && position && createPortal(
-                <div
-                    ref={popoverRef}
-                    onMouseEnter={keepOpen}
-                    onMouseLeave={hide}
-                    className="fixed z-50 w-64 rounded-lg border border-border bg-popover p-3 shadow-md animate-in fade-in-0 zoom-in-95 duration-100"
-                    style={{
-                        top: position.top,
-                        left: position.left,
-                        transform: "translateX(-50%)"
-                    }}
-                >
-                    <div className="flex items-center justify-between gap-2 mb-1">
-                        <span className="text-sm font-medium text-foreground">{word}</span>
-                        <Badge variant="secondary" size="sm" className="text-[10px] shrink-0">
-                            {category}
-                        </Badge>
-                    </div>
-                    {expects && expects.length > 0 && (
-                        <p className="text-xs text-muted-foreground mb-2">
-                            Expects: {expects.join(", ")}
-                        </p>
-                    )}
-                    <Link
-                        to="/vocabulary"
-                        className="text-xs text-primary hover:text-primary/80 transition-colors"
+            {open &&
+                position &&
+                createPortal(
+                    <div
+                        ref={popoverRef}
+                        onMouseEnter={keepOpen}
+                        onMouseLeave={hide}
+                        className="fixed z-50 w-64 rounded-lg border border-border bg-popover p-3 shadow-md animate-in fade-in-0 zoom-in-95 duration-100"
+                        style={{
+                            top: position.top,
+                            left: position.left,
+                            transform: "translateX(-50%)"
+                        }}
                     >
-                        View in vocabulary →
-                    </Link>
-                </div>,
-                document.body
-            )}
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                            <span className="text-sm font-medium text-foreground">{word}</span>
+                            <Badge variant="secondary" size="sm" className="text-[10px] shrink-0">
+                                {category}
+                            </Badge>
+                        </div>
+                        {expects && expects.length > 0 && (
+                            <p className="text-xs text-muted-foreground mb-2">Expects: {expects.join(", ")}</p>
+                        )}
+                        <Link to="/vocabulary" className="text-xs text-primary hover:text-primary/80 transition-colors">
+                            View in vocabulary →
+                        </Link>
+                    </div>,
+                    document.body
+                )}
         </>
     );
 }
@@ -620,6 +605,7 @@ git commit -m "feat: add VocabularyPopover hover card component"
 Wire the matching logic into the markdown component overrides.
 
 **Files:**
+
 - Modify: `apps/web/src/components/markdown-renderer.tsx`
 
 - [ ] **Step 1: Add imports and smart code component**
@@ -639,11 +625,7 @@ Add this component before the `/* ─── Component overrides ─── */` co
 ```tsx
 /* ─── Smart inline code ─── */
 
-function SmartCode({ children, className, ...props }: {
-    children: string;
-    className?: string;
-    [key: string]: unknown;
-}) {
+function SmartCode({ children, className, ...props }: { children: string; className?: string; [key: string]: unknown }) {
     const { chunkIndex, fileRefIndex, vocabIndex } = useSmartLinks();
     const excludeChunkId = useContext(ExcludeChunkContext);
     const text = String(children);
@@ -719,12 +701,7 @@ function SmartText({ children }: { children: string }) {
             parts.push(children.slice(lastEnd, match.start));
         }
         parts.push(
-            <VocabularyPopover
-                key={match.start}
-                word={match.word}
-                category={match.category}
-                expects={match.expects}
-            >
+            <VocabularyPopover key={match.start} word={match.word} category={match.category} expects={match.expects}>
                 {children.slice(match.start, match.end)}
             </VocabularyPopover>
         );
@@ -741,7 +718,8 @@ function SmartText({ children }: { children: string }) {
 
 - [ ] **Step 4: Create wrapper components for text-containing elements**
 
-Add these components to wrap elements whose text children should be scanned for vocabulary matches. These skip matching inside headings, links, and code (which are already interactive):
+Add these components to wrap elements whose text children should be scanned for vocabulary matches. These skip matching inside headings,
+links, and code (which are already interactive):
 
 ```tsx
 /* ─── Smart paragraph (wraps text children with vocab matching) ─── */
@@ -828,7 +806,8 @@ With:
 export function MarkdownRenderer({ children, excludeChunkId }: { children: string; excludeChunkId?: string }) {
 ```
 
-The `excludeChunkId` needs to reach `SmartCode`. Since react-markdown's `components` object is static, use a React context for this. Add before the `components` object:
+The `excludeChunkId` needs to reach `SmartCode`. Since react-markdown's `components` object is static, use a React context for this. Add
+before the `components` object:
 
 ```tsx
 const ExcludeChunkContext = createContext<string | undefined>(undefined);
@@ -855,11 +834,7 @@ And wrap the Markdown component with it:
 export function MarkdownRenderer({ children, excludeChunkId }: { children: string; excludeChunkId?: string }) {
     return (
         <ExcludeChunkContext.Provider value={excludeChunkId}>
-            <Markdown
-                remarkPlugins={remarkPlugins}
-                rehypePlugins={rehypePlugins}
-                components={components}
-            >
+            <Markdown remarkPlugins={remarkPlugins} rehypePlugins={rehypePlugins} components={components}>
                 {children}
             </Markdown>
         </ExcludeChunkContext.Provider>
@@ -887,6 +862,7 @@ git commit -m "feat: wire SmartLinkProvider into MarkdownRenderer component over
 ### Task 5: Mount SmartLinkProvider in root layout
 
 **Files:**
+
 - Modify: `apps/web/src/routes/__root.tsx`
 
 - [ ] **Step 1: Add import**
@@ -929,7 +905,8 @@ Add `</SmartLinkProvider>` before it:
 
 - [ ] **Step 3: Verify the app still loads**
 
-Run: Open `http://localhost:3001` in the browser, navigate to a chunk detail page. Verify the page renders without errors. Check the browser console for any React errors.
+Run: Open `http://localhost:3001` in the browser, navigate to a chunk detail page. Verify the page renders without errors. Check the browser
+console for any React errors.
 
 - [ ] **Step 4: Commit**
 
@@ -943,6 +920,7 @@ git commit -m "feat: mount SmartLinkProvider in root layout"
 ### Task 6: Migrate ChunkLinkRenderer callsite and delete wrapper
 
 **Files:**
+
 - Modify: `apps/web/src/features/chunks/detail/chunk-detail-content.tsx`
 - Delete: `apps/web/src/features/chunks/chunk-link-renderer.tsx`
 
@@ -959,13 +937,13 @@ import { ChunkLinkRenderer } from "@/features/chunks/chunk-link-renderer";
 The `MarkdownRenderer` import on line 4 is already there. Find the usage on line 119:
 
 ```tsx
-                <ChunkLinkRenderer content={content} currentChunkId={chunkId} />
+<ChunkLinkRenderer content={content} currentChunkId={chunkId} />
 ```
 
 Replace with:
 
 ```tsx
-                <MarkdownRenderer excludeChunkId={chunkId}>{content}</MarkdownRenderer>
+<MarkdownRenderer excludeChunkId={chunkId}>{content}</MarkdownRenderer>
 ```
 
 - [ ] **Step 2: Delete ChunkLinkRenderer**
@@ -983,6 +961,7 @@ Expected: No results.
 - [ ] **Step 4: Verify the chunk detail page works**
 
 Open a chunk detail page in the browser. Verify:
+
 - Markdown content renders correctly
 - Backticked terms that match other chunk titles show as clickable links
 - No console errors
@@ -1002,6 +981,7 @@ git commit -m "refactor: replace ChunkLinkRenderer with SmartLinkProvider-powere
 Remove the click interception and `allDocsQuery` from the document browser. Smart linking now handles this via the provider.
 
 **Files:**
+
 - Modify: `apps/web/src/features/documents/document-browser.tsx`
 
 - [ ] **Step 1: Remove allDocsQuery, docTitleMap, and handleContentClick**
@@ -1018,11 +998,13 @@ In `apps/web/src/features/documents/document-browser.tsx`, remove these blocks:
     });
 ```
 
-**Wait** — `allDocsQuery` is also used for search (`searchResults` and `groupedSearchResults` depend on `allDocsQuery.data`). Only remove the parts related to inter-document linking, not the query itself.
+**Wait** — `allDocsQuery` is also used for search (`searchResults` and `groupedSearchResults` depend on `allDocsQuery.data`). Only remove
+the parts related to inter-document linking, not the query itself.
 
 Remove:
 
 a) The `docTitleMap` memo (lines ~409–419):
+
 ```ts
     // Build title-to-ID map for inter-document link navigation
     const docTitleMap = useMemo(() => {
@@ -1031,6 +1013,7 @@ a) The `docTitleMap` memo (lines ~409–419):
 ```
 
 b) The `handleContentClick` function (lines ~421–437):
+
 ```ts
     const handleContentClick = (e: React.MouseEvent) => {
         ...
@@ -1038,11 +1021,13 @@ b) The `handleContentClick` function (lines ~421–437):
 ```
 
 c) The `onClick={handleContentClick}` on the content div (line ~951). Find:
+
 ```tsx
                         <div className="space-y-2" data-doc-content onClick={handleContentClick}>
 ```
 
 Replace with:
+
 ```tsx
                         <div className="space-y-2" data-doc-content>
 ```
@@ -1050,6 +1035,7 @@ Replace with:
 - [ ] **Step 2: Verify docs page still works**
 
 Open `http://localhost:3001/docs`, select a document. Verify:
+
 - Document content renders
 - Search still works
 - No console errors
@@ -1069,15 +1055,18 @@ Verify the full feature works end-to-end.
 
 - [ ] **Step 1: Test backtick chunk linking**
 
-Create or find a chunk whose content includes a backticked reference to another chunk's title. For example, if you have a chunk titled "Authentication Flow", create content with `` `Authentication Flow` ``.
+Create or find a chunk whose content includes a backticked reference to another chunk's title. For example, if you have a chunk titled
+"Authentication Flow", create content with `` `Authentication Flow` ``.
 
 Verify: The backticked text renders as a clickable link that navigates to the referenced chunk.
 
 - [ ] **Step 2: Test vocabulary popover**
 
-Ensure you have vocabulary entries in the database (the seed data includes 10). Navigate to a chunk or document whose content mentions a vocabulary term.
+Ensure you have vocabulary entries in the database (the seed data includes 10). Navigate to a chunk or document whose content mentions a
+vocabulary term.
 
-Verify: The term has a dotted underline, hovering shows a popover with the word, category badge, expects list, and "View in vocabulary →" link.
+Verify: The term has a dotted underline, hovering shows a popover with the word, category badge, expects list, and "View in vocabulary →"
+link.
 
 - [ ] **Step 3: Test self-link exclusion**
 
@@ -1086,6 +1075,7 @@ On a chunk detail page, verify that the chunk's own title (if backticked in its 
 - [ ] **Step 4: Test docs page**
 
 Navigate to `/docs`, select a document. Verify:
+
 - Content renders with smart links
 - Search still works
 - Previous/next navigation works
@@ -1094,6 +1084,7 @@ Navigate to `/docs`, select a document. Verify:
 - [ ] **Step 5: Test other markdown surfaces**
 
 Check that smart linking works on:
+
 - Graph detail panel (click a node, see the detail)
 - Plan descriptions
 - Any other page that uses `<MarkdownRenderer>`

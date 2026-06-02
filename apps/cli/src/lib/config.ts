@@ -87,9 +87,7 @@ export async function resolveSpaceFromConfig(serverUrl: string): Promise<string 
         const res = await fetch(`${serverUrl}/api/spaces`);
         if (!res.ok) return null;
         const spaces = (await res.json()) as { id: string; name: string }[];
-        const match = spaces.find(
-            (c) => c.name.toLowerCase() === spaceName.toLowerCase()
-        );
+        const match = spaces.find(c => c.name.toLowerCase() === spaceName.toLowerCase());
         return match?.id ?? null;
     } catch {
         return null;

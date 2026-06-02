@@ -1,10 +1,12 @@
 # CLI Improvements Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to
+> implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Fix CLI crashes and add quality-of-life improvements for a more robust developer experience.
 
-**Architecture:** All changes are in `apps/cli/src/`. Bug fixes modify `lib/store.ts` and existing commands. New `status` command composes existing APIs.
+**Architecture:** All changes are in `apps/cli/src/`. Bug fixes modify `lib/store.ts` and existing commands. New `status` command composes
+existing APIs.
 
 **Tech Stack:** Commander.js, picocolors, bun, fetch API.
 
@@ -15,9 +17,11 @@
 ### Task 1: Fix `getServerUrl()` crashing without init
 
 **Files:**
+
 - Modify: `apps/cli/src/lib/store.ts`
 
-The root cause: `getServerUrl()` calls `readStore()` which throws if `.fubbik/store.json` doesn't exist. Every command that calls `getServerUrl()` crashes with a stack trace.
+The root cause: `getServerUrl()` calls `readStore()` which throws if `.fubbik/store.json` doesn't exist. Every command that calls
+`getServerUrl()` crashes with a stack trace.
 
 - [ ] **Step 1: Make `getServerUrl` return `undefined` gracefully**
 
@@ -36,11 +40,10 @@ export function getServerUrl(dir?: string): string | undefined {
 
 - [ ] **Step 2: Verify fix**
 
-Run: `cd /tmp && fubbik list 2>&1` (outside any fubbik project)
-Expected: Should show a helpful error ("No server URL configured"), not a stack trace.
+Run: `cd /tmp && fubbik list 2>&1` (outside any fubbik project) Expected: Should show a helpful error ("No server URL configured"), not a
+stack trace.
 
-Run: `cd /Users/pontus/projects/fubbik && fubbik recap --since 7d`
-Expected: Should work as before.
+Run: `cd /Users/pontus/projects/fubbik && fubbik recap --since 7d` Expected: Should work as before.
 
 - [ ] **Step 3: Commit**
 
@@ -54,6 +57,7 @@ git commit -m "fix: getServerUrl returns undefined gracefully without store file
 ### Task 2: Fix `stats` crash on null tags
 
 **Files:**
+
 - Modify: `apps/cli/src/commands/stats.ts`
 
 Chunks pulled from server may have `undefined` tags. Line 15 iterates `chunk.tags` without a null guard.
@@ -68,8 +72,7 @@ for (const tag of chunk.tags ?? []) {
 
 - [ ] **Step 2: Verify fix**
 
-Run: `fubbik stats`
-Expected: Shows stats without crash.
+Run: `fubbik stats` Expected: Shows stats without crash.
 
 - [ ] **Step 3: Commit**
 
@@ -83,9 +86,11 @@ git commit -m "fix: guard against null tags in stats command"
 ### Task 3: Fix `gaps` working directory resolution
 
 **Files:**
+
 - Modify: `apps/cli/src/commands/gaps.ts`
 
-The `gaps` command resolves paths relative to where the binary is, not `process.cwd()`. The issue is on line 50: `join(process.cwd(), directory)` — this works in dev (`bun apps/cli/src/index.ts`) but the compiled binary may resolve differently.
+The `gaps` command resolves paths relative to where the binary is, not `process.cwd()`. The issue is on line 50:
+`join(process.cwd(), directory)` — this works in dev (`bun apps/cli/src/index.ts`) but the compiled binary may resolve differently.
 
 - [ ] **Step 1: Fix path resolution**
 
@@ -103,12 +108,12 @@ const absDir = resolve(directory);
 const allFiles = collectSourceFiles(absDir, absDir);
 ```
 
-This ensures: `fubbik gaps packages/api/src` resolves relative to cwd, and all collected file paths are relative to the scanned directory (not cwd).
+This ensures: `fubbik gaps packages/api/src` resolves relative to cwd, and all collected file paths are relative to the scanned directory
+(not cwd).
 
 - [ ] **Step 2: Verify fix**
 
-Run: `fubbik gaps packages/api/src --limit 5`
-Expected: Shows files relative to `packages/api/src/`.
+Run: `fubbik gaps packages/api/src --limit 5` Expected: Shows files relative to `packages/api/src/`.
 
 - [ ] **Step 3: Commit**
 
@@ -122,6 +127,7 @@ git commit -m "fix: resolve gaps directory relative to cwd correctly"
 ### Task 4: Add `--server` option to `fubbik init`
 
 **Files:**
+
 - Modify: `apps/cli/src/commands/init.ts`
 
 Currently you must `init` then `sync --url` separately. Add a `--server <url>` option.
@@ -149,8 +155,8 @@ Add `setServerUrl` to the imports from `../lib/store`.
 
 - [ ] **Step 2: Verify**
 
-Run: `rm -rf .fubbik && fubbik init fubbik --server http://localhost:3000 && fubbik health`
-Expected: Init succeeds and health check connects.
+Run: `rm -rf .fubbik && fubbik init fubbik --server http://localhost:3000 && fubbik health` Expected: Init succeeds and health check
+connects.
 
 - [ ] **Step 3: Commit**
 
@@ -164,10 +170,12 @@ git commit -m "feat: add --server option to fubbik init"
 ### Task 5: Add `fubbik status` command
 
 **Files:**
+
 - Create: `apps/cli/src/commands/status.ts`
 - Modify: `apps/cli/src/index.ts`
 
-A single command showing: server connection, codebase, chunk count, last sync, and health warnings. Like `git status` for the knowledge base.
+A single command showing: server connection, codebase, chunk count, last sync, and health warnings. Like `git status` for the knowledge
+base.
 
 - [ ] **Step 1: Create status command**
 
@@ -283,19 +291,20 @@ export const statusCommand = new Command("status")
 - [ ] **Step 2: Register the command**
 
 In `apps/cli/src/index.ts`, add import:
+
 ```typescript
 import { statusCommand } from "./commands/status";
 ```
 
 Add after `program.addCommand(statsCommand);`:
+
 ```typescript
 program.addCommand(statusCommand);
 ```
 
 - [ ] **Step 3: Verify**
 
-Run: `fubbik status`
-Expected: Shows name, local chunks, server connection, codebase, health warnings.
+Run: `fubbik status` Expected: Shows name, local chunks, server connection, codebase, health warnings.
 
 - [ ] **Step 4: Commit**
 
@@ -309,6 +318,7 @@ git commit -m "feat: add fubbik status command for KB overview"
 ### Task 6: Add colored output to existing commands
 
 **Files:**
+
 - Modify: `apps/cli/src/commands/recap.ts`
 - Modify: `apps/cli/src/commands/why.ts`
 - Modify: `apps/cli/src/commands/gaps.ts`
@@ -318,11 +328,13 @@ The three new commands output plain text. Add colors using the existing `picocol
 - [ ] **Step 1: Add colors to recap**
 
 In `apps/cli/src/commands/recap.ts`, import colors:
+
 ```typescript
 import { formatBold, formatDim, formatType } from "../lib/colors";
 ```
 
 Update the output formatting:
+
 - Wrap section headers ("New:", "Updated:", "By type:") with `formatBold()`
 - Wrap type labels with `formatType()`
 - Wrap counts with `formatDim()` for secondary info
@@ -330,6 +342,7 @@ Update the output formatting:
 - [ ] **Step 2: Add colors to why**
 
 In `apps/cli/src/commands/why.ts`, import and apply:
+
 - Wrap the file path with `formatBold()`
 - Wrap type labels with `formatType()`
 - Wrap "Rationale:" and "Alternatives:" labels with `formatDim()`
@@ -338,14 +351,15 @@ In `apps/cli/src/commands/why.ts`, import and apply:
 - [ ] **Step 3: Add colors to gaps**
 
 In `apps/cli/src/commands/gaps.ts`, import and apply:
+
 - Color the coverage percentage: green if >75%, yellow if >50%, red otherwise
 - Wrap directory names with `formatBold()`
 - Wrap file names with `formatDim()`
 
 - [ ] **Step 4: Verify all three**
 
-Run: `fubbik recap --since 30d && fubbik why packages/api/src/index.ts && fubbik gaps packages/api/src --limit 5`
-Expected: Colored output for all three commands.
+Run: `fubbik recap --since 30d && fubbik why packages/api/src/index.ts && fubbik gaps packages/api/src --limit 5` Expected: Colored output
+for all three commands.
 
 - [ ] **Step 5: Commit**
 
@@ -359,6 +373,7 @@ git commit -m "feat: add colored output to recap, why, and gaps commands"
 ### Task 7: Rebuild and verify compiled binary
 
 **Files:**
+
 - No code changes — just build and test
 
 - [ ] **Step 1: Rebuild CLI**

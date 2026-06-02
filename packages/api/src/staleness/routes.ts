@@ -33,11 +33,7 @@ export const stalenessRoutes = new Elysia()
         "/chunks/stale/count",
         ctx =>
             Effect.runPromise(
-                requireSession(ctx).pipe(
-                    Effect.flatMap(session =>
-                        stalenessService.getStaleCount(session.user.id, ctx.query.spaceId)
-                    )
-                )
+                requireSession(ctx).pipe(Effect.flatMap(session => stalenessService.getStaleCount(session.user.id, ctx.query.spaceId)))
             ),
         {
             query: t.Object({
@@ -49,11 +45,7 @@ export const stalenessRoutes = new Elysia()
         "/chunks/:id/dismiss-staleness",
         ctx =>
             Effect.runPromise(
-                requireSession(ctx).pipe(
-                    Effect.flatMap(session =>
-                        stalenessService.dismissStaleFlag(ctx.params.id, session.user.id)
-                    )
-                )
+                requireSession(ctx).pipe(Effect.flatMap(session => stalenessService.dismissStaleFlag(ctx.params.id, session.user.id)))
             ),
         {
             params: t.Object({
@@ -65,11 +57,7 @@ export const stalenessRoutes = new Elysia()
         "/chunks/suppress-duplicate",
         ctx =>
             Effect.runPromise(
-                requireSession(ctx).pipe(
-                    Effect.flatMap(() =>
-                        stalenessService.suppressDuplicatePair(ctx.body.chunkIdA, ctx.body.chunkIdB)
-                    )
-                )
+                requireSession(ctx).pipe(Effect.flatMap(() => stalenessService.suppressDuplicatePair(ctx.body.chunkIdA, ctx.body.chunkIdB)))
             ),
         {
             body: t.Object({
@@ -85,15 +73,8 @@ export const stalenessRoutes = new Elysia()
                 requireSession(ctx).pipe(
                     Effect.flatMap(session =>
                         Effect.all([
-                            detectAgeStaleChunks(
-                                session.user.id,
-                                ctx.body.spaceId,
-                                ctx.body.thresholdDays
-                            ),
-                            stalenessService.detectUncoveredChunks(
-                                session.user.id,
-                                ctx.body.spaceId
-                            )
+                            detectAgeStaleChunks(session.user.id, ctx.body.spaceId, ctx.body.thresholdDays),
+                            stalenessService.detectUncoveredChunks(session.user.id, ctx.body.spaceId)
                         ]).pipe(
                             Effect.map(([ageResult, uncoveredResult]) => ({
                                 flagged: ageResult.flagged + uncoveredResult.flagged
@@ -114,13 +95,7 @@ export const stalenessRoutes = new Elysia()
         ctx =>
             Effect.runPromise(
                 requireSession(ctx).pipe(
-                    Effect.flatMap(session =>
-                        flagDownstreamStale(
-                            ctx.params.id,
-                            ctx.body.title ?? "Unknown",
-                            session.user.id
-                        )
-                    )
+                    Effect.flatMap(session => flagDownstreamStale(ctx.params.id, ctx.body.title ?? "Unknown", session.user.id))
                 )
             ),
         {

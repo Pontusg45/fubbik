@@ -14,7 +14,11 @@ export const tagTypeRoutes = new Elysia()
             Effect.runPromise(
                 requireSession(ctx).pipe(
                     Effect.flatMap(session => tagTypeService.createTagType(session.user.id, ctx.body)),
-                    Effect.tap(() => Effect.sync(() => { ctx.set.status = 201; }))
+                    Effect.tap(() =>
+                        Effect.sync(() => {
+                            ctx.set.status = 201;
+                        })
+                    )
                 )
             ),
         {
@@ -29,9 +33,7 @@ export const tagTypeRoutes = new Elysia()
         "/tag-types/:id",
         ctx =>
             Effect.runPromise(
-                requireSession(ctx).pipe(
-                    Effect.flatMap(session => tagTypeService.updateTagType(ctx.params.id, session.user.id, ctx.body))
-                )
+                requireSession(ctx).pipe(Effect.flatMap(session => tagTypeService.updateTagType(ctx.params.id, session.user.id, ctx.body)))
             ),
         {
             body: t.Object({

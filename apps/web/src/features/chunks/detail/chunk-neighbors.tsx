@@ -25,7 +25,11 @@ function similarityBar(distance: number) {
 export function ChunkNeighbors({ chunkId }: ChunkNeighborsProps) {
     const neighborsQuery = useQuery({
         queryKey: ["chunk-neighbors", chunkId],
-        queryFn: async () => unwrapEden(await api.api.chunks({ id: chunkId }).neighbors.get({ query: { k: "10" } })) as { note?: string; neighbors?: Neighbor[] }
+        queryFn: async () =>
+            unwrapEden(await api.api.chunks({ id: chunkId }).neighbors.get({ query: { k: "10" } })) as {
+                note?: string;
+                neighbors?: Neighbor[];
+            }
     });
 
     const data = neighborsQuery.data;
@@ -37,7 +41,7 @@ export function ChunkNeighbors({ chunkId }: ChunkNeighborsProps) {
 
     return (
         <div className="border-t pt-4">
-            <div className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1">
+            <div className="text-muted-foreground mb-2 flex items-center gap-1 text-[9px] font-semibold tracking-wider uppercase">
                 <Compass className="size-3" />
                 Neighbors
             </div>
@@ -51,9 +55,7 @@ export function ChunkNeighbors({ chunkId }: ChunkNeighborsProps) {
                                 params={{ chunkId: n.id }}
                                 className="hover:bg-muted/60 group flex items-center gap-1.5 rounded px-1 py-1 text-[11px]"
                             >
-                                <span className="shrink-0 font-mono text-[10px] text-muted-foreground tabular-nums w-7">
-                                    {pct}%
-                                </span>
+                                <span className="text-muted-foreground w-7 shrink-0 font-mono text-[10px] tabular-nums">{pct}%</span>
                                 <span className="min-w-0 truncate">{n.title}</span>
                             </Link>
                         </li>

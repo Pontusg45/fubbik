@@ -1,10 +1,15 @@
 # PostgreSQL Graph Extensions Phase 2 — Advanced Utilization Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to
+> implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build seven advanced graph-powered features on top of the Phase 1 infrastructure (centrality, communities, hybrid retrieval) to improve context budgeting, knowledge gap detection, tag propagation, path explanation, edge weighting, upstream impact propagation, and redundancy scoring.
+**Goal:** Build seven advanced graph-powered features on top of the Phase 1 infrastructure (centrality, communities, hybrid retrieval) to
+improve context budgeting, knowledge gap detection, tag propagation, path explanation, edge weighting, upstream impact propagation, and
+redundancy scoring.
 
-**Architecture:** Each feature adds a focused capability via new AGE query functions and/or service-layer logic. Features 1 and 3 improve the context/retrieval pipeline. Features 2 and 7 power knowledge health insights. Features 4 and 5 enhance graph visualization. Feature 6 extends the staleness system. All features are independent except Feature 7 depends on Feature 2.
+**Architecture:** Each feature adds a focused capability via new AGE query functions and/or service-layer logic. Features 1 and 3 improve
+the context/retrieval pipeline. Features 2 and 7 power knowledge health insights. Features 4 and 5 enhance graph visualization. Feature 6
+extends the staleness system. All features are independent except Feature 7 depends on Feature 2.
 
 **Tech Stack:** PostgreSQL (AGE, pgvector), Drizzle ORM, Effect, vitest
 
@@ -40,11 +45,13 @@ packages/api/src/
 
 ## Feature 1: Graph-Aware Context Budgeting
 
-The current `budgetChunks` greedily picks highest-score chunks. If the top results are from the same graph community, the token budget is wasted on redundant knowledge. A coverage-maximizing approach penalizes chunks from already-represented communities.
+The current `budgetChunks` greedily picks highest-score chunks. If the top results are from the same graph community, the token budget is
+wasted on redundant knowledge. A coverage-maximizing approach penalizes chunks from already-represented communities.
 
 ### Task 1.1: Add community-aware budgeting
 
 **Files:**
+
 - Modify: `packages/api/src/context/utils.ts`
 
 - [ ] **Step 1: Add `ScoredChunkWithCommunity` interface and `budgetChunksWithCoverage` function**
@@ -56,10 +63,7 @@ export interface ScoredChunkWithCommunity extends ScoredChunk {
     communityId?: string;
 }
 
-export function budgetChunksWithCoverage<T extends ScoredChunkWithCommunity>(
-    chunks: T[],
-    maxTokens: number
-): T[] {
+export function budgetChunksWithCoverage<T extends ScoredChunkWithCommunity>(chunks: T[], maxTokens: number): T[] {
     const sorted = [...chunks].sort((a, b) => b.score - a.score);
     const selected: T[] = [];
     let usedTokens = estimateTokens("# Project Context\n\n");
@@ -105,6 +109,7 @@ git commit -m "feat: community-aware context budgeting with diminishing returns"
 ### Task 1.2: Wire community-aware budgeting into resolvers
 
 **Files:**
+
 - Modify: `packages/api/src/context/resolvers.ts`
 
 - [ ] **Step 1: Import `detectCommunities` and `budgetChunksWithCoverage`**
@@ -118,18 +123,15 @@ import { budgetChunksWithCoverage, type ScoredChunkWithCommunity } from "./utils
 
 - [ ] **Step 2: Find the caller of `budgetChunks` in resolvers.ts**
 
-Search for `budgetChunks` usage in the file. It's likely in the context export functions. Replace those calls with `budgetChunksWithCoverage` after annotating chunks with their community ID.
+Search for `budgetChunks` usage in the file. It's likely in the context export functions. Replace those calls with
+`budgetChunksWithCoverage` after annotating chunks with their community ID.
 
 Before the `budgetChunks` call, add community detection:
 
 ```typescript
 // Annotate chunks with community IDs for coverage-aware budgeting
 const chunkIds = enrichedChunks.map(c => c.id);
-const communities = await Effect.runPromise(
-    detectCommunities(chunkIds, 1).pipe(
-        Effect.catchAll(() => Effect.succeed([]))
-    )
-);
+const communities = await Effect.runPromise(detectCommunities(chunkIds, 1).pipe(Effect.catchAll(() => Effect.succeed([]))));
 const chunkToCommunity = new Map<string, string>();
 for (const community of communities) {
     for (const memberId of community.members) {
@@ -161,11 +163,13 @@ git commit -m "feat: wire community-aware budgeting into context resolvers"
 
 ## Feature 2: Bridge Detection (Knowledge Bottlenecks)
 
-Find articulation points — chunks whose removal would split a community into disconnected parts. These are knowledge bottlenecks that should be flagged in the health dashboard.
+Find articulation points — chunks whose removal would split a community into disconnected parts. These are knowledge bottlenecks that should
+be flagged in the health dashboard.
 
 ### Task 2.1: Add `findBridgeChunks` AGE query
 
 **Files:**
+
 - Modify: `packages/db/src/age/query.ts`
 - Modify: `packages/db/src/age/query.test.ts`
 
@@ -176,15 +180,13 @@ Add to `packages/db/src/age/query.test.ts`:
 ```typescript
 import {
     // ... existing imports ...
-    findBridgeChunks,
+    findBridgeChunks
 } from "./query";
 
 describe("findBridgeChunks", () => {
     it("identifies B as a bridge in the A→B→C chain", async () => {
         if (!ageReady) return;
-        const bridges = await Effect.runPromise(
-            findBridgeChunks([uid("A"), uid("B"), uid("C")])
-        );
+        const bridges = await Effect.runPromise(findBridgeChunks([uid("A"), uid("B"), uid("C")]));
         // B connects A and C — removing it disconnects the chain
         expect(bridges).toContain(uid("B"));
         // A and C are leaf nodes, not bridges
@@ -194,9 +196,7 @@ describe("findBridgeChunks", () => {
 
     it("identifies center as a bridge in star topology", async () => {
         if (!ageReady) return;
-        const bridges = await Effect.runPromise(
-            findBridgeChunks([uid("center"), uid("spoke1"), uid("spoke2"), uid("spoke3")])
-        );
+        const bridges = await Effect.runPromise(findBridgeChunks([uid("center"), uid("spoke1"), uid("spoke2"), uid("spoke3")]));
         expect(bridges).toContain(uid("center"));
     });
 
@@ -216,7 +216,8 @@ Expected: FAIL — not exported.
 
 - [ ] **Step 3: Implement `findBridgeChunks`**
 
-AGE doesn't have built-in articulation point detection. We implement it in application code using the adjacency data from a Cypher query, applying the classic DFS-based algorithm.
+AGE doesn't have built-in articulation point detection. We implement it in application code using the adjacency data from a Cypher query,
+applying the classic DFS-based algorithm.
 
 Add to `packages/db/src/age/query.ts`:
 
@@ -305,6 +306,7 @@ git commit -m "feat: articulation point detection for knowledge bottleneck ident
 ### Task 2.2: Expose bridges in graph API
 
 **Files:**
+
 - Modify: `packages/api/src/graph/service.ts`
 - Modify: `packages/api/src/graph/routes.ts`
 
@@ -313,7 +315,15 @@ git commit -m "feat: articulation point detection for knowledge bottleneck ident
 In `packages/api/src/graph/service.ts`, update the import:
 
 ```typescript
-import { detectCommunities, findBridgeChunks, getAllChunksMeta, getAllConnectionsForUser, getAllTagsWithTypes, getChunkCodebaseMappings, getTagTypesForGraph } from "@fubbik/db/repository";
+import {
+    detectCommunities,
+    findBridgeChunks,
+    getAllChunksMeta,
+    getAllConnectionsForUser,
+    getAllTagsWithTypes,
+    getChunkCodebaseMappings,
+    getTagTypesForGraph
+} from "@fubbik/db/repository";
 ```
 
 Update the `getUserGraph` function to also compute bridges:
@@ -326,19 +336,17 @@ export function getUserGraph(userId?: string, codebaseId?: string, workspaceId?:
             connections: getAllConnectionsForUser(userId),
             chunkTags: getAllTagsWithTypes(userId),
             tagTypes: getTagTypesForGraph(userId),
-            chunkCodebases: workspaceId ? getChunkCodebaseMappings(userId) : Effect.succeed([] as { chunkId: string; codebaseId: string; codebaseName: string }[])
+            chunkCodebases: workspaceId
+                ? getChunkCodebaseMappings(userId)
+                : Effect.succeed([] as { chunkId: string; codebaseId: string; codebaseName: string }[])
         },
         { concurrency: "unbounded" }
     ).pipe(
         Effect.flatMap(result => {
             const chunkIds = result.chunks.map(c => c.id);
             return Effect.all({
-                communities: detectCommunities(chunkIds, 1).pipe(
-                    Effect.catchAll(() => Effect.succeed([]))
-                ),
-                bridges: findBridgeChunks(chunkIds).pipe(
-                    Effect.catchAll(() => Effect.succeed([] as string[]))
-                )
+                communities: detectCommunities(chunkIds, 1).pipe(Effect.catchAll(() => Effect.succeed([]))),
+                bridges: findBridgeChunks(chunkIds).pipe(Effect.catchAll(() => Effect.succeed([] as string[])))
             }).pipe(
                 Effect.map(({ communities, bridges }) => ({
                     ...result,
@@ -388,11 +396,13 @@ git commit -m "feat: expose knowledge bottleneck (bridge) chunks via graph API"
 
 ## Feature 3: Graph-Based Tag Propagation
 
-When a chunk is connected to several chunks that share a tag, suggest that tag for the chunk. Reduces manual tagging effort and improves consistency.
+When a chunk is connected to several chunks that share a tag, suggest that tag for the chunk. Reduces manual tagging effort and improves
+consistency.
 
 ### Task 3.1: Add `getNeighborTagFrequencies` service function
 
 **Files:**
+
 - Create: `packages/api/src/chunks/tag-suggestions.ts`
 
 - [ ] **Step 1: Implement tag frequency analysis from graph neighbors**
@@ -412,19 +422,13 @@ export interface TagSuggestion {
 
 export function suggestTagsFromGraph(chunkId: string, maxHops = 1, minFrequency = 0.5) {
     return Effect.gen(function* () {
-        const neighborIds = yield* getNeighborhood(chunkId, maxHops).pipe(
-            Effect.catchAll(() => Effect.succeed([] as string[]))
-        );
+        const neighborIds = yield* getNeighborhood(chunkId, maxHops).pipe(Effect.catchAll(() => Effect.succeed([] as string[])));
         if (neighborIds.length === 0) return [] as TagSuggestion[];
 
-        const existingTags = yield* getTagsForChunk(chunkId).pipe(
-            Effect.catchAll(() => Effect.succeed([]))
-        );
+        const existingTags = yield* getTagsForChunk(chunkId).pipe(Effect.catchAll(() => Effect.succeed([])));
         const existingTagIds = new Set(existingTags.map(t => t.id));
 
-        const neighborTags = yield* getTagsForChunks(neighborIds).pipe(
-            Effect.catchAll(() => Effect.succeed([]))
-        );
+        const neighborTags = yield* getTagsForChunks(neighborIds).pipe(Effect.catchAll(() => Effect.succeed([])));
 
         // Count tag frequency across neighbors
         const tagCounts = new Map<string, { tagName: string; count: number }>();
@@ -488,11 +492,13 @@ git commit -m "feat: graph-based tag suggestions from neighbor frequency analysi
 
 ## Feature 4: Weighted Edges from Co-Access Patterns
 
-Add a `weight` column to chunk connections. Increment weight when two chunks are accessed in the same context request. Heavier edges mean stronger relationships.
+Add a `weight` column to chunk connections. Increment weight when two chunks are accessed in the same context request. Heavier edges mean
+stronger relationships.
 
 ### Task 4.1: Add weight column to chunkConnection schema
 
 **Files:**
+
 - Modify: `packages/db/src/schema/chunk.ts`
 - Create: `packages/db/src/migrations/0003_connection_weight.sql`
 
@@ -501,7 +507,7 @@ Add a `weight` column to chunk connections. Increment weight when two chunks are
 In `packages/db/src/schema/chunk.ts`, add the `weight` column to the `chunkConnection` table definition, after the `reviewedAt` field:
 
 ```typescript
-        weight: integer("weight").notNull().default(1)
+weight: integer("weight").notNull().default(1);
 ```
 
 - [ ] **Step 2: Create migration**
@@ -519,11 +525,11 @@ In `packages/db/src/migrations/meta/_journal.json`, add:
 
 ```json
 {
-  "idx": 3,
-  "version": "7",
-  "when": 1715212800000,
-  "tag": "0003_connection_weight",
-  "breakpoints": true
+    "idx": 3,
+    "version": "7",
+    "when": 1715212800000,
+    "tag": "0003_connection_weight",
+    "breakpoints": true
 }
 ```
 
@@ -543,6 +549,7 @@ git commit -m "feat: add weight column to chunk_connection for co-access trackin
 ### Task 4.2: Add weight increment function
 
 **Files:**
+
 - Modify: `packages/db/src/repository/connection.ts`
 
 - [ ] **Step 1: Add `incrementConnectionWeights` function**
@@ -559,12 +566,7 @@ export function incrementConnectionWeights(chunkIds: string[]) {
         const result = await db
             .update(chunkConnection)
             .set({ weight: sql`${chunkConnection.weight} + 1` })
-            .where(
-                and(
-                    inArray(chunkConnection.sourceId, chunkIds),
-                    inArray(chunkConnection.targetId, chunkIds)
-                )
-            );
+            .where(and(inArray(chunkConnection.sourceId, chunkIds), inArray(chunkConnection.targetId, chunkIds)));
         return result.rowCount ?? 0;
     });
 }
@@ -588,6 +590,7 @@ git commit -m "feat: add connection weight increment for co-access tracking"
 ### Task 4.3: Wire weight increment into context retrieval
 
 **Files:**
+
 - Modify: `packages/api/src/context-for-file/service.ts`
 
 - [ ] **Step 1: Add fire-and-forget weight increment after context retrieval**
@@ -595,21 +598,29 @@ git commit -m "feat: add connection weight increment for co-access tracking"
 In `packages/api/src/context-for-file/service.ts`, add the import:
 
 ```typescript
-import { getAppliesToForChunks, getChunkById, getConnectionDegrees, getConnectionsForChunks, getGraphProximityBoost, getRequirementsForChunks, incrementConnectionWeights, listChunks, listCodebases, lookupChunksByFilePath, semanticSearch as semanticSearchRepo } from "@fubbik/db/repository";
+import {
+    getAppliesToForChunks,
+    getChunkById,
+    getConnectionDegrees,
+    getConnectionsForChunks,
+    getGraphProximityBoost,
+    getRequirementsForChunks,
+    incrementConnectionWeights,
+    listChunks,
+    listCodebases,
+    lookupChunksByFilePath,
+    semanticSearch as semanticSearchRepo
+} from "@fubbik/db/repository";
 ```
 
 At the end of the `getContextForFile` function, just before `return { chunks: matchedChunks, requirements }`, add:
 
 ```typescript
-        // Fire-and-forget: increment edge weights for co-accessed chunks
-        if (matchedChunks.length >= 2) {
-            const coAccessedIds = matchedChunks.slice(0, 10).map(c => c.id);
-            Effect.runPromise(
-                incrementConnectionWeights(coAccessedIds).pipe(
-                    Effect.catchAll(() => Effect.succeed(0))
-                )
-            ).catch(() => {});
-        }
+// Fire-and-forget: increment edge weights for co-accessed chunks
+if (matchedChunks.length >= 2) {
+    const coAccessedIds = matchedChunks.slice(0, 10).map(c => c.id);
+    Effect.runPromise(incrementConnectionWeights(coAccessedIds).pipe(Effect.catchAll(() => Effect.succeed(0)))).catch(() => {});
+}
 ```
 
 - [ ] **Step 2: Run tests**
@@ -629,11 +640,13 @@ git commit -m "feat: increment connection weights on co-access in context retrie
 
 ## Feature 5: Full Path Explanation
 
-Replace the current `findShortestPath` (which only confirms reachability) with a version that returns intermediate nodes and relation types. Powers "why are these related?" in the UI and search.
+Replace the current `findShortestPath` (which only confirms reachability) with a version that returns intermediate nodes and relation types.
+Powers "why are these related?" in the UI and search.
 
 ### Task 5.1: Add `findShortestPathWithDetails` AGE query
 
 **Files:**
+
 - Modify: `packages/db/src/age/query.ts`
 - Modify: `packages/db/src/age/query.test.ts`
 
@@ -644,15 +657,13 @@ Add to `packages/db/src/age/query.test.ts`:
 ```typescript
 import {
     // ... existing imports ...
-    findShortestPathWithDetails,
+    findShortestPathWithDetails
 } from "./query";
 
 describe("findShortestPathWithDetails", () => {
     it("returns intermediate nodes in A→B→C path", async () => {
         if (!ageReady) return;
-        const path = await Effect.runPromise(
-            findShortestPathWithDetails(uid("A"), uid("C"))
-        );
+        const path = await Effect.runPromise(findShortestPathWithDetails(uid("A"), uid("C")));
         expect(path).not.toBeNull();
         expect(path!.nodes).toHaveLength(3);
         expect(path!.nodes[0]).toBe(uid("A"));
@@ -663,9 +674,7 @@ describe("findShortestPathWithDetails", () => {
 
     it("returns direct path for adjacent nodes", async () => {
         if (!ageReady) return;
-        const path = await Effect.runPromise(
-            findShortestPathWithDetails(uid("A"), uid("B"))
-        );
+        const path = await Effect.runPromise(findShortestPathWithDetails(uid("A"), uid("B")));
         expect(path).not.toBeNull();
         expect(path!.nodes).toHaveLength(2);
         expect(path!.edges).toHaveLength(1);
@@ -674,9 +683,7 @@ describe("findShortestPathWithDetails", () => {
 
     it("returns null for unreachable nodes", async () => {
         if (!ageReady) return;
-        const path = await Effect.runPromise(
-            findShortestPathWithDetails(uid("A"), uid("orphan"))
-        );
+        const path = await Effect.runPromise(findShortestPathWithDetails(uid("A"), uid("orphan")));
         expect(path).toBeNull();
     });
 });
@@ -807,6 +814,7 @@ git commit -m "feat: full shortest-path with intermediate nodes and relation typ
 ### Task 5.2: Wire detailed path into search service
 
 **Files:**
+
 - Modify: `packages/api/src/search/service.ts`
 
 - [ ] **Step 1: Import and use `findShortestPathWithDetails`**
@@ -856,6 +864,7 @@ Extend the existing downstream staleness detection to also propagate upstream �
 ### Task 6.1: Add `getUpstreamChunks` AGE query
 
 **Files:**
+
 - Modify: `packages/db/src/age/query.ts`
 - Modify: `packages/db/src/age/query.test.ts`
 
@@ -866,7 +875,7 @@ Add to `packages/db/src/age/query.test.ts`:
 ```typescript
 import {
     // ... existing imports ...
-    getUpstreamChunks,
+    getUpstreamChunks
 } from "./query";
 
 describe("getUpstreamChunks", () => {
@@ -874,26 +883,20 @@ describe("getUpstreamChunks", () => {
         if (!ageReady) return;
         // In test graph: A→B→C (directed :connects edges)
         // Upstream of C (chunks that connect TO C) = B
-        const upstream = await Effect.runPromise(
-            getUpstreamChunks(uid("C"), 3)
-        );
+        const upstream = await Effect.runPromise(getUpstreamChunks(uid("C"), 3));
         expect(upstream).toContain(uid("B"));
         expect(upstream).toContain(uid("A"));
     });
 
     it("returns empty for root chunks with no incoming edges", async () => {
         if (!ageReady) return;
-        const upstream = await Effect.runPromise(
-            getUpstreamChunks(uid("A"), 3)
-        );
+        const upstream = await Effect.runPromise(getUpstreamChunks(uid("A"), 3));
         expect(upstream.length).toBe(0);
     });
 
     it("returns empty for orphan chunks", async () => {
         if (!ageReady) return;
-        const upstream = await Effect.runPromise(
-            getUpstreamChunks(uid("orphan"), 3)
-        );
+        const upstream = await Effect.runPromise(getUpstreamChunks(uid("orphan"), 3));
         expect(upstream.length).toBe(0);
     });
 });
@@ -938,6 +941,7 @@ git commit -m "feat: add getUpstreamChunks AGE query for reverse impact traversa
 ### Task 6.2: Extend impact detector with upstream propagation
 
 **Files:**
+
 - Modify: `packages/api/src/staleness/detect-impact.ts`
 
 - [ ] **Step 1: Add `flagUpstreamStale` function**
@@ -1025,11 +1029,13 @@ git commit -m "feat: bidirectional impact propagation flags both upstream and do
 
 ## Feature 7: Redundancy Scoring per Community
 
-For each community, compute how much its members overlap semantically. High-redundancy communities suggest chunks that should be merged. Low-redundancy with many members suggests well-structured knowledge.
+For each community, compute how much its members overlap semantically. High-redundancy communities suggest chunks that should be merged.
+Low-redundancy with many members suggests well-structured knowledge.
 
 ### Task 7.1: Add `computeCommunityRedundancy` function
 
 **Files:**
+
 - Create: `packages/api/src/graph/community-analysis.ts`
 
 - [ ] **Step 1: Implement redundancy scoring**
@@ -1060,9 +1066,7 @@ export function computeCommunityRedundancy(communities: Community[]) {
                 chunkIds: community.members,
                 threshold: 0.5,
                 limit: 50
-            }).pipe(
-                Effect.catchAll(() => Effect.succeed([]))
-            );
+            }).pipe(Effect.catchAll(() => Effect.succeed([])));
 
             if (pairs.length === 0) {
                 results.push({
@@ -1079,9 +1083,7 @@ export function computeCommunityRedundancy(communities: Community[]) {
             const avgSimilarity = pairs.reduce((sum, p) => sum + p.similarity, 0) / pairs.length;
             const maxSimilarity = Math.max(...pairs.map(p => p.similarity));
             const redundancyLevel = avgSimilarity > 0.8 ? "high" : avgSimilarity > 0.6 ? "medium" : "low";
-            const mergeCandidates = pairs
-                .filter(p => p.similarity > 0.8)
-                .map(p => ({ idA: p.idA, idB: p.idB, similarity: p.similarity }));
+            const mergeCandidates = pairs.filter(p => p.similarity > 0.8).map(p => ({ idA: p.idA, idB: p.idB, similarity: p.similarity }));
 
             results.push({
                 communityId: community.id,
@@ -1150,4 +1152,5 @@ Feature 7 (Redundancy Scoring)        ← Uses detectCommunities + findDuplicate
 
 **Recommended execution order:** 2 → 5 → 6 → 1 → 3 → 4 → 7
 
-Features 2, 5, 6 can run in parallel (different files). Features 1, 3, 4 can run in parallel after those. Feature 7 last (depends on community data from the graph service).
+Features 2, 5, 6 can run in parallel (different files). Features 1, 3, 4 can run in parallel after those. Feature 7 last (depends on
+community data from the graph service).

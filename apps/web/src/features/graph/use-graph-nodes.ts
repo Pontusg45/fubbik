@@ -5,14 +5,14 @@
  * At neighborhood/detail level: builds chunk cards (1-hop), chunk dots (2-hop), typed edges.
  */
 
-import { useMemo } from "react";
 import type { Edge, Node } from "@xyflow/react";
+import { useMemo } from "react";
 
 import { relationColor } from "@/features/chunks/relation-colors";
 import type { Island, IslandBridge } from "@/features/graph/island-formation";
 import type { NeighborhoodResult } from "@/features/graph/neighborhood-layout";
-import type { ZoomLevel } from "@/features/graph/use-graph-zoom";
 import type { GraphData } from "@/features/graph/use-graph-data";
+import type { ZoomLevel } from "@/features/graph/use-graph-zoom";
 
 interface UseGraphNodesParams {
     zoomLevel: ZoomLevel;
@@ -47,7 +47,7 @@ export function useGraphNodes({
     chunkTags,
     filterTypes,
     filterRelations,
-    heatmapMode: _heatmapMode,
+    heatmapMode: _heatmapMode
 }: UseGraphNodesParams): { layoutNodes: Node[]; layoutEdges: Edge[] } {
     // Overview: island nodes + bridge edges
     const overviewResult = useMemo(() => {
@@ -66,8 +66,8 @@ export function useGraphNodes({
                     chunkCount: island.chunkIds.length,
                     color,
                     healthScores,
-                    isSingleton: island.isSingleton,
-                },
+                    isSingleton: island.isSingleton
+                }
             };
         });
 
@@ -81,9 +81,9 @@ export function useGraphNodes({
                 data: { relation: bridge.dominantRelation },
                 style: {
                     stroke: color,
-                    strokeWidth: Math.min(1 + bridge.count, 5),
+                    strokeWidth: Math.min(1 + bridge.count, 5)
                 },
-                label: bridge.count > 1 ? String(bridge.count) : undefined,
+                label: bridge.count > 1 ? String(bridge.count) : undefined
             };
         });
 
@@ -123,8 +123,8 @@ export function useGraphNodes({
                         type: chunk.type,
                         tags: chunkTags.get(chunkId) ?? [],
                         healthScore: chunkHealthScores.get(chunkId) ?? 0,
-                        isFocus,
-                    },
+                        isFocus
+                    }
                 });
             } else {
                 // Chunk dot for 2-hop
@@ -135,8 +135,8 @@ export function useGraphNodes({
                     data: {
                         title: chunk.title,
                         chunkType: chunk.type,
-                        healthScore: chunkHealthScores.get(chunkId) ?? 50,
-                    },
+                        healthScore: chunkHealthScores.get(chunkId) ?? 50
+                    }
                 });
             }
         }
@@ -159,8 +159,8 @@ export function useGraphNodes({
                 data: { relation: conn.relation },
                 style: {
                     stroke: color,
-                    strokeWidth: 2,
-                },
+                    strokeWidth: 2
+                }
             };
         });
 

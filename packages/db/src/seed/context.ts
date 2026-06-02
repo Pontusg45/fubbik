@@ -50,12 +50,7 @@ export type ScenarioName = "minimal" | "demo" | "extended";
 /**
  * Build a fresh SeedContext. The id-registry starts empty; modules populate it.
  */
-export function createContext(params: {
-    db: Database;
-    userId: string;
-    scenario: ScenarioName;
-    quiet?: boolean;
-}): SeedContext {
+export function createContext(params: { db: Database; userId: string; scenario: ScenarioName; quiet?: boolean }): SeedContext {
     return {
         db: params.db,
         userId: params.userId,

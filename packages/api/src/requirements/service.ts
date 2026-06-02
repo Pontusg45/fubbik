@@ -21,9 +21,9 @@ import { Effect } from "effect";
 import { NotFoundError, StepValidationError, ValidationError } from "../errors";
 import { flagRequirementFailing } from "../staleness/service";
 import { parseStepText, type VocabEntry, type VocabularyWarning } from "../vocabulary/parser";
-import { validateSteps } from "./validator";
 import { crossReferenceSteps, type CrossRefWarning } from "./cross-ref";
 import { toGherkin, toVitest, toMarkdown } from "./export";
+import { validateSteps } from "./validator";
 
 export interface StepVocabularyWarning extends VocabularyWarning {
     step: number;
@@ -92,11 +92,7 @@ export function getRequirement(id: string, userId: string) {
             (req): req is NonNullable<typeof req> => req !== null,
             () => new NotFoundError({ resource: "Requirement" })
         ),
-        Effect.flatMap(req =>
-            getChunksForRequirement(id).pipe(
-                Effect.map(chunks => ({ ...req, chunks }))
-            )
-        )
+        Effect.flatMap(req => getChunksForRequirement(id).pipe(Effect.map(chunks => ({ ...req, chunks }))))
     );
 }
 
@@ -180,15 +176,11 @@ export function updateRequirement(
         }
 
         const emptyWarnings: CrossRefWarning[] = [];
-        const warnings = body.steps
-            ? yield* crossReferenceSteps(body.steps, userId)
-            : emptyWarnings;
+        const warnings = body.steps ? yield* crossReferenceSteps(body.steps, userId) : emptyWarnings;
 
         const spaceId = body.spaceId !== undefined ? body.spaceId : existing.spaceId;
         const emptyVocabWarnings: StepVocabularyWarning[] = [];
-        const vocabularyWarnings = body.steps
-            ? yield* getVocabularyWarnings(body.steps, spaceId)
-            : emptyVocabWarnings;
+        const vocabularyWarnings = body.steps ? yield* getVocabularyWarnings(body.steps, spaceId) : emptyVocabWarnings;
 
         return { requirement, warnings, vocabularyWarnings };
     });
@@ -213,12 +205,12 @@ export function updateStatus(id: string, userId: string, status: string) {
         Effect.flatMap(updated =>
             status === "failing"
                 ? getChunksForRequirement(id).pipe(
-                    Effect.flatMap(chunks => {
-                        const chunkIds = chunks.map((c: { id: string }) => c.id);
-                        return flagRequirementFailing(id, updated.title, chunkIds);
-                    }),
-                    Effect.map(() => updated)
-                )
+                      Effect.flatMap(chunks => {
+                          const chunkIds = chunks.map((c: { id: string }) => c.id);
+                          return flagRequirementFailing(id, updated.title, chunkIds);
+                      }),
+                      Effect.map(() => updated)
+                  )
                 : Effect.succeed(updated)
         )
     );
@@ -240,9 +232,7 @@ export function setChunks(requirementId: string, userId: string, chunkIds: strin
                 )
             );
 
-            return Effect.all(verifications).pipe(
-                Effect.flatMap(() => setRequirementChunks(requirementId, chunkIds))
-            );
+            return Effect.all(verifications).pipe(Effect.flatMap(() => setRequirementChunks(requirementId, chunkIds)));
         })
     );
 }
@@ -314,10 +304,7 @@ export function exportRequirement(id: string, userId: string, format: string) {
     );
 }
 
-export function exportAll(
-    userId: string,
-    query: { spaceId?: string; format: string }
-) {
+export function exportAll(userId: string, query: { spaceId?: string; format: string }) {
     return listRequirementsRepo({
         userId,
         spaceId: query.spaceId,
@@ -326,9 +313,7 @@ export function exportAll(
     }).pipe(
         Effect.map(({ requirements }) => {
             const separator = query.format === "markdown" ? "\n\n---\n\n" : "\n\n";
-            return requirements
-                .map(r => exportOne(r.title, r.steps, query.format))
-                .join(separator);
+            return requirements.map(r => exportOne(r.title, r.steps, query.format)).join(separator);
         })
     );
 }

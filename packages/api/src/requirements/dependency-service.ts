@@ -7,6 +7,7 @@ import {
     getRequirementById
 } from "@fubbik/db/repository";
 import { Effect } from "effect";
+
 import { NotFoundError, ValidationError } from "../errors";
 
 export function addDependency(requirementId: string, dependsOnId: string, userId: string) {
@@ -18,7 +19,8 @@ export function addDependency(requirementId: string, dependsOnId: string, userId
         if (!dep) return yield* Effect.fail(new NotFoundError({ resource: "Dependency target" }));
 
         const wouldCycle = yield* checkCircularDependency(requirementId, dependsOnId);
-        if (wouldCycle) return yield* Effect.fail(new ValidationError({ message: "Adding this dependency would create a circular reference" }));
+        if (wouldCycle)
+            return yield* Effect.fail(new ValidationError({ message: "Adding this dependency would create a circular reference" }));
 
         return yield* addDependencyRepo(requirementId, dependsOnId);
     });

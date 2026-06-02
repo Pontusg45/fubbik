@@ -35,18 +35,20 @@ export function DependencySection({ requirementId }: DependencySectionProps) {
     const { data } = useQuery({
         queryKey: ["dependencies", requirementId],
         queryFn: async () => {
-            return unwrapEden(
-                await api.api.requirements({ id: requirementId }).dependencies.get()
-            ) as { dependsOn: DepItem[]; dependedOnBy: DepItem[] };
+            return unwrapEden(await api.api.requirements({ id: requirementId }).dependencies.get()) as {
+                dependsOn: DepItem[];
+                dependedOnBy: DepItem[];
+            };
         }
     });
 
     const searchQuery = useQuery({
         queryKey: ["requirements-search", search],
         queryFn: async () => {
-            const result = unwrapEden(
-                await api.api.requirements.get({ query: { search } })
-            ) as { requirements: Array<{ id: string; title: string; status: string }>; total: number };
+            const result = unwrapEden(await api.api.requirements.get({ query: { search } })) as {
+                requirements: Array<{ id: string; title: string; status: string }>;
+                total: number;
+            };
             return result.requirements;
         },
         enabled: showAdd && search.length > 0
@@ -54,9 +56,7 @@ export function DependencySection({ requirementId }: DependencySectionProps) {
 
     const addMutation = useMutation({
         mutationFn: async (dependsOnId: string) => {
-            return unwrapEden(
-                await api.api.requirements({ id: requirementId }).dependencies.post({ dependsOnId })
-            );
+            return unwrapEden(await api.api.requirements({ id: requirementId }).dependencies.post({ dependsOnId }));
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["dependencies", requirementId] });
@@ -68,9 +68,7 @@ export function DependencySection({ requirementId }: DependencySectionProps) {
 
     const removeMutation = useMutation({
         mutationFn: async (dependsOnId: string) => {
-            return unwrapEden(
-                await api.api.requirements({ id: requirementId }).dependencies({ dependsOnId }).delete()
-            );
+            return unwrapEden(await api.api.requirements({ id: requirementId }).dependencies({ dependsOnId }).delete());
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["dependencies", requirementId] });
@@ -82,11 +80,7 @@ export function DependencySection({ requirementId }: DependencySectionProps) {
     const dependsOn = data?.dependsOn ?? [];
     const dependedOnBy = data?.dependedOnBy ?? [];
 
-    const existingIds = new Set([
-        requirementId,
-        ...dependsOn.map(d => d.id),
-        ...dependedOnBy.map(d => d.id)
-    ]);
+    const existingIds = new Set([requirementId, ...dependsOn.map(d => d.id), ...dependedOnBy.map(d => d.id)]);
 
     const searchResults = (searchQuery.data ?? []).filter(r => !existingIds.has(r.id));
 
@@ -128,14 +122,14 @@ export function DependencySection({ requirementId }: DependencySectionProps) {
 
             {dependsOn.length > 0 && (
                 <div className="mb-3">
-                    <h3 className="text-muted-foreground mb-1.5 text-xs font-medium uppercase tracking-wide">Depends on</h3>
+                    <h3 className="text-muted-foreground mb-1.5 text-xs font-medium tracking-wide uppercase">Depends on</h3>
                     <div className="space-y-1">
                         {dependsOn.map(dep => (
                             <div key={dep.id} className="flex items-center gap-2 rounded-md border px-3 py-2">
                                 <Link
                                     to="/requirements/$requirementId"
                                     params={{ requirementId: dep.id }}
-                                    className="hover:underline flex-1 text-sm"
+                                    className="flex-1 text-sm hover:underline"
                                 >
                                     {dep.title}
                                 </Link>
@@ -157,14 +151,14 @@ export function DependencySection({ requirementId }: DependencySectionProps) {
 
             {dependedOnBy.length > 0 && (
                 <div>
-                    <h3 className="text-muted-foreground mb-1.5 text-xs font-medium uppercase tracking-wide">Depended on by</h3>
+                    <h3 className="text-muted-foreground mb-1.5 text-xs font-medium tracking-wide uppercase">Depended on by</h3>
                     <div className="space-y-1">
                         {dependedOnBy.map(dep => (
                             <div key={dep.id} className="flex items-center gap-2 rounded-md border px-3 py-2">
                                 <Link
                                     to="/requirements/$requirementId"
                                     params={{ requirementId: dep.id }}
-                                    className="hover:underline flex-1 text-sm"
+                                    className="flex-1 text-sm hover:underline"
                                 >
                                     {dep.title}
                                 </Link>

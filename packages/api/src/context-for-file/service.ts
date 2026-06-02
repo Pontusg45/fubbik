@@ -1,4 +1,16 @@
-import { getAppliesToForChunks, getChunkById, getConnectionDegrees, getConnectionsForChunks, getGraphProximityBoost, getRequirementsForChunks, incrementConnectionWeights, listChunks, listSpaces, lookupChunksByFilePath, semanticSearch as semanticSearchRepo } from "@fubbik/db/repository";
+import {
+    getAppliesToForChunks,
+    getChunkById,
+    getConnectionDegrees,
+    getConnectionsForChunks,
+    getGraphProximityBoost,
+    getRequirementsForChunks,
+    incrementConnectionWeights,
+    listChunks,
+    listSpaces,
+    lookupChunksByFilePath,
+    semanticSearch as semanticSearchRepo
+} from "@fubbik/db/repository";
 import { chunk as chunkTable } from "@fubbik/db/schema/chunk";
 import { Effect } from "effect";
 
@@ -57,12 +69,7 @@ function depMatchesCodebase(dep: string, codebaseName: string): boolean {
     return lastSegment === cbLower;
 }
 
-export function getContextForFile(
-    userId: string,
-    filePath: string,
-    spaceId?: string,
-    deps?: string[]
-) {
+export function getContextForFile(userId: string, filePath: string, spaceId?: string, deps?: string[]) {
     return Effect.gen(function* () {
         const results = new Map<string, ContextChunk>();
         type ChunkRow = typeof chunkTable.$inferSelect;
@@ -165,10 +172,8 @@ export function getContextForFile(
         const searchText = pathToSearchText(filePath);
         if (searchText.length > 0) {
             const semanticChunks = yield* generateQueryEmbedding(searchText).pipe(
-                Effect.flatMap(embedding =>
-                    semanticSearchRepo({ embedding, userId, limit: 10 }),
-                ),
-                Effect.catchAll((): Effect.Effect<SemanticChunkResult[]> => Effect.succeed([])),
+                Effect.flatMap(embedding => semanticSearchRepo({ embedding, userId, limit: 10 })),
+                Effect.catchAll((): Effect.Effect<SemanticChunkResult[]> => Effect.succeed([]))
             );
 
             for (const sc of semanticChunks) {
@@ -180,7 +185,7 @@ export function getContextForFile(
                     content: sc.content,
                     summary: sc.summary,
                     matchReason: "semantic",
-                    score: 0,
+                    score: 0
                 });
             }
         }
@@ -189,7 +194,7 @@ export function getContextForFile(
         const currentIds = Array.from(results.keys());
         if (currentIds.length > 0) {
             const allConnections = yield* getConnectionsForChunks(currentIds).pipe(
-                Effect.catchAll((): Effect.Effect<ConnectionResult[]> => Effect.succeed([])),
+                Effect.catchAll((): Effect.Effect<ConnectionResult[]> => Effect.succeed([]))
             );
 
             // Prioritize by relation type
@@ -198,7 +203,7 @@ export function getContextForFile(
                 depends_on: 3,
                 extends: 2,
                 references: 1,
-                related_to: 0,
+                related_to: 0
             };
 
             // Collect candidate connected chunk IDs
@@ -208,7 +213,7 @@ export function getContextForFile(
                 if (!results.has(connectedId)) {
                     candidates.push({
                         chunkId: connectedId,
-                        priority: RELATION_PRIORITY[conn.relation] ?? 0,
+                        priority: RELATION_PRIORITY[conn.relation] ?? 0
                     });
                 }
             }
@@ -218,9 +223,7 @@ export function getContextForFile(
             const topCandidates = candidates.slice(0, 5);
 
             for (const candidate of topCandidates) {
-                const full = yield* getChunkById(candidate.chunkId, userId).pipe(
-                    Effect.catchAll(() => Effect.succeed(null)),
-                );
+                const full = yield* getChunkById(candidate.chunkId, userId).pipe(Effect.catchAll(() => Effect.succeed(null)));
                 if (!full) continue;
                 results.set(candidate.chunkId, {
                     id: full.id,
@@ -229,7 +232,7 @@ export function getContextForFile(
                     content: full.content,
                     summary: full.summary,
                     matchReason: "connected",
-                    score: 0,
+                    score: 0
                 });
                 chunkRows.set(full.id, full);
             }
@@ -240,11 +243,12 @@ export function getContextForFile(
 
         // Fetch connection counts for scoring
         const chunkIdsForScoring = matchedChunks.map(c => c.id);
-        const connections = chunkIdsForScoring.length > 0
-            ? yield* getConnectionsForChunks(chunkIdsForScoring).pipe(
-                  Effect.catchAll((): Effect.Effect<ConnectionPair[]> => Effect.succeed([])),
-              )
-            : [];
+        const connections =
+            chunkIdsForScoring.length > 0
+                ? yield* getConnectionsForChunks(chunkIdsForScoring).pipe(
+                      Effect.catchAll((): Effect.Effect<ConnectionPair[]> => Effect.succeed([]))
+                  )
+                : [];
 
         const connCountMap = new Map<string, number>();
         for (const conn of connections) {
@@ -253,34 +257,29 @@ export function getContextForFile(
         }
 
         // Fetch centrality degrees from AGE graph
-        const degreeMap = chunkIdsForScoring.length > 0
-            ? yield* getConnectionDegrees(chunkIdsForScoring).pipe(
-                  Effect.catchAll(() => Effect.succeed(new Map<string, number>())),
-              )
-            : new Map<string, number>();
+        const degreeMap =
+            chunkIdsForScoring.length > 0
+                ? yield* getConnectionDegrees(chunkIdsForScoring).pipe(Effect.catchAll(() => Effect.succeed(new Map<string, number>())))
+                : new Map<string, number>();
 
         // Hybrid boost: if we have high-confidence anchors (file-ref or applies-to),
         // boost semantic matches that are also graph-connected to them
-        const anchorIds = matchedChunks
-            .filter(c => c.matchReason === "file-ref" || c.matchReason === "applies-to")
-            .map(c => c.id);
-        const semanticIds = matchedChunks
-            .filter(c => c.matchReason === "semantic")
-            .map(c => c.id);
+        const anchorIds = matchedChunks.filter(c => c.matchReason === "file-ref" || c.matchReason === "applies-to").map(c => c.id);
+        const semanticIds = matchedChunks.filter(c => c.matchReason === "semantic").map(c => c.id);
 
         let graphBoosts = new Map<string, number>();
         if (anchorIds.length > 0 && semanticIds.length > 0) {
             graphBoosts = yield* getGraphProximityBoost(anchorIds[0]!, semanticIds, 3).pipe(
-                Effect.catchAll(() => Effect.succeed(new Map<string, number>())),
+                Effect.catchAll(() => Effect.succeed(new Map<string, number>()))
             );
         }
 
         const STRATEGY_BONUS: Record<string, number> = {
             "file-ref": 20,
             "applies-to": 10,
-            "dependency": 3,
-            "semantic": 5,
-            "connected": 2,
+            dependency: 3,
+            semantic: 5,
+            connected: 2
         };
         const GRAPH_PROXIMITY_WEIGHT = 5;
 
@@ -325,11 +324,7 @@ export function getContextForFile(
         // Fire-and-forget: increment edge weights for co-accessed chunks
         if (matchedChunks.length >= 2) {
             const coAccessedIds = matchedChunks.slice(0, 10).map(c => c.id);
-            Effect.runPromise(
-                incrementConnectionWeights(coAccessedIds).pipe(
-                    Effect.catchAll(() => Effect.succeed(0))
-                )
-            ).catch(() => {});
+            Effect.runPromise(incrementConnectionWeights(coAccessedIds).pipe(Effect.catchAll(() => Effect.succeed(0)))).catch(() => {});
         }
 
         return { chunks: matchedChunks, requirements };

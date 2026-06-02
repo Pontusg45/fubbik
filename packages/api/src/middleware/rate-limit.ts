@@ -19,9 +19,12 @@ export function checkRateLimit(
 }
 
 // Cleanup old entries every 5 minutes
-setInterval(() => {
-    const now = Date.now();
-    for (const [key, entry] of windows) {
-        if (now > entry.resetAt) windows.delete(key);
-    }
-}, 5 * 60 * 1000);
+setInterval(
+    () => {
+        const now = Date.now();
+        for (const [key, entry] of windows) {
+            if (now > entry.resetAt) windows.delete(key);
+        }
+    },
+    5 * 60 * 1000
+);

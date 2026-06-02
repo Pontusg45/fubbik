@@ -1,16 +1,17 @@
 ---
 tags:
-  - guide
-  - views
-  - browse
-  - clusters
-  - ai
+    - guide
+    - views
+    - browse
+    - clusters
+    - ai
 description: AI-powered topic clustering based on embedding similarity
 ---
 
 # Topic Clusters
 
-The clusters view at `/browse/clusters` groups similar chunks together using their vector embeddings. This is an AI-powered alternative to manual tag-based organization.
+The clusters view at `/browse/clusters` groups similar chunks together using their vector embeddings. This is an AI-powered alternative to
+manual tag-based organization.
 
 ## How It Works
 

@@ -1,7 +1,7 @@
 ---
 tags:
-  - guide
-  - templates
+    - guide
+    - templates
 description: Built-in and custom chunk templates
 ---
 
@@ -12,15 +12,19 @@ Templates provide pre-filled content structures for common chunk types, helping 
 ## Built-in Templates
 
 ### Convention
+
 For coding standards and team agreements: convention description, rationale, examples, and exceptions.
 
 ### Architecture Decision
+
 For documenting significant technical choices (ADR format): context, decision, rationale, alternatives considered, and consequences.
 
 ### Runbook
+
 For operational procedures: trigger, prerequisites, numbered steps, verification, and rollback.
 
 ### API Endpoint
+
 For API documentation: endpoint, description, parameters table, response format, and error codes.
 
 ## Using Templates
@@ -47,4 +51,5 @@ Create your own templates at `/templates`:
 3. Write the template content (markdown with section headers)
 4. Save
 
-Custom templates appear alongside built-in ones. You can also duplicate a built-in template and customize it. Built-in templates are read-only and cannot be modified or deleted.
+Custom templates appear alongside built-in ones. You can also duplicate a built-in template and customize it. Built-in templates are
+read-only and cannot be modified or deleted.

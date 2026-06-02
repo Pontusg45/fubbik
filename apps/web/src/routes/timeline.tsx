@@ -88,12 +88,7 @@ function TimelinePage() {
 
             <div className="mb-4 flex flex-wrap gap-1">
                 {RANGES.map(r => (
-                    <Button
-                        key={r.value}
-                        variant={range === r.value ? "default" : "outline"}
-                        size="xs"
-                        onClick={() => setRange(r.value)}
-                    >
+                    <Button key={r.value} variant={range === r.value ? "default" : "outline"} size="xs" onClick={() => setRange(r.value)}>
                         {r.label}
                     </Button>
                 ))}
@@ -132,7 +127,7 @@ function TimelinePage() {
                             <CardPanel className="p-4">
                                 <div className="mb-3 flex items-center gap-2">
                                     <Clock className="text-muted-foreground size-3.5" />
-                                    <span className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
+                                    <span className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
                                         {formatDay(day)}
                                     </span>
                                     <span className="text-muted-foreground text-xs">({dayEvents.length})</span>
@@ -145,17 +140,12 @@ function TimelinePage() {
                                                 params={{ chunkId: event.chunkId }}
                                                 className="hover:bg-muted/60 flex items-center gap-2 rounded px-1.5 py-1 text-sm"
                                             >
-                                                <Badge
-                                                    variant={event.kind === "created" ? "success" : "info"}
-                                                    size="sm"
-                                                >
+                                                <Badge variant={event.kind === "created" ? "success" : "info"} size="sm">
                                                     {event.kind}
                                                     {event.version != null ? ` v${event.version}` : ""}
                                                 </Badge>
                                                 <span className="truncate font-medium">{event.chunkTitle}</span>
-                                                <span className="text-muted-foreground ml-auto shrink-0 text-xs">
-                                                    {event.chunkType}
-                                                </span>
+                                                <span className="text-muted-foreground ml-auto shrink-0 text-xs">{event.chunkType}</span>
                                             </Link>
                                         </li>
                                     ))}

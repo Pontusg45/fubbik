@@ -1,5 +1,6 @@
 import { relations } from "drizzle-orm";
 import { index, pgTable, text } from "drizzle-orm/pg-core";
+
 import { chunk } from "./chunk";
 
 export const chunkAppliesTo = pgTable(

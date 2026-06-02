@@ -1,24 +1,27 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Archive, Plus } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { PromptDialog } from "@/components/prompt-dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ChunksResults } from "@/features/chunks/chunks-results";
 import { ChunksToolbar } from "@/features/chunks/chunks-toolbar";
-import { useChunksData } from "@/features/chunks/use-chunks-data";
 import { useBulkChunkOperations } from "@/features/chunks/use-bulk-chunk-operations";
 import { useChunkFilters } from "@/features/chunks/use-chunk-filters";
+import { useChunksData } from "@/features/chunks/use-chunks-data";
 import { useSavedFilters } from "@/features/chunks/use-saved-filters";
-import { useActiveSpace } from "@/features/spaces/use-active-space";
 import { ImportDocsDialog } from "@/features/import/import-dialog";
 import { ShortcutHint } from "@/features/nav/shortcut-hint";
+import { useActiveSpace } from "@/features/spaces/use-active-space";
 import { getUser } from "@/functions/get-user";
 
 export const Route = createFileRoute("/chunks/")({
     component: ChunksList,
-    validateSearch: (search: Record<string, unknown>): {
+    validateSearch: (
+        search: Record<string, unknown>
+    ): {
         type?: string;
         q?: string;
         sort?: string;
@@ -65,16 +68,30 @@ export const Route = createFileRoute("/chunks/")({
 function ChunksList() {
     const navTo = useNavigate();
     const {
-        type, q, sort, tags, size, after, enrichment, minConnections,
-        group, subGroup, view, origin, reviewStatus, allSpaces,
-        activeTags, activeFilterCount, hasActiveFilters, isFederated,
-        updateSearch, clearAllFilters, toggleTag,
+        type,
+        q,
+        sort,
+        tags,
+        size,
+        after,
+        enrichment,
+        minConnections,
+        group,
+        subGroup,
+        view,
+        origin,
+        reviewStatus,
+        allSpaces,
+        activeTags,
+        activeFilterCount,
+        hasActiveFilters,
+        isFederated,
+        updateSearch,
+        clearAllFilters,
+        toggleTag
     } = useChunkFilters();
-    const {
-        selectedIds, setSelectedIds,
-        bulkUpdateMutation, singleDeleteMutation, reviewMutation,
-        handleSelectionClick, toggleAll,
-    } = useBulkChunkOperations();
+    const { selectedIds, setSelectedIds, bulkUpdateMutation, singleDeleteMutation, reviewMutation, handleSelectionClick, toggleAll } =
+        useBulkChunkOperations();
     const [searchInput, setSearchInput] = useState(q ?? "");
     const handleClearAllFilters = () => {
         clearAllFilters();
@@ -97,7 +114,7 @@ function ChunksList() {
         cancelEdit,
         handleChunkHover,
         togglePin,
-        isPinned,
+        isPinned
     } = useChunksData({
         type,
         q,
@@ -110,7 +127,7 @@ function ChunksList() {
         spaceId,
         origin,
         reviewStatus,
-        isFederated,
+        isFederated
     });
 
     const chunks = allChunks;
@@ -184,9 +201,12 @@ function ChunksList() {
     const [confirmAction, setConfirmAction] = useState<{ title: string; description: string; action: () => void } | null>(null);
     const [showSaveFilter, setShowSaveFilter] = useState(false);
 
-    const handleDeleteChunk = useCallback((id: string, _title: string) => {
-        singleDeleteMutation.mutate(id);
-    }, [singleDeleteMutation]);
+    const handleDeleteChunk = useCallback(
+        (id: string, _title: string) => {
+            singleDeleteMutation.mutate(id);
+        },
+        [singleDeleteMutation]
+    );
 
     return (
         <div className="container mx-auto max-w-5xl px-4 py-8">
@@ -291,18 +311,18 @@ function ChunksList() {
                 onSelectionClick={handleSelectionClick}
                 onDeleteChunk={handleDeleteChunk}
                 onReviewCycle={(id, next) => reviewMutation.mutate({ id, status: next })}
-                onBulkDeleteChunks={(ids) => {
+                onBulkDeleteChunks={ids => {
                     setConfirmAction({
                         title: "Delete chunks",
                         description: `Delete ${ids.size} chunks permanently?`,
-                        action: () => bulkUpdateMutation.mutate({ ids: [...ids], action: "delete" }),
+                        action: () => bulkUpdateMutation.mutate({ ids: [...ids], action: "delete" })
                     });
                 }}
-                onBulkArchiveChunks={(ids) => {
+                onBulkArchiveChunks={ids => {
                     setConfirmAction({
                         title: "Archive chunks",
                         description: `Archive ${ids.size} chunks?`,
-                        action: () => bulkUpdateMutation.mutate({ ids: [...ids], action: "archive" }),
+                        action: () => bulkUpdateMutation.mutate({ ids: [...ids], action: "archive" })
                     });
                 }}
                 bulkUpdateMutation={bulkUpdateMutation}
@@ -316,7 +336,9 @@ function ChunksList() {
 
             <ConfirmDialog
                 open={confirmAction !== null}
-                onOpenChange={(open) => { if (!open) setConfirmAction(null); }}
+                onOpenChange={open => {
+                    if (!open) setConfirmAction(null);
+                }}
                 title={confirmAction?.title ?? ""}
                 description={confirmAction?.description}
                 confirmLabel="Confirm"
@@ -335,7 +357,7 @@ function ChunksList() {
                 description="Give this filter combination a name so you can quickly apply it later."
                 placeholder="Filter name"
                 submitLabel="Save"
-                onSubmit={(name) => {
+                onSubmit={name => {
                     saveFilter(name, { type, q, sort, tags, size, after, enrichment, minConnections });
                     setShowSaveFilter(false);
                 }}

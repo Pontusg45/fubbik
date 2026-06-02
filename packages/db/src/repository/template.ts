@@ -7,17 +7,18 @@ export type { TemplateMatchRules, TemplateFieldMapping };
 
 export function listTemplates(userId: string) {
     return dbEffect(() =>
-            db
-                .select()
-                .from(chunkTemplate)
-                .where(or(eq(chunkTemplate.isBuiltIn, true), eq(chunkTemplate.userId, userId))));
+        db
+            .select()
+            .from(chunkTemplate)
+            .where(or(eq(chunkTemplate.isBuiltIn, true), eq(chunkTemplate.userId, userId)))
+    );
 }
 
 export function getTemplateById(id: string) {
     return dbEffect(async () => {
-            const [found] = await db.select().from(chunkTemplate).where(eq(chunkTemplate.id, id));
-            return found ?? null;
-        });
+        const [found] = await db.select().from(chunkTemplate).where(eq(chunkTemplate.id, id));
+        return found ?? null;
+    });
 }
 
 export function createTemplate(params: {
@@ -33,24 +34,24 @@ export function createTemplate(params: {
     userId: string;
 }) {
     return dbEffect(async () => {
-            const [created] = await db
-                .insert(chunkTemplate)
-                .values({
-                    id: params.id,
-                    name: params.name,
-                    description: params.description ?? null,
-                    type: params.type,
-                    content: params.content,
-                    isBuiltIn: false,
-                    matchRules: params.matchRules ?? null,
-                    fieldMappings: params.fieldMappings ?? null,
-                    priority: params.priority ?? 0,
-                    tags: params.tags ?? null,
-                    userId: params.userId
-                })
-                .returning();
-            return created;
-        });
+        const [created] = await db
+            .insert(chunkTemplate)
+            .values({
+                id: params.id,
+                name: params.name,
+                description: params.description ?? null,
+                type: params.type,
+                content: params.content,
+                isBuiltIn: false,
+                matchRules: params.matchRules ?? null,
+                fieldMappings: params.fieldMappings ?? null,
+                priority: params.priority ?? 0,
+                tags: params.tags ?? null,
+                userId: params.userId
+            })
+            .returning();
+        return created;
+    });
 }
 
 export function updateTemplate(
@@ -68,36 +69,30 @@ export function updateTemplate(
     }
 ) {
     return dbEffect(async () => {
-            const [updated] = await db
-                .update(chunkTemplate)
-                .set({
-                    ...(params.name !== undefined && { name: params.name }),
-                    ...(params.description !== undefined && { description: params.description }),
-                    ...(params.type !== undefined && { type: params.type }),
-                    ...(params.content !== undefined && { content: params.content }),
-                    ...(params.matchRules !== undefined && { matchRules: params.matchRules }),
-                    ...(params.fieldMappings !== undefined && { fieldMappings: params.fieldMappings }),
-                    ...(params.priority !== undefined && { priority: params.priority }),
-                    ...(params.tags !== undefined && { tags: params.tags })
-                })
-                .where(and(eq(chunkTemplate.id, id), eq(chunkTemplate.userId, userId)))
-                .returning();
-            return updated ?? null;
-        });
+        const [updated] = await db
+            .update(chunkTemplate)
+            .set({
+                ...(params.name !== undefined && { name: params.name }),
+                ...(params.description !== undefined && { description: params.description }),
+                ...(params.type !== undefined && { type: params.type }),
+                ...(params.content !== undefined && { content: params.content }),
+                ...(params.matchRules !== undefined && { matchRules: params.matchRules }),
+                ...(params.fieldMappings !== undefined && { fieldMappings: params.fieldMappings }),
+                ...(params.priority !== undefined && { priority: params.priority }),
+                ...(params.tags !== undefined && { tags: params.tags })
+            })
+            .where(and(eq(chunkTemplate.id, id), eq(chunkTemplate.userId, userId)))
+            .returning();
+        return updated ?? null;
+    });
 }
 
 export function deleteTemplate(id: string, userId: string) {
     return dbEffect(async () => {
-            const [deleted] = await db
-                .delete(chunkTemplate)
-                .where(
-                    and(
-                        eq(chunkTemplate.id, id),
-                        eq(chunkTemplate.userId, userId),
-                        eq(chunkTemplate.isBuiltIn, false)
-                    )
-                )
-                .returning();
-            return deleted ?? null;
-        });
+        const [deleted] = await db
+            .delete(chunkTemplate)
+            .where(and(eq(chunkTemplate.id, id), eq(chunkTemplate.userId, userId), eq(chunkTemplate.isBuiltIn, false)))
+            .returning();
+        return deleted ?? null;
+    });
 }

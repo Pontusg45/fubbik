@@ -58,34 +58,22 @@ export function updateTemplate(
     }
 ) {
     return getTemplateById(id).pipe(
-        Effect.flatMap(found =>
-            found ? Effect.succeed(found) : Effect.fail(new NotFoundError({ resource: "Template" }))
-        ),
+        Effect.flatMap(found => (found ? Effect.succeed(found) : Effect.fail(new NotFoundError({ resource: "Template" })))),
         Effect.tap(found =>
-            found.isBuiltIn
-                ? Effect.fail(new ValidationError({ message: "Cannot edit built-in templates" }))
-                : Effect.void
+            found.isBuiltIn ? Effect.fail(new ValidationError({ message: "Cannot edit built-in templates" })) : Effect.void
         ),
         Effect.flatMap(() => updateTemplateRepo(id, userId, body)),
-        Effect.flatMap(updated =>
-            updated ? Effect.succeed(updated) : Effect.fail(new NotFoundError({ resource: "Template" }))
-        )
+        Effect.flatMap(updated => (updated ? Effect.succeed(updated) : Effect.fail(new NotFoundError({ resource: "Template" }))))
     );
 }
 
 export function deleteTemplate(id: string, userId: string) {
     return getTemplateById(id).pipe(
-        Effect.flatMap(found =>
-            found ? Effect.succeed(found) : Effect.fail(new NotFoundError({ resource: "Template" }))
-        ),
+        Effect.flatMap(found => (found ? Effect.succeed(found) : Effect.fail(new NotFoundError({ resource: "Template" })))),
         Effect.tap(found =>
-            found.isBuiltIn
-                ? Effect.fail(new ValidationError({ message: "Cannot delete built-in templates" }))
-                : Effect.void
+            found.isBuiltIn ? Effect.fail(new ValidationError({ message: "Cannot delete built-in templates" })) : Effect.void
         ),
         Effect.flatMap(() => deleteTemplateRepo(id, userId)),
-        Effect.flatMap(deleted =>
-            deleted ? Effect.succeed(deleted) : Effect.fail(new NotFoundError({ resource: "Template" }))
-        )
+        Effect.flatMap(deleted => (deleted ? Effect.succeed(deleted) : Effect.fail(new NotFoundError({ resource: "Template" }))))
     );
 }

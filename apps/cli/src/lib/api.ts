@@ -16,8 +16,8 @@ export async function fetchApi(path: string, opts?: RequestInit): Promise<Respon
         ...opts,
         headers: {
             "Content-Type": "application/json",
-            ...opts?.headers,
-        },
+            ...opts?.headers
+        }
     });
 }
 

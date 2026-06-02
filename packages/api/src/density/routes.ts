@@ -9,9 +9,7 @@ export const densityRoutes = new Elysia().get(
     ctx =>
         Effect.runPromise(
             requireSession(ctx).pipe(
-                Effect.flatMap(session =>
-                    densityService.getDensity(session.user.id, ctx.query.codebaseId || undefined)
-                )
+                Effect.flatMap(session => densityService.getDensity(session.user.id, ctx.query.codebaseId || undefined))
             )
         ),
     {

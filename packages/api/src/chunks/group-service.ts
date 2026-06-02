@@ -1,7 +1,7 @@
 import {
     getGroupedCounts as getGroupedCountsRepo,
     getChunksInGroup as getChunksInGroupRepo,
-    getCompoundGroupedCounts as getCompoundGroupedCountsRepo,
+    getCompoundGroupedCounts as getCompoundGroupedCountsRepo
 } from "@fubbik/db/repository";
 import type { GroupedCountsParams, GroupChunksParams, CompoundGroupedCountsParams } from "@fubbik/db/repository";
 import { Effect } from "effect";
@@ -36,7 +36,10 @@ function parseGroupBy(raw: string): { groupBy: GroupBy; tagTypeId?: string } {
 
 function parseTags(raw?: string): string[] | undefined {
     if (!raw) return undefined;
-    const parsed = raw.split(",").map(s => s.trim()).filter(Boolean);
+    const parsed = raw
+        .split(",")
+        .map(s => s.trim())
+        .filter(Boolean);
     return parsed.length > 0 ? parsed : undefined;
 }
 
@@ -75,13 +78,13 @@ export function listGroupedCounts(
         workspaceId: query.workspaceId,
         globalOnly,
         tags,
-        tagMode: query.tagMode,
+        tagMode: query.tagMode
     };
 
     return getGroupedCountsRepo(params).pipe(
         Effect.map(groups => ({
             groups,
-            totalGroups: groups.length,
+            totalGroups: groups.length
         }))
     );
 }
@@ -122,13 +125,13 @@ export function listCompoundGroupedCounts(
         workspaceId: query.workspaceId,
         globalOnly,
         tags,
-        tagMode: query.tagMode,
+        tagMode: query.tagMode
     };
 
     return getCompoundGroupedCountsRepo(params).pipe(
         Effect.map(groups => ({
             groups,
-            totalGroups: groups.length,
+            totalGroups: groups.length
         }))
     );
 }
@@ -173,7 +176,7 @@ export function listGroupChunks(
         tags,
         tagMode: query.tagMode,
         limit,
-        offset,
+        offset
     };
 
     return getChunksInGroupRepo(params).pipe(
@@ -181,7 +184,7 @@ export function listGroupChunks(
             chunks: result.chunks,
             total: result.total,
             limit,
-            offset,
+            offset
         }))
     );
 }

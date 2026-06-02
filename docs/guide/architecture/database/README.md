@@ -1,8 +1,8 @@
 ---
 tags:
-  - guide
-  - architecture
-  - database
+    - guide
+    - architecture
+    - database
 description: Database architecture — PostgreSQL schema, extensions, and ORM
 ---
 

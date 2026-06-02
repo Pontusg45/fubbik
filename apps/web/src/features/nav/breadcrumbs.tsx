@@ -64,9 +64,7 @@ export function Breadcrumbs() {
 
             if (parentPart === "chunks") {
                 // Try to find chunk title from the matching route's loader data
-                const chunkMatch = matches.find(
-                    (m: any) => m.loaderData && typeof m.loaderData === "object" && "chunk" in m.loaderData
-                );
+                const chunkMatch = matches.find((m: any) => m.loaderData && typeof m.loaderData === "object" && "chunk" in m.loaderData);
                 if (chunkMatch) {
                     const loaderData = (chunkMatch as any).loaderData as { chunk?: { title?: string } };
                     if (loaderData.chunk?.title) {
@@ -75,10 +73,7 @@ export function Breadcrumbs() {
                 }
             } else if (parentPart === "requirements_" || parentPart === "requirements") {
                 const reqMatch = matches.find(
-                    (m: any) =>
-                        m.loaderData &&
-                        typeof m.loaderData === "object" &&
-                        "requirement" in m.loaderData
+                    (m: any) => m.loaderData && typeof m.loaderData === "object" && "requirement" in m.loaderData
                 );
                 if (reqMatch) {
                     const loaderData = (reqMatch as any).loaderData as { requirement?: { title?: string } };

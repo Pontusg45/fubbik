@@ -91,9 +91,7 @@ export function StepBuilder({ steps, onStepsChange, spaceId: spaceId, stepErrors
 
             debounceTimers.current[stepIndex] = setTimeout(async () => {
                 try {
-                    const result = unwrapEden(
-                        await api.api.vocabulary.parse.post({ text, spaceId })
-                    ) as ParseResult;
+                    const result = unwrapEden(await api.api.vocabulary.parse.post({ text, spaceId })) as ParseResult;
                     setParseResults(prev => ({ ...prev, [stepIndex]: result }));
                 } catch {
                     // Silently ignore parse errors
@@ -203,9 +201,7 @@ export function StepBuilder({ steps, onStepsChange, spaceId: spaceId, stepErrors
                 {steps.map((step, i) => {
                     const parseResult = parseResults[i];
                     const warningWords = new Set(
-                        parseResult?.warnings
-                            .filter(w => w.type === "unexpected_category")
-                            .map(w => w.word.toLowerCase()) ?? []
+                        parseResult?.warnings.filter(w => w.type === "unexpected_category").map(w => w.word.toLowerCase()) ?? []
                     );
 
                     return (
@@ -228,19 +224,14 @@ export function StepBuilder({ steps, onStepsChange, spaceId: spaceId, stepErrors
                                     placeholder="Step description..."
                                     className={`flex-1 ${stepHasError(i) ? "border-red-500" : ""}`}
                                 />
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => removeStep(i)}
-                                    disabled={steps.length <= 1}
-                                >
+                                <Button variant="ghost" size="sm" onClick={() => removeStep(i)} disabled={steps.length <= 1}>
                                     <Trash2 className="size-3.5" />
                                 </Button>
                             </div>
 
                             {/* Vocabulary parse tokens */}
                             {spaceId && parseResult && parseResult.tokens.length > 0 && (
-                                <div className="ml-[6.5rem] mt-1 flex flex-wrap gap-1">
+                                <div className="mt-1 ml-[6.5rem] flex flex-wrap gap-1">
                                     {parseResult.tokens.map((token, ti) => {
                                         const hasWarning = warningWords.has(token.text.toLowerCase());
                                         const isUnknown = token.category === null;
@@ -256,7 +247,7 @@ export function StepBuilder({ steps, onStepsChange, spaceId: spaceId, stepErrors
                                                               )?.message
                                                             : isUnknown
                                                               ? "Unknown word"
-                                                              : token.category ?? ""
+                                                              : (token.category ?? "")
                                                     }
                                                 >
                                                     {token.text}
@@ -281,10 +272,8 @@ export function StepBuilder({ steps, onStepsChange, spaceId: spaceId, stepErrors
 
                             {/* Inline add word form */}
                             {addingWordAtStep?.step === i && (
-                                <div className="ml-[6.5rem] mt-1.5 flex flex-wrap items-center gap-2 rounded-md border bg-yellow-500/5 p-2">
-                                    <span className="text-xs font-medium">
-                                        Add &quot;{addingWordAtStep.word}&quot;:
-                                    </span>
+                                <div className="mt-1.5 ml-[6.5rem] flex flex-wrap items-center gap-2 rounded-md border bg-yellow-500/5 p-2">
+                                    <span className="text-xs font-medium">Add &quot;{addingWordAtStep.word}&quot;:</span>
                                     <select
                                         value={addCategory}
                                         onChange={e => setAddCategory(e.target.value as VocabCategory)}

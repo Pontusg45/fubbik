@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { FileText, Plus } from "lucide-react";
 import { useCallback, useMemo } from "react";
+
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { PageEmpty } from "@/components/ui/page";
@@ -92,7 +93,7 @@ export function ChunksResults({
     onBulkArchiveChunks,
     bulkUpdateMutation,
     setConfirmAction,
-    onFetchNextPage,
+    onFetchNextPage
 }: ChunksResultsProps) {
     const hasGrouping = !!group;
     const selectedTagTypeId = group?.startsWith("tagtype:") ? group.slice("tagtype:".length) : null;
@@ -111,10 +112,10 @@ export function ChunksResults({
             {view === "kanban" ? (
                 <KanbanView
                     chunks={processedChunks}
-                    onBulkDelete={(ids) => {
+                    onBulkDelete={ids => {
                         onBulkDeleteChunks(ids);
                     }}
-                    onBulkArchive={(ids) => {
+                    onBulkArchive={ids => {
                         onBulkArchiveChunks(ids);
                     }}
                 />
@@ -146,7 +147,7 @@ export function ChunksResults({
                         tags,
                         origin,
                         reviewStatus,
-                        search: q,
+                        search: q
                     }}
                     selectedIds={selectedIds}
                     onSelectionClick={onSelectionClick}
@@ -154,7 +155,7 @@ export function ChunksResults({
                         setConfirmAction({
                             title: "Delete chunk",
                             description: `Delete "${title}" permanently?`,
-                            action: () => onDeleteChunk(id, title),
+                            action: () => onDeleteChunk(id, title)
                         })
                     }
                     onReviewCycle={(id, next) => onReviewCycle(id, next)}
@@ -186,7 +187,7 @@ export function ChunksResults({
                                 setConfirmAction({
                                     title: "Delete chunk",
                                     description: `Delete "${title}" permanently?`,
-                                    action: () => onDeleteChunk(id, title),
+                                    action: () => onDeleteChunk(id, title)
                                 })
                             }
                             onReviewCycle={(id, next) => onReviewCycle(id, next)}
@@ -198,12 +199,7 @@ export function ChunksResults({
             {/* Load more trigger */}
             {view !== "kanban" && hasNextPage && (
                 <div ref={loadMoreRef} className="mt-4 flex justify-center">
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={onFetchNextPage}
-                        disabled={isFetchingNextPage}
-                    >
+                    <Button variant="outline" size="sm" onClick={onFetchNextPage} disabled={isFetchingNextPage}>
                         {isFetchingNextPage ? "Loading..." : "Load more"}
                     </Button>
                 </div>

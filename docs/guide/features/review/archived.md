@@ -1,8 +1,8 @@
 ---
 tags:
-  - guide
-  - review
-  - archive
+    - guide
+    - review
+    - archive
 description: Managing archived chunks — restore and permanent delete
 ---
 
@@ -13,6 +13,7 @@ Archived chunks are hidden from normal views but preserved for history. Access t
 ## Archiving
 
 Archive a chunk instead of deleting it to:
+
 - Preserve connections and version history
 - Keep it findable if you need it later
 - Avoid breaking references from other chunks
@@ -29,4 +30,5 @@ At `/chunks/archived`, click "Restore" to bring a chunk back to active status. A
 
 ## Permanent Deletion
 
-If you're sure you no longer need an archived chunk, use "Delete permanently" from the archived view. This removes the chunk, its connections, its version history, and all associated file references.
+If you're sure you no longer need an archived chunk, use "Delete permanently" from the archived view. This removes the chunk, its
+connections, its version history, and all associated file references.

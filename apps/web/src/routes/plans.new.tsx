@@ -36,7 +36,7 @@ function NewPlanPage() {
     const spacesQuery = useApiQuery<Array<{ id: string; name: string }>>({
         queryKey: ["spaces"],
         queryFn: () => api.api.spaces.get() as unknown as Promise<{ data: Array<{ id: string; name: string }>; error: unknown }>,
-        fallback: [],
+        fallback: []
     });
 
     // The endpoint may return either { requirements, total } or a bare array —
@@ -47,13 +47,11 @@ function NewPlanPage() {
         queryFn: async () => {
             const response = await api.api.requirements.get({ query: {} });
             const raw = unwrapEden(response);
-            const arr = Array.isArray(raw)
-                ? raw
-                : (raw as { requirements?: RequirementRow[] })?.requirements ?? [];
+            const arr = Array.isArray(raw) ? raw : ((raw as { requirements?: RequirementRow[] })?.requirements ?? []);
             return { data: arr as RequirementRow[], error: null };
         },
         fallback: [],
-        enabled: requirementsExpanded,
+        enabled: requirementsExpanded
     });
 
     const filteredRequirements = useMemo(() => {
@@ -80,13 +78,11 @@ function NewPlanPage() {
         },
         onSuccess: plan => {
             navigate({ to: "/plans/$planId", params: { planId: plan.id } });
-        },
+        }
     });
 
     const toggleRequirement = (id: string) => {
-        setSelectedRequirementIds(prev =>
-            prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
-        );
+        setSelectedRequirementIds(prev => (prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]));
     };
 
     const taskLineCount = bootstrapTasks
@@ -110,13 +106,7 @@ function NewPlanPage() {
             >
                 <div className="space-y-2">
                     <Label htmlFor="title">Title</Label>
-                    <Input
-                        id="title"
-                        value={title}
-                        onChange={e => setTitle(e.target.value)}
-                        required
-                        autoFocus
-                    />
+                    <Input id="title" value={title} onChange={e => setTitle(e.target.value)} required autoFocus />
                 </div>
 
                 <div className="space-y-2">
@@ -149,7 +139,7 @@ function NewPlanPage() {
                             placeholder="What is this plan about?"
                         />
                     ) : (
-                        <div className="prose prose-sm dark:prose-invert max-w-none rounded-md border bg-muted/20 p-3">
+                        <div className="prose prose-sm dark:prose-invert bg-muted/20 max-w-none rounded-md border p-3">
                             <MarkdownRenderer>{description || "_Nothing to preview yet._"}</MarkdownRenderer>
                         </div>
                     )}
@@ -161,11 +151,13 @@ function NewPlanPage() {
                         id="space"
                         value={spaceId}
                         onChange={e => setSpaceId(e.target.value)}
-                        className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                        className="bg-background w-full rounded-md border px-3 py-2 text-sm"
                     >
                         <option value="">— none —</option>
                         {(spacesQuery.data ?? []).map(c => (
-                            <option key={c.id} value={c.id}>{c.name}</option>
+                            <option key={c.id} value={c.id}>
+                                {c.name}
+                            </option>
                         ))}
                     </select>
                 </div>
@@ -175,7 +167,7 @@ function NewPlanPage() {
                     <button
                         type="button"
                         onClick={() => setRequirementsExpanded(e => !e)}
-                        className="flex w-full items-center justify-between px-3 py-2 text-sm font-medium hover:bg-muted/40"
+                        className="hover:bg-muted/40 flex w-full items-center justify-between px-3 py-2 text-sm font-medium"
                     >
                         <span>
                             Link requirements
@@ -196,9 +188,7 @@ function NewPlanPage() {
                                 className="h-8 text-sm"
                             />
                             <div className="max-h-[240px] space-y-0.5 overflow-y-auto">
-                                {requirementsListQuery.isLoading && (
-                                    <p className="text-muted-foreground p-2 text-xs">Loading…</p>
-                                )}
+                                {requirementsListQuery.isLoading && <p className="text-muted-foreground p-2 text-xs">Loading…</p>}
                                 {!requirementsListQuery.isLoading && filteredRequirements.length === 0 && (
                                     <p className="text-muted-foreground p-2 text-xs">No requirements match.</p>
                                 )}
@@ -226,7 +216,7 @@ function NewPlanPage() {
                     <button
                         type="button"
                         onClick={() => setTasksExpanded(e => !e)}
-                        className="flex w-full items-center justify-between px-3 py-2 text-sm font-medium hover:bg-muted/40"
+                        className="hover:bg-muted/40 flex w-full items-center justify-between px-3 py-2 text-sm font-medium"
                     >
                         <span>
                             Seed initial tasks
@@ -258,11 +248,7 @@ function NewPlanPage() {
                     <Button type="submit" disabled={!title.trim() || createMutation.isPending}>
                         {createMutation.isPending ? "Creating…" : "Create Plan"}
                     </Button>
-                    <Button
-                        type="button"
-                        variant="ghost"
-                        onClick={() => navigate({ to: "/plans" })}
-                    >
+                    <Button type="button" variant="ghost" onClick={() => navigate({ to: "/plans" })}>
                         Cancel
                     </Button>
                 </div>

@@ -75,26 +75,37 @@ export function semanticSearch(userId: string | undefined, query: { q: string; l
 
 export function listUpdatesByTag(userId: string, tag: string, spaceId?: string) {
     return getVersionsByTag(tag, userId, spaceId).pipe(
-        Effect.map(versions => versions.map(v => ({
-            versionId: v.versionId,
-            chunkId: v.chunkId,
-            chunkTitle: v.chunkTitle,
-            updateTag: v.updateTag,
-            version: v.version,
-            createdAt: v.createdAt,
-            before: v.version === 0
-                ? { title: null, content: null, type: null, rationale: null, alternatives: null, consequences: null, scope: null }
-                : { title: v.title, content: v.content, type: v.type, rationale: v.rationale, alternatives: v.alternatives, consequences: v.consequences, scope: v.scope },
-            after: {
-                title: v.chunkTitle,
-                content: v.chunkContent,
-                type: v.chunkType,
-                rationale: v.chunkRationale,
-                alternatives: v.chunkAlternatives,
-                consequences: v.chunkConsequences,
-                scope: v.chunkScope,
-            }
-        })))
+        Effect.map(versions =>
+            versions.map(v => ({
+                versionId: v.versionId,
+                chunkId: v.chunkId,
+                chunkTitle: v.chunkTitle,
+                updateTag: v.updateTag,
+                version: v.version,
+                createdAt: v.createdAt,
+                before:
+                    v.version === 0
+                        ? { title: null, content: null, type: null, rationale: null, alternatives: null, consequences: null, scope: null }
+                        : {
+                              title: v.title,
+                              content: v.content,
+                              type: v.type,
+                              rationale: v.rationale,
+                              alternatives: v.alternatives,
+                              consequences: v.consequences,
+                              scope: v.scope
+                          },
+                after: {
+                    title: v.chunkTitle,
+                    content: v.chunkContent,
+                    type: v.chunkType,
+                    rationale: v.chunkRationale,
+                    alternatives: v.chunkAlternatives,
+                    consequences: v.chunkConsequences,
+                    scope: v.chunkScope
+                }
+            }))
+        )
     );
 }
 

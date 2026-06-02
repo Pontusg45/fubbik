@@ -26,6 +26,6 @@ export function scanProject(opts: ScanOptions): ScannedChunk[] {
         type: d.type,
         tags: d.tags,
         folder: ".",
-        isIndex: false,
+        isIndex: false
     }));
 }

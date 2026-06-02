@@ -1,8 +1,8 @@
 ---
 tags:
-  - guide
-  - codebases
-  - workspaces
+    - guide
+    - codebases
+    - workspaces
 description: Organization section index — codebases, workspaces, and scoping
 ---
 

@@ -14,7 +14,7 @@ import {
     Scissors,
     Sparkles,
     Star,
-    Trash2,
+    Trash2
 } from "lucide-react";
 import { useState } from "react";
 
@@ -25,7 +25,7 @@ import {
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuSeparator,
-    DropdownMenuTrigger,
+    DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
 import { useFavorites } from "@/features/chunks/use-favorites";
 import { useFocusMode } from "@/hooks/use-focus-mode";
@@ -76,7 +76,7 @@ export function ChunkDetailTopBar({
     onToggleEntryPoint,
     onReview,
     archivePending,
-    deletePending,
+    deletePending
 }: ChunkDetailTopBarProps) {
     const navigate = useNavigate();
     const { toggleFavorite, isFavorite } = useFavorites();
@@ -131,12 +131,7 @@ export function ChunkDetailTopBar({
                     </DropdownMenuContent>
                 </DropdownMenu>
 
-                <Button
-                    variant="outline"
-                    size="sm"
-                    render={<Link to="/chunks/$chunkId/edit" params={{ chunkId }} />}
-                    className="gap-1.5"
-                >
+                <Button variant="outline" size="sm" render={<Link to="/chunks/$chunkId/edit" params={{ chunkId }} />} className="gap-1.5">
                     <Edit className="size-3.5" />
                     Edit
                 </Button>
@@ -153,11 +148,9 @@ export function ChunkDetailTopBar({
                         <DropdownMenuItem onClick={toggleFocus}>
                             <Focus className="size-3.5" />
                             {focusMode ? "Exit focus mode" : "Focus mode"}
-                            <span className="ml-auto text-[10px] text-muted-foreground font-mono">f</span>
+                            <span className="text-muted-foreground ml-auto font-mono text-[10px]">f</span>
                         </DropdownMenuItem>
-                        <DropdownMenuItem
-                            onClick={() => void navigate({ to: "/graph", search: { pathFrom: chunkId } as any })}
-                        >
+                        <DropdownMenuItem onClick={() => void navigate({ to: "/graph", search: { pathFrom: chunkId } as any })}>
                             <Network className="size-3.5" />
                             Find path in graph
                         </DropdownMenuItem>
@@ -165,7 +158,7 @@ export function ChunkDetailTopBar({
                             onClick={() =>
                                 void navigate({
                                     to: "/search",
-                                    search: { q: `similar-to:"${title}"` } as any,
+                                    search: { q: `similar-to:"${title}"` } as any
                                 })
                             }
                         >

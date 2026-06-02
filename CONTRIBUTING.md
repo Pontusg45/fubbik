@@ -37,6 +37,7 @@ fubbik/
 ## Architecture
 
 Backend follows **Repository -> Service -> Route**:
+
 - **Repository** (`packages/db/src/repository/`): Pure data access, returns `Effect<T, DatabaseError>`
 - **Service** (`packages/api/src/*/service.ts`): Business logic, composes Effects
 - **Route** (`packages/api/src/*/routes.ts`): HTTP layer, `requireSession(ctx).pipe(...)`
@@ -44,36 +45,42 @@ Backend follows **Repository -> Service -> Route**:
 ## Adding a New Feature
 
 ### 1. Database schema
+
 Create `packages/db/src/schema/your-feature.ts`, export from `schema/index.ts`.
 
 ### 2. Repository
+
 Create `packages/db/src/repository/your-feature.ts`, export from `repository/index.ts`.
 
 ### 3. Service
+
 Create `packages/api/src/your-feature/service.ts`.
 
 ### 4. Routes
+
 Create `packages/api/src/your-feature/routes.ts`, register in `packages/api/src/index.ts`.
 
 ### 5. Web UI
+
 Create route at `apps/web/src/routes/your-feature.tsx`.
 
 ### 6. Push schema
+
 Run `pnpm db:push`.
 
 ## Common Commands
 
-| Command | Description |
-|---------|-------------|
-| `pnpm dev` | Start dev server |
-| `pnpm build` | Build for production |
-| `pnpm test` | Run tests |
+| Command                | Description             |
+| ---------------------- | ----------------------- |
+| `pnpm dev`             | Start dev server        |
+| `pnpm build`           | Build for production    |
+| `pnpm test`            | Run tests               |
 | `pnpm run check-types` | Type-check all packages |
-| `pnpm ci` | Full CI pipeline |
-| `pnpm db:push` | Push schema changes |
-| `pnpm db:studio` | Open Drizzle Studio |
-| `pnpm kill:all` | Free ports 3000 + 3001 |
-| `pnpm service:start` | Start via launchd |
+| `pnpm ci`              | Full CI pipeline        |
+| `pnpm db:push`         | Push schema changes     |
+| `pnpm db:studio`       | Open Drizzle Studio     |
+| `pnpm kill:all`        | Free ports 3000 + 3001  |
+| `pnpm service:start`   | Start via launchd       |
 
 ## Code Style
 

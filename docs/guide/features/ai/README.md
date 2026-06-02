@@ -1,13 +1,14 @@
 ---
 tags:
-  - guide
-  - ai
+    - guide
+    - ai
 description: AI section index — enrichment, embeddings, context export, and duplicate detection
 ---
 
 # AI Features
 
-Fubbik uses local AI (via Ollama) for enrichment, semantic search, and intelligent context delivery. All AI features are optional — everything else works without them.
+Fubbik uses local AI (via Ollama) for enrichment, semantic search, and intelligent context delivery. All AI features are optional —
+everything else works without them.
 
 ## In This Section
 

@@ -93,10 +93,10 @@ function LiveStats() {
         <div className="flex gap-6">
             {items.map(s => (
                 <div key={s.label} className="text-center">
-                    <div className="text-foreground text-2xl font-bold tabular-nums tracking-tight">
+                    <div className="text-foreground text-2xl font-bold tracking-tight tabular-nums">
                         <AnimatedNumber value={s.value} />
                     </div>
-                    <div className="text-muted-foreground text-[10px] font-medium uppercase tracking-widest">{s.label}</div>
+                    <div className="text-muted-foreground text-[10px] font-medium tracking-widest uppercase">{s.label}</div>
                 </div>
             ))}
         </div>
@@ -119,8 +119,18 @@ const integrations = [
 const featureTeasers = [
     { icon: Layers, hash: "#chunks", title: "Knowledge Graph", desc: "Typed chunks with metadata, history, and directed relationships." },
     { icon: Heart, hash: "#health", title: "Health Monitoring", desc: "Freshness, completeness, richness, and connectivity scores." },
-    { icon: Sparkles, hash: "#context", title: "AI-Native Context", desc: "Token-budgeted exports and CLAUDE.md generation for AI agents." },
-    { icon: Terminal, hash: "#connections", title: "Capture & Create", desc: "CLI, web UI, VS Code, and MCP -- create knowledge from anywhere." }
+    {
+        icon: Sparkles,
+        hash: "#context",
+        title: "AI-Native Context",
+        desc: "Token-budgeted exports and CLAUDE.md generation for AI agents."
+    },
+    {
+        icon: Terminal,
+        hash: "#connections",
+        title: "Capture & Create",
+        desc: "CLI, web UI, VS Code, and MCP -- create knowledge from anywhere."
+    }
 ];
 
 /* ─── Main ─── */
@@ -140,7 +150,7 @@ function LandingPage() {
                     <div className="mb-6 inline-flex items-center gap-3">
                         <FubbikLogo className="size-10 opacity-80" />
                         <span className="text-foreground text-2xl font-bold tracking-tight">fubbik</span>
-                        <Badge variant="outline" className="border-border/60 font-mono text-[10px] uppercase tracking-widest">
+                        <Badge variant="outline" className="border-border/60 font-mono text-[10px] tracking-widest uppercase">
                             v0.1
                         </Badge>
                     </div>
@@ -156,14 +166,23 @@ function LandingPage() {
                     </p>
 
                     <div className="mb-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
-                        <Button size="lg" className="w-full sm:w-auto" onClick={() => document.getElementById("install")?.scrollIntoView({ behavior: "smooth" })}>
+                        <Button
+                            size="lg"
+                            className="w-full sm:w-auto"
+                            onClick={() => document.getElementById("install")?.scrollIntoView({ behavior: "smooth" })}
+                        >
                             Get Started
                             <ArrowRight className="size-4" />
                         </Button>
                         <Button variant="outline" size="lg" className="w-full sm:w-auto" render={<a href="/features" />}>
                             How it works
                         </Button>
-                        <Button variant="outline" size="lg" className="w-full sm:w-auto" render={<a href="https://github.com/Pontusg45/fubbik" target="_blank" rel="noopener noreferrer" />}>
+                        <Button
+                            variant="outline"
+                            size="lg"
+                            className="w-full sm:w-auto"
+                            render={<a href="https://github.com/Pontusg45/fubbik" target="_blank" rel="noopener noreferrer" />}
+                        >
                             <Github className="size-4" />
                             GitHub
                         </Button>
@@ -192,10 +211,7 @@ function LandingPage() {
 
                         <div className="grid gap-3 sm:grid-cols-3">
                             {integrations.map(item => (
-                                <div
-                                    key={item.label}
-                                    className="bg-muted/20 hover:bg-muted/40 rounded-lg border p-4 transition-colors"
-                                >
+                                <div key={item.label} className="bg-muted/20 hover:bg-muted/40 rounded-lg border p-4 transition-colors">
                                     <div className="mb-2 flex items-center gap-2">
                                         <item.icon className="text-muted-foreground size-4" />
                                         <span className="text-foreground text-sm font-semibold">{item.label}</span>
@@ -210,12 +226,12 @@ function LandingPage() {
                 {/* Feature teasers */}
                 <FadeInSection>
                     <section className="container mx-auto max-w-2xl px-4 pb-16">
-                        <div className="border-border/50 divide-border/50 rounded-xl border divide-y">
+                        <div className="border-border/50 divide-border/50 divide-y rounded-xl border">
                             {featureTeasers.map((item, i) => (
                                 <a
                                     key={item.title}
                                     href={`/features${item.hash}`}
-                                    className="group flex items-start gap-4 px-5 py-5 transition-all duration-300 hover:bg-muted/30"
+                                    className="group hover:bg-muted/30 flex items-start gap-4 px-5 py-5 transition-all duration-300"
                                     style={{ animationDelay: `${i * 80}ms` }}
                                 >
                                     <div className="bg-muted/50 group-hover:bg-muted mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg transition-colors">
@@ -251,7 +267,7 @@ function LandingPage() {
                             <FubbikLogo className="size-3.5 opacity-50" />
                             <span className="opacity-50">fubbik</span>
                         </div>
-                        <div className="text-muted-foreground flex gap-4 font-mono text-[10px] uppercase tracking-widest">
+                        <div className="text-muted-foreground flex gap-4 font-mono text-[10px] tracking-widest uppercase">
                             <span>TanStack</span>
                             <span>Elysia</span>
                             <span>Drizzle</span>

@@ -1,4 +1,5 @@
 import { execSync } from "node:child_process";
+
 import { describe, expect, it } from "vitest";
 
 const CLI_CWD = new URL("../../", import.meta.url).pathname.replace(/\/$/, "");
@@ -14,7 +15,7 @@ function runCli(args: string): {
             cwd: CLI_CWD,
             encoding: "utf-8",
             stdio: ["pipe", "pipe", "pipe"],
-            env: { ...process.env, HOME: "/tmp/fubbik-test" },
+            env: { ...process.env, HOME: "/tmp/fubbik-test" }
         });
         return { stdout, stderr: "", exitCode: 0 };
     } catch (e: unknown) {
@@ -26,7 +27,7 @@ function runCli(args: string): {
         return {
             stdout: err.stdout ?? "",
             stderr: err.stderr ?? "",
-            exitCode: err.status ?? 1,
+            exitCode: err.status ?? 1
         };
     }
 }

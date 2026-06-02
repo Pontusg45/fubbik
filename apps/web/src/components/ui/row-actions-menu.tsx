@@ -6,7 +6,7 @@ import {
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuSeparator,
-    DropdownMenuTrigger,
+    DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 
@@ -45,12 +45,7 @@ export interface RowActionsMenuProps {
  * shape. The destructive + separatorBefore flags cover the common case of
  * "Edit / Archive / Duplicate — Delete".
  */
-export function RowActionsMenu({
-    items,
-    ariaLabel,
-    align = "end",
-    triggerClassName,
-}: RowActionsMenuProps) {
+export function RowActionsMenu({ items, ariaLabel, align = "end", triggerClassName }: RowActionsMenuProps) {
     return (
         <DropdownMenu>
             <DropdownMenuTrigger
@@ -59,7 +54,7 @@ export function RowActionsMenu({
                         aria-label={ariaLabel}
                         className={cn(
                             "text-muted-foreground/0 group-hover:text-muted-foreground hover:text-foreground rounded p-1 transition-colors",
-                            triggerClassName,
+                            triggerClassName
                         )}
                         onClick={e => e.stopPropagation()}
                     >
@@ -80,11 +75,7 @@ function RowItem({ item }: { item: RowActionItem }) {
     return (
         <>
             {item.separatorBefore && <DropdownMenuSeparator />}
-            <DropdownMenuItem
-                onClick={item.onSelect}
-                disabled={item.disabled}
-                className={cn(item.destructive && "text-destructive")}
-            >
+            <DropdownMenuItem onClick={item.onSelect} disabled={item.disabled} className={cn(item.destructive && "text-destructive")}>
                 {item.children}
             </DropdownMenuItem>
         </>

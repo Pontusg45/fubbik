@@ -1,9 +1,9 @@
-
 import { ChevronDown, ChevronRight, File, Folder } from "lucide-react";
 import { useState, useCallback } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+
 import { type TreeNode, INDEX_FILE_NAMES } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -153,7 +153,7 @@ export function FileTree({
     const displayNodes = filter ? filterTree(nodes, filter) : nodes;
 
     return (
-        <div className="select-none text-sm">
+        <div className="text-sm select-none">
             {displayNodes.map(node => (
                 <FileTreeNode
                     key={node.path}
@@ -283,10 +283,7 @@ function FolderNode({
     const selectedFileCount = allFiles.filter(f => selected.has(f)).length;
     const checkState = getCheckState(node, selected);
 
-    const templateCount =
-        mode === "navigate" && templatePaths
-            ? allFiles.filter(f => templatePaths.has(f)).length
-            : 0;
+    const templateCount = mode === "navigate" && templatePaths ? allFiles.filter(f => templatePaths.has(f)).length : 0;
 
     const handleFolderCheckChange = useCallback(() => {
         const files = getAllFiles(node.children);
@@ -302,17 +299,13 @@ function FolderNode({
     return (
         <div>
             <div
-                className="flex cursor-pointer items-center gap-1.5 rounded px-1 py-0.5 hover:bg-muted/50"
+                className="hover:bg-muted/50 flex cursor-pointer items-center gap-1.5 rounded px-1 py-0.5"
                 style={indentStyle}
                 onClick={onToggleExpand}
             >
                 {/* Expand/collapse chevron */}
-                <span className="shrink-0 text-muted-foreground">
-                    {expanded ? (
-                        <ChevronDown className="size-3.5" />
-                    ) : (
-                        <ChevronRight className="size-3.5" />
-                    )}
+                <span className="text-muted-foreground shrink-0">
+                    {expanded ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}
                 </span>
 
                 {/* Checkbox in checkbox mode */}
@@ -325,9 +318,9 @@ function FolderNode({
                     />
                 )}
 
-                <Folder className="size-3.5 shrink-0 text-muted-foreground" />
+                <Folder className="text-muted-foreground size-3.5 shrink-0" />
 
-                <span className="truncate font-medium text-foreground">{node.name}</span>
+                <span className="text-foreground truncate font-medium">{node.name}</span>
 
                 {/* File count badge */}
                 <Badge variant="outline" size="sm" className="ml-auto shrink-0">
@@ -388,16 +381,7 @@ interface FileNodeProps {
     siblings: TreeNode[];
 }
 
-function FileNode({
-    node,
-    selected,
-    onSelectionChange,
-    mode,
-    activePath,
-    onFileClick,
-    indentStyle,
-    siblings
-}: FileNodeProps) {
+function FileNode({ node, selected, onSelectionChange, mode, activePath, onFileClick, indentStyle, siblings }: FileNodeProps) {
     const isChecked = selected.has(node.path);
     const isActive = activePath === node.path;
 
@@ -424,9 +408,7 @@ function FileNode({
 
     return (
         <div
-            className={`flex cursor-pointer items-center gap-1.5 rounded px-1 py-0.5 hover:bg-muted/50 ${
-                isActive ? "bg-accent/60" : ""
-            }`}
+            className={`hover:bg-muted/50 flex cursor-pointer items-center gap-1.5 rounded px-1 py-0.5 ${isActive ? "bg-accent/60" : ""}`}
             style={indentStyle}
             onClick={handleClick}
         >
@@ -434,17 +416,11 @@ function FileNode({
             <span className="size-3.5 shrink-0" />
 
             {/* Checkbox in checkbox mode */}
-            {mode === "checkbox" && (
-                <Checkbox
-                    checked={isChecked}
-                    onCheckedChange={handleCheckChange}
-                    onClick={e => e.stopPropagation()}
-                />
-            )}
+            {mode === "checkbox" && <Checkbox checked={isChecked} onCheckedChange={handleCheckChange} onClick={e => e.stopPropagation()} />}
 
-            <File className="size-3.5 shrink-0 text-muted-foreground" />
+            <File className="text-muted-foreground size-3.5 shrink-0" />
 
-            <span className="truncate text-foreground">{node.name}</span>
+            <span className="text-foreground truncate">{node.name}</span>
 
             {/* Index badge */}
             {node.isIndex && (
@@ -455,9 +431,7 @@ function FileNode({
 
             {/* Connection hint in checkbox mode */}
             {mode === "checkbox" && !node.isIndex && indexSibling && (
-                <span className="ml-1 shrink-0 truncate text-xs text-muted-foreground">
-                    → part_of {indexSibling.name}
-                </span>
+                <span className="text-muted-foreground ml-1 shrink-0 truncate text-xs">→ part_of {indexSibling.name}</span>
             )}
         </div>
     );

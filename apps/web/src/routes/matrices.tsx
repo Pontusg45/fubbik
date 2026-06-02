@@ -6,18 +6,11 @@ import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { PageContainer, PageEmpty, PageHeader, PageLoading } from "@/components/ui/page";
-import { useApiQuery } from "@/hooks/use-api-query";
 import { getUser } from "@/functions/get-user";
+import { useApiQuery } from "@/hooks/use-api-query";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
@@ -29,7 +22,7 @@ export const Route = createFileRoute("/matrices")({
             session = await getUser();
         } catch {}
         return { session };
-    },
+    }
 });
 
 interface Matrix {
@@ -58,13 +51,13 @@ function MatricesPage() {
     const matricesQuery = useApiQuery<Matrix[]>({
         queryKey: ["matrices"],
         queryFn: () => api.api.matrices.get({ query: {} }),
-        fallback: [],
+        fallback: []
     });
 
     const createMutation = useMutation({
         mutationFn: async (body: { name: string; layer: "invariant" | "contract"; description?: string }) =>
             unwrapEden(await api.api.matrices.post(body)),
-        onSuccess: (data) => {
+        onSuccess: data => {
             queryClient.invalidateQueries({ queryKey: ["matrices"] });
             setShowCreate(false);
             resetForm();
@@ -76,7 +69,7 @@ function MatricesPage() {
         onError: (err: unknown) => {
             const msg = err instanceof Error ? err.message : "Failed to create matrix";
             toast.error(msg);
-        },
+        }
     });
 
     function resetForm() {
@@ -91,7 +84,7 @@ function MatricesPage() {
         createMutation.mutate({
             name: newName.trim(),
             layer: newLayer,
-            ...(newDescription.trim() ? { description: newDescription.trim() } : {}),
+            ...(newDescription.trim() ? { description: newDescription.trim() } : {})
         });
     }
 
@@ -130,7 +123,9 @@ function MatricesPage() {
                     <form id="create-matrix-form" onSubmit={handleCreateSubmit}>
                         <div className="space-y-4 py-2">
                             <div className="space-y-1.5">
-                                <label htmlFor="matrix-name" className="text-sm font-medium">Name</label>
+                                <label htmlFor="matrix-name" className="text-sm font-medium">
+                                    Name
+                                </label>
                                 <Input
                                     id="matrix-name"
                                     placeholder="e.g. API Error Handling"
@@ -141,12 +136,14 @@ function MatricesPage() {
                                 />
                             </div>
                             <div className="space-y-1.5">
-                                <label htmlFor="matrix-layer" className="text-sm font-medium">Layer</label>
+                                <label htmlFor="matrix-layer" className="text-sm font-medium">
+                                    Layer
+                                </label>
                                 <select
                                     id="matrix-layer"
                                     value={newLayer}
                                     onChange={e => setNewLayer(e.target.value as "invariant" | "contract")}
-                                    className="bg-background border-input w-full rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:ring-ring focus:outline-none"
+                                    className="bg-background border-input focus:ring-ring w-full rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
                                 >
                                     <option value="invariant">Invariant</option>
                                     <option value="contract">Contract</option>
@@ -162,7 +159,7 @@ function MatricesPage() {
                                     value={newDescription}
                                     onChange={e => setNewDescription(e.target.value)}
                                     rows={3}
-                                    className="bg-background focus:ring-ring w-full rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:outline-none resize-none"
+                                    className="bg-background focus:ring-ring w-full resize-none rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
                                 />
                             </div>
                         </div>
@@ -170,15 +167,14 @@ function MatricesPage() {
                     <DialogFooter>
                         <Button
                             variant="ghost"
-                            onClick={() => { setShowCreate(false); resetForm(); }}
+                            onClick={() => {
+                                setShowCreate(false);
+                                resetForm();
+                            }}
                         >
                             Cancel
                         </Button>
-                        <Button
-                            type="submit"
-                            form="create-matrix-form"
-                            disabled={!newName.trim() || createMutation.isPending}
-                        >
+                        <Button type="submit" form="create-matrix-form" disabled={!newName.trim() || createMutation.isPending}>
                             {createMutation.isPending ? "Creating..." : "Create"}
                         </Button>
                     </DialogFooter>
@@ -201,7 +197,7 @@ function MatricesPage() {
                             key={matrix.id}
                             type="button"
                             onClick={() => navigate({ to: "/matrices/$matrixId", params: { matrixId: matrix.id } })}
-                            className="group flex w-full items-center gap-4 rounded-lg border px-4 py-3 text-left transition-colors hover:bg-muted/40"
+                            className="group hover:bg-muted/40 flex w-full items-center gap-4 rounded-lg border px-4 py-3 text-left transition-colors"
                         >
                             <Grid3X3 className="text-muted-foreground size-4 shrink-0" />
                             <div className="min-w-0 flex-1">
@@ -212,7 +208,7 @@ function MatricesPage() {
                                     </Badge>
                                 </div>
                                 {matrix.description && (
-                                    <p className="text-muted-foreground mt-0.5 text-sm line-clamp-1">{matrix.description}</p>
+                                    <p className="text-muted-foreground mt-0.5 line-clamp-1 text-sm">{matrix.description}</p>
                                 )}
                             </div>
                         </button>

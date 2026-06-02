@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { formIslands, type IslandFormationInput } from "./island-formation";
 
 const makeInput = (overrides: Partial<IslandFormationInput> = {}): IslandFormationInput => ({
@@ -7,22 +8,22 @@ const makeInput = (overrides: Partial<IslandFormationInput> = {}): IslandFormati
         { id: "c2", type: "guide" },
         { id: "c3", type: "note" },
         { id: "c4", type: "reference" },
-        { id: "c5", type: "note" },
+        { id: "c5", type: "note" }
     ],
     connections: [
         { sourceId: "c1", targetId: "c2", relation: "depends_on" },
         { sourceId: "c2", targetId: "c3", relation: "part_of" },
-        { sourceId: "c4", targetId: "c5", relation: "references" },
+        { sourceId: "c4", targetId: "c5", relation: "references" }
     ],
     chunkTags: [
         { chunkId: "c1", tagTypeId: "tt1", tagName: "auth" },
         { chunkId: "c2", tagTypeId: "tt1", tagName: "auth" },
         { chunkId: "c3", tagTypeId: "tt1", tagName: "api" },
-        { chunkId: "c4", tagTypeId: "tt1", tagName: "api" },
+        { chunkId: "c4", tagTypeId: "tt1", tagName: "api" }
         // c5 has no tag under tt1
     ],
     groupingTagTypeId: "tt1",
-    ...overrides,
+    ...overrides
 });
 
 describe("formIslands", () => {
@@ -44,8 +45,7 @@ describe("formIslands", () => {
     it("computes bridge connections between islands", () => {
         const result = formIslands(makeInput());
         const bridge = result.bridges.find(
-            b => (b.fromIslandId === "auth" && b.toIslandId === "api") ||
-                 (b.fromIslandId === "api" && b.toIslandId === "auth")
+            b => (b.fromIslandId === "auth" && b.toIslandId === "api") || (b.fromIslandId === "api" && b.toIslandId === "auth")
         );
         expect(bridge).toBeDefined();
         expect(bridge!.count).toBe(1); // c2→c3
@@ -55,7 +55,7 @@ describe("formIslands", () => {
         const input = makeInput({
             chunks: [{ id: "c1", type: "note" }],
             connections: [],
-            chunkTags: [{ chunkId: "c1", tagTypeId: "tt1", tagName: "lonely" }],
+            chunkTags: [{ chunkId: "c1", tagTypeId: "tt1", tagName: "lonely" }]
         });
         const result = formIslands(input);
         const lonely = result.islands.find(i => i.name === "lonely");
@@ -67,8 +67,8 @@ describe("formIslands", () => {
             chunkTags: [
                 { chunkId: "c1", tagTypeId: "tt1", tagName: "auth" },
                 { chunkId: "c1", tagTypeId: "tt1", tagName: "api" },
-                { chunkId: "c2", tagTypeId: "tt1", tagName: "auth" },
-            ],
+                { chunkId: "c2", tagTypeId: "tt1", tagName: "auth" }
+            ]
         });
         const result = formIslands(input);
         const auth = result.islands.find(i => i.name === "auth");
@@ -83,13 +83,11 @@ describe("formIslands", () => {
             connections: [
                 { sourceId: "c1", targetId: "c3", relation: "depends_on" },
                 { sourceId: "c2", targetId: "c3", relation: "depends_on" },
-                { sourceId: "c2", targetId: "c4", relation: "references" },
-            ],
+                { sourceId: "c2", targetId: "c4", relation: "references" }
+            ]
         });
         const result = formIslands(input);
-        const bridge = result.bridges.find(
-            b => b.fromIslandId === "auth" && b.toIslandId === "api"
-        );
+        const bridge = result.bridges.find(b => b.fromIslandId === "auth" && b.toIslandId === "api");
         expect(bridge?.dominantRelation).toBe("depends_on");
         expect(bridge?.count).toBe(3);
     });

@@ -1,5 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
+
 import { apiFetch, truncate } from "./api-client.js";
 import type { McpPlugin } from "./plugin.js";
 
@@ -30,7 +31,7 @@ export function registerTools(server: McpServer): void {
                 }>;
             };
 
-            const results = data.chunks.map((c) => ({
+            const results = data.chunks.map(c => ({
                 id: c.id,
                 title: c.title,
                 type: c.type,
@@ -111,11 +112,7 @@ export function registerTools(server: McpServer): void {
                 content: [
                     {
                         type: "text" as const,
-                        text: JSON.stringify(
-                            { id: data.id, title: data.title },
-                            null,
-                            2
-                        )
+                        text: JSON.stringify({ id: data.id, title: data.title }, null, 2)
                     }
                 ]
             };
@@ -160,20 +157,19 @@ export function registerTools(server: McpServer): void {
                 "best-practices"
             ]);
 
-            const conventions = data.chunks.filter((c) => {
+            const conventions = data.chunks.filter(c => {
                 if (c.rationale) return true;
-                if (c.tags?.some((t) => conventionTags.has(t.name.toLowerCase())))
-                    return true;
+                if (c.tags?.some(t => conventionTags.has(t.name.toLowerCase()))) return true;
                 return false;
             });
 
-            const results = conventions.map((c) => ({
+            const results = conventions.map(c => ({
                 id: c.id,
                 title: c.title,
                 type: c.type,
                 content: truncate(c.content, 500),
                 rationale: c.rationale,
-                tags: c.tags?.map((t) => t.name)
+                tags: c.tags?.map(t => t.name)
             }));
 
             return {
@@ -193,10 +189,7 @@ export function registerTools(server: McpServer): void {
         "Get requirements for a space",
         {
             spaceId: z.string().optional().describe("Space ID to scope search"),
-            status: z
-                .string()
-                .optional()
-                .describe("Filter by status: passing, failing, or untested")
+            status: z.string().optional().describe("Filter by status: passing, failing, or untested")
         },
         async ({ spaceId, status }) => {
             const params = new URLSearchParams();
@@ -212,7 +205,7 @@ export function registerTools(server: McpServer): void {
                 }>;
             };
 
-            const results = data.requirements.map((r) => ({
+            const results = data.requirements.map(r => ({
                 id: r.id,
                 title: r.title,
                 steps: r.steps,
@@ -293,16 +286,20 @@ export function registerTools(server: McpServer): void {
                 return { content: [{ type: "text" as const, text: `No updates found for tag "${tag}".` }] };
             }
 
-            const summary = data.updates.map(u => {
-                const action = u.version === 0 ? "CREATED" : "UPDATED";
-                return `${action}: ${u.chunkTitle} (${u.chunkId}) — ${new Date(u.createdAt).toLocaleDateString()}`;
-            }).join("\n");
+            const summary = data.updates
+                .map(u => {
+                    const action = u.version === 0 ? "CREATED" : "UPDATED";
+                    return `${action}: ${u.chunkTitle} (${u.chunkId}) — ${new Date(u.createdAt).toLocaleDateString()}`;
+                })
+                .join("\n");
 
             return {
-                content: [{
-                    type: "text" as const,
-                    text: `${data.updates.length} update(s) tagged "${tag}":\n\n${summary}`
-                }]
+                content: [
+                    {
+                        type: "text" as const,
+                        text: `${data.updates.length} update(s) tagged "${tag}":\n\n${summary}`
+                    }
+                ]
             };
         }
     );
@@ -322,13 +319,10 @@ export function registerTools(server: McpServer): void {
                     rationale: z.string().optional(),
                     alternatives: z.array(z.string()).optional(),
                     consequences: z.string().optional(),
-                    scope: z.record(z.string()).optional(),
+                    scope: z.record(z.string()).optional()
                 })
                 .describe("Only include fields you want to change"),
-            reason: z
-                .string()
-                .optional()
-                .describe("Why you're proposing this change"),
+            reason: z.string().optional().describe("Why you're proposing this change")
         },
         async ({ chunkId, changes, reason }) => {
             const body: Record<string, unknown> = { changes };
@@ -336,16 +330,16 @@ export function registerTools(server: McpServer): void {
 
             const proposal = (await apiFetch(`/chunks/${chunkId}/proposals`, {
                 method: "POST",
-                body: JSON.stringify(body),
+                body: JSON.stringify(body)
             })) as Record<string, unknown>;
 
             return {
                 content: [
                     {
                         type: "text" as const,
-                        text: `Proposal created (pending review):\n${JSON.stringify(proposal, null, 2)}`,
-                    },
-                ],
+                        text: `Proposal created (pending review):\n${JSON.stringify(proposal, null, 2)}`
+                    }
+                ]
             };
         }
     );
@@ -356,12 +350,7 @@ export function registerTools(server: McpServer): void {
         "Search vocabulary entries for a space",
         {
             spaceId: z.string().describe("Space ID (required)"),
-            category: z
-                .string()
-                .optional()
-                .describe(
-                    "Filter by category: actor, action, target, outcome, state, modifier"
-                )
+            category: z.string().optional().describe("Filter by category: actor, action, target, outcome, state, modifier")
         },
         async ({ spaceId, category }) => {
             const params = new URLSearchParams();
@@ -378,9 +367,7 @@ export function registerTools(server: McpServer): void {
 
             let entries = data.entries;
             if (category) {
-                entries = entries.filter(
-                    (e) => e.category.toLowerCase() === category.toLowerCase()
-                );
+                entries = entries.filter(e => e.category.toLowerCase() === category.toLowerCase());
             }
 
             return {
@@ -398,5 +385,5 @@ export function registerTools(server: McpServer): void {
 export const corePlugin: McpPlugin = {
     name: "core",
     description: "Core chunk CRUD and search tools",
-    register: registerTools,
+    register: registerTools
 };

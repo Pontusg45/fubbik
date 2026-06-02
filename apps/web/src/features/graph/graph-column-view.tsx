@@ -34,7 +34,7 @@ export function GraphColumnView({
     chunkTags,
     islandColors,
     selectedChunkId,
-    onSelectChunk,
+    onSelectChunk
 }: GraphColumnViewProps) {
     const containerRef = useRef<HTMLDivElement>(null);
     const [chunkRects, setChunkRects] = useState<Map<string, DOMRect>>(new Map());
@@ -53,7 +53,7 @@ export function GraphColumnView({
         return data.connections.map(c => ({
             sourceId: c.sourceId,
             targetId: c.targetId,
-            relation: c.relation,
+            relation: c.relation
         }));
     }, [data?.connections]);
 
@@ -67,10 +67,7 @@ export function GraphColumnView({
         return ids;
     }, [selectedChunkId, connections]);
 
-    const visibleIslands = useMemo(
-        () => islandData.islands.filter(i => i.chunkIds.length > 0),
-        [islandData.islands],
-    );
+    const visibleIslands = useMemo(() => islandData.islands.filter(i => i.chunkIds.length > 0), [islandData.islands]);
 
     const measureRects = useCallback(() => {
         if (!containerRef.current) return;
@@ -96,9 +93,7 @@ export function GraphColumnView({
 
     const visibleConnections = useMemo(() => {
         if (!selectedChunkId) return [];
-        return connections.filter(
-            c => c.sourceId === selectedChunkId || c.targetId === selectedChunkId,
-        );
+        return connections.filter(c => c.sourceId === selectedChunkId || c.targetId === selectedChunkId);
     }, [selectedChunkId, connections]);
 
     const svgLines = useMemo(() => {
@@ -123,7 +118,7 @@ export function GraphColumnView({
                 return {
                     ...conn,
                     path: `M ${x1} ${y1} C ${midX} ${y1}, ${midX} ${y2}, ${x2} ${y2}`,
-                    color: relationColor(conn.relation),
+                    color: relationColor(conn.relation)
                 };
             })
             .filter(Boolean) as Array<ConnectionLine & { path: string; color: string }>;
@@ -134,14 +129,7 @@ export function GraphColumnView({
             {/* SVG overlay for connection lines */}
             <svg className="pointer-events-none absolute inset-0 z-10 h-full w-full">
                 {svgLines.map((line, i) => (
-                    <path
-                        key={i}
-                        d={line.path}
-                        fill="none"
-                        stroke={line.color}
-                        strokeWidth={2}
-                        strokeOpacity={0.6}
-                    />
+                    <path key={i} d={line.path} fill="none" stroke={line.color} strokeWidth={2} strokeOpacity={0.6} />
                 ))}
             </svg>
 
@@ -151,15 +139,12 @@ export function GraphColumnView({
                     className="flex w-56 shrink-0 flex-col rounded-xl border p-3 sm:w-64"
                     style={{
                         borderColor: `${islandColors.get(island.id) ?? "#334155"}40`,
-                        background: `${islandColors.get(island.id) ?? "#334155"}08`,
+                        background: `${islandColors.get(island.id) ?? "#334155"}08`
                     }}
                 >
                     {/* Island header */}
                     <div className="mb-3 flex items-center justify-between">
-                        <span
-                            className="text-xs font-semibold"
-                            style={{ color: islandColors.get(island.id) ?? "#94a3b8" }}
-                        >
+                        <span className="text-xs font-semibold" style={{ color: islandColors.get(island.id) ?? "#94a3b8" }}>
                             {island.name}
                         </span>
                         <span className="text-muted-foreground text-[10px]">{island.chunkIds.length}</span>
@@ -189,17 +174,12 @@ export function GraphColumnView({
                                               ? `${relationColor("related_to")}60`
                                               : "var(--border)",
                                         opacity: dimmed ? 0.3 : 1,
-                                        boxShadow: isSelected ? "0 0 12px rgba(59,130,246,0.2)" : "none",
+                                        boxShadow: isSelected ? "0 0 12px rgba(59,130,246,0.2)" : "none"
                                     }}
                                 >
                                     <div className="flex items-center gap-1.5">
-                                        <div
-                                            className="h-1.5 w-1.5 shrink-0 rounded-full"
-                                            style={{ background: healthColor(health) }}
-                                        />
-                                        <span className="text-foreground truncate text-[11px] font-medium">
-                                            {chunk.title}
-                                        </span>
+                                        <div className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: healthColor(health) }} />
+                                        <span className="text-foreground truncate text-[11px] font-medium">{chunk.title}</span>
                                     </div>
                                     {isSelected && tags.length > 0 && (
                                         <div className="mt-1 flex flex-wrap gap-1">
@@ -209,7 +189,7 @@ export function GraphColumnView({
                                                     className="rounded px-1 py-px text-[8px]"
                                                     style={{
                                                         background: `${tag.color}20`,
-                                                        color: tag.color,
+                                                        color: tag.color
                                                     }}
                                                 >
                                                     {tag.name}

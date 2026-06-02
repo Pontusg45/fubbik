@@ -1,8 +1,8 @@
 ---
 tags:
-  - guide
-  - navigation
-  - command-palette
+    - guide
+    - navigation
+    - command-palette
 description: Cmd+K command palette for quick access to pages, chunks, and actions
 ---
 

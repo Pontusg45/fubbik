@@ -1,15 +1,10 @@
 import { describe, it, expect } from "vitest";
+
 import { matchHeading, scoreTemplate, matchTemplates } from "./match-engine";
-import type {
-    MatchRules,
-    ParsedHeading,
-    TemplateWithRules,
-} from "./types";
+import type { MatchRules, ParsedHeading, TemplateWithRules } from "./types";
 
 // Helper to build a TemplateWithRules with sensible defaults
-function makeTemplate(
-    overrides: Partial<TemplateWithRules> & { id: string; name: string },
-): TemplateWithRules {
+function makeTemplate(overrides: Partial<TemplateWithRules> & { id: string; name: string }): TemplateWithRules {
     return {
         id: overrides.id,
         name: overrides.name,
@@ -17,11 +12,11 @@ function makeTemplate(
         matchRules: overrides.matchRules ?? {
             minScore: 1,
             headings: [],
-            frontmatter: [],
+            frontmatter: []
         },
         fieldMappings: overrides.fieldMappings ?? null,
         priority: overrides.priority ?? 0,
-        tags: overrides.tags ?? null,
+        tags: overrides.tags ?? null
     };
 }
 
@@ -106,15 +101,11 @@ describe("scoreTemplate", () => {
             headings: [
                 { patterns: ["Context"], match: "exact", required: true },
                 { patterns: ["Decision"], match: "exact", required: true },
-                { patterns: ["Consequences"], match: "exact", required: false },
+                { patterns: ["Consequences"], match: "exact", required: false }
             ],
-            frontmatter: [],
+            frontmatter: []
         };
-        const headings: ParsedHeading[] = [
-            h("Context"),
-            h("Decision"),
-            h("Consequences"),
-        ];
+        const headings: ParsedHeading[] = [h("Context"), h("Decision"), h("Consequences")];
         expect(scoreTemplate(rules, headings, {})).toBe(2.5);
     });
 
@@ -123,9 +114,9 @@ describe("scoreTemplate", () => {
             minScore: 1,
             headings: [
                 { patterns: ["Context"], match: "exact", required: true },
-                { patterns: ["Decision"], match: "exact", required: true },
+                { patterns: ["Decision"], match: "exact", required: true }
             ],
-            frontmatter: [],
+            frontmatter: []
         };
         // Only "Context" is present, "Decision" is absent
         const headings: ParsedHeading[] = [h("Context")];
@@ -136,7 +127,7 @@ describe("scoreTemplate", () => {
         const rules: MatchRules = {
             minScore: 0,
             headings: [],
-            frontmatter: [{ key: "type", match: "exact", value: "adr" }],
+            frontmatter: [{ key: "type", match: "exact", value: "adr" }]
         };
         expect(scoreTemplate(rules, [], { type: "adr" })).toBe(1);
     });
@@ -145,7 +136,7 @@ describe("scoreTemplate", () => {
         const rules: MatchRules = {
             minScore: 0,
             headings: [],
-            frontmatter: [{ key: "type", match: "exact", value: "adr" }],
+            frontmatter: [{ key: "type", match: "exact", value: "adr" }]
         };
         expect(scoreTemplate(rules, [], { type: "runbook" })).toBe(0);
     });
@@ -154,9 +145,7 @@ describe("scoreTemplate", () => {
         const rules: MatchRules = {
             minScore: 0,
             headings: [],
-            frontmatter: [
-                { key: "type", match: "oneOf", values: ["adr", "decision", "record"] },
-            ],
+            frontmatter: [{ key: "type", match: "oneOf", values: ["adr", "decision", "record"] }]
         };
         expect(scoreTemplate(rules, [], { type: "decision" })).toBe(1);
     });
@@ -165,9 +154,7 @@ describe("scoreTemplate", () => {
         const rules: MatchRules = {
             minScore: 0,
             headings: [],
-            frontmatter: [
-                { key: "type", match: "oneOf", values: ["adr", "decision", "record"] },
-            ],
+            frontmatter: [{ key: "type", match: "oneOf", values: ["adr", "decision", "record"] }]
         };
         expect(scoreTemplate(rules, [], { type: "runbook" })).toBe(0);
     });
@@ -176,7 +163,7 @@ describe("scoreTemplate", () => {
         const rules: MatchRules = {
             minScore: 0,
             headings: [],
-            frontmatter: [{ key: "author", match: "exists" }],
+            frontmatter: [{ key: "author", match: "exists" }]
         };
         expect(scoreTemplate(rules, [], { author: "alice" })).toBe(1);
     });
@@ -185,7 +172,7 @@ describe("scoreTemplate", () => {
         const rules: MatchRules = {
             minScore: 0,
             headings: [],
-            frontmatter: [{ key: "author", match: "exists" }],
+            frontmatter: [{ key: "author", match: "exists" }]
         };
         expect(scoreTemplate(rules, [], {})).toBe(0);
     });
@@ -193,10 +180,8 @@ describe("scoreTemplate", () => {
     it("respects heading level filter — level 3 rule does NOT match a level 2 heading", () => {
         const rules: MatchRules = {
             minScore: 1,
-            headings: [
-                { patterns: ["Decision"], match: "exact", required: true, level: 3 },
-            ],
-            frontmatter: [],
+            headings: [{ patterns: ["Decision"], match: "exact", required: true, level: 3 }],
+            frontmatter: []
         };
         // Heading "Decision" at level 2 should NOT satisfy a level-3 rule
         expect(scoreTemplate(rules, [h("Decision", 2)], {})).toBe(0);
@@ -205,10 +190,8 @@ describe("scoreTemplate", () => {
     it("matches when heading level matches the rule level", () => {
         const rules: MatchRules = {
             minScore: 1,
-            headings: [
-                { patterns: ["Decision"], match: "exact", required: true, level: 3 },
-            ],
-            frontmatter: [],
+            headings: [{ patterns: ["Decision"], match: "exact", required: true, level: 3 }],
+            frontmatter: []
         };
         expect(scoreTemplate(rules, [h("Decision", 3)], {})).toBe(1);
     });
@@ -216,10 +199,8 @@ describe("scoreTemplate", () => {
     it("returns 0 when total score is below minScore", () => {
         const rules: MatchRules = {
             minScore: 3,
-            headings: [
-                { patterns: ["Context"], match: "exact", required: false },
-            ],
-            frontmatter: [],
+            headings: [{ patterns: ["Context"], match: "exact", required: false }],
+            frontmatter: []
         };
         // Only 0.5 score from one optional heading → below minScore 3
         expect(scoreTemplate(rules, [h("Context")], {})).toBe(0);
@@ -232,10 +213,10 @@ describe("scoreTemplate", () => {
                 {
                     patterns: ["Decision", "Resolution", "Outcome"],
                     match: "exact",
-                    required: true,
-                },
+                    required: true
+                }
             ],
-            frontmatter: [],
+            frontmatter: []
         };
         expect(scoreTemplate(rules, [h("Resolution")], {})).toBe(1);
         expect(scoreTemplate(rules, [h("Outcome")], {})).toBe(1);
@@ -254,8 +235,8 @@ describe("matchTemplates", () => {
             matchRules: {
                 minScore: 0,
                 headings: [{ patterns: ["Context"], match: "exact", required: false }],
-                frontmatter: [],
-            },
+                frontmatter: []
+            }
         });
         const highScorer = makeTemplate({
             id: "t2",
@@ -264,15 +245,15 @@ describe("matchTemplates", () => {
                 minScore: 0,
                 headings: [
                     { patterns: ["Context"], match: "exact", required: true },
-                    { patterns: ["Decision"], match: "exact", required: true },
+                    { patterns: ["Decision"], match: "exact", required: true }
                 ],
-                frontmatter: [],
-            },
+                frontmatter: []
+            }
         });
 
         const doc = {
             headings: [h("Context"), h("Decision")],
-            frontmatter: {},
+            frontmatter: {}
         };
 
         const result = matchTemplates(doc, [lowScorer, highScorer]);
@@ -289,8 +270,8 @@ describe("matchTemplates", () => {
             matchRules: {
                 minScore: 0,
                 headings: [{ patterns: ["Context"], match: "exact", required: false }],
-                frontmatter: [],
-            },
+                frontmatter: []
+            }
         });
         const highPriority = makeTemplate({
             id: "t2",
@@ -299,8 +280,8 @@ describe("matchTemplates", () => {
             matchRules: {
                 minScore: 0,
                 headings: [{ patterns: ["Context"], match: "exact", required: false }],
-                frontmatter: [],
-            },
+                frontmatter: []
+            }
         });
 
         const doc = { headings: [h("Context")], frontmatter: {} };
@@ -317,8 +298,8 @@ describe("matchTemplates", () => {
             matchRules: {
                 minScore: 1,
                 headings: [{ patterns: ["Decision"], match: "exact", required: true }],
-                frontmatter: [],
-            },
+                frontmatter: []
+            }
         });
         const doc = { headings: [h("Introduction")], frontmatter: {} };
         expect(matchTemplates(doc, [template])).toBeNull();
@@ -338,8 +319,8 @@ describe("matchTemplates", () => {
             matchRules: {
                 minScore: 1,
                 headings: [{ patterns: ["Decision"], match: "exact", required: true }],
-                frontmatter: [],
-            },
+                frontmatter: []
+            }
         });
         const doc = { headings: [h("Decision")], frontmatter: {} };
         const result = matchTemplates(doc, [template]);
@@ -359,8 +340,8 @@ describe("matchTemplates", () => {
             matchRules: {
                 minScore: 0,
                 headings: [{ patterns: ["Context"], match: "exact", required: false }],
-                frontmatter: [],
-            },
+                frontmatter: []
+            }
         });
         const doc = { headings: [h("Context")], frontmatter: {} };
         const result = matchTemplates(doc, [template]);

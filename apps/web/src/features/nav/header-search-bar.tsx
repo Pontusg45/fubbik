@@ -52,7 +52,7 @@ export function HeaderSearchBar() {
                 return [];
             }
         },
-        staleTime: 5 * 60 * 1000,
+        staleTime: 5 * 60 * 1000
     });
 
     const savedQueries = (savedQueriesQuery.data as Array<{ id: string; name: string; query: unknown }>) ?? [];
@@ -63,7 +63,7 @@ export function HeaderSearchBar() {
         mutationFn: async (q: string) => {
             const result = unwrapEden(await api.api.search.parse.get({ query: { q } as any }));
             return ((result as any)?.clauses ?? []) as QueryClause[];
-        },
+        }
     });
 
     // Sync with URL when on /search page
@@ -71,7 +71,10 @@ export function HeaderSearchBar() {
         if (location.pathname === "/search") {
             const q = searchParams.q;
             if (q) {
-                parseMutation.mutateAsync(q).then(setClauses).catch(() => {});
+                parseMutation
+                    .mutateAsync(q)
+                    .then(setClauses)
+                    .catch(() => {});
             } else {
                 setClauses([]);
             }
@@ -142,7 +145,7 @@ export function HeaderSearchBar() {
 
             void navigate({ to: "/search", search: { q: qs } as any });
         },
-        [clauses, rawInput, parseMutation, addRecentQuery, navigate],
+        [clauses, rawInput, parseMutation, addRecentQuery, navigate]
     );
 
     const handleSuggestionSelect = useCallback(
@@ -175,7 +178,7 @@ export function HeaderSearchBar() {
                     const newClause: QueryClause = {
                         field: suggestion.field,
                         operator: "is",
-                        value: suggestion.value,
+                        value: suggestion.value
                     };
                     setClauses(prev => [...prev, newClause]);
                     setRawInput(prev => {
@@ -197,7 +200,7 @@ export function HeaderSearchBar() {
             }
             setSelectedIdx(0);
         },
-        [rawInput, clauses, navigate, submit, parseMutation],
+        [rawInput, clauses, navigate, submit, parseMutation]
     );
 
     const dropdownOpen = focused && (clauses.length > 0 || rawInput.length > 0 || savedQueries.length > 0 || recentQueries.length > 0);
@@ -235,25 +238,21 @@ export function HeaderSearchBar() {
                 return;
             }
         },
-        [clauses.length, rawInput.length, submit, dropdownOpen, suggestions, selectedIdx, handleSuggestionSelect],
+        [clauses.length, rawInput.length, submit, dropdownOpen, suggestions, selectedIdx, handleSuggestionSelect]
     );
 
     return (
-        <div className="relative hidden md:block flex-1 max-w-[460px] min-w-[240px]" ref={containerRef}>
+        <div className="relative hidden max-w-[460px] min-w-[240px] flex-1 md:block" ref={containerRef}>
             <div
-                className={`flex h-9 items-center gap-1.5 rounded-md border px-2 transition-colors ${focused ? "ring-1 ring-ring bg-background" : "bg-muted/40 border-border/50"}`}
+                className={`flex h-9 items-center gap-1.5 rounded-md border px-2 transition-colors ${focused ? "ring-ring bg-background ring-1" : "bg-muted/40 border-border/50"}`}
                 onClick={() => inputRef.current?.focus()}
             >
-                <Search className="size-3.5 shrink-0 text-muted-foreground" />
+                <Search className="text-muted-foreground size-3.5 shrink-0" />
 
                 {clauses.length > 0 && (
-                    <div className="flex items-center gap-1 overflow-x-auto max-w-[60%]">
+                    <div className="flex max-w-[60%] items-center gap-1 overflow-x-auto">
                         {clauses.map((clause, idx) => (
-                            <PillChip
-                                key={`${clause.field}-${idx}`}
-                                clause={clause}
-                                onRemove={() => removeClause(idx)}
-                            />
+                            <PillChip key={`${clause.field}-${idx}`} clause={clause} onRemove={() => removeClause(idx)} />
                         ))}
                     </div>
                 )}
@@ -262,17 +261,20 @@ export function HeaderSearchBar() {
                     ref={inputRef}
                     type="text"
                     value={rawInput}
-                    onChange={e => { setRawInput(e.target.value); setSelectedIdx(0); }}
+                    onChange={e => {
+                        setRawInput(e.target.value);
+                        setSelectedIdx(0);
+                    }}
                     onKeyDown={handleKeyDown}
                     onFocus={() => setFocused(true)}
                     placeholder={clauses.length === 0 ? "Search…" : ""}
-                    className="flex-1 min-w-[80px] bg-transparent text-xs font-mono outline-none placeholder:text-muted-foreground"
+                    className="placeholder:text-muted-foreground min-w-[80px] flex-1 bg-transparent font-mono text-xs outline-none"
                     spellCheck={false}
                     autoComplete="off"
                 />
 
                 {!focused && (
-                    <kbd className="ml-auto shrink-0 rounded border border-border/40 px-1 text-[9px] font-mono text-muted-foreground">
+                    <kbd className="border-border/40 text-muted-foreground ml-auto shrink-0 rounded border px-1 font-mono text-[9px]">
                         /
                     </kbd>
                 )}
@@ -291,7 +293,7 @@ export function HeaderSearchBar() {
             />
 
             {inlineError && (
-                <div className="absolute left-0 right-0 top-full mt-1 rounded border border-red-500/30 bg-red-500/10 px-3 py-1 text-[10px] text-red-500">
+                <div className="absolute top-full right-0 left-0 mt-1 rounded border border-red-500/30 bg-red-500/10 px-3 py-1 text-[10px] text-red-500">
                     {inlineError}
                 </div>
             )}
@@ -302,13 +304,20 @@ export function HeaderSearchBar() {
 function PillChip({ clause, onRemove }: { clause: QueryClause; onRemove: () => void }) {
     const colorClass = FILTER_COLORS[clause.field] ?? SLATE_COLOR;
     return (
-        <span className={`inline-flex shrink-0 items-center gap-1 rounded border px-1.5 py-0.5 text-[10px] font-mono font-semibold ${colorClass}`}>
+        <span
+            className={`inline-flex shrink-0 items-center gap-1 rounded border px-1.5 py-0.5 font-mono text-[10px] font-semibold ${colorClass}`}
+        >
             {clause.negate && <span>NOT</span>}
-            <span>{clause.field}:{clause.value}</span>
+            <span>
+                {clause.field}:{clause.value}
+            </span>
             <button
                 type="button"
-                onMouseDown={e => { e.preventDefault(); onRemove(); }}
-                className="opacity-50 hover:opacity-100 transition-opacity"
+                onMouseDown={e => {
+                    e.preventDefault();
+                    onRemove();
+                }}
+                className="opacity-50 transition-opacity hover:opacity-100"
                 aria-label={`Remove ${clause.field} filter`}
             >
                 <X className="size-2.5" />

@@ -1,7 +1,7 @@
 ---
 tags:
-  - guide
-  - integrations
+    - guide
+    - integrations
 description: Integrations section index — MCP, VS Code, and API
 ---
 

@@ -63,7 +63,7 @@ export function DiffViewer({ oldText, newText, oldLabel, newLabel }: DiffViewerP
 
     return (
         <div className="rounded-md border">
-            <div className="flex items-center justify-between border-b px-3 py-2 text-xs text-muted-foreground">
+            <div className="text-muted-foreground flex items-center justify-between border-b px-3 py-2 text-xs">
                 <div className="flex gap-3">
                     {oldLabel && <span className="text-red-500">{oldLabel}</span>}
                     {newLabel && <span className="text-green-500">{newLabel}</span>}
@@ -85,13 +85,13 @@ export function DiffViewer({ oldText, newText, oldLabel, newLabel }: DiffViewerP
                                   : "text-muted-foreground"
                         }
                     >
-                        <span className="inline-block w-6 select-none text-right opacity-50">
+                        <span className="inline-block w-6 text-right opacity-50 select-none">
                             {line.type === "added" ? "+" : line.type === "removed" ? "-" : " "}
                         </span>
                         <span className="pl-2">{line.text || "\u00A0"}</span>
                     </div>
                 ))}
-                {diff.length === 0 && <div className="px-3 py-4 text-center text-muted-foreground">No differences</div>}
+                {diff.length === 0 && <div className="text-muted-foreground px-3 py-4 text-center">No differences</div>}
             </div>
         </div>
     );

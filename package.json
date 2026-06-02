@@ -84,6 +84,7 @@
         "@prisma/client": "npm:empty-npm-package@1.0.0",
         "prisma": "npm:empty-npm-package@1.0.0"
     },
+    "packageManager": "pnpm@10.10.0",
     "pnpm": {
         "overrides": {
             "hono": ">=4.12.4",
@@ -104,6 +105,5 @@
             "@tanstack/router-plugin": "1.166.3",
             "@tanstack/router-generator": "1.166.2"
         }
-    },
-    "packageManager": "pnpm@10.10.0"
+    }
 }

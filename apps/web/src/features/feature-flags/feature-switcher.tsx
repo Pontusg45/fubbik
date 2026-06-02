@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
+
 import { useActiveFeatures } from "./use-active-features";
 
 interface FeatureItem {
@@ -51,26 +52,19 @@ export function FeatureSwitcher() {
             <DropdownMenuContent align="start" className="w-56">
                 <DropdownMenuLabel>Feature Overlays</DropdownMenuLabel>
                 {features.map(f => (
-                    <DropdownMenuItem
-                        key={f.id}
-                        onClick={() => toggleFeature(f.id)}
-                        className="flex items-center justify-between"
-                    >
+                    <DropdownMenuItem key={f.id} onClick={() => toggleFeature(f.id)} className="flex items-center justify-between">
                         <span className="flex items-center gap-2">
-                            <span
-                                className="size-2 rounded-full"
-                                style={{ backgroundColor: f.color ?? "#8b5cf6" }}
-                            />
+                            <span className="size-2 rounded-full" style={{ backgroundColor: f.color ?? "#8b5cf6" }} />
                             <span>{f.name}</span>
                             <span className="text-muted-foreground text-xs">({f.deltaCount})</span>
                         </span>
-                        <span className={`size-3 rounded-sm border ${isActive(f.id) ? "border-blue-500 bg-blue-500" : "border-muted-foreground"}`} />
+                        <span
+                            className={`size-3 rounded-sm border ${isActive(f.id) ? "border-blue-500 bg-blue-500" : "border-muted-foreground"}`}
+                        />
                     </DropdownMenuItem>
                 ))}
                 <DropdownMenuSeparator />
-                <DropdownMenuItem render={<Link to="/features" />}>
-                    Manage Features
-                </DropdownMenuItem>
+                <DropdownMenuItem render={<Link to="/features" />}>Manage Features</DropdownMenuItem>
             </DropdownMenuContent>
         </DropdownMenu>
     );

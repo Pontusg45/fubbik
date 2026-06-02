@@ -141,9 +141,7 @@ function UserSettingsTab() {
                     </div>
 
                     <div>
-                        <Label className="mb-2 block text-sm font-medium">
-                            Notification Poll Interval (seconds)
-                        </Label>
+                        <Label className="mb-2 block text-sm font-medium">Notification Poll Interval (seconds)</Label>
                         <Input
                             type="number"
                             min={5}
@@ -169,9 +167,7 @@ function CodebaseSettingsTab() {
         queryKey: ["settings", "codebase", spaceId],
         queryFn: async () => {
             if (!spaceId) return {};
-            return unwrapEden(
-                await api.api.settings.codebase.get({ query: { codebaseId: spaceId } })
-            ) as Record<string, unknown>;
+            return unwrapEden(await api.api.settings.codebase.get({ query: { codebaseId: spaceId } })) as Record<string, unknown>;
         },
         enabled: !!spaceId
     });
@@ -222,7 +218,9 @@ function CodebaseSettingsTab() {
                         <Label className="mb-2 block text-sm font-medium">Default Chunk Type</Label>
                         <Select
                             value={defaultChunkType || "note"}
-                            onValueChange={(val) => { if (val) save("defaultChunkType", val); }}
+                            onValueChange={val => {
+                                if (val) save("defaultChunkType", val);
+                            }}
                         >
                             <SelectTrigger className="w-full max-w-64">
                                 <SelectValue placeholder="Select a type" />
@@ -239,18 +237,12 @@ function CodebaseSettingsTab() {
 
                     <div className="flex items-center justify-between">
                         <Label className="text-sm font-medium">Require Review for AI Content</Label>
-                        <Switch
-                            checked={requireReviewForAi}
-                            onCheckedChange={(checked: boolean) => save("requireReviewForAi", checked)}
-                        />
+                        <Switch checked={requireReviewForAi} onCheckedChange={(checked: boolean) => save("requireReviewForAi", checked)} />
                     </div>
 
                     <div className="flex items-center justify-between">
                         <Label className="text-sm font-medium">Auto-Enrich on Create</Label>
-                        <Switch
-                            checked={autoEnrichOnCreate}
-                            onCheckedChange={(checked: boolean) => save("autoEnrichOnCreate", checked)}
-                        />
+                        <Switch checked={autoEnrichOnCreate} onCheckedChange={(checked: boolean) => save("autoEnrichOnCreate", checked)} />
                     </div>
 
                     <div>
@@ -277,13 +269,9 @@ function CodebaseSettingsTab() {
                             defaultValue={templateId}
                             placeholder="Template ID (optional)"
                             className="w-full max-w-64"
-                            onChange={e =>
-                                debouncedSave("templateId", e.target.value || null)
-                            }
+                            onChange={e => debouncedSave("templateId", e.target.value || null)}
                         />
-                        <p className="text-muted-foreground mt-1 text-xs">
-                            Find template IDs on the templates page.
-                        </p>
+                        <p className="text-muted-foreground mt-1 text-xs">Find template IDs on the templates page.</p>
                     </div>
                 </CardPanel>
             </Card>
@@ -343,10 +331,7 @@ function InstanceSettingsTab() {
                             <Label className="text-sm font-medium">Enable AI Features</Label>
                             <p className="text-muted-foreground text-xs">Master toggle for all AI features</p>
                         </div>
-                        <Switch
-                            checked={aiEnabled}
-                            onCheckedChange={(checked: boolean) => save("aiEnabled", checked)}
-                        />
+                        <Switch checked={aiEnabled} onCheckedChange={(checked: boolean) => save("aiEnabled", checked)} />
                     </div>
 
                     <div className={`space-y-4 ${!aiEnabled ? "pointer-events-none opacity-50" : ""}`}>
@@ -429,29 +414,29 @@ function InstanceSettingsTab() {
 function SettingsPage() {
     return (
         <RouteErrorBoundary>
-        <PageContainer>
-            <PageHeader icon={SettingsIcon} title="Settings" />
+            <PageContainer>
+                <PageHeader icon={SettingsIcon} title="Settings" />
 
-            <Tabs defaultValue={0}>
-                <TabsList>
-                    <TabsTab value={0}>Preferences</TabsTab>
-                    <TabsTab value={1}>Codebase</TabsTab>
-                    <TabsTab value={2}>Instance</TabsTab>
-                </TabsList>
+                <Tabs defaultValue={0}>
+                    <TabsList>
+                        <TabsTab value={0}>Preferences</TabsTab>
+                        <TabsTab value={1}>Codebase</TabsTab>
+                        <TabsTab value={2}>Instance</TabsTab>
+                    </TabsList>
 
-                <TabsContent value={0} className="mt-4">
-                    <UserSettingsTab />
-                </TabsContent>
+                    <TabsContent value={0} className="mt-4">
+                        <UserSettingsTab />
+                    </TabsContent>
 
-                <TabsContent value={1} className="mt-4">
-                    <CodebaseSettingsTab />
-                </TabsContent>
+                    <TabsContent value={1} className="mt-4">
+                        <CodebaseSettingsTab />
+                    </TabsContent>
 
-                <TabsContent value={2} className="mt-4">
-                    <InstanceSettingsTab />
-                </TabsContent>
-            </Tabs>
-        </PageContainer>
+                    <TabsContent value={2} className="mt-4">
+                        <InstanceSettingsTab />
+                    </TabsContent>
+                </Tabs>
+            </PageContainer>
         </RouteErrorBoundary>
     );
 }

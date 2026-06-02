@@ -1,10 +1,12 @@
 # Requirements & Plans Integration Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to
+> implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Surface requirements and plans in CLAUDE.md export, context-for-file, health scoring, staleness detection, and dashboard widgets.
 
-**Architecture:** Five independent read-side integrations into existing systems. No new schema tables — all relationships already exist. Each task touches 1-2 files and can be tested independently.
+**Architecture:** Five independent read-side integrations into existing systems. No new schema tables — all relationships already exist.
+Each task touches 1-2 files and can be tested independently.
 
 **Tech Stack:** TypeScript, Effect, Drizzle ORM, React, TanStack Query, Elysia
 
@@ -12,24 +14,26 @@
 
 ## File Structure
 
-| File | Action | Responsibility |
-|------|--------|---------------|
-| `packages/api/src/context-export/claude-md.ts` | Modify | Add requirements, plans, sessions sections |
-| `packages/api/src/context-for-file/service.ts` | Modify | Surface requirements linked to matched chunks |
-| `packages/api/src/chunks/health-score.ts` | Modify | Rebalance to 5 dimensions, add coverage |
-| `packages/db/src/repository/staleness.ts` | Modify | Add `requirement_failing` and `requirement_uncovered` detection |
-| `packages/api/src/staleness/service.ts` | Modify | Re-export new staleness functions |
-| `packages/api/src/requirements/service.ts` | Modify | Trigger `requirement_failing` flags on status change |
-| `apps/web/src/routes/dashboard.tsx` | Modify | Add plans widget, sessions widget, enhance req stats |
+| File                                           | Action | Responsibility                                                  |
+| ---------------------------------------------- | ------ | --------------------------------------------------------------- |
+| `packages/api/src/context-export/claude-md.ts` | Modify | Add requirements, plans, sessions sections                      |
+| `packages/api/src/context-for-file/service.ts` | Modify | Surface requirements linked to matched chunks                   |
+| `packages/api/src/chunks/health-score.ts`      | Modify | Rebalance to 5 dimensions, add coverage                         |
+| `packages/db/src/repository/staleness.ts`      | Modify | Add `requirement_failing` and `requirement_uncovered` detection |
+| `packages/api/src/staleness/service.ts`        | Modify | Re-export new staleness functions                               |
+| `packages/api/src/requirements/service.ts`     | Modify | Trigger `requirement_failing` flags on status change            |
+| `apps/web/src/routes/dashboard.tsx`            | Modify | Add plans widget, sessions widget, enhance req stats            |
 
 ---
 
 ### Task 1: CLAUDE.md Export Enhancement
 
 **Files:**
+
 - Modify: `packages/api/src/context-export/claude-md.ts`
 
-**Context:** This file generates markdown context for AI agents. Currently only exports chunks grouped by type. We need to add sections for requirements, active plans, and recent sessions after the chunks section.
+**Context:** This file generates markdown context for AI agents. Currently only exports chunks grouped by type. We need to add sections for
+requirements, active plans, and recent sessions after the chunks section.
 
 - [ ] **Step 1: Read the current `claude-md.ts` implementation**
 
@@ -124,14 +128,10 @@ export function generateClaudeMd(params: GenerateClaudeMdParams) {
 
             // Sort: failing first, then untested, then passing
             const statusOrder: Record<string, number> = { failing: 0, untested: 1, passing: 2 };
-            const sorted = [...requirements].sort(
-                (a, b) => (statusOrder[a.status] ?? 3) - (statusOrder[b.status] ?? 3)
-            );
+            const sorted = [...requirements].sort((a, b) => (statusOrder[a.status] ?? 3) - (statusOrder[b.status] ?? 3));
 
             for (const req of sorted) {
-                const marker = req.status === "failing" || req.status === "untested"
-                    ? " <!-- ACTION NEEDED -->"
-                    : "";
+                const marker = req.status === "failing" || req.status === "untested" ? " <!-- ACTION NEEDED -->" : "";
                 const priority = req.priority ? ` [${req.priority}]` : "";
                 parts.push(`### ${req.title}${priority} — ${req.status}${marker}`);
 
@@ -160,9 +160,7 @@ export function generateClaudeMd(params: GenerateClaudeMdParams) {
 
                 const pending = steps.filter(s => s.status === "pending" || s.status === "in_progress");
                 if (pending.length > 0) {
-                    const pendingText = pending
-                        .map(s => `- [ ] ${s.description}`)
-                        .join("\n");
+                    const pendingText = pending.map(s => `- [ ] ${s.description}`).join("\n");
                     parts.push(pendingText);
                 }
             }
@@ -181,9 +179,7 @@ export function generateClaudeMd(params: GenerateClaudeMdParams) {
             for (const session of sessions) {
                 const detail = yield* getSessionDetail(session.id);
                 const reqCount = detail.requirementRefs?.length ?? 0;
-                const unresolvedCount = (detail.assumptions ?? []).filter(
-                    (a: any) => !a.resolved
-                ).length;
+                const unresolvedCount = (detail.assumptions ?? []).filter((a: any) => !a.resolved).length;
 
                 const reviewStatus = session.reviewStatus ?? "pending";
                 let line = `### ${session.title} — ${reviewStatus}`;
@@ -205,7 +201,8 @@ export function generateClaudeMd(params: GenerateClaudeMdParams) {
 
 Run: `pnpm --filter @fubbik/api run check-types 2>&1 | head -20`
 
-Expected: No errors in `claude-md.ts`. If there are import errors, check that the repository functions are exported from the right paths and adjust imports accordingly.
+Expected: No errors in `claude-md.ts`. If there are import errors, check that the repository functions are exported from the right paths and
+adjust imports accordingly.
 
 - [ ] **Step 4: Commit**
 
@@ -219,9 +216,11 @@ git commit -m "feat(context-export): add requirements, plans, sessions to CLAUDE
 ### Task 2: Context-for-File Enhancement
 
 **Files:**
+
 - Modify: `packages/api/src/context-for-file/service.ts`
 
-**Context:** This service returns chunks relevant to a file path. We need to also return requirements linked to those matched chunks. The `requirement_chunk` join table links requirements to chunks — we query it after chunk matching.
+**Context:** This service returns chunks relevant to a file path. We need to also return requirements linked to those matched chunks. The
+`requirement_chunk` join table links requirements to chunks — we query it after chunk matching.
 
 - [ ] **Step 1: Read `packages/api/src/context-for-file/service.ts` to confirm current structure**
 
@@ -273,12 +272,7 @@ function depMatchesCodebase(dep: string, codebaseName: string): boolean {
     return lastSegment === cbLower;
 }
 
-export function getContextForFile(
-    userId: string,
-    filePath: string,
-    codebaseId?: string,
-    deps?: string[]
-): Effect.Effect<FileContext> {
+export function getContextForFile(userId: string, filePath: string, codebaseId?: string, deps?: string[]): Effect.Effect<FileContext> {
     return Effect.gen(function* () {
         const results = new Map<string, ContextChunk>();
 
@@ -408,13 +402,15 @@ export function getContextForFile(
 
 - [ ] **Step 3: Update the route handler if it destructures the return value**
 
-Check `packages/api/src/context-for-file/routes.ts` — if it returns the result directly, the new `{ chunks, requirements }` shape will flow through automatically. If it wraps the result in a `{ chunks: ... }` object, adjust accordingly.
+Check `packages/api/src/context-for-file/routes.ts` — if it returns the result directly, the new `{ chunks, requirements }` shape will flow
+through automatically. If it wraps the result in a `{ chunks: ... }` object, adjust accordingly.
 
 - [ ] **Step 4: Verify type-check passes**
 
 Run: `pnpm --filter @fubbik/api run check-types 2>&1 | head -20`
 
-Expected: No errors in `context-for-file/service.ts`. If `db` or schema imports fail, adjust import paths to match the project's module resolution.
+Expected: No errors in `context-for-file/service.ts`. If `db` or schema imports fail, adjust import paths to match the project's module
+resolution.
 
 - [ ] **Step 5: Commit**
 
@@ -428,9 +424,11 @@ git commit -m "feat(context): surface requirements linked to file-relevant chunk
 ### Task 3: Health Score Rebalance
 
 **Files:**
+
 - Modify: `packages/api/src/chunks/health-score.ts`
 
-**Context:** Currently 4 dimensions at 0-25 each. We rebalance to 5 dimensions at 0-20 each, adding a `coverage` dimension for requirement backing. The input interface needs a new field for requirement data.
+**Context:** Currently 4 dimensions at 0-25 each. We rebalance to 5 dimensions at 0-20 each, adding a `coverage` dimension for requirement
+backing. The input interface needs a new field for requirement data.
 
 - [ ] **Step 1: Read the current health-score.ts**
 
@@ -551,27 +549,30 @@ export function computeHealthScore(input: ChunkHealthInput): HealthScore {
 
 - [ ] **Step 3: Update callers of `computeHealthScore`**
 
-Search for all callers of `computeHealthScore` and update them to pass the new fields. The caller is likely in the chunk detail route/service. Find it with:
+Search for all callers of `computeHealthScore` and update them to pass the new fields. The caller is likely in the chunk detail
+route/service. Find it with:
 
 ```bash
 grep -rn "computeHealthScore" packages/api/src/ apps/
 ```
 
 For each caller, add the three new fields to the `ChunkHealthInput` object:
+
 - `requirementCount`: query `requirement_chunk` table for this chunk's ID, count rows
 - `allRequirementsPassing`: query linked requirements, check all have `status = 'passing'`
 - `referencedInSession`: query `session_chunk_ref` table for this chunk's ID, check if any exist
 
-If the caller doesn't have easy access to these, add a repository helper or inline the query. Use `Effect.tryPromise` for the DB queries, matching the project pattern.
+If the caller doesn't have easy access to these, add a repository helper or inline the query. Use `Effect.tryPromise` for the DB queries,
+matching the project pattern.
 
-For callers where the data isn't available (e.g., bulk health computation), default to `{ requirementCount: 0, allRequirementsPassing: false, referencedInSession: false }` so existing scores degrade gracefully (coverage = 0).
+For callers where the data isn't available (e.g., bulk health computation), default to
+`{ requirementCount: 0, allRequirementsPassing: false, referencedInSession: false }` so existing scores degrade gracefully (coverage = 0).
 
 - [ ] **Step 4: Verify type-check passes**
 
 Run: `pnpm --filter @fubbik/api run check-types 2>&1 | head -30`
 
-Expected: No type errors. If the web app also uses `HealthScore`, check it too:
-Run: `pnpm --filter web run check-types 2>&1 | grep health`
+Expected: No type errors. If the web app also uses `HealthScore`, check it too: Run: `pnpm --filter web run check-types 2>&1 | grep health`
 
 - [ ] **Step 5: Commit**
 
@@ -586,11 +587,13 @@ git commit -m "feat(health): rebalance to 5 dimensions, add requirement coverage
 ### Task 4: Staleness Detection Enhancement
 
 **Files:**
+
 - Modify: `packages/db/src/repository/staleness.ts`
 - Modify: `packages/api/src/staleness/service.ts`
 - Modify: `packages/api/src/requirements/service.ts` (trigger on status change)
 
-**Context:** We add two new staleness reasons: `requirement_failing` (when a requirement goes to "failing") and `requirement_uncovered` (chunks 30+ days old with no requirement links). The existing `chunk_staleness.reason` is a text column — no migration needed.
+**Context:** We add two new staleness reasons: `requirement_failing` (when a requirement goes to "failing") and `requirement_uncovered`
+(chunks 30+ days old with no requirement links). The existing `chunk_staleness.reason` is a text column — no migration needed.
 
 - [ ] **Step 1: Add `detectUncoveredChunks` to the staleness repository**
 
@@ -606,17 +609,10 @@ export function detectUncoveredChunks(userId: string, codebaseId?: string, thres
             const alreadyFlagged = db
                 .select({ chunkId: chunkStaleness.chunkId })
                 .from(chunkStaleness)
-                .where(
-                    and(
-                        eq(chunkStaleness.reason, "requirement_uncovered"),
-                        isNull(chunkStaleness.dismissedAt)
-                    )
-                );
+                .where(and(eq(chunkStaleness.reason, "requirement_uncovered"), isNull(chunkStaleness.dismissedAt)));
 
             // Chunks that have at least one requirement link
-            const hasRequirement = db
-                .select({ chunkId: requirementChunk.chunkId })
-                .from(requirementChunk);
+            const hasRequirement = db.select({ chunkId: requirementChunk.chunkId }).from(requirementChunk);
 
             const conditions = [
                 eq(chunk.userId, userId),
@@ -717,17 +713,18 @@ Make sure the import source matches (it should import from `@fubbik/db/repositor
 
 - [ ] **Step 3: Trigger `requirement_failing` flags on requirement status change**
 
-In `packages/api/src/requirements/service.ts`, find the `updateRequirement` function. After the requirement is updated, if the new status is `"failing"`, call `flagRequirementFailing`. Add this logic:
+In `packages/api/src/requirements/service.ts`, find the `updateRequirement` function. After the requirement is updated, if the new status is
+`"failing"`, call `flagRequirementFailing`. Add this logic:
 
 Find the section where the requirement is updated and add after it:
 
 ```typescript
 // After the requirement update succeeds:
 if (body.status === "failing") {
-    const chunkLinks = yield* getChunksForRequirement(id);
+    const chunkLinks = yield * getChunksForRequirement(id);
     const chunkIds = chunkLinks.map(l => l.chunkId);
     if (chunkIds.length > 0) {
-        yield* flagRequirementFailing(id, updated.title, chunkIds);
+        yield * flagRequirementFailing(id, updated.title, chunkIds);
     }
 }
 ```
@@ -736,18 +733,18 @@ Import `flagRequirementFailing` from the staleness repository at the top of the 
 
 - [ ] **Step 4: Integrate `detectUncoveredChunks` into the age scan route**
 
-Find the route that handles `POST /api/chunks/stale/scan-age` (likely in `packages/api/src/staleness/routes.ts` or `packages/api/src/chunks/routes.ts`). After calling `detectAgeStaleChunks`, also call `detectUncoveredChunks` and return combined results:
+Find the route that handles `POST /api/chunks/stale/scan-age` (likely in `packages/api/src/staleness/routes.ts` or
+`packages/api/src/chunks/routes.ts`). After calling `detectAgeStaleChunks`, also call `detectUncoveredChunks` and return combined results:
 
 ```typescript
-const ageResult = yield* detectAgeStaleChunks(session.user.id, body.codebaseId, body.thresholdDays);
-const uncoveredResult = yield* detectUncoveredChunks(session.user.id, body.codebaseId);
+const ageResult = yield * detectAgeStaleChunks(session.user.id, body.codebaseId, body.thresholdDays);
+const uncoveredResult = yield * detectUncoveredChunks(session.user.id, body.codebaseId);
 return { flagged: ageResult.flagged + uncoveredResult.flagged };
 ```
 
 - [ ] **Step 5: Verify type-check passes**
 
-Run: `pnpm --filter @fubbik/db run check-types 2>&1 | head -20`
-Run: `pnpm --filter @fubbik/api run check-types 2>&1 | head -20`
+Run: `pnpm --filter @fubbik/db run check-types 2>&1 | head -20` Run: `pnpm --filter @fubbik/api run check-types 2>&1 | head -20`
 
 Expected: No type errors in staleness or requirements files.
 
@@ -766,9 +763,12 @@ git commit -m "feat(staleness): add requirement_failing and requirement_uncovere
 ### Task 5: Dashboard Enhancement
 
 **Files:**
+
 - Modify: `apps/web/src/routes/dashboard.tsx`
 
-**Context:** The dashboard already has a requirements stats card and uses the `DashboardSection` component pattern. We need to: (1) make requirement stat counts clickable with filtering, (2) add an "Active Plans" widget, (3) add a "Recent Sessions" widget. Existing queries for plans and sessions are available via the Eden API client.
+**Context:** The dashboard already has a requirements stats card and uses the `DashboardSection` component pattern. We need to: (1) make
+requirement stat counts clickable with filtering, (2) add an "Active Plans" widget, (3) add a "Recent Sessions" widget. Existing queries for
+plans and sessions are available via the Eden API client.
 
 - [ ] **Step 1: Read the current dashboard.tsx**
 
@@ -792,9 +792,11 @@ const sessionsQuery = useQuery({
 
 - [ ] **Step 3: Enhance the requirements stat card**
 
-Replace the existing requirements `StatCard` (around line 268) with an expanded version that shows passing/failing/untested as clickable counts:
+Replace the existing requirements `StatCard` (around line 268) with an expanded version that shows passing/failing/untested as clickable
+counts:
 
 Replace:
+
 ```tsx
 <StatCard
     icon={FileText}
@@ -807,6 +809,7 @@ Replace:
 ```
 
 With:
+
 ```tsx
 <Link to="/requirements">
     <div className="bg-card hover:bg-muted/50 cursor-pointer rounded-lg border p-4 transition-colors">
@@ -815,7 +818,7 @@ With:
             <span className="text-muted-foreground text-xs font-medium uppercase tracking-wide">Requirements</span>
         </div>
         <div className="mt-2 text-2xl font-bold tabular-nums tracking-tight">
-            {requirementsQuery.isLoading ? <Skeleton className="h-8 w-16" /> : (reqStats as any)?.total ?? 0}
+            {requirementsQuery.isLoading ? <Skeleton className="h-8 w-16" /> : ((reqStats as any)?.total ?? 0)}
         </div>
         {reqStats && (
             <div className="mt-1 flex gap-2 text-[11px]">
@@ -841,7 +844,9 @@ Also add `ClipboardList` to the lucide-react imports at the top of the file (if 
 In the right column (`<div className="space-y-6">` section), after the Requirements summary section and before the Activity section, add:
 
 ```tsx
-{/* Active Plans */}
+{
+    /* Active Plans */
+}
 <DashboardSection
     icon={ClipboardList}
     title="Active Plans"
@@ -853,40 +858,41 @@ In the right column (`<div className="space-y-6">` section), after the Requireme
 >
     {plansQuery.isLoading ? (
         <SkeletonList count={3} />
-    ) : (() => {
-        const plans = Array.isArray(plansQuery.data) ? plansQuery.data : (plansQuery.data as any)?.plans ?? [];
-        return plans.length === 0 ? (
-            <p className="text-muted-foreground py-2 text-center text-sm">No active plans</p>
-        ) : (
-            <div className="space-y-2">
-                {plans.slice(0, 5).map((plan: any) => {
-                    const done = plan.steps?.filter((s: any) => s.status === "done" || s.status === "skipped").length ?? 0;
-                    const total = plan.steps?.length ?? plan.stepCount ?? 0;
-                    const pct = total > 0 ? Math.round((done / total) * 100) : 0;
-                    return (
-                        <Link
-                            key={plan.id}
-                            to="/plans/$planId"
-                            params={{ planId: plan.id }}
-                            className="hover:bg-muted/50 block rounded-md px-2 py-2 transition-colors"
-                        >
-                            <div className="flex items-center justify-between">
-                                <span className="truncate text-sm font-medium">{plan.title}</span>
-                                <span className="text-muted-foreground ml-2 shrink-0 text-xs">{done}/{total}</span>
-                            </div>
-                            <div className="bg-muted mt-1.5 h-1 overflow-hidden rounded-full">
-                                <div
-                                    className="bg-primary h-full rounded-full transition-all"
-                                    style={{ width: `${pct}%` }}
-                                />
-                            </div>
-                        </Link>
-                    );
-                })}
-            </div>
-        );
-    })()}
-</DashboardSection>
+    ) : (
+        (() => {
+            const plans = Array.isArray(plansQuery.data) ? plansQuery.data : ((plansQuery.data as any)?.plans ?? []);
+            return plans.length === 0 ? (
+                <p className="text-muted-foreground py-2 text-center text-sm">No active plans</p>
+            ) : (
+                <div className="space-y-2">
+                    {plans.slice(0, 5).map((plan: any) => {
+                        const done = plan.steps?.filter((s: any) => s.status === "done" || s.status === "skipped").length ?? 0;
+                        const total = plan.steps?.length ?? plan.stepCount ?? 0;
+                        const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+                        return (
+                            <Link
+                                key={plan.id}
+                                to="/plans/$planId"
+                                params={{ planId: plan.id }}
+                                className="hover:bg-muted/50 block rounded-md px-2 py-2 transition-colors"
+                            >
+                                <div className="flex items-center justify-between">
+                                    <span className="truncate text-sm font-medium">{plan.title}</span>
+                                    <span className="text-muted-foreground ml-2 shrink-0 text-xs">
+                                        {done}/{total}
+                                    </span>
+                                </div>
+                                <div className="bg-muted mt-1.5 h-1 overflow-hidden rounded-full">
+                                    <div className="bg-primary h-full rounded-full transition-all" style={{ width: `${pct}%` }} />
+                                </div>
+                            </Link>
+                        );
+                    })}
+                </div>
+            );
+        })()
+    )}
+</DashboardSection>;
 ```
 
 - [ ] **Step 5: Add the Recent Sessions widget**
@@ -894,7 +900,9 @@ In the right column (`<div className="space-y-6">` section), after the Requireme
 After the Active Plans widget, add:
 
 ```tsx
-{/* Recent Sessions */}
+{
+    /* Recent Sessions */
+}
 <DashboardSection
     icon={Workflow}
     title="Recent Sessions"
@@ -906,46 +914,48 @@ After the Active Plans widget, add:
 >
     {sessionsQuery.isLoading ? (
         <SkeletonList count={3} />
-    ) : (() => {
-        const sessions = Array.isArray(sessionsQuery.data) ? sessionsQuery.data : (sessionsQuery.data as any)?.sessions ?? [];
-        return sessions.length === 0 ? (
-            <p className="text-muted-foreground py-2 text-center text-sm">No recent sessions</p>
-        ) : (
-            <div className="space-y-1">
-                {sessions.slice(0, 3).map((session: any) => (
-                    <Link
-                        key={session.id}
-                        to="/reviews/$sessionId"
-                        params={{ sessionId: session.id }}
-                        className="hover:bg-muted/50 flex items-center gap-2 rounded-md px-2 py-2 transition-colors"
-                    >
-                        <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm font-medium">{session.title}</p>
-                            <div className="mt-0.5 flex items-center gap-2">
-                                <Badge
-                                    variant="secondary"
-                                    size="sm"
-                                    className={`text-[9px] ${
-                                        session.reviewStatus === "approved" ? "text-emerald-500" :
-                                        session.reviewStatus === "rejected" ? "text-red-500" :
-                                        "text-muted-foreground"
-                                    }`}
-                                >
-                                    {session.reviewStatus ?? "pending"}
-                                </Badge>
-                                {session.completedAt && (
-                                    <span className="text-muted-foreground text-[10px]">
-                                        {timeAgo(session.completedAt)}
-                                    </span>
-                                )}
+    ) : (
+        (() => {
+            const sessions = Array.isArray(sessionsQuery.data) ? sessionsQuery.data : ((sessionsQuery.data as any)?.sessions ?? []);
+            return sessions.length === 0 ? (
+                <p className="text-muted-foreground py-2 text-center text-sm">No recent sessions</p>
+            ) : (
+                <div className="space-y-1">
+                    {sessions.slice(0, 3).map((session: any) => (
+                        <Link
+                            key={session.id}
+                            to="/reviews/$sessionId"
+                            params={{ sessionId: session.id }}
+                            className="hover:bg-muted/50 flex items-center gap-2 rounded-md px-2 py-2 transition-colors"
+                        >
+                            <div className="min-w-0 flex-1">
+                                <p className="truncate text-sm font-medium">{session.title}</p>
+                                <div className="mt-0.5 flex items-center gap-2">
+                                    <Badge
+                                        variant="secondary"
+                                        size="sm"
+                                        className={`text-[9px] ${
+                                            session.reviewStatus === "approved"
+                                                ? "text-emerald-500"
+                                                : session.reviewStatus === "rejected"
+                                                  ? "text-red-500"
+                                                  : "text-muted-foreground"
+                                        }`}
+                                    >
+                                        {session.reviewStatus ?? "pending"}
+                                    </Badge>
+                                    {session.completedAt && (
+                                        <span className="text-muted-foreground text-[10px]">{timeAgo(session.completedAt)}</span>
+                                    )}
+                                </div>
                             </div>
-                        </div>
-                    </Link>
-                ))}
-            </div>
-        );
-    })()}
-</DashboardSection>
+                        </Link>
+                    ))}
+                </div>
+            );
+        })()
+    )}
+</DashboardSection>;
 ```
 
 - [ ] **Step 6: Verify type-check passes**

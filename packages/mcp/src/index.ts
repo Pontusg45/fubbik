@@ -2,13 +2,13 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 
-import { registerPlugin, loadAllPlugins } from "./plugin.js";
-import { corePlugin } from "./tools.js";
-import { suggestionPlugin } from "./suggestion-tools.js";
-import { planPlugin } from "./plan-tools.js";
 import { contextPlugin } from "./context-tools.js";
-import { taskPlugin } from "./task-tools.js";
 import { matrixPlugin } from "./matrix-tools.js";
+import { planPlugin } from "./plan-tools.js";
+import { registerPlugin, loadAllPlugins } from "./plugin.js";
+import { suggestionPlugin } from "./suggestion-tools.js";
+import { taskPlugin } from "./task-tools.js";
+import { corePlugin } from "./tools.js";
 
 registerPlugin(corePlugin);
 registerPlugin(suggestionPlugin);

@@ -1,8 +1,8 @@
 ---
 tags:
-  - guide
-  - views
-  - browse
+    - guide
+    - views
+    - browse
 description: Browse section index — alphabetical index and topic clusters
 ---
 

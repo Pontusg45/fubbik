@@ -1,8 +1,8 @@
 import { eq } from "drizzle-orm";
 
 import { workspace, workspaceSpace } from "../../schema/workspace";
-import { uuid } from "../factories";
 import type { SeedContext } from "../context";
+import { uuid } from "../factories";
 
 export async function seed(ctx: SeedContext): Promise<void> {
     const id = uuid();
@@ -20,9 +20,7 @@ export async function seed(ctx: SeedContext): Promise<void> {
         if (spaceId) pairs.push([id, spaceId]);
     }
     if (pairs.length > 0) {
-        await ctx.db.insert(workspaceSpace).values(
-            pairs.map(([workspaceId, spaceId]) => ({ workspaceId, spaceId }))
-        );
+        await ctx.db.insert(workspaceSpace).values(pairs.map(([workspaceId, spaceId]) => ({ workspaceId, spaceId })));
     }
     ctx.counters["workspaces"] = 1;
 }

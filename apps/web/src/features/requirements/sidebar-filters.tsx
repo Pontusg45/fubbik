@@ -1,5 +1,4 @@
 import { ChevronDown, ChevronRight, FolderOpen, Search } from "lucide-react";
-
 import { useState } from "react";
 
 import { Checkbox } from "@/components/ui/checkbox";
@@ -40,9 +39,7 @@ const ORIGIN_OPTIONS = [
 ];
 
 function toggleFilter(filters: string[], value: string): string[] {
-    return filters.includes(value)
-        ? filters.filter(f => f !== value)
-        : [...filters, value];
+    return filters.includes(value) ? filters.filter(f => f !== value) : [...filters, value];
 }
 
 export function SidebarFilters({
@@ -63,7 +60,7 @@ export function SidebarFilters({
         <div className="space-y-6">
             {/* Search */}
             <div className="relative">
-                <Search className="text-muted-foreground absolute left-2.5 top-2.5 size-4" />
+                <Search className="text-muted-foreground absolute top-2.5 left-2.5 size-4" />
                 <Input
                     value={search}
                     onChange={e => onSearchChange(e.target.value)}
@@ -74,17 +71,13 @@ export function SidebarFilters({
 
             {/* Status */}
             <div>
-                <h4 className="text-muted-foreground mb-2 text-xs font-semibold uppercase tracking-wider">
-                    Status
-                </h4>
+                <h4 className="text-muted-foreground mb-2 text-xs font-semibold tracking-wider uppercase">Status</h4>
                 <div className="space-y-2">
                     {STATUS_OPTIONS.map(opt => (
                         <label key={opt.value} className="flex cursor-pointer items-center gap-2 text-sm">
                             <Checkbox
                                 checked={statusFilters.includes(opt.value)}
-                                onCheckedChange={() =>
-                                    onStatusFiltersChange(toggleFilter(statusFilters, opt.value))
-                                }
+                                onCheckedChange={() => onStatusFiltersChange(toggleFilter(statusFilters, opt.value))}
                             />
                             {opt.label}
                             {statusCounts?.[opt.value] != null && (
@@ -97,17 +90,13 @@ export function SidebarFilters({
 
             {/* Priority */}
             <div>
-                <h4 className="text-muted-foreground mb-2 text-xs font-semibold uppercase tracking-wider">
-                    Priority
-                </h4>
+                <h4 className="text-muted-foreground mb-2 text-xs font-semibold tracking-wider uppercase">Priority</h4>
                 <div className="space-y-2">
                     {PRIORITY_OPTIONS.map(opt => (
                         <label key={opt.value} className="flex cursor-pointer items-center gap-2 text-sm">
                             <Checkbox
                                 checked={priorityFilters.includes(opt.value)}
-                                onCheckedChange={() =>
-                                    onPriorityFiltersChange(toggleFilter(priorityFilters, opt.value))
-                                }
+                                onCheckedChange={() => onPriorityFiltersChange(toggleFilter(priorityFilters, opt.value))}
                             />
                             {opt.label}
                         </label>
@@ -117,9 +106,7 @@ export function SidebarFilters({
 
             {/* Origin */}
             <div>
-                <h4 className="text-muted-foreground mb-2 text-xs font-semibold uppercase tracking-wider">
-                    Origin
-                </h4>
+                <h4 className="text-muted-foreground mb-2 text-xs font-semibold tracking-wider uppercase">Origin</h4>
                 <div className="flex gap-1">
                     {ORIGIN_OPTIONS.map(opt => (
                         <button
@@ -139,13 +126,7 @@ export function SidebarFilters({
             </div>
 
             {/* Use Cases */}
-            {useCases.length > 0 && (
-                <UseCaseTree
-                    useCases={useCases}
-                    activeUseCaseId={activeUseCaseId}
-                    onUseCaseClick={onUseCaseClick}
-                />
-            )}
+            {useCases.length > 0 && <UseCaseTree useCases={useCases} activeUseCaseId={activeUseCaseId} onUseCaseClick={onUseCaseClick} />}
         </div>
     );
 }
@@ -191,9 +172,7 @@ function UseCaseTree({
 
     return (
         <div>
-            <h4 className="text-muted-foreground mb-2 text-xs font-semibold uppercase tracking-wider">
-                Use Cases
-            </h4>
+            <h4 className="text-muted-foreground mb-2 text-xs font-semibold tracking-wider uppercase">Use Cases</h4>
             <div className="space-y-0.5">
                 <button
                     type="button"
@@ -220,11 +199,7 @@ function UseCaseTree({
                                         onClick={() => toggleExpanded(uc.id)}
                                         className="text-muted-foreground hover:text-foreground flex shrink-0 items-center justify-center rounded p-0.5"
                                     >
-                                        {isExpanded ? (
-                                            <ChevronDown className="size-3.5" />
-                                        ) : (
-                                            <ChevronRight className="size-3.5" />
-                                        )}
+                                        {isExpanded ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}
                                     </button>
                                 ) : (
                                     <span className="w-4.5 shrink-0" />

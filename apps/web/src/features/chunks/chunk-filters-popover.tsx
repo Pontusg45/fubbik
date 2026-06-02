@@ -1,10 +1,4 @@
-import {
-    Bookmark,
-    Bot,
-    FolderPlus,
-    SlidersHorizontal,
-    X
-} from "lucide-react";
+import { Bookmark, Bot, FolderPlus, SlidersHorizontal, X } from "lucide-react";
 import { useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
@@ -57,7 +51,7 @@ export function ChunkFiltersPopover({
     onToggleTag,
     onClearAllFilters,
     onShowSaveFilter,
-    onCreateCollection,
+    onCreateCollection
 }: ChunkFiltersPopoverProps) {
     const { type, q, sort, size, after, enrichment, minConnections, origin, reviewStatus } = filters;
 
@@ -77,9 +71,9 @@ export function ChunkFiltersPopover({
                 enrichment,
                 minConnections,
                 origin,
-                reviewStatus,
+                reviewStatus
             },
-            codebaseId ?? undefined,
+            codebaseId ?? undefined
         );
         setNewCollectionName("");
         setShowSaveCollection(false);
@@ -102,11 +96,7 @@ export function ChunkFiltersPopover({
                     <div>
                         <p className="text-muted-foreground mb-2 text-xs font-medium tracking-wider uppercase">Type</p>
                         <div className="flex flex-wrap gap-1">
-                            <Button
-                                variant={!type ? "default" : "outline"}
-                                size="sm"
-                                onClick={() => onUpdateSearch({ type: undefined })}
-                            >
+                            <Button variant={!type ? "default" : "outline"} size="sm" onClick={() => onUpdateSearch({ type: undefined })}>
                                 All
                             </Button>
                             {TYPES.map(t => (
@@ -323,12 +313,7 @@ export function ChunkFiltersPopover({
                         <>
                             <Separator />
                             <div className="flex gap-2">
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="flex-1"
-                                    onClick={() => onShowSaveFilter()}
-                                >
+                                <Button variant="outline" size="sm" className="flex-1" onClick={() => onShowSaveFilter()}>
                                     <Bookmark className="size-3.5" />
                                     Save preset
                                 </Button>
@@ -357,11 +342,7 @@ export function ChunkFiltersPopover({
                                         className="bg-background flex-1 rounded-md border px-2 py-1 text-sm"
                                         autoFocus
                                     />
-                                    <Button
-                                        size="sm"
-                                        disabled={!newCollectionName.trim()}
-                                        onClick={handleSaveCollection}
-                                    >
+                                    <Button size="sm" disabled={!newCollectionName.trim()} onClick={handleSaveCollection}>
                                         Save
                                     </Button>
                                 </div>

@@ -5,35 +5,29 @@ import { savedQuery } from "../schema/saved-query";
 
 export function listSavedQueries(userId: string, spaceId?: string) {
     return dbEffect(() => {
-            const conditions = [eq(savedQuery.userId, userId)];
-            if (spaceId) conditions.push(eq(savedQuery.spaceId, spaceId));
-            return db
-                .select()
-                .from(savedQuery)
-                .where(and(...conditions))
-                .orderBy(desc(savedQuery.createdAt));
-        });
+        const conditions = [eq(savedQuery.userId, userId)];
+        if (spaceId) conditions.push(eq(savedQuery.spaceId, spaceId));
+        return db
+            .select()
+            .from(savedQuery)
+            .where(and(...conditions))
+            .orderBy(desc(savedQuery.createdAt));
+    });
 }
 
-export function createSavedQuery(params: {
-    id: string;
-    name: string;
-    query: unknown;
-    userId: string;
-    spaceId?: string;
-}) {
+export function createSavedQuery(params: { id: string; name: string; query: unknown; userId: string; spaceId?: string }) {
     return dbEffect(async () => {
-            const [created] = await db.insert(savedQuery).values(params).returning();
-            return created;
-        });
+        const [created] = await db.insert(savedQuery).values(params).returning();
+        return created;
+    });
 }
 
 export function deleteSavedQuery(id: string, userId: string) {
     return dbEffect(async () => {
-            const [deleted] = await db
-                .delete(savedQuery)
-                .where(and(eq(savedQuery.id, id), eq(savedQuery.userId, userId)))
-                .returning();
-            return deleted ?? null;
-        });
+        const [deleted] = await db
+            .delete(savedQuery)
+            .where(and(eq(savedQuery.id, id), eq(savedQuery.userId, userId)))
+            .returning();
+        return deleted ?? null;
+    });
 }

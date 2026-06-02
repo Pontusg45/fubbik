@@ -1,7 +1,7 @@
-import { listChunks } from "../chunks/service";
 import { Effect } from "effect";
 import { Elysia, t } from "elysia";
 
+import { listChunks } from "../chunks/service";
 import { checkRateLimit } from "../middleware/rate-limit";
 import { requireSession } from "../require-session";
 import { enrichChunk } from "./service";

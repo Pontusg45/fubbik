@@ -1,13 +1,14 @@
 ---
 tags:
-  - guide
-  - chunks
+    - guide
+    - chunks
 description: Chunks section index — types, tags, file references, health, and enrichment
 ---
 
 # Chunks
 
-Chunks are the building blocks of your knowledge base. Each one represents a discrete unit of knowledge — small enough to be useful on its own, rich enough to capture context.
+Chunks are the building blocks of your knowledge base. Each one represents a discrete unit of knowledge — small enough to be useful on its
+own, rich enough to capture context.
 
 ## Creating Chunks
 

@@ -13,8 +13,7 @@ type QueryKey = readonly unknown[];
  */
 type EdenThunk = () => Promise<{ data: unknown; error: unknown }>;
 
-export interface UseApiQueryOptions<TData>
-    extends Omit<UseQueryOptions<TData, Error, TData, QueryKey>, "queryFn" | "queryKey"> {
+export interface UseApiQueryOptions<TData> extends Omit<UseQueryOptions<TData, Error, TData, QueryKey>, "queryFn" | "queryKey"> {
     /**
      * Eden treaty call. Pass the bare `api.api.X.get()` thunk; the response
      * is auto-unwrapped via `unwrapEden` so callers never touch the
@@ -60,6 +59,6 @@ export function useApiQuery<TData>(options: UseApiQueryOptions<TData> & { queryK
                 if (fallback !== undefined) return fallback;
                 throw err;
             }
-        },
+        }
     });
 }

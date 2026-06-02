@@ -20,7 +20,7 @@ export function useFavorites() {
         mutationFn: async (chunkId: string) => {
             return unwrapEden(await api.api.favorites.post({ chunkId }));
         },
-        onMutate: async (chunkId) => {
+        onMutate: async chunkId => {
             await queryClient.cancelQueries({ queryKey: ["favorites"] });
             const previous = queryClient.getQueryData(["favorites"]);
             queryClient.setQueryData(["favorites"], (old: any) => {
@@ -36,14 +36,14 @@ export function useFavorites() {
         },
         onSettled: () => {
             queryClient.invalidateQueries({ queryKey: ["favorites"] });
-        },
+        }
     });
 
     const removeMutation = useMutation({
         mutationFn: async (chunkId: string) => {
             return unwrapEden(await api.api.favorites({ chunkId }).delete());
         },
-        onMutate: async (chunkId) => {
+        onMutate: async chunkId => {
             await queryClient.cancelQueries({ queryKey: ["favorites"] });
             const previous = queryClient.getQueryData(["favorites"]);
             queryClient.setQueryData(["favorites"], (old: any) => {
@@ -59,7 +59,7 @@ export function useFavorites() {
         },
         onSettled: () => {
             queryClient.invalidateQueries({ queryKey: ["favorites"] });
-        },
+        }
     });
 
     function toggleFavorite(chunkId: string) {

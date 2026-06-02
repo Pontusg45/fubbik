@@ -9,8 +9,8 @@ import { unwrapEden } from "@/utils/eden";
 const STEP_STATUS_ICON: Record<string, React.ReactNode> = {
     done: <CheckCircle className="size-3.5 text-emerald-500" />,
     in_progress: <Clock className="size-3.5 text-blue-500" />,
-    pending: <Circle className="size-3.5 text-muted-foreground" />,
-    skipped: <SkipForward className="size-3.5 text-muted-foreground" />,
+    pending: <Circle className="text-muted-foreground size-3.5" />,
+    skipped: <SkipForward className="text-muted-foreground size-3.5" />,
     blocked: <Ban className="size-3.5 text-red-500" />
 };
 
@@ -52,9 +52,7 @@ export function RequirementPlans({ requirementId }: { requirementId: string }) {
             const results: PlanWithSteps[] = [];
             for (const plan of plans) {
                 try {
-                    const raw = unwrapEden(
-                        await api.api.plans({ id: plan.id }).get()
-                    );
+                    const raw = unwrapEden(await api.api.plans({ id: plan.id }).get());
                     // Plan tasks don't have requirementId — match via plan-level requirements instead
                     const planRequirementIds = raw.requirements.map(r => r.requirementId);
                     const detail = {
@@ -64,16 +62,16 @@ export function RequirementPlans({ requirementId }: { requirementId: string }) {
                         steps: raw.tasks.map(t => ({
                             id: t.id,
                             description: t.description ?? t.title,
-                            status: t.status,
+                            status: t.status
                         })),
-                        hasRequirement: planRequirementIds.includes(requirementId),
+                        hasRequirement: planRequirementIds.includes(requirementId)
                     };
                     if (detail.hasRequirement) {
                         results.push({
                             id: detail.id,
                             title: detail.title,
                             status: detail.status,
-                            steps: detail.steps,
+                            steps: detail.steps
                         });
                     }
                 } catch {
@@ -97,26 +95,16 @@ export function RequirementPlans({ requirementId }: { requirementId: string }) {
                 {linkedPlans.map(plan => (
                     <div key={plan.id} className="rounded-lg border p-3">
                         <div className="mb-2 flex items-center justify-between">
-                            <Link
-                                to="/plans/$planId"
-                                params={{ planId: plan.id }}
-                                className="text-sm font-medium hover:underline"
-                            >
+                            <Link to="/plans/$planId" params={{ planId: plan.id }} className="text-sm font-medium hover:underline">
                                 {plan.title}
                             </Link>
-                            <Badge
-                                variant="outline"
-                                className={PLAN_STATUS_STYLES[plan.status] ?? ""}
-                            >
+                            <Badge variant="outline" className={PLAN_STATUS_STYLES[plan.status] ?? ""}>
                                 {plan.status}
                             </Badge>
                         </div>
                         <div className="space-y-1">
                             {plan.steps.map(step => (
-                                <div
-                                    key={step.id}
-                                    className="flex items-center gap-2 text-sm"
-                                >
+                                <div key={step.id} className="flex items-center gap-2 text-sm">
                                     {STEP_STATUS_ICON[step.status] ?? STEP_STATUS_ICON.pending}
                                     <span className={step.status === "done" ? "text-muted-foreground line-through" : ""}>
                                         {step.description}

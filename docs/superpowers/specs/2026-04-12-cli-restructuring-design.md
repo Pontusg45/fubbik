@@ -2,10 +2,14 @@
 
 ## Problem
 
-The fubbik CLI has 49 top-level commands. Running `fubbik --help` produces a wall of text where related commands (`add`, `get`, `list`, `search`, `update`, `remove`, `cat`, `quick`, `bulk-add`) sit as peers with unrelated utilities (`doctor`, `watch`, `why`). Discoverability is poor.
+The fubbik CLI has 49 top-level commands. Running `fubbik --help` produces a wall of text where related commands (`add`, `get`, `list`,
+`search`, `update`, `remove`, `cat`, `quick`, `bulk-add`) sit as peers with unrelated utilities (`doctor`, `watch`, `why`). Discoverability
+is poor.
 
 Additionally:
-- `plan.ts` and `review.ts` each have private `requireServer()` / `fetchApi()` helpers that bypass the shared output contract (`output()`, `outputError()`, `outputQuiet()`)
+
+- `plan.ts` and `review.ts` each have private `requireServer()` / `fetchApi()` helpers that bypass the shared output contract (`output()`,
+  `outputError()`, `outputQuiet()`)
 - `review.ts` uses raw `console.log()` instead of the output helpers, breaking `--json` and `--quiet` support
 - Several command files duplicate the same error-handling boilerplate (`if (!res.ok) { outputError(...); process.exit(1); }`)
 
@@ -23,15 +27,20 @@ Additionally:
 
 Exports:
 
-- **`requireServer(): string`** — reads server URL from the store via `getServerUrl()`. If not configured, calls `outputError('No server URL configured. Run "fubbik init" first.')` and exits. Returns the URL string.
+- **`requireServer(): string`** — reads server URL from the store via `getServerUrl()`. If not configured, calls
+  `outputError('No server URL configured. Run "fubbik init" first.')` and exits. Returns the URL string.
 
-- **`fetchApi(path: string, opts?: RequestInit): Promise<Response>`** — prepends `${serverUrl}/api` to the path, sets `Content-Type: application/json` header, forwards `opts`. Does NOT check `res.ok` — leaves that to the caller or `fetchApiJson`.
+- **`fetchApi(path: string, opts?: RequestInit): Promise<Response>`** — prepends `${serverUrl}/api` to the path, sets
+  `Content-Type: application/json` header, forwards `opts`. Does NOT check `res.ok` — leaves that to the caller or `fetchApiJson`.
 
-- **`fetchApiJson<T>(path: string, opts?: RequestInit): Promise<T>`** — calls `fetchApi`, checks `res.ok`. If the response is not OK, reads the body text and throws an error with the status + body. If OK, returns `res.json() as T`. This eliminates the repetitive 4-line error-check block from every command action.
+- **`fetchApiJson<T>(path: string, opts?: RequestInit): Promise<T>`** — calls `fetchApi`, checks `res.ok`. If the response is not OK, reads
+  the body text and throws an error with the status + body. If OK, returns `res.json() as T`. This eliminates the repetitive 4-line
+  error-check block from every command action.
 
 ### Migration
 
-Every command file that currently has a private `requireServer` / `fetchApi` / inline server-calling code switches to importing from `lib/api.ts`:
+Every command file that currently has a private `requireServer` / `fetchApi` / inline server-calling code switches to importing from
+`lib/api.ts`:
 
 - `plan.ts` (lines 9-27) — delete private helpers, import from `lib/api`
 - `review.ts` (lines 9-27) — delete private helpers, import from `lib/api`
@@ -42,11 +51,15 @@ Every command file that currently has a private `requireServer` / `fetchApi` / i
 ### Output contract fix
 
 In `review.ts`:
-- `listProposals`: replace all raw `console.log()` calls with `output(cmd, data, formattedString)` for human mode, and ensure `isJson(cmd)` branch emits JSON
+
+- `listProposals`: replace all raw `console.log()` calls with `output(cmd, data, formattedString)` for human mode, and ensure `isJson(cmd)`
+  branch emits JSON
 - `showProposal`: same — use `output()` instead of raw `console.log()`
-- `approveProposal` and `rejectProposal`: add `outputQuiet(cmd, proposal.id)` before the `output()` call, so `--quiet` mode emits just the ID (composable)
+- `approveProposal` and `rejectProposal`: add `outputQuiet(cmd, proposal.id)` before the `output()` call, so `--quiet` mode emits just the
+  ID (composable)
 
 In `plan.ts`:
+
 - Replace the private `requireServer` error path (`console.error(...)`) with `outputError(...)`
 
 ---
@@ -62,18 +75,17 @@ Composes: `add`, `get`, `list`, `search`, `update`, `remove`, `cat`, `quick`, `b
 Each existing command file already exports a `Command` instance. The group file imports them and calls `.addCommand()`:
 
 ```typescript
-export const chunkCommand = new Command("chunk")
-    .description("Manage knowledge chunks")
-    .addCommand(addCommand)
-    .addCommand(getCommand)
-    // ...
+export const chunkCommand = new Command("chunk").description("Manage knowledge chunks").addCommand(addCommand).addCommand(getCommand);
+// ...
 ```
 
-If any subcommand's registered name clashes with its new role under the group (e.g., `listCommand` registers as `list` which is fine), no rename needed. If a command registers with a name that doesn't make sense under the group, add a `.name("newname")` call.
+If any subcommand's registered name clashes with its new role under the group (e.g., `listCommand` registers as `list` which is fine), no
+rename needed. If a command registers with a name that doesn't make sense under the group, add a `.name("newname")` call.
 
 ### `fubbik context` — `apps/cli/src/commands/context-group.ts`
 
 Composes:
+
 - `export` — from current `context.ts` (rename the command from `context` to `export` via `.name("export")`)
 - `dir` — from `context-dir.ts` (rename from `context-dir` to `dir`)
 - `for` — from `context-for.ts` (rename from `context-for` to `for`)
@@ -81,12 +93,15 @@ Composes:
 ### `fubbik tag` — `apps/cli/src/commands/tag-group.ts`
 
 Composes:
-- The existing `tags.ts` command (which may itself have subcommands). Rename from `tags` to keep sub-structure, or flatten — check the actual file.
+
+- The existing `tags.ts` command (which may itself have subcommands). Rename from `tags` to keep sub-structure, or flatten — check the
+  actual file.
 - `normalize` — from `tag-normalize.ts` (rename from `tag-normalize` to `normalize`)
 
 ### `fubbik req` — `apps/cli/src/commands/req.ts`
 
 Composes:
+
 - The existing `requirements.ts` command (rename from `requirements` if needed to avoid stuttering like `fubbik req requirements`)
 - `import` — from `import-requirements.ts` (rename from `import-requirements` to `import`)
 
@@ -127,7 +142,8 @@ diff, kb-diff, hooks, check-files, docs, mcp-tools, task
 
 ### Shell completions
 
-`lib/completions.ts` generates zsh completions. If it reads the command tree dynamically (via Commander's introspection), it updates automatically. If hardcoded, regenerate after the restructure.
+`lib/completions.ts` generates zsh completions. If it reads the command tree dynamically (via Commander's introspection), it updates
+automatically. If hardcoded, regenerate after the restructure.
 
 ### CLI tests
 
@@ -139,30 +155,30 @@ diff, kb-diff, hooks, check-files, docs, mcp-tools, task
 
 ### New files
 
-| Path | Responsibility |
-|---|---|
-| `apps/cli/src/lib/api.ts` | Shared `requireServer`, `fetchApi`, `fetchApiJson` |
-| `apps/cli/src/commands/chunk.ts` | Group: chunk subcommands |
-| `apps/cli/src/commands/context-group.ts` | Group: context subcommands |
-| `apps/cli/src/commands/tag-group.ts` | Group: tag subcommands |
-| `apps/cli/src/commands/req.ts` | Group: requirement subcommands |
-| `apps/cli/src/commands/maintain.ts` | Group: maintenance subcommands |
+| Path                                     | Responsibility                                     |
+| ---------------------------------------- | -------------------------------------------------- |
+| `apps/cli/src/lib/api.ts`                | Shared `requireServer`, `fetchApi`, `fetchApiJson` |
+| `apps/cli/src/commands/chunk.ts`         | Group: chunk subcommands                           |
+| `apps/cli/src/commands/context-group.ts` | Group: context subcommands                         |
+| `apps/cli/src/commands/tag-group.ts`     | Group: tag subcommands                             |
+| `apps/cli/src/commands/req.ts`           | Group: requirement subcommands                     |
+| `apps/cli/src/commands/maintain.ts`      | Group: maintenance subcommands                     |
 
 ### Modified
 
-| Path | Change |
-|---|---|
-| `apps/cli/src/index.ts` | Replace 49 imports/registrations with ~30 |
-| `apps/cli/src/commands/review.ts` | Use shared `lib/api`, fix output contract |
-| `apps/cli/src/commands/plan.ts` | Use shared `lib/api`, fix outputError |
-| `apps/cli/src/commands/context.ts` | Rename command to `export` |
-| `apps/cli/src/commands/context-dir.ts` | Rename command to `dir` |
-| `apps/cli/src/commands/context-for.ts` | Rename command to `for` |
-| `apps/cli/src/commands/tag-normalize.ts` | Rename command to `normalize` |
-| `apps/cli/src/commands/import-requirements.ts` | Rename command to `import` |
-| `apps/cli/src/commands/task.ts` | Use shared `lib/api` if applicable |
-| Any other command with private `fetchApi` | Use shared `lib/api` |
-| `apps/cli/src/__tests__/commands.test.ts` | Update assertions for new structure |
+| Path                                           | Change                                    |
+| ---------------------------------------------- | ----------------------------------------- |
+| `apps/cli/src/index.ts`                        | Replace 49 imports/registrations with ~30 |
+| `apps/cli/src/commands/review.ts`              | Use shared `lib/api`, fix output contract |
+| `apps/cli/src/commands/plan.ts`                | Use shared `lib/api`, fix outputError     |
+| `apps/cli/src/commands/context.ts`             | Rename command to `export`                |
+| `apps/cli/src/commands/context-dir.ts`         | Rename command to `dir`                   |
+| `apps/cli/src/commands/context-for.ts`         | Rename command to `for`                   |
+| `apps/cli/src/commands/tag-normalize.ts`       | Rename command to `normalize`             |
+| `apps/cli/src/commands/import-requirements.ts` | Rename command to `import`                |
+| `apps/cli/src/commands/task.ts`                | Use shared `lib/api` if applicable        |
+| Any other command with private `fetchApi`      | Use shared `lib/api`                      |
+| `apps/cli/src/__tests__/commands.test.ts`      | Update assertions for new structure       |
 
 ### Unchanged
 

@@ -1,4 +1,3 @@
-
 import { Loader2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -6,6 +5,7 @@ import { toast } from "sonner";
 import { useApiQuery } from "@/hooks/use-api-query";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
+
 import { FileDetailPanel } from "../file-detail-panel";
 import { buildTree, FileTree } from "../file-tree";
 import type { FileConfig, FileEntry, PreviewFileResult } from "../types";
@@ -67,10 +67,7 @@ export function StepPreview({
         fallback: []
     });
 
-    const templates = useMemo(
-        () => (rawTemplates ?? []).map((t: any) => ({ id: t.id, name: t.name })),
-        [rawTemplates]
-    );
+    const templates = useMemo(() => (rawTemplates ?? []).map((t: any) => ({ id: t.id, name: t.name })), [rawTemplates]);
 
     // ----- Load preview on mount if not already loaded -----
     useEffect(() => {
@@ -90,8 +87,8 @@ export function StepPreview({
                 );
                 // Backend returns { files, existingHashes }
                 const result = raw as { files: PreviewFileResult[]; existingHashes: Record<string, string> };
-                const previewFiles = Array.isArray(result) ? result as unknown as PreviewFileResult[] : result.files;
-                const hashes = Array.isArray(result) ? {} : result.existingHashes ?? {};
+                const previewFiles = Array.isArray(result) ? (result as unknown as PreviewFileResult[]) : result.files;
+                const hashes = Array.isArray(result) ? {} : (result.existingHashes ?? {});
 
                 onPreviewLoaded(previewFiles, hashes);
 
@@ -142,15 +139,9 @@ export function StepPreview({
     }, [preview, activePath, initialActivePath]);
 
     // ----- Tree -----
-    const selectedFiles = useMemo(
-        () => files.filter(f => selectedPaths.has(f.path)),
-        [files, selectedPaths]
-    );
+    const selectedFiles = useMemo(() => files.filter(f => selectedPaths.has(f.path)), [files, selectedPaths]);
 
-    const tree = useMemo(
-        () => buildTree(selectedFiles.map(f => f.path)),
-        [selectedFiles]
-    );
+    const tree = useMemo(() => buildTree(selectedFiles.map(f => f.path)), [selectedFiles]);
 
     // Paths that have a suggested template match
     const templatePaths = useMemo(() => {
@@ -162,11 +153,9 @@ export function StepPreview({
     }, [preview]);
 
     // ----- Active file data -----
-    const activePreview = activePath
-        ? preview.find(p => p.path === activePath) ?? null
-        : null;
+    const activePreview = activePath ? (preview.find(p => p.path === activePath) ?? null) : null;
 
-    const activeConfig = activePath ? overrides.get(activePath) ?? null : null;
+    const activeConfig = activePath ? (overrides.get(activePath) ?? null) : null;
 
     const handleConfigChange = (path: string, config: FileConfig) => {
         const next = new Map(overrides);
@@ -177,28 +166,20 @@ export function StepPreview({
     // Sibling count for "apply to folder" hint
     const siblingCount = useMemo(() => {
         if (!activePath) return 0;
-        const dir = activePath.includes("/")
-            ? activePath.substring(0, activePath.lastIndexOf("/"))
-            : "";
+        const dir = activePath.includes("/") ? activePath.substring(0, activePath.lastIndexOf("/")) : "";
         return selectedFiles.filter(f => {
-            const fDir = f.path.includes("/")
-                ? f.path.substring(0, f.path.lastIndexOf("/"))
-                : "";
+            const fDir = f.path.includes("/") ? f.path.substring(0, f.path.lastIndexOf("/")) : "";
             return fDir === dir;
         }).length;
     }, [activePath, selectedFiles]);
 
     const handleApplyToFolder = (templateId: string) => {
         if (!activePath) return;
-        const dir = activePath.includes("/")
-            ? activePath.substring(0, activePath.lastIndexOf("/"))
-            : "";
+        const dir = activePath.includes("/") ? activePath.substring(0, activePath.lastIndexOf("/")) : "";
 
         const next = new Map(overrides);
         for (const f of selectedFiles) {
-            const fDir = f.path.includes("/")
-                ? f.path.substring(0, f.path.lastIndexOf("/"))
-                : "";
+            const fDir = f.path.includes("/") ? f.path.substring(0, f.path.lastIndexOf("/")) : "";
             if (fDir === dir) {
                 const existing = next.get(f.path);
                 if (existing) {
@@ -212,7 +193,7 @@ export function StepPreview({
     // ----- Loading state -----
     if (loading) {
         return (
-            <div className="flex items-center justify-center py-16 gap-2 text-muted-foreground">
+            <div className="text-muted-foreground flex items-center justify-center gap-2 py-16">
                 <Loader2 className="size-5 animate-spin" />
                 <span className="text-sm">Analyzing files…</span>
             </div>
@@ -221,16 +202,13 @@ export function StepPreview({
 
     // ----- Layout -----
     return (
-        <div
-            style={{ display: "flex", height: "500px" }}
-            className="rounded-md border overflow-hidden"
-        >
+        <div style={{ display: "flex", height: "500px" }} className="overflow-hidden rounded-md border">
             {/* Left panel — file tree */}
-            <div className="w-80 shrink-0 border-r flex flex-col">
-                <div className="p-2 border-b">
+            <div className="flex w-80 shrink-0 flex-col border-r">
+                <div className="border-b p-2">
                     <input
                         type="text"
-                        className="border-input bg-background block w-full rounded-md border px-2.5 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                        className="border-input bg-background focus:ring-ring block w-full rounded-md border px-2.5 py-1 text-sm focus:ring-2 focus:outline-none"
                         placeholder="Filter files…"
                         value={filter}
                         onChange={e => setFilter(e.target.value)}
@@ -265,9 +243,7 @@ export function StepPreview({
                         onApplyToFolder={handleApplyToFolder}
                     />
                 ) : (
-                    <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-                        Select a file to configure
-                    </div>
+                    <div className="text-muted-foreground flex h-full items-center justify-center text-sm">Select a file to configure</div>
                 )}
             </div>
         </div>
@@ -296,7 +272,10 @@ function extractFrontmatterTags(content: string): string[] {
     if (!fmMatch) return [];
     const tagsMatch = fmMatch[1]?.match(/tags:\s*\n((?:\s+-\s+.+\n)*)/);
     if (tagsMatch?.[1]) {
-        return tagsMatch[1].split("\n").map(l => l.replace(/^\s+-\s+/, "").trim()).filter(Boolean);
+        return tagsMatch[1]
+            .split("\n")
+            .map(l => l.replace(/^\s+-\s+/, "").trim())
+            .filter(Boolean);
     }
     const inlineMatch = fmMatch[1]?.match(/tags:\s*\[(.+)\]/);
     if (inlineMatch?.[1]) {

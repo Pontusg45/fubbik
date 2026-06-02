@@ -1,7 +1,7 @@
 ---
 tags:
-  - guide
-  - operations
+    - guide
+    - operations
 description: Operations section index — CLI, import/export, integrations, and upgrades
 ---
 

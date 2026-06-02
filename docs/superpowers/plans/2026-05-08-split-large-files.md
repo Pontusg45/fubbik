@@ -1,10 +1,13 @@
 # Split Large Files Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to
+> implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Split 5 large files (750-1375 lines each) into focused modules of ~250-300 lines, improving maintainability without changing behavior.
+**Goal:** Split 5 large files (750-1375 lines each) into focused modules of ~250-300 lines, improving maintainability without changing
+behavior.
 
-**Architecture:** Pure refactor — extract hooks, components, and service functions into separate files. Each file should have a single clear responsibility and a well-defined interface.
+**Architecture:** Pure refactor — extract hooks, components, and service functions into separate files. Each file should have a single clear
+responsibility and a well-defined interface.
 
 **Tech Stack:** React (hooks, components), Elysia/Effect (backend services), TanStack Router
 
@@ -13,6 +16,7 @@
 ## Task 1: Split `document-browser.tsx` (1375 → 5 files)
 
 **Files:**
+
 - Keep: `apps/web/src/features/documents/document-browser.tsx` (main component, ~300 lines)
 - Create: `apps/web/src/features/documents/document-types.ts`
 - Create: `apps/web/src/features/documents/document-utils.ts`
@@ -20,10 +24,13 @@
 - Create: `apps/web/src/features/documents/document-detail.tsx`
 
 ### `document-types.ts` (~40 lines)
+
 Type definitions: `DocumentListItem`, `DocumentChunk`, `DocumentDetail`, `SearchResult`, `DocumentBrowserProps`.
 
 ### `document-utils.ts` (~120 lines)
+
 Pure functions:
+
 - `folderFromPath`, `filenameFromPath`
 - `buildFolderTree` + `FolderNode` type + sorting
 - `extractSnippet`, `highlightMatches`
@@ -31,20 +38,26 @@ Pure functions:
 - `estimateReadingTime`
 
 ### `document-tree.tsx` (~200 lines)
+
 Sidebar tree components:
+
 - `FolderTreeNode` — recursive folder tree with expand/collapse
 - `IndexTree` — main content "All Documents" folder view
 - `TagGroupNode` — tag-grouped sidebar with group selection
 
 ### `document-detail.tsx` (~300 lines)
+
 Document detail rendering:
+
 - Document header with breadcrumbs, print button, staleness
 - Section rendering with edit-in-place and add-section
 - Previous/next navigation
 - Table of contents sidebar
 
 ### `document-browser.tsx` (~300 lines, slimmed)
+
 Main component keeping:
+
 - State, queries, mutations
 - `setSelectedId`, `setSelectedGroup`, search handlers
 - `renderSidebar` function
@@ -64,13 +77,16 @@ Main component keeping:
 ## Task 2: Split `chunks.index.tsx` (785 → 4 files)
 
 **Files:**
+
 - Keep: `apps/web/src/routes/chunks.index.tsx` (route + layout, ~250 lines)
 - Create: `apps/web/src/features/chunks/use-chunks-data.ts`
 - Create: `apps/web/src/features/chunks/chunks-toolbar.tsx`
 - Create: `apps/web/src/features/chunks/chunks-results.tsx`
 
 ### `use-chunks-data.ts` (~200 lines)
+
 Custom hook `useChunksData(search)` returning:
+
 - `chunksQuery` (infinite query with pagination)
 - `federatedQuery` (all-codebases search)
 - `tagsQuery`
@@ -80,7 +96,9 @@ Custom hook `useChunksData(search)` returning:
 - Keyboard navigation handlers (j/k, number shortcuts)
 
 ### `chunks-toolbar.tsx` (~250 lines)
+
 Toolbar components:
+
 - Search bar with debounce
 - Filter pills (active filters display)
 - Saved filter presets
@@ -89,7 +107,9 @@ Toolbar components:
 - `SubGroupSelect` and `TagTypeGroupSelect` dropdowns
 
 ### `chunks-results.tsx` (~250 lines)
+
 Results rendering:
+
 - Kanban view
 - Grid/list view with `LazyGroupList`
 - Bulk action bar
@@ -97,7 +117,9 @@ Results rendering:
 - Pagination intersection observer
 
 ### `chunks.index.tsx` (~250 lines, slimmed)
+
 Route file keeping:
+
 - Route definition with search validation
 - State orchestration
 - Composing toolbar + results
@@ -115,16 +137,20 @@ Route file keeping:
 ## Task 3: Split `tags.tsx` (769 → 4 files)
 
 **Files:**
+
 - Keep: `apps/web/src/routes/tags.tsx` (route + orchestration, ~250 lines)
 - Create: `apps/web/src/features/tags/tag-types.ts`
 - Create: `apps/web/src/features/tags/use-tags-data.ts`
 - Create: `apps/web/src/features/tags/tag-pill.tsx`
 
 ### `tag-types.ts` (~40 lines)
+
 Type definitions: `Tag`, `TagType`, `SortMode` interfaces.
 
 ### `use-tags-data.ts` (~250 lines)
+
 Custom hook `useTagsData()` returning:
+
 - `tagsQuery`, `tagTypesQuery`
 - All mutations (create, rename, assign type, merge, delete for both tags and types)
 - Tag type form helpers (resetTagTypeForm, startEditTagType, handleTagTypeSubmit)
@@ -132,7 +158,9 @@ Custom hook `useTagsData()` returning:
 - Filtering and grouping logic (filteredTags, sorted groups, unusedCount, mergeCandidates)
 
 ### `tag-pill.tsx` (~200 lines)
+
 The `TagPill` component with:
+
 - Inline rename
 - Type assignment dropdown
 - Merge action
@@ -140,7 +168,9 @@ The `TagPill` component with:
 - Usage count badge
 
 ### `tags.tsx` (~250 lines, slimmed)
+
 Route file keeping:
+
 - Route definition
 - State for dialogs (merge target, delete target)
 - Toolbar (search, sort, unused filter, create form)
@@ -160,31 +190,37 @@ Route file keeping:
 ## Task 4: Split `command-palette.tsx` (757 → 4 files)
 
 **Files:**
+
 - Keep: `apps/web/src/features/command-palette/command-palette.tsx` (render, ~250 lines)
 - Create: `apps/web/src/features/command-palette/command-types.ts`
 - Create: `apps/web/src/features/command-palette/use-command-search.ts`
 - Create: `apps/web/src/features/command-palette/command-items.ts`
 
 ### `command-types.ts` (~50 lines)
-Type definitions: `CommandGroup`, `CommandItem`, `RecentPage`.
-Constants: `PAGE_ITEMS`, `ACTION_ITEMS`.
-Export `useRecentPages` hook.
+
+Type definitions: `CommandGroup`, `CommandItem`, `RecentPage`. Constants: `PAGE_ITEMS`, `ACTION_ITEMS`. Export `useRecentPages` hook.
 
 ### `use-command-search.ts` (~250 lines)
+
 Custom hook `useCommandSearch(search, open)` returning:
+
 - All search queries (chunks, federated, tags, requirements, plans, codebases, recent)
 - Built items list (the big useMemo that assembles filtered/grouped results)
 - Search state management
 
 ### `command-items.ts` (~100 lines)
+
 Pure functions for building command items:
+
 - `buildChunkItems`, `buildPageItems`, `buildTagItems`
 - `buildRequirementItems`, `buildPlanItems`, `buildCodebaseItems`
 - `buildActionItems`
 - Grouping helper for rendering
 
 ### `command-palette.tsx` (~250 lines, slimmed)
+
 Component keeping:
+
 - Open/close state and keyboard shortcut (Cmd+K)
 - `handleKeyDown` for arrow/enter/escape
 - Render: backdrop, search input, results groups, footer
@@ -201,12 +237,14 @@ Component keeping:
 ## Task 5: Split `chunks/service.ts` (789 → 4 files)
 
 **Files:**
+
 - Keep: `packages/api/src/chunks/service.ts` (re-exports + list/detail, ~250 lines)
 - Create: `packages/api/src/chunks/chunk-mutations.ts`
 - Create: `packages/api/src/chunks/chunk-import.ts`
 - Create: `packages/api/src/chunks/chunk-search.ts`
 
 ### `chunk-mutations.ts` (~300 lines)
+
 - `resolveDocumentLinkageForNewChunk`
 - `createChunk` (with tags, codebases, versions, events)
 - `updateChunk` (with versioning, tag/codebase changes, enrichment)
@@ -214,6 +252,7 @@ Component keeping:
 - `mergeChunks`
 
 ### `chunk-import.ts` (~250 lines)
+
 - `importDocs` (batch import with folder connections)
 - `importDocsStream` (SSE streaming import)
 - `createFolderConnections` (internal helper)
@@ -221,20 +260,24 @@ Component keeping:
 - `getExistingHashes`
 
 ### `chunk-search.ts` (~100 lines)
+
 - `semanticSearch`
 - `getChunkNeighbors`
 - `exportChunks`, `importChunks`
 - `listUpdatesByTag`, `listUpdateTags`
 
 ### `service.ts` (~250 lines, slimmed)
+
 Keeping:
+
 - All imports
 - `listChunks` (complex with filtering, pagination, feature deltas)
 - `getChunkDetail` (complex with connections, health, features)
 - `getChunkHistory`
 - Re-exports from the three new files
 
-**Important:** The routes file (`chunks/routes.ts`) imports from `./service` via `import * as chunkService`. The re-exports in `service.ts` must preserve this interface so the routes file doesn't need changes.
+**Important:** The routes file (`chunks/routes.ts`) imports from `./service` via `import * as chunkService`. The re-exports in `service.ts`
+must preserve this interface so the routes file doesn't need changes.
 
 - [ ] **Step 1:** Create `chunk-mutations.ts` with extracted functions
 - [ ] **Step 2:** Create `chunk-import.ts` with extracted functions
@@ -248,6 +291,7 @@ Keeping:
 ## Execution Order
 
 Tasks are independent — can be done in any order or in parallel. Recommended sequence:
+
 1. Task 5 (backend, simplest — just moving functions)
 2. Task 1 (document-browser, biggest impact)
 3. Task 4 (command-palette, clean boundaries)

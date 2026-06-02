@@ -1,4 +1,5 @@
 import { useCallback, useState } from "react";
+
 import type { QueryClause, SearchQuery } from "./query-types";
 
 export function useQueryBuilder(initialClauses: QueryClause[] = []) {
@@ -37,6 +38,6 @@ export function useQueryBuilder(initialClauses: QueryClause[] = []) {
         clearAll,
         loadClauses,
         setJoin,
-        setSort,
+        setSort
     };
 }

@@ -1,8 +1,8 @@
 ---
 tags:
-  - guide
-  - chunks
-  - files
+    - guide
+    - chunks
+    - files
 description: Linking chunks to files via applies-to globs and file references
 ---
 

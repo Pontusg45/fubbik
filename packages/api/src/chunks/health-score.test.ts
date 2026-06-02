@@ -33,9 +33,7 @@ describe("computeHealthScore", () => {
     });
 
     it("does not penalize age — a 45-day-old chunk keeps full freshness", () => {
-        const score = computeHealthScore(
-            makeInput({ updatedAt: new Date(Date.now() - 45 * 86400000) })
-        );
+        const score = computeHealthScore(makeInput({ updatedAt: new Date(Date.now() - 45 * 86400000) }));
         expect(score.total).toBe(100);
         expect(score.breakdown.freshness).toBe(20);
         expect(score.issues).not.toContain("Chunk has not been updated in over 30 days");
@@ -49,9 +47,7 @@ describe("computeHealthScore", () => {
     });
 
     it("penalizes missing enrichment", () => {
-        const score = computeHealthScore(
-            makeInput({ summary: null, hasEmbedding: false })
-        );
+        const score = computeHealthScore(makeInput({ summary: null, hasEmbedding: false }));
         expect(score.total).toBeLessThan(90);
         expect(score.issues).toContain("Missing AI summary");
         expect(score.issues).toContain("Missing embedding for semantic search");
@@ -81,9 +77,7 @@ describe("computeHealthScore", () => {
     });
 
     it("keeps freshness at 20 even for very old chunks (100+ days)", () => {
-        const score = computeHealthScore(
-            makeInput({ updatedAt: new Date(Date.now() - 100 * 86400000) })
-        );
+        const score = computeHealthScore(makeInput({ updatedAt: new Date(Date.now() - 100 * 86400000) }));
         expect(score.breakdown.freshness).toBe(20);
     });
 

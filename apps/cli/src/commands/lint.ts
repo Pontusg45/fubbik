@@ -1,7 +1,7 @@
 import { Command } from "commander";
 
-import { formatBold, formatDim, formatError, formatSuccess } from "../lib/colors";
 import { requireServer } from "../lib/api";
+import { formatBold, formatDim, formatError, formatSuccess } from "../lib/colors";
 import { isJson, outputError } from "../lib/output";
 
 interface LintIssue {
@@ -12,18 +12,7 @@ interface LintIssue {
     message: string;
 }
 
-const GENERIC_TAGS = new Set([
-    "docs",
-    "documentation",
-    "document",
-    "plans",
-    "plan",
-    "notes",
-    "note",
-    "general",
-    "misc",
-    "other",
-]);
+const GENERIC_TAGS = new Set(["docs", "documentation", "document", "plans", "plan", "notes", "note", "general", "misc", "other"]);
 
 function computeQualityScore(chunk: any): number {
     let score = 0;
@@ -44,9 +33,7 @@ function computeQualityScore(chunk: any): number {
     if (appliesTo.length > 0) score += 15;
 
     // Has meaningful tags: +15
-    const tags: string[] = Array.isArray(chunk.tags)
-        ? chunk.tags.map((t: any) => (typeof t === "string" ? t : t.name ?? ""))
-        : [];
+    const tags: string[] = Array.isArray(chunk.tags) ? chunk.tags.map((t: any) => (typeof t === "string" ? t : (t.name ?? ""))) : [];
     const meaningfulTags = tags.filter((t: string) => !GENERIC_TAGS.has(t.toLowerCase()));
     if (meaningfulTags.length > 0) score += 15;
 
@@ -155,7 +142,7 @@ export const lintCommand = new Command("lint")
 
             // Fetch knowledge health to check for orphans and stale chunks
             const healthRes = await fetch(
-                `${serverUrl}/api/health/knowledge${opts.space ?? opts.codebase ? `?spaceId=${opts.space ?? opts.codebase}` : ""}`
+                `${serverUrl}/api/health/knowledge${(opts.space ?? opts.codebase) ? `?spaceId=${opts.space ?? opts.codebase}` : ""}`
             );
             if (healthRes.ok) {
                 const health = (await healthRes.json()) as any;
@@ -203,7 +190,7 @@ export const lintCommand = new Command("lint")
                                 id: chunk.id,
                                 title: chunk.title,
                                 type: chunk.type,
-                                score: computeQualityScore(detail),
+                                score: computeQualityScore(detail)
                             };
                         })
                     );
@@ -217,19 +204,17 @@ export const lintCommand = new Command("lint")
                 scored.sort((a, b) => a.score - b.score);
 
                 if (isJson(cmd)) {
-                    const avg = scored.length > 0
-                        ? Math.round(scored.reduce((s, c) => s + c.score, 0) / scored.length)
-                        : 0;
+                    const avg = scored.length > 0 ? Math.round(scored.reduce((s, c) => s + c.score, 0) / scored.length) : 0;
                     console.log(
                         JSON.stringify(
                             {
                                 scores: scored,
                                 summary: {
                                     average: avg,
-                                    below50: scored.filter((s) => s.score < 50).length,
-                                    above80: scored.filter((s) => s.score >= 80).length,
-                                    total: scored.length,
-                                },
+                                    below50: scored.filter(s => s.score < 50).length,
+                                    above80: scored.filter(s => s.score >= 80).length,
+                                    total: scored.length
+                                }
                             },
                             null,
                             2
@@ -241,20 +226,14 @@ export const lintCommand = new Command("lint")
                 console.error(formatBold("Quality scores (lowest first):"));
                 for (const item of scored) {
                     const scoreStr = String(item.score).padStart(3);
-                    console.error(
-                        `  ${scoreStr}  [${item.type}] ${item.title}`
-                    );
+                    console.error(`  ${scoreStr}  [${item.type}] ${item.title}`);
                 }
 
-                const avg = scored.length > 0
-                    ? Math.round(scored.reduce((s, c) => s + c.score, 0) / scored.length)
-                    : 0;
-                const below50 = scored.filter((s) => s.score < 50).length;
-                const above80 = scored.filter((s) => s.score >= 80).length;
+                const avg = scored.length > 0 ? Math.round(scored.reduce((s, c) => s + c.score, 0) / scored.length) : 0;
+                const below50 = scored.filter(s => s.score < 50).length;
+                const above80 = scored.filter(s => s.score >= 80).length;
 
-                console.error(
-                    `\nAverage: ${avg} | Below 50: ${below50} chunks | Above 80: ${above80} chunks`
-                );
+                console.error(`\nAverage: ${avg} | Below 50: ${below50} chunks | Above 80: ${above80} chunks`);
                 return;
             }
 
@@ -305,10 +284,7 @@ export const lintCommand = new Command("lint")
                 if (!first) continue;
                 console.error(`  ${formatBold(first.chunkTitle)} ${formatDim(`(${first.chunkId.slice(0, 8)})`)}`);
                 for (const issue of chunkIssues) {
-                    const icon =
-                        issue.severity === "error"
-                            ? formatError(issue.rule)
-                            : formatDim(`warn:${issue.rule}`);
+                    const icon = issue.severity === "error" ? formatError(issue.rule) : formatDim(`warn:${issue.rule}`);
                     console.error(`    ${icon} ${issue.message}`);
                 }
             }
@@ -324,14 +300,12 @@ export const lintCommand = new Command("lint")
                     if (issue.rule === "not-enriched") {
                         try {
                             await fetch(`${serverUrl}/api/chunks/${issue.chunkId}/enrich`, {
-                                method: "POST",
+                                method: "POST"
                             });
                             console.error(formatSuccess(`  Enriched: ${issue.chunkTitle}`));
                             fixed++;
                         } catch {
-                            console.error(
-                                formatDim(`  Failed to enrich: ${issue.chunkTitle}`)
-                            );
+                            console.error(formatDim(`  Failed to enrich: ${issue.chunkTitle}`));
                         }
                     }
                 }

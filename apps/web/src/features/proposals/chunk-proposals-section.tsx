@@ -14,7 +14,7 @@ export function ChunkProposalsSection({ chunkId }: ChunkProposalsSectionProps) {
     const proposalsQuery = useQuery({
         queryKey: ["chunk-proposals", chunkId],
         queryFn: async () =>
-            unwrapEden(await (api.api as any).chunks[chunkId].proposals.get({ query: { status: "pending" } })) as Proposal[],
+            unwrapEden(await (api.api as any).chunks[chunkId].proposals.get({ query: { status: "pending" } })) as Proposal[]
     });
 
     const proposals = proposalsQuery.data ?? [];
@@ -22,7 +22,7 @@ export function ChunkProposalsSection({ chunkId }: ChunkProposalsSectionProps) {
 
     return (
         <section className="space-y-2">
-            <h3 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-amber-500">
+            <h3 className="flex items-center gap-1.5 text-xs font-semibold tracking-wider text-amber-500 uppercase">
                 <AlertTriangle className="size-3.5" />
                 Pending proposals ({proposals.length})
             </h3>
@@ -32,7 +32,9 @@ export function ChunkProposalsSection({ chunkId }: ChunkProposalsSectionProps) {
                         key={p.id}
                         proposal={p}
                         showChunkInfo={false}
-                        onUpdate={() => { void proposalsQuery.refetch(); }}
+                        onUpdate={() => {
+                            void proposalsQuery.refetch();
+                        }}
                     />
                 ))}
             </div>

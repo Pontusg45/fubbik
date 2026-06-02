@@ -1,7 +1,9 @@
 import { CONNECTION_RELATIONS as RELATION_TYPES } from "@fubbik/api/enums";
 import type { UseMutationResult } from "@tanstack/react-query";
+
 import { Dialog, DialogPopup, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { relationColor } from "@/features/chunks/relation-colors";
+
 import type { GraphAction } from "./use-graph-state";
 
 type LayoutAlgorithm = string;
@@ -17,12 +19,7 @@ interface ChangeConnectionDialogProps {
     onClose: () => void;
 }
 
-export function ChangeConnectionDialog({
-    pendingConnection,
-    chunkMap,
-    createConnectionMutation,
-    onClose,
-}: ChangeConnectionDialogProps) {
+export function ChangeConnectionDialog({ pendingConnection, chunkMap, createConnectionMutation, onClose }: ChangeConnectionDialogProps) {
     return (
         <Dialog
             open={!!pendingConnection}
@@ -88,14 +85,7 @@ interface SaveViewDialogProps {
     dispatch: React.Dispatch<GraphAction>;
 }
 
-export function SaveViewDialog({
-    show,
-    viewName,
-    filterTypes,
-    filterRelations,
-    saveView,
-    dispatch,
-}: SaveViewDialogProps) {
+export function SaveViewDialog({ show, viewName, filterTypes, filterRelations, saveView, dispatch }: SaveViewDialogProps) {
     if (!show) return null;
 
     const handleSave = () => {
@@ -103,7 +93,7 @@ export function SaveViewDialog({
         saveView({
             name: viewName.trim(),
             filterTypes: [...filterTypes],
-            filterRelations: [...filterRelations],
+            filterRelations: [...filterRelations]
         });
         dispatch({ type: "SET_SHOW_SAVE_DIALOG", show: false });
         dispatch({ type: "SET_VIEW_NAME", name: "" });
@@ -129,13 +119,13 @@ export function SaveViewDialog({
                     }}
                 />
                 <div className="mt-3 flex gap-2">
-                    <button
-                        onClick={handleSave}
-                        className="bg-primary text-primary-foreground flex-1 rounded-md px-3 py-1.5 text-xs"
-                    >
+                    <button onClick={handleSave} className="bg-primary text-primary-foreground flex-1 rounded-md px-3 py-1.5 text-xs">
                         Save
                     </button>
-                    <button onClick={() => dispatch({ type: "SET_SHOW_SAVE_DIALOG", show: false })} className="rounded-md border px-3 py-1.5 text-xs">
+                    <button
+                        onClick={() => dispatch({ type: "SET_SHOW_SAVE_DIALOG", show: false })}
+                        className="rounded-md border px-3 py-1.5 text-xs"
+                    >
                         Cancel
                     </button>
                 </div>
@@ -159,13 +149,17 @@ interface SaveCustomGraphDialogProps {
     layoutPositions: Record<string, { x: number; y: number }> | null;
     layoutAlgorithm?: LayoutAlgorithm;
     spaceId: string | null | undefined;
-    saveCustomGraphMutation: UseMutationResult<unknown, Error, {
-        name: string;
-        chunkIds: string[];
-        positions: Record<string, { x: number; y: number }>;
-        layoutAlgorithm: string;
-        spaceId?: string | null;
-    }>;
+    saveCustomGraphMutation: UseMutationResult<
+        unknown,
+        Error,
+        {
+            name: string;
+            chunkIds: string[];
+            positions: Record<string, { x: number; y: number }>;
+            layoutAlgorithm: string;
+            spaceId?: string | null;
+        }
+    >;
 }
 
 export function SaveCustomGraphDialog({
@@ -179,7 +173,7 @@ export function SaveCustomGraphDialog({
     layoutPositions,
     layoutAlgorithm,
     spaceId,
-    saveCustomGraphMutation,
+    saveCustomGraphMutation
 }: SaveCustomGraphDialogProps) {
     if (!show) return null;
 
@@ -204,15 +198,10 @@ export function SaveCustomGraphDialog({
     };
 
     return (
-        <div
-            className="bg-background/50 absolute inset-0 z-30 flex items-center justify-center backdrop-blur-sm"
-            onClick={onClose}
-        >
+        <div className="bg-background/50 absolute inset-0 z-30 flex items-center justify-center backdrop-blur-sm" onClick={onClose}>
             <div className="bg-background w-80 rounded-lg border p-4 shadow-lg" onClick={e => e.stopPropagation()}>
                 <h3 className="mb-2 text-sm font-semibold">Save as Custom Graph</h3>
-                <p className="text-muted-foreground mb-3 text-xs">
-                    Saves {visibleChunkCount} visible chunks with their current positions.
-                </p>
+                <p className="text-muted-foreground mb-3 text-xs">Saves {visibleChunkCount} visible chunks with their current positions.</p>
                 <input
                     value={customGraphName}
                     onChange={e => onNameChange(e.target.value)}

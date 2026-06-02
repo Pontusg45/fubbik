@@ -1,3 +1,4 @@
+import type { DatabaseError } from "@fubbik/db/errors";
 import {
     archiveChunk as archiveChunkRepo,
     createChunk as createChunkRepo,
@@ -18,7 +19,6 @@ import {
 } from "@fubbik/db/repository";
 import { Effect } from "effect";
 
-import type { DatabaseError } from "@fubbik/db/errors";
 import { enrichChunk } from "../enrich/service";
 import { NotFoundError, ValidationError } from "../errors";
 import { events, EVENTS } from "../events/bus";
@@ -35,8 +35,7 @@ function resolveDocumentLinkageForNewChunk(
     rawDocumentId?: string,
     rawOrder?: number
 ): Effect.Effect<ResolvedDocumentLinkage, DatabaseError | ValidationError> {
-    const trimmed =
-        typeof rawDocumentId === "string" && rawDocumentId.trim().length > 0 ? rawDocumentId.trim() : undefined;
+    const trimmed = typeof rawDocumentId === "string" && rawDocumentId.trim().length > 0 ? rawDocumentId.trim() : undefined;
 
     if (!trimmed) {
         return Effect.succeed<ResolvedDocumentLinkage>({
@@ -96,8 +95,16 @@ export function createChunk(
         ),
         Effect.tap(() => {
             if (body.tags && body.tags.length > 0) {
-                return Effect.all(body.tags.map(name => findOrCreateTag(name, userId)), { concurrency: 5 }).pipe(
-                    Effect.flatMap(tags => setChunkTags(id, tags.map(t => t.id)))
+                return Effect.all(
+                    body.tags.map(name => findOrCreateTag(name, userId)),
+                    { concurrency: 5 }
+                ).pipe(
+                    Effect.flatMap(tags =>
+                        setChunkTags(
+                            id,
+                            tags.map(t => t.id)
+                        )
+                    )
                 );
             }
             return Effect.void;
@@ -183,8 +190,16 @@ export function updateChunk(
         }),
         Effect.tap(() => {
             if (body.tags) {
-                return Effect.all(body.tags.map(name => findOrCreateTag(name, userId)), { concurrency: 5 }).pipe(
-                    Effect.flatMap(tags => setChunkTags(chunkId, tags.map(t => t.id)))
+                return Effect.all(
+                    body.tags.map(name => findOrCreateTag(name, userId)),
+                    { concurrency: 5 }
+                ).pipe(
+                    Effect.flatMap(tags =>
+                        setChunkTags(
+                            chunkId,
+                            tags.map(t => t.id)
+                        )
+                    )
                 );
             }
             return Effect.void;
@@ -201,9 +216,7 @@ export function updateChunk(
                     logger.error(`[enrich] Failed to re-enrich chunk ${chunkId}:`, { err });
                 });
                 // Fire-and-forget: flag upstream and downstream chunks as potentially stale
-                Effect.runPromise(
-                    flagBidirectionalImpact(chunkId, body.title ?? "Unknown", userId)
-                ).catch(() => {});
+                Effect.runPromise(flagBidirectionalImpact(chunkId, body.title ?? "Unknown", userId)).catch(() => {});
             }
             events.emit(EVENTS.CHUNK_UPDATED, { chunkId, userId });
             return Effect.void;

@@ -27,9 +27,7 @@ export function createVersion(params: CreateVersionParams) {
 }
 
 export function getVersionsByChunkId(chunkId: string) {
-    return dbEffect(() =>
-        db.select().from(chunkVersion).where(eq(chunkVersion.chunkId, chunkId)).orderBy(desc(chunkVersion.version))
-    );
+    return dbEffect(() => db.select().from(chunkVersion).where(eq(chunkVersion.chunkId, chunkId)).orderBy(desc(chunkVersion.version)));
 }
 
 export function getNextVersionNumber(chunkId: string) {
@@ -44,10 +42,7 @@ export function getNextVersionNumber(chunkId: string) {
 
 export function getVersionsByTag(tag: string, userId: string, spaceId?: string) {
     return dbEffect(async () => {
-        const conditions = [
-            eq(chunkVersion.updateTag, tag),
-            eq(chunk.userId, userId)
-        ];
+        const conditions = [eq(chunkVersion.updateTag, tag), eq(chunk.userId, userId)];
         if (spaceId) {
             conditions.push(
                 sql`EXISTS (SELECT 1 FROM chunk_space WHERE chunk_space.chunk_id = ${chunkVersion.chunkId} AND chunk_space.space_id = ${spaceId})`
@@ -74,7 +69,7 @@ export function getVersionsByTag(tag: string, userId: string, spaceId?: string) 
                 chunkRationale: chunk.rationale,
                 chunkAlternatives: chunk.alternatives,
                 chunkConsequences: chunk.consequences,
-                chunkScope: chunk.scope,
+                chunkScope: chunk.scope
             })
             .from(chunkVersion)
             .innerJoin(chunk, eq(chunk.id, chunkVersion.chunkId))
@@ -87,10 +82,7 @@ export function getVersionsByTag(tag: string, userId: string, spaceId?: string) 
 
 export function getDistinctUpdateTags(userId: string, spaceId?: string) {
     return dbEffect(async () => {
-        const conditions = [
-            isNotNull(chunkVersion.updateTag),
-            eq(chunk.userId, userId)
-        ];
+        const conditions = [isNotNull(chunkVersion.updateTag), eq(chunk.userId, userId)];
         if (spaceId) {
             conditions.push(
                 sql`EXISTS (SELECT 1 FROM chunk_space WHERE chunk_space.chunk_id = ${chunkVersion.chunkId} AND chunk_space.space_id = ${spaceId})`
@@ -100,7 +92,7 @@ export function getDistinctUpdateTags(userId: string, spaceId?: string) {
         const result = await db
             .select({
                 tag: chunkVersion.updateTag,
-                count: sql<number>`count(*)`.as("count"),
+                count: sql<number>`count(*)`.as("count")
             })
             .from(chunkVersion)
             .innerJoin(chunk, eq(chunk.id, chunkVersion.chunkId))

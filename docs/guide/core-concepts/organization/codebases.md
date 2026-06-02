@@ -1,7 +1,7 @@
 ---
 tags:
-  - guide
-  - codebases
+    - guide
+    - codebases
 description: Per-project knowledge scoping with codebases
 ---
 

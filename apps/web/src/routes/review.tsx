@@ -20,12 +20,12 @@ function ReviewPage() {
             const query: Record<string, string> = {};
             if (statusFilter !== "all") query.status = statusFilter;
             return api.api.proposals.get({ query });
-        },
+        }
     });
 
     const countQuery = useApiQuery<any>({
         queryKey: ["proposals-count"],
-        queryFn: () => api.api.proposals.count.get(),
+        queryFn: () => api.api.proposals.count.get()
     });
 
     const bulkApproveMutation = useMutation({
@@ -37,7 +37,7 @@ function ReviewPage() {
         onSuccess: () => {
             void proposalsQuery.refetch();
             void countQuery.refetch();
-        },
+        }
     });
 
     const bulkRejectMutation = useMutation({
@@ -49,7 +49,7 @@ function ReviewPage() {
         onSuccess: () => {
             void proposalsQuery.refetch();
             void countQuery.refetch();
-        },
+        }
     });
 
     const proposals = (proposalsQuery.data ?? []) as Proposal[];
@@ -65,19 +65,11 @@ function ReviewPage() {
 
     return (
         <PageContainer>
-            <PageHeader
-                title="Review Queue"
-                description={`${pendingCount} proposal${pendingCount === 1 ? "" : "s"} waiting for review`}
-            />
+            <PageHeader title="Review Queue" description={`${pendingCount} proposal${pendingCount === 1 ? "" : "s"} waiting for review`} />
             <div className="mb-4 flex items-center justify-between">
                 <div className="flex gap-1">
                     {STATUS_OPTIONS.map(s => (
-                        <Button
-                            key={s}
-                            size="sm"
-                            variant={statusFilter === s ? "default" : "ghost"}
-                            onClick={() => setStatusFilter(s)}
-                        >
+                        <Button key={s} size="sm" variant={statusFilter === s ? "default" : "ghost"} onClick={() => setStatusFilter(s)}>
                             {s.charAt(0).toUpperCase() + s.slice(1)}
                         </Button>
                     ))}
@@ -108,7 +100,7 @@ function ReviewPage() {
             {proposalsQuery.isLoading ? (
                 <PageLoading />
             ) : proposals.length === 0 ? (
-                <div className="rounded-md border border-dashed p-8 text-center text-sm text-muted-foreground">
+                <div className="text-muted-foreground rounded-md border border-dashed p-8 text-center text-sm">
                     No proposals waiting for review
                 </div>
             ) : (

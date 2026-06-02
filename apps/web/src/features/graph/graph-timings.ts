@@ -24,11 +24,7 @@ export function mark(name: string) {
 export function measure(name: string, startMark: string, endMark: string) {
     if (!isDev || typeof performance === "undefined") return;
     try {
-        const entry = performance.measure(
-            `${PREFIX}:${name}`,
-            `${PREFIX}:${startMark}`,
-            `${PREFIX}:${endMark}`
-        );
+        const entry = performance.measure(`${PREFIX}:${name}`, `${PREFIX}:${startMark}`, `${PREFIX}:${endMark}`);
         // eslint-disable-next-line no-console
         console.log(`[${PREFIX}] ${name}: ${Math.round(entry.duration)}ms`);
     } catch {

@@ -89,7 +89,7 @@ export function MobileNav() {
                     onClick={() => setManageOpen(!manageOpen)}
                     className="flex w-full items-center justify-between px-5 pt-3 pb-1"
                 >
-                    <span className="text-muted-foreground text-xs font-medium uppercase tracking-wide">Manage</span>
+                    <span className="text-muted-foreground text-xs font-medium tracking-wide uppercase">Manage</span>
                     <ChevronDown className={`text-muted-foreground size-3.5 transition-transform ${manageOpen ? "rotate-180" : ""}`} />
                 </button>
                 {manageOpen && (

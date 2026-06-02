@@ -1,7 +1,7 @@
 ---
 tags:
-  - guide
-  - overview
+    - guide
+    - overview
 description: Top-level index for the fubbik user guide
 ---
 
@@ -12,10 +12,12 @@ Complete documentation for using the fubbik knowledge framework.
 ## Sections
 
 ### [Getting Started](./getting-started/)
+
 - Installation, configuration, and quick start
 - Environment variables, database setup, and Ollama
 
 ### [Core Concepts](./core-concepts/)
+
 - **Chunks** — types, tags, file references, health scores, and AI enrichment
 - **Connections** — relation types, creation methods, and best practices
 - **Organization** — codebases, workspaces, and scoping rules
@@ -23,6 +25,7 @@ Complete documentation for using the fubbik knowledge framework.
 - **Scope Registry** — optional metadata schema validation
 
 ### [Features](./features/)
+
 - **Search** — full-text, semantic, and federated
 - **Graph** — layouts, filtering, path finding
 - **AI** — enrichment, context export, duplicate detection
@@ -36,12 +39,14 @@ Complete documentation for using the fubbik knowledge framework.
 - **Activity** — audit log, vocabulary, collections, settings, learning paths
 
 ### [Operations](./operations/)
+
 - **CLI** — chunk, context, plan, codebase, and document commands
 - **Import/Export** — JSON, markdown, and structured documents
 - **Integrations** — MCP server, VS Code extension, REST API
 - **PostgreSQL** — upgrade procedures
 
 ### [Architecture](./architecture/)
+
 - **Backend** — repository/service/route pattern, error handling
 - **Frontend** — routing, data fetching, component patterns
 - **Database** — schema overview, pgvector, pg_trgm

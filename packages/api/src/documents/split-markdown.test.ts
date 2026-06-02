@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { splitMarkdown } from "./split-markdown";
 
 describe("splitMarkdown", () => {
@@ -95,7 +96,7 @@ describe("splitMarkdown", () => {
             "> - Session cookies",
             "> - OAuth tokens",
             "",
-            "> **Consequences:** Requires token refresh logic.",
+            "> **Consequences:** Requires token refresh logic."
         ].join("\n");
         const result = splitMarkdown(md, "test.md");
         expect(result.sections).toHaveLength(1);
@@ -113,7 +114,7 @@ describe("splitMarkdown", () => {
             "",
             "> This is a regular blockquote in the middle.",
             "",
-            "More content after the blockquote.",
+            "More content after the blockquote."
         ].join("\n");
         const result = splitMarkdown(md, "test.md");
         expect(result.sections[0]!.content).toContain("> This is a regular blockquote");
@@ -122,15 +123,7 @@ describe("splitMarkdown", () => {
     });
 
     it("handles partial decision context (only rationale)", () => {
-        const md = [
-            "# Doc",
-            "",
-            "## Design",
-            "",
-            "We chose X.",
-            "",
-            "> **Rationale:** Because Y.",
-        ].join("\n");
+        const md = ["# Doc", "", "## Design", "", "We chose X.", "", "> **Rationale:** Because Y."].join("\n");
         const result = splitMarkdown(md, "test.md");
         expect(result.sections[0]!.content).toBe("We chose X.");
         expect(result.sections[0]!.rationale).toBe("Because Y.");

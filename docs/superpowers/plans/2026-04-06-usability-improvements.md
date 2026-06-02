@@ -1,10 +1,14 @@
 # Usability Improvements Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to
+> implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Make Fubbik proactively surface stale chunks, improve relationship visibility in the graph and detail pages, and enable fast knowledge capture from the command palette and CLI.
+**Goal:** Make Fubbik proactively surface stale chunks, improve relationship visibility in the graph and detail pages, and enable fast
+knowledge capture from the command palette and CLI.
 
-**Architecture:** Three independent feature areas: (1) staleness detection with a new `chunk_staleness` DB table, backend service, and UI surfacing across dashboard/nav/detail; (2) relationship improvements via inline dependency views, graph focus mode, and filter presets; (3) quick capture via command palette instant-create, clipboard pre-fill shortcut, and CLI `quick` command.
+**Architecture:** Three independent feature areas: (1) staleness detection with a new `chunk_staleness` DB table, backend service, and UI
+surfacing across dashboard/nav/detail; (2) relationship improvements via inline dependency views, graph focus mode, and filter presets; (3)
+quick capture via command palette instant-create, clipboard pre-fill shortcut, and CLI `quick` command.
 
 **Tech Stack:** Drizzle ORM, Effect, Elysia, TanStack Router/Query, React Flow, Commander.js, shadcn-ui
 
@@ -15,6 +19,7 @@
 ### Task 1: Staleness Schema & Migration
 
 **Files:**
+
 - Create: `packages/db/src/schema/staleness.ts`
 - Modify: `packages/db/src/schema/index.ts`
 
@@ -42,18 +47,18 @@ export const chunkStaleness = pgTable(
         detectedAt: timestamp("detected_at").defaultNow().notNull(),
         dismissedAt: timestamp("dismissed_at"),
         dismissedBy: text("dismissed_by").references(() => user.id, { onDelete: "set null" }),
-        suppressPair: text("suppress_pair"), // for permanently suppressing duplicate pairs (sorted id pair)
+        suppressPair: text("suppress_pair") // for permanently suppressing duplicate pairs (sorted id pair)
     },
     table => [
         index("staleness_chunkId_idx").on(table.chunkId),
         index("staleness_reason_idx").on(table.reason),
-        index("staleness_dismissedAt_idx").on(table.dismissedAt),
+        index("staleness_dismissedAt_idx").on(table.dismissedAt)
     ]
 );
 
 export const stalenessRelations = relations(chunkStaleness, ({ one }) => ({
     chunk: one(chunk, { fields: [chunkStaleness.chunkId], references: [chunk.id] }),
-    relatedChunk: one(chunk, { fields: [chunkStaleness.relatedChunkId], references: [chunk.id] }),
+    relatedChunk: one(chunk, { fields: [chunkStaleness.relatedChunkId], references: [chunk.id] })
 }));
 
 export const stalenessScan = pgTable(
@@ -64,25 +69,23 @@ export const stalenessScan = pgTable(
             .notNull()
             .references(() => codebase.id, { onDelete: "cascade" }),
         lastCommitSha: text("last_commit_sha").notNull(),
-        scannedAt: timestamp("scanned_at").defaultNow().notNull(),
+        scannedAt: timestamp("scanned_at").defaultNow().notNull()
     },
-    table => [
-        index("staleness_scan_codebaseId_idx").on(table.codebaseId),
-    ]
+    table => [index("staleness_scan_codebaseId_idx").on(table.codebaseId)]
 );
 ```
 
 - [ ] **Step 2: Export from schema index**
 
 Add to `packages/db/src/schema/index.ts`:
+
 ```typescript
 export * from "./staleness";
 ```
 
 - [ ] **Step 3: Push the schema**
 
-Run: `pnpm db:push`
-Expected: Tables `chunk_staleness` and `staleness_scan` created successfully.
+Run: `pnpm db:push` Expected: Tables `chunk_staleness` and `staleness_scan` created successfully.
 
 - [ ] **Step 4: Commit**
 
@@ -96,6 +99,7 @@ git commit -m "feat(db): add chunk_staleness and staleness_scan tables"
 ### Task 2: Staleness Repository
 
 **Files:**
+
 - Create: `packages/db/src/repository/staleness.ts`
 - Modify: `packages/db/src/repository/index.ts`
 
@@ -115,14 +119,13 @@ import { chunkCodebase } from "../schema/codebase";
 export function getStaleFlags(userId: string, params?: { reason?: string; codebaseId?: string; limit?: number }) {
     return Effect.tryPromise({
         try: async () => {
-            const conditions = [
-                eq(chunk.userId, userId),
-                isNull(chunkStaleness.dismissedAt),
-                isNull(chunkStaleness.suppressPair),
-            ];
+            const conditions = [eq(chunk.userId, userId), isNull(chunkStaleness.dismissedAt), isNull(chunkStaleness.suppressPair)];
             if (params?.reason) conditions.push(eq(chunkStaleness.reason, params.reason));
             if (params?.codebaseId) {
-                const inCodebase = db.select({ chunkId: chunkCodebase.chunkId }).from(chunkCodebase).where(eq(chunkCodebase.codebaseId, params.codebaseId));
+                const inCodebase = db
+                    .select({ chunkId: chunkCodebase.chunkId })
+                    .from(chunkCodebase)
+                    .where(eq(chunkCodebase.codebaseId, params.codebaseId));
                 conditions.push(sql`${chunkStaleness.chunkId} IN (${inCodebase})`);
             }
 
@@ -135,7 +138,7 @@ export function getStaleFlags(userId: string, params?: { reason?: string; codeba
                     reason: chunkStaleness.reason,
                     detail: chunkStaleness.detail,
                     relatedChunkId: chunkStaleness.relatedChunkId,
-                    detectedAt: chunkStaleness.detectedAt,
+                    detectedAt: chunkStaleness.detectedAt
                 })
                 .from(chunkStaleness)
                 .innerJoin(chunk, eq(chunkStaleness.chunkId, chunk.id))
@@ -145,20 +148,19 @@ export function getStaleFlags(userId: string, params?: { reason?: string; codeba
 
             return flags;
         },
-        catch: cause => new DatabaseError({ cause }),
+        catch: cause => new DatabaseError({ cause })
     });
 }
 
 export function getStaleCount(userId: string, codebaseId?: string) {
     return Effect.tryPromise({
         try: async () => {
-            const conditions = [
-                eq(chunk.userId, userId),
-                isNull(chunkStaleness.dismissedAt),
-                isNull(chunkStaleness.suppressPair),
-            ];
+            const conditions = [eq(chunk.userId, userId), isNull(chunkStaleness.dismissedAt), isNull(chunkStaleness.suppressPair)];
             if (codebaseId) {
-                const inCodebase = db.select({ chunkId: chunkCodebase.chunkId }).from(chunkCodebase).where(eq(chunkCodebase.codebaseId, codebaseId));
+                const inCodebase = db
+                    .select({ chunkId: chunkCodebase.chunkId })
+                    .from(chunkCodebase)
+                    .where(eq(chunkCodebase.codebaseId, codebaseId));
                 conditions.push(sql`${chunkStaleness.chunkId} IN (${inCodebase})`);
             }
             const result = await db
@@ -168,7 +170,7 @@ export function getStaleCount(userId: string, codebaseId?: string) {
                 .where(and(...conditions));
             return Number(result[0]?.count ?? 0);
         },
-        catch: cause => new DatabaseError({ cause }),
+        catch: cause => new DatabaseError({ cause })
     });
 }
 
@@ -180,7 +182,7 @@ export function getStaleFlagsForChunk(chunkId: string) {
                 .from(chunkStaleness)
                 .where(and(eq(chunkStaleness.chunkId, chunkId), isNull(chunkStaleness.dismissedAt), isNull(chunkStaleness.suppressPair)));
         },
-        catch: cause => new DatabaseError({ cause }),
+        catch: cause => new DatabaseError({ cause })
     });
 }
 
@@ -189,7 +191,7 @@ export function createStaleFlag(data: { id: string; chunkId: string; reason: str
         try: async () => {
             await db.insert(chunkStaleness).values(data).onConflictDoNothing();
         },
-        catch: cause => new DatabaseError({ cause }),
+        catch: cause => new DatabaseError({ cause })
     });
 }
 
@@ -198,7 +200,7 @@ export function dismissStaleFlag(flagId: string, userId: string) {
         try: async () => {
             await db.update(chunkStaleness).set({ dismissedAt: new Date(), dismissedBy: userId }).where(eq(chunkStaleness.id, flagId));
         },
-        catch: cause => new DatabaseError({ cause }),
+        catch: cause => new DatabaseError({ cause })
     });
 }
 
@@ -206,14 +208,17 @@ export function suppressDuplicatePair(chunkIdA: string, chunkIdB: string) {
     const pairKey = [chunkIdA, chunkIdB].sort().join(":");
     return Effect.tryPromise({
         try: async () => {
-            await db.update(chunkStaleness).set({ suppressPair: pairKey }).where(
-                and(
-                    sql`${chunkStaleness.suppressPair} IS NULL`,
-                    sql`(${chunkStaleness.chunkId} = ${chunkIdA} AND ${chunkStaleness.relatedChunkId} = ${chunkIdB}) OR (${chunkStaleness.chunkId} = ${chunkIdB} AND ${chunkStaleness.relatedChunkId} = ${chunkIdA})`
-                )
-            );
+            await db
+                .update(chunkStaleness)
+                .set({ suppressPair: pairKey })
+                .where(
+                    and(
+                        sql`${chunkStaleness.suppressPair} IS NULL`,
+                        sql`(${chunkStaleness.chunkId} = ${chunkIdA} AND ${chunkStaleness.relatedChunkId} = ${chunkIdB}) OR (${chunkStaleness.chunkId} = ${chunkIdB} AND ${chunkStaleness.relatedChunkId} = ${chunkIdA})`
+                    )
+                );
         },
-        catch: cause => new DatabaseError({ cause }),
+        catch: cause => new DatabaseError({ cause })
     });
 }
 
@@ -228,7 +233,7 @@ export function getLastScan(codebaseId: string) {
                 .limit(1);
             return rows[0] ?? null;
         },
-        catch: cause => new DatabaseError({ cause }),
+        catch: cause => new DatabaseError({ cause })
     });
 }
 
@@ -237,7 +242,7 @@ export function upsertScan(data: { id: string; codebaseId: string; lastCommitSha
         try: async () => {
             await db.insert(stalenessScan).values(data).onConflictDoNothing();
         },
-        catch: cause => new DatabaseError({ cause }),
+        catch: cause => new DatabaseError({ cause })
     });
 }
 ```
@@ -245,6 +250,7 @@ export function upsertScan(data: { id: string; codebaseId: string; lastCommitSha
 - [ ] **Step 2: Export from repository index**
 
 Add to `packages/db/src/repository/index.ts`:
+
 ```typescript
 export * from "./staleness";
 ```
@@ -261,6 +267,7 @@ git commit -m "feat(db): add staleness repository with flag CRUD and scan tracki
 ### Task 3: Staleness API Routes
 
 **Files:**
+
 - Create: `packages/api/src/staleness/routes.ts`
 - Create: `packages/api/src/staleness/service.ts`
 - Modify: `packages/api/src/index.ts`
@@ -294,7 +301,7 @@ export const stalenessRoutes = new Elysia()
                         stalenessService.getStaleFlags(session.user.id, {
                             reason: ctx.query.reason,
                             codebaseId: ctx.query.codebaseId,
-                            limit: ctx.query.limit ? Number(ctx.query.limit) : undefined,
+                            limit: ctx.query.limit ? Number(ctx.query.limit) : undefined
                         })
                     )
                 )
@@ -303,55 +310,43 @@ export const stalenessRoutes = new Elysia()
             query: t.Object({
                 reason: t.Optional(t.String()),
                 codebaseId: t.Optional(t.String()),
-                limit: t.Optional(t.String()),
-            }),
+                limit: t.Optional(t.String())
+            })
         }
     )
     .get(
         "/chunks/stale/count",
         ctx =>
             Effect.runPromise(
-                requireSession(ctx).pipe(
-                    Effect.flatMap(session =>
-                        stalenessService.getStaleCount(session.user.id, ctx.query.codebaseId)
-                    )
-                )
+                requireSession(ctx).pipe(Effect.flatMap(session => stalenessService.getStaleCount(session.user.id, ctx.query.codebaseId)))
             ),
         {
             query: t.Object({
-                codebaseId: t.Optional(t.String()),
-            }),
+                codebaseId: t.Optional(t.String())
+            })
         }
     )
     .post(
         "/chunks/:id/dismiss-staleness",
         ctx =>
             Effect.runPromise(
-                requireSession(ctx).pipe(
-                    Effect.flatMap(session =>
-                        stalenessService.dismissStaleFlag(ctx.params.id, session.user.id)
-                    )
-                )
+                requireSession(ctx).pipe(Effect.flatMap(session => stalenessService.dismissStaleFlag(ctx.params.id, session.user.id)))
             ),
         {
-            params: t.Object({ id: t.String() }),
+            params: t.Object({ id: t.String() })
         }
     )
     .post(
         "/chunks/suppress-duplicate",
         ctx =>
             Effect.runPromise(
-                requireSession(ctx).pipe(
-                    Effect.flatMap(() =>
-                        stalenessService.suppressDuplicatePair(ctx.body.chunkIdA, ctx.body.chunkIdB)
-                    )
-                )
+                requireSession(ctx).pipe(Effect.flatMap(() => stalenessService.suppressDuplicatePair(ctx.body.chunkIdA, ctx.body.chunkIdB)))
             ),
         {
             body: t.Object({
                 chunkIdA: t.String(),
-                chunkIdB: t.String(),
-            }),
+                chunkIdB: t.String()
+            })
         }
     );
 ```
@@ -359,6 +354,7 @@ export const stalenessRoutes = new Elysia()
 - [ ] **Step 3: Register routes in the API index**
 
 Add to `packages/api/src/index.ts` — import and `.use()`:
+
 ```typescript
 import { stalenessRoutes } from "./staleness/routes";
 // ... in the .use() chain:
@@ -367,8 +363,7 @@ import { stalenessRoutes } from "./staleness/routes";
 
 - [ ] **Step 4: Verify the server starts**
 
-Run: `cd packages/api && pnpm build` (or `pnpm dev` and hit `/api/chunks/stale`)
-Expected: No compilation errors, endpoint returns `[]`.
+Run: `cd packages/api && pnpm build` (or `pnpm dev` and hit `/api/chunks/stale`) Expected: No compilation errors, endpoint returns `[]`.
 
 - [ ] **Step 5: Commit**
 
@@ -382,6 +377,7 @@ git commit -m "feat(api): add staleness API routes (list, count, dismiss, suppre
 ### Task 4: Age-Based Staleness Detection
 
 **Files:**
+
 - Create: `packages/api/src/staleness/detect-age.ts`
 - Modify: `packages/api/src/staleness/service.ts`
 - Modify: `packages/api/src/staleness/routes.ts`
@@ -405,13 +401,12 @@ export function detectAgeStaleChunks(userId: string, codebaseId?: string, thresh
         try: async () => {
             const threshold = sql`NOW() - INTERVAL '${sql.raw(String(thresholdDays))} days'`;
 
-            const conditions = [
-                eq(chunk.userId, userId),
-                lt(chunk.updatedAt, threshold),
-                isNull(chunk.archivedAt),
-            ];
+            const conditions = [eq(chunk.userId, userId), lt(chunk.updatedAt, threshold), isNull(chunk.archivedAt)];
             if (codebaseId) {
-                const inCodebase = db.select({ chunkId: chunkCodebase.chunkId }).from(chunkCodebase).where(eq(chunkCodebase.codebaseId, codebaseId));
+                const inCodebase = db
+                    .select({ chunkId: chunkCodebase.chunkId })
+                    .from(chunkCodebase)
+                    .where(eq(chunkCodebase.codebaseId, codebaseId));
                 conditions.push(sql`${chunk.id} IN (${inCodebase})`);
             }
 
@@ -433,7 +428,7 @@ export function detectAgeStaleChunks(userId: string, codebaseId?: string, thresh
                 id: nanoid(),
                 chunkId: c.id,
                 reason: "age" as const,
-                detail: `Last updated ${c.updatedAt.toISOString().split("T")[0]}`,
+                detail: `Last updated ${c.updatedAt.toISOString().split("T")[0]}`
             }));
 
             if (flags.length > 0) {
@@ -442,7 +437,7 @@ export function detectAgeStaleChunks(userId: string, codebaseId?: string, thresh
 
             return { flagged: flags.length };
         },
-        catch: cause => new DatabaseError({ cause }),
+        catch: cause => new DatabaseError({ cause })
     });
 }
 ```
@@ -450,6 +445,7 @@ export function detectAgeStaleChunks(userId: string, codebaseId?: string, thresh
 - [ ] **Step 2: Add scan trigger route**
 
 Add to `packages/api/src/staleness/routes.ts`:
+
 ```typescript
 import { detectAgeStaleChunks } from "./detect-age";
 
@@ -475,8 +471,8 @@ import { detectAgeStaleChunks } from "./detect-age";
 
 - [ ] **Step 3: Verify scan works**
 
-Run: `curl -X POST http://localhost:3000/api/chunks/stale/scan-age -H "Content-Type: application/json" -d '{}'`
-Expected: `{"flagged": N}` where N is the count of chunks older than 90 days.
+Run: `curl -X POST http://localhost:3000/api/chunks/stale/scan-age -H "Content-Type: application/json" -d '{}'` Expected: `{"flagged": N}`
+where N is the count of chunks older than 90 days.
 
 - [ ] **Step 4: Commit**
 
@@ -490,6 +486,7 @@ git commit -m "feat(staleness): add age-based staleness detection (90-day thresh
 ### Task 5: Dashboard "Attention Needed" Widget
 
 **Files:**
+
 - Create: `apps/web/src/features/staleness/attention-needed.tsx`
 - Modify: `apps/web/src/routes/dashboard.tsx`
 
@@ -510,7 +507,7 @@ import { unwrapEden } from "@/utils/eden";
 const REASON_CONFIG = {
     file_changed: { icon: GitCommit, label: "Files changed", color: "text-amber-500" },
     age: { icon: Clock, label: "Getting old", color: "text-orange-500" },
-    diverged_duplicate: { icon: Copy, label: "Possible duplicate", color: "text-blue-500" },
+    diverged_duplicate: { icon: Copy, label: "Possible duplicate", color: "text-blue-500" }
 } as const;
 
 export function AttentionNeeded() {
@@ -518,7 +515,7 @@ export function AttentionNeeded() {
 
     const staleQuery = useQuery({
         queryKey: ["stale-chunks"],
-        queryFn: async () => unwrapEden(await api.api.chunks.stale.get({ query: { limit: "10" } })),
+        queryFn: async () => unwrapEden(await api.api.chunks.stale.get({ query: { limit: "10" } }))
     });
 
     const dismissMutation = useMutation({
@@ -529,7 +526,7 @@ export function AttentionNeeded() {
             queryClient.invalidateQueries({ queryKey: ["stale-chunks"] });
             queryClient.invalidateQueries({ queryKey: ["stale-count"] });
             toast.success("Dismissed");
-        },
+        }
     });
 
     const flags = staleQuery.data ?? [];
@@ -548,7 +545,9 @@ export function AttentionNeeded() {
             <div className="mb-3 flex items-center gap-2">
                 <AlertTriangle className="size-4 text-amber-500" />
                 <h3 className="text-sm font-semibold">Attention Needed</h3>
-                <Badge variant="secondary" size="sm">{flags.length}</Badge>
+                <Badge variant="secondary" size="sm">
+                    {flags.length}
+                </Badge>
             </div>
             <div className="space-y-3">
                 {Array.from(grouped.entries()).map(([reason, items]) => {
@@ -596,19 +595,19 @@ export function AttentionNeeded() {
 
 - [ ] **Step 2: Add to dashboard page**
 
-In `apps/web/src/routes/dashboard.tsx`, import and render `AttentionNeeded` near the top of the dashboard content (after the welcome wizard, before stats):
+In `apps/web/src/routes/dashboard.tsx`, import and render `AttentionNeeded` near the top of the dashboard content (after the welcome wizard,
+before stats):
 
 ```tsx
 import { AttentionNeeded } from "@/features/staleness/attention-needed";
 
 // In the JSX, add before the stats section:
-<AttentionNeeded />
+<AttentionNeeded />;
 ```
 
 - [ ] **Step 3: Verify visually**
 
-Run: `pnpm dev`, navigate to `/dashboard`.
-Expected: If there are stale flags, the amber widget appears. If none, nothing renders.
+Run: `pnpm dev`, navigate to `/dashboard`. Expected: If there are stale flags, the amber widget appears. If none, nothing renders.
 
 - [ ] **Step 4: Commit**
 
@@ -622,6 +621,7 @@ git commit -m "feat(dashboard): add Attention Needed widget for stale chunks"
 ### Task 6: Nav Badge for Stale Count
 
 **Files:**
+
 - Create: `apps/web/src/features/staleness/use-stale-count.ts`
 - Modify: `apps/web/src/routes/__root.tsx`
 
@@ -637,7 +637,7 @@ export function useStaleCount() {
     const query = useQuery({
         queryKey: ["stale-count"],
         queryFn: async () => unwrapEden(await api.api.chunks.stale.count.get({ query: {} })),
-        refetchInterval: 5 * 60 * 1000, // refresh every 5 min
+        refetchInterval: 5 * 60 * 1000 // refresh every 5 min
     });
     return query.data ?? 0;
 }
@@ -661,13 +661,12 @@ const staleCount = useStaleCount();
             {staleCount > 9 ? "9+" : staleCount}
         </span>
     )}
-</Link>
+</Link>;
 ```
 
 - [ ] **Step 3: Verify visually**
 
-Run: `pnpm dev`, check the nav bar.
-Expected: Amber badge shows on Dashboard link when stale chunks exist.
+Run: `pnpm dev`, check the nav bar. Expected: Amber badge shows on Dashboard link when stale chunks exist.
 
 - [ ] **Step 4: Commit**
 
@@ -681,6 +680,7 @@ git commit -m "feat(nav): add stale chunk count badge on Dashboard link"
 ### Task 7: Chunk Detail Staleness Banner
 
 **Files:**
+
 - Create: `apps/web/src/features/staleness/staleness-banner.tsx`
 - Modify: `apps/web/src/routes/chunks.$chunkId.tsx`
 
@@ -700,7 +700,7 @@ import { unwrapEden } from "@/utils/eden";
 const REASON_ICONS = {
     file_changed: GitCommit,
     age: Clock,
-    diverged_duplicate: Copy,
+    diverged_duplicate: Copy
 } as const;
 
 function formatReason(flag: { reason: string; detail?: string | null; relatedChunkId?: string | null }) {
@@ -723,7 +723,7 @@ export function StalenessBanner({ chunkId }: { chunkId: string }) {
         queryKey: ["staleness-flags", chunkId],
         queryFn: async () => unwrapEden(await api.api.chunks.stale.get({ query: { limit: "5" } })),
         select: (data: Array<{ id: string; chunkId: string; reason: string; detail?: string | null; relatedChunkId?: string | null }>) =>
-            data.filter(f => f.chunkId === chunkId),
+            data.filter(f => f.chunkId === chunkId)
     });
 
     const dismissMutation = useMutation({
@@ -735,7 +735,7 @@ export function StalenessBanner({ chunkId }: { chunkId: string }) {
             queryClient.invalidateQueries({ queryKey: ["stale-chunks"] });
             queryClient.invalidateQueries({ queryKey: ["stale-count"] });
             toast.success("Dismissed");
-        },
+        }
     });
 
     const flags = flagsQuery.data ?? [];
@@ -779,19 +779,20 @@ export function StalenessBanner({ chunkId }: { chunkId: string }) {
 
 - [ ] **Step 2: Add banner to chunk detail page**
 
-In `apps/web/src/routes/chunks.$chunkId.tsx`, import and render `StalenessBanner` at the top of the chunk detail content (after the header, before the content area):
+In `apps/web/src/routes/chunks.$chunkId.tsx`, import and render `StalenessBanner` at the top of the chunk detail content (after the header,
+before the content area):
 
 ```tsx
 import { StalenessBanner } from "@/features/staleness/staleness-banner";
 
 // In the JSX, near the top of the detail:
-<StalenessBanner chunkId={chunkId} />
+<StalenessBanner chunkId={chunkId} />;
 ```
 
 - [ ] **Step 3: Verify visually**
 
-Run: `pnpm dev`, navigate to a chunk that has staleness flags.
-Expected: Amber banner(s) appear at the top of the detail page with dismiss buttons.
+Run: `pnpm dev`, navigate to a chunk that has staleness flags. Expected: Amber banner(s) appear at the top of the detail page with dismiss
+buttons.
 
 - [ ] **Step 4: Commit**
 
@@ -807,6 +808,7 @@ git commit -m "feat(chunks): add staleness warning banner on chunk detail page"
 ### Task 8: Chunk Detail Dependency Tree
 
 **Files:**
+
 - Create: `apps/web/src/features/chunks/dependency-tree.tsx`
 - Modify: `apps/web/src/routes/chunks.$chunkId.tsx`
 
@@ -851,7 +853,7 @@ const RELATION_LABELS: Record<string, string> = {
     supports: "Supports",
     contradicts: "Contradicts",
     alternative_to: "Alternative to",
-    related_to: "Related to",
+    related_to: "Related to"
 };
 
 export function DependencyTree({ chunkId, connections }: DependencyTreeProps) {
@@ -874,7 +876,9 @@ export function DependencyTree({ chunkId, connections }: DependencyTreeProps) {
                     <div className="space-y-3">
                         {Array.from(outgoingGroups.entries()).map(([relation, conns]) => (
                             <div key={relation}>
-                                <Badge variant="outline" size="sm" className="mb-1.5">{RELATION_LABELS[relation] ?? relation}</Badge>
+                                <Badge variant="outline" size="sm" className="mb-1.5">
+                                    {RELATION_LABELS[relation] ?? relation}
+                                </Badge>
                                 <div className="space-y-1 pl-2 border-l-2 border-muted">
                                     {conns.map(c => (
                                         <Link
@@ -901,7 +905,9 @@ export function DependencyTree({ chunkId, connections }: DependencyTreeProps) {
                     <div className="space-y-3">
                         {Array.from(incomingGroups.entries()).map(([relation, conns]) => (
                             <div key={relation}>
-                                <Badge variant="outline" size="sm" className="mb-1.5">{RELATION_LABELS[relation] ?? relation}</Badge>
+                                <Badge variant="outline" size="sm" className="mb-1.5">
+                                    {RELATION_LABELS[relation] ?? relation}
+                                </Badge>
                                 <div className="space-y-1 pl-2 border-l-2 border-muted">
                                     {conns.map(c => (
                                         <Link
@@ -932,7 +938,7 @@ In `apps/web/src/routes/chunks.$chunkId.tsx`, replace or augment the existing co
 import { DependencyTree } from "@/features/chunks/dependency-tree";
 
 // Replace the flat connections list with:
-<DependencyTree chunkId={chunkId} connections={chunk.connections} />
+<DependencyTree chunkId={chunkId} connections={chunk.connections} />;
 ```
 
 - [ ] **Step 3: Verify visually**
@@ -951,6 +957,7 @@ git commit -m "feat(chunks): replace flat connections with grouped dependency tr
 ### Task 9: Graph Focus Mode
 
 **Files:**
+
 - Modify: `apps/web/src/features/graph/graph-view.tsx`
 - Modify: `apps/web/src/features/graph/graph-node.tsx`
 
@@ -984,14 +991,17 @@ function getNodesWithinHops(nodeId: string, edges: Edge[], maxHops: number): Set
 }
 
 // In the onNodeClick handler, toggle focus mode:
-const onNodeClick = useCallback((_event: React.MouseEvent, node: Node) => {
-    // If already focused on this node, exit focus mode
-    if (focusNodeId === node.id) {
-        setFocusNodeId(null);
-        return;
-    }
-    setFocusNodeId(node.id);
-}, [focusNodeId]);
+const onNodeClick = useCallback(
+    (_event: React.MouseEvent, node: Node) => {
+        // If already focused on this node, exit focus mode
+        if (focusNodeId === node.id) {
+            setFocusNodeId(null);
+            return;
+        }
+        setFocusNodeId(node.id);
+    },
+    [focusNodeId]
+);
 
 // Apply opacity styles to nodes and edges based on focus:
 const styledNodes = useMemo(() => {
@@ -1002,8 +1012,8 @@ const styledNodes = useMemo(() => {
         style: {
             ...n.style,
             opacity: visible.has(n.id) ? 1 : 0.15,
-            transition: "opacity 0.3s ease",
-        },
+            transition: "opacity 0.3s ease"
+        }
     }));
 }, [nodes, edges, focusNodeId]);
 
@@ -1015,8 +1025,8 @@ const styledEdges = useMemo(() => {
         style: {
             ...e.style,
             opacity: visible.has(e.source) && visible.has(e.target) ? 1 : 0.08,
-            transition: "opacity 0.3s ease",
-        },
+            transition: "opacity 0.3s ease"
+        }
     }));
 }, [nodes, edges, focusNodeId]);
 
@@ -1039,17 +1049,19 @@ Show a small indicator when focus mode is active:
 
 ```tsx
 // Near the Controls component:
-{focusNodeId && (
-    <div className="absolute bottom-16 left-1/2 z-10 -translate-x-1/2 rounded-full border bg-background/90 px-4 py-1.5 text-xs shadow-sm backdrop-blur-sm">
-        Focus mode — click node again or press <kbd className="mx-1 rounded border px-1.5 py-0.5 font-mono">Esc</kbd> to exit
-    </div>
-)}
+{
+    focusNodeId && (
+        <div className="absolute bottom-16 left-1/2 z-10 -translate-x-1/2 rounded-full border bg-background/90 px-4 py-1.5 text-xs shadow-sm backdrop-blur-sm">
+            Focus mode — click node again or press <kbd className="mx-1 rounded border px-1.5 py-0.5 font-mono">Esc</kbd> to exit
+        </div>
+    );
+}
 ```
 
 - [ ] **Step 3: Verify visually**
 
-Run: `pnpm dev`, navigate to `/graph`, click a node.
-Expected: Nodes beyond 2 hops are dimmed. Clicking the same node or pressing Escape restores full opacity.
+Run: `pnpm dev`, navigate to `/graph`, click a node. Expected: Nodes beyond 2 hops are dimmed. Clicking the same node or pressing Escape
+restores full opacity.
 
 - [ ] **Step 4: Commit**
 
@@ -1063,6 +1075,7 @@ git commit -m "feat(graph): add focus mode — click node to dim nodes beyond 2 
 ### Task 10: Graph Filter Presets
 
 **Files:**
+
 - Create: `apps/web/src/features/graph/filter-presets.tsx`
 - Modify: `apps/web/src/features/graph/graph-filters.tsx`
 
@@ -1120,9 +1133,7 @@ export function FilterPresets({ currentFilters, onApplyPreset }: FilterPresetsPr
                     </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start">
-                    {presets.length === 0 && (
-                        <p className="text-muted-foreground px-2 py-1.5 text-xs">No saved presets</p>
-                    )}
+                    {presets.length === 0 && <p className="text-muted-foreground px-2 py-1.5 text-xs">No saved presets</p>}
                     {presets.map((preset, i) => (
                         <DropdownMenuItem key={i} className="flex items-center justify-between gap-2">
                             <button type="button" className="flex-1 text-left" onClick={() => onApplyPreset(preset.filters)}>
@@ -1131,7 +1142,10 @@ export function FilterPresets({ currentFilters, onApplyPreset }: FilterPresetsPr
                             <button
                                 type="button"
                                 className="text-muted-foreground hover:text-destructive shrink-0"
-                                onClick={e => { e.stopPropagation(); deletePreset(i); }}
+                                onClick={e => {
+                                    e.stopPropagation();
+                                    deletePreset(i);
+                                }}
                             >
                                 <Trash2 className="size-3" />
                             </button>
@@ -1140,7 +1154,13 @@ export function FilterPresets({ currentFilters, onApplyPreset }: FilterPresetsPr
                 </DropdownMenuContent>
             </DropdownMenu>
             {naming ? (
-                <form onSubmit={e => { e.preventDefault(); savePreset(); }} className="flex items-center gap-1">
+                <form
+                    onSubmit={e => {
+                        e.preventDefault();
+                        savePreset();
+                    }}
+                    className="flex items-center gap-1"
+                >
                     <input
                         type="text"
                         value={name}
@@ -1148,9 +1168,13 @@ export function FilterPresets({ currentFilters, onApplyPreset }: FilterPresetsPr
                         placeholder="Preset name..."
                         className="h-7 rounded border bg-background px-2 text-xs outline-none"
                         autoFocus
-                        onBlur={() => { if (!name.trim()) setNaming(false); }}
+                        onBlur={() => {
+                            if (!name.trim()) setNaming(false);
+                        }}
                     />
-                    <Button type="submit" variant="ghost" size="sm" className="h-7 text-xs">Save</Button>
+                    <Button type="submit" variant="ghost" size="sm" className="h-7 text-xs">
+                        Save
+                    </Button>
                 </form>
             ) : (
                 <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs" onClick={() => setNaming(true)}>
@@ -1165,7 +1189,8 @@ export function FilterPresets({ currentFilters, onApplyPreset }: FilterPresetsPr
 
 - [ ] **Step 2: Integrate presets into graph filters**
 
-In `apps/web/src/features/graph/graph-filters.tsx`, add the `FilterPresets` component and wire up the apply callback to set the active types/relations/tag types.
+In `apps/web/src/features/graph/graph-filters.tsx`, add the `FilterPresets` component and wire up the apply callback to set the active
+types/relations/tag types.
 
 - [ ] **Step 3: Verify visually**
 
@@ -1183,6 +1208,7 @@ git commit -m "feat(graph): add saveable filter presets (localStorage)"
 ### Task 11: Related Chunks Suggestions on Detail Page
 
 **Files:**
+
 - Create: `apps/web/src/features/chunks/related-suggestions.tsx`
 - Modify: `apps/web/src/routes/chunks.$chunkId.tsx`
 
@@ -1219,7 +1245,7 @@ export function RelatedSuggestions({ chunkId, chunkTitle, connectedIds }: Relate
             try {
                 const result = unwrapEden(
                     await api.api.chunks.search.semantic.get({
-                        query: { chunkId, limit: "8" },
+                        query: { chunkId, limit: "8" }
                     })
                 );
                 return result as Array<{ id: string; title: string; type: string; similarity: number }>;
@@ -1227,7 +1253,7 @@ export function RelatedSuggestions({ chunkId, chunkTitle, connectedIds }: Relate
                 return [];
             }
         },
-        staleTime: 60_000,
+        staleTime: 60_000
     });
 
     const linkMutation = useMutation({
@@ -1235,14 +1261,14 @@ export function RelatedSuggestions({ chunkId, chunkTitle, connectedIds }: Relate
             await api.api.connections.post({
                 sourceId: chunkId,
                 targetId,
-                relation: "related_to",
+                relation: "related_to"
             });
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["chunk", chunkId] });
             queryClient.invalidateQueries({ queryKey: ["related-suggestions", chunkId] });
             toast.success("Connection created");
-        },
+        }
     });
 
     const allSuggestions = suggestionsQuery.data ?? [];
@@ -1260,11 +1286,7 @@ export function RelatedSuggestions({ chunkId, chunkTitle, connectedIds }: Relate
             <div className="space-y-1">
                 {suggestions.map(s => (
                     <div key={s.id} className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted/50">
-                        <Link
-                            to="/chunks/$chunkId"
-                            params={{ chunkId: s.id }}
-                            className="min-w-0 flex-1 truncate hover:underline"
-                        >
+                        <Link to="/chunks/$chunkId" params={{ chunkId: s.id }} className="min-w-0 flex-1 truncate hover:underline">
                             {s.title}
                         </Link>
                         <span className="text-muted-foreground text-xs">{Math.round(s.similarity * 100)}%</span>
@@ -1303,8 +1325,8 @@ import { RelatedSuggestions } from "@/features/chunks/related-suggestions";
 <RelatedSuggestions
     chunkId={chunkId}
     chunkTitle={chunk.title}
-    connectedIds={chunk.connections.map(c => c.sourceId === chunkId ? c.targetId : c.sourceId)}
-/>
+    connectedIds={chunk.connections.map(c => (c.sourceId === chunkId ? c.targetId : c.sourceId))}
+/>;
 ```
 
 - [ ] **Step 3: Verify visually**
@@ -1325,6 +1347,7 @@ git commit -m "feat(chunks): add embedding-based related chunk suggestions on de
 ### Task 12: Command Palette Quick Note
 
 **Files:**
+
 - Modify: `apps/web/src/features/command-palette/command-palette.tsx`
 
 - [ ] **Step 1: Add quick note creation to command palette**
@@ -1340,23 +1363,23 @@ const quickNoteMutation = useMutation({
             await api.api.chunks.post({
                 title,
                 content: "",
-                type: "note",
+                type: "note"
             })
         );
         return result;
     },
-    onSuccess: (data) => {
+    onSuccess: data => {
         toast.success(`Created "${query.trim()}"`, {
             action: {
                 label: "Edit",
-                onClick: () => navigate({ to: "/chunks/$chunkId/edit", params: { chunkId: data.id } }),
-            },
+                onClick: () => navigate({ to: "/chunks/$chunkId/edit", params: { chunkId: data.id } })
+            }
         });
         close();
     },
     onError: () => {
         toast.error("Failed to create note");
-    },
+    }
 });
 ```
 
@@ -1371,15 +1394,15 @@ if (query.trim().length > 0 && !isTagSearch && !isFederatedSearch && !subMode) {
         group: "Actions",
         icon: <Plus className="size-4" />,
         badge: "Create",
-        onSelect: () => quickNoteMutation.mutate(query.trim()),
+        onSelect: () => quickNoteMutation.mutate(query.trim())
     });
 }
 ```
 
 - [ ] **Step 2: Verify**
 
-Run: `pnpm dev`, open Cmd+K, type "Convention: always use Effect", select "Quick note" action.
-Expected: Toast shows "Created 'Convention: always use Effect'" with "Edit" link. Chunk created in DB.
+Run: `pnpm dev`, open Cmd+K, type "Convention: always use Effect", select "Quick note" action. Expected: Toast shows "Created 'Convention:
+always use Effect'" with "Edit" link. Chunk created in DB.
 
 - [ ] **Step 3: Commit**
 
@@ -1393,6 +1416,7 @@ git commit -m "feat(command-palette): add quick note creation from search query"
 ### Task 13: Clipboard-to-Chunk Shortcut
 
 **Files:**
+
 - Modify: `apps/web/src/features/nav/keyboard-shortcuts.tsx`
 
 - [ ] **Step 1: Add Shift+N shortcut**
@@ -1442,8 +1466,8 @@ export const Route = createFileRoute("/chunks/new")({
     validateSearch: z.object({
         type: z.string().optional(),
         content: z.string().optional(),
-        title: z.string().optional(),
-    }),
+        title: z.string().optional()
+    })
     // ...
 });
 
@@ -1454,8 +1478,8 @@ const { type, content: initialContent, title: initialTitle } = Route.useSearch()
 
 - [ ] **Step 4: Verify**
 
-Copy markdown to clipboard, press Shift+N.
-Expected: `/chunks/new` opens with content pre-filled. If clipboard had `# Title`, title field is also pre-filled.
+Copy markdown to clipboard, press Shift+N. Expected: `/chunks/new` opens with content pre-filled. If clipboard had `# Title`, title field is
+also pre-filled.
 
 - [ ] **Step 5: Commit**
 
@@ -1469,6 +1493,7 @@ git commit -m "feat: add Shift+N shortcut to create chunk from clipboard content
 ### Task 14: CLI `quick` Command
 
 **Files:**
+
 - Create: `apps/cli/src/commands/quick.ts`
 - Modify: `apps/cli/src/index.ts` (register command)
 
@@ -1492,97 +1517,110 @@ export const quickCommand = new Command("quick")
     .option("--tags <tags>", "comma-separated tags", "")
     .option("--global", "skip codebase scoping")
     .option("--codebase <name>", "scope to a specific codebase by name")
-    .action(async (titleParts: string[], opts: {
-        title?: string;
-        type: string;
-        tags: string;
-        global?: boolean;
-        codebase?: string;
-    }, cmd: Command) => {
-        const config = loadConfig();
-        const serverUrl = getServerUrl();
+    .action(
+        async (
+            titleParts: string[],
+            opts: {
+                title?: string;
+                type: string;
+                tags: string;
+                global?: boolean;
+                codebase?: string;
+            },
+            cmd: Command
+        ) => {
+            const config = loadConfig();
+            const serverUrl = getServerUrl();
 
-        // Determine title and content
-        let title = opts.title ?? titleParts.join(" ");
-        let content = "";
+            // Determine title and content
+            let title = opts.title ?? titleParts.join(" ");
+            let content = "";
 
-        // Check for piped stdin
-        if (!process.stdin.isTTY) {
-            try {
-                content = readFileSync("/dev/stdin", "utf-8").trim();
-            } catch {
-                // No stdin data
+            // Check for piped stdin
+            if (!process.stdin.isTTY) {
+                try {
+                    content = readFileSync("/dev/stdin", "utf-8").trim();
+                } catch {
+                    // No stdin data
+                }
             }
-        }
 
-        if (!title) {
-            outputError("Title is required. Usage: fubbik quick \"My note title\"");
-            process.exitCode = 1;
-            return;
-        }
-
-        const tags = opts.tags ? opts.tags.split(",").map(t => t.trim()).filter(Boolean) : [];
-
-        if (serverUrl) {
-            try {
-                const body: Record<string, unknown> = {
-                    title,
-                    content,
-                    type: opts.type,
-                    tags,
-                };
-
-                // Resolve codebase
-                if (!opts.global && !opts.codebase) {
-                    // Auto-detect from git remote
-                    try {
-                        const { execSync } = await import("node:child_process");
-                        const remoteUrl = execSync("git remote get-url origin", { encoding: "utf-8" }).trim();
-                        if (remoteUrl) {
-                            const detectRes = await fetch(`${serverUrl}/api/codebases/detect?remoteUrl=${encodeURIComponent(remoteUrl)}`);
-                            if (detectRes.ok) {
-                                const detected = await detectRes.json() as { id: string };
-                                if (detected?.id) body.codebaseIds = [detected.id];
-                            }
-                        }
-                    } catch {
-                        // No git remote, skip codebase
-                    }
-                } else if (opts.codebase) {
-                    const cbRes = await fetch(`${serverUrl}/api/codebases`);
-                    if (cbRes.ok) {
-                        const codebases = await cbRes.json() as { id: string; name: string }[];
-                        const match = codebases.find(c => c.name.toLowerCase() === opts.codebase!.toLowerCase());
-                        if (match) body.codebaseIds = [match.id];
-                    }
-                }
-
-                const res = await fetch(`${serverUrl}/api/chunks`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(body),
-                });
-
-                if (!res.ok) {
-                    const err = await res.text();
-                    outputError(`Server error: ${err}`);
-                    process.exitCode = 1;
-                    return;
-                }
-
-                const created = await res.json() as { id: string };
-                output(`${formatSuccess("Created")} ${formatId(created.id)}`);
-                output(`${serverUrl.replace("/api", "").replace(":3000", ":3001")}/chunks/${created.id}`);
-            } catch (err) {
-                outputError(`Failed to create chunk: ${err}`);
+            if (!title) {
+                outputError('Title is required. Usage: fubbik quick "My note title"');
                 process.exitCode = 1;
+                return;
             }
-        } else {
-            // Local-only mode
-            const chunk = addChunk({ title, content, type: opts.type, tags });
-            output(`${formatSuccess("Created")} ${formatId(chunk.id)} — ${title}`);
+
+            const tags = opts.tags
+                ? opts.tags
+                      .split(",")
+                      .map(t => t.trim())
+                      .filter(Boolean)
+                : [];
+
+            if (serverUrl) {
+                try {
+                    const body: Record<string, unknown> = {
+                        title,
+                        content,
+                        type: opts.type,
+                        tags
+                    };
+
+                    // Resolve codebase
+                    if (!opts.global && !opts.codebase) {
+                        // Auto-detect from git remote
+                        try {
+                            const { execSync } = await import("node:child_process");
+                            const remoteUrl = execSync("git remote get-url origin", { encoding: "utf-8" }).trim();
+                            if (remoteUrl) {
+                                const detectRes = await fetch(
+                                    `${serverUrl}/api/codebases/detect?remoteUrl=${encodeURIComponent(remoteUrl)}`
+                                );
+                                if (detectRes.ok) {
+                                    const detected = (await detectRes.json()) as { id: string };
+                                    if (detected?.id) body.codebaseIds = [detected.id];
+                                }
+                            }
+                        } catch {
+                            // No git remote, skip codebase
+                        }
+                    } else if (opts.codebase) {
+                        const cbRes = await fetch(`${serverUrl}/api/codebases`);
+                        if (cbRes.ok) {
+                            const codebases = (await cbRes.json()) as { id: string; name: string }[];
+                            const match = codebases.find(c => c.name.toLowerCase() === opts.codebase!.toLowerCase());
+                            if (match) body.codebaseIds = [match.id];
+                        }
+                    }
+
+                    const res = await fetch(`${serverUrl}/api/chunks`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(body)
+                    });
+
+                    if (!res.ok) {
+                        const err = await res.text();
+                        outputError(`Server error: ${err}`);
+                        process.exitCode = 1;
+                        return;
+                    }
+
+                    const created = (await res.json()) as { id: string };
+                    output(`${formatSuccess("Created")} ${formatId(created.id)}`);
+                    output(`${serverUrl.replace("/api", "").replace(":3000", ":3001")}/chunks/${created.id}`);
+                } catch (err) {
+                    outputError(`Failed to create chunk: ${err}`);
+                    process.exitCode = 1;
+                }
+            } else {
+                // Local-only mode
+                const chunk = addChunk({ title, content, type: opts.type, tags });
+                output(`${formatSuccess("Created")} ${formatId(chunk.id)} — ${title}`);
+            }
         }
-    });
+    );
 ```
 
 - [ ] **Step 2: Register in CLI index**
@@ -1597,11 +1635,9 @@ program.addCommand(quickCommand);
 
 - [ ] **Step 3: Verify**
 
-Run: `cd apps/cli && bun run src/index.ts quick "Convention: always use Effect for errors"`
-Expected: "Created <id>" with URL.
+Run: `cd apps/cli && bun run src/index.ts quick "Convention: always use Effect for errors"` Expected: "Created <id>" with URL.
 
-Run: `echo "Some content" | bun run src/index.ts quick --title "Piped note"`
-Expected: "Created <id>" with content from stdin.
+Run: `echo "Some content" | bun run src/index.ts quick --title "Piped note"` Expected: "Created <id>" with content from stdin.
 
 - [ ] **Step 4: Commit**
 
@@ -1618,18 +1654,15 @@ git commit -m "feat(cli): add quick command for one-liner chunk creation with pi
 
 - [ ] **Step 1: Run type checks**
 
-Run: `pnpm run check-types`
-Expected: No type errors.
+Run: `pnpm run check-types` Expected: No type errors.
 
 - [ ] **Step 2: Run tests**
 
-Run: `pnpm test`
-Expected: All tests pass.
+Run: `pnpm test` Expected: All tests pass.
 
 - [ ] **Step 3: Run lint**
 
-Run: `pnpm lint`
-Expected: No lint errors.
+Run: `pnpm lint` Expected: No lint errors.
 
 - [ ] **Step 4: Manual smoke test**
 

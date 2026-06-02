@@ -42,31 +42,29 @@ const addSpace = new Command("add")
         output(cmd, data, `Created space "${data.name}" (${data.id})`);
     });
 
-const listSpaces = new Command("list")
-    .description("List all spaces")
-    .action(async (_opts: Record<string, unknown>, cmd: Command) => {
-        const serverUrl = requireServer();
+const listSpaces = new Command("list").description("List all spaces").action(async (_opts: Record<string, unknown>, cmd: Command) => {
+    const serverUrl = requireServer();
 
-        const res = await fetch(`${serverUrl}/api/spaces`);
-        if (!res.ok) {
-            console.error(`Failed to list spaces: ${res.status}`);
-            process.exit(1);
+    const res = await fetch(`${serverUrl}/api/spaces`);
+    if (!res.ok) {
+        console.error(`Failed to list spaces: ${res.status}`);
+        process.exit(1);
+    }
+
+    const data = (await res.json()) as { id: string; name: string; remoteUrl?: string }[];
+    outputQuiet(cmd, data.map(c => c.id).join("\n"));
+
+    if (data.length === 0) {
+        output(cmd, data, "No spaces found.");
+    } else {
+        const lines = [`${data.length} space(s):\n`];
+        for (const sp of data) {
+            const remote = sp.remoteUrl ? ` (${sp.remoteUrl})` : "";
+            lines.push(`  ${sp.id}  ${sp.name}${remote}`);
         }
-
-        const data = (await res.json()) as { id: string; name: string; remoteUrl?: string }[];
-        outputQuiet(cmd, data.map(c => c.id).join("\n"));
-
-        if (data.length === 0) {
-            output(cmd, data, "No spaces found.");
-        } else {
-            const lines = [`${data.length} space(s):\n`];
-            for (const sp of data) {
-                const remote = sp.remoteUrl ? ` (${sp.remoteUrl})` : "";
-                lines.push(`  ${sp.id}  ${sp.name}${remote}`);
-            }
-            output(cmd, data, lines.join("\n"));
-        }
-    });
+        output(cmd, data, lines.join("\n"));
+    }
+});
 
 const removeSpace = new Command("remove")
     .description("Remove a space")
@@ -96,10 +94,7 @@ const removeSpace = new Command("remove")
                 output: process.stdout
             });
             const answer = await new Promise<string>(resolve => {
-                rl.question(
-                    `This will unlink all chunks from space "${name}". Continue? [y/N] `,
-                    resolve
-                );
+                rl.question(`This will unlink all chunks from space "${name}". Continue? [y/N] `, resolve);
             });
             rl.close();
             if (answer.toLowerCase() !== "y") {

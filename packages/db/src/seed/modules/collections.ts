@@ -1,8 +1,8 @@
 import { eq } from "drizzle-orm";
 
 import { collection } from "../../schema/collection";
-import { uuid } from "../factories";
 import type { SeedContext } from "../context";
+import { uuid } from "../factories";
 
 export async function seed(ctx: SeedContext): Promise<void> {
     await ctx.db.insert(collection).values([

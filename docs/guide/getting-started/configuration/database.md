@@ -1,8 +1,8 @@
 ---
 tags:
-  - guide
-  - configuration
-  - database
+    - guide
+    - configuration
+    - database
 description: PostgreSQL setup and required extensions
 ---
 

@@ -2,15 +2,19 @@
 
 ## Problem
 
-Today `Plan` is a secondary entity in fubbik. It has a title, description, and a flat list of steps. Richer context — what the plan must satisfy, what the codebase looks like today, what's risky, what's assumed — lives scattered across:
+Today `Plan` is a secondary entity in fubbik. It has a title, description, and a flat list of steps. Richer context — what the plan must
+satisfy, what the codebase looks like today, what's risky, what's assumed — lives scattered across:
 
 - **Requirements** (linked only to individual steps via `plan_step.requirementId`, not to the plan itself)
-- **Implementation sessions** (separate `implementation_session` tables that track chunks touched, assumptions discovered, and requirements addressed during execution)
+- **Implementation sessions** (separate `implementation_session` tables that track chunks touched, assumptions discovered, and requirements
+  addressed during execution)
 - **Chunks** (linked to plans via `plan_chunk_ref` with a `context/created/modified` relation)
 
-As a result, to see "what is this plan about, what must it satisfy, what have we figured out, and what's left to do?" you have to stitch together a plan, its steps, its sessions, its chunk refs, and its loosely-linked requirements. Plans are a thin coordinator, not a home.
+As a result, to see "what is this plan about, what must it satisfy, what have we figured out, and what's left to do?" you have to stitch
+together a plan, its steps, its sessions, its chunk refs, and its loosely-linked requirements. Plans are a thin coordinator, not a home.
 
-We want plans to be the *home* for a unit of work: a single entity that holds the description, the requirements it addresses, the structured analysis of the codebase, and the tasks to execute. Everything else points into the plan, not the other way around.
+We want plans to be the _home_ for a unit of work: a single entity that holds the description, the requirements it addresses, the structured
+analysis of the codebase, and the tasks to execute. Everything else points into the plan, not the other way around.
 
 ## Goal
 
@@ -21,39 +25,41 @@ Redesign Plan as a four-part container:
 3. **Analyze** — structured, typed investigation fields: related chunks, affected files, risks, assumptions, open questions
 4. **Tasks** — enriched execution items (title, description, acceptance criteria, multiple chunk links, dependencies)
 
-Merge `implementation_session` into plans (sessions are gone). Swap `Requirements` out of the primary nav in favor of `Plans`. This is a **clean rewrite** — existing plan and session data is dropped.
+Merge `implementation_session` into plans (sessions are gone). Swap `Requirements` out of the primary nav in favor of `Plans`. This is a
+**clean rewrite** — existing plan and session data is dropped.
 
 ---
 
 ## 1. Data Model
 
-Six new tables replace the following dropped tables: `plan`, `plan_step`, `plan_chunk_ref`, `implementation_session`, `session_chunk_ref`, `session_assumption`, `session_requirement_ref`.
+Six new tables replace the following dropped tables: `plan`, `plan_step`, `plan_chunk_ref`, `implementation_session`, `session_chunk_ref`,
+`session_assumption`, `session_requirement_ref`.
 
 ### `plan`
 
-| column | type | notes |
-|---|---|---|
-| `id` | `uuid` pk | |
-| `title` | `text` not null | |
-| `description` | `text` | long-form markdown, nullable |
-| `status` | `text` not null | `draft \| analyzing \| ready \| in_progress \| completed \| archived` |
-| `userId` | `uuid` fk | owner |
-| `codebaseId` | `uuid` fk nullable | optional codebase scope |
-| `createdAt` | `timestamptz` not null | |
-| `updatedAt` | `timestamptz` not null | |
-| `completedAt` | `timestamptz` nullable | set when status → `completed`, cleared otherwise |
+| column        | type                   | notes                                                                 |
+| ------------- | ---------------------- | --------------------------------------------------------------------- |
+| `id`          | `uuid` pk              |                                                                       |
+| `title`       | `text` not null        |                                                                       |
+| `description` | `text`                 | long-form markdown, nullable                                          |
+| `status`      | `text` not null        | `draft \| analyzing \| ready \| in_progress \| completed \| archived` |
+| `userId`      | `uuid` fk              | owner                                                                 |
+| `codebaseId`  | `uuid` fk nullable     | optional codebase scope                                               |
+| `createdAt`   | `timestamptz` not null |                                                                       |
+| `updatedAt`   | `timestamptz` not null |                                                                       |
+| `completedAt` | `timestamptz` nullable | set when status → `completed`, cleared otherwise                      |
 
 Indexes: `(userId)`, `(codebaseId)`, `(status)`.
 
 ### `plan_requirement` (many-to-many to existing `requirement`)
 
-| column | type | notes |
-|---|---|---|
-| `id` | `uuid` pk | |
-| `planId` | `uuid` fk → `plan.id` cascade delete | |
-| `requirementId` | `uuid` fk → `requirement.id` cascade delete | |
-| `order` | `integer` not null | for user-controlled ordering |
-| `createdAt` | `timestamptz` not null | |
+| column          | type                                        | notes                        |
+| --------------- | ------------------------------------------- | ---------------------------- |
+| `id`            | `uuid` pk                                   |                              |
+| `planId`        | `uuid` fk → `plan.id` cascade delete        |                              |
+| `requirementId` | `uuid` fk → `requirement.id` cascade delete |                              |
+| `order`         | `integer` not null                          | for user-controlled ordering |
+| `createdAt`     | `timestamptz` not null                      |                              |
 
 Unique: `(planId, requirementId)`. Index: `(requirementId)` for reverse lookup ("which plans address this requirement?").
 
@@ -61,46 +67,46 @@ Unique: `(planId, requirementId)`. Index: `(requirementId)` for reverse lookup (
 
 One discriminated table holding all five analyze kinds. Keeps the count of tables down and makes ordering/CRUD uniform across kinds.
 
-| column | type | notes |
-|---|---|---|
-| `id` | `uuid` pk | |
-| `planId` | `uuid` fk → `plan.id` cascade delete | |
-| `kind` | `text` not null | `chunk \| file \| risk \| assumption \| question` (CHECK constraint) |
-| `order` | `integer` not null | |
-| `chunkId` | `uuid` fk → `chunk.id` nullable | set when `kind=chunk`, else null |
-| `filePath` | `text` nullable | set when `kind=file`, else null |
-| `text` | `text` nullable | note for chunks/files; body for risks/assumptions/questions |
-| `metadata` | `jsonb` not null default `{}` | kind-specific fields (see below) |
-| `createdAt` | `timestamptz` not null | |
-| `updatedAt` | `timestamptz` not null | |
+| column      | type                                 | notes                                                                |
+| ----------- | ------------------------------------ | -------------------------------------------------------------------- |
+| `id`        | `uuid` pk                            |                                                                      |
+| `planId`    | `uuid` fk → `plan.id` cascade delete |                                                                      |
+| `kind`      | `text` not null                      | `chunk \| file \| risk \| assumption \| question` (CHECK constraint) |
+| `order`     | `integer` not null                   |                                                                      |
+| `chunkId`   | `uuid` fk → `chunk.id` nullable      | set when `kind=chunk`, else null                                     |
+| `filePath`  | `text` nullable                      | set when `kind=file`, else null                                      |
+| `text`      | `text` nullable                      | note for chunks/files; body for risks/assumptions/questions          |
+| `metadata`  | `jsonb` not null default `{}`        | kind-specific fields (see below)                                     |
+| `createdAt` | `timestamptz` not null               |                                                                      |
+| `updatedAt` | `timestamptz` not null               |                                                                      |
 
 Indexes: `(planId)`, `(planId, kind)`, `(chunkId)`.
 
 **`metadata` shapes by `kind`:**
 
-| kind | metadata |
-|---|---|
-| `chunk` | `{}` |
-| `file` | `{ lineStart?: number, lineEnd?: number }` |
-| `risk` | `{ severity: "low" \| "medium" \| "high" }` |
-| `assumption` | `{ verified: boolean }` |
-| `question` | `{ answer?: string, answered: boolean }` |
+| kind         | metadata                                    |
+| ------------ | ------------------------------------------- |
+| `chunk`      | `{}`                                        |
+| `file`       | `{ lineStart?: number, lineEnd?: number }`  |
+| `risk`       | `{ severity: "low" \| "medium" \| "high" }` |
+| `assumption` | `{ verified: boolean }`                     |
+| `question`   | `{ answer?: string, answered: boolean }`    |
 
 The shape is validated at the service layer (not in SQL) so adding kind-specific fields in future migrations is additive.
 
 ### `plan_task` (replaces `plan_step`)
 
-| column | type | notes |
-|---|---|---|
-| `id` | `uuid` pk | |
-| `planId` | `uuid` fk → `plan.id` cascade delete | |
-| `title` | `text` not null | short summary |
-| `description` | `text` nullable | longer body |
-| `acceptanceCriteria` | `jsonb` not null default `[]` | array of strings |
-| `status` | `text` not null | `pending \| in_progress \| done \| skipped \| blocked` |
-| `order` | `integer` not null | |
-| `createdAt` | `timestamptz` not null | |
-| `updatedAt` | `timestamptz` not null | |
+| column               | type                                 | notes                                                  |
+| -------------------- | ------------------------------------ | ------------------------------------------------------ |
+| `id`                 | `uuid` pk                            |                                                        |
+| `planId`             | `uuid` fk → `plan.id` cascade delete |                                                        |
+| `title`              | `text` not null                      | short summary                                          |
+| `description`        | `text` nullable                      | longer body                                            |
+| `acceptanceCriteria` | `jsonb` not null default `[]`        | array of strings                                       |
+| `status`             | `text` not null                      | `pending \| in_progress \| done \| skipped \| blocked` |
+| `order`              | `integer` not null                   |                                                        |
+| `createdAt`          | `timestamptz` not null               |                                                        |
+| `updatedAt`          | `timestamptz` not null               |                                                        |
 
 Indexes: `(planId)`, `(planId, status)`.
 
@@ -108,28 +114,29 @@ Indexes: `(planId)`, `(planId, status)`.
 
 ### `plan_task_chunk` (many-to-many — replaces the single `plan_step.chunkId`)
 
-| column | type | notes |
-|---|---|---|
-| `id` | `uuid` pk | |
-| `taskId` | `uuid` fk → `plan_task.id` cascade delete | |
-| `chunkId` | `uuid` fk → `chunk.id` cascade delete | |
-| `relation` | `text` not null | `context \| created \| modified` |
-| `createdAt` | `timestamptz` not null | |
+| column      | type                                      | notes                            |
+| ----------- | ----------------------------------------- | -------------------------------- |
+| `id`        | `uuid` pk                                 |                                  |
+| `taskId`    | `uuid` fk → `plan_task.id` cascade delete |                                  |
+| `chunkId`   | `uuid` fk → `chunk.id` cascade delete     |                                  |
+| `relation`  | `text` not null                           | `context \| created \| modified` |
+| `createdAt` | `timestamptz` not null                    |                                  |
 
 Unique: `(taskId, chunkId, relation)`. Indexes: `(taskId)`, `(chunkId)`.
 
 ### `plan_task_dependency`
 
-| column | type | notes |
-|---|---|---|
-| `id` | `uuid` pk | |
-| `taskId` | `uuid` fk → `plan_task.id` cascade delete | |
-| `dependsOnTaskId` | `uuid` fk → `plan_task.id` cascade delete | |
-| `createdAt` | `timestamptz` not null | |
+| column            | type                                      | notes |
+| ----------------- | ----------------------------------------- | ----- |
+| `id`              | `uuid` pk                                 |       |
+| `taskId`          | `uuid` fk → `plan_task.id` cascade delete |       |
+| `dependsOnTaskId` | `uuid` fk → `plan_task.id` cascade delete |       |
+| `createdAt`       | `timestamptz` not null                    |       |
 
 Unique: `(taskId, dependsOnTaskId)`. Index: `(dependsOnTaskId)` for the auto-unblock query.
 
-**Auto-unblock behavior:** when a task's status flips to `done`, the service marks any `blocked` tasks whose `dependsOnTaskId` is this task as `pending`. Only `blocked → pending`; tasks in other states are not touched.
+**Auto-unblock behavior:** when a task's status flips to `done`, the service marks any `blocked` tasks whose `dependsOnTaskId` is this task
+as `pending`. Only `blocked → pending`; tasks in other states are not touched.
 
 ### What's Gone
 
@@ -145,22 +152,25 @@ Unique: `(taskId, dependsOnTaskId)`. Index: `(dependsOnTaskId)` for the auto-unb
 
 The `status` column is an enum with six values:
 
-| status | meaning | set by |
-|---|---|---|
-| `draft` | just created, still figuring out what this plan is | user, on create (default) |
-| `analyzing` | actively filling in requirements + analyze fields; tasks may not exist yet | user |
-| `ready` | analyze + tasks drafted, work can begin | user |
-| `in_progress` | at least one task has moved past `pending` | user (optional: service can auto-advance — out of scope for v1) |
-| `completed` | plan is done; sets `completedAt = now()` | user |
-| `archived` | hidden from default lists but preserved | user |
+| status        | meaning                                                                    | set by                                                          |
+| ------------- | -------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| `draft`       | just created, still figuring out what this plan is                         | user, on create (default)                                       |
+| `analyzing`   | actively filling in requirements + analyze fields; tasks may not exist yet | user                                                            |
+| `ready`       | analyze + tasks drafted, work can begin                                    | user                                                            |
+| `in_progress` | at least one task has moved past `pending`                                 | user (optional: service can auto-advance — out of scope for v1) |
+| `completed`   | plan is done; sets `completedAt = now()`                                   | user                                                            |
+| `archived`    | hidden from default lists but preserved                                    | user                                                            |
 
-**No gating.** All transitions are free. The user can jump from `draft` to `in_progress`, move backwards, or skip labels entirely. The labels are advisory.
+**No gating.** All transitions are free. The user can jump from `draft` to `in_progress`, move backwards, or skip labels entirely. The
+labels are advisory.
 
 **Side effects (the only automatic behavior):**
-- Moving *into* `completed` sets `completedAt = now()`
-- Moving *out of* `completed` clears `completedAt`
 
-**List filters:** `GET /api/plans` defaults to showing all statuses except `archived`. A `?includeArchived=true` query flag brings them back.
+- Moving _into_ `completed` sets `completedAt = now()`
+- Moving _out of_ `completed` clears `completedAt`
+
+**List filters:** `GET /api/plans` defaults to showing all statuses except `archived`. A `?includeArchived=true` query flag brings them
+back.
 
 ---
 
@@ -170,44 +180,44 @@ The entire `/api/plans/*` surface is replaced. All `/api/sessions/*` routes are 
 
 ### Plan CRUD
 
-| method | path | body/query | notes |
-|---|---|---|---|
-| `GET` | `/api/plans` | `codebaseId?`, `status?`, `requirementId?`, `includeArchived?` | list |
-| `POST` | `/api/plans` | `{ title, description?, codebaseId?, requirementIds?: string[], tasks?: Array<{title, description?, acceptanceCriteria?: string[]}> }` | create, optional initial tasks |
-| `GET` | `/api/plans/:id` | — | full detail: plan + requirements + analyze (grouped by kind) + tasks + task-chunk links + dependencies |
-| `PATCH` | `/api/plans/:id` | `{ title?, description?, status?, codebaseId? }` | update |
-| `DELETE` | `/api/plans/:id` | — | cascade deletes all child rows |
+| method   | path             | body/query                                                                                                                             | notes                                                                                                  |
+| -------- | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `GET`    | `/api/plans`     | `codebaseId?`, `status?`, `requirementId?`, `includeArchived?`                                                                         | list                                                                                                   |
+| `POST`   | `/api/plans`     | `{ title, description?, codebaseId?, requirementIds?: string[], tasks?: Array<{title, description?, acceptanceCriteria?: string[]}> }` | create, optional initial tasks                                                                         |
+| `GET`    | `/api/plans/:id` | —                                                                                                                                      | full detail: plan + requirements + analyze (grouped by kind) + tasks + task-chunk links + dependencies |
+| `PATCH`  | `/api/plans/:id` | `{ title?, description?, status?, codebaseId? }`                                                                                       | update                                                                                                 |
+| `DELETE` | `/api/plans/:id` | —                                                                                                                                      | cascade deletes all child rows                                                                         |
 
 ### Plan-level requirements
 
-| method | path | body |
-|---|---|---|
-| `POST` | `/api/plans/:id/requirements` | `{ requirementId }` |
-| `DELETE` | `/api/plans/:id/requirements/:requirementId` | — |
-| `POST` | `/api/plans/:id/requirements/reorder` | `{ requirementIds: string[] }` |
+| method   | path                                         | body                           |
+| -------- | -------------------------------------------- | ------------------------------ |
+| `POST`   | `/api/plans/:id/requirements`                | `{ requirementId }`            |
+| `DELETE` | `/api/plans/:id/requirements/:requirementId` | —                              |
+| `POST`   | `/api/plans/:id/requirements/reorder`        | `{ requirementIds: string[] }` |
 
 ### Analyze items
 
 One set of routes for all five kinds; `kind` lives in body/query.
 
-| method | path | body/notes |
-|---|---|---|
-| `GET` | `/api/plans/:id/analyze` | returns `{ chunks: [], files: [], risks: [], assumptions: [], questions: [] }` |
-| `POST` | `/api/plans/:id/analyze` | `{ kind, chunkId?, filePath?, text?, metadata? }` — service validates kind-specific fields |
-| `PATCH` | `/api/plans/:id/analyze/:itemId` | `{ text?, metadata?, chunkId?, filePath? }` |
-| `DELETE` | `/api/plans/:id/analyze/:itemId` | — |
-| `POST` | `/api/plans/:id/analyze/reorder` | `{ kind, itemIds: string[] }` |
+| method   | path                             | body/notes                                                                                 |
+| -------- | -------------------------------- | ------------------------------------------------------------------------------------------ |
+| `GET`    | `/api/plans/:id/analyze`         | returns `{ chunks: [], files: [], risks: [], assumptions: [], questions: [] }`             |
+| `POST`   | `/api/plans/:id/analyze`         | `{ kind, chunkId?, filePath?, text?, metadata? }` — service validates kind-specific fields |
+| `PATCH`  | `/api/plans/:id/analyze/:itemId` | `{ text?, metadata?, chunkId?, filePath? }`                                                |
+| `DELETE` | `/api/plans/:id/analyze/:itemId` | —                                                                                          |
+| `POST`   | `/api/plans/:id/analyze/reorder` | `{ kind, itemIds: string[] }`                                                              |
 
 ### Tasks
 
-| method | path | body |
-|---|---|---|
-| `POST` | `/api/plans/:id/tasks` | `{ title, description?, acceptanceCriteria?: string[], chunks?: Array<{chunkId, relation}>, dependsOnTaskIds?: string[] }` |
-| `PATCH` | `/api/plans/:id/tasks/:taskId` | any task field |
-| `DELETE` | `/api/plans/:id/tasks/:taskId` | — |
-| `POST` | `/api/plans/:id/tasks/reorder` | `{ taskIds: string[] }` |
-| `POST` | `/api/plans/:id/tasks/:taskId/chunks` | `{ chunkId, relation }` |
-| `DELETE` | `/api/plans/:id/tasks/:taskId/chunks/:linkId` | — |
+| method   | path                                          | body                                                                                                                       |
+| -------- | --------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `POST`   | `/api/plans/:id/tasks`                        | `{ title, description?, acceptanceCriteria?: string[], chunks?: Array<{chunkId, relation}>, dependsOnTaskIds?: string[] }` |
+| `PATCH`  | `/api/plans/:id/tasks/:taskId`                | any task field                                                                                                             |
+| `DELETE` | `/api/plans/:id/tasks/:taskId`                | —                                                                                                                          |
+| `POST`   | `/api/plans/:id/tasks/reorder`                | `{ taskIds: string[] }`                                                                                                    |
+| `POST`   | `/api/plans/:id/tasks/:taskId/chunks`         | `{ chunkId, relation }`                                                                                                    |
+| `DELETE` | `/api/plans/:id/tasks/:taskId/chunks/:linkId` | —                                                                                                                          |
 
 ### Removed Routes
 
@@ -258,18 +268,19 @@ Dashboard · Chunks · Graph · Plans
 
 ### Routes changed or removed
 
-| route | status |
-|---|---|
-| `/plans` | stays; list UI rebuilt for the richer plan shape |
-| `/plans/new` | stays; simplified form (title + description + optional codebase) |
-| `/plans/$planId` | replaced with the new four-section detail layout (see Section 5) |
-| `/requirements` | stays, still tabbed; **the Plans tab is removed** |
-| `/reviews` | **deleted** |
-| `/reviews/$sessionId` | **deleted** |
+| route                 | status                                                           |
+| --------------------- | ---------------------------------------------------------------- |
+| `/plans`              | stays; list UI rebuilt for the richer plan shape                 |
+| `/plans/new`          | stays; simplified form (title + description + optional codebase) |
+| `/plans/$planId`      | replaced with the new four-section detail layout (see Section 5) |
+| `/requirements`       | stays, still tabbed; **the Plans tab is removed**                |
+| `/reviews`            | **deleted**                                                      |
+| `/reviews/$sessionId` | **deleted**                                                      |
 
 ### Dashboard widget
 
-- The existing "Recent Plans" / "Active Plans" widget stays but renders the richer plan card: title, status pill, requirement count, task progress (`3/7`), time since last update
+- The existing "Recent Plans" / "Active Plans" widget stays but renders the richer plan card: title, status pill, requirement count, task
+  progress (`3/7`), time since last update
 - The existing "Review Queue" widget (sessions) is **removed**
 - The "Attention Needed" staleness widget is unchanged
 
@@ -290,7 +301,8 @@ The detail page at `/plans/$planId` is a single scrollable column with a sticky 
 Always visible at top:
 
 - Title — inline editable
-- Status pill — click to cycle through `draft → analyzing → ready → in_progress → completed`; long-press / dropdown menu to jump to any status (including `archived`)
+- Status pill — click to cycle through `draft → analyzing → ready → in_progress → completed`; long-press / dropdown menu to jump to any
+  status (including `archived`)
 - Progress counter (`3 / 7 tasks`) and a thin progress bar
 - Meta row: codebase badge, last updated, created-by
 - Actions: `Archive`, `Delete`, `Duplicate`
@@ -307,10 +319,10 @@ Always visible at top:
 - Header: `Requirements` · count · `+ Add` button
 - `+ Add` opens a picker that searches existing requirements by title (reuses `GET /api/requirements` with `search` param)
 - List of requirement cards showing:
-  - Title
-  - Status pill (`passing | failing | untested`)
-  - Priority pill (`must | should | could | wont`)
-  - Chevron → navigates to `/requirements/$id`
+    - Title
+    - Status pill (`passing | failing | untested`)
+    - Priority pill (`must | should | could | wont`)
+    - Chevron → navigates to `/requirements/$id`
 - Drag-to-reorder (`POST /api/plans/:id/requirements/reorder`)
 - Empty state: "No requirements linked. Add one to document what this plan must satisfy."
 
@@ -320,13 +332,13 @@ Always visible at top:
 - Sub-sections in order: `Chunks · Files · Risks · Assumptions · Questions`
 - Each sub-section is a flat list of items with drag-to-reorder, inline edit, and delete
 
-| sub-section | row shape | add button |
-|---|---|---|
-| **Chunks** | chunk title + chunk type badge + note field | `+ Add chunk` → chunk picker (reuses existing picker) |
-| **Files** | file path + optional `L10-20` range + note | `+ Add file` → plain text input |
-| **Risks** | text + severity dropdown (`low \| medium \| high`) | `+ Add risk` |
-| **Assumptions** | text + `verified` checkbox | `+ Add assumption` |
-| **Questions** | text + answer field + `answered` checkbox | `+ Add question` |
+| sub-section     | row shape                                          | add button                                            |
+| --------------- | -------------------------------------------------- | ----------------------------------------------------- |
+| **Chunks**      | chunk title + chunk type badge + note field        | `+ Add chunk` → chunk picker (reuses existing picker) |
+| **Files**       | file path + optional `L10-20` range + note         | `+ Add file` → plain text input                       |
+| **Risks**       | text + severity dropdown (`low \| medium \| high`) | `+ Add risk`                                          |
+| **Assumptions** | text + `verified` checkbox                         | `+ Add assumption`                                    |
+| **Questions**   | text + answer field + `answered` checkbox          | `+ Add question`                                      |
 
 Each sub-section is collapsible; collapsed sub-sections show only the count. Empty sub-sections show a one-line hint.
 
@@ -367,13 +379,15 @@ Drag-to-reorder tasks.
 
 ### Create flow
 
-`/plans/new` is a short form: `title` + `description` + optional `codebase`. On submit, POST and redirect to `/plans/$id`, where the user fills in the richer fields. No wizard.
+`/plans/new` is a short form: `title` + `description` + optional `codebase`. On submit, POST and redirect to `/plans/$id`, where the user
+fills in the richer fields. No wizard.
 
 ---
 
 ## 6. Migration
 
-"Wipe it" approach: drop all existing plan and session data, create the new schema fresh. Accepted because this is a local-first dev tool and current plan data is mostly seed/scratch.
+"Wipe it" approach: drop all existing plan and session data, create the new schema fresh. Accepted because this is a local-first dev tool
+and current plan data is mostly seed/scratch.
 
 ### Single Drizzle migration
 
@@ -411,7 +425,8 @@ Chunk and requirement seed data is unchanged.
 - Delete `apps/web/src/routes/reviews*` and `apps/web/src/features/reviews/` (and any `features/sessions/` directory)
 - Remove session-related MCP tools from `packages/mcp/`
 - Remove any `fubbik session*` commands from the CLI (`apps/cli/`)
-- Update `fubbik plan*` CLI commands (`create`, `list`, `show`, `step-done`, `add-step`, `activate`, `complete`) to match the new API shape — rename step commands to task commands, drop `import` (markdown import is parked)
+- Update `fubbik plan*` CLI commands (`create`, `list`, `show`, `step-done`, `add-step`, `activate`, `complete`) to match the new API shape
+  — rename step commands to task commands, drop `import` (markdown import is parked)
 - Update `packages/db/src/schema/index.ts` and type exports to drop session exports
 - Update CLAUDE.md "Core Concepts" and "API Endpoints" sections to reflect the new plan shape and removed sessions
 
@@ -423,10 +438,11 @@ Accepted. If you need old data back, it's in git history.
 
 ## 7. Out of Scope
 
-Explicitly *not* in this spec (follow-ups if needed):
+Explicitly _not_ in this spec (follow-ups if needed):
 
 - **Markdown import** — the old `POST /api/plans/import-markdown` is gone. Can come back later.
-- **Generate-from-requirements** — templated plan generation (`requirement-standard`, `requirement-detailed`) is gone. Users link existing requirements manually.
+- **Generate-from-requirements** — templated plan generation (`requirement-standard`, `requirement-detailed`) is gone. Users link existing
+  requirements manually.
 - **Plan templates** — the five built-in templates are gone. Users start from a blank plan.
 - **Task nesting / milestones** — tasks are flat. No `parentTaskId`. Revisit if phases become necessary.
 - **Multi-user assignment** — tasks have no `assigneeId`.

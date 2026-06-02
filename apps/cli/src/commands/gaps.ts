@@ -1,11 +1,13 @@
 import { readdirSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
+
 import { Command } from "commander";
 import pc from "picocolors";
+
 import { apiFetch } from "../lib/api-fetch";
+import { resolveSpaceId } from "../lib/detect-space";
 import { output, outputError } from "../lib/output";
 import { getServerUrl } from "../lib/store";
-import { resolveSpaceId } from "../lib/detect-space";
 
 function collectSourceFiles(dir: string, base: string): string[] {
     const files: string[] = [];
@@ -22,7 +24,12 @@ function collectSourceFiles(dir: string, base: string): string[] {
                 files.push(...collectSourceFiles(fullPath, base));
             } else if (entry.isFile()) {
                 const ext = entry.name.slice(entry.name.lastIndexOf("."));
-                if (sourceExts.has(ext) && !entry.name.endsWith(".test.ts") && !entry.name.endsWith(".test.tsx") && !entry.name.endsWith(".spec.ts")) {
+                if (
+                    sourceExts.has(ext) &&
+                    !entry.name.endsWith(".test.ts") &&
+                    !entry.name.endsWith(".test.tsx") &&
+                    !entry.name.endsWith(".spec.ts")
+                ) {
                     files.push(relative(base, fullPath));
                 }
             }
@@ -125,12 +132,16 @@ export const gapsCommand = new Command("gaps")
             }
         }
 
-        output(cmd, {
-            directory,
-            totalFiles: allFiles.length,
-            coveredFiles: coveredFiles.length,
-            uncoveredFiles: uncoveredFiles.length,
-            coverage,
-            gaps: sortedDirs.map(([dir, files]) => ({ directory: dir, count: files.length, files }))
-        }, lines.join("\n"));
+        output(
+            cmd,
+            {
+                directory,
+                totalFiles: allFiles.length,
+                coveredFiles: coveredFiles.length,
+                uncoveredFiles: uncoveredFiles.length,
+                coverage,
+                gaps: sortedDirs.map(([dir, files]) => ({ directory: dir, count: files.length, files }))
+            },
+            lines.join("\n")
+        );
     });

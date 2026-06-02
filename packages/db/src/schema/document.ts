@@ -1,9 +1,9 @@
 import { relations } from "drizzle-orm";
 import { index, integer, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 
+import { user } from "./auth";
 import { chunk } from "./chunk";
 import { space } from "./space";
-import { user } from "./auth";
 
 export const document = pgTable(
     "document",

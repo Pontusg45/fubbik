@@ -14,29 +14,189 @@ import { chunkTemplate, type TemplateMatchRules, type TemplateFieldMapping } fro
 import type { SeedContext } from "../context";
 
 const BUILTIN_CHUNK_TYPES = [
-    { id: "note",       label: "Note",        description: "A free-form note or observation",                    icon: "StickyNote", color: "#94a3b8", displayOrder: 10, examples: ["Quick thought", "TODO", "Question"] },
-    { id: "document",   label: "Document",    description: "Longer-form written content",                        icon: "FileText",   color: "#3b82f6", displayOrder: 20, examples: ["Spec", "RFC", "Meeting notes"] },
-    { id: "guide",      label: "Guide",       description: "Step-by-step instructions or tutorial",              icon: "BookOpen",   color: "#6366f1", displayOrder: 30, examples: ["Onboarding", "How-to"] },
-    { id: "reference",  label: "Reference",   description: "Lookup material — APIs, glossary, canonical links", icon: "Compass",    color: "#14b8a6", displayOrder: 40, examples: ["API shape", "Glossary entry"] },
-    { id: "schema",     label: "Schema",      description: "Data model or structural definition",                icon: "Database",   color: "#f59e0b", displayOrder: 50, examples: ["Table schema", "Event payload"] },
-    { id: "checklist",  label: "Checklist",   description: "Ordered items to verify or complete",                icon: "CheckSquare",color: "#84cc16", displayOrder: 60, examples: ["Launch checklist", "Review items"] },
-    { id: "convention", label: "Convention",  description: "A rule the team agrees to follow",                   icon: "Scale",      color: "#ec4899", displayOrder: 70, examples: ["Naming pattern", "Code style"] }
+    {
+        id: "note",
+        label: "Note",
+        description: "A free-form note or observation",
+        icon: "StickyNote",
+        color: "#94a3b8",
+        displayOrder: 10,
+        examples: ["Quick thought", "TODO", "Question"]
+    },
+    {
+        id: "document",
+        label: "Document",
+        description: "Longer-form written content",
+        icon: "FileText",
+        color: "#3b82f6",
+        displayOrder: 20,
+        examples: ["Spec", "RFC", "Meeting notes"]
+    },
+    {
+        id: "guide",
+        label: "Guide",
+        description: "Step-by-step instructions or tutorial",
+        icon: "BookOpen",
+        color: "#6366f1",
+        displayOrder: 30,
+        examples: ["Onboarding", "How-to"]
+    },
+    {
+        id: "reference",
+        label: "Reference",
+        description: "Lookup material — APIs, glossary, canonical links",
+        icon: "Compass",
+        color: "#14b8a6",
+        displayOrder: 40,
+        examples: ["API shape", "Glossary entry"]
+    },
+    {
+        id: "schema",
+        label: "Schema",
+        description: "Data model or structural definition",
+        icon: "Database",
+        color: "#f59e0b",
+        displayOrder: 50,
+        examples: ["Table schema", "Event payload"]
+    },
+    {
+        id: "checklist",
+        label: "Checklist",
+        description: "Ordered items to verify or complete",
+        icon: "CheckSquare",
+        color: "#84cc16",
+        displayOrder: 60,
+        examples: ["Launch checklist", "Review items"]
+    },
+    {
+        id: "convention",
+        label: "Convention",
+        description: "A rule the team agrees to follow",
+        icon: "Scale",
+        color: "#ec4899",
+        displayOrder: 70,
+        examples: ["Naming pattern", "Code style"]
+    }
 ] as const;
 
 const BUILTIN_RELATIONS = [
-    { id: "related_to",     label: "Related to",     description: "General relationship — the weakest link",                       arrowStyle: "dashed", direction: "bidirectional", color: "#94a3b8", displayOrder: 10 },
-    { id: "part_of",        label: "Part of",        description: "Source is a component of target",                                arrowStyle: "solid",  direction: "forward",        color: "#3b82f6", displayOrder: 20 },
-    { id: "contains",       label: "Contains",       description: "Source is a container holding target (inverse of part_of)",      arrowStyle: "solid",  direction: "forward",        color: "#3b82f6", displayOrder: 21 },
-    { id: "depends_on",     label: "Depends on",     description: "Source requires target to work",                                 arrowStyle: "solid",  direction: "forward",        color: "#f59e0b", displayOrder: 30 },
-    { id: "required_by",    label: "Required by",    description: "Target depends on source (inverse of depends_on)",               arrowStyle: "solid",  direction: "forward",        color: "#f59e0b", displayOrder: 31 },
-    { id: "extends",        label: "Extends",        description: "Source specializes or builds upon target",                       arrowStyle: "solid",  direction: "forward",        color: "#6366f1", displayOrder: 40 },
-    { id: "extended_by",    label: "Extended by",    description: "Target extends source (inverse of extends)",                     arrowStyle: "solid",  direction: "forward",        color: "#6366f1", displayOrder: 41 },
-    { id: "references",     label: "References",     description: "Source mentions or cites target",                                arrowStyle: "dotted", direction: "forward",        color: "#14b8a6", displayOrder: 50 },
-    { id: "referenced_by",  label: "Referenced by",  description: "Target references source (inverse of references)",               arrowStyle: "dotted", direction: "forward",        color: "#14b8a6", displayOrder: 51 },
-    { id: "supports",       label: "Supports",       description: "Source provides evidence for target",                            arrowStyle: "solid",  direction: "forward",        color: "#22c55e", displayOrder: 60 },
-    { id: "supported_by",   label: "Supported by",   description: "Target supports source (inverse of supports)",                   arrowStyle: "solid",  direction: "forward",        color: "#22c55e", displayOrder: 61 },
-    { id: "contradicts",    label: "Contradicts",    description: "Source disagrees with target",                                   arrowStyle: "solid",  direction: "bidirectional", color: "#ef4444", displayOrder: 70 },
-    { id: "alternative_to", label: "Alternative to", description: "Source and target are competing approaches",                     arrowStyle: "dashed", direction: "bidirectional", color: "#a855f7", displayOrder: 80 }
+    {
+        id: "related_to",
+        label: "Related to",
+        description: "General relationship — the weakest link",
+        arrowStyle: "dashed",
+        direction: "bidirectional",
+        color: "#94a3b8",
+        displayOrder: 10
+    },
+    {
+        id: "part_of",
+        label: "Part of",
+        description: "Source is a component of target",
+        arrowStyle: "solid",
+        direction: "forward",
+        color: "#3b82f6",
+        displayOrder: 20
+    },
+    {
+        id: "contains",
+        label: "Contains",
+        description: "Source is a container holding target (inverse of part_of)",
+        arrowStyle: "solid",
+        direction: "forward",
+        color: "#3b82f6",
+        displayOrder: 21
+    },
+    {
+        id: "depends_on",
+        label: "Depends on",
+        description: "Source requires target to work",
+        arrowStyle: "solid",
+        direction: "forward",
+        color: "#f59e0b",
+        displayOrder: 30
+    },
+    {
+        id: "required_by",
+        label: "Required by",
+        description: "Target depends on source (inverse of depends_on)",
+        arrowStyle: "solid",
+        direction: "forward",
+        color: "#f59e0b",
+        displayOrder: 31
+    },
+    {
+        id: "extends",
+        label: "Extends",
+        description: "Source specializes or builds upon target",
+        arrowStyle: "solid",
+        direction: "forward",
+        color: "#6366f1",
+        displayOrder: 40
+    },
+    {
+        id: "extended_by",
+        label: "Extended by",
+        description: "Target extends source (inverse of extends)",
+        arrowStyle: "solid",
+        direction: "forward",
+        color: "#6366f1",
+        displayOrder: 41
+    },
+    {
+        id: "references",
+        label: "References",
+        description: "Source mentions or cites target",
+        arrowStyle: "dotted",
+        direction: "forward",
+        color: "#14b8a6",
+        displayOrder: 50
+    },
+    {
+        id: "referenced_by",
+        label: "Referenced by",
+        description: "Target references source (inverse of references)",
+        arrowStyle: "dotted",
+        direction: "forward",
+        color: "#14b8a6",
+        displayOrder: 51
+    },
+    {
+        id: "supports",
+        label: "Supports",
+        description: "Source provides evidence for target",
+        arrowStyle: "solid",
+        direction: "forward",
+        color: "#22c55e",
+        displayOrder: 60
+    },
+    {
+        id: "supported_by",
+        label: "Supported by",
+        description: "Target supports source (inverse of supports)",
+        arrowStyle: "solid",
+        direction: "forward",
+        color: "#22c55e",
+        displayOrder: 61
+    },
+    {
+        id: "contradicts",
+        label: "Contradicts",
+        description: "Source disagrees with target",
+        arrowStyle: "solid",
+        direction: "bidirectional",
+        color: "#ef4444",
+        displayOrder: 70
+    },
+    {
+        id: "alternative_to",
+        label: "Alternative to",
+        description: "Source and target are competing approaches",
+        arrowStyle: "dashed",
+        direction: "bidirectional",
+        color: "#a855f7",
+        displayOrder: 80
+    }
 ] as const;
 
 const BUILTIN_TEMPLATES: Array<{
@@ -66,18 +226,16 @@ const BUILTIN_TEMPLATES: Array<{
                 { patterns: ["Decision", "Choice", "Selected Option"], match: "prefix", level: 2, required: true },
                 { patterns: ["Alternatives", "Options Considered"], match: "prefix", level: 2, required: true },
                 { patterns: ["Consequences", "Impact"], match: "prefix", level: 2, required: false },
-                { patterns: ["Context", "Background"], match: "prefix", level: 2, required: false },
+                { patterns: ["Context", "Background"], match: "prefix", level: 2, required: false }
             ],
-            frontmatter: [
-                { key: "type", match: "oneOf", values: ["adr", "decision", "architecture-decision"] },
-            ],
+            frontmatter: [{ key: "type", match: "oneOf", values: ["adr", "decision", "architecture-decision"] }]
         },
         fieldMappings: [
             { headings: ["Context", "Background"], match: "prefix", target: "content" },
             { headings: ["Decision", "Choice"], match: "prefix", target: "rationale" },
             { headings: ["Alternatives", "Options Considered"], match: "prefix", target: "alternatives" },
-            { headings: ["Consequences", "Impact"], match: "prefix", target: "consequences" },
-        ],
+            { headings: ["Consequences", "Impact"], match: "prefix", target: "consequences" }
+        ]
     },
     {
         id: "builtin-api-reference",
@@ -94,13 +252,11 @@ const BUILTIN_TEMPLATES: Array<{
                 { patterns: ["Endpoint", "URL", "Route"], match: "prefix", level: 2, required: true },
                 { patterns: ["Request", "Parameters", "Payload"], match: "prefix", level: 2, required: true },
                 { patterns: ["Response", "Returns"], match: "prefix", level: 2, required: false },
-                { patterns: ["Errors", "Error Codes"], match: "prefix", level: 2, required: false },
+                { patterns: ["Errors", "Error Codes"], match: "prefix", level: 2, required: false }
             ],
-            frontmatter: [
-                { key: "type", match: "oneOf", values: ["api", "endpoint", "reference"] },
-            ],
+            frontmatter: [{ key: "type", match: "oneOf", values: ["api", "endpoint", "reference"] }]
         },
-        fieldMappings: null,
+        fieldMappings: null
     },
     {
         id: "builtin-meeting-notes",
@@ -117,15 +273,11 @@ const BUILTIN_TEMPLATES: Array<{
                 { patterns: ["Attendees", "Participants", "Present"], match: "prefix", level: 2, required: true },
                 { patterns: ["Action Items", "Actions", "TODOs", "Next Steps"], match: "prefix", level: 2, required: true },
                 { patterns: ["Agenda"], match: "prefix", level: 2, required: false },
-                { patterns: ["Notes", "Discussion"], match: "prefix", level: 2, required: false },
+                { patterns: ["Notes", "Discussion"], match: "prefix", level: 2, required: false }
             ],
-            frontmatter: [
-                { key: "type", match: "oneOf", values: ["meeting", "meeting-notes"] },
-            ],
+            frontmatter: [{ key: "type", match: "oneOf", values: ["meeting", "meeting-notes"] }]
         },
-        fieldMappings: [
-            { headings: ["Summary", "TLDR"], match: "prefix", target: "summary" },
-        ],
+        fieldMappings: [{ headings: ["Summary", "TLDR"], match: "prefix", target: "summary" }]
     },
     {
         id: "builtin-checklist",
@@ -139,11 +291,9 @@ const BUILTIN_TEMPLATES: Array<{
         matchRules: {
             minScore: 1,
             headings: [],
-            frontmatter: [
-                { key: "type", match: "oneOf", values: ["checklist", "procedure"] },
-            ],
+            frontmatter: [{ key: "type", match: "oneOf", values: ["checklist", "procedure"] }]
         },
-        fieldMappings: null,
+        fieldMappings: null
     },
     {
         id: "builtin-schema",
@@ -157,12 +307,10 @@ const BUILTIN_TEMPLATES: Array<{
         matchRules: {
             minScore: 1,
             headings: [],
-            frontmatter: [
-                { key: "type", match: "oneOf", values: ["schema", "model", "data-model"] },
-            ],
+            frontmatter: [{ key: "type", match: "oneOf", values: ["schema", "model", "data-model"] }]
         },
-        fieldMappings: null,
-    },
+        fieldMappings: null
+    }
 ];
 
 const INVERSE_PAIRS: Array<[string, string]> = [
@@ -230,8 +378,8 @@ export async function seed(ctx: SeedContext): Promise<void> {
                     matchRules: tmpl.matchRules,
                     fieldMappings: tmpl.fieldMappings,
                     priority: tmpl.priority,
-                    tags: tmpl.tags,
-                },
+                    tags: tmpl.tags
+                }
             });
     }
     ctx.counters["builtin_templates"] = BUILTIN_TEMPLATES.length;

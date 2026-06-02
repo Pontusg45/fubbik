@@ -83,10 +83,7 @@ export function LinkChunkDialog({ chunkId }: { chunkId: string }) {
                 </DialogHeader>
                 <div className="space-y-4 px-6 pb-6">
                     <label className="flex items-center gap-2 text-xs">
-                        <Checkbox
-                            checked={searchAllSpaces}
-                            onCheckedChange={setSearchAllSpaces as (checked: boolean) => void}
-                        />
+                        <Checkbox checked={searchAllSpaces} onCheckedChange={setSearchAllSpaces as (checked: boolean) => void} />
                         <span className="text-muted-foreground font-medium">Search all spaces</span>
                     </label>
                     <div className="space-y-2">
@@ -111,11 +108,7 @@ export function LinkChunkDialog({ chunkId }: { chunkId: string }) {
                             className="text-muted-foreground hover:text-foreground flex items-center gap-0.5 text-xs transition-colors"
                         >
                             Change type
-                            {showRelationPicker ? (
-                                <ChevronUp className="size-3" />
-                            ) : (
-                                <ChevronDown className="size-3" />
-                            )}
+                            {showRelationPicker ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />}
                         </button>
                     </div>
                     {showRelationPicker && (

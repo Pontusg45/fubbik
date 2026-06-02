@@ -33,7 +33,7 @@ const VARIANT_CLASSES: Record<StatusPillVariant, string> = {
     violet: "bg-violet-500/15 border-violet-500/30 text-violet-400",
     green: "bg-green-500/15 border-green-500/30 text-green-400",
     yellow: "bg-yellow-500/15 border-yellow-500/30 text-yellow-400",
-    orange: "bg-orange-500/15 border-orange-500/30 text-orange-400",
+    orange: "bg-orange-500/15 border-orange-500/30 text-orange-400"
 };
 
 export interface StatusPillProps {
@@ -51,7 +51,7 @@ export function StatusPill({ variant, label, className, children, dot }: StatusP
             className={cn(
                 "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
                 VARIANT_CLASSES[variant],
-                className,
+                className
             )}
         >
             {dot && <span className="size-1.5 rounded-full bg-current opacity-70" />}

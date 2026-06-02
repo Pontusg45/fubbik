@@ -128,7 +128,9 @@ function ArchivedChunks() {
 
             <ConfirmDialog
                 open={deleteTarget !== null}
-                onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}
+                onOpenChange={open => {
+                    if (!open) setDeleteTarget(null);
+                }}
                 title="Delete chunk permanently"
                 description="Permanently delete this chunk? This cannot be undone."
                 confirmLabel="Delete"

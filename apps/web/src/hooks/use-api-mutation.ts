@@ -12,8 +12,10 @@ type QueryKey = readonly unknown[];
  */
 type EdenThunk<TVariables> = (vars: TVariables) => Promise<{ data: unknown; error: unknown }>;
 
-export interface UseApiMutationOptions<TData, TVariables>
-    extends Omit<UseMutationOptions<TData, Error, TVariables>, "mutationFn" | "onSuccess" | "onError"> {
+export interface UseApiMutationOptions<TData, TVariables> extends Omit<
+    UseMutationOptions<TData, Error, TVariables>,
+    "mutationFn" | "onSuccess" | "onError"
+> {
     /**
      * Eden treaty call. Receives the mutation variables and should return the
      * raw `{ data, error }` Promise. The result is automatically unwrapped via
@@ -62,9 +64,7 @@ export interface UseApiMutationOptions<TData, TVariables>
  *     errorToast: "Failed to rename tag",
  *   });
  */
-export function useApiMutation<TData, TVariables = void>(
-    options: UseApiMutationOptions<TData, TVariables>,
-) {
+export function useApiMutation<TData, TVariables = void>(options: UseApiMutationOptions<TData, TVariables>) {
     const queryClient = useQueryClient();
     const { mutationFn, invalidate, successToast, errorToast, onSuccess, onError, ...rest } = options;
 
@@ -84,13 +84,10 @@ export function useApiMutation<TData, TVariables = void>(
         },
         onError: (err, vars) => {
             if (errorToast !== false) {
-                const msg =
-                    typeof errorToast === "function"
-                        ? errorToast(err, vars)
-                        : errorToast ?? err.message ?? "Request failed";
+                const msg = typeof errorToast === "function" ? errorToast(err, vars) : (errorToast ?? err.message ?? "Request failed");
                 if (msg) toast.error(msg);
             }
             onError?.(err, vars);
-        },
+        }
     });
 }

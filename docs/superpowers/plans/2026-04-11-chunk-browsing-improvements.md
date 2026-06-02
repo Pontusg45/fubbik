@@ -1,10 +1,14 @@
 # Chunk Browsing & Navigation Improvements Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to
+> implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Make browsing and navigating chunks easier for humans through preview tooltips, inline wiki-style links, reading trails, focus mode, keyboard shortcuts, card grid view, and more.
+**Goal:** Make browsing and navigating chunks easier for humans through preview tooltips, inline wiki-style links, reading trails, focus
+mode, keyboard shortcuts, card grid view, and more.
 
-**Architecture:** Mostly frontend work. Several small hooks (`useReadingTrail`, `useFocusMode`), a few new components (`ChunkPreviewTooltip`, `ChunkCardGrid`, `FocusMode`, `ChunkLinkRenderer`), keyboard handlers, and minor backend additions (cluster computation, learning path entities — in later phases).
+**Architecture:** Mostly frontend work. Several small hooks (`useReadingTrail`, `useFocusMode`), a few new components
+(`ChunkPreviewTooltip`, `ChunkCardGrid`, `FocusMode`, `ChunkLinkRenderer`), keyboard handlers, and minor backend additions (cluster
+computation, learning path entities — in later phases).
 
 **Tech Stack:** React, TanStack Router, shadcn-ui, Tailwind, lucide-react, existing API + AGE queries
 
@@ -17,7 +21,8 @@ Organized as 5 phases, each independently shippable:
 - **Phase 1: Quick wins (UX polish)** — preview tooltips, inline links, reading trail, focus mode, card grid
 - **Phase 2: Keyboard-first navigation** — vim-style bindings, numbered jumps, quick open
 - **Phase 3: Browse entry points** — alphabetical index, tag cloud, codebase dashboards, featured chunks
-- **Phase 4: Reading experience** — ToC in chunk detail, reading time, scroll progress, chunk type icons, content thumbnails, adjustable reader settings
+- **Phase 4: Reading experience** — ToC in chunk detail, reading time, scroll progress, chunk type icons, content thumbnails, adjustable
+  reader settings
 - **Phase 5: Discovery & clustering** — auto-clusters, similar-to, smart collections, learning paths, "you might have missed this"
 
 Items within a phase can be parallelized if they don't share files. Tasks are numbered sequentially across phases.
@@ -26,37 +31,37 @@ Items within a phase can be parallelized if they don't share files. Tasks are nu
 
 ## File Structure
 
-| File | Phase | Action | Responsibility |
-|------|-------|--------|---------------|
-| `apps/web/src/features/chunks/chunk-preview-tooltip.tsx` | 1 | Create | Hover preview component |
-| `apps/web/src/features/chunks/use-chunk-preview.ts` | 1 | Create | Prefetch + cache for hover previews |
-| `apps/web/src/features/chunks/chunk-link-renderer.tsx` | 1 | Create | Auto-link chunk names in content |
-| `apps/web/src/hooks/use-reading-trail.ts` | 1 | Create | Session-scoped chunk visit history |
-| `apps/web/src/features/nav/reading-trail-sidebar.tsx` | 1 | Create | Sidebar showing recent visits |
-| `apps/web/src/features/chunks/focus-mode.tsx` | 1 | Create | Focus mode wrapper for chunk detail |
-| `apps/web/src/features/chunks/chunk-card-grid.tsx` | 1 | Create | Masonry card grid view |
-| `apps/web/src/hooks/use-focus-mode.ts` | 1 | Create | Focus mode state + persistence |
-| `apps/web/src/routes/chunks.$chunkId.tsx` | 1, 4 | Modify | Integrate preview, focus mode, ToC, progress |
-| `apps/web/src/routes/chunks.index.tsx` | 1 | Modify | Add card grid view toggle |
-| `apps/web/src/routes/__root.tsx` | 1, 2 | Modify | Mount reading trail + keyboard handler |
-| `apps/web/src/features/nav/keyboard-shortcuts.tsx` | 2 | Create | Global vim-style keyboard handler |
-| `apps/web/src/features/nav/quick-open.tsx` | 2 | Create | Ctrl+O chunk picker |
-| `apps/web/src/routes/browse.tsx` | 3 | Create | Alphabetical index + tag cloud entry point |
-| `apps/web/src/features/browse/alphabetical-index.tsx` | 3 | Create | A-Z index component |
-| `apps/web/src/features/browse/tag-cloud.tsx` | 3 | Create | Weighted tag cloud |
-| `apps/web/src/routes/codebases.$codebaseId.tsx` | 3 | Create | Codebase dashboard |
-| `apps/web/src/features/chunks/featured-chunk-widget.tsx` | 3 | Create | Chunk of the day widget |
-| `apps/web/src/features/chunks/reading-time.ts` | 4 | Create | Word count + time estimator |
-| `apps/web/src/features/chunks/chunk-type-icon.tsx` | 4 | Create | Per-type icon component |
-| `apps/web/src/features/chunks/content-thumbnail.tsx` | 4 | Create | Text-shape preview SVG |
-| `apps/web/src/features/chunks/reader-settings.tsx` | 4 | Create | Font size/theme popover |
-| `apps/web/src/hooks/use-reader-settings.ts` | 4 | Create | Reader preferences persistence |
-| `packages/api/src/chunks/clusters.ts` | 5 | Create | Embedding-based clustering service |
-| `apps/web/src/routes/browse.clusters.tsx` | 5 | Create | Cluster browsing view |
-| `apps/web/src/features/chunks/similar-button.tsx` | 5 | Create | "Show similar" action |
-| `packages/db/src/schema/learning-path.ts` | 5 | Create | Learning path table |
-| `apps/web/src/routes/learn.tsx` | 5 | Create | Learning paths index |
-| `apps/web/src/features/dashboard/missed-chunks-widget.tsx` | 5 | Create | "You might have missed this" widget |
+| File                                                       | Phase | Action | Responsibility                               |
+| ---------------------------------------------------------- | ----- | ------ | -------------------------------------------- |
+| `apps/web/src/features/chunks/chunk-preview-tooltip.tsx`   | 1     | Create | Hover preview component                      |
+| `apps/web/src/features/chunks/use-chunk-preview.ts`        | 1     | Create | Prefetch + cache for hover previews          |
+| `apps/web/src/features/chunks/chunk-link-renderer.tsx`     | 1     | Create | Auto-link chunk names in content             |
+| `apps/web/src/hooks/use-reading-trail.ts`                  | 1     | Create | Session-scoped chunk visit history           |
+| `apps/web/src/features/nav/reading-trail-sidebar.tsx`      | 1     | Create | Sidebar showing recent visits                |
+| `apps/web/src/features/chunks/focus-mode.tsx`              | 1     | Create | Focus mode wrapper for chunk detail          |
+| `apps/web/src/features/chunks/chunk-card-grid.tsx`         | 1     | Create | Masonry card grid view                       |
+| `apps/web/src/hooks/use-focus-mode.ts`                     | 1     | Create | Focus mode state + persistence               |
+| `apps/web/src/routes/chunks.$chunkId.tsx`                  | 1, 4  | Modify | Integrate preview, focus mode, ToC, progress |
+| `apps/web/src/routes/chunks.index.tsx`                     | 1     | Modify | Add card grid view toggle                    |
+| `apps/web/src/routes/__root.tsx`                           | 1, 2  | Modify | Mount reading trail + keyboard handler       |
+| `apps/web/src/features/nav/keyboard-shortcuts.tsx`         | 2     | Create | Global vim-style keyboard handler            |
+| `apps/web/src/features/nav/quick-open.tsx`                 | 2     | Create | Ctrl+O chunk picker                          |
+| `apps/web/src/routes/browse.tsx`                           | 3     | Create | Alphabetical index + tag cloud entry point   |
+| `apps/web/src/features/browse/alphabetical-index.tsx`      | 3     | Create | A-Z index component                          |
+| `apps/web/src/features/browse/tag-cloud.tsx`               | 3     | Create | Weighted tag cloud                           |
+| `apps/web/src/routes/codebases.$codebaseId.tsx`            | 3     | Create | Codebase dashboard                           |
+| `apps/web/src/features/chunks/featured-chunk-widget.tsx`   | 3     | Create | Chunk of the day widget                      |
+| `apps/web/src/features/chunks/reading-time.ts`             | 4     | Create | Word count + time estimator                  |
+| `apps/web/src/features/chunks/chunk-type-icon.tsx`         | 4     | Create | Per-type icon component                      |
+| `apps/web/src/features/chunks/content-thumbnail.tsx`       | 4     | Create | Text-shape preview SVG                       |
+| `apps/web/src/features/chunks/reader-settings.tsx`         | 4     | Create | Font size/theme popover                      |
+| `apps/web/src/hooks/use-reader-settings.ts`                | 4     | Create | Reader preferences persistence               |
+| `packages/api/src/chunks/clusters.ts`                      | 5     | Create | Embedding-based clustering service           |
+| `apps/web/src/routes/browse.clusters.tsx`                  | 5     | Create | Cluster browsing view                        |
+| `apps/web/src/features/chunks/similar-button.tsx`          | 5     | Create | "Show similar" action                        |
+| `packages/db/src/schema/learning-path.ts`                  | 5     | Create | Learning path table                          |
+| `apps/web/src/routes/learn.tsx`                            | 5     | Create | Learning paths index                         |
+| `apps/web/src/features/dashboard/missed-chunks-widget.tsx` | 5     | Create | "You might have missed this" widget          |
 
 ---
 
@@ -69,10 +74,12 @@ Five small-to-medium features that dramatically improve browsing UX with minimal
 ### Task 1: Chunk Preview Tooltip
 
 **Files:**
+
 - Create: `apps/web/src/features/chunks/chunk-preview-tooltip.tsx`
 - Create: `apps/web/src/features/chunks/use-chunk-preview.ts`
 
-**Context:** Hovering over a chunk link in any list shows a floating preview card with title, summary, content excerpt, tags, and type. Uses the existing tooltip/popover primitives and prefetches chunk detail on hover.
+**Context:** Hovering over a chunk link in any list shows a floating preview card with title, summary, content excerpt, tags, and type. Uses
+the existing tooltip/popover primitives and prefetches chunk detail on hover.
 
 - [ ] **Step 1: Create the preview hook**
 
@@ -87,7 +94,7 @@ export function useChunkPreview(chunkId: string, enabled: boolean) {
         queryKey: ["chunk-preview", chunkId],
         queryFn: async () => unwrapEden(await api.api.chunks({ id: chunkId }).get()),
         enabled,
-        staleTime: 60_000,
+        staleTime: 60_000
     });
 }
 
@@ -97,7 +104,7 @@ export function usePrefetchChunkPreview() {
         queryClient.prefetchQuery({
             queryKey: ["chunk-preview", chunkId],
             queryFn: async () => unwrapEden(await api.api.chunks({ id: chunkId }).get()),
-            staleTime: 60_000,
+            staleTime: 60_000
         });
     };
 }
@@ -171,7 +178,8 @@ export function ChunkPreviewTooltip({ chunkId, children }: { chunkId: string; ch
 
 - [ ] **Step 3: Use it in chunk lists**
 
-Find places in the codebase where chunk titles appear as links (chunks list, search results, dashboard widgets). Wrap each Link with `<ChunkPreviewTooltip chunkId={chunk.id}>...</ChunkPreviewTooltip>`.
+Find places in the codebase where chunk titles appear as links (chunks list, search results, dashboard widgets). Wrap each Link with
+`<ChunkPreviewTooltip chunkId={chunk.id}>...</ChunkPreviewTooltip>`.
 
 Start with `apps/web/src/routes/chunks.index.tsx` — wrap the main list items.
 
@@ -188,10 +196,12 @@ git commit -m "feat(chunks): add hover preview tooltip for chunk links"
 ### Task 2: Inline Wiki-Style Links
 
 **Files:**
+
 - Create: `apps/web/src/features/chunks/chunk-link-renderer.tsx`
 - Modify: `apps/web/src/routes/chunks.$chunkId.tsx`
 
-**Context:** Auto-detect chunk titles in chunk content and turn them into clickable links. Uses a map of chunk titles → IDs loaded once per page.
+**Context:** Auto-detect chunk titles in chunk content and turn them into clickable links. Uses a map of chunk titles → IDs loaded once per
+page.
 
 - [ ] **Step 1: Create the link renderer component**
 
@@ -247,7 +257,8 @@ export function ChunkLinkRenderer({ content, currentChunkId }: { content: string
 
 - [ ] **Step 2: Use it in chunk detail page**
 
-In `apps/web/src/routes/chunks.$chunkId.tsx`, find where chunk content is rendered (likely via `MarkdownRenderer`). Replace with `ChunkLinkRenderer`:
+In `apps/web/src/routes/chunks.$chunkId.tsx`, find where chunk content is rendered (likely via `MarkdownRenderer`). Replace with
+`ChunkLinkRenderer`:
 
 ```tsx
 <ChunkLinkRenderer content={chunk.content} currentChunkId={chunk.id} />
@@ -266,12 +277,14 @@ git commit -m "feat(chunks): auto-link chunk titles in content (wiki-style)"
 ### Task 3: Reading Trail Sidebar
 
 **Files:**
+
 - Create: `apps/web/src/hooks/use-reading-trail.ts`
 - Create: `apps/web/src/features/nav/reading-trail-sidebar.tsx`
 - Modify: `apps/web/src/routes/chunks.$chunkId.tsx` (record visit)
 - Modify: `apps/web/src/routes/__root.tsx` (mount sidebar)
 
-**Context:** Session-scoped trail of chunks visited. Small persistent sidebar (collapsible) showing the last 10 visited chunks with quick-jump.
+**Context:** Session-scoped trail of chunks visited. Small persistent sidebar (collapsible) showing the last 10 visited chunks with
+quick-jump.
 
 - [ ] **Step 1: Create the hook**
 
@@ -428,7 +441,7 @@ In `apps/web/src/routes/__root.tsx`, add the sidebar component near where `Comma
 import { ReadingTrailSidebar } from "@/features/nav/reading-trail-sidebar";
 
 // In the JSX, outside isLanding branch:
-<ReadingTrailSidebar />
+<ReadingTrailSidebar />;
 ```
 
 - [ ] **Step 5: Verify and commit**
@@ -444,10 +457,12 @@ git commit -m "feat(nav): add session reading trail sidebar"
 ### Task 4: Focus Mode
 
 **Files:**
+
 - Create: `apps/web/src/hooks/use-focus-mode.ts`
 - Modify: `apps/web/src/routes/chunks.$chunkId.tsx`
 
-**Context:** A toggle on chunk detail that hides the nav, sidebars, and widens the content column for distraction-free reading. Uses a simple state + CSS toggle.
+**Context:** A toggle on chunk detail that hides the nav, sidebars, and widens the content column for distraction-free reading. Uses a
+simple state + CSS toggle.
 
 - [ ] **Step 1: Create the hook**
 
@@ -551,10 +566,12 @@ git commit -m "feat(chunks): add focus mode for distraction-free reading"
 ### Task 5: Card Grid View for Chunks List
 
 **Files:**
+
 - Create: `apps/web/src/features/chunks/chunk-card-grid.tsx`
 - Modify: `apps/web/src/routes/chunks.index.tsx`
 
-**Context:** Alternative view for the `/chunks` page showing chunks as a masonry/card grid instead of a list. Each card shows title, summary, type badge, tags, and a content excerpt.
+**Context:** Alternative view for the `/chunks` page showing chunks as a masonry/card grid instead of a list. Each card shows title,
+summary, type badge, tags, and a content excerpt.
 
 - [ ] **Step 1: Create the grid component**
 
@@ -634,10 +651,11 @@ In `apps/web/src/routes/chunks.index.tsx`, the page already has a `view` URL par
 Find the view toggle buttons and add a grid option. Import `LayoutGrid` from lucide-react.
 
 In the render logic, add:
+
 ```tsx
-{view === "grid" && (
-    <ChunkCardGrid chunks={processedChunks} />
-)}
+{
+    view === "grid" && <ChunkCardGrid chunks={processedChunks} />;
+}
 ```
 
 Alongside the existing list and kanban renderings.
@@ -661,10 +679,12 @@ Three tasks that add power-user keyboard shortcuts.
 ### Task 6: Vim-Style Global Keyboard Shortcuts
 
 **Files:**
+
 - Create: `apps/web/src/features/nav/keyboard-shortcuts.tsx`
 - Modify: `apps/web/src/routes/__root.tsx`
 
-**Context:** Global keyboard handler providing `j/k` (scroll), `g/G` (top/bottom), `/` (focus search — already done), `e` (edit current chunk), `f` (focus mode), `?` (show shortcuts help).
+**Context:** Global keyboard handler providing `j/k` (scroll), `g/G` (top/bottom), `/` (focus search — already done), `e` (edit current
+chunk), `f` (focus mode), `?` (show shortcuts help).
 
 - [ ] **Step 1: Create the keyboard handler component**
 
@@ -792,7 +812,7 @@ In `apps/web/src/routes/__root.tsx`:
 import { KeyboardShortcuts } from "@/features/nav/keyboard-shortcuts";
 
 // Near CommandPalette mount:
-<KeyboardShortcuts />
+<KeyboardShortcuts />;
 ```
 
 - [ ] **Step 3: Verify and commit**
@@ -808,6 +828,7 @@ git commit -m "feat(nav): add vim-style global keyboard shortcuts and help modal
 ### Task 7: Numbered List Jumps
 
 **Files:**
+
 - Modify: `apps/web/src/routes/chunks.index.tsx`
 
 **Context:** Pressing `1`-`9` in any list view jumps to (or opens) the Nth visible item. Small enhancement to existing keyboard handler.
@@ -852,14 +873,17 @@ git commit -m "feat(chunks): add numbered 1-9 jumps for quick navigation"
 ### Task 8: Quick Open (Fuzzy File-Picker for Chunks)
 
 **Files:**
+
 - Create: `apps/web/src/features/nav/quick-open.tsx`
 - Modify: `apps/web/src/routes/__root.tsx`
 
-**Context:** `Ctrl+O` (or `Cmd+O`) opens a fuzzy picker to jump to any chunk by title. Similar to VS Code's file picker. Could reuse the existing command palette infrastructure if it supports ad-hoc queries.
+**Context:** `Ctrl+O` (or `Cmd+O`) opens a fuzzy picker to jump to any chunk by title. Similar to VS Code's file picker. Could reuse the
+existing command palette infrastructure if it supports ad-hoc queries.
 
 - [ ] **Step 1: Check if command palette already covers this**
 
-Read `apps/web/src/features/command-palette/command-palette.tsx`. If it already has chunk title search (mentioned in previous sessions), this task may be a no-op — just verify `Ctrl+O` is bound.
+Read `apps/web/src/features/command-palette/command-palette.tsx`. If it already has chunk title search (mentioned in previous sessions),
+this task may be a no-op — just verify `Ctrl+O` is bound.
 
 If not covered, continue with the next steps.
 
@@ -996,7 +1020,7 @@ export function QuickOpen() {
 // In apps/web/src/routes/__root.tsx:
 import { QuickOpen } from "@/features/nav/quick-open";
 // Near CommandPalette:
-<QuickOpen />
+<QuickOpen />;
 ```
 
 ```bash
@@ -1015,6 +1039,7 @@ Five tasks that add structured browsing entry points.
 ### Task 9: Alphabetical Index Page
 
 **Files:**
+
 - Create: `apps/web/src/routes/browse.tsx`
 - Create: `apps/web/src/features/browse/alphabetical-index.tsx`
 
@@ -1154,6 +1179,7 @@ git commit -m "feat(browse): add alphabetical A-Z index page"
 ### Task 10: Tag Cloud
 
 **Files:**
+
 - Create: `apps/web/src/features/browse/tag-cloud.tsx`
 - Modify: `apps/web/src/routes/browse.tsx`
 
@@ -1224,7 +1250,7 @@ import { TagCloud } from "@/features/browse/tag-cloud";
 // Add a tags query:
 const { data: tagsData } = useQuery({
     queryKey: ["browse-tags"],
-    queryFn: async () => unwrapEden(await api.api.tags.get()),
+    queryFn: async () => unwrapEden(await api.api.tags.get())
 });
 
 const tagsWithCounts = ((tagsData as any) ?? []) as Array<{ name: string; usage?: number }>;
@@ -1236,15 +1262,23 @@ const [view, setView] = useState<"alphabetical" | "tags">("alphabetical");
 
 // In the render:
 <div className="mb-4 flex gap-2">
-    <button onClick={() => setView("alphabetical")} className={`text-sm rounded px-3 py-1.5 ${view === "alphabetical" ? "bg-muted font-semibold" : "hover:bg-muted/50"}`}>
+    <button
+        onClick={() => setView("alphabetical")}
+        className={`text-sm rounded px-3 py-1.5 ${view === "alphabetical" ? "bg-muted font-semibold" : "hover:bg-muted/50"}`}
+    >
         A-Z
     </button>
-    <button onClick={() => setView("tags")} className={`text-sm rounded px-3 py-1.5 ${view === "tags" ? "bg-muted font-semibold" : "hover:bg-muted/50"}`}>
+    <button
+        onClick={() => setView("tags")}
+        className={`text-sm rounded px-3 py-1.5 ${view === "tags" ? "bg-muted font-semibold" : "hover:bg-muted/50"}`}
+    >
         Tag cloud
     </button>
-</div>
+</div>;
 
-{view === "alphabetical" ? <AlphabeticalIndex chunks={chunks} /> : <TagCloud tags={tagsForCloud} />}
+{
+    view === "alphabetical" ? <AlphabeticalIndex chunks={chunks} /> : <TagCloud tags={tagsForCloud} />;
+}
 ```
 
 - [ ] **Step 3: Verify and commit**
@@ -1259,9 +1293,11 @@ git commit -m "feat(browse): add weighted tag cloud view"
 ### Task 11: Codebase Dashboards
 
 **Files:**
+
 - Create: `apps/web/src/routes/codebases.$codebaseId.tsx`
 
-**Context:** Each codebase gets its own landing page with summary stats, top chunks, recent activity, and category breakdown. Reuses existing API endpoints filtered by `codebaseId`.
+**Context:** Each codebase gets its own landing page with summary stats, top chunks, recent activity, and category breakdown. Reuses
+existing API endpoints filtered by `codebaseId`.
 
 - [ ] **Step 1: Create the route**
 
@@ -1369,10 +1405,12 @@ git commit -m "feat(codebases): add per-codebase dashboard page"
 ### Task 12: Featured Chunk Widget
 
 **Files:**
+
 - Create: `apps/web/src/features/chunks/featured-chunk-widget.tsx`
 - Modify: `apps/web/src/routes/dashboard.tsx`
 
-**Context:** A dashboard widget that shows a "chunk of the day" — a randomly selected (or rotating) chunk to surface forgotten knowledge. Use a deterministic daily rotation based on date.
+**Context:** A dashboard widget that shows a "chunk of the day" — a randomly selected (or rotating) chunk to surface forgotten knowledge.
+Use a deterministic daily rotation based on date.
 
 - [ ] **Step 1: Create the widget**
 
@@ -1440,7 +1478,7 @@ In `apps/web/src/routes/dashboard.tsx`, import and render the widget in a suitab
 import { FeaturedChunkWidget } from "@/features/chunks/featured-chunk-widget";
 
 // In the render:
-<FeaturedChunkWidget />
+<FeaturedChunkWidget />;
 ```
 
 - [ ] **Step 3: Verify and commit**
@@ -1455,16 +1493,19 @@ git commit -m "feat(dashboard): add chunk-of-the-day featured widget"
 ### Task 13: Entry Point Markers ("Start here")
 
 **Files:**
+
 - Modify: `packages/db/src/schema/chunk.ts`
 - Modify: `packages/db/src/repository/chunk.ts`
 - Modify: `apps/web/src/routes/chunks.$chunkId.tsx`
 - Modify: `apps/web/src/routes/dashboard.tsx`
 
-**Context:** Add a boolean `isEntryPoint` flag on chunks. Users can mark chunks as entry points for a topic. Dashboard surfaces them as "Start here" reading paths.
+**Context:** Add a boolean `isEntryPoint` flag on chunks. Users can mark chunks as entry points for a topic. Dashboard surfaces them as
+"Start here" reading paths.
 
 - [ ] **Step 1: Add schema column**
 
 In `packages/db/src/schema/chunk.ts`, add to the chunk table definition:
+
 ```typescript
 isEntryPoint: boolean("is_entry_point").notNull().default(false),
 ```
@@ -1478,12 +1519,9 @@ Find the chunk service/routes that handle PATCH. Add `isEntryPoint` to the updat
 - [ ] **Step 3: Add toggle button to chunk detail**
 
 In `apps/web/src/routes/chunks.$chunkId.tsx`, add a toggle button near other actions:
+
 ```tsx
-<Button
-    variant={chunk.isEntryPoint ? "default" : "outline"}
-    size="sm"
-    onClick={() => toggleEntryPoint()}
->
+<Button variant={chunk.isEntryPoint ? "default" : "outline"} size="sm" onClick={() => toggleEntryPoint()}>
     <Flag className="size-3.5" />
     {chunk.isEntryPoint ? "Entry point" : "Mark as entry"}
 </Button>
@@ -1513,10 +1551,12 @@ Six tasks that improve the reading experience on chunk detail pages.
 ### Task 14: Auto-generated Table of Contents in Chunk Detail
 
 **Files:**
+
 - Create: `apps/web/src/features/chunks/chunk-toc.tsx`
 - Modify: `apps/web/src/routes/chunks.$chunkId.tsx`
 
-**Context:** If a chunk's content has markdown headings (## or ###), auto-generate a sticky ToC sidebar (or right-rail on chunk detail). Similar to the compose view's ToC but based on content headings, not chunks.
+**Context:** If a chunk's content has markdown headings (## or ###), auto-generate a sticky ToC sidebar (or right-rail on chunk detail).
+Similar to the compose view's ToC but based on content headings, not chunks.
 
 - [ ] **Step 1: Create the ToC component**
 
@@ -1576,7 +1616,8 @@ export function ChunkToc({ content }: { content: string }) {
 
 - [ ] **Step 2: Render in chunk detail**
 
-In `apps/web/src/routes/chunks.$chunkId.tsx`, add the ToC as a right-rail (or left sidebar). Likely wrap the existing content in a flex layout similar to what compose.tsx does.
+In `apps/web/src/routes/chunks.$chunkId.tsx`, add the ToC as a right-rail (or left sidebar). Likely wrap the existing content in a flex
+layout similar to what compose.tsx does.
 
 - [ ] **Step 3: Commit**
 
@@ -1590,6 +1631,7 @@ git commit -m "feat(chunks): auto-generate table of contents from content headin
 ### Task 15: Reading Time Estimator
 
 **Files:**
+
 - Create: `apps/web/src/features/chunks/reading-time.ts`
 - Modify: `apps/web/src/routes/chunks.$chunkId.tsx`
 - Modify: `apps/web/src/routes/chunks.index.tsx`
@@ -1613,6 +1655,7 @@ export function estimateReadingTime(content: string | null | undefined): { minut
 - [ ] **Step 2: Show on chunk detail**
 
 In `apps/web/src/routes/chunks.$chunkId.tsx`, near the chunk metadata:
+
 ```tsx
 import { estimateReadingTime } from "@/features/chunks/reading-time";
 
@@ -1620,7 +1663,7 @@ import { estimateReadingTime } from "@/features/chunks/reading-time";
 <span className="text-xs text-muted-foreground flex items-center gap-1">
     <Clock className="size-3" />
     {estimateReadingTime(chunk.content).label}
-</span>
+</span>;
 ```
 
 - [ ] **Step 3: (Optional) Show in chunks list**
@@ -1639,9 +1682,11 @@ git commit -m "feat(chunks): add reading time estimate"
 ### Task 16: Chunk Type Icons
 
 **Files:**
+
 - Create: `apps/web/src/features/chunks/chunk-type-icon.tsx`
 
-**Context:** A component that renders an appropriate lucide-react icon for each chunk type. Use this consistently across the UI wherever a chunk type is shown.
+**Context:** A component that renders an appropriate lucide-react icon for each chunk type. Use this consistently across the UI wherever a
+chunk type is shown.
 
 - [ ] **Step 1: Create the component**
 
@@ -1669,6 +1714,7 @@ export function ChunkTypeIcon({ type, className }: { type: string; className?: s
 Find places where chunk type is rendered (chunks list, search results, dashboard widgets). Add the icon next to the type badge.
 
 Example: in `chunks.index.tsx`:
+
 ```tsx
 <div className="flex items-center gap-1.5">
     <ChunkTypeIcon type={chunk.type} />
@@ -1690,9 +1736,11 @@ git commit -m "feat(chunks): add chunk type icons for visual recognition"
 ### Task 17: Content Thumbnail (Text Shape Preview)
 
 **Files:**
+
 - Create: `apps/web/src/features/chunks/content-thumbnail.tsx`
 
-**Context:** For card grid views, generate a small SVG "text shape" based on chunk content — like a code minimap. Just renders lines of varying lengths based on actual line lengths in the content.
+**Context:** For card grid views, generate a small SVG "text shape" based on chunk content — like a code minimap. Just renders lines of
+varying lengths based on actual line lengths in the content.
 
 - [ ] **Step 1: Create the component**
 
@@ -1738,12 +1786,15 @@ export function ContentThumbnail({ content, className }: { content: string | nul
 - [ ] **Step 2: Use in card grid**
 
 In `apps/web/src/features/chunks/chunk-card-grid.tsx` (from Task 5), add the thumbnail at the bottom of each card:
+
 ```tsx
-{chunk.content && (
-    <div className="mt-3 text-muted-foreground">
-        <ContentThumbnail content={chunk.content} />
-    </div>
-)}
+{
+    chunk.content && (
+        <div className="mt-3 text-muted-foreground">
+            <ContentThumbnail content={chunk.content} />
+        </div>
+    );
+}
 ```
 
 - [ ] **Step 3: Commit**
@@ -1758,9 +1809,11 @@ git commit -m "feat(chunks): add content thumbnail text-shape preview"
 ### Task 18: Scroll Progress Bar on Chunk Detail
 
 **Files:**
+
 - Modify: `apps/web/src/routes/chunks.$chunkId.tsx`
 
-**Context:** Same progress bar pattern from the compose view — a thin bar at the top of the viewport showing scroll position through the chunk content.
+**Context:** Same progress bar pattern from the compose view — a thin bar at the top of the viewport showing scroll position through the
+chunk content.
 
 - [ ] **Step 1: Add scroll progress state and effect**
 
@@ -1785,6 +1838,7 @@ useEffect(() => {
 - [ ] **Step 2: Render the progress bar**
 
 At the top of the return:
+
 ```tsx
 <div className="fixed top-0 left-0 right-0 z-50 h-0.5 bg-transparent print:hidden">
     <div className="h-full bg-primary transition-[width] duration-100 ease-out" style={{ width: `${scrollProgress}%` }} />
@@ -1803,6 +1857,7 @@ git commit -m "feat(chunks): add reading progress bar on chunk detail"
 ### Task 19: Adjustable Reader Settings
 
 **Files:**
+
 - Create: `apps/web/src/hooks/use-reader-settings.ts`
 - Create: `apps/web/src/features/chunks/reader-settings.tsx`
 - Modify: `apps/web/src/routes/chunks.$chunkId.tsx`
@@ -1826,7 +1881,7 @@ export interface ReaderSettings {
 const DEFAULTS: ReaderSettings = {
     fontSize: "base",
     lineHeight: "normal",
-    maxWidth: "normal",
+    maxWidth: "normal"
 };
 
 export function useReaderSettings() {
@@ -1861,17 +1916,17 @@ export function getReaderClasses(settings: ReaderSettings): string {
         sm: "text-sm",
         base: "text-base",
         lg: "text-lg",
-        xl: "text-xl",
+        xl: "text-xl"
     }[settings.fontSize];
     const lineHeight = {
         tight: "leading-tight",
         normal: "leading-relaxed",
-        relaxed: "leading-loose",
+        relaxed: "leading-loose"
     }[settings.lineHeight];
     const maxWidth = {
         narrow: "max-w-2xl",
         normal: "max-w-3xl",
-        wide: "max-w-5xl",
+        wide: "max-w-5xl"
     }[settings.maxWidth];
     return `${fontSize} ${lineHeight} ${maxWidth}`;
 }
@@ -1989,10 +2044,12 @@ Five tasks that use AI/embeddings and new schema to enable deeper discovery.
 ### Task 20: "Show Similar" Button on Chunk Detail
 
 **Files:**
+
 - Create: `apps/web/src/features/chunks/similar-button.tsx`
 - Modify: `apps/web/src/routes/chunks.$chunkId.tsx`
 
-**Context:** A button on chunk detail that navigates to search with a pre-filled `similar-to:"current title"` clause. Leverages existing semantic search.
+**Context:** A button on chunk detail that navigates to search with a pre-filled `similar-to:"current title"` clause. Leverages existing
+semantic search.
 
 - [ ] **Step 1: Create the button**
 
@@ -2037,12 +2094,14 @@ git commit -m "feat(chunks): add 'show similar' button using semantic search"
 ### Task 21: Embedding-Based Clusters
 
 **Files:**
+
 - Create: `packages/api/src/chunks/clusters.ts`
 - Create: `packages/api/src/chunks/cluster-routes.ts`
 - Create: `apps/web/src/routes/browse.clusters.tsx`
 - Modify: `packages/api/src/index.ts`
 
-**Context:** Use pgvector to compute topical clusters of chunks. For v1, a simple algorithm: find the "densest" groups by picking a seed chunk and gathering its N nearest neighbors by embedding similarity.
+**Context:** Use pgvector to compute topical clusters of chunks. For v1, a simple algorithm: find the "densest" groups by picking a seed
+chunk and gathering its N nearest neighbors by embedding similarity.
 
 - [ ] **Step 1: Create the clustering service**
 
@@ -2090,7 +2149,7 @@ export function computeClusters(userId: string, maxClusters = 10, clusterSize = 
                     id: r.id,
                     title: r.title,
                     type: r.type,
-                    similarity: Number(r.similarity),
+                    similarity: Number(r.similarity)
                 }));
 
                 used.add(seed.id);
@@ -2099,13 +2158,13 @@ export function computeClusters(userId: string, maxClusters = 10, clusterSize = 
                 clusters.push({
                     seedId: seed.id,
                     seedTitle: seed.title,
-                    members,
+                    members
                 });
             }
 
             return clusters;
         },
-        catch: cause => new DatabaseError({ cause }),
+        catch: cause => new DatabaseError({ cause })
     });
 }
 ```
@@ -2119,20 +2178,15 @@ import { Elysia } from "elysia";
 import { requireSession } from "../require-session";
 import { computeClusters } from "./clusters";
 
-export const clusterRoutes = new Elysia().get(
-    "/chunks/clusters",
-    ctx =>
-        Effect.runPromise(
-            requireSession(ctx).pipe(
-                Effect.flatMap(session => computeClusters(session.user.id).pipe(
-                    Effect.orElse(() => Effect.succeed([]))
-                )),
-            ),
-        ),
+export const clusterRoutes = new Elysia().get("/chunks/clusters", ctx =>
+    Effect.runPromise(
+        requireSession(ctx).pipe(Effect.flatMap(session => computeClusters(session.user.id).pipe(Effect.orElse(() => Effect.succeed([])))))
+    )
 );
 ```
 
 Register in `packages/api/src/index.ts`:
+
 ```typescript
 import { clusterRoutes } from "./chunks/cluster-routes";
 // ...
@@ -2206,10 +2260,12 @@ git commit -m "feat(browse): add embedding-based topic cluster browsing"
 ### Task 22: Smart Collections
 
 **Files:**
+
 - Create: `apps/web/src/features/chunks/smart-collections.tsx`
 - Modify: `apps/web/src/routes/dashboard.tsx`
 
-**Context:** A sidebar or dashboard section with auto-updating "smart" collections: "Recently updated", "Needs review", "Well-connected", "Deep dives", "Orphans". Each is a link that pre-fills the search query builder.
+**Context:** A sidebar or dashboard section with auto-updating "smart" collections: "Recently updated", "Needs review", "Well-connected",
+"Deep dives", "Orphans". Each is a link that pre-fills the search query builder.
 
 - [ ] **Step 1: Create the component**
 
@@ -2254,10 +2310,11 @@ export function SmartCollections() {
 - [ ] **Step 2: Add to dashboard**
 
 In `apps/web/src/routes/dashboard.tsx`:
+
 ```tsx
 import { SmartCollections } from "@/features/chunks/smart-collections";
 // In the render:
-<SmartCollections />
+<SmartCollections />;
 ```
 
 - [ ] **Step 3: Commit**
@@ -2272,6 +2329,7 @@ git commit -m "feat(dashboard): add smart collections sidebar"
 ### Task 23: Learning Paths
 
 **Files:**
+
 - Create: `packages/db/src/schema/learning-path.ts`
 - Create: `packages/db/src/repository/learning-path.ts`
 - Create: `packages/api/src/learning-paths/service.ts`
@@ -2299,19 +2357,25 @@ export const learningPath = pgTable(
         title: text("title").notNull(),
         description: text("description"),
         chunkIds: jsonb("chunk_ids").$type<string[]>().notNull().default([]),
-        userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+        userId: text("user_id")
+            .notNull()
+            .references(() => user.id, { onDelete: "cascade" }),
         createdAt: timestamp("created_at").defaultNow().notNull(),
-        updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()).notNull(),
+        updatedAt: timestamp("updated_at")
+            .defaultNow()
+            .$onUpdate(() => new Date())
+            .notNull()
     },
-    table => [index("learning_path_userId_idx").on(table.userId)],
+    table => [index("learning_path_userId_idx").on(table.userId)]
 );
 
 export const learningPathRelations = relations(learningPath, ({ one }) => ({
-    user: one(user, { fields: [learningPath.userId], references: [user.id] }),
+    user: one(user, { fields: [learningPath.userId], references: [user.id] })
 }));
 ```
 
 Add to `packages/db/src/schema/index.ts`:
+
 ```typescript
 export * from "./learning-path";
 ```
@@ -2330,35 +2394,31 @@ import { learningPath } from "../schema/learning-path";
 
 export function listLearningPaths(userId: string) {
     return Effect.tryPromise({
-        try: () =>
-            db.select().from(learningPath).where(eq(learningPath.userId, userId)).orderBy(desc(learningPath.updatedAt)),
-        catch: cause => new DatabaseError({ cause }),
+        try: () => db.select().from(learningPath).where(eq(learningPath.userId, userId)).orderBy(desc(learningPath.updatedAt)),
+        catch: cause => new DatabaseError({ cause })
     });
 }
 
 export function getLearningPath(id: string, userId: string) {
     return Effect.tryPromise({
         try: async () => {
-            const [row] = await db.select().from(learningPath).where(and(eq(learningPath.id, id), eq(learningPath.userId, userId)));
+            const [row] = await db
+                .select()
+                .from(learningPath)
+                .where(and(eq(learningPath.id, id), eq(learningPath.userId, userId)));
             return row ?? null;
         },
-        catch: cause => new DatabaseError({ cause }),
+        catch: cause => new DatabaseError({ cause })
     });
 }
 
-export function createLearningPath(params: {
-    id: string;
-    title: string;
-    description?: string;
-    chunkIds: string[];
-    userId: string;
-}) {
+export function createLearningPath(params: { id: string; title: string; description?: string; chunkIds: string[]; userId: string }) {
     return Effect.tryPromise({
         try: async () => {
             const [created] = await db.insert(learningPath).values(params).returning();
             return created;
         },
-        catch: cause => new DatabaseError({ cause }),
+        catch: cause => new DatabaseError({ cause })
     });
 }
 
@@ -2372,7 +2432,7 @@ export function updateLearningPath(id: string, userId: string, params: { title?:
                 .returning();
             return updated ?? null;
         },
-        catch: cause => new DatabaseError({ cause }),
+        catch: cause => new DatabaseError({ cause })
     });
 }
 
@@ -2385,12 +2445,13 @@ export function deleteLearningPath(id: string, userId: string) {
                 .returning();
             return deleted ?? null;
         },
-        catch: cause => new DatabaseError({ cause }),
+        catch: cause => new DatabaseError({ cause })
     });
 }
 ```
 
 Add to `packages/db/src/repository/index.ts`:
+
 ```typescript
 export * from "./learning-path";
 ```
@@ -2411,12 +2472,10 @@ import * as service from "./service";
 
 export const learningPathRoutes = new Elysia()
     .get("/learning-paths", ctx =>
-        Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(session => service.listLearningPaths(session.user.id)))),
+        Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(session => service.listLearningPaths(session.user.id))))
     )
     .get("/learning-paths/:id", ctx =>
-        Effect.runPromise(
-            requireSession(ctx).pipe(Effect.flatMap(session => service.getLearningPath(ctx.params.id, session.user.id))),
-        ),
+        Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(session => service.getLearningPath(ctx.params.id, session.user.id))))
     )
     .post(
         "/learning-paths",
@@ -2429,22 +2488,23 @@ export const learningPathRoutes = new Elysia()
                             title: ctx.body.title,
                             description: ctx.body.description,
                             chunkIds: ctx.body.chunkIds,
-                            userId: session.user.id,
-                        }),
-                    ),
-                ),
+                            userId: session.user.id
+                        })
+                    )
+                )
             ),
         {
             body: t.Object({
                 title: t.String(),
                 description: t.Optional(t.String()),
-                chunkIds: t.Array(t.String()),
-            }),
-        },
+                chunkIds: t.Array(t.String())
+            })
+        }
     );
 ```
 
 Register in `packages/api/src/index.ts`:
+
 ```typescript
 import { learningPathRoutes } from "./learning-paths/routes";
 // ...
@@ -2502,7 +2562,8 @@ function LearnPage() {
 }
 ```
 
-Also create `apps/web/src/routes/learn.$pathId.tsx` for the detail view — a page that shows the path metadata and the ordered list of chunks with "Start", "Next", "Previous" navigation.
+Also create `apps/web/src/routes/learn.$pathId.tsx` for the detail view — a page that shows the path metadata and the ordered list of chunks
+with "Start", "Next", "Previous" navigation.
 
 - [ ] **Step 5: Commit**
 
@@ -2516,10 +2577,12 @@ git commit -m "feat(learn): add learning paths — ordered chunk sequences"
 ### Task 24: "You Might Have Missed This" Widget
 
 **Files:**
+
 - Create: `apps/web/src/features/dashboard/missed-chunks-widget.tsx`
 - Modify: `apps/web/src/routes/dashboard.tsx`
 
-**Context:** Dashboard widget showing chunks the user hasn't visited in 30+ days (based on the visit history from Task 3 — or `updated:>30d` if no visit tracking yet). Reuses existing search.
+**Context:** Dashboard widget showing chunks the user hasn't visited in 30+ days (based on the visit history from Task 3 — or `updated:>30d`
+if no visit tracking yet). Reuses existing search.
 
 - [ ] **Step 1: Create the widget**
 
@@ -2579,9 +2642,10 @@ export function MissedChunksWidget() {
 - [ ] **Step 2: Add to dashboard**
 
 In `apps/web/src/routes/dashboard.tsx`:
+
 ```tsx
 import { MissedChunksWidget } from "@/features/dashboard/missed-chunks-widget";
-<MissedChunksWidget />
+<MissedChunksWidget />;
 ```
 
 - [ ] **Step 3: Commit**
@@ -2614,11 +2678,15 @@ pnpm build
 
 - [ ] **Step 3: Smoke test each phase**
 
-1. **Phase 1:** Hover a chunk link → preview appears. Open a chunk with titles in content → titles are auto-linked. Visit 3 chunks → trail sidebar shows them. Click focus mode → UI hides. Switch to card grid → cards show.
-2. **Phase 2:** Press `j/k` → scrolls. Press `?` → help modal appears. Press `1` on chunks list → first chunk opens. Press `Ctrl+O` → quick open appears.
-3. **Phase 3:** Navigate to `/browse` → A-Z index shows. Click "Tag cloud" → cloud renders. Navigate to `/codebases/<id>` → dashboard shows. Dashboard has featured chunk.
+1. **Phase 1:** Hover a chunk link → preview appears. Open a chunk with titles in content → titles are auto-linked. Visit 3 chunks → trail
+   sidebar shows them. Click focus mode → UI hides. Switch to card grid → cards show.
+2. **Phase 2:** Press `j/k` → scrolls. Press `?` → help modal appears. Press `1` on chunks list → first chunk opens. Press `Ctrl+O` → quick
+   open appears.
+3. **Phase 3:** Navigate to `/browse` → A-Z index shows. Click "Tag cloud" → cloud renders. Navigate to `/codebases/<id>` → dashboard shows.
+   Dashboard has featured chunk.
 4. **Phase 4:** Chunk detail shows ToC, reading time, type icon, progress bar. Open reader settings → change font size → content resizes.
-5. **Phase 5:** Click "Show similar" → search opens with similar-to clause. Navigate to `/browse/clusters` → clusters render. Dashboard has smart collections + missed chunks widgets.
+5. **Phase 5:** Click "Show similar" → search opens with similar-to clause. Navigate to `/browse/clusters` → clusters render. Dashboard has
+   smart collections + missed chunks widgets.
 
 - [ ] **Step 4: Commit any final fixes**
 

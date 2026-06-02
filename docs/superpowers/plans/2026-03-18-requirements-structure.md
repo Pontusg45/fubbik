@@ -1,10 +1,14 @@
 # Requirements Structure & Organization — Implementation Plan
 
-> **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to
+> implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add sub use cases (single-level nesting), requirement dependencies with dependency graph, and drag-to-reorder requirements within use cases.
+**Goal:** Add sub use cases (single-level nesting), requirement dependencies with dependency graph, and drag-to-reorder requirements within
+use cases.
 
-**Architecture:** Schema changes (parentId on use_case, new requirement_dependency table, order on requirement) with corresponding repository/service/route layers. Frontend updates to sidebar (tree view), detail page (dependency section + React Flow graph), and list page (drag-and-drop via @dnd-kit).
+**Architecture:** Schema changes (parentId on use_case, new requirement_dependency table, order on requirement) with corresponding
+repository/service/route layers. Frontend updates to sidebar (tree view), detail page (dependency section + React Flow graph), and list page
+(drag-and-drop via @dnd-kit).
 
 **Tech Stack:** Drizzle ORM, Effect, Elysia, TanStack Start, React Query, @xyflow/react, @dagrejs/dagre, @dnd-kit/core + @dnd-kit/sortable
 
@@ -15,6 +19,7 @@
 Add `parentId` to use_case, `order` to requirement, and create `requirement_dependency` table.
 
 **Files:**
+
 - Modify: `packages/db/src/schema/use-case.ts`
 - Modify: `packages/db/src/schema/requirement.ts`
 - Create: `packages/db/src/schema/requirement-dependency.ts`
@@ -23,34 +28,38 @@ Add `parentId` to use_case, `order` to requirement, and create `requirement_depe
 - [ ] **Step 1: Add `parentId` to use_case schema**
 
 In `packages/db/src/schema/use-case.ts`:
+
 - Add self-referential `parentId` column:
-  ```typescript
-  parentId: text("parent_id").references(() => useCase.id, { onDelete: "cascade" }),
-  ```
+    ```typescript
+    parentId: text("parent_id").references(() => useCase.id, { onDelete: "cascade" }),
+    ```
 - Add index to the table builder array:
-  ```typescript
-  index("use_case_parentId_idx").on(table.parentId)
-  ```
+    ```typescript
+    index("use_case_parentId_idx").on(table.parentId);
+    ```
 - Update `useCaseRelations` to add self-referential relations:
-  ```typescript
-  export const useCaseRelations = relations(useCase, ({ one, many }) => ({
-      user: one(user, { fields: [useCase.userId], references: [user.id] }),
-      codebase: one(codebase, { fields: [useCase.codebaseId], references: [codebase.id] }),
-      parent: one(useCase, { fields: [useCase.parentId], references: [useCase.id], relationName: "children" }),
-      children: many(useCase, { relationName: "children" })
-  }));
-  ```
+
+    ```typescript
+    export const useCaseRelations = relations(useCase, ({ one, many }) => ({
+        user: one(user, { fields: [useCase.userId], references: [user.id] }),
+        codebase: one(codebase, { fields: [useCase.codebaseId], references: [codebase.id] }),
+        parent: one(useCase, { fields: [useCase.parentId], references: [useCase.id], relationName: "children" }),
+        children: many(useCase, { relationName: "children" })
+    }));
+    ```
 
 - [ ] **Step 2: Add `order` to requirement schema**
 
 In `packages/db/src/schema/requirement.ts`:
 
 First, add `integer` to the existing drizzle import:
+
 ```typescript
 import { index, integer, jsonb, pgTable, primaryKey, text, timestamp } from "drizzle-orm/pg-core";
 ```
 
 Then add to the requirement table columns:
+
 ```typescript
 order: integer("order").notNull().default(0),
 ```
@@ -58,6 +67,7 @@ order: integer("order").notNull().default(0),
 - [ ] **Step 3: Create requirement_dependency schema**
 
 Create `packages/db/src/schema/requirement-dependency.ts`:
+
 ```typescript
 import { pgTable, primaryKey, text, check } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
@@ -83,6 +93,7 @@ export const requirementDependency = pgTable(
 - [ ] **Step 4: Add to schema barrel export**
 
 In `packages/db/src/schema/index.ts`, add:
+
 ```typescript
 export * from "./requirement-dependency";
 ```
@@ -90,12 +101,15 @@ export * from "./requirement-dependency";
 - [ ] **Step 5: Generate and apply migration**
 
 Run:
+
 ```bash
 pnpm db:generate
 ```
+
 Review the generated SQL file in `packages/db/src/migrations/`.
 
 Run against local DB:
+
 ```bash
 pnpm db:push
 ```
@@ -118,6 +132,7 @@ git commit -m "feat: add schema for sub use cases, requirement deps, and orderin
 Add `parentId` support to use case CRUD and add child count aggregation.
 
 **Files:**
+
 - Modify: `packages/db/src/repository/use-case.ts`
 - Modify: `packages/api/src/use-cases/service.ts`
 
@@ -129,17 +144,21 @@ Update `CreateUseCaseParams` to include `parentId?: string`.
 
 Update `createUseCase` to persist `parentId`.
 
-Update `listUseCases` to include `parentId` in the select and add child count. The current query selects from `useCase` with a left join on `requirement` for counts. Add `parentId` to the select fields:
+Update `listUseCases` to include `parentId` in the select and add child count. The current query selects from `useCase` with a left join on
+`requirement` for counts. Add `parentId` to the select fields:
+
 ```typescript
 parentId: useCase.parentId,
 ```
 
 Add a child count subquery. After the existing requirement count aggregation, add:
+
 ```typescript
 childCount: sql<number>`(SELECT count(*) FROM use_case uc2 WHERE uc2.parent_id = ${useCase.id})`.as("child_count"),
 ```
 
 Update `updateUseCase` to accept and persist `parentId`:
+
 ```typescript
 if (params.parentId !== undefined) setClause.parentId = params.parentId;
 ```
@@ -151,11 +170,13 @@ Add `UpdateUseCaseParams` type to include `parentId?: string | null`.
 In `packages/api/src/use-cases/service.ts`:
 
 First, update the imports in the service file to include `ValidationError`:
+
 ```typescript
 import { NotFoundError, ValidationError } from "../errors";
 ```
 
 Update `createUseCase` to validate parentId if provided:
+
 ```typescript
 export function createUseCase(userId: string, body: { name: string; description?: string; codebaseId?: string; parentId?: string }) {
     return Effect.gen(function* () {
@@ -171,8 +192,13 @@ export function createUseCase(userId: string, body: { name: string; description?
 ```
 
 Update `updateUseCase` to validate parentId changes:
+
 ```typescript
-export function updateUseCase(id: string, userId: string, body: { name?: string; description?: string | null; parentId?: string | null; order?: number }) {
+export function updateUseCase(
+    id: string,
+    userId: string,
+    body: { name?: string; description?: string | null; parentId?: string | null; order?: number }
+) {
     return Effect.gen(function* () {
         if (body.parentId !== undefined && body.parentId !== null) {
             const parent = yield* getUseCaseById(body.parentId, userId);
@@ -207,6 +233,7 @@ git commit -m "feat: add sub use case support to repository and service"
 Wire parentId through the API and update the sidebar to show a tree.
 
 **Files:**
+
 - Modify: `packages/api/src/use-cases/routes.ts`
 - Modify: `apps/web/src/features/requirements/sidebar-filters.tsx`
 
@@ -223,11 +250,13 @@ Add `parentId: t.Optional(t.Union([t.String(), t.Null()]))` to the PATCH body sc
 In `apps/web/src/features/requirements/sidebar-filters.tsx`:
 
 Update the `useCases` prop type to include `parentId`:
+
 ```typescript
 useCases: Array<{ id: string; name: string; requirementCount: number; parentId: string | null }>;
 ```
 
 Replace the flat use case list with a tree:
+
 ```typescript
 // Separate into parents and children
 const topLevel = useCases.filter(uc => !uc.parentId);
@@ -241,6 +270,7 @@ for (const uc of useCases) {
 ```
 
 Render top-level use cases with expandable children:
+
 - Each parent shows a chevron toggle (ChevronRight/ChevronDown)
 - Children indented with `pl-4` and slightly smaller text
 - Parent requirement counts include children's counts (sum client-side)
@@ -251,7 +281,9 @@ Render top-level use cases with expandable children:
 
 In `apps/web/src/routes/requirements.tsx`:
 
-When `activeUseCaseId` is set and it's a parent use case, also include requirements from its children. The simplest approach: when filtering client-side, check if `activeUseCaseId` matches the requirement's `useCaseId` OR if the requirement's `useCaseId` is a child of `activeUseCaseId`. Build a set of child IDs from the use cases data.
+When `activeUseCaseId` is set and it's a parent use case, also include requirements from its children. The simplest approach: when filtering
+client-side, check if `activeUseCaseId` matches the requirement's `useCaseId` OR if the requirement's `useCaseId` is a child of
+`activeUseCaseId`. Build a set of child IDs from the use cases data.
 
 - [ ] **Step 4: Verify types**
 
@@ -271,6 +303,7 @@ git commit -m "feat: add sub use case UI with tree sidebar and parent filtering"
 Add the dependency CRUD and transitive query functions.
 
 **Files:**
+
 - Create: `packages/db/src/repository/requirement-dependency.ts`
 - Modify: `packages/db/src/repository/index.ts`
 
@@ -289,11 +322,7 @@ import { requirementDependency } from "../schema/requirement-dependency";
 
 export function addDependency(requirementId: string, dependsOnId: string) {
     return Effect.tryPromise({
-        try: () =>
-            db.insert(requirementDependency)
-                .values({ requirementId, dependsOnId })
-                .onConflictDoNothing()
-                .returning(),
+        try: () => db.insert(requirementDependency).values({ requirementId, dependsOnId }).onConflictDoNothing().returning(),
         catch: cause => new DatabaseError({ cause })
     });
 }
@@ -301,11 +330,9 @@ export function addDependency(requirementId: string, dependsOnId: string) {
 export function removeDependency(requirementId: string, dependsOnId: string) {
     return Effect.tryPromise({
         try: () =>
-            db.delete(requirementDependency)
-                .where(and(
-                    eq(requirementDependency.requirementId, requirementId),
-                    eq(requirementDependency.dependsOnId, dependsOnId)
-                )),
+            db
+                .delete(requirementDependency)
+                .where(and(eq(requirementDependency.requirementId, requirementId), eq(requirementDependency.dependsOnId, dependsOnId))),
         catch: cause => new DatabaseError({ cause })
     });
 }
@@ -371,18 +398,17 @@ export function getTransitiveDependencies(requirementId: string) {
             `);
 
             // All edges involving any node in the graph
-            const allNodeIds = [
-                requirementId,
-                ...ancestors.rows.map((r: any) => r.id),
-                ...descendants.rows.map((r: any) => r.id)
-            ];
+            const allNodeIds = [requirementId, ...ancestors.rows.map((r: any) => r.id), ...descendants.rows.map((r: any) => r.id)];
 
-            const edges = allNodeIds.length > 0 ? await db.execute(sql`
+            const edges =
+                allNodeIds.length > 0
+                    ? await db.execute(sql`
                 SELECT requirement_id AS source, depends_on_id AS target
                 FROM requirement_dependency
                 WHERE requirement_id = ANY(${allNodeIds})
                    OR depends_on_id = ANY(${allNodeIds})
-            `) : { rows: [] };
+            `)
+                    : { rows: [] };
 
             return { ancestors: ancestors.rows, descendants: descendants.rows, edges: edges.rows };
         },
@@ -414,6 +440,7 @@ export function checkCircularDependency(requirementId: string, dependsOnId: stri
 - [ ] **Step 2: Add to repository barrel export**
 
 In `packages/db/src/repository/index.ts`, add:
+
 ```typescript
 export * from "./requirement-dependency";
 ```
@@ -436,6 +463,7 @@ git commit -m "feat: add requirement dependency repository with transitive queri
 Add the dependency service logic and API endpoints.
 
 **Files:**
+
 - Create: `packages/api/src/requirements/dependency-service.ts`
 - Create: `packages/api/src/requirements/dependency-routes.ts`
 - Modify: `packages/api/src/index.ts` (register routes)
@@ -465,7 +493,8 @@ export function addDependency(requirementId: string, dependsOnId: string, userId
         if (!dep) return yield* Effect.fail(new NotFoundError({ resource: "Dependency target" }));
 
         const wouldCycle = yield* checkCircularDependency(requirementId, dependsOnId);
-        if (wouldCycle) return yield* Effect.fail(new ValidationError({ message: "Adding this dependency would create a circular reference" }));
+        if (wouldCycle)
+            return yield* Effect.fail(new ValidationError({ message: "Adding this dependency would create a circular reference" }));
 
         return yield* addDependencyRepo(requirementId, dependsOnId);
     });
@@ -544,42 +573,38 @@ export const dependencyRoutes = new Elysia()
             })
         }
     )
-    .delete(
-        "/requirements/:id/dependencies/:dependsOnId",
-        ctx =>
-            Effect.runPromise(
-                Effect.gen(function* () {
-                    const session = yield* requireSession(ctx);
-                    yield* depService.removeDependency(ctx.params.id, ctx.params.dependsOnId, session.user.id);
-                    return { message: "Dependency removed" };
-                })
-            )
+    .delete("/requirements/:id/dependencies/:dependsOnId", ctx =>
+        Effect.runPromise(
+            Effect.gen(function* () {
+                const session = yield* requireSession(ctx);
+                yield* depService.removeDependency(ctx.params.id, ctx.params.dependsOnId, session.user.id);
+                return { message: "Dependency removed" };
+            })
+        )
     )
-    .get(
-        "/requirements/:id/dependencies",
-        ctx =>
-            Effect.runPromise(
-                Effect.gen(function* () {
-                    const session = yield* requireSession(ctx);
-                    return yield* depService.getDependencies(ctx.params.id, session.user.id);
-                })
-            )
+    .get("/requirements/:id/dependencies", ctx =>
+        Effect.runPromise(
+            Effect.gen(function* () {
+                const session = yield* requireSession(ctx);
+                return yield* depService.getDependencies(ctx.params.id, session.user.id);
+            })
+        )
     )
-    .get(
-        "/requirements/:id/dependencies/graph",
-        ctx =>
-            Effect.runPromise(
-                Effect.gen(function* () {
-                    const session = yield* requireSession(ctx);
-                    return yield* depService.getDependencyGraph(ctx.params.id, session.user.id);
-                })
-            )
+    .get("/requirements/:id/dependencies/graph", ctx =>
+        Effect.runPromise(
+            Effect.gen(function* () {
+                const session = yield* requireSession(ctx);
+                return yield* depService.getDependencyGraph(ctx.params.id, session.user.id);
+            })
+        )
     );
 ```
 
 - [ ] **Step 3: Register dependency routes in API index**
 
-In `packages/api/src/index.ts`, import and `.use()` the dependency routes alongside the existing requirement routes. Find where `requirementRoutes` is used and add:
+In `packages/api/src/index.ts`, import and `.use()` the dependency routes alongside the existing requirement routes. Find where
+`requirementRoutes` is used and add:
+
 ```typescript
 import { dependencyRoutes } from "./requirements/dependency-routes";
 // ...
@@ -604,6 +629,7 @@ git commit -m "feat: add requirement dependency API endpoints"
 Add the dependency section and React Flow graph to the detail page.
 
 **Files:**
+
 - Create: `apps/web/src/features/requirements/dependency-section.tsx`
 - Create: `apps/web/src/features/requirements/dependency-graph.tsx`
 - Modify: `apps/web/src/routes/requirements_.$requirementId.tsx`
@@ -613,6 +639,7 @@ Add the dependency section and React Flow graph to the detail page.
 Create `apps/web/src/features/requirements/dependency-section.tsx`:
 
 Props:
+
 ```typescript
 interface DependencySectionProps {
     requirementId: string;
@@ -621,6 +648,7 @@ interface DependencySectionProps {
 ```
 
 Features:
+
 - Fetches from `GET /api/requirements/:id/dependencies` using React Query
 - Shows "Depends on" and "Depended on by" sub-sections
 - Each item: clickable Link with title + status badge
@@ -633,6 +661,7 @@ Features:
 Create `apps/web/src/features/requirements/dependency-graph.tsx`:
 
 Props:
+
 ```typescript
 interface DependencyGraphProps {
     requirementId: string;
@@ -640,17 +669,19 @@ interface DependencyGraphProps {
 ```
 
 Features:
+
 - Fetches from `GET /api/requirements/:id/dependencies/graph`
 - Uses React Flow (`@xyflow/react`) with `ReactFlowProvider`
 - Converts API response to React Flow nodes/edges:
-  - Nodes: positioned using dagre layout (`@dagrejs/dagre`) with `rankdir: 'TB'`
-  - Node styling: colored border by status (green/red/gray), current node highlighted with thicker border
-  - Edges: default arrows from dependent → prerequisite
+    - Nodes: positioned using dagre layout (`@dagrejs/dagre`) with `rankdir: 'TB'`
+    - Node styling: colored border by status (green/red/gray), current node highlighted with thicker border
+    - Edges: default arrows from dependent → prerequisite
 - `fitView` on load
 - Clicking a node navigates to that requirement
 - Wrap in a collapsible section with "View dependency graph" / "Hide" toggle
 
 Dagre layout helper:
+
 ```typescript
 import dagre from "@dagrejs/dagre";
 
@@ -676,12 +707,14 @@ function layoutGraph(nodes: Node[], edges: Edge[]) {
 In `apps/web/src/routes/requirements_.$requirementId.tsx`:
 
 Import the new components:
+
 ```typescript
 import { DependencySection } from "@/features/requirements/dependency-section";
 import { DependencyGraph } from "@/features/requirements/dependency-graph";
 ```
 
 Add to the view mode JSX, below the steps section and above warnings:
+
 ```tsx
 {/* Dependencies */}
 <DependencySection requirementId={requirementId} editing={false} />
@@ -708,6 +741,7 @@ git commit -m "feat: add dependency section and graph to requirement detail page
 Add the `order` column support and reorder endpoint.
 
 **Files:**
+
 - Modify: `packages/db/src/repository/requirement.ts`
 - Modify: `packages/api/src/requirements/service.ts`
 - Modify: `packages/api/src/requirements/routes.ts`
@@ -717,21 +751,25 @@ Add the `order` column support and reorder endpoint.
 In `packages/db/src/repository/requirement.ts`:
 
 Add `asc` to the drizzle-orm import:
+
 ```typescript
 import { and, asc, eq, ilike, inArray, or, sql } from "drizzle-orm";
 ```
 
 Update `listRequirements` to add ordering. After the `.offset(params.offset)` line, add:
+
 ```typescript
 .orderBy(asc(requirement.order), asc(requirement.createdAt))
 ```
 
 Add two repository functions — one for fetching requirements by IDs (for validation), one for updating order:
+
 ```typescript
 export function getRequirementsByIds(ids: string[], userId: string) {
     return Effect.tryPromise({
         try: () =>
-            db.select({ id: requirement.id, useCaseId: requirement.useCaseId })
+            db
+                .select({ id: requirement.id, useCaseId: requirement.useCaseId })
                 .from(requirement)
                 .where(and(inArray(requirement.id, ids), eq(requirement.userId, userId))),
         catch: cause => new DatabaseError({ cause })
@@ -742,10 +780,7 @@ export function setRequirementOrder(requirementIds: string[]) {
     return Effect.tryPromise({
         try: async () => {
             for (let i = 0; i < requirementIds.length; i++) {
-                await db
-                    .update(requirement)
-                    .set({ order: i })
-                    .where(eq(requirement.id, requirementIds[i]!));
+                await db.update(requirement).set({ order: i }).where(eq(requirement.id, requirementIds[i]!));
             }
             return requirementIds.length;
         },
@@ -787,7 +822,8 @@ Note: `ValidationError` should already be imported from `"../errors"` (used by o
 
 - [ ] **Step 3: Add reorder route**
 
-In `packages/api/src/requirements/routes.ts`, add the reorder endpoint. Chain it after the bulk endpoint and before the list endpoint (before any `/:id` routes):
+In `packages/api/src/requirements/routes.ts`, add the reorder endpoint. Chain it after the bulk endpoint and before the list endpoint
+(before any `/:id` routes):
 
 ```typescript
 // Reorder
@@ -827,6 +863,7 @@ git commit -m "feat: add requirement ordering and reorder API"
 Add @dnd-kit and integrate drag-and-drop on the list page.
 
 **Files:**
+
 - Create: `apps/web/src/features/requirements/sortable-requirement-list.tsx`
 - Modify: `apps/web/src/routes/requirements.tsx`
 - Modify: `apps/web/src/features/requirements/requirement-card.tsx`
@@ -844,17 +881,21 @@ In `apps/web/src/features/requirements/requirement-card.tsx`:
 Add `GripVertical` to the lucide-react import.
 
 Add `dragHandleProps` to the component props:
+
 ```typescript
 dragHandleProps?: React.HTMLAttributes<HTMLDivElement>;
 ```
 
 Add a drag handle div before the checkbox:
+
 ```tsx
-{dragHandleProps && (
-    <div {...dragHandleProps} className="cursor-grab text-muted-foreground hover:text-foreground">
-        <GripVertical className="size-4" />
-    </div>
-)}
+{
+    dragHandleProps && (
+        <div {...dragHandleProps} className="cursor-grab text-muted-foreground hover:text-foreground">
+            <GripVertical className="size-4" />
+        </div>
+    );
+}
 ```
 
 - [ ] **Step 3: Create SortableRequirementList component**
@@ -873,15 +914,18 @@ import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 ```
 
-The component wraps a list of requirements in a DndContext + SortableContext. Each item uses `useSortable` to get drag handle props, transform, and transition styles.
+The component wraps a list of requirements in a DndContext + SortableContext. Each item uses `useSortable` to get drag handle props,
+transform, and transition styles.
 
 On drag end:
+
 1. Compute new order from the reordered array
 2. Optimistically update the local state
 3. Call `PATCH /api/requirements/reorder` with the new ID order
 4. Invalidate queries on success, revert on error
 
 Props:
+
 ```typescript
 interface SortableRequirementListProps {
     requirements: Array<Record<string, unknown>>;
@@ -895,7 +939,8 @@ interface SortableRequirementListProps {
 
 In `apps/web/src/routes/requirements.tsx`:
 
-Replace the direct `.map()` of `RequirementCard` components with `SortableRequirementList` when requirements are grouped by use case or when viewing a single use case. Keep the flat card list for ungrouped/unfiltered views if drag-and-drop doesn't apply.
+Replace the direct `.map()` of `RequirementCard` components with `SortableRequirementList` when requirements are grouped by use case or when
+viewing a single use case. Keep the flat card list for ungrouped/unfiltered views if drag-and-drop doesn't apply.
 
 - [ ] **Step 5: Verify types**
 
@@ -925,6 +970,7 @@ Run: `pnpm test`
 - [ ] **Step 5: Manual verification checklist**
 
 Run `pnpm dev` and verify:
+
 - [ ] Sidebar shows use cases as a tree (parents with expandable children)
 - [ ] Creating a sub use case works (via API or UI)
 - [ ] Clicking a parent use case filters to its requirements + children's

@@ -1,8 +1,8 @@
 ---
 tags:
-  - guide
-  - integrations
-  - vscode
+    - guide
+    - integrations
+    - vscode
 description: VS Code extension — sidebar, file-aware surfacing, and quick-add
 ---
 

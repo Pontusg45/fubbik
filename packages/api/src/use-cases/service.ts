@@ -16,9 +16,7 @@ export function listUseCases(userId: string, spaceId?: string) {
 
 export function getUseCase(id: string, userId: string) {
     return getUseCaseById(id, userId).pipe(
-        Effect.flatMap(found =>
-            found ? Effect.succeed(found) : Effect.fail(new NotFoundError({ resource: "UseCase" }))
-        )
+        Effect.flatMap(found => (found ? Effect.succeed(found) : Effect.fail(new NotFoundError({ resource: "UseCase" }))))
     );
 }
 
@@ -82,17 +80,13 @@ export function updateUseCase(
 
 export function deleteUseCase(id: string, userId: string) {
     return deleteUseCaseRepo(id, userId).pipe(
-        Effect.flatMap(deleted =>
-            deleted ? Effect.succeed(deleted) : Effect.fail(new NotFoundError({ resource: "UseCase" }))
-        )
+        Effect.flatMap(deleted => (deleted ? Effect.succeed(deleted) : Effect.fail(new NotFoundError({ resource: "UseCase" }))))
     );
 }
 
 export function getUseCaseRequirements(id: string, userId: string) {
     return getUseCaseById(id, userId).pipe(
-        Effect.flatMap(found =>
-            found ? Effect.succeed(found) : Effect.fail(new NotFoundError({ resource: "UseCase" }))
-        ),
+        Effect.flatMap(found => (found ? Effect.succeed(found) : Effect.fail(new NotFoundError({ resource: "UseCase" })))),
         Effect.flatMap(() => listRequirementsByUseCase(id, userId))
     );
 }

@@ -1,11 +1,5 @@
-import {
-    chmodSync,
-    existsSync,
-    readFileSync,
-    unlinkSync,
-    writeFileSync,
-} from "node:fs";
 import { execSync } from "node:child_process";
+import { chmodSync, existsSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { Command } from "commander";
@@ -19,7 +13,7 @@ fubbik check-files --staged 2>&1 || true
 
 function getGitRoot(): string {
     return execSync("git rev-parse --show-toplevel", {
-        encoding: "utf-8",
+        encoding: "utf-8"
     }).trim();
 }
 
@@ -28,9 +22,7 @@ function hookPath(): string {
     return join(root, ".git", "hooks", "pre-commit");
 }
 
-export const hooksCommand = new Command("hooks").description(
-    "Manage git hooks for chunk-aware commits"
-);
+export const hooksCommand = new Command("hooks").description("Manage git hooks for chunk-aware commits");
 
 hooksCommand
     .command("install")
@@ -40,11 +32,7 @@ hooksCommand
         const path = hookPath();
 
         if (existsSync(path) && !opts.force) {
-            console.error(
-                formatError(
-                    "A pre-commit hook already exists. Use --force to overwrite."
-                )
-            );
+            console.error(formatError("A pre-commit hook already exists. Use --force to overwrite."));
             process.exit(1);
         }
 
@@ -66,11 +54,7 @@ hooksCommand
 
         const content = readFileSync(path, "utf-8");
         if (!content.includes("fubbik")) {
-            console.error(
-                formatError(
-                    "Pre-commit hook was not installed by fubbik. Refusing to remove."
-                )
-            );
+            console.error(formatError("Pre-commit hook was not installed by fubbik. Refusing to remove."));
             process.exit(1);
         }
 

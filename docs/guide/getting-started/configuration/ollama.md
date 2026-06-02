@@ -1,14 +1,15 @@
 ---
 tags:
-  - guide
-  - configuration
-  - ollama
+    - guide
+    - configuration
+    - ollama
 description: Setting up Ollama for local AI features
 ---
 
 # Ollama Setup
 
-Ollama powers fubbik's AI features: enrichment, semantic search, and duplicate detection. All AI features are optional — everything else works without Ollama.
+Ollama powers fubbik's AI features: enrichment, semantic search, and duplicate detection. All AI features are optional — everything else
+works without Ollama.
 
 ## Installation
 
@@ -41,6 +42,7 @@ OLLAMA_URL=http://localhost:11434
 ## Working Without Ollama
 
 If Ollama isn't running:
+
 - Chunk creation and editing work normally
 - Full-text search works (keyword-based)
 - All graph, connection, and organizational features work

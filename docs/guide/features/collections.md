@@ -1,7 +1,7 @@
 ---
 tags:
-  - guide
-  - collections
+    - guide
+    - collections
 description: Saved chunk collections with reusable filters
 ---
 
@@ -18,6 +18,7 @@ Collections are saved filter configurations that let you quickly access specific
 ## What's Saved
 
 A collection stores:
+
 - **Type filter** — which chunk types to include
 - **Tag filters** — which tags to require
 - **Search text** — keyword filter

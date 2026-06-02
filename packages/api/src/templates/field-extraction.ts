@@ -34,10 +34,7 @@ export function parseHeadings(markdown: string): ParsedHeading[] {
  * field mappings.  Returns extracted fields plus the remaining markdown
  * (everything that was NOT pulled into a specific field).
  */
-export function extractFields(
-    markdown: string,
-    mappings: FieldMapping[],
-): ExtractionResult {
+export function extractFields(markdown: string, mappings: FieldMapping[]): ExtractionResult {
     if (mappings.length === 0) {
         return { extracted: {}, remainingContent: markdown };
     }
@@ -49,12 +46,10 @@ export function extractFields(
 
     for (const mapping of mappings) {
         // Find first section whose heading matches any of the mapping's patterns.
-        const idx = sections.findIndex((sec) => {
+        const idx = sections.findIndex(sec => {
             if (sec.heading === null) return false;
             const ph: ParsedHeading = { text: sec.heading, level: sec.level ?? 2 };
-            return mapping.headings.some((pattern) =>
-                matchHeading(pattern, ph, mapping.match),
-            );
+            return mapping.headings.some(pattern => matchHeading(pattern, ph, mapping.match));
         });
 
         if (idx === -1) continue;
@@ -92,7 +87,7 @@ export function extractFields(
     // Rebuild remaining content from non-consumed sections, preserving order.
     const remaining = sections
         .filter((_, i) => !consumed.has(i))
-        .map((sec) => {
+        .map(sec => {
             if (sec.heading === null) return sec.content;
             const hashes = "#".repeat(sec.level ?? 2);
             return `${hashes} ${sec.heading}\n${sec.content}`;
@@ -124,7 +119,7 @@ function splitIntoSections(markdown: string): Section[] {
             sections.push({
                 heading: currentHeading,
                 level: currentLevel,
-                content: buffer.join("\n"),
+                content: buffer.join("\n")
             });
             currentHeading = m[2]!.trim();
             currentLevel = m[1]!.length;
@@ -138,7 +133,7 @@ function splitIntoSections(markdown: string): Section[] {
     sections.push({
         heading: currentHeading,
         level: currentLevel,
-        content: buffer.join("\n"),
+        content: buffer.join("\n")
     });
 
     return sections;
@@ -151,8 +146,8 @@ function splitIntoSections(markdown: string): Section[] {
 function splitBullets(content: string): string[] {
     const bullets = content
         .split("\n")
-        .filter((l) => l.trimStart().startsWith("- "))
-        .map((l) => l.replace(/^\s*-\s+/, "").trim())
+        .filter(l => l.trimStart().startsWith("- "))
+        .map(l => l.replace(/^\s*-\s+/, "").trim())
         .filter(Boolean);
 
     if (bullets.length > 0) return bullets;

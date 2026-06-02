@@ -25,7 +25,7 @@ export const Route = createFileRoute("/graph")({
             search.zoomLevel === "overview" || search.zoomLevel === "neighborhood" || search.zoomLevel === "detail"
                 ? search.zoomLevel
                 : undefined,
-        island: typeof search.island === "string" ? search.island : undefined,
+        island: typeof search.island === "string" ? search.island : undefined
     }),
     component: () => (
         <RouteErrorBoundary fallbackTitle="Graph failed to render">

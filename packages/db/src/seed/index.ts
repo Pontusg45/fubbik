@@ -29,31 +29,31 @@
  */
 
 import { resolve } from "path";
+
 import { config } from "dotenv";
-import { drizzle } from "drizzle-orm/node-postgres";
 import { eq } from "drizzle-orm";
+import { drizzle } from "drizzle-orm/node-postgres";
 
-import * as schema from "../schema/index";
 import { user } from "../schema/auth";
+import * as schema from "../schema/index";
 import { createContext, trySeed, type ScenarioName, type SeedContext } from "./context";
-import { verifySeed } from "./verify";
-
+import * as chunksModule from "./modules/chunks";
+import * as collectionsModule from "./modules/collections";
+import * as connectionsModule from "./modules/connections";
 // Modules — import each and register below.
 import * as coreModule from "./modules/core";
+import * as documentsModule from "./modules/documents";
+import * as fileLinksModule from "./modules/file-links";
+import * as matricesModule from "./modules/matrices";
+import * as plansModule from "./modules/plans";
+import * as requirementsModule from "./modules/requirements";
+import * as selfDocModule from "./modules/self-documenting";
 import * as codebasesModule from "./modules/spaces";
 import * as tagsModule from "./modules/tags";
-import * as chunksModule from "./modules/chunks";
-import * as connectionsModule from "./modules/connections";
-import * as fileLinksModule from "./modules/file-links";
 import * as useCasesModule from "./modules/use-cases";
-import * as requirementsModule from "./modules/requirements";
-import * as plansModule from "./modules/plans";
-import * as documentsModule from "./modules/documents";
 import * as vocabularyModule from "./modules/vocabulary";
 import * as workspacesModule from "./modules/workspaces";
-import * as collectionsModule from "./modules/collections";
-import * as matricesModule from "./modules/matrices";
-import * as selfDocModule from "./modules/self-documenting";
+import { verifySeed } from "./verify";
 
 config({ path: resolve(import.meta.dirname, "../../../../apps/server/.env") });
 
@@ -138,8 +138,14 @@ function parseFlags(argv: string[]): CliFlags {
 
 function selectedModules(flags: CliFlags): ModuleEntry[] {
     let mods = MODULE_REGISTRY.filter(m => m.scenarios.includes(flags.scenario));
-    if (flags.only) { const only = flags.only; mods = mods.filter(m => only.has(m.name)); }
-    if (flags.skip) { const skip = flags.skip; mods = mods.filter(m => !skip.has(m.name)); }
+    if (flags.only) {
+        const only = flags.only;
+        mods = mods.filter(m => only.has(m.name));
+    }
+    if (flags.skip) {
+        const skip = flags.skip;
+        mods = mods.filter(m => !skip.has(m.name));
+    }
 
     // Validate dep ordering: every dep must either be in the selected set or
     // already in the DB from a previous run. We don't topo-sort here because
@@ -188,7 +194,9 @@ async function main() {
     const flags = parseFlags(process.argv.slice(2));
     const ctx = createContext({ db, userId: DEV_USER_ID, scenario: flags.scenario, quiet: flags.quiet });
 
-    ctx.log(`\nfubbik seed — scenario=${flags.scenario}${flags.only ? `, only=${[...flags.only].join(",")}` : ""}${flags.skip ? `, skip=${[...flags.skip].join(",")}` : ""}`);
+    ctx.log(
+        `\nfubbik seed — scenario=${flags.scenario}${flags.only ? `, only=${[...flags.only].join(",")}` : ""}${flags.skip ? `, skip=${[...flags.skip].join(",")}` : ""}`
+    );
     ctx.log("─".repeat(60));
 
     await ensureUser(DEV_USER_ID);

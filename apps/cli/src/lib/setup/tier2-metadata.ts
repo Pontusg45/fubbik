@@ -41,7 +41,7 @@ const FRAMEWORKS = [
     "nuxt",
     "astro",
     "remix",
-    "solid-js",
+    "solid-js"
 ];
 
 const KEY_LIBRARIES = [
@@ -55,20 +55,10 @@ const KEY_LIBRARIES = [
     "zod",
     "trpc",
     "@trpc/server",
-    "@trpc/client",
+    "@trpc/client"
 ];
 
-const DEV_TOOLS = [
-    "vitest",
-    "jest",
-    "typescript",
-    "eslint",
-    "prettier",
-    "biome",
-    "vite",
-    "webpack",
-    "esbuild",
-];
+const DEV_TOOLS = ["vitest", "jest", "typescript", "eslint", "prettier", "biome", "vite", "webpack", "esbuild"];
 
 // Map of dep name → tag
 const DEP_TAG_MAP: Record<string, string> = {
@@ -110,7 +100,7 @@ const DEP_TAG_MAP: Record<string, string> = {
     biome: "tooling",
     vite: "tooling",
     webpack: "tooling",
-    esbuild: "tooling",
+    esbuild: "tooling"
 };
 
 interface PackageJson {
@@ -123,14 +113,11 @@ interface PackageJson {
 
 // --- Scanners ---
 
-function scanPackageJson(
-    dir: string,
-    pkg: PackageJson,
-): { techStack: DiscoveredChunk | null; structure: DiscoveredChunk | null } {
+function scanPackageJson(dir: string, pkg: PackageJson): { techStack: DiscoveredChunk | null; structure: DiscoveredChunk | null } {
     const allDeps: Record<string, string> = {
         ...pkg.dependencies,
         ...pkg.devDependencies,
-        ...pkg.peerDependencies,
+        ...pkg.peerDependencies
     };
 
     // Tech stack chunk
@@ -181,7 +168,7 @@ function scanPackageJson(
             tags: Array.from(tags),
             tier: 2,
             category: "tech-stack",
-            source: "package.json",
+            source: "package.json"
         };
     }
 
@@ -189,7 +176,7 @@ function scanPackageJson(
     let structure: DiscoveredChunk | null = null;
     const workspaces = pkg.workspaces;
     if (workspaces) {
-        const patterns = Array.isArray(workspaces) ? workspaces : workspaces.packages ?? [];
+        const patterns = Array.isArray(workspaces) ? workspaces : (workspaces.packages ?? []);
 
         // Look for workspace package names
         const workspaceDirs: string[] = [];
@@ -216,7 +203,7 @@ function scanPackageJson(
         const lines = [
             "This project uses a monorepo structure with the following workspaces:",
             "",
-            ...workspaceDirs.map(d => `- \`${d}\``),
+            ...workspaceDirs.map(d => `- \`${d}\``)
         ];
 
         structure = {
@@ -226,7 +213,7 @@ function scanPackageJson(
             tags: ["monorepo", "structure"],
             tier: 2,
             category: "structure",
-            source: "package.json",
+            source: "package.json"
         };
     }
 
@@ -271,7 +258,7 @@ function scanTsConfig(path: string, filename: string): DiscoveredChunk | null {
         tags: ["typescript", "config", "tooling"],
         tier: 2,
         category: "config",
-        source: filename,
+        source: filename
     };
 }
 
@@ -291,11 +278,7 @@ function scanEnvExample(path: string, filename: string): DiscoveredChunk | null 
 
     if (vars.length === 0) return null;
 
-    const lines = [
-        "Required environment variables for this project:",
-        "",
-        ...vars.map(v => `- \`${v}\``),
-    ];
+    const lines = ["Required environment variables for this project:", "", ...vars.map(v => `- \`${v}\``)];
 
     return {
         title: "Environment Variables",
@@ -304,7 +287,7 @@ function scanEnvExample(path: string, filename: string): DiscoveredChunk | null 
         tags: ["env", "config", "infrastructure"],
         tier: 2,
         category: "config",
-        source: filename,
+        source: filename
     };
 }
 
@@ -326,14 +309,14 @@ function scanDocker(dir: string): DiscoveredChunk | null {
         tags: ["docker", "infrastructure", "config"],
         tier: 2,
         category: "config",
-        source: found[0]!,
+        source: found[0]!
     };
 }
 
 function scanBuildPipeline(dir: string): DiscoveredChunk | null {
     const tools: Array<{ file: string; name: string }> = [
         { file: "turbo.json", name: "Turborepo" },
-        { file: "nx.json", name: "Nx" },
+        { file: "nx.json", name: "Nx" }
     ];
 
     const found = tools.filter(t => existsSync(join(dir, t.file)));
@@ -348,7 +331,7 @@ function scanBuildPipeline(dir: string): DiscoveredChunk | null {
         tags: ["build", "tooling", "config"],
         tier: 2,
         category: "config",
-        source: first.file,
+        source: first.file
     };
 }
 
@@ -384,7 +367,7 @@ function scanCiCd(dir: string): DiscoveredChunk | null {
         tags: ["ci", "cd", "config", "automation"],
         tier: 2,
         category: "config",
-        source: found[0]!,
+        source: found[0]!
     };
 }
 

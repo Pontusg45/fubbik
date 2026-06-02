@@ -42,13 +42,7 @@ function resolveTagIds(tagNames: string[], userId: string) {
     });
 }
 
-export function importDocument(
-    userId: string,
-    sourcePath: string,
-    rawContent: string,
-    spaceId?: string,
-    templateId?: string
-) {
+export function importDocument(userId: string, sourcePath: string, rawContent: string, spaceId?: string, templateId?: string) {
     return Effect.gen(function* () {
         const contentHash = hashContent(rawContent);
 
@@ -74,9 +68,7 @@ export function importDocument(
                 const fieldMappings: FieldMapping[] = template.fieldMappings ?? [];
 
                 const { extracted, remainingContent } =
-                    fieldMappings.length > 0
-                        ? extractFields(rawContent, fieldMappings)
-                        : { extracted: {}, remainingContent: rawContent };
+                    fieldMappings.length > 0 ? extractFields(rawContent, fieldMappings) : { extracted: {}, remainingContent: rawContent };
 
                 const mergedTags = [...new Set([...(template.tags ?? []), ...parsed.tags])];
 
@@ -166,12 +158,7 @@ export function importDocument(
     });
 }
 
-export function syncDocument(
-    documentId: string,
-    rawContent: string,
-    userId: string,
-    spaceId?: string
-) {
+export function syncDocument(documentId: string, rawContent: string, userId: string, spaceId?: string) {
     return Effect.gen(function* () {
         const doc = yield* getDocumentById(documentId);
         if (!doc || doc.userId !== userId) return yield* Effect.fail(new NotFoundError({ resource: "document" }));
@@ -265,9 +252,7 @@ export function renderDocument(documentId: string, userId: string) {
         const tagNames = tags.map((t: { name: string }) => t.name);
 
         const firstChunk = chunks[0]!;
-        const scope = firstChunk.scope && Object.keys(firstChunk.scope).length > 0
-            ? firstChunk.scope
-            : undefined;
+        const scope = firstChunk.scope && Object.keys(firstChunk.scope).length > 0 ? firstChunk.scope : undefined;
 
         const sections = chunks.map((c, i) => ({
             title: c.title,
@@ -275,7 +260,7 @@ export function renderDocument(documentId: string, userId: string) {
             order: c.documentOrder ?? i,
             rationale: c.rationale ?? undefined,
             alternatives: c.alternatives ?? undefined,
-            consequences: c.consequences ?? undefined,
+            consequences: c.consequences ?? undefined
         }));
 
         const markdown = renderMarkdown({
@@ -285,7 +270,7 @@ export function renderDocument(documentId: string, userId: string) {
             scope,
             splitLevel: doc.splitLevel ?? 2,
             sections,
-            sourcePath: doc.sourcePath,
+            sourcePath: doc.sourcePath
         });
 
         return { document: doc, markdown };

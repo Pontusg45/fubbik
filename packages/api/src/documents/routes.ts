@@ -10,9 +10,7 @@ export const documentRoutes = new Elysia()
         ctx =>
             Effect.runPromise(
                 requireSession(ctx).pipe(
-                    Effect.flatMap(session =>
-                        documentService.listDocumentsWithTags(session.user.id, ctx.query.spaceId)
-                    )
+                    Effect.flatMap(session => documentService.listDocumentsWithTags(session.user.id, ctx.query.spaceId))
                 )
             ),
         {
@@ -26,9 +24,7 @@ export const documentRoutes = new Elysia()
         ctx =>
             Effect.runPromise(
                 requireSession(ctx).pipe(
-                    Effect.flatMap(session =>
-                        documentService.searchDocuments(session.user.id, ctx.query.q, ctx.query.spaceId)
-                    )
+                    Effect.flatMap(session => documentService.searchDocuments(session.user.id, ctx.query.q, ctx.query.spaceId))
                 )
             ),
         {
@@ -42,9 +38,7 @@ export const documentRoutes = new Elysia()
         "/documents/:id",
         ctx =>
             Effect.runPromise(
-                requireSession(ctx).pipe(
-                    Effect.flatMap(session => documentService.getDocument(ctx.params.id, session.user.id))
-                )
+                requireSession(ctx).pipe(Effect.flatMap(session => documentService.getDocument(ctx.params.id, session.user.id)))
             ),
         {
             params: t.Object({ id: t.String() })
@@ -56,12 +50,7 @@ export const documentRoutes = new Elysia()
             Effect.runPromise(
                 requireSession(ctx).pipe(
                     Effect.flatMap(session =>
-                        documentService.importDocument(
-                            session.user.id,
-                            ctx.body.sourcePath,
-                            ctx.body.content,
-                            ctx.body.spaceId
-                        )
+                        documentService.importDocument(session.user.id, ctx.body.sourcePath, ctx.body.content, ctx.body.spaceId)
                     )
                 )
             ),
@@ -80,12 +69,7 @@ export const documentRoutes = new Elysia()
                 requireSession(ctx).pipe(
                     Effect.flatMap(session =>
                         Effect.forEach(ctx.body.files, file =>
-                            documentService.importDocument(
-                                session.user.id,
-                                file.sourcePath,
-                                file.content,
-                                ctx.body.spaceId
-                            )
+                            documentService.importDocument(session.user.id, file.sourcePath, file.content, ctx.body.spaceId)
                         )
                     )
                 )
@@ -109,12 +93,7 @@ export const documentRoutes = new Elysia()
             Effect.runPromise(
                 requireSession(ctx).pipe(
                     Effect.flatMap(session =>
-                        documentService.syncDocument(
-                            ctx.params.id,
-                            ctx.body.content,
-                            session.user.id,
-                            ctx.body.spaceId
-                        )
+                        documentService.syncDocument(ctx.params.id, ctx.body.content, session.user.id, ctx.body.spaceId)
                     )
                 )
             ),
@@ -130,9 +109,7 @@ export const documentRoutes = new Elysia()
         "/documents/:id/render",
         ctx =>
             Effect.runPromise(
-                requireSession(ctx).pipe(
-                    Effect.flatMap(session => documentService.renderDocument(ctx.params.id, session.user.id))
-                )
+                requireSession(ctx).pipe(Effect.flatMap(session => documentService.renderDocument(ctx.params.id, session.user.id)))
             ),
         {
             params: t.Object({ id: t.String() })
@@ -142,9 +119,7 @@ export const documentRoutes = new Elysia()
         "/documents/:id",
         ctx =>
             Effect.runPromise(
-                requireSession(ctx).pipe(
-                    Effect.flatMap(session => documentService.removeDocument(ctx.params.id, session.user.id))
-                )
+                requireSession(ctx).pipe(Effect.flatMap(session => documentService.removeDocument(ctx.params.id, session.user.id)))
             ),
         {
             params: t.Object({ id: t.String() })

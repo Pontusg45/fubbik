@@ -1,3 +1,4 @@
+import type { DatabaseError } from "@fubbik/db/errors";
 import {
     createMatrix as createMatrixRepo,
     getMatrixById,
@@ -27,26 +28,31 @@ import {
 } from "@fubbik/db/repository";
 import { Effect } from "effect";
 
-import type { DatabaseError } from "@fubbik/db/errors";
 import { NotFoundError, ValidationError } from "../errors";
 
 // --- Matrix ---
 
-export function createMatrix(userId: string, body: {
-    name: string;
-    layer: string;
-    description?: string;
-    spaceId?: string;
-}): Effect.Effect<{
-    id: string;
-    name: string;
-    layer: string;
-    description: string | null;
-    spaceId: string | null;
-    userId: string;
-    createdAt: Date;
-    updatedAt: Date;
-}, ValidationError | DatabaseError> {
+export function createMatrix(
+    userId: string,
+    body: {
+        name: string;
+        layer: string;
+        description?: string;
+        spaceId?: string;
+    }
+): Effect.Effect<
+    {
+        id: string;
+        name: string;
+        layer: string;
+        description: string | null;
+        spaceId: string | null;
+        userId: string;
+        createdAt: Date;
+        updatedAt: Date;
+    },
+    ValidationError | DatabaseError
+> {
     if (body.layer !== "invariant" && body.layer !== "contract") {
         return Effect.fail(new ValidationError({ message: "Layer must be 'invariant' or 'contract'" }));
     }
@@ -89,12 +95,14 @@ export function addDimension(matrixId: string, userId: string, body: { name: str
     return getMatrixById(matrixId, userId).pipe(
         Effect.flatMap(found => (found ? Effect.succeed(found) : Effect.fail(new NotFoundError({ resource: "Matrix" })))),
         Effect.flatMap(() => getMaxDimensionOrder(matrixId)),
-        Effect.flatMap(maxOrder => createDimensionRepo({
-            id: crypto.randomUUID(),
-            matrixId,
-            name: body.name,
-            order: maxOrder + 1
-        }))
+        Effect.flatMap(maxOrder =>
+            createDimensionRepo({
+                id: crypto.randomUUID(),
+                matrixId,
+                name: body.name,
+                order: maxOrder + 1
+            })
+        )
     );
 }
 
@@ -128,18 +136,25 @@ export function addRule(matrixId: string, userId: string, body: { title: string;
     return getMatrixById(matrixId, userId).pipe(
         Effect.flatMap(found => (found ? Effect.succeed(found) : Effect.fail(new NotFoundError({ resource: "Matrix" })))),
         Effect.flatMap(() => getMaxRuleOrder(matrixId)),
-        Effect.flatMap(maxOrder => createRuleRepo({
-            id: crypto.randomUUID(),
-            matrixId,
-            title: body.title,
-            description: body.description,
-            category: body.category,
-            order: maxOrder + 1
-        }))
+        Effect.flatMap(maxOrder =>
+            createRuleRepo({
+                id: crypto.randomUUID(),
+                matrixId,
+                title: body.title,
+                description: body.description,
+                category: body.category,
+                order: maxOrder + 1
+            })
+        )
     );
 }
 
-export function updateRule(matrixId: string, ruleId: string, userId: string, body: { title?: string; description?: string | null; category?: string | null }) {
+export function updateRule(
+    matrixId: string,
+    ruleId: string,
+    userId: string,
+    body: { title?: string; description?: string | null; category?: string | null }
+) {
     return getMatrixById(matrixId, userId).pipe(
         Effect.flatMap(found => (found ? Effect.succeed(found) : Effect.fail(new NotFoundError({ resource: "Matrix" })))),
         Effect.flatMap(() => updateRuleRepo(ruleId, matrixId, body)),
@@ -170,10 +185,7 @@ export interface ToggleCellResult {
     cell: { id: string; ruleId: string; dimensionId: string; createdAt: Date };
 }
 
-export function toggleCell(
-    ruleId: string,
-    dimensionId: string
-): Effect.Effect<ToggleCellResult, DatabaseError | ValidationError> {
+export function toggleCell(ruleId: string, dimensionId: string): Effect.Effect<ToggleCellResult, DatabaseError | ValidationError> {
     return getCellByRuleDimension(ruleId, dimensionId).pipe(
         Effect.flatMap((existing): Effect.Effect<ToggleCellResult, DatabaseError | ValidationError> => {
             if (!existing) {
@@ -184,13 +196,13 @@ export function toggleCell(
             return getCellRequirementCount(existing.id).pipe(
                 Effect.flatMap((count): Effect.Effect<ToggleCellResult, ValidationError | DatabaseError> => {
                     if (count > 0) {
-                        return Effect.fail(new ValidationError({
-                            message: `Cell has ${count} linked requirement(s). Unlink them first.`
-                        }));
+                        return Effect.fail(
+                            new ValidationError({
+                                message: `Cell has ${count} linked requirement(s). Unlink them first.`
+                            })
+                        );
                     }
-                    return deleteCellRepo(existing.id).pipe(
-                        Effect.map(() => ({ action: "deleted" as const, cell: existing }))
-                    );
+                    return deleteCellRepo(existing.id).pipe(Effect.map(() => ({ action: "deleted" as const, cell: existing })));
                 })
             );
         })
@@ -203,7 +215,9 @@ export function linkRequirementToCell(cellId: string, requirementId: string) {
 
 export function unlinkRequirementFromCell(cellId: string, requirementId: string) {
     return unlinkCellRequirementRepo(cellId, requirementId).pipe(
-        Effect.flatMap(deleted => (deleted ? Effect.succeed(deleted) : Effect.fail(new NotFoundError({ resource: "Cell-Requirement link" }))))
+        Effect.flatMap(deleted =>
+            deleted ? Effect.succeed(deleted) : Effect.fail(new NotFoundError({ resource: "Cell-Requirement link" }))
+        )
     );
 }
 

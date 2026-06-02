@@ -1,93 +1,97 @@
 {
-  "name": "fubbik-vscode",
-  "displayName": "Fubbik",
-  "description": "Fubbik knowledge base integration for VS Code and Cursor",
-  "version": "0.0.1",
-  "publisher": "fubbik",
-  "engines": {
-    "vscode": "^1.85.0"
-  },
-  "categories": ["Other"],
-  "main": "./dist/extension.js",
-  "activationEvents": ["onStartupFinished"],
-  "contributes": {
-    "viewsContainers": {
-      "activitybar": [
-        {
-          "id": "fubbik",
-          "title": "Fubbik",
-          "icon": "resources/icon.svg"
-        }
-      ]
-    },
-    "views": {
-      "fubbik": [
-        {
-          "type": "webview",
-          "id": "fubbik.sidebar",
-          "name": "Chunks"
-        }
-      ]
-    },
-    "commands": [
-      {
-        "command": "fubbik.addChunk",
-        "title": "Fubbik: Add to Knowledge Base"
-      },
-      {
-        "command": "fubbik.refreshSidebar",
-        "title": "Fubbik: Refresh Chunks"
-      },
-      {
-        "command": "fubbik.searchChunks",
-        "title": "Fubbik: Search Chunks"
-      },
-      {
-        "command": "fubbik.openGraph",
-        "title": "Fubbik: Open Graph in Browser"
-      },
-      {
-        "command": "fubbik.openDashboard",
-        "title": "Fubbik: Open Dashboard in Browser"
-      },
-      {
-        "command": "fubbik.quickAddNote",
-        "title": "Fubbik: Quick Add Note"
-      }
+    "name": "fubbik-vscode",
+    "displayName": "Fubbik",
+    "version": "0.0.1",
+    "description": "Fubbik knowledge base integration for VS Code and Cursor",
+    "categories": [
+        "Other"
     ],
-    "menus": {
-      "editor/context": [
-        {
-          "command": "fubbik.addChunk",
-          "when": "editorHasSelection",
-          "group": "fubbik"
-        }
-      ]
+    "publisher": "fubbik",
+    "main": "./dist/extension.js",
+    "scripts": {
+        "build": "node esbuild.mjs",
+        "watch": "node esbuild.mjs --watch",
+        "package": "vsce package"
     },
-    "configuration": {
-      "title": "Fubbik",
-      "properties": {
-        "fubbik.serverUrl": {
-          "type": "string",
-          "default": "http://localhost:3000",
-          "description": "Fubbik API server URL"
+    "devDependencies": {
+        "@types/vscode": "^1.85.0",
+        "esbuild": "^0.24.0",
+        "typescript": "^5.7.0"
+    },
+    "contributes": {
+        "viewsContainers": {
+            "activitybar": [
+                {
+                    "id": "fubbik",
+                    "title": "Fubbik",
+                    "icon": "resources/icon.svg"
+                }
+            ]
         },
-        "fubbik.webAppUrl": {
-          "type": "string",
-          "default": "http://localhost:3001",
-          "description": "Fubbik web app URL (for opening chunks in browser)"
+        "views": {
+            "fubbik": [
+                {
+                    "type": "webview",
+                    "id": "fubbik.sidebar",
+                    "name": "Chunks"
+                }
+            ]
+        },
+        "commands": [
+            {
+                "command": "fubbik.addChunk",
+                "title": "Fubbik: Add to Knowledge Base"
+            },
+            {
+                "command": "fubbik.refreshSidebar",
+                "title": "Fubbik: Refresh Chunks"
+            },
+            {
+                "command": "fubbik.searchChunks",
+                "title": "Fubbik: Search Chunks"
+            },
+            {
+                "command": "fubbik.openGraph",
+                "title": "Fubbik: Open Graph in Browser"
+            },
+            {
+                "command": "fubbik.openDashboard",
+                "title": "Fubbik: Open Dashboard in Browser"
+            },
+            {
+                "command": "fubbik.quickAddNote",
+                "title": "Fubbik: Quick Add Note"
+            }
+        ],
+        "menus": {
+            "editor/context": [
+                {
+                    "command": "fubbik.addChunk",
+                    "when": "editorHasSelection",
+                    "group": "fubbik"
+                }
+            ]
+        },
+        "configuration": {
+            "title": "Fubbik",
+            "properties": {
+                "fubbik.serverUrl": {
+                    "type": "string",
+                    "default": "http://localhost:3000",
+                    "description": "Fubbik API server URL"
+                },
+                "fubbik.webAppUrl": {
+                    "type": "string",
+                    "default": "http://localhost:3001",
+                    "description": "Fubbik web app URL (for opening chunks in browser)"
+                }
+            }
         }
-      }
+    },
+    "activationEvents": [
+        "onStartupFinished"
+    ],
+    "engines": {
+        "vscode": "^1.85.0"
     }
-  },
-  "scripts": {
-    "build": "node esbuild.mjs",
-    "watch": "node esbuild.mjs --watch",
-    "package": "vsce package"
-  },
-  "devDependencies": {
-    "@types/vscode": "^1.85.0",
-    "esbuild": "^0.24.0",
-    "typescript": "^5.7.0"
-  }
 }

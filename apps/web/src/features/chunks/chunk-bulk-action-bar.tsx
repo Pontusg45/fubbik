@@ -20,12 +20,7 @@ interface ChunkBulkActionBarProps {
     setConfirmAction: (action: { title: string; description: string; action: () => void } | null) => void;
 }
 
-export function ChunkBulkActionBar({
-    selectedIds,
-    setSelectedIds,
-    bulkUpdateMutation,
-    setConfirmAction,
-}: ChunkBulkActionBarProps) {
+export function ChunkBulkActionBar({ selectedIds, setSelectedIds, bulkUpdateMutation, setConfirmAction }: ChunkBulkActionBarProps) {
     const queryClient = useQueryClient();
 
     // Bulk tag editor dialog
@@ -83,7 +78,7 @@ export function ChunkBulkActionBar({
         setConfirmAction({
             title: `Delete ${selectedIds.size} chunk${selectedIds.size !== 1 ? "s" : ""}?`,
             description: "This action cannot be undone. All selected chunks will be permanently deleted.",
-            action: () => bulkUpdateMutation.mutate({ ids: [...selectedIds], action: "delete" }),
+            action: () => bulkUpdateMutation.mutate({ ids: [...selectedIds], action: "delete" })
         });
     }
 
@@ -91,7 +86,7 @@ export function ChunkBulkActionBar({
         setConfirmAction({
             title: `Archive ${selectedIds.size} chunk${selectedIds.size !== 1 ? "s" : ""}?`,
             description: "Archived chunks can be restored later from the archive view.",
-            action: () => bulkUpdateMutation.mutate({ ids: [...selectedIds], action: "archive" }),
+            action: () => bulkUpdateMutation.mutate({ ids: [...selectedIds], action: "archive" })
         });
     }
 
@@ -154,11 +149,7 @@ export function ChunkBulkActionBar({
                         <Tags className="size-3.5" />
                         Remove Tags
                     </Button>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setShowBulkTagEditor(true)}
-                    >
+                    <Button variant="outline" size="sm" onClick={() => setShowBulkTagEditor(true)}>
                         <Edit className="size-3.5" />
                         Edit Tags
                     </Button>
@@ -178,8 +169,19 @@ export function ChunkBulkActionBar({
                                 onChange={e => setConnectRelation(e.target.value)}
                                 className="bg-background w-full rounded-md border px-2.5 py-1.5 text-sm"
                             >
-                                {["related_to", "part_of", "depends_on", "extends", "references", "supports", "contradicts", "alternative_to"].map(r => (
-                                    <option key={r} value={r}>{r.replace(/_/g, " ")}</option>
+                                {[
+                                    "related_to",
+                                    "part_of",
+                                    "depends_on",
+                                    "extends",
+                                    "references",
+                                    "supports",
+                                    "contradicts",
+                                    "alternative_to"
+                                ].map(r => (
+                                    <option key={r} value={r}>
+                                        {r.replace(/_/g, " ")}
+                                    </option>
                                 ))}
                             </select>
                         </div>
@@ -192,7 +194,7 @@ export function ChunkBulkActionBar({
                                     value={connectSearch}
                                     onChange={e => setConnectSearch(e.target.value)}
                                     placeholder="Search chunks..."
-                                    className="bg-background w-full rounded-md border py-1.5 pl-8 pr-3 text-sm"
+                                    className="bg-background w-full rounded-md border py-1.5 pr-3 pl-8 text-sm"
                                     autoFocus
                                 />
                             </div>
@@ -271,11 +273,7 @@ export function ChunkBulkActionBar({
             <Button variant="ghost" size="sm" onClick={() => setSelectedIds(new Set())}>
                 Cancel
             </Button>
-            <BulkTagEditor
-                chunkIds={[...selectedIds]}
-                open={showBulkTagEditor}
-                onOpenChange={setShowBulkTagEditor}
-            />
+            <BulkTagEditor chunkIds={[...selectedIds]} open={showBulkTagEditor} onOpenChange={setShowBulkTagEditor} />
         </div>
     );
 }

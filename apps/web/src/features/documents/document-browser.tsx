@@ -9,17 +9,17 @@ import { PageEmpty } from "@/components/ui/page";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useActiveSpace } from "@/features/spaces/use-active-space";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
-import { DocumentFilterBar } from "./document-filter-bar";
-import { filterDocuments, groupDocuments, collectAllTags, collectAllTypes } from "./filter-documents";
-import type { DocPresetFilters } from "./document-filter-presets";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
-import type { DocumentBrowserProps, DocumentDetail, DocumentListItem, SearchResult } from "./document-types";
-import { buildFolderTree, extractSnippet, getStaleness } from "./document-utils";
+import { DocumentDetailView } from "./document-detail";
+import { DocumentFilterBar } from "./document-filter-bar";
+import type { DocPresetFilters } from "./document-filter-presets";
 import { highlightMatches } from "./document-highlight";
 import { FolderTreeNode, IndexTree, TagGroupNode } from "./document-tree";
-import { DocumentDetailView } from "./document-detail";
+import type { DocumentBrowserProps, DocumentDetail, DocumentListItem, SearchResult } from "./document-types";
+import { buildFolderTree, extractSnippet, getStaleness } from "./document-utils";
+import { filterDocuments, groupDocuments, collectAllTags, collectAllTypes } from "./filter-documents";
 
 export function DocumentBrowser({ initialDocId, initialSection, initialGroupBy, initialTags, initialTypes }: DocumentBrowserProps) {
     const { spaceId: activeSpaceId } = useActiveSpace();
@@ -56,13 +56,15 @@ export function DocumentBrowser({ initialDocId, initialSection, initialGroupBy, 
     const addSectionMutation = useMutation({
         mutationFn: async ({ title, content, afterOrder }: { title: string; content: string; afterOrder: number }) => {
             if (!detail) throw new Error("No document");
-            return unwrapEden(await api.api.chunks.post({
-                title,
-                content,
-                type: "document",
-                documentId: detail.id,
-                documentOrder: afterOrder + 1
-            }));
+            return unwrapEden(
+                await api.api.chunks.post({
+                    title,
+                    content,
+                    type: "document",
+                    documentId: detail.id,
+                    documentOrder: afterOrder + 1
+                })
+            );
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["documents", selectedId] });
@@ -99,9 +101,7 @@ export function DocumentBrowser({ initialDocId, initialSection, initialGroupBy, 
         queryKey: ["documents", activeSpaceId],
         queryFn: async () => {
             try {
-                const result = unwrapEden(
-                    await api.api.documents.get({ query: activeSpaceId ? { spaceId: activeSpaceId } : {} })
-                );
+                const result = unwrapEden(await api.api.documents.get({ query: activeSpaceId ? { spaceId: activeSpaceId } : {} }));
                 return result as DocumentListItem[];
             } catch {
                 return [];
@@ -115,9 +115,7 @@ export function DocumentBrowser({ initialDocId, initialSection, initialGroupBy, 
         queryFn: async () => {
             if (!selectedId) return null;
             try {
-                return unwrapEden(
-                    await api.api.documents({ id: selectedId }).get()
-                ) as DocumentDetail;
+                return unwrapEden(await api.api.documents({ id: selectedId }).get()) as DocumentDetail;
             } catch {
                 return null;
             }
@@ -133,22 +131,28 @@ export function DocumentBrowser({ initialDocId, initialSection, initialGroupBy, 
             try {
                 const q: Record<string, string> = { q: debouncedSearch };
                 if (activeSpaceId) q.spaceId = activeSpaceId;
-                const results = unwrapEden(
-                    await api.api.documents.search.get({ query: q as any })
-                ) as { chunkId: string; chunkTitle: string; chunkContent: string; documentOrder: number | null; documentId: string; documentTitle: string; sourcePath: string }[];
+                const results = unwrapEden(await api.api.documents.search.get({ query: q as any })) as {
+                    chunkId: string;
+                    chunkTitle: string;
+                    chunkContent: string;
+                    documentOrder: number | null;
+                    documentId: string;
+                    documentTitle: string;
+                    sourcePath: string;
+                }[];
                 return results.map(r => ({
                     documentId: r.documentId,
                     documentTitle: r.documentTitle,
                     sourcePath: r.sourcePath,
                     chunk: { id: r.chunkId, title: r.chunkTitle, content: r.chunkContent, documentOrder: r.documentOrder },
-                    snippet: extractSnippet(r.chunkContent, debouncedSearch),
+                    snippet: extractSnippet(r.chunkContent, debouncedSearch)
                 })) as SearchResult[];
             } catch {
                 return [];
             }
         },
         enabled: debouncedSearch.trim().length >= 2,
-        staleTime: 30_000,
+        staleTime: 30_000
     });
 
     const documents = listQuery.data ?? [];
@@ -156,15 +160,9 @@ export function DocumentBrowser({ initialDocId, initialSection, initialGroupBy, 
     const allTags = useMemo(() => collectAllTags(documents), [documents]);
     const allTypes = useMemo(() => collectAllTypes(documents), [documents]);
 
-    const filteredDocuments = useMemo(
-        () => filterDocuments(documents, { activeTags, activeTypes }),
-        [documents, activeTags, activeTypes]
-    );
+    const filteredDocuments = useMemo(() => filterDocuments(documents, { activeTags, activeTypes }), [documents, activeTags, activeTypes]);
 
-    const groupedDocuments = useMemo(
-        () => groupDocuments(filteredDocuments, groupBy),
-        [filteredDocuments, groupBy]
-    );
+    const groupedDocuments = useMemo(() => groupDocuments(filteredDocuments, groupBy), [filteredDocuments, groupBy]);
 
     // Fetch all document chunks for a selected tag group (combined view)
     const groupDocIds = useMemo(() => {
@@ -185,7 +183,7 @@ export function DocumentBrowser({ initialDocId, initialSection, initialGroupBy, 
             return details;
         },
         enabled: groupDocIds.length > 0,
-        staleTime: 60_000,
+        staleTime: 60_000
     });
 
     const detail = detailQuery.data;
@@ -242,7 +240,8 @@ export function DocumentBrowser({ initialDocId, initialSection, initialGroupBy, 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             const target = e.target;
-            if (target instanceof HTMLElement && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) return;
+            if (target instanceof HTMLElement && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable))
+                return;
 
             if (e.key === "/" && !e.metaKey && !e.ctrlKey) {
                 e.preventDefault();
@@ -252,7 +251,10 @@ export function DocumentBrowser({ initialDocId, initialSection, initialGroupBy, 
             }
 
             if (e.key === "Escape") {
-                if (isSearching) { clearSearch(); return; }
+                if (isSearching) {
+                    clearSearch();
+                    return;
+                }
                 const input = document.querySelector<HTMLInputElement>("[data-docs-search]");
                 input?.blur();
                 return;
@@ -283,18 +285,18 @@ export function DocumentBrowser({ initialDocId, initialSection, initialGroupBy, 
                 ...prev,
                 groupBy: groupBy !== "folder" ? groupBy : undefined,
                 tags: activeTags.length > 0 ? activeTags.join(",") : undefined,
-                types: activeTypes.length > 0 ? activeTypes.join(",") : undefined,
+                types: activeTypes.length > 0 ? activeTypes.join(",") : undefined
             }),
-            replace: true,
+            replace: true
         });
     }, [activeTags, activeTypes, groupBy]);
 
     // Filter action handlers
     const toggleTag = (tag: string) => {
-        setActiveTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]);
+        setActiveTags(prev => (prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]));
     };
     const toggleType = (type: string) => {
-        setActiveTypes(prev => prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type]);
+        setActiveTypes(prev => (prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type]));
     };
     const clearFilters = () => {
         setActiveTags([]);
@@ -312,7 +314,10 @@ export function DocumentBrowser({ initialDocId, initialSection, initialGroupBy, 
         const handleScroll = () => {
             const scrollTop = window.scrollY;
             const docHeight = document.documentElement.scrollHeight - window.innerHeight;
-            if (docHeight <= 0) { setReadProgress(100); return; }
+            if (docHeight <= 0) {
+                setReadProgress(100);
+                return;
+            }
             setReadProgress(Math.min(100, Math.round((scrollTop / docHeight) * 100)));
         };
         window.addEventListener("scroll", handleScroll, { passive: true });
@@ -388,9 +393,7 @@ export function DocumentBrowser({ initialDocId, initialSection, initialGroupBy, 
         let docs = filteredDocuments;
         if (searchQuery && !isSearching) {
             const q = searchQuery.toLowerCase();
-            docs = docs.filter(
-                d => d.title.toLowerCase().includes(q) || d.sourcePath.toLowerCase().includes(q)
-            );
+            docs = docs.filter(d => d.title.toLowerCase().includes(q) || d.sourcePath.toLowerCase().includes(q));
         }
         return docs;
     }, [filteredDocuments, searchQuery, isSearching]);
@@ -445,20 +448,17 @@ export function DocumentBrowser({ initialDocId, initialSection, initialGroupBy, 
             <div className="space-y-3">
                 {/* Search */}
                 <div className="relative">
-                    <Search className="text-muted-foreground absolute left-2.5 top-2.5 size-4" />
+                    <Search className="text-muted-foreground absolute top-2.5 left-2.5 size-4" />
                     <input
                         type="text"
                         data-docs-search
                         placeholder="Search across all docs..."
                         value={searchQuery}
                         onChange={e => handleSearch(e.target.value)}
-                        className="border-input bg-background placeholder:text-muted-foreground w-full rounded-md border py-2 pl-9 pr-8 text-sm outline-none focus:ring-2 focus:ring-ring"
+                        className="border-input bg-background placeholder:text-muted-foreground focus:ring-ring w-full rounded-md border py-2 pr-8 pl-9 text-sm outline-none focus:ring-2"
                     />
                     {searchQuery && (
-                        <button
-                            onClick={clearSearch}
-                            className="text-muted-foreground hover:text-foreground absolute right-2.5 top-2.5"
-                        >
+                        <button onClick={clearSearch} className="text-muted-foreground hover:text-foreground absolute top-2.5 right-2.5">
                             <X className="size-4" />
                         </button>
                     )}
@@ -482,9 +482,7 @@ export function DocumentBrowser({ initialDocId, initialSection, initialGroupBy, 
                 {/* Search results */}
                 {isSearching && (
                     <div className="max-h-[calc(100vh-280px)] space-y-1 overflow-y-auto">
-                        {searchServerQuery.isLoading && (
-                            <p className="text-muted-foreground px-2 py-4 text-center text-xs">Searching...</p>
-                        )}
+                        {searchServerQuery.isLoading && <p className="text-muted-foreground px-2 py-4 text-center text-xs">Searching...</p>}
                         {!searchServerQuery.isLoading && searchResults.length === 0 && searchQuery.length >= 2 && (
                             <p className="text-muted-foreground px-2 py-4 text-center text-xs">No results for "{searchQuery}"</p>
                         )}
@@ -523,11 +521,17 @@ export function DocumentBrowser({ initialDocId, initialSection, initialGroupBy, 
                         <button
                             onClick={() => {
                                 setSelectedIdState(null);
-                                navigate({ to: "/docs", search: (prev: Record<string, unknown>) => ({ ...prev, id: undefined }), replace: true });
+                                navigate({
+                                    to: "/docs",
+                                    search: (prev: Record<string, unknown>) => ({ ...prev, id: undefined }),
+                                    replace: true
+                                });
                                 onDocSelect?.();
                             }}
-                            className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors mb-2 ${
-                                !selectedId ? "bg-muted text-foreground font-medium" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                            className={`mb-2 flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors ${
+                                !selectedId
+                                    ? "bg-muted text-foreground font-medium"
+                                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                             }`}
                         >
                             <FolderOpen className="size-4" />
@@ -575,7 +579,10 @@ export function DocumentBrowser({ initialDocId, initialSection, initialGroupBy, 
                                         selectedId={selectedId}
                                         selectedGroup={selectedGroup}
                                         onSelect={handleDocClick}
-                                        onGroupSelect={(name) => { setSelectedGroup(name); onDocSelect?.(); }}
+                                        onGroupSelect={name => {
+                                            setSelectedGroup(name);
+                                            onDocSelect?.();
+                                        }}
                                     />
                                 ))}
                             </div>
@@ -619,13 +626,13 @@ export function DocumentBrowser({ initialDocId, initialSection, initialGroupBy, 
                             <div className="text-muted-foreground mb-2 flex items-center gap-1 text-xs">
                                 <span>Docs</span>
                                 <ChevronRight className="size-3" />
-                                <span className="text-foreground font-medium flex items-center gap-1">
+                                <span className="text-foreground flex items-center gap-1 font-medium">
                                     <Tag className="size-3" />
                                     {selectedGroup}
                                 </span>
                             </div>
                             <h2 className="text-xl font-bold">{selectedGroup}</h2>
-                            <p className="text-muted-foreground text-sm mt-1">
+                            <p className="text-muted-foreground mt-1 text-sm">
                                 {groupDocIds.length} document{groupDocIds.length !== 1 ? "s" : ""} in this group
                             </p>
                         </div>
@@ -641,7 +648,7 @@ export function DocumentBrowser({ initialDocId, initialSection, initialGroupBy, 
                                         <div className="mb-3 flex items-center gap-2 border-b pb-2">
                                             <FileText className="text-muted-foreground size-4 shrink-0" />
                                             <h3 className="text-base font-semibold">{doc.title}</h3>
-                                            <span className="text-muted-foreground text-xs font-mono">{doc.sourcePath}</span>
+                                            <span className="text-muted-foreground font-mono text-xs">{doc.sourcePath}</span>
                                         </div>
                                         <div className="space-y-2">
                                             {doc.chunks.map(chunk => (
@@ -650,7 +657,7 @@ export function DocumentBrowser({ initialDocId, initialSection, initialGroupBy, 
                                                         <Link
                                                             to="/chunks/$chunkId"
                                                             params={{ chunkId: chunk.id }}
-                                                            className="text-lg font-semibold hover:underline underline-offset-2"
+                                                            className="text-lg font-semibold underline-offset-2 hover:underline"
                                                         >
                                                             <h4 className="inline">{chunk.title}</h4>
                                                         </Link>
@@ -678,14 +685,14 @@ export function DocumentBrowser({ initialDocId, initialSection, initialGroupBy, 
 
                 {!selectedId && !selectedGroup && (
                     <div>
-                        <h2 className="text-xl font-bold mb-6">All Documents</h2>
+                        <h2 className="mb-6 text-xl font-bold">All Documents</h2>
                         {groupBy === "folder" ? (
                             <IndexTree node={folderTree} depth={0} onSelect={setSelectedId} />
                         ) : (
                             <div className="space-y-4">
                                 {[...groupedDocuments.entries()].map(([groupName, groupDocs]) => (
                                     <div key={groupName}>
-                                        <h3 className="text-sm font-semibold text-muted-foreground mb-2 flex items-center gap-1.5">
+                                        <h3 className="text-muted-foreground mb-2 flex items-center gap-1.5 text-sm font-semibold">
                                             <Tag className="size-3.5" />
                                             {groupName}
                                         </h3>
@@ -696,14 +703,19 @@ export function DocumentBrowser({ initialDocId, initialSection, initialGroupBy, 
                                                     <button
                                                         key={doc.id}
                                                         onClick={() => setSelectedId(doc.id)}
-                                                        className="text-foreground hover:text-foreground/80 flex items-center gap-2 text-sm w-full text-left"
+                                                        className="text-foreground hover:text-foreground/80 flex w-full items-center gap-2 text-left text-sm"
                                                     >
-                                                        <FileText className="size-3.5 text-muted-foreground shrink-0" />
+                                                        <FileText className="text-muted-foreground size-3.5 shrink-0" />
                                                         <span>{doc.title}</span>
                                                         {doc.description && (
-                                                            <span className="text-muted-foreground text-xs truncate">— {doc.description}</span>
+                                                            <span className="text-muted-foreground truncate text-xs">
+                                                                — {doc.description}
+                                                            </span>
                                                         )}
-                                                        <span className={`text-xs ml-auto shrink-0 ${staleness.color}`} title={staleness.tooltip}>
+                                                        <span
+                                                            className={`ml-auto shrink-0 text-xs ${staleness.color}`}
+                                                            title={staleness.tooltip}
+                                                        >
                                                             {staleness.label}
                                                         </span>
                                                     </button>
@@ -752,8 +764,8 @@ export function DocumentBrowser({ initialDocId, initialSection, initialGroupBy, 
             {showToc && (
                 <nav className="hidden lg:block">
                     <div className="sticky top-24 space-y-2">
-                        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">On this page</p>
-                        <ul className="space-y-1 border-l border-border pl-3">
+                        <p className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">On this page</p>
+                        <ul className="border-border space-y-1 border-l pl-3">
                             {detail.chunks.map(chunk => (
                                 <li key={chunk.id}>
                                     <a

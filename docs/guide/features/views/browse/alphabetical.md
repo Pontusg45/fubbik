@@ -1,15 +1,16 @@
 ---
 tags:
-  - guide
-  - views
-  - browse
-  - alphabetical
+    - guide
+    - views
+    - browse
+    - alphabetical
 description: Alphabetical chunk index with jump-to-letter navigation
 ---
 
 # Alphabetical Index
 
-The alphabetical view lists all chunks sorted by title with a letter navigation bar. Click any letter to jump to chunks starting with that letter.
+The alphabetical view lists all chunks sorted by title with a letter navigation bar. Click any letter to jump to chunks starting with that
+letter.
 
 ## Features
 

@@ -1,10 +1,14 @@
 # CLI Restructuring Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to
+> implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Reduce the fubbik CLI from 49 top-level commands to ~30 by grouping related commands into namespaces, extract shared API helpers, and fix output contract violations.
+**Goal:** Reduce the fubbik CLI from 49 top-level commands to ~30 by grouping related commands into namespaces, extract shared API helpers,
+and fix output contract violations.
 
-**Architecture:** Three phases — (1) extract shared `lib/api.ts` and fix output contract in review.ts/plan.ts, (2) create 5 group command files that compose existing subcommands under `chunk`, `context`, `tag`, `req`, `maintain`, (3) rewire `index.ts` to register groups instead of individual commands, update tests.
+**Architecture:** Three phases — (1) extract shared `lib/api.ts` and fix output contract in review.ts/plan.ts, (2) create 5 group command
+files that compose existing subcommands under `chunk`, `context`, `tag`, `req`, `maintain`, (3) rewire `index.ts` to register groups instead
+of individual commands, update tests.
 
 **Tech Stack:** Commander.js, TypeScript, Vitest
 
@@ -16,35 +20,36 @@
 
 ### Created
 
-| Path | Responsibility |
-|---|---|
-| `apps/cli/src/lib/api.ts` | Shared `requireServer`, `fetchApi`, `fetchApiJson` |
-| `apps/cli/src/commands/chunk.ts` | Group: 12 chunk subcommands |
-| `apps/cli/src/commands/context-group.ts` | Group: 3 context subcommands |
-| `apps/cli/src/commands/tag-group.ts` | Group: tags + normalize |
-| `apps/cli/src/commands/req.ts` | Group: requirements + import |
-| `apps/cli/src/commands/maintain.ts` | Group: doctor, cleanup, lint, health, seed-conventions |
+| Path                                     | Responsibility                                         |
+| ---------------------------------------- | ------------------------------------------------------ |
+| `apps/cli/src/lib/api.ts`                | Shared `requireServer`, `fetchApi`, `fetchApiJson`     |
+| `apps/cli/src/commands/chunk.ts`         | Group: 12 chunk subcommands                            |
+| `apps/cli/src/commands/context-group.ts` | Group: 3 context subcommands                           |
+| `apps/cli/src/commands/tag-group.ts`     | Group: tags + normalize                                |
+| `apps/cli/src/commands/req.ts`           | Group: requirements + import                           |
+| `apps/cli/src/commands/maintain.ts`      | Group: doctor, cleanup, lint, health, seed-conventions |
 
 ### Modified
 
-| Path | Change |
-|---|---|
-| `apps/cli/src/commands/review.ts` | Use shared `lib/api`, fix output contract |
-| `apps/cli/src/commands/plan.ts` | Use shared `lib/api` |
-| `apps/cli/src/commands/task.ts` | Use shared `lib/api` |
-| `apps/cli/src/commands/context.ts` | Add `.name("export")` |
-| `apps/cli/src/commands/context-dir.ts` | Add `.name("dir")` |
-| `apps/cli/src/commands/context-for.ts` | Add `.name("for")` |
-| `apps/cli/src/commands/tag-normalize.ts` | Add `.name("normalize")` |
-| `apps/cli/src/commands/import-requirements.ts` | Add `.name("import")` |
-| `apps/cli/src/index.ts` | Replace 49 registrations with ~30 |
-| `apps/cli/src/__tests__/commands.test.ts` | Update assertions for new structure |
+| Path                                           | Change                                    |
+| ---------------------------------------------- | ----------------------------------------- |
+| `apps/cli/src/commands/review.ts`              | Use shared `lib/api`, fix output contract |
+| `apps/cli/src/commands/plan.ts`                | Use shared `lib/api`                      |
+| `apps/cli/src/commands/task.ts`                | Use shared `lib/api`                      |
+| `apps/cli/src/commands/context.ts`             | Add `.name("export")`                     |
+| `apps/cli/src/commands/context-dir.ts`         | Add `.name("dir")`                        |
+| `apps/cli/src/commands/context-for.ts`         | Add `.name("for")`                        |
+| `apps/cli/src/commands/tag-normalize.ts`       | Add `.name("normalize")`                  |
+| `apps/cli/src/commands/import-requirements.ts` | Add `.name("import")`                     |
+| `apps/cli/src/index.ts`                        | Replace 49 registrations with ~30         |
+| `apps/cli/src/__tests__/commands.test.ts`      | Update assertions for new structure       |
 
 ---
 
 ### Task 1: Shared `lib/api.ts` + Fix Output Contract
 
 **Files:**
+
 - Create: `apps/cli/src/lib/api.ts`
 - Modify: `apps/cli/src/commands/plan.ts`
 - Modify: `apps/cli/src/commands/review.ts`
@@ -53,6 +58,7 @@
 - [ ] **Step 1: Read the existing private helpers for reference**
 
 Read these files to confirm exact patterns:
+
 - `apps/cli/src/commands/plan.ts` (lines 1-27) — `requireServer()` + `fetchApi()`
 - `apps/cli/src/commands/review.ts` (lines 1-27) — same
 - `apps/cli/src/commands/task.ts` (lines 1-30) — `fetchTaskApi()` (auto-parses JSON, throws on error)
@@ -87,8 +93,8 @@ export async function fetchApi(path: string, opts?: RequestInit): Promise<Respon
         ...opts,
         headers: {
             "Content-Type": "application/json",
-            ...opts?.headers,
-        },
+            ...opts?.headers
+        }
     });
 }
 
@@ -113,13 +119,16 @@ In `apps/cli/src/commands/plan.ts`:
 1. Delete the private `requireServer()` function (lines 9-16 approximately)
 2. Delete the private `fetchApi()` function (lines 18-27 approximately)
 3. Add import at the top:
-   ```typescript
-   import { fetchApi } from "../lib/api";
-   ```
-   
-   Note: `plan.ts` uses `fetchApi` (raw Response) not `fetchApiJson`, because it handles errors individually per action. Keep using `fetchApi` — the shared version has the same signature.
 
-4. Also fix the `requireServer` error path — the old private version used `console.error()`. Since we deleted it and now import `fetchApi` (which calls `requireServer` internally), the error path is fixed automatically.
+    ```typescript
+    import { fetchApi } from "../lib/api";
+    ```
+
+    Note: `plan.ts` uses `fetchApi` (raw Response) not `fetchApiJson`, because it handles errors individually per action. Keep using
+    `fetchApi` — the shared version has the same signature.
+
+4. Also fix the `requireServer` error path — the old private version used `console.error()`. Since we deleted it and now import `fetchApi`
+   (which calls `requireServer` internally), the error path is fixed automatically.
 
 - [ ] **Step 4: Migrate `review.ts` to use shared helpers AND fix output contract**
 
@@ -128,66 +137,66 @@ In `apps/cli/src/commands/review.ts`:
 1. Delete the private `requireServer()` function
 2. Delete the private `fetchApi()` function
 3. Add imports:
-   ```typescript
-   import { fetchApi } from "../lib/api";
-   ```
+
+    ```typescript
+    import { fetchApi } from "../lib/api";
+    ```
 
 4. **Fix `listProposals` output contract** — find the action handler. Replace the raw `console.log()` calls with proper `output()` usage:
 
-   The current code uses `console.log(formatDim("No proposals found."))` and loops with `console.log()` for each proposal. Replace the entire human-output section with:
+    The current code uses `console.log(formatDim("No proposals found."))` and loops with `console.log()` for each proposal. Replace the
+    entire human-output section with:
 
-   ```typescript
-   // After fetching proposals and checking isJson:
-   if (proposals.length === 0) {
-       output(cmd, [], formatDim("No proposals found."));
-       return;
-   }
+    ```typescript
+    // After fetching proposals and checking isJson:
+    if (proposals.length === 0) {
+        output(cmd, [], formatDim("No proposals found."));
+        return;
+    }
 
-   const lines: string[] = [];
-   for (const p of proposals) {
-       const icon = statusIcon(p.status);
-       const fields = Object.keys(p.changes).join(", ");
-       const age = timeSince(p.createdAt);
-       lines.push(
-           `  ${icon} ${formatBold(p.chunkTitle ?? p.chunkId.slice(0, 8))} ${formatDim(`[${fields}]`)} ${formatDim(age)} ${formatDim(p.id.slice(0, 8))}`,
-       );
-       if (p.reason) {
-           lines.push(`    ${formatDim(p.reason)}`);
-       }
-   }
-   lines.push(formatDim(`\n${proposals.length} proposal(s)`));
-   output(cmd, proposals, lines.join("\n"));
-   ```
+    const lines: string[] = [];
+    for (const p of proposals) {
+        const icon = statusIcon(p.status);
+        const fields = Object.keys(p.changes).join(", ");
+        const age = timeSince(p.createdAt);
+        lines.push(
+            `  ${icon} ${formatBold(p.chunkTitle ?? p.chunkId.slice(0, 8))} ${formatDim(`[${fields}]`)} ${formatDim(age)} ${formatDim(p.id.slice(0, 8))}`
+        );
+        if (p.reason) {
+            lines.push(`    ${formatDim(p.reason)}`);
+        }
+    }
+    lines.push(formatDim(`\n${proposals.length} proposal(s)`));
+    output(cmd, proposals, lines.join("\n"));
+    ```
 
 5. **Fix `showProposal` output contract** — replace all `console.log()` calls with a single `output()`:
 
-   ```typescript
-   // Build the human text:
-   const lines: string[] = [
-       `${formatBold("Proposal")} ${proposal.id}`,
-       `${formatDim("Chunk:")} ${proposal.chunkId}`,
-       `${formatDim("Status:")} ${proposal.status}`,
-       `${formatDim("Proposed by:")} ${proposal.proposedBy}`,
-       `${formatDim("Created:")} ${new Date(proposal.createdAt).toLocaleString()}`,
-   ];
-   if (proposal.reason) lines.push(`${formatDim("Reason:")} ${proposal.reason}`);
-   lines.push(`${formatDim("Changes:")}`);
-   for (const [field, value] of Object.entries(proposal.changes)) {
-       const display =
-           typeof value === "string" && value.length > 80
-               ? `${value.slice(0, 80)}…`
-               : JSON.stringify(value);
-       lines.push(`  ${formatBold(field)}: ${display}`);
-   }
-   output(cmd, proposal, lines.join("\n"));
-   ```
+    ```typescript
+    // Build the human text:
+    const lines: string[] = [
+        `${formatBold("Proposal")} ${proposal.id}`,
+        `${formatDim("Chunk:")} ${proposal.chunkId}`,
+        `${formatDim("Status:")} ${proposal.status}`,
+        `${formatDim("Proposed by:")} ${proposal.proposedBy}`,
+        `${formatDim("Created:")} ${new Date(proposal.createdAt).toLocaleString()}`
+    ];
+    if (proposal.reason) lines.push(`${formatDim("Reason:")} ${proposal.reason}`);
+    lines.push(`${formatDim("Changes:")}`);
+    for (const [field, value] of Object.entries(proposal.changes)) {
+        const display = typeof value === "string" && value.length > 80 ? `${value.slice(0, 80)}…` : JSON.stringify(value);
+        lines.push(`  ${formatBold(field)}: ${display}`);
+    }
+    output(cmd, proposal, lines.join("\n"));
+    ```
 
 6. **Add `outputQuiet` calls** to `approveProposal` and `rejectProposal` — before the existing `output()` call, add:
-   ```typescript
-   outputQuiet(cmd, proposal.id);
-   ```
-   
-   Make sure `outputQuiet` is imported from `../lib/output`.
+
+    ```typescript
+    outputQuiet(cmd, proposal.id);
+    ```
+
+    Make sure `outputQuiet` is imported from `../lib/output`.
 
 - [ ] **Step 5: Migrate `task.ts` to use shared helpers**
 
@@ -195,10 +204,11 @@ Read `apps/cli/src/commands/task.ts` fully. It has `fetchTaskApi` which auto-par
 
 1. Delete the private `fetchTaskApi` function
 2. Add import:
-   ```typescript
-   import { fetchApiJson } from "../lib/api";
-   ```
-3. Replace all `fetchTaskApi(path, opts)` calls with `fetchApiJson(path, opts)`. The behavior is the same — both parse JSON and throw on error.
+    ```typescript
+    import { fetchApiJson } from "../lib/api";
+    ```
+3. Replace all `fetchTaskApi(path, opts)` calls with `fetchApiJson(path, opts)`. The behavior is the same — both parse JSON and throw on
+   error.
 
 - [ ] **Step 6: Check for any other command files with private server helpers**
 
@@ -226,6 +236,7 @@ Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>"
 ### Task 2: Create Group Command Files + Rename Subcommands
 
 **Files:**
+
 - Create: `apps/cli/src/commands/chunk.ts`
 - Create: `apps/cli/src/commands/context-group.ts`
 - Create: `apps/cli/src/commands/tag-group.ts`
@@ -273,14 +284,16 @@ export const chunkCommand = new Command("chunk")
 
 - [ ] **Step 2: Rename context subcommands and create group**
 
-In `apps/cli/src/commands/context.ts`, find the line like `new Command("context")` and add `.name("export")` to rename it. If the command is created as `const contextCommand = new Command("context")`, change to:
+In `apps/cli/src/commands/context.ts`, find the line like `new Command("context")` and add `.name("export")` to rename it. If the command is
+created as `const contextCommand = new Command("context")`, change to:
 
 ```typescript
 // Add .name("export") — this overrides the Commander-registered name
 // so when mounted under the context group, it appears as "fubbik context export"
 ```
 
-Find the exact `new Command(...)` call and change the string argument from `"context"` to `"export"`. Example: if it reads `new Command("context")`, change to `new Command("export")`.
+Find the exact `new Command(...)` call and change the string argument from `"context"` to `"export"`. Example: if it reads
+`new Command("context")`, change to `new Command("export")`.
 
 In `apps/cli/src/commands/context-dir.ts`, change the `new Command("context-dir")` to `new Command("dir")`.
 
@@ -320,7 +333,9 @@ export const tagGroupCommand = new Command("tag")
     .addCommand(tagNormalizeCommand);
 ```
 
-Note: `tagsCommand` from `tags.ts` is a single command (registered as `"tags"`). When mounted under `tag`, it becomes `fubbik tag tags`. That reads oddly. **Check:** read `tags.ts` more carefully. If it registers as `new Command("tags")`, rename it to `new Command("list")` so the user types `fubbik tag list`. If it already has subcommands, mount them directly instead. Adapt based on what you find.
+Note: `tagsCommand` from `tags.ts` is a single command (registered as `"tags"`). When mounted under `tag`, it becomes `fubbik tag tags`.
+That reads oddly. **Check:** read `tags.ts` more carefully. If it registers as `new Command("tags")`, rename it to `new Command("list")` so
+the user types `fubbik tag list`. If it already has subcommands, mount them directly instead. Adapt based on what you find.
 
 - [ ] **Step 4: Rename import-requirements and create req group**
 
@@ -340,9 +355,12 @@ export const reqCommand = new Command("req")
     .addCommand(importRequirementsCommand);
 ```
 
-**Check:** `requirementsCommand` already has subcommands (`list`, `add`, `status`, `export`, `verify`). When mounted under `req`, the user types `fubbik req list`, `fubbik req add`, etc. If `requirementsCommand` registers as `new Command("requirements")` with subcommands, we need to hoist its subcommands directly into `reqCommand` instead of nesting. Read the file and decide:
+**Check:** `requirementsCommand` already has subcommands (`list`, `add`, `status`, `export`, `verify`). When mounted under `req`, the user
+types `fubbik req list`, `fubbik req add`, etc. If `requirementsCommand` registers as `new Command("requirements")` with subcommands, we
+need to hoist its subcommands directly into `reqCommand` instead of nesting. Read the file and decide:
 
-- If `requirementsCommand` has `.addCommand()` children → iterate them and add each to `reqCommand` directly. Don't nest `requirementsCommand` as a sub-sub-group.
+- If `requirementsCommand` has `.addCommand()` children → iterate them and add each to `reqCommand` directly. Don't nest
+  `requirementsCommand` as a sub-sub-group.
 - If `requirementsCommand` is a single command → mount it with a rename.
 
 Adapt the code based on what you find.
@@ -387,6 +405,7 @@ Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>"
 ### Task 3: Rewire `index.ts` + Update Tests
 
 **Files:**
+
 - Modify: `apps/cli/src/index.ts`
 - Modify: `apps/cli/src/__tests__/commands.test.ts`
 
@@ -476,21 +495,27 @@ program.addCommand(mcpToolsCommand);
 program.addCommand(taskCommand);
 ```
 
-Keep the `program` declaration, `.name()`, `.description()`, `.version()`, `.option()` lines unchanged. Keep the `completions` subcommand and `program.parse()` unchanged.
+Keep the `program` declaration, `.name()`, `.description()`, `.version()`, `.option()` lines unchanged. Keep the `completions` subcommand
+and `program.parse()` unchanged.
 
-**Delete** the old imports that are no longer used (add, get, list, search, update, remove, cat, quick, bulk-add, enrich, link, unlink, context, context-dir, context-for, tags, tag-normalize, requirements, import-requirements, doctor, cleanup, lint, health, seed-conventions).
+**Delete** the old imports that are no longer used (add, get, list, search, update, remove, cat, quick, bulk-add, enrich, link, unlink,
+context, context-dir, context-for, tags, tag-normalize, requirements, import-requirements, doctor, cleanup, lint, health, seed-conventions).
 
 - [ ] **Step 2: Update `apps/cli/src/__tests__/commands.test.ts`**
 
 Read the current file. The test currently asserts:
+
 - Root help contains: `plan`, `check-files`, `sync-claude-md`, `context-for`, `hooks`, `completions`
 - Plan --help shows subcommands
 
 Update the assertions:
-- Root help should now contain: `chunk`, `context`, `plan`, `review`, `tag`, `req`, `maintain`, `codebase`, `check-files`, `sync-claude-md`, `hooks`, `completions`
+
+- Root help should now contain: `chunk`, `context`, `plan`, `review`, `tag`, `req`, `maintain`, `codebase`, `check-files`, `sync-claude-md`,
+  `hooks`, `completions`
 - Root help should NOT contain: `list`, `add`, `search`, `get`, `update`, `remove` (these moved under `chunk`)
 - `context-for` is gone from top-level (now `fubbik context for`)
-- Add a test that `chunk --help` shows: `add`, `get`, `list`, `search`, `update`, `remove`, `cat`, `quick`, `bulk-add`, `enrich`, `link`, `unlink`
+- Add a test that `chunk --help` shows: `add`, `get`, `list`, `search`, `update`, `remove`, `cat`, `quick`, `bulk-add`, `enrich`, `link`,
+  `unlink`
 - Plan --help assertions stay the same (plan didn't change)
 
 Example updated test:
@@ -545,7 +570,8 @@ Expected: zero new errors. Old pre-existing errors in `gaps.ts`, `init.ts`, `tag
 pnpm --filter cli run dev -- --help 2>&1 | head -40
 ```
 
-Expected: ~30 commands listed. `chunk`, `context`, `tag`, `req`, `maintain` visible as groups. `list`, `add`, `search` etc NOT visible at top level.
+Expected: ~30 commands listed. `chunk`, `context`, `tag`, `req`, `maintain` visible as groups. `list`, `add`, `search` etc NOT visible at
+top level.
 
 ```bash
 pnpm --filter cli run dev -- chunk --help 2>&1

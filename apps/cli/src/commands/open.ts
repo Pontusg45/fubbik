@@ -1,4 +1,5 @@
 import { execSync } from "node:child_process";
+
 import { Command } from "commander";
 
 const ROUTES: Record<string, string> = {
@@ -11,7 +12,7 @@ const ROUTES: Record<string, string> = {
     settings: "/settings",
     health: "/knowledge-health",
     tags: "/tags",
-    docs: "/docs",
+    docs: "/docs"
 };
 
 function openUrl(url: string) {

@@ -77,9 +77,7 @@ export function updateWorkspace(
 
 export function deleteWorkspace(id: string, userId: string) {
     return deleteWorkspaceRepo(id, userId).pipe(
-        Effect.flatMap(deleted =>
-            deleted ? Effect.succeed(deleted) : Effect.fail(new NotFoundError({ resource: "Workspace" }))
-        )
+        Effect.flatMap(deleted => (deleted ? Effect.succeed(deleted) : Effect.fail(new NotFoundError({ resource: "Workspace" }))))
     );
 }
 

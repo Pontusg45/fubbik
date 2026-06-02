@@ -12,35 +12,48 @@ const createCmd = new Command("create")
     .option("--max-tokens <n>", "token budget", "8000")
     .option("-s, --space <id>", "space ID to scope context")
     .option("--codebase <id>", "alias for --space (deprecated)")
-    .action(async (opts: { plan?: string; task?: string; about?: string; files?: string; maxTokens: string; space?: string; codebase?: string }, cmd: Command) => {
-        try {
-            const body: Record<string, unknown> = {
-                maxTokens: Number(opts.maxTokens),
-            };
-            if (opts.plan) body.planId = opts.plan;
-            if (opts.task) body.taskId = opts.task;
-            if (opts.about) body.concept = opts.about;
-            if (opts.files) body.filePaths = opts.files.split(",").map(f => f.trim()).filter(Boolean);
-            const spaceId = opts.space ?? opts.codebase;
-            if (spaceId) body.spaceId = spaceId;
+    .action(
+        async (
+            opts: { plan?: string; task?: string; about?: string; files?: string; maxTokens: string; space?: string; codebase?: string },
+            cmd: Command
+        ) => {
+            try {
+                const body: Record<string, unknown> = {
+                    maxTokens: Number(opts.maxTokens)
+                };
+                if (opts.plan) body.planId = opts.plan;
+                if (opts.task) body.taskId = opts.task;
+                if (opts.about) body.concept = opts.about;
+                if (opts.files)
+                    body.filePaths = opts.files
+                        .split(",")
+                        .map(f => f.trim())
+                        .filter(Boolean);
+                const spaceId = opts.space ?? opts.codebase;
+                if (spaceId) body.spaceId = spaceId;
 
-            const res = await fetchApi("/context/snapshot", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(body),
-            });
-            if (!res.ok) {
-                outputError(`Failed: ${res.status} ${await res.text()}`);
+                const res = await fetchApi("/context/snapshot", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(body)
+                });
+                if (!res.ok) {
+                    outputError(`Failed: ${res.status} ${await res.text()}`);
+                    process.exit(1);
+                }
+
+                const data = (await res.json()) as { snapshotId: string; tokenCount: number; chunkCount: number; createdAt: string };
+                output(
+                    cmd,
+                    data,
+                    `Snapshot created: ${data.snapshotId}\nChunks: ${data.chunkCount}  Tokens: ${data.tokenCount}\nCreated: ${data.createdAt}`
+                );
+            } catch (err) {
+                outputError(String(err));
                 process.exit(1);
             }
-
-            const data = (await res.json()) as { snapshotId: string; tokenCount: number; chunkCount: number; createdAt: string };
-            output(cmd, data, `Snapshot created: ${data.snapshotId}\nChunks: ${data.chunkCount}  Tokens: ${data.tokenCount}\nCreated: ${data.createdAt}`);
-        } catch (err) {
-            outputError(String(err));
-            process.exit(1);
         }
-    });
+    );
 
 const getCmd = new Command("get")
     .description("Retrieve a frozen context snapshot by ID")
@@ -64,7 +77,7 @@ const getCmd = new Command("get")
             const lines: string[] = [
                 `# Context Snapshot: ${data.id}`,
                 `Created: ${data.createdAt}  Tokens: ${data.tokenCount}  Chunks: ${data.chunks.length}`,
-                "",
+                ""
             ];
             for (const chunk of data.chunks) {
                 lines.push(`## ${chunk.title} [${chunk.type}]`);
@@ -80,30 +93,28 @@ const getCmd = new Command("get")
         }
     });
 
-const listCmd = new Command("list")
-    .description("List your context snapshots")
-    .action(async (_opts: unknown, cmd: Command) => {
-        try {
-            const res = await fetchApi("/context/snapshots");
-            if (!res.ok) {
-                outputError(`Failed: ${res.status} ${await res.text()}`);
-                process.exit(1);
-            }
-
-            const data = (await res.json()) as Array<{ id: string; tokenCount: number; createdAt: string; query: unknown }>;
-
-            if (data.length === 0) {
-                output(cmd, data, "No snapshots found.");
-                return;
-            }
-
-            const lines = data.map(s => `${s.id}  tokens:${s.tokenCount}  ${new Date(s.createdAt).toLocaleString()}`);
-            output(cmd, data, lines.join("\n"));
-        } catch (err) {
-            outputError(String(err));
+const listCmd = new Command("list").description("List your context snapshots").action(async (_opts: unknown, cmd: Command) => {
+    try {
+        const res = await fetchApi("/context/snapshots");
+        if (!res.ok) {
+            outputError(`Failed: ${res.status} ${await res.text()}`);
             process.exit(1);
         }
-    });
+
+        const data = (await res.json()) as Array<{ id: string; tokenCount: number; createdAt: string; query: unknown }>;
+
+        if (data.length === 0) {
+            output(cmd, data, "No snapshots found.");
+            return;
+        }
+
+        const lines = data.map(s => `${s.id}  tokens:${s.tokenCount}  ${new Date(s.createdAt).toLocaleString()}`);
+        output(cmd, data, lines.join("\n"));
+    } catch (err) {
+        outputError(String(err));
+        process.exit(1);
+    }
+});
 
 const deleteCmd = new Command("delete")
     .description("Delete a context snapshot")

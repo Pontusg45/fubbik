@@ -2,15 +2,7 @@ import { useLocation, useNavigate } from "@tanstack/react-router";
 import { Keyboard } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import {
-    Dialog,
-    DialogBackdrop,
-    DialogClose,
-    DialogContent,
-    DialogDescription,
-    DialogHeader,
-    DialogTitle
-} from "@/components/ui/dialog";
+import { Dialog, DialogBackdrop, DialogClose, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 const SCROLL_AMOUNT = 100;
 
@@ -32,7 +24,7 @@ const NAV_COMBOS: Record<string, string> = {
     d: "/dashboard",
     s: "/search",
     t: "/tags",
-    h: "/knowledge-health",
+    h: "/knowledge-health"
 };
 
 export function useGlobalShortcuts() {
@@ -154,46 +146,52 @@ export function useGlobalShortcuts() {
 }
 
 const shortcuts = [
-    { section: "Navigation", items: [
-        { key: "j", description: "Scroll down" },
-        { key: "k", description: "Scroll up" },
-        { key: "g", description: "Jump to top (or start a 'go to' combo)" },
-        { key: "G", description: "Jump to bottom" }
-    ]},
-    { section: "Go to", items: [
-        { key: "g d", description: "Dashboard" },
-        { key: "g c", description: "Chunks" },
-        { key: "g g", description: "Graph" },
-        { key: "g p", description: "Plans" },
-        { key: "g r", description: "Requirements" },
-        { key: "g s", description: "Search" },
-        { key: "g t", description: "Tags" },
-        { key: "g h", description: "Knowledge health" }
-    ]},
-    { section: "Global", items: [
-        { key: "?", description: "Show keyboard shortcuts" },
-        { key: "Ctrl+K", description: "Open command palette" },
-        { key: "Ctrl+O", description: "Quick open chunk (fuzzy)" },
-        { key: "n", description: "Create new item (context-aware)" },
-        { key: "e", description: "Edit current item (on detail pages)" },
-        { key: "f", description: "Toggle focus mode" },
-        { key: "/", description: "Focus search" },
-        { key: "Esc", description: "Go back" }
-    ]},
-    { section: "Chunks List", items: [
-        { key: "j / k", description: "Move selection down / up" },
-        { key: "Enter", description: "Open selected chunk" },
-        { key: "n", description: "Create new chunk" }
-    ]}
+    {
+        section: "Navigation",
+        items: [
+            { key: "j", description: "Scroll down" },
+            { key: "k", description: "Scroll up" },
+            { key: "g", description: "Jump to top (or start a 'go to' combo)" },
+            { key: "G", description: "Jump to bottom" }
+        ]
+    },
+    {
+        section: "Go to",
+        items: [
+            { key: "g d", description: "Dashboard" },
+            { key: "g c", description: "Chunks" },
+            { key: "g g", description: "Graph" },
+            { key: "g p", description: "Plans" },
+            { key: "g r", description: "Requirements" },
+            { key: "g s", description: "Search" },
+            { key: "g t", description: "Tags" },
+            { key: "g h", description: "Knowledge health" }
+        ]
+    },
+    {
+        section: "Global",
+        items: [
+            { key: "?", description: "Show keyboard shortcuts" },
+            { key: "Ctrl+K", description: "Open command palette" },
+            { key: "Ctrl+O", description: "Quick open chunk (fuzzy)" },
+            { key: "n", description: "Create new item (context-aware)" },
+            { key: "e", description: "Edit current item (on detail pages)" },
+            { key: "f", description: "Toggle focus mode" },
+            { key: "/", description: "Focus search" },
+            { key: "Esc", description: "Go back" }
+        ]
+    },
+    {
+        section: "Chunks List",
+        items: [
+            { key: "j / k", description: "Move selection down / up" },
+            { key: "Enter", description: "Open selected chunk" },
+            { key: "n", description: "Create new chunk" }
+        ]
+    }
 ];
 
-export function KeyboardShortcutsHelp({
-    open,
-    onOpenChange
-}: {
-    open: boolean;
-    onOpenChange: (open: boolean) => void;
-}) {
+export function KeyboardShortcutsHelp({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogBackdrop />
@@ -208,9 +206,7 @@ export function KeyboardShortcutsHelp({
                 <div className="space-y-6 py-4">
                     {shortcuts.map(section => (
                         <div key={section.section}>
-                            <h3 className="text-muted-foreground mb-2 text-xs font-semibold uppercase tracking-wide">
-                                {section.section}
-                            </h3>
+                            <h3 className="text-muted-foreground mb-2 text-xs font-semibold tracking-wide uppercase">{section.section}</h3>
                             <div className="space-y-2">
                                 {section.items.map(item => (
                                     <div key={item.key} className="flex items-center justify-between">

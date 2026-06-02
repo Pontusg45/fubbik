@@ -15,7 +15,7 @@ export function TagCloud({ tags }: { tags: TagWithCount[] }) {
         const range = max - min || 1;
         return tags.map(t => ({
             ...t,
-            weight: (t.count - min) / range,
+            weight: (t.count - min) / range
         }));
     }, [tags]);
 
@@ -30,11 +30,7 @@ export function TagCloud({ tags }: { tags: TagWithCount[] }) {
     }
 
     if (tags.length === 0) {
-        return (
-            <div className="py-16 text-center text-sm text-muted-foreground">
-                No tags found.
-            </div>
-        );
+        return <div className="text-muted-foreground py-16 text-center text-sm">No tags found.</div>;
     }
 
     return (

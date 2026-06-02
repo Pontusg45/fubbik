@@ -6,22 +6,17 @@ import { collection, type CollectionFilter } from "../schema/collection";
 export type { CollectionFilter } from "../schema/collection";
 
 export function listCollections(userId: string) {
-    return dbEffect(() =>
-            db
-                .select()
-                .from(collection)
-                .where(eq(collection.userId, userId))
-                .orderBy(asc(collection.name)));
+    return dbEffect(() => db.select().from(collection).where(eq(collection.userId, userId)).orderBy(asc(collection.name)));
 }
 
 export function getCollectionById(id: string, userId: string) {
     return dbEffect(async () => {
-            const [found] = await db
-                .select()
-                .from(collection)
-                .where(and(eq(collection.id, id), eq(collection.userId, userId)));
-            return found ?? null;
-        });
+        const [found] = await db
+            .select()
+            .from(collection)
+            .where(and(eq(collection.id, id), eq(collection.userId, userId)));
+        return found ?? null;
+    });
 }
 
 export function createCollection(params: {
@@ -33,12 +28,9 @@ export function createCollection(params: {
     spaceId?: string;
 }) {
     return dbEffect(async () => {
-            const [created] = await db
-                .insert(collection)
-                .values(params)
-                .returning();
-            return created!;
-        });
+        const [created] = await db.insert(collection).values(params).returning();
+        return created!;
+    });
 }
 
 export function updateCollection(
@@ -51,21 +43,21 @@ export function updateCollection(
     }
 ) {
     return dbEffect(async () => {
-            const [updated] = await db
-                .update(collection)
-                .set(params)
-                .where(and(eq(collection.id, id), eq(collection.userId, userId)))
-                .returning();
-            return updated ?? null;
-        });
+        const [updated] = await db
+            .update(collection)
+            .set(params)
+            .where(and(eq(collection.id, id), eq(collection.userId, userId)))
+            .returning();
+        return updated ?? null;
+    });
 }
 
 export function deleteCollection(id: string, userId: string) {
     return dbEffect(async () => {
-            const [deleted] = await db
-                .delete(collection)
-                .where(and(eq(collection.id, id), eq(collection.userId, userId)))
-                .returning();
-            return deleted ?? null;
-        });
+        const [deleted] = await db
+            .delete(collection)
+            .where(and(eq(collection.id, id), eq(collection.userId, userId)))
+            .returning();
+        return deleted ?? null;
+    });
 }

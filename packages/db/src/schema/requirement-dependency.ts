@@ -1,5 +1,6 @@
-import { pgTable, primaryKey, text, check } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
+import { pgTable, primaryKey, text, check } from "drizzle-orm/pg-core";
+
 import { requirement } from "./requirement";
 
 export const requirementDependency = pgTable(

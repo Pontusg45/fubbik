@@ -1,10 +1,13 @@
 # Chunk Health Scores Implementation Plan
 
-> **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to
+> implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Add per-chunk health scores based on staleness, completeness, and coverage — surfaced on chunk detail and list pages.
 
-**Architecture:** New service function computes a health score (0-100) from multiple signals: days since update, has rationale/connections/enrichment, content length, file reference validity. Computed on-demand (not stored). Exposed via a field on the chunk detail response and as a sort/filter option on the list.
+**Architecture:** New service function computes a health score (0-100) from multiple signals: days since update, has
+rationale/connections/enrichment, content length, file reference validity. Computed on-demand (not stored). Exposed via a field on the chunk
+detail response and as a sort/filter option on the list.
 
 **Tech Stack:** Elysia, Effect, React, Tailwind CSS
 
@@ -13,11 +16,13 @@
 ## File Structure
 
 ### New files:
+
 - `packages/api/src/chunks/health-score.ts` — Health score computation logic
 - `packages/api/src/chunks/health-score.test.ts` — Tests
 - `apps/web/src/features/chunks/chunk-health-badge.tsx` — UI badge component
 
 ### Files to modify:
+
 - `packages/api/src/chunks/service.ts` — Add health score to detail response
 - `apps/web/src/routes/chunks.$chunkId.tsx` — Show health badge on detail page
 
@@ -26,6 +31,7 @@
 ## Task 1: Health Score Computation
 
 **Files:**
+
 - Create: `packages/api/src/chunks/health-score.ts`
 - Create: `packages/api/src/chunks/health-score.test.ts`
 
@@ -45,7 +51,7 @@ describe("computeHealthScore", () => {
         alternatives: ["alt1"],
         consequences: "Some consequences",
         connectionCount: 3, // >= 3 for full connectivity score
-        hasEmbedding: true,
+        hasEmbedding: true
     };
 
     it("returns 100 for a fully complete, fresh chunk", () => {
@@ -103,10 +109,10 @@ interface ChunkHealthInput {
 interface HealthScore {
     total: number; // 0-100
     breakdown: {
-        freshness: number;     // 0-25: how recently updated
-        completeness: number;  // 0-25: has rationale/alternatives/consequences
-        richness: number;      // 0-25: content length + enrichment
-        connectivity: number;  // 0-25: connections to other chunks
+        freshness: number; // 0-25: how recently updated
+        completeness: number; // 0-25: has rationale/alternatives/consequences
+        richness: number; // 0-25: content length + enrichment
+        connectivity: number; // 0-25: connections to other chunks
     };
     issues: string[]; // human-readable problems
 }
@@ -144,22 +150,24 @@ export function computeHealthScore(input: ChunkHealthInput): HealthScore {
     let connectivity = 0;
     if (input.connectionCount >= 3) connectivity = 25;
     else if (input.connectionCount >= 1) connectivity = 15;
-    else { connectivity = 0; issues.push("No connections (orphan)"); }
+    else {
+        connectivity = 0;
+        issues.push("No connections (orphan)");
+    }
 
     const total = freshness + completeness + richness + connectivity;
 
     return {
         total: Math.min(100, total),
         breakdown: { freshness, completeness, richness, connectivity },
-        issues,
+        issues
     };
 }
 ```
 
 - [ ] **Step 4: Run tests**
 
-Run: `cd packages/api && pnpm vitest run src/chunks/health-score.test.ts`
-Expected: PASS
+Run: `cd packages/api && pnpm vitest run src/chunks/health-score.test.ts` Expected: PASS
 
 - [ ] **Step 5: Commit**
 
@@ -173,11 +181,13 @@ git commit -m "feat: add chunk health score computation"
 ## Task 2: Expose Health Score in API
 
 **Files:**
+
 - Modify: `packages/api/src/chunks/service.ts` — Add health to detail response
 
 - [ ] **Step 1: Add health score to getChunkDetail**
 
-In `packages/api/src/chunks/service.ts`, in the `getChunkDetail` function. **Note:** The function uses `.pipe(Effect.flatMap(...))` chaining, NOT a local `result` variable. You need to add an `Effect.map` step at the end of the pipe chain:
+In `packages/api/src/chunks/service.ts`, in the `getChunkDetail` function. **Note:** The function uses `.pipe(Effect.flatMap(...))`
+chaining, NOT a local `result` variable. You need to add an `Effect.map` step at the end of the pipe chain:
 
 ```ts
 import { computeHealthScore } from "./health-score";
@@ -214,6 +224,7 @@ git commit -m "feat: include health score in chunk detail API response"
 ## Task 3: Health Badge UI Component
 
 **Files:**
+
 - Create: `apps/web/src/features/chunks/chunk-health-badge.tsx`
 - Modify: `apps/web/src/routes/chunks.$chunkId.tsx`
 
@@ -261,7 +272,8 @@ export function ChunkHealthBadge({ score, issues }: ChunkHealthBadgeProps) {
 
 - [ ] **Step 2: Add to chunk detail page**
 
-In `apps/web/src/routes/chunks.$chunkId.tsx`, render `<ChunkHealthBadge>` in the metadata area (near the created/updated dates). Pass `score={data.healthScore.total}` and `issues={data.healthScore.issues}`.
+In `apps/web/src/routes/chunks.$chunkId.tsx`, render `<ChunkHealthBadge>` in the metadata area (near the created/updated dates). Pass
+`score={data.healthScore.total}` and `issues={data.healthScore.issues}`.
 
 - [ ] **Step 3: Commit**
 

@@ -1,5 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
+
 import { apiFetch } from "./api-client.js";
 import type { McpPlugin } from "./plugin.js";
 
@@ -17,9 +18,11 @@ export function registerSuggestionTools(server: McpServer): void {
             if (focus) params.set("focus", focus);
             if (spaceId) params.set("spaceId", spaceId);
 
-            const data = await apiFetch(`/requirements/suggest-context?${params}`) as {
+            const data = (await apiFetch(`/requirements/suggest-context?${params}`)) as {
                 useCases: Array<{
-                    id: string; name: string; parentId: string | null;
+                    id: string;
+                    name: string;
+                    parentId: string | null;
                     requirementCount: number;
                     requirements: Array<{ id: string; title: string; status: string }>;
                 }>;
@@ -79,28 +82,39 @@ export function registerSuggestionTools(server: McpServer): void {
         "create_requirements_batch",
         "Batch create multiple requirements with automatic use case resolution. Use cases are created automatically if they don't exist.",
         {
-            requirements: z.array(z.object({
-                title: z.string().describe("Requirement title"),
-                description: z.string().optional().describe("Requirement description"),
-                steps: z.array(z.object({
-                    keyword: z.enum(["given", "when", "then", "and", "but"]),
-                    text: z.string()
-                })).min(1).describe("Given/When/Then steps"),
-                priority: z.enum(["must", "should", "could", "wont"]).optional().describe("MoSCoW priority"),
-                useCaseId: z.string().optional().describe("Existing use case ID"),
-                useCaseName: z.string().optional().describe("Use case name (created if doesn't exist)"),
-                parentUseCaseName: z.string().optional().describe("Parent use case name (created if doesn't exist)")
-            })).min(1).max(50).describe("Requirements to create"),
+            requirements: z
+                .array(
+                    z.object({
+                        title: z.string().describe("Requirement title"),
+                        description: z.string().optional().describe("Requirement description"),
+                        steps: z
+                            .array(
+                                z.object({
+                                    keyword: z.enum(["given", "when", "then", "and", "but"]),
+                                    text: z.string()
+                                })
+                            )
+                            .min(1)
+                            .describe("Given/When/Then steps"),
+                        priority: z.enum(["must", "should", "could", "wont"]).optional().describe("MoSCoW priority"),
+                        useCaseId: z.string().optional().describe("Existing use case ID"),
+                        useCaseName: z.string().optional().describe("Use case name (created if doesn't exist)"),
+                        parentUseCaseName: z.string().optional().describe("Parent use case name (created if doesn't exist)")
+                    })
+                )
+                .min(1)
+                .max(50)
+                .describe("Requirements to create"),
             spaceId: z.string().optional().describe("Space ID")
         },
         async ({ requirements, spaceId }) => {
             const body: Record<string, unknown> = { requirements };
             if (spaceId) body.spaceId = spaceId;
 
-            const data = await apiFetch("/requirements/batch", {
+            const data = (await apiFetch("/requirements/batch", {
                 method: "POST",
                 body: JSON.stringify(body)
-            }) as {
+            })) as {
                 created: number;
                 requirements: Array<{ id: string; title: string; useCaseId: string | null }>;
                 useCasesCreated: Array<{ id: string; name: string; parentId: string | null }>;
@@ -124,5 +138,5 @@ export function registerSuggestionTools(server: McpServer): void {
 export const suggestionPlugin: McpPlugin = {
     name: "suggestions",
     description: "Requirement and chunk suggestion tools",
-    register: registerSuggestionTools,
+    register: registerSuggestionTools
 };

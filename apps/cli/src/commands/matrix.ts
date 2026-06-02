@@ -1,7 +1,7 @@
 import { Command } from "commander";
 
-import { formatBold, formatDim, formatSuccess } from "../lib/colors";
 import { fetchApi } from "../lib/api";
+import { formatBold, formatDim, formatSuccess } from "../lib/colors";
 import { isJson, output, outputError, outputQuiet } from "../lib/output";
 
 interface Matrix {
@@ -136,13 +136,17 @@ const showMatrix = new Command("show")
             lines.push("-".repeat(header.length));
 
             for (const rule of rules) {
-                const row = rule.title.padEnd(maxRuleLen + 2) + dimensions.map(dim => {
-                    const key = `${rule.id}:${dim.id}`;
-                    const cell = cells[key];
-                    if (!cell) return ".".padStart(colWidth);
-                    const symbol = cell.status === "specified" ? "✓" : cell.status === "violated" ? "✗" : "?";
-                    return symbol.padStart(colWidth);
-                }).join(" ");
+                const row =
+                    rule.title.padEnd(maxRuleLen + 2) +
+                    dimensions
+                        .map(dim => {
+                            const key = `${rule.id}:${dim.id}`;
+                            const cell = cells[key];
+                            if (!cell) return ".".padStart(colWidth);
+                            const symbol = cell.status === "specified" ? "✓" : cell.status === "violated" ? "✗" : "?";
+                            return symbol.padStart(colWidth);
+                        })
+                        .join(" ");
                 lines.push(row);
             }
 
@@ -265,8 +269,7 @@ const showGaps = new Command("gaps")
                     const ruleId = parts[0] ?? "";
                     const dimId = parts[1] ?? "";
                     const status = cell.status === "violated" ? "VIOLATED" : "GAP";
-                    lines.push(`[${status}] "${ruleMap.get(ruleId)}" × "${dimMap.get(dimId)}"`)
-;
+                    lines.push(`[${status}] "${ruleMap.get(ruleId)}" × "${dimMap.get(dimId)}"`);
                     count++;
                 }
             }

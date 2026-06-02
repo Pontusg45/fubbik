@@ -21,8 +21,8 @@ const TOOL_GROUPS: ToolGroup[] = [
             { name: "update_chunk", description: "Update an existing knowledge chunk" },
             { name: "get_conventions", description: "Get convention/rationale chunks for a codebase" },
             { name: "get_requirements", description: "Get requirements for a codebase" },
-            { name: "search_vocabulary", description: "Search vocabulary entries for a codebase" },
-        ],
+            { name: "search_vocabulary", description: "Search vocabulary entries for a codebase" }
+        ]
     },
     {
         label: "Plans",
@@ -35,8 +35,8 @@ const TOOL_GROUPS: ToolGroup[] = [
             { name: "add_plan_step", description: "Add a new step to a plan" },
             { name: "complete_plan", description: "Mark a plan as completed" },
             { name: "import_plan_markdown", description: "Import a plan from markdown content" },
-            { name: "create_plan_from_requirements", description: "Generate plan from selected requirements" },
-        ],
+            { name: "create_plan_from_requirements", description: "Generate plan from selected requirements" }
+        ]
     },
     {
         label: "Sessions",
@@ -48,38 +48,36 @@ const TOOL_GROUPS: ToolGroup[] = [
             { name: "complete_implementation", description: "Complete session and generate review brief" },
             { name: "resolve_assumption_as_chunk", description: "Resolve assumption by creating a chunk from it" },
             { name: "mark_plan_step", description: "Mark a plan step as done" },
-            { name: "get_plan_progress", description: "Get progress of plan linked to a session" },
-        ],
+            { name: "get_plan_progress", description: "Get progress of plan linked to a session" }
+        ]
     },
     {
         label: "Requirements",
         tools: [
             { name: "list_requirements", description: "List requirements with status/priority filters" },
             { name: "create_requirement", description: "Create requirement with BDD steps" },
-            { name: "update_requirement_status", description: "Update requirement status" },
-        ],
+            { name: "update_requirement_status", description: "Update requirement status" }
+        ]
     },
     {
         label: "Suggestions",
         tools: [
             { name: "suggest_requirements", description: "Get context to suggest new requirements" },
-            { name: "create_requirements_batch", description: "Batch create requirements with use cases" },
-        ],
+            { name: "create_requirements_batch", description: "Batch create requirements with use cases" }
+        ]
     },
     {
         label: "Context",
-        tools: [
-            { name: "sync_claude_md", description: "Generate CLAUDE.md from tagged chunks" },
-        ],
+        tools: [{ name: "sync_claude_md", description: "Generate CLAUDE.md from tagged chunks" }]
     },
     {
         label: "Tasks",
         tools: [
             { name: "add_task", description: "Add a quick task for tracking" },
             { name: "list_tasks", description: "List open tasks" },
-            { name: "complete_task", description: "Complete a task" },
-        ],
-    },
+            { name: "complete_task", description: "Complete a task" }
+        ]
+    }
 ];
 
 export const mcpToolsCommand = new Command("mcp-tools")
@@ -87,9 +85,7 @@ export const mcpToolsCommand = new Command("mcp-tools")
     .option("--json", "Output as JSON")
     .action((opts: { json?: boolean }) => {
         if (opts.json) {
-            const allTools = TOOL_GROUPS.flatMap(g =>
-                g.tools.map(t => ({ group: g.label, ...t }))
-            );
+            const allTools = TOOL_GROUPS.flatMap(g => g.tools.map(t => ({ group: g.label, ...t })));
             console.log(JSON.stringify(allTools, null, 2));
             return;
         }

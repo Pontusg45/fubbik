@@ -1,5 +1,6 @@
 import { relations, sql } from "drizzle-orm";
 import { boolean, integer, jsonb, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+
 import { user } from "./auth";
 
 export interface TemplateMatchRules {

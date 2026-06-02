@@ -12,15 +12,7 @@ interface GraphContextMenuProps {
     onDelete?: (nodeId: string) => void;
 }
 
-export function GraphContextMenu({
-    x,
-    y,
-    nodeId,
-    onClose,
-    onFitView,
-    onResetLayout,
-    onDelete,
-}: GraphContextMenuProps) {
+export function GraphContextMenu({ x, y, nodeId, onClose, onFitView, onResetLayout, onDelete }: GraphContextMenuProps) {
     const menuRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {

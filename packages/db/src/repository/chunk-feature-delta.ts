@@ -5,12 +5,7 @@ import { chunk } from "../schema/chunk";
 import { chunkVersion } from "../schema/chunk-version";
 import { chunkFeatureDelta, feature } from "../schema/feature";
 
-export function upsertDelta(params: {
-    id: string;
-    chunkId: string;
-    featureId: string;
-    delta: Record<string, unknown>;
-}) {
+export function upsertDelta(params: { id: string; chunkId: string; featureId: string; delta: Record<string, unknown> }) {
     return dbEffect(async () => {
         const [result] = await db
             .insert(chunkFeatureDelta)
@@ -80,12 +75,7 @@ export function batchFetchDeltas(chunkIds: string[], featureIds: string[]) {
             })
             .from(chunkFeatureDelta)
             .innerJoin(feature, eq(chunkFeatureDelta.featureId, feature.id))
-            .where(
-                and(
-                    inArray(chunkFeatureDelta.chunkId, chunkIds),
-                    inArray(chunkFeatureDelta.featureId, featureIds)
-                )
-            )
+            .where(and(inArray(chunkFeatureDelta.chunkId, chunkIds), inArray(chunkFeatureDelta.featureId, featureIds)))
             .orderBy(feature.priority)
     );
 }
@@ -94,12 +84,7 @@ export function deleteDelta(chunkId: string, featureId: string) {
     return dbEffect(async () => {
         const [deleted] = await db
             .delete(chunkFeatureDelta)
-            .where(
-                and(
-                    eq(chunkFeatureDelta.chunkId, chunkId),
-                    eq(chunkFeatureDelta.featureId, featureId)
-                )
-            )
+            .where(and(eq(chunkFeatureDelta.chunkId, chunkId), eq(chunkFeatureDelta.featureId, featureId)))
             .returning();
         return deleted ?? null;
     });
@@ -107,27 +92,18 @@ export function deleteDelta(chunkId: string, featureId: string) {
 
 export function deleteDeltasForFeature(featureId: string) {
     return dbEffect(async () => {
-        await db
-            .delete(chunkFeatureDelta)
-            .where(eq(chunkFeatureDelta.featureId, featureId));
+        await db.delete(chunkFeatureDelta).where(eq(chunkFeatureDelta.featureId, featureId));
     });
 }
 
-export function mergeFeatureDeltas(
-    featureId: string,
-    userId: string,
-    deltas: Array<{ chunkId: string; delta: Record<string, unknown> }>
-) {
+export function mergeFeatureDeltas(featureId: string, userId: string, deltas: Array<{ chunkId: string; delta: Record<string, unknown> }>) {
     return dbEffect(async () => {
         return await db.transaction(async tx => {
             const affectedChunkIds: string[] = [];
 
             for (const deltaRow of deltas) {
                 // Fetch base chunk
-                const [existing] = await tx
-                    .select()
-                    .from(chunk)
-                    .where(eq(chunk.id, deltaRow.chunkId));
+                const [existing] = await tx.select().from(chunk).where(eq(chunk.id, deltaRow.chunkId));
                 if (!existing) continue;
 
                 // Count existing versions for next version number
@@ -135,9 +111,7 @@ export function mergeFeatureDeltas(
                     .select({ version: chunkVersion.version })
                     .from(chunkVersion)
                     .where(eq(chunkVersion.chunkId, deltaRow.chunkId));
-                const nextVersion = versionRows.length > 0
-                    ? Math.max(...versionRows.map(v => v.version)) + 1
-                    : 1;
+                const nextVersion = versionRows.length > 0 ? Math.max(...versionRows.map(v => v.version)) + 1 : 1;
 
                 await tx.insert(chunkVersion).values({
                     id: crypto.randomUUID(),
@@ -161,9 +135,7 @@ export function mergeFeatureDeltas(
             }
 
             // Delete all deltas for this feature
-            await tx
-                .delete(chunkFeatureDelta)
-                .where(eq(chunkFeatureDelta.featureId, featureId));
+            await tx.delete(chunkFeatureDelta).where(eq(chunkFeatureDelta.featureId, featureId));
 
             // Update feature status
             await tx

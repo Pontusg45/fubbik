@@ -1,8 +1,8 @@
 ---
 tags:
-  - guide
-  - graph
-  - interactions
+    - guide
+    - graph
+    - interactions
 description: Graph navigation, filtering, and path finding
 ---
 
@@ -29,8 +29,10 @@ Use the controls in the toolbar to filter what's shown:
 
 ## Path Finding
 
-Use the **Find Path** panel (route icon in the toolbar) to discover how two chunks are connected. Select a source and target chunk, and fubbik will find the shortest path between them, showing each connection and its relation type.
+Use the **Find Path** panel (route icon in the toolbar) to discover how two chunks are connected. Select a source and target chunk, and
+fubbik will find the shortest path between them, showing each connection and its relation type.
 
 ## Workspace View
 
-When viewing a workspace (multiple codebases), the graph shows cross-codebase connections with distinct edge styling. This helps you understand how knowledge flows between projects.
+When viewing a workspace (multiple codebases), the graph shows cross-codebase connections with distinct edge styling. This helps you
+understand how knowledge flows between projects.

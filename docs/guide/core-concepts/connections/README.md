@@ -1,7 +1,7 @@
 ---
 tags:
-  - guide
-  - connections
+    - guide
+    - connections
 description: Connections section index — relation types and best practices
 ---
 

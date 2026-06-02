@@ -22,38 +22,43 @@ export function findChunksSharingTags(
     if (tagIds.length === 0) return Effect.succeed([]);
 
     return dbEffect(async () => {
-            const excludeArray = [...excludeIds];
-            const tagPlaceholders = tagIds.map(id => sql`${id}`);
-            const results = await db
-                .select({
-                    id: chunk.id,
-                    title: chunk.title,
-                    type: chunk.type,
-                    sharedCount: sql<number>`count(*)`.as("shared_count")
-                })
-                .from(chunkTag)
-                .innerJoin(chunk, eq(chunkTag.chunkId, chunk.id))
-                .where(
-                    and(
-                        sql`${chunkTag.tagId} IN (${sql.join(tagPlaceholders, sql`, `)})`,
-                        ne(chunkTag.chunkId, chunkId),
-                        eq(chunk.userId, userId),
-                        ...(excludeArray.length > 0
-                            ? [sql`${chunk.id} NOT IN (${sql.join(excludeArray.map(id => sql`${id}`), sql`, `)})`]
-                            : [])
-                    )
+        const excludeArray = [...excludeIds];
+        const tagPlaceholders = tagIds.map(id => sql`${id}`);
+        const results = await db
+            .select({
+                id: chunk.id,
+                title: chunk.title,
+                type: chunk.type,
+                sharedCount: sql<number>`count(*)`.as("shared_count")
+            })
+            .from(chunkTag)
+            .innerJoin(chunk, eq(chunkTag.chunkId, chunk.id))
+            .where(
+                and(
+                    sql`${chunkTag.tagId} IN (${sql.join(tagPlaceholders, sql`, `)})`,
+                    ne(chunkTag.chunkId, chunkId),
+                    eq(chunk.userId, userId),
+                    ...(excludeArray.length > 0
+                        ? [
+                              sql`${chunk.id} NOT IN (${sql.join(
+                                  excludeArray.map(id => sql`${id}`),
+                                  sql`, `
+                              )})`
+                          ]
+                        : [])
                 )
-                .groupBy(chunk.id, chunk.title, chunk.type)
-                .orderBy(sql`count(*) DESC`)
-                .limit(5);
+            )
+            .groupBy(chunk.id, chunk.title, chunk.type)
+            .orderBy(sql`count(*) DESC`)
+            .limit(5);
 
-            return results.map(r => ({
-                id: r.id,
-                title: r.title,
-                type: r.type,
-                reason: `shares ${r.sharedCount} tag${Number(r.sharedCount) > 1 ? "s" : ""}`
-            }));
-        });
+        return results.map(r => ({
+            id: r.id,
+            title: r.title,
+            type: r.type,
+            reason: `shares ${r.sharedCount} tag${Number(r.sharedCount) > 1 ? "s" : ""}`
+        }));
+    });
 }
 
 export function findChunksWithSimilarTitle(
@@ -62,32 +67,37 @@ export function findChunksWithSimilarTitle(
     excludeIds: Set<string>
 ): Effect.Effect<SuggestionRow[], DatabaseError> {
     return dbEffect(async () => {
-            const excludeArray = [...excludeIds];
-            const results = await db
-                .select({
-                    id: chunk.id,
-                    title: chunk.title,
-                    type: chunk.type,
-                    sim: sql<number>`similarity(${chunk.title}, ${title})`
-                })
-                .from(chunk)
-                .where(
-                    and(
-                        eq(chunk.userId, userId),
-                        sql`similarity(${chunk.title}, ${title}) > 0.15`,
-                        ...(excludeArray.length > 0
-                            ? [sql`${chunk.id} NOT IN (${sql.join(excludeArray.map(id => sql`${id}`), sql`, `)})`]
-                            : [])
-                    )
+        const excludeArray = [...excludeIds];
+        const results = await db
+            .select({
+                id: chunk.id,
+                title: chunk.title,
+                type: chunk.type,
+                sim: sql<number>`similarity(${chunk.title}, ${title})`
+            })
+            .from(chunk)
+            .where(
+                and(
+                    eq(chunk.userId, userId),
+                    sql`similarity(${chunk.title}, ${title}) > 0.15`,
+                    ...(excludeArray.length > 0
+                        ? [
+                              sql`${chunk.id} NOT IN (${sql.join(
+                                  excludeArray.map(id => sql`${id}`),
+                                  sql`, `
+                              )})`
+                          ]
+                        : [])
                 )
-                .orderBy(sql`similarity(${chunk.title}, ${title}) DESC`)
-                .limit(5);
+            )
+            .orderBy(sql`similarity(${chunk.title}, ${title}) DESC`)
+            .limit(5);
 
-            return results.map(r => ({
-                id: r.id,
-                title: r.title,
-                type: r.type,
-                reason: "similar title"
-            }));
-        });
+        return results.map(r => ({
+            id: r.id,
+            title: r.title,
+            type: r.type,
+            reason: "similar title"
+        }));
+    });
 }

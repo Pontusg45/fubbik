@@ -37,9 +37,7 @@ export interface VocabularyTextMatch extends VocabularyMatch {
 
 /* ─── Index builders (exported for testing) ─── */
 
-export function buildChunkIndex(
-    chunks: { id: string; title: string; aliases: string[] }[]
-): Map<string, ChunkMatch> {
+export function buildChunkIndex(chunks: { id: string; title: string; aliases: string[] }[]): Map<string, ChunkMatch> {
     const map = new Map<string, ChunkMatch>();
     for (const c of chunks) {
         if (c.title.length >= 4) {
@@ -125,12 +123,12 @@ export function matchVocabularyInText(
     if (vocabIndex.size === 0) return [];
 
     const regex = pattern
-        ? new RegExp(pattern.source, pattern.flags)  // clone to reset lastIndex
+        ? new RegExp(pattern.source, pattern.flags) // clone to reset lastIndex
         : (() => {
-            const words = Array.from(vocabIndex.keys()).sort((a, b) => b.length - a.length);
-            const escaped = words.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
-            return new RegExp(`\\b(${escaped.join("|")})\\b`, "gi");
-        })();
+              const words = Array.from(vocabIndex.keys()).sort((a, b) => b.length - a.length);
+              const escaped = words.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+              return new RegExp(`\\b(${escaped.join("|")})\\b`, "gi");
+          })();
 
     const matches: VocabularyTextMatch[] = [];
     let m: RegExpExecArray | null;
@@ -229,9 +227,5 @@ export function SmartLinkProvider({ children }: { children: ReactNode }) {
         return { chunkIndex, vocabIndex, fileRefIndex, vocabPattern };
     }, [chunksQuery.data, vocabQuery.data, fileRefsQuery.data]);
 
-    return (
-        <SmartLinkContext.Provider value={value}>
-            {children}
-        </SmartLinkContext.Provider>
-    );
+    return <SmartLinkContext.Provider value={value}>{children}</SmartLinkContext.Provider>;
 }

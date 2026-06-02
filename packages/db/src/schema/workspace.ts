@@ -19,10 +19,7 @@ export const workspace = pgTable(
             .$onUpdate(() => new Date())
             .notNull()
     },
-    table => [
-        uniqueIndex("workspace_user_name_idx").on(table.userId, table.name),
-        index("workspace_userId_idx").on(table.userId)
-    ]
+    table => [uniqueIndex("workspace_user_name_idx").on(table.userId, table.name), index("workspace_userId_idx").on(table.userId)]
 );
 
 export const workspaceSpace = pgTable(

@@ -1,8 +1,8 @@
 ---
 tags:
-  - guide
-  - review
-  - queue
+    - guide
+    - review
+    - queue
 description: Managing pending proposals with bulk approve/reject
 ---
 
@@ -26,6 +26,7 @@ The review queue at `/review` shows all chunks and proposals awaiting human revi
 ## Filtering
 
 Filter the queue by:
+
 - Origin (manual, AI, import)
 - Type (note, document, reference, etc.)
 - Codebase

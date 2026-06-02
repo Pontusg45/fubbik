@@ -1,10 +1,13 @@
 # Requirements System Implementation Plan
 
-> **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to
+> implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Add a structured Given/When/Then requirements system with step validation, cross-referencing, and multi-format export.
 
-**Architecture:** Separate `requirement` entity (not a chunk) with JSONB steps, linked to chunks via join table. Step validator enforces sequence rules. Cross-reference checker matches step text against known file refs and chunk titles. Export adapters generate Gherkin, Vitest, and markdown from the same steps data.
+**Architecture:** Separate `requirement` entity (not a chunk) with JSONB steps, linked to chunks via join table. Step validator enforces
+sequence rules. Cross-reference checker matches step text against known file refs and chunk titles. Export adapters generate Gherkin,
+Vitest, and markdown from the same steps data.
 
 **Tech Stack:** Drizzle ORM, Effect, Elysia, TanStack Router/Query, Commander.js, Vitest
 
@@ -15,6 +18,7 @@
 ## File Structure
 
 ### New files
+
 - `packages/db/src/schema/requirement.ts` — requirement + requirement_chunk tables
 - `packages/db/src/repository/requirement.ts` — CRUD + chunk linking
 - `packages/db/src/__tests__/requirement.test.ts` — schema test
@@ -32,6 +36,7 @@
 - `apps/web/src/routes/requirements.$requirementId.tsx` — detail page
 
 ### Modified files
+
 - `packages/db/src/schema/index.ts` — export requirement schema
 - `packages/db/src/repository/index.ts` — export requirement repository
 - `packages/api/src/index.ts` — register routes, add StepValidationError to error handler
@@ -46,6 +51,7 @@
 ### Task 1: Requirement schema
 
 **Files:**
+
 - Create: `packages/db/src/schema/requirement.ts`
 - Create: `packages/db/src/__tests__/requirement.test.ts`
 - Modify: `packages/db/src/schema/index.ts`
@@ -150,7 +156,8 @@ export const requirementChunkRelations = relations(requirementChunk, ({ one }) =
 }));
 ```
 
-Note: The `CHECK (jsonb_array_length(steps) > 0)` constraint from the spec may need a raw SQL migration if Drizzle doesn't support CHECK constraints directly. Add it via `db:push` or a migration file.
+Note: The `CHECK (jsonb_array_length(steps) > 0)` constraint from the spec may need a raw SQL migration if Drizzle doesn't support CHECK
+constraints directly. Add it via `db:push` or a migration file.
 
 - [ ] **Step 3: Export and run tests**
 
@@ -174,6 +181,7 @@ git commit -m "feat(db): add requirement and requirement_chunk schema"
 ### Task 2: Step validator
 
 **Files:**
+
 - Create: `packages/api/src/requirements/validator.ts`
 - Create: `packages/api/src/requirements/validator.test.ts`
 
@@ -250,8 +258,7 @@ describe("validateSteps", () => {
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `cd packages/api && pnpm vitest run src/requirements/validator.test.ts`
-Expected: FAIL — module not found
+Run: `cd packages/api && pnpm vitest run src/requirements/validator.test.ts` Expected: FAIL — module not found
 
 - [ ] **Step 3: Implement validator**
 
@@ -322,12 +329,12 @@ export function validateSteps(steps: RequirementStep[]): StepError[] {
 
 - [ ] **Step 4: Run tests**
 
-Run: `cd packages/api && pnpm vitest run src/requirements/validator.test.ts`
-Expected: PASS
+Run: `cd packages/api && pnpm vitest run src/requirements/validator.test.ts` Expected: PASS
 
 - [ ] **Step 5: Add StepValidationError**
 
 Add to `packages/api/src/errors.ts`:
+
 ```typescript
 export class StepValidationError extends Data.TaggedError("StepValidationError")<{
     errors: Array<{ step: number; error: string }>;
@@ -335,6 +342,7 @@ export class StepValidationError extends Data.TaggedError("StepValidationError")
 ```
 
 Add to the error handler in `packages/api/src/index.ts`:
+
 ```typescript
 case "StepValidationError":
     set.status = 400;
@@ -355,12 +363,14 @@ git commit -m "feat(api): add step sequence validator and StepValidationError"
 ### Task 3: Requirement repository
 
 **Files:**
+
 - Create: `packages/db/src/repository/requirement.ts`
 - Modify: `packages/db/src/repository/index.ts`
 
 - [ ] **Step 1: Write repository**
 
 Functions needed (all return `Effect<T, DatabaseError>`):
+
 - `createRequirement(params: { id, title, description?, steps, status?, priority?, codebaseId?, userId })`
 - `getRequirementById(id, userId?)`
 - `listRequirements(params: { userId, codebaseId?, status?, priority?, limit, offset })`
@@ -371,7 +381,8 @@ Functions needed (all return `Effect<T, DatabaseError>`):
 - `getChunksForRequirement(requirementId)` — join through requirement_chunk + chunk
 - `getRequirementStats(userId, codebaseId?)` — returns `{ total, passing, failing, untested }`
 
-Follow the existing Effect.tryPromise + DatabaseError pattern. The `updateRequirement` function must handle empty body (skip update if no fields to set, like the fix we made for chunks).
+Follow the existing Effect.tryPromise + DatabaseError pattern. The `updateRequirement` function must handle empty body (skip update if no
+fields to set, like the fix we made for chunks).
 
 - [ ] **Step 2: Export from repository index**
 
@@ -393,6 +404,7 @@ git commit -m "feat(db): add requirement repository with CRUD, chunk linking, an
 ### Task 4: Export adapters
 
 **Files:**
+
 - Create: `packages/api/src/requirements/export.ts`
 - Create: `packages/api/src/requirements/export.test.ts`
 
@@ -463,9 +475,7 @@ export function toGherkin(title: string, steps: RequirementStep[]): string {
 }
 
 export function toVitest(title: string, steps: RequirementStep[]): string {
-    const comments = steps
-        .map(s => `        // ${capitalize(s.keyword)} ${interpolateParams(s.text, s.params)}`)
-        .join("\n");
+    const comments = steps.map(s => `        // ${capitalize(s.keyword)} ${interpolateParams(s.text, s.params)}`).join("\n");
     return `import { describe, it } from "vitest";\n\ndescribe("${title}", () => {\n    it("should satisfy requirements", () => {\n${comments}\n        throw new Error("Not implemented");\n    });\n});\n`;
 }
 
@@ -481,8 +491,7 @@ export function toMarkdown(title: string, steps: RequirementStep[]): string {
 
 - [ ] **Step 3: Run tests**
 
-Run: `cd packages/api && pnpm vitest run src/requirements/export.test.ts`
-Expected: PASS
+Run: `cd packages/api && pnpm vitest run src/requirements/export.test.ts` Expected: PASS
 
 - [ ] **Step 4: Commit**
 
@@ -498,6 +507,7 @@ git commit -m "feat(api): add Gherkin, Vitest, and markdown export adapters"
 ### Task 5: Cross-reference checker
 
 **Files:**
+
 - Create: `packages/api/src/requirements/cross-ref.ts`
 
 - [ ] **Step 1: Write cross-reference checker**
@@ -526,10 +536,7 @@ function extractQuotedStrings(text: string): string[] {
     return matches ? matches.map(m => m.slice(1, -1)) : [];
 }
 
-export function crossReferenceSteps(
-    steps: RequirementStep[],
-    userId: string
-): Effect.Effect<CrossRefWarning[], never> {
+export function crossReferenceSteps(steps: RequirementStep[], userId: string): Effect.Effect<CrossRefWarning[], never> {
     return Effect.tryPromise({
         try: async () => {
             const warnings: CrossRefWarning[] = [];
@@ -540,9 +547,7 @@ export function crossReferenceSteps(
                 // Check file paths
                 for (const path of extractFilePaths(text)) {
                     const result = await Effect.runPromise(
-                        lookupChunksByFilePath(path, userId).pipe(
-                            Effect.catchAll(() => Effect.succeed([]))
-                        )
+                        lookupChunksByFilePath(path, userId).pipe(Effect.catchAll(() => Effect.succeed([])))
                     );
                     if (result.length === 0) {
                         warnings.push({ step: i, type: "file_not_found", reference: path });
@@ -557,7 +562,8 @@ export function crossReferenceSteps(
 }
 ```
 
-Note: Cross-referencing is best-effort — errors are swallowed and return empty warnings. The implementer should verify the regex patterns work for the expected file path formats and adjust as needed.
+Note: Cross-referencing is best-effort — errors are swallowed and return empty warnings. The implementer should verify the regex patterns
+work for the expected file path formats and adjust as needed.
 
 - [ ] **Step 2: Commit**
 
@@ -571,6 +577,7 @@ git commit -m "feat(api): add cross-reference checker for requirement steps"
 ### Task 6: Service
 
 **Files:**
+
 - Create: `packages/api/src/requirements/service.ts`
 
 - [ ] **Step 1: Write service**
@@ -579,11 +586,14 @@ Compose validation + cross-ref + CRUD:
 
 - `listRequirements(userId, query)` — delegates to repo
 - `getRequirement(id, userId)` — returns requirement + linked chunks, NotFoundError if missing
-- `createRequirement(userId, body)` — validate steps (fail with StepValidationError if invalid), create, cross-reference, return `{ requirement, warnings }`
-- `updateRequirement(id, userId, body)` — validate steps only if `steps` present in body, update, cross-reference if steps changed, return `{ requirement, warnings }`
+- `createRequirement(userId, body)` — validate steps (fail with StepValidationError if invalid), create, cross-reference, return
+  `{ requirement, warnings }`
+- `updateRequirement(id, userId, body)` — validate steps only if `steps` present in body, update, cross-reference if steps changed, return
+  `{ requirement, warnings }`
 - `deleteRequirement(id, userId)` — check exists, delete
 - `updateStatus(id, userId, status)` — delegates to repo
-- `setChunks(requirementId, userId, chunkIds)` — verify requirement exists and belongs to user. Verify all chunk IDs belong to user (batch check). Then set.
+- `setChunks(requirementId, userId, chunkIds)` — verify requirement exists and belongs to user. Verify all chunk IDs belong to user (batch
+  check). Then set.
 - `getStats(userId, codebaseId?)` — delegates to repo
 - `exportRequirement(id, userId, format)` — fetch, convert via adapter
 - `exportAll(userId, codebaseId, format)` — fetch all, convert each
@@ -602,12 +612,14 @@ git commit -m "feat(api): add requirements service composing validation, cross-r
 ### Task 7: Routes
 
 **Files:**
+
 - Create: `packages/api/src/requirements/routes.ts`
 - Modify: `packages/api/src/index.ts`
 
 - [ ] **Step 1: Write routes**
 
 Declaration order (critical for Elysia):
+
 1. `GET /requirements/stats`
 2. `GET /requirements/export` (`?format=gherkin|vitest|markdown&codebaseId=`)
 3. `GET /requirements` (list, `?codebaseId=&status=&priority=&limit=&offset=`)
@@ -620,7 +632,9 @@ Declaration order (critical for Elysia):
 10. `GET /requirements/:id/export` (`?format=gherkin|vitest|markdown`)
 
 Validation schemas:
-- Steps: `t.Array(t.Object({ keyword: t.Union([t.Literal("given"), t.Literal("when"), t.Literal("then"), t.Literal("and"), t.Literal("but")]), text: t.String({ maxLength: 1000 }), params: t.Optional(t.Record(t.String(), t.String())) }))`
+
+- Steps:
+  `t.Array(t.Object({ keyword: t.Union([t.Literal("given"), t.Literal("when"), t.Literal("then"), t.Literal("and"), t.Literal("but")]), text: t.String({ maxLength: 1000 }), params: t.Optional(t.Record(t.String(), t.String())) }))`
 - Status: `t.Union([t.Literal("passing"), t.Literal("failing"), t.Literal("untested")])`
 - Priority: `t.Optional(t.Union([t.Literal("must"), t.Literal("should"), t.Literal("could"), t.Literal("wont")]))`
 - Format: `t.Union([t.Literal("gherkin"), t.Literal("vitest"), t.Literal("markdown")])`
@@ -647,6 +661,7 @@ git commit -m "feat(api): add requirements CRUD, export, and stats routes"
 ### Task 8: CLI requirements commands
 
 **Files:**
+
 - Create: `apps/cli/src/commands/requirements.ts`
 - Modify: `apps/cli/src/index.ts`
 
@@ -661,6 +676,7 @@ fubbik requirements verify [--codebase <name>]
 ```
 
 Follow existing CLI patterns:
+
 - Use `output(cmd, data, humanReadable)` and `outputQuiet(cmd, id)` from `../lib/output`
 - Use `console.error()` for errors
 - Use `getServerUrl()` from `../lib/store`
@@ -669,7 +685,8 @@ Follow existing CLI patterns:
 
 - [ ] **Step 2: Register in CLI index**
 
-Add `import { requirementsCommand } from "./commands/requirements";` and `program.addCommand(requirementsCommand);` to `apps/cli/src/index.ts`.
+Add `import { requirementsCommand } from "./commands/requirements";` and `program.addCommand(requirementsCommand);` to
+`apps/cli/src/index.ts`.
 
 - [ ] **Step 3: Commit**
 
@@ -685,6 +702,7 @@ git commit -m "feat(cli): add requirements command group (list, add, status, exp
 ### Task 9: Requirements list page
 
 **Files:**
+
 - Create: `apps/web/src/routes/requirements.tsx`
 - Modify: `apps/web/src/routes/__root.tsx`
 - Modify: `apps/web/src/features/nav/mobile-nav.tsx`
@@ -696,6 +714,7 @@ Read `apps/web/src/routes/codebases.tsx` or `apps/web/src/routes/knowledge-healt
 - [ ] **Step 2: Create list page**
 
 `/requirements` route with:
+
 - Stats summary bar at top: total, passing (green badge), failing (red), untested (gray)
 - Query: `api.api.requirements.get({ query: { codebaseId, status, priority } })`
 - Filterable by status, priority, codebase (via `useActiveCodebase`)
@@ -719,21 +738,23 @@ git commit -m "feat(web): add requirements list page with stats, filters, and st
 ### Task 10: Requirement create page
 
 **Files:**
+
 - Create: `apps/web/src/routes/requirements.new.tsx`
 
 - [ ] **Step 1: Create the page**
 
 `/requirements/new` route with form:
+
 - Title input
 - Description textarea
 - Priority selector (must/should/could/won't dropdown)
 - Codebase selector (from `useActiveCodebase` or dropdown)
 - **Step builder:**
-  - Ordered list of step rows
-  - Each row: keyword dropdown (given/when/then/and/but) + text input
-  - "Add step" button appends a new row
-  - Remove button per row
-  - Real-time validation: run `validateSteps` client-side, highlight errors inline
+    - Ordered list of step rows
+    - Each row: keyword dropdown (given/when/then/and/but) + text input
+    - "Add step" button appends a new row
+    - Remove button per row
+    - Real-time validation: run `validateSteps` client-side, highlight errors inline
 - Linked chunks: searchable multi-select (fetch chunks for the codebase)
 - Submit: `POST /api/requirements`, then `PUT /api/requirements/:id/chunks` if chunks selected
 - On success: navigate to detail page, show warnings if any
@@ -750,16 +771,19 @@ git commit -m "feat(web): add requirement create page with step builder and vali
 ### Task 11: Requirement detail page
 
 **Files:**
+
 - Create: `apps/web/src/routes/requirements.$requirementId.tsx`
 
 - [ ] **Step 1: Create the page**
 
 `/requirements/:requirementId` route with:
+
 - Title, description, priority badge, status badge (color-coded)
 - Steps displayed as formatted Given/When/Then block (each step on its own line, keyword bold)
 - Cross-reference warnings section (if any, fetched on load via the requirement response)
 - Linked chunks as clickable links to `/chunks/:id`
-- Export buttons: Gherkin, Vitest, Markdown — each calls `GET /api/requirements/:id/export?format=` and either downloads or copies to clipboard
+- Export buttons: Gherkin, Vitest, Markdown — each calls `GET /api/requirements/:id/export?format=` and either downloads or copies to
+  clipboard
 - Status toggle: three buttons (passing/failing/untested) calling `PATCH /api/requirements/:id/status`
 - Edit button → navigates to `/requirements/new` with pre-filled data (or inline editing if simpler)
 

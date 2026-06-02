@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
@@ -23,9 +24,7 @@ export function useActiveFeatures() {
 
     const toggleFeature = (featureId: string) => {
         const current = activeFeatureIds as string[];
-        const next = current.includes(featureId)
-            ? current.filter(id => id !== featureId)
-            : [...current, featureId];
+        const next = current.includes(featureId) ? current.filter(id => id !== featureId) : [...current, featureId];
         toggleMutation.mutate(next);
     };
 

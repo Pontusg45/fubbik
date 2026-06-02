@@ -1,15 +1,17 @@
 # CLI `fubbik setup` Command
 
-**Date:** 2026-04-25
-**Status:** Approved
+**Date:** 2026-04-25 **Status:** Approved
 
 ## Problem
 
-A solo developer with fubbik running wants to adopt it for their project. Today the path is fragmented: `init --scan` imports markdown docs, but there's no guided flow that understands the project's tech stack, structure, and conventions. The developer has to manually create chunks for everything beyond documentation.
+A solo developer with fubbik running wants to adopt it for their project. Today the path is fragmented: `init --scan` imports markdown docs,
+but there's no guided flow that understands the project's tech stack, structure, and conventions. The developer has to manually create
+chunks for everything beyond documentation.
 
 ## Solution
 
-A new `fubbik setup` command that scans the project across three tiers of increasing inference depth, presents a summary for confirmation, imports everything in one shot, and finishes with tips about what it wasn't confident enough to auto-import.
+A new `fubbik setup` command that scans the project across three tiers of increasing inference depth, presents a summary for confirmation,
+imports everything in one shot, and finishes with tips about what it wasn't confident enough to auto-import.
 
 ## Persona & Scope
 
@@ -115,14 +117,14 @@ Reuses existing `scanner.ts` logic, extracted to `tier1-docs.ts`:
 
 Reads config files to produce concise summary chunks. No code parsing.
 
-| Source | Chunk produced |
-|--------|---------------|
-| `package.json` (root + workspaces) | Tech stack — framework, major deps, dev tooling. Detects monorepo from `workspaces` field. |
-| `tsconfig.json` / `jsconfig.json` | TypeScript config — strict mode, path aliases, target |
-| `.env.example` / `.env.local.example` | Environment variables — lists expected vars (never reads actual `.env`) |
-| `docker-compose.yml` / `Dockerfile` | Infrastructure — services, ports, build stages |
-| `turbo.json` / `nx.json` | Build pipeline — task graph, caching config |
-| CI files (`.github/workflows/`, `.gitlab-ci.yml`) | CI/CD — what's tested, built, deployed |
+| Source                                            | Chunk produced                                                                             |
+| ------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `package.json` (root + workspaces)                | Tech stack — framework, major deps, dev tooling. Detects monorepo from `workspaces` field. |
+| `tsconfig.json` / `jsconfig.json`                 | TypeScript config — strict mode, path aliases, target                                      |
+| `.env.example` / `.env.local.example`             | Environment variables — lists expected vars (never reads actual `.env`)                    |
+| `docker-compose.yml` / `Dockerfile`               | Infrastructure — services, ports, build stages                                             |
+| `turbo.json` / `nx.json`                          | Build pipeline — task graph, caching config                                                |
+| CI files (`.github/workflows/`, `.gitlab-ci.yml`) | CI/CD — what's tested, built, deployed                                                     |
 
 Each config file maps to **at most one chunk**. Content is a human-readable summary of the facts, not a raw dump of the file.
 
@@ -131,15 +133,16 @@ Each config file maps to **at most one chunk**. Content is a human-readable summ
 
 ### Tier 3 — Code Patterns (conservative)
 
-Filesystem traversal + targeted regex. No AST parsing. A pattern is only included if **both** the dependency exists in `package.json` **AND** the expected file/directory structure is found. Either signal alone goes to Tips.
+Filesystem traversal + targeted regex. No AST parsing. A pattern is only included if **both** the dependency exists in `package.json`
+**AND** the expected file/directory structure is found. Either signal alone goes to Tips.
 
-| Detection | Signals required | Chunk |
-|-----------|-----------------|-------|
-| Route structure | Framework dep + `routes/`, `pages/`, or `api/` dirs with matching file patterns | "API routes at `X`, follow Y pattern" |
-| Test patterns | Test runner dep + `*.test.ts`/`*.spec.ts`/`__tests__/` presence | "Tests use X, located at Y" |
-| Database/ORM | ORM dep + `schema.ts`/`migrations/` dirs | "DB schema at X, uses Y" |
-| Component structure | UI framework dep + `components/`/`features/` dirs | "Components organized by feature in X" |
-| Auth | Auth library dep + `auth.ts`/auth config files | "Authentication via X at Y" |
+| Detection           | Signals required                                                                | Chunk                                  |
+| ------------------- | ------------------------------------------------------------------------------- | -------------------------------------- |
+| Route structure     | Framework dep + `routes/`, `pages/`, or `api/` dirs with matching file patterns | "API routes at `X`, follow Y pattern"  |
+| Test patterns       | Test runner dep + `*.test.ts`/`*.spec.ts`/`__tests__/` presence                 | "Tests use X, located at Y"            |
+| Database/ORM        | ORM dep + `schema.ts`/`migrations/` dirs                                        | "DB schema at X, uses Y"               |
+| Component structure | UI framework dep + `components/`/`features/` dirs                               | "Components organized by feature in X" |
+| Auth                | Auth library dep + `auth.ts`/auth config files                                  | "Authentication via X at Y"            |
 
 - Type: `"convention"` for patterns, `"reference"` for structural descriptions
 - Tags: pattern names (`"routing"`, `"auth"`, `"components"`, `"database"`, `"testing"`)
@@ -149,12 +152,12 @@ Filesystem traversal + targeted regex. No AST parsing. A pattern is only include
 
 Generated between discovered chunks:
 
-| Condition | Relation |
-|-----------|----------|
-| Tier 1 docs referencing each other (markdown links) | `references` |
-| Workspace packages → monorepo structure chunk | `part_of` |
-| Tier 3 patterns with dependencies (routes → DB schema) | `depends_on` |
-| Tier 2/3 chunk title keywords found in a tier 1 doc's content (case-insensitive substring match on dependency names, framework names, or directory paths) | `supports` |
+| Condition                                                                                                                                                 | Relation     |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------ |
+| Tier 1 docs referencing each other (markdown links)                                                                                                       | `references` |
+| Workspace packages → monorepo structure chunk                                                                                                             | `part_of`    |
+| Tier 3 patterns with dependencies (routes → DB schema)                                                                                                    | `depends_on` |
+| Tier 2/3 chunk title keywords found in a tier 1 doc's content (case-insensitive substring match on dependency names, framework names, or directory paths) | `supports`   |
 
 ### Tips (below confidence threshold)
 
@@ -190,38 +193,39 @@ apps/cli/src/
 
 ```typescript
 interface DiscoveryResult {
-  codebase: { name: string; remoteUrl: string | null; localPath: string };
-  chunks: DiscoveredChunk[];
-  connections: DiscoveredConnection[];
-  tags: string[];
-  tips: Tip[];
+    codebase: { name: string; remoteUrl: string | null; localPath: string };
+    chunks: DiscoveredChunk[];
+    connections: DiscoveredConnection[];
+    tags: string[];
+    tips: Tip[];
 }
 
 interface DiscoveredChunk {
-  title: string;
-  content: string;
-  type: string;
-  tags: string[];
-  tier: 1 | 2 | 3;
-  source: string;        // File path or detection name
-  appliesTo?: string[];  // Glob patterns for file-area linking
+    title: string;
+    content: string;
+    type: string;
+    tags: string[];
+    tier: 1 | 2 | 3;
+    source: string; // File path or detection name
+    appliesTo?: string[]; // Glob patterns for file-area linking
 }
 
 interface DiscoveredConnection {
-  sourceTitle: string;   // Resolved to IDs after import
-  targetTitle: string;
-  relation: string;
+    sourceTitle: string; // Resolved to IDs after import
+    targetTitle: string;
+    relation: string;
 }
 
 interface Tip {
-  title: string;
-  detail: string;
+    title: string;
+    detail: string;
 }
 ```
 
 ### Refactoring existing code
 
-The doc-scanning logic in `scanner.ts` is extracted to `tier1-docs.ts` without behavior changes. Both `init --scan` and `setup` call the same function. `init` is not modified beyond importing from the new location.
+The doc-scanning logic in `scanner.ts` is extracted to `tier1-docs.ts` without behavior changes. Both `init --scan` and `setup` call the
+same function. `init` is not modified beyond importing from the new location.
 
 ### Server interaction
 

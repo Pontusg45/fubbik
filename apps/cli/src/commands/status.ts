@@ -1,8 +1,9 @@
 import { Command } from "commander";
+
 import { formatDim, formatError, formatSuccess } from "../lib/colors";
+import { detectSpace } from "../lib/detect-space";
 import { output } from "../lib/output";
 import { getServerUrl, readStore, storeExists } from "../lib/store";
-import { detectSpace } from "../lib/detect-space";
 
 export const statusCommand = new Command("status")
     .description("Show knowledge base status overview")

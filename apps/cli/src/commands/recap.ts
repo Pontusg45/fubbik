@@ -1,5 +1,6 @@
 import { Command } from "commander";
 import pc from "picocolors";
+
 import { requireServer } from "../lib/api";
 import { apiFetch } from "../lib/api-fetch";
 import { output, outputError } from "../lib/output";
@@ -10,7 +11,7 @@ function parseToDays(since: string): number {
     const match = since.match(/^(\d+)([dhwm])$/);
     if (!match) return 7; // default 7 days
     const [, num, unit] = match;
-    const multiplier = unit ? ({ d: 1, h: 1 / 24, w: 7, m: 30 } as Record<string, number>)[unit] ?? 1 : 1;
+    const multiplier = unit ? (({ d: 1, h: 1 / 24, w: 7, m: 30 } as Record<string, number>)[unit] ?? 1) : 1;
     return Math.ceil(Number(num) * multiplier);
 }
 
@@ -86,7 +87,7 @@ export const recapCommand = new Command("recap")
         if (newChunks.length > 0) {
             lines.push(pc.bold("New:"));
             for (const c of newChunks.slice(0, 20)) {
-                const tags = c.tags?.map((t: any) => typeof t === "string" ? t : t.name).join(", ") ?? "";
+                const tags = c.tags?.map((t: any) => (typeof t === "string" ? t : t.name)).join(", ") ?? "";
                 lines.push(`  + [${pc.cyan(c.type)}] ${c.title}${tags ? ` (${pc.yellow(tags)})` : ""}`);
             }
             if (newChunks.length > 20) lines.push(`  ... and ${newChunks.length - 20} more`);
@@ -109,5 +110,15 @@ export const recapCommand = new Command("recap")
             }
         }
 
-        output(cmd, { since, newChunks: newChunks.length, updatedChunks: updatedChunks.length, byType: Object.fromEntries(byType.entries()), chunks }, lines.join("\n"));
+        output(
+            cmd,
+            {
+                since,
+                newChunks: newChunks.length,
+                updatedChunks: updatedChunks.length,
+                byType: Object.fromEntries(byType.entries()),
+                chunks
+            },
+            lines.join("\n")
+        );
     });

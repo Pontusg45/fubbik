@@ -87,9 +87,7 @@ export function RelatedChunks({ chunkId, connections, tags }: RelatedChunksProps
                         {displayItems.length}
                     </Badge>
                 </h2>
-                <ChevronDown
-                    className={`text-muted-foreground size-4 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
-                />
+                <ChevronDown className={`text-muted-foreground size-4 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
             </CollapsibleTrigger>
             <CollapsiblePanel>
                 <div className="space-y-1.5 pt-2">

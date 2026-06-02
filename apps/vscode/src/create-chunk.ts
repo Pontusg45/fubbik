@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+
 import type { FubbikApi } from "./api";
 import { getBaseHtml, getNonce } from "./webview-utils";
 
@@ -13,19 +14,13 @@ export function registerCreateChunkCommand(
     return vscode.commands.registerCommand("fubbik.addChunk", () => {
         const editor = vscode.window.activeTextEditor;
         const selection = editor?.selection;
-        const selectedText =
-            editor && selection && !selection.isEmpty
-                ? editor.document.getText(selection)
-                : "";
+        const selectedText = editor && selection && !selection.isEmpty ? editor.document.getText(selection) : "";
 
         const firstLine = selectedText.split("\n")[0]?.trim() || "";
 
-        const panel = vscode.window.createWebviewPanel(
-            "fubbik.createChunk",
-            "Add to Fubbik",
-            vscode.ViewColumn.One,
-            { enableScripts: true }
-        );
+        const panel = vscode.window.createWebviewPanel("fubbik.createChunk", "Add to Fubbik", vscode.ViewColumn.One, {
+            enableScripts: true
+        });
 
         const spaceId = getSpaceId();
 
@@ -36,36 +31,28 @@ export function registerCreateChunkCommand(
         panel.webview.html = getBaseHtml(panel.webview, nonce, body, script);
 
         panel.webview.onDidReceiveMessage(
-            async (message) => {
+            async message => {
                 switch (message.type) {
                     case "submit": {
                         try {
-                            const body: Parameters<typeof api.createChunk>[0] =
-                                {
-                                    content: message.content,
-                                    title: message.title || undefined,
-                                    source: message.chunkType || undefined,
-                                    tags: message.tags || undefined,
-                                };
+                            const body: Parameters<typeof api.createChunk>[0] = {
+                                content: message.content,
+                                title: message.title || undefined,
+                                source: message.chunkType || undefined,
+                                tags: message.tags || undefined
+                            };
 
                             if (spaceId) {
                                 body.spaceIds = [spaceId];
                             }
 
                             await api.createChunk(body);
-                            vscode.window.showInformationMessage(
-                                "Chunk added to Fubbik!"
-                            );
+                            vscode.window.showInformationMessage("Chunk added to Fubbik!");
                             panel.dispose();
                             onChunkCreated();
                         } catch (err) {
-                            const errorMessage =
-                                err instanceof Error
-                                    ? err.message
-                                    : "Unknown error";
-                            vscode.window.showErrorMessage(
-                                `Failed to create chunk: ${errorMessage}`
-                            );
+                            const errorMessage = err instanceof Error ? err.message : "Unknown error";
+                            vscode.window.showErrorMessage(`Failed to create chunk: ${errorMessage}`);
                         }
                         break;
                     }
@@ -81,11 +68,7 @@ export function registerCreateChunkCommand(
     });
 }
 
-function buildFormBody(
-    title: string,
-    content: string,
-    spaceId: string | null
-): string {
+function buildFormBody(title: string, content: string, spaceId: string | null): string {
     let html = `<div style="max-width:600px;">`;
     html += `<h2 class="mb-3">Add to Fubbik</h2>`;
 
@@ -168,9 +151,5 @@ function escapeHtml(text: string): string {
 }
 
 function escapeAttr(text: string): string {
-    return text
-        .replace(/&/g, "&amp;")
-        .replace(/"/g, "&quot;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;");
+    return text.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }

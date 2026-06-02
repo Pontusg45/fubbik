@@ -7,7 +7,10 @@ interface Heading {
 }
 
 function slugify(text: string): string {
-    return text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+    return text
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-|-$/g, "");
 }
 
 export function ChunkToc({ content }: { content: string }) {
@@ -29,15 +32,13 @@ export function ChunkToc({ content }: { content: string }) {
 
     return (
         <nav className="sticky top-8 max-h-[calc(100vh-4rem)] overflow-y-auto print:hidden">
-            <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
-                On this page
-            </div>
+            <div className="text-muted-foreground mb-3 text-xs font-semibold tracking-wider uppercase">On this page</div>
             <ul className="space-y-1">
                 {headings.map((h, i) => (
                     <li key={`${h.id}-${i}`} style={{ paddingLeft: `${(h.level - 2) * 12}px` }}>
                         <a
                             href={`#${h.id}`}
-                            className="block truncate text-xs text-muted-foreground hover:text-foreground transition-colors py-1"
+                            className="text-muted-foreground hover:text-foreground block truncate py-1 text-xs transition-colors"
                             title={h.text}
                         >
                             {h.text}

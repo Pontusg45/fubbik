@@ -21,7 +21,7 @@ export function computeCommunityRedundancy(communities: Community[]) {
             const pairs = yield* findDuplicatePairs({
                 chunkIds: community.members,
                 threshold: 0.5,
-                limit: 50,
+                limit: 50
             }).pipe(Effect.catchAll(() => Effect.succeed([])));
 
             if (pairs.length === 0) {
@@ -31,26 +31,20 @@ export function computeCommunityRedundancy(communities: Community[]) {
                     avgPairwiseSimilarity: 0,
                     maxPairwiseSimilarity: 0,
                     redundancyLevel: "low",
-                    mergeCandidates: [],
+                    mergeCandidates: []
                 });
                 continue;
             }
 
-            const avgSimilarity =
-                pairs.reduce((sum, p) => sum + p.similarity, 0) / pairs.length;
-            const maxSimilarity = Math.max(...pairs.map((p) => p.similarity));
-            const redundancyLevel =
-                avgSimilarity > 0.8
-                    ? "high"
-                    : avgSimilarity > 0.6
-                      ? "medium"
-                      : "low";
+            const avgSimilarity = pairs.reduce((sum, p) => sum + p.similarity, 0) / pairs.length;
+            const maxSimilarity = Math.max(...pairs.map(p => p.similarity));
+            const redundancyLevel = avgSimilarity > 0.8 ? "high" : avgSimilarity > 0.6 ? "medium" : "low";
             const mergeCandidates = pairs
-                .filter((p) => p.similarity > 0.8)
-                .map((p) => ({
+                .filter(p => p.similarity > 0.8)
+                .map(p => ({
                     idA: p.idA,
                     idB: p.idB,
-                    similarity: p.similarity,
+                    similarity: p.similarity
                 }));
 
             results.push({
@@ -59,12 +53,10 @@ export function computeCommunityRedundancy(communities: Community[]) {
                 avgPairwiseSimilarity: avgSimilarity,
                 maxPairwiseSimilarity: maxSimilarity,
                 redundancyLevel,
-                mergeCandidates,
+                mergeCandidates
             });
         }
 
-        return results.sort(
-            (a, b) => b.avgPairwiseSimilarity - a.avgPairwiseSimilarity
-        );
+        return results.sort((a, b) => b.avgPairwiseSimilarity - a.avgPairwiseSimilarity);
     });
 }

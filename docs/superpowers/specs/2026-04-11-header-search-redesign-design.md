@@ -5,7 +5,8 @@
 The current header search is a ~160px `<input>` tucked between the "Docs" nav link and the "Manage" dropdown. It:
 
 - Is barely visible and feels like an afterthought
-- Only accepts plain text — users can't type advanced queries (`type:reference tag:api near:"auth flow"`) without navigating to the `/search` page first
+- Only accepts plain text — users can't type advanced queries (`type:reference tag:api near:"auth flow"`) without navigating to the
+  `/search` page first
 - Has no autocomplete, no suggestions, no saved queries access
 - Always navigates away on Enter, regardless of current context
 
@@ -13,7 +14,8 @@ The full query builder lives on `/search`, but it's a round trip away. Power use
 
 ## Goal
 
-Replace the current header input with a larger `HeaderSearchBar` (~460px) that supports pill-based advanced queries, live autocomplete, saved/recent queries, and context-aware Enter behavior. Consolidate the primary nav from 7 links to 4 to make room.
+Replace the current header input with a larger `HeaderSearchBar` (~460px) that supports pill-based advanced queries, live autocomplete,
+saved/recent queries, and context-aware Enter behavior. Consolidate the primary nav from 7 links to 4 to make room.
 
 ---
 
@@ -22,17 +24,20 @@ Replace the current header input with a larger `HeaderSearchBar` (~460px) that s
 To free up horizontal space for the bigger search bar, reduce the primary nav from 7 links to 4.
 
 **Keep in primary nav:**
+
 - Dashboard
 - Chunks
 - Graph
 - Requirements
 
 **Move into the Manage dropdown:**
+
 - Features
 - Reviews
 - Docs
 
-The Manage dropdown gets a new top section labeled "Navigate" containing these three items, separated from the existing sections by a `DropdownMenuSeparator`.
+The Manage dropdown gets a new top section labeled "Navigate" containing these three items, separated from the existing sections by a
+`DropdownMenuSeparator`.
 
 This frees up ~240px in the nav row — enough for a ~460px search bar plus breathing room.
 
@@ -47,7 +52,9 @@ New component: `apps/web/src/features/nav/header-search-bar.tsx`
 ### Container
 
 ```tsx
-<div className="flex-1 max-w-[460px] min-w-[280px] ..."> {/* grows to fill */}
+<div className="flex-1 max-w-[460px] min-w-[280px] ...">
+    {" "}
+    {/* grows to fill */}
     <div className="flex items-center gap-2 h-9 bg-muted/40 border border-border/50 rounded-md px-2 focus-within:ring-1 focus-within:ring-ring">
         <SearchIcon className="size-3.5 text-muted-foreground shrink-0" />
         <PillRow clauses={clauses} onRemove={removeClause} />
@@ -60,11 +67,7 @@ New component: `apps/web/src/features/nav/header-search-bar.tsx`
             placeholder={clauses.length === 0 ? "Search…" : ""}
             className="flex-1 min-w-[80px] bg-transparent border-0 outline-none text-sm font-mono"
         />
-        {!focused && (
-            <kbd className="ml-auto text-[9px] text-muted-foreground font-mono border border-border/40 rounded px-1">
-                /
-            </kbd>
-        )}
+        {!focused && <kbd className="ml-auto text-[9px] text-muted-foreground font-mono border border-border/40 rounded px-1">/</kbd>}
     </div>
     <HeaderSearchDropdown
         open={focused && (clauses.length > 0 || rawInput.length > 0 || recentOrSavedAvailable)}
@@ -81,10 +84,20 @@ New component: `apps/web/src/features/nav/header-search-bar.tsx`
 Each clause renders as a `PillChip`:
 
 ```tsx
-<span className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[10px] font-mono font-semibold ${FILTER_COLORS[clause.field] ?? SLATE_COLOR}`}>
+<span
+    className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[10px] font-mono font-semibold ${FILTER_COLORS[clause.field] ?? SLATE_COLOR}`}
+>
     {clause.negate && <span>NOT</span>}
-    <span>{clause.field}:{clause.value}</span>
-    <button type="button" onMouseDown={e => { e.preventDefault(); onRemove(idx); }}>
+    <span>
+        {clause.field}:{clause.value}
+    </span>
+    <button
+        type="button"
+        onMouseDown={e => {
+            e.preventDefault();
+            onRemove(idx);
+        }}
+    >
         ×
     </button>
 </span>
@@ -163,12 +176,12 @@ Anchored to the search bar via an absolute-positioned wrapper. The parent search
 
 **State 3 — Typing `field:value-prefix`** (e.g. `type:ref`):
 
-| Field | Source |
-|-------|--------|
-| `type` | Hardcoded: note, document, reference, schema, checklist |
-| `origin` | Hardcoded: human, ai |
-| `review` | Hardcoded: draft, reviewed, approved |
-| `tag` | `GET /api/search/autocomplete?field=tag&prefix=...` |
+| Field                         | Source                                                                                  |
+| ----------------------------- | --------------------------------------------------------------------------------------- |
+| `type`                        | Hardcoded: note, document, reference, schema, checklist                                 |
+| `origin`                      | Hardcoded: human, ai                                                                    |
+| `review`                      | Hardcoded: draft, reviewed, approved                                                    |
+| `tag`                         | `GET /api/search/autocomplete?field=tag&prefix=...`                                     |
 | `near`, `path`, `affected-by` | `GET /api/search/autocomplete?field=chunk&prefix=...` or `field=requirement&prefix=...` |
 
 - Debounced 150ms
@@ -224,20 +237,21 @@ Anchored to the search bar via an absolute-positioned wrapper. The parent search
 
 - On Enter, try to parse the partial text via `GET /api/search/parse?q=...`
 - If the parser returns valid clauses, apply them
-- If not (e.g., trailing `type:` with nothing), show a subtle inline error below the bar: "Incomplete filter — pick a value" (auto-dismiss after 3s)
+- If not (e.g., trailing `type:` with nothing), show a subtle inline error below the bar: "Incomplete filter — pick a value" (auto-dismiss
+  after 3s)
 
 ### Click a dropdown suggestion
 
-| Suggestion type | Behavior |
-|---|---|
-| Field name | Scaffold `<field>:` in rawInput, keep focus |
-| Value (type/origin/review) | Create pill, clear rawInput |
-| Tag value | Create pill, clear rawInput |
-| Chunk title (for `near:`/`path:`/`affected-by:`) | Create pill, clear rawInput |
-| Chunk title (free text mode) | Navigate to `/chunks/$id` |
-| "Search for '<text>'" | Same as Enter |
-| Saved query | Load all clauses into pill bar |
-| Recent query | Load all clauses into pill bar |
+| Suggestion type                                  | Behavior                                    |
+| ------------------------------------------------ | ------------------------------------------- |
+| Field name                                       | Scaffold `<field>:` in rawInput, keep focus |
+| Value (type/origin/review)                       | Create pill, clear rawInput                 |
+| Tag value                                        | Create pill, clear rawInput                 |
+| Chunk title (for `near:`/`path:`/`affected-by:`) | Create pill, clear rawInput                 |
+| Chunk title (free text mode)                     | Navigate to `/chunks/$id`                   |
+| "Search for '<text>'"                            | Same as Enter                               |
+| Saved query                                      | Load all clauses into pill bar              |
+| Recent query                                     | Load all clauses into pill bar              |
 
 ---
 
@@ -252,10 +266,10 @@ Anchored to the search bar via an absolute-positioned wrapper. The parent search
 ### Modified
 
 - `apps/web/src/routes/__root.tsx`:
-  - Remove the current `<input>` and its local state (`navSearch`, `searchInputRef`, `/` keyboard listener)
-  - Add `<HeaderSearchBar />` in its place
-  - Remove `Features`, `Reviews`, `Docs` from the primary nav links
-  - Add a new "Navigate" section at the top of the Manage dropdown containing the three removed items
+    - Remove the current `<input>` and its local state (`navSearch`, `searchInputRef`, `/` keyboard listener)
+    - Add `<HeaderSearchBar />` in its place
+    - Remove `Features`, `Reviews`, `Docs` from the primary nav links
+    - Add a new "Navigate" section at the top of the Manage dropdown containing the three removed items
 
 ### Unchanged (reused)
 
@@ -309,14 +323,14 @@ Submit → navigate to /search?q=type:reference (or update URL if already there)
 
 ## Risks and Mitigations
 
-| Risk | Mitigation |
-|------|------------|
+| Risk                                                         | Mitigation                                                                                                              |
+| ------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------- |
 | Users unfamiliar with syntax type free text and get confused | Free-text always falls back to text-search clause; dropdown shows matching chunks so it feels like a chunk picker first |
-| Autocomplete fetches too frequently | Debounce 150ms on value queries; cache by prefix inside `useQuery` with `staleTime: 30_000` |
-| Dropdown click dismisses focus before click handler fires | Use `onMouseDown` (fires before blur) instead of `onClick` on dropdown items |
-| Long pill rows overflow the 460px bar | Pill container has `overflow-x-auto`, horizontal scroll for the whole row |
-| Header bar and `/search` page get out of sync | When on `/search`, subscribe to URL `q` changes and update pill state. Two-way sync via the URL param |
-| Parsing trailing `field:` returns an empty or broken clause | `/api/search/parse` rejects unclosed clauses; show inline error tooltip |
+| Autocomplete fetches too frequently                          | Debounce 150ms on value queries; cache by prefix inside `useQuery` with `staleTime: 30_000`                             |
+| Dropdown click dismisses focus before click handler fires    | Use `onMouseDown` (fires before blur) instead of `onClick` on dropdown items                                            |
+| Long pill rows overflow the 460px bar                        | Pill container has `overflow-x-auto`, horizontal scroll for the whole row                                               |
+| Header bar and `/search` page get out of sync                | When on `/search`, subscribe to URL `q` changes and update pill state. Two-way sync via the URL param                   |
+| Parsing trailing `field:` returns an empty or broken clause  | `/api/search/parse` rejects unclosed clauses; show inline error tooltip                                                 |
 
 ---
 

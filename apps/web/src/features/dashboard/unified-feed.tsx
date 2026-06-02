@@ -60,7 +60,7 @@ const TABS: { value: TabValue; label: string }[] = [
     { value: "all", label: "All" },
     { value: "proposal", label: "Proposals" },
     { value: "stale", label: "Stale" },
-    { value: "activity", label: "Activity" },
+    { value: "activity", label: "Activity" }
 ];
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -88,56 +88,48 @@ function KindDot({ kind }: { kind: FeedKind }) {
     if (kind === "stale") {
         return <span className="mt-[5px] size-2 shrink-0 rounded-full bg-amber-500/40" />;
     }
-    return <span className="mt-[5px] size-2 shrink-0 rounded-full bg-muted-foreground/40" />;
+    return <span className="bg-muted-foreground/40 mt-[5px] size-2 shrink-0 rounded-full" />;
 }
 
 function KindBadge({ kind, action }: { kind: FeedKind; action?: string }) {
     if (kind === "proposal") {
         return (
-            <span className="inline-flex items-center rounded border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-500">
+            <span className="inline-flex items-center rounded border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-semibold tracking-wider text-amber-500 uppercase">
                 Proposal
             </span>
         );
     }
     if (kind === "stale") {
         return (
-            <span className="inline-flex items-center rounded border border-amber-500/20 bg-amber-500/5 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-400/70">
+            <span className="inline-flex items-center rounded border border-amber-500/20 bg-amber-500/5 px-1.5 py-0.5 text-[10px] font-semibold tracking-wider text-amber-400/70 uppercase">
                 Stale
             </span>
         );
     }
     return (
-        <span className="inline-flex items-center rounded border border-border bg-muted px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+        <span className="border-border bg-muted text-muted-foreground inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-semibold tracking-wider uppercase">
             {action ?? "Activity"}
         </span>
     );
 }
 
-function ProposalActions({
-    proposalId,
-    onUpdate,
-}: {
-    proposalId: string;
-    onUpdate: () => void;
-}) {
+function ProposalActions({ proposalId, onUpdate }: { proposalId: string; onUpdate: () => void }) {
     const approveMutation = useMutation({
-        mutationFn: async () =>
-            unwrapEden(await (api.api as any).proposals[proposalId].approve.post({})),
+        mutationFn: async () => unwrapEden(await (api.api as any).proposals[proposalId].approve.post({})),
         onSuccess: () => {
             toast.success("Proposal approved");
             onUpdate();
         },
-        onError: () => toast.error("Failed to approve"),
+        onError: () => toast.error("Failed to approve")
     });
 
     const rejectMutation = useMutation({
-        mutationFn: async () =>
-            unwrapEden(await (api.api as any).proposals[proposalId].reject.post({})),
+        mutationFn: async () => unwrapEden(await (api.api as any).proposals[proposalId].reject.post({})),
         onSuccess: () => {
             toast.success("Proposal rejected");
             onUpdate();
         },
-        onError: () => toast.error("Failed to reject"),
+        onError: () => toast.error("Failed to reject")
     });
 
     const isPending = approveMutation.isPending || rejectMutation.isPending;
@@ -174,20 +166,18 @@ export function UnifiedFeed() {
 
     const proposalsQuery = useQuery({
         queryKey: ["proposals-pending-feed"],
-        queryFn: async () =>
-            unwrapEden(await (api.api as any).proposals.get({ query: { status: "pending" } })) as ProposalData[],
+        queryFn: async () => unwrapEden(await (api.api as any).proposals.get({ query: { status: "pending" } })) as ProposalData[]
     });
 
     const staleQuery = useQuery({
         queryKey: ["stale-flags-feed"],
-        queryFn: async () =>
-            unwrapEden(await api.api.chunks.stale.get({ query: { limit: 10 } })) as StaleData[],
+        queryFn: async () => unwrapEden(await api.api.chunks.stale.get({ query: { limit: 10 } })) as StaleData[]
     });
 
     const activityQuery = useQuery({
         queryKey: ["activity-feed"],
         queryFn: async () =>
-            unwrapEden(await api.api.activity.get({ query: { limit: "20" } as any })) as ActivityData[] | { activities: ActivityData[] },
+            unwrapEden(await api.api.activity.get({ query: { limit: "20" } as any })) as ActivityData[] | { activities: ActivityData[] }
     });
 
     const invalidateProposals = () => {
@@ -204,7 +194,7 @@ export function UnifiedFeed() {
         title: p.chunkTitle ?? p.chunkId,
         subtitle: p.reason ?? undefined,
         proposalId: p.id,
-        chunkId: p.chunkId,
+        chunkId: p.chunkId
     }));
 
     const staleItems: FeedItem[] = (staleQuery.data ?? []).map(f => ({
@@ -214,13 +204,13 @@ export function UnifiedFeed() {
         title: f.chunkTitle ?? f.chunkId,
         subtitle: f.detail ?? f.reason ?? undefined,
         flagId: f.id,
-        chunkId: f.chunkId,
+        chunkId: f.chunkId
     }));
 
     const rawActivities = activityQuery.data;
     const activityArr: ActivityData[] = Array.isArray(rawActivities)
         ? rawActivities
-        : (rawActivities as { activities: ActivityData[] } | undefined)?.activities ?? [];
+        : ((rawActivities as { activities: ActivityData[] } | undefined)?.activities ?? []);
 
     const activityItems: FeedItem[] = activityArr.map(e => ({
         id: `activity-${e.id}`,
@@ -230,7 +220,7 @@ export function UnifiedFeed() {
         subtitle: e.entityType,
         action: e.action,
         entityType: e.entityType,
-        entityId: e.entityId,
+        entityId: e.entityId
     }));
 
     // Merge and sort
@@ -238,16 +228,15 @@ export function UnifiedFeed() {
         (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
     );
 
-    const filtered = activeTab === "all" ? allItems : allItems.filter((i) => i.kind === activeTab);
+    const filtered = activeTab === "all" ? allItems : allItems.filter(i => i.kind === activeTab);
 
-    const isLoading =
-        proposalsQuery.isLoading || staleQuery.isLoading || activityQuery.isLoading;
+    const isLoading = proposalsQuery.isLoading || staleQuery.isLoading || activityQuery.isLoading;
 
     return (
         <div>
             {/* Filter tabs */}
             <div className="mb-3 flex gap-1">
-                {TABS.map((tab) => (
+                {TABS.map(tab => (
                     <Button
                         key={tab.value}
                         size="xs"
@@ -259,19 +248,17 @@ export function UnifiedFeed() {
                 ))}
             </div>
 
-            {isLoading && (
-                <p className="py-6 text-center text-sm text-muted-foreground">Loading…</p>
-            )}
+            {isLoading && <p className="text-muted-foreground py-6 text-center text-sm">Loading…</p>}
 
             {!isLoading && filtered.length === 0 && (
                 <div className="rounded-lg border border-dashed p-8 text-center">
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-muted-foreground text-sm">
                         Nothing happening yet.{" "}
-                        <Link to="/chunks/new" className="hover:underline text-foreground">
+                        <Link to="/chunks/new" className="text-foreground hover:underline">
                             Create a chunk
                         </Link>{" "}
                         or{" "}
-                        <Link to="/plans/new" className="hover:underline text-foreground">
+                        <Link to="/plans/new" className="text-foreground hover:underline">
                             start a plan
                         </Link>{" "}
                         to get started.
@@ -281,11 +268,8 @@ export function UnifiedFeed() {
 
             {!isLoading && filtered.length > 0 && (
                 <ul className="space-y-1">
-                    {filtered.map((item) => (
-                        <li
-                            key={item.id}
-                            className="flex items-start gap-3 rounded-md px-2 py-2 hover:bg-accent/40"
-                        >
+                    {filtered.map(item => (
+                        <li key={item.id} className="hover:bg-accent/40 flex items-start gap-3 rounded-md px-2 py-2">
                             <KindDot kind={item.kind} />
                             <div className="min-w-0 flex-1">
                                 <div className="flex flex-wrap items-center gap-2">
@@ -299,24 +283,15 @@ export function UnifiedFeed() {
                                             {item.title}
                                         </Link>
                                     ) : (
-                                        <span className="truncate text-sm font-medium">
-                                            {item.title}
-                                        </span>
+                                        <span className="truncate text-sm font-medium">{item.title}</span>
                                     )}
-                                    <span className="ml-auto shrink-0 text-[11px] text-muted-foreground">
+                                    <span className="text-muted-foreground ml-auto shrink-0 text-[11px]">
                                         {formatRelativeTime(item.timestamp)}
                                     </span>
                                 </div>
-                                {item.subtitle && (
-                                    <p className="mt-0.5 text-xs text-muted-foreground truncate">
-                                        {item.subtitle}
-                                    </p>
-                                )}
+                                {item.subtitle && <p className="text-muted-foreground mt-0.5 truncate text-xs">{item.subtitle}</p>}
                                 {item.kind === "proposal" && item.proposalId && (
-                                    <ProposalActions
-                                        proposalId={item.proposalId}
-                                        onUpdate={invalidateProposals}
-                                    />
+                                    <ProposalActions proposalId={item.proposalId} onUpdate={invalidateProposals} />
                                 )}
                             </div>
                         </li>

@@ -1,10 +1,14 @@
 # Docs Usability Improvements — Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to
+> implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Make the `/docs` page feel like a polished documentation site with URL persistence, keyboard nav, sequential reading, sticky TOC, mobile support, grouped search results, and quality-of-life features.
+**Goal:** Make the `/docs` page feel like a polished documentation site with URL persistence, keyboard nav, sequential reading, sticky TOC,
+mobile support, grouped search results, and quality-of-life features.
 
-**Architecture:** All changes are frontend-only, primarily in `document-browser.tsx` and `docs.tsx`. The route gains search params (`id`, `section`) for URL-driven navigation. The component gets a three-column layout on wide screens (sidebar | content | sticky TOC). No backend changes.
+**Architecture:** All changes are frontend-only, primarily in `document-browser.tsx` and `docs.tsx`. The route gains search params (`id`,
+`section`) for URL-driven navigation. The component gets a three-column layout on wide screens (sidebar | content | sticky TOC). No backend
+changes.
 
 **Tech Stack:** React, TanStack Router (search params), lucide-react icons, Tailwind CSS
 
@@ -13,9 +17,10 @@
 ## File Structure
 
 ### Modified Files
-| File | Changes |
-|------|---------|
-| `apps/web/src/routes/docs.tsx` | Add `id` and `section` search params, pass to DocumentBrowser |
+
+| File                                                   | Changes                                                                                                                                                           |
+| ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apps/web/src/routes/docs.tsx`                         | Add `id` and `section` search params, pass to DocumentBrowser                                                                                                     |
 | `apps/web/src/features/documents/document-browser.tsx` | All usability improvements (URL sync, auto-select, keyboard nav, prev/next, sticky TOC, mobile drawer, grouped search, reading progress, copy link, doc ordering) |
 
 ---
@@ -23,6 +28,7 @@
 ### Task 1: Auto-Select First Document + URL-Driven Navigation
 
 **Files:**
+
 - Modify: `apps/web/src/routes/docs.tsx`
 - Modify: `apps/web/src/features/documents/document-browser.tsx`
 
@@ -41,7 +47,9 @@ validateSearch: (search: Record<string, unknown>): { tab?: string; id?: string; 
 Pass these to `DocumentBrowser`:
 
 ```tsx
-{tab === "docs" && <DocumentBrowser initialDocId={search.id} initialSection={search.section} />}
+{
+    tab === "docs" && <DocumentBrowser initialDocId={search.id} initialSection={search.section} />;
+}
 ```
 
 Add `useSearch` import if not present, and update the `search` variable usage.
@@ -113,12 +121,11 @@ useEffect(() => {
 - [ ] **Step 4: Remove the empty "Select a document" placeholder**
 
 Remove the block:
+
 ```tsx
-{!selectedId && (
-    <div className="flex flex-col items-center gap-3 py-16">
-        ...
-    </div>
-)}
+{
+    !selectedId && <div className="flex flex-col items-center gap-3 py-16">...</div>;
+}
 ```
 
 Since we auto-select, this is no longer needed.
@@ -139,6 +146,7 @@ git commit -m "feat(docs): auto-select first document and URL-driven navigation"
 ### Task 2: Previous/Next Navigation
 
 **Files:**
+
 - Modify: `apps/web/src/features/documents/document-browser.tsx`
 
 - [ ] **Step 1: Compute prev/next documents**
@@ -156,35 +164,43 @@ const nextDoc = currentIndex < documents.length - 1 ? documents[currentIndex + 1
 After the sections `</div>`, before the closing `</div>` of the detail block, add:
 
 ```tsx
-{/* Prev / Next navigation */}
-{(prevDoc || nextDoc) && (
-    <div className="border-border mt-10 flex items-center justify-between border-t pt-6">
-        {prevDoc ? (
-            <button
-                onClick={() => setSelectedId(prevDoc.id)}
-                className="text-muted-foreground hover:text-foreground group flex items-center gap-2 text-sm transition-colors"
-            >
-                <ChevronLeft className="size-4 transition-transform group-hover:-translate-x-0.5" />
-                <div className="text-left">
-                    <p className="text-xs text-muted-foreground">Previous</p>
-                    <p className="font-medium">{prevDoc.title}</p>
-                </div>
-            </button>
-        ) : <div />}
-        {nextDoc ? (
-            <button
-                onClick={() => setSelectedId(nextDoc.id)}
-                className="text-muted-foreground hover:text-foreground group flex items-center gap-2 text-sm transition-colors"
-            >
-                <div className="text-right">
-                    <p className="text-xs text-muted-foreground">Next</p>
-                    <p className="font-medium">{nextDoc.title}</p>
-                </div>
-                <ChevronRight className="size-4 transition-transform group-hover:translate-x-0.5" />
-            </button>
-        ) : <div />}
-    </div>
-)}
+{
+    /* Prev / Next navigation */
+}
+{
+    (prevDoc || nextDoc) && (
+        <div className="border-border mt-10 flex items-center justify-between border-t pt-6">
+            {prevDoc ? (
+                <button
+                    onClick={() => setSelectedId(prevDoc.id)}
+                    className="text-muted-foreground hover:text-foreground group flex items-center gap-2 text-sm transition-colors"
+                >
+                    <ChevronLeft className="size-4 transition-transform group-hover:-translate-x-0.5" />
+                    <div className="text-left">
+                        <p className="text-xs text-muted-foreground">Previous</p>
+                        <p className="font-medium">{prevDoc.title}</p>
+                    </div>
+                </button>
+            ) : (
+                <div />
+            )}
+            {nextDoc ? (
+                <button
+                    onClick={() => setSelectedId(nextDoc.id)}
+                    className="text-muted-foreground hover:text-foreground group flex items-center gap-2 text-sm transition-colors"
+                >
+                    <div className="text-right">
+                        <p className="text-xs text-muted-foreground">Next</p>
+                        <p className="font-medium">{nextDoc.title}</p>
+                    </div>
+                    <ChevronRight className="size-4 transition-transform group-hover:translate-x-0.5" />
+                </button>
+            ) : (
+                <div />
+            )}
+        </div>
+    );
+}
 ```
 
 Add `ChevronLeft` and `ChevronRight` to the lucide-react imports.
@@ -217,14 +233,17 @@ git commit -m "feat(docs): add previous/next document navigation"
 ### Task 3: Sticky TOC as Right Sidebar
 
 **Files:**
+
 - Modify: `apps/web/src/features/documents/document-browser.tsx`
 
 - [ ] **Step 1: Switch to three-column layout when detail is loaded and has 3+ sections**
 
 Change the outer grid from:
+
 ```tsx
 <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
 ```
+
 to a dynamic class based on whether the TOC should show:
 
 ```typescript
@@ -242,26 +261,30 @@ Remove the existing inline "On this page" `<div>` from inside the content area.
 Add a new third column after the main content `</div>`:
 
 ```tsx
-{/* ─── Sticky TOC ─── */}
-{showToc && (
-    <nav className="hidden lg:block">
-        <div className="sticky top-24 space-y-2">
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">On this page</p>
-            <ul className="space-y-1 border-l border-border pl-3">
-                {detail.chunks.map(chunk => (
-                    <li key={chunk.id}>
-                        <a
-                            href={`#section-${chunk.id}`}
-                            className="text-muted-foreground hover:text-foreground block text-xs leading-relaxed transition-colors"
-                        >
-                            {chunk.title}
-                        </a>
-                    </li>
-                ))}
-            </ul>
-        </div>
-    </nav>
-)}
+{
+    /* ─── Sticky TOC ─── */
+}
+{
+    showToc && (
+        <nav className="hidden lg:block">
+            <div className="sticky top-24 space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">On this page</p>
+                <ul className="space-y-1 border-l border-border pl-3">
+                    {detail.chunks.map(chunk => (
+                        <li key={chunk.id}>
+                            <a
+                                href={`#section-${chunk.id}`}
+                                className="text-muted-foreground hover:text-foreground block text-xs leading-relaxed transition-colors"
+                            >
+                                {chunk.title}
+                            </a>
+                        </li>
+                    ))}
+                </ul>
+            </div>
+        </nav>
+    );
+}
 ```
 
 - [ ] **Step 3: Add active section tracking via IntersectionObserver**
@@ -321,6 +344,7 @@ git commit -m "feat(docs): add sticky TOC with active section tracking"
 ### Task 4: Keyboard Navigation
 
 **Files:**
+
 - Modify: `apps/web/src/features/documents/document-browser.tsx`
 
 - [ ] **Step 1: Add keyboard event handler**
@@ -371,6 +395,7 @@ useEffect(() => {
 - [ ] **Step 2: Add `data-docs-search` attribute to the search input**
 
 Change the search input to include:
+
 ```tsx
 <input
     data-docs-search
@@ -390,6 +415,7 @@ git commit -m "feat(docs): add keyboard navigation (j/k, arrows, /, Esc)"
 ### Task 5: Breadcrumb
 
 **Files:**
+
 - Modify: `apps/web/src/features/documents/document-browser.tsx`
 
 - [ ] **Step 1: Add breadcrumb above the document title**
@@ -397,7 +423,9 @@ git commit -m "feat(docs): add keyboard navigation (j/k, arrows, /, Esc)"
 In the document header area, before the `<h2>`, add:
 
 ```tsx
-{/* Breadcrumb */}
+{
+    /* Breadcrumb */
+}
 <div className="text-muted-foreground mb-2 flex items-center gap-1 text-xs">
     <span>Docs</span>
     {folderFromPath(detail.sourcePath) !== "/" && (
@@ -408,7 +436,7 @@ In the document header area, before the `<h2>`, add:
     )}
     <ChevronRight className="size-3" />
     <span className="text-foreground font-medium">{detail.title}</span>
-</div>
+</div>;
 ```
 
 - [ ] **Step 2: Commit**
@@ -423,11 +451,13 @@ git commit -m "feat(docs): add breadcrumb navigation"
 ### Task 6: Mobile Sidebar as Sheet
 
 **Files:**
+
 - Modify: `apps/web/src/features/documents/document-browser.tsx`
 
 - [ ] **Step 1: Add mobile toggle button and Sheet wrapper**
 
 Import the Sheet component:
+
 ```typescript
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 ```
@@ -435,6 +465,7 @@ import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/s
 Add `Menu` to lucide-react imports.
 
 Add state:
+
 ```typescript
 const [mobileOpen, setMobileOpen] = useState(false);
 ```
@@ -442,12 +473,14 @@ const [mobileOpen, setMobileOpen] = useState(false);
 Wrap the sidebar content in a responsive pattern. The existing `<div className="space-y-3">` sidebar becomes:
 
 ```tsx
-{/* ─── Sidebar (desktop) ─── */}
-<div className="hidden lg:block space-y-3">
-    {/* existing search + nav content */}
-</div>
+{
+    /* ─── Sidebar (desktop) ─── */
+}
+<div className="hidden lg:block space-y-3">{/* existing search + nav content */}</div>;
 
-{/* ─── Sidebar (mobile) ─── */}
+{
+    /* ─── Sidebar (mobile) ─── */
+}
 <div className="lg:hidden">
     <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
         <SheetTrigger asChild>
@@ -461,7 +494,7 @@ Wrap the sidebar content in a responsive pattern. The existing `<div className="
             {/* Same search + nav content as desktop, but clicking a doc also calls setMobileOpen(false) */}
         </SheetContent>
     </Sheet>
-</div>
+</div>;
 ```
 
 To avoid duplicating the sidebar content, extract it into a `SidebarContent` component or a render function:
@@ -481,7 +514,8 @@ Then use: `{sidebarContent()}` for desktop and `{sidebarContent(() => setMobileO
 
 - [ ] **Step 2: Verify the Sheet component exists and check its API**
 
-Read `apps/web/src/components/ui/sheet.tsx` to confirm the import path and prop names (`side`, `open`, `onOpenChange`, `SheetContent`, `SheetTitle`, `SheetTrigger`).
+Read `apps/web/src/components/ui/sheet.tsx` to confirm the import path and prop names (`side`, `open`, `onOpenChange`, `SheetContent`,
+`SheetTitle`, `SheetTrigger`).
 
 - [ ] **Step 3: Commit**
 
@@ -495,6 +529,7 @@ git commit -m "feat(docs): add mobile sidebar sheet for document navigation"
 ### Task 7: Grouped Search Results
 
 **Files:**
+
 - Modify: `apps/web/src/features/documents/document-browser.tsx`
 
 - [ ] **Step 1: Group search results by document**
@@ -524,29 +559,29 @@ const groupedSearchResults = useMemo(() => {
 Replace the flat search results list with:
 
 ```tsx
-{groupedSearchResults.map(group => (
-    <div key={group.doc.id} className="mb-3">
-        <div className="flex items-center gap-1.5 px-2 py-1">
-            <FileText className="text-muted-foreground size-3.5" />
-            <span className="text-xs font-semibold">{group.doc.title}</span>
-            <Badge variant="secondary" size="sm" className="ml-auto text-[9px]">
-                {group.results.length}
-            </Badge>
+{
+    groupedSearchResults.map(group => (
+        <div key={group.doc.id} className="mb-3">
+            <div className="flex items-center gap-1.5 px-2 py-1">
+                <FileText className="text-muted-foreground size-3.5" />
+                <span className="text-xs font-semibold">{group.doc.title}</span>
+                <Badge variant="secondary" size="sm" className="ml-auto text-[9px]">
+                    {group.results.length}
+                </Badge>
+            </div>
+            {group.results.map((result, i) => (
+                <button
+                    key={`${result.chunk.id}-${i}`}
+                    onClick={() => navigateToResult(result)}
+                    className="hover:bg-muted/50 w-full rounded-md px-3 py-2 text-left transition-colors"
+                >
+                    <p className="text-sm font-medium">{highlightMatches(result.chunk.title, searchQuery)}</p>
+                    <p className="text-muted-foreground mt-0.5 line-clamp-2 text-xs">{highlightMatches(result.snippet, searchQuery)}</p>
+                </button>
+            ))}
         </div>
-        {group.results.map((result, i) => (
-            <button
-                key={`${result.chunk.id}-${i}`}
-                onClick={() => navigateToResult(result)}
-                className="hover:bg-muted/50 w-full rounded-md px-3 py-2 text-left transition-colors"
-            >
-                <p className="text-sm font-medium">{highlightMatches(result.chunk.title, searchQuery)}</p>
-                <p className="text-muted-foreground mt-0.5 line-clamp-2 text-xs">
-                    {highlightMatches(result.snippet, searchQuery)}
-                </p>
-            </button>
-        ))}
-    </div>
-))}
+    ));
+}
 ```
 
 - [ ] **Step 3: Commit**
@@ -561,6 +596,7 @@ git commit -m "feat(docs): group search results by document"
 ### Task 8: Copy Section Link
 
 **Files:**
+
 - Modify: `apps/web/src/features/documents/document-browser.tsx`
 
 - [ ] **Step 1: Add copy link button next to section headings**
@@ -648,6 +684,7 @@ git commit -m "feat(docs): add copy section link button"
 ### Task 9: Reading Progress Indicator
 
 **Files:**
+
 - Modify: `apps/web/src/features/documents/document-browser.tsx`
 
 - [ ] **Step 1: Add scroll progress state**
@@ -664,7 +701,10 @@ useEffect(() => {
     const handleScroll = () => {
         const scrollTop = window.scrollY;
         const docHeight = document.documentElement.scrollHeight - window.innerHeight;
-        if (docHeight <= 0) { setReadProgress(100); return; }
+        if (docHeight <= 0) {
+            setReadProgress(100);
+            return;
+        }
         setReadProgress(Math.min(100, Math.round((scrollTop / docHeight) * 100)));
     };
     window.addEventListener("scroll", handleScroll, { passive: true });
@@ -678,14 +718,13 @@ useEffect(() => {
 At the very top of the main content column `<div className="min-w-0">`, add:
 
 ```tsx
-{selectedId && detail && (
-    <div className="bg-muted mb-4 h-0.5 w-full overflow-hidden rounded-full">
-        <div
-            className="bg-foreground/30 h-full transition-all duration-150"
-            style={{ width: `${readProgress}%` }}
-        />
-    </div>
-)}
+{
+    selectedId && detail && (
+        <div className="bg-muted mb-4 h-0.5 w-full overflow-hidden rounded-full">
+            <div className="bg-foreground/30 h-full transition-all duration-150" style={{ width: `${readProgress}%` }} />
+        </div>
+    );
+}
 ```
 
 - [ ] **Step 3: Commit**
@@ -700,6 +739,7 @@ git commit -m "feat(docs): add reading progress indicator"
 ### Task 10: Last Updated Indicator
 
 **Files:**
+
 - Modify: `apps/web/src/features/documents/document-browser.tsx`
 
 - [ ] **Step 1: Show updatedAt in the document header**
@@ -713,11 +753,14 @@ const selectedListItem = documents.find(d => d.id === selectedId);
 Then in the header:
 
 ```tsx
-{selectedListItem?.updatedAt && (
-    <p className="text-muted-foreground mt-1 text-xs">
-        Last updated {new Date(selectedListItem.updatedAt).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}
-    </p>
-)}
+{
+    selectedListItem?.updatedAt && (
+        <p className="text-muted-foreground mt-1 text-xs">
+            Last updated{" "}
+            {new Date(selectedListItem.updatedAt).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}
+        </p>
+    );
+}
 ```
 
 - [ ] **Step 2: Commit**
@@ -732,6 +775,7 @@ git commit -m "feat(docs): show last updated date in document header"
 ### Task 11: Document Ordering in Sidebar
 
 **Files:**
+
 - Modify: `apps/web/src/features/documents/document-browser.tsx`
 
 - [ ] **Step 1: Sort documents by sourcePath within each folder**

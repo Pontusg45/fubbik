@@ -11,8 +11,8 @@ import { Card, CardPanel } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { PageContainer, PageEmpty, PageHeader, PageLoading } from "@/components/ui/page";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { useApiQuery } from "@/hooks/use-api-query";
 import { getUser } from "@/functions/get-user";
+import { useApiQuery } from "@/hooks/use-api-query";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
@@ -39,13 +39,13 @@ function WorkspacesPage() {
     const workspacesQuery = useApiQuery<any[]>({
         queryKey: ["workspaces"],
         queryFn: () => api.api.workspaces.get(),
-        fallback: [],
+        fallback: []
     });
 
     const spacesQuery = useApiQuery<any[]>({
         queryKey: ["spaces"],
         queryFn: () => api.api.spaces.get(),
-        fallback: [],
+        fallback: []
     });
 
     const createMutation = useMutation({
@@ -110,24 +110,14 @@ function WorkspacesPage() {
 
     return (
         <PageContainer>
-            <PageHeader
-                icon={Layers}
-                title="Workspaces"
-                count={workspaces.length}
-            />
+            <PageHeader icon={Layers} title="Workspaces" count={workspaces.length} />
 
             <Card className="mb-6">
                 <CardPanel className="p-6">
                     <form onSubmit={handleCreate} className="flex flex-col gap-3">
                         <h2 className="text-sm font-medium">Create Workspace</h2>
                         <div className="flex flex-col gap-2 sm:flex-row">
-                            <Input
-                                placeholder="Name"
-                                value={name}
-                                onChange={e => setName(e.target.value)}
-                                required
-                                className="flex-1"
-                            />
+                            <Input placeholder="Name" value={name} onChange={e => setName(e.target.value)} required className="flex-1" />
                             <Input
                                 placeholder="Description (optional)"
                                 value={description}
@@ -168,12 +158,8 @@ function WorkspacesPage() {
                                     onToggle={() => setExpandedId(expandedId === ws.id ? null : ws.id)}
                                     onDelete={() => setDeleteTarget({ id: ws.id, name: ws.name })}
                                     spaces={spaces}
-                                    onAddSpace={(spaceId: string) =>
-                                        addSpaceMutation.mutate({ workspaceId: ws.id, spaceId })
-                                    }
-                                    onRemoveSpace={(spaceId: string) =>
-                                        removeSpaceMutation.mutate({ workspaceId: ws.id, spaceId })
-                                    }
+                                    onAddSpace={(spaceId: string) => addSpaceMutation.mutate({ workspaceId: ws.id, spaceId })}
+                                    onRemoveSpace={(spaceId: string) => removeSpaceMutation.mutate({ workspaceId: ws.id, spaceId })}
                                 />
                             ))}
                         </div>
@@ -183,7 +169,9 @@ function WorkspacesPage() {
 
             <ConfirmDialog
                 open={deleteTarget !== null}
-                onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}
+                onOpenChange={open => {
+                    if (!open) setDeleteTarget(null);
+                }}
                 title="Delete workspace"
                 description={deleteTarget ? `Delete workspace "${deleteTarget.name}"?` : ""}
                 confirmLabel="Delete"
@@ -222,12 +210,12 @@ function WorkspaceRow({
         queryKey: ["workspace-detail", workspace.id],
         queryFn: () => api.api.workspaces({ id: workspace.id }).get(),
         fallback: null,
-        enabled: expanded,
+        enabled: expanded
     });
 
     const detail = detailQuery.data;
     // Support both 'spaces' (new) and 'codebases' (legacy) field names in the response
-    const workspaceSpaces = (detail?.spaces ?? detail?.codebases) ?? [];
+    const workspaceSpaces = detail?.spaces ?? detail?.codebases ?? [];
     const workspaceSpaceIds = new Set(workspaceSpaces.map(c => c.id));
     const availableSpaces = spaces.filter(c => !workspaceSpaceIds.has(c.id));
 
@@ -243,9 +231,7 @@ function WorkspaceRow({
                                 {workspace.spaceCount ?? workspace.codebaseCount ?? 0} spaces
                             </Badge>
                         </div>
-                        {workspace.description && (
-                            <p className="text-muted-foreground mt-0.5 truncate text-sm">{workspace.description}</p>
-                        )}
+                        {workspace.description && <p className="text-muted-foreground mt-0.5 truncate text-sm">{workspace.description}</p>}
                     </div>
                 </button>
                 <Button variant="ghost" size="sm" onClick={onDelete}>
@@ -262,15 +248,12 @@ function WorkspaceRow({
                     ) : (
                         <div className="space-y-1">
                             {workspaceSpaces.map((sp: any) => (
-                                <div key={sp.id} className="flex items-center justify-between rounded-md bg-muted/50 px-3 py-1.5">
+                                <div key={sp.id} className="bg-muted/50 flex items-center justify-between rounded-md px-3 py-1.5">
                                     <div className="flex items-center gap-2">
                                         <Folder className="text-muted-foreground size-3.5" />
                                         <span className="text-sm">{sp.name}</span>
                                     </div>
-                                    <button
-                                        onClick={() => onRemoveSpace(sp.id)}
-                                        className="text-muted-foreground hover:text-destructive"
-                                    >
+                                    <button onClick={() => onRemoveSpace(sp.id)} className="text-muted-foreground hover:text-destructive">
                                         <X className="size-3.5" />
                                     </button>
                                 </div>
@@ -280,9 +263,7 @@ function WorkspaceRow({
 
                     {availableSpaces.length > 0 && (
                         <Popover>
-                            <PopoverTrigger
-                                render={<Button variant="outline" size="sm" />}
-                            >
+                            <PopoverTrigger render={<Button variant="outline" size="sm" />}>
                                 <Plus className="mr-1 size-3" />
                                 Add Space
                             </PopoverTrigger>

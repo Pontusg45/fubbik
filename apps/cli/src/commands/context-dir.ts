@@ -181,7 +181,7 @@ export const contextDirCommand = new Command("dir")
                                     type: chunk.type,
                                     content: chunk.content,
                                     summary: chunk.summary ?? null,
-                                    matchReason: "file-ref",
+                                    matchReason: "file-ref"
                                 });
                             }
                         }

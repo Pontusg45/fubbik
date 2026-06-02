@@ -38,7 +38,7 @@ export function CommandPalette() {
         close,
         setSubMode,
         setQuery,
-        setSelectedIndex,
+        setSelectedIndex
     });
 
     // Global Cmd+K / Ctrl+K shortcut, and Ctrl+O / Cmd+O for chunk quick-open
@@ -46,7 +46,7 @@ export function CommandPalette() {
         const down = (e: KeyboardEvent) => {
             if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
                 e.preventDefault();
-                setOpen((prev) => !prev);
+                setOpen(prev => !prev);
             } else if (e.key === "o" && (e.metaKey || e.ctrlKey)) {
                 e.preventDefault();
                 setOpen(true);
@@ -61,7 +61,7 @@ export function CommandPalette() {
 
     // Clamp selected index when items change
     useEffect(() => {
-        setSelectedIndex((prev) => Math.min(prev, Math.max(0, items.length - 1)));
+        setSelectedIndex(prev => Math.min(prev, Math.max(0, items.length - 1)));
     }, [items.length]);
 
     // Scroll selected item into view
@@ -76,10 +76,10 @@ export function CommandPalette() {
         (e: React.KeyboardEvent) => {
             if (e.key === "ArrowDown") {
                 e.preventDefault();
-                setSelectedIndex((prev) => (prev + 1) % items.length);
+                setSelectedIndex(prev => (prev + 1) % items.length);
             } else if (e.key === "ArrowUp") {
                 e.preventDefault();
-                setSelectedIndex((prev) => (prev - 1 + items.length) % items.length);
+                setSelectedIndex(prev => (prev - 1 + items.length) % items.length);
             } else if (e.key === "Enter") {
                 e.preventDefault();
                 items[selectedIndex]?.onSelect();
@@ -110,17 +110,14 @@ export function CommandPalette() {
             <div
                 className="fixed inset-0 z-50 bg-black/32 backdrop-blur-sm"
                 onClick={close}
-                onKeyDown={(e) => {
+                onKeyDown={e => {
                     if (e.key === "Escape") close();
                 }}
             />
 
             {/* Panel */}
-            <div
-                className="fixed inset-x-0 top-0 z-50 flex justify-center px-4 pt-[max(1rem,10vh)]"
-                onKeyDown={handleKeyDown}
-            >
-                <div className="w-full max-w-xl overflow-hidden rounded-2xl border bg-popover shadow-lg/5">
+            <div className="fixed inset-x-0 top-0 z-50 flex justify-center px-4 pt-[max(1rem,10vh)]" onKeyDown={handleKeyDown}>
+                <div className="bg-popover w-full max-w-xl overflow-hidden rounded-2xl border shadow-lg/5">
                     {/* Search input */}
                     <div className="flex items-center gap-2 border-b px-4 py-3">
                         <Search className="text-muted-foreground size-4 shrink-0" />
@@ -133,7 +130,7 @@ export function CommandPalette() {
                             ref={inputRef}
                             type="text"
                             value={query}
-                            onChange={(e) => {
+                            onChange={e => {
                                 setQuery(e.target.value);
                                 setSelectedIndex(0);
                             }}
@@ -152,17 +149,11 @@ export function CommandPalette() {
 
                     {/* Results */}
                     <div ref={listRef} className="max-h-80 overflow-y-auto p-2">
-                        {items.length === 0 && (
-                            <p className="text-muted-foreground py-6 text-center text-sm">
-                                No results found.
-                            </p>
-                        )}
+                        {items.length === 0 && <p className="text-muted-foreground py-6 text-center text-sm">No results found.</p>}
 
                         {Array.from(groups.entries()).map(([groupName, group]) => (
                             <div key={groupName} className="mb-1">
-                                <p className="px-2 py-1.5 font-medium text-muted-foreground text-xs">
-                                    {groupName}
-                                </p>
+                                <p className="text-muted-foreground px-2 py-1.5 text-xs font-medium">{groupName}</p>
                                 {group.items.map((item, i) => {
                                     const globalIndex = group.startIndex + i;
                                     return (
@@ -178,14 +169,14 @@ export function CommandPalette() {
                                             onClick={item.onSelect}
                                             onMouseEnter={() => setSelectedIndex(globalIndex)}
                                         >
-                                            <span className="text-muted-foreground shrink-0">
-                                                {item.icon}
-                                            </span>
-                                            <span className="min-w-0 flex-1 truncate">
-                                                {item.title}
-                                            </span>
+                                            <span className="text-muted-foreground shrink-0">{item.icon}</span>
+                                            <span className="min-w-0 flex-1 truncate">{item.title}</span>
                                             {item.badge ? (
-                                                <Badge variant="outline" size="sm" className="border-blue-500/30 bg-blue-500/10 text-blue-600">
+                                                <Badge
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="border-blue-500/30 bg-blue-500/10 text-blue-600"
+                                                >
                                                     {item.badge}
                                                 </Badge>
                                             ) : (
@@ -207,7 +198,7 @@ export function CommandPalette() {
                     </div>
 
                     {/* Footer */}
-                    <div className="flex items-center gap-4 border-t px-4 py-2 text-muted-foreground text-xs">
+                    <div className="text-muted-foreground flex items-center gap-4 border-t px-4 py-2 text-xs">
                         {query.trim().length >= 2 && (
                             <button
                                 type="button"

@@ -1,25 +1,12 @@
 import { and, eq, sql, inArray, asc } from "drizzle-orm";
 
 import { db, dbEffect } from "../index";
-import {
-    behaviorMatrix,
-    behaviorDimension,
-    behaviorRule,
-    behaviorCell,
-    behaviorCellRequirement
-} from "../schema/behavior-matrix";
+import { behaviorMatrix, behaviorDimension, behaviorRule, behaviorCell, behaviorCellRequirement } from "../schema/behavior-matrix";
 import { requirement } from "../schema/requirement";
 
 // --- Matrix CRUD ---
 
-export function createMatrix(params: {
-    id: string;
-    name: string;
-    layer: string;
-    description?: string;
-    spaceId?: string;
-    userId: string;
-}) {
+export function createMatrix(params: { id: string; name: string; layer: string; description?: string; spaceId?: string; userId: string }) {
     return dbEffect(async () => {
         const [created] = await db.insert(behaviorMatrix).values(params).returning();
         if (!created) throw new Error("createMatrix: insert returned no row");
@@ -105,11 +92,7 @@ export function deleteDimension(id: string, matrixId: string) {
 
 export function getDimensionsForMatrix(matrixId: string) {
     return dbEffect(() =>
-        db
-            .select()
-            .from(behaviorDimension)
-            .where(eq(behaviorDimension.matrixId, matrixId))
-            .orderBy(asc(behaviorDimension.order))
+        db.select().from(behaviorDimension).where(eq(behaviorDimension.matrixId, matrixId)).orderBy(asc(behaviorDimension.order))
     );
 }
 
@@ -128,10 +111,7 @@ export function reorderDimensions(dimensionIds: string[]) {
         for (let i = 0; i < dimensionIds.length; i++) {
             const dimId = dimensionIds[i];
             if (!dimId) continue;
-            await db
-                .update(behaviorDimension)
-                .set({ order: i })
-                .where(eq(behaviorDimension.id, dimId));
+            await db.update(behaviorDimension).set({ order: i }).where(eq(behaviorDimension.id, dimId));
         }
     });
 }
@@ -175,13 +155,7 @@ export function deleteRule(id: string, matrixId: string) {
 }
 
 export function getRulesForMatrix(matrixId: string) {
-    return dbEffect(() =>
-        db
-            .select()
-            .from(behaviorRule)
-            .where(eq(behaviorRule.matrixId, matrixId))
-            .orderBy(asc(behaviorRule.order))
-    );
+    return dbEffect(() => db.select().from(behaviorRule).where(eq(behaviorRule.matrixId, matrixId)).orderBy(asc(behaviorRule.order)));
 }
 
 export function getMaxRuleOrder(matrixId: string) {
@@ -199,10 +173,7 @@ export function reorderRules(ruleIds: string[]) {
         for (let i = 0; i < ruleIds.length; i++) {
             const ruleId = ruleIds[i];
             if (!ruleId) continue;
-            await db
-                .update(behaviorRule)
-                .set({ order: i })
-                .where(eq(behaviorRule.id, ruleId));
+            await db.update(behaviorRule).set({ order: i }).where(eq(behaviorRule.id, ruleId));
         }
     });
 }
@@ -248,11 +219,7 @@ export function getCellRequirementCount(cellId: string) {
 
 export function linkCellRequirement(cellId: string, requirementId: string) {
     return dbEffect(async () => {
-        const [created] = await db
-            .insert(behaviorCellRequirement)
-            .values({ cellId, requirementId })
-            .onConflictDoNothing()
-            .returning();
+        const [created] = await db.insert(behaviorCellRequirement).values({ cellId, requirementId }).onConflictDoNothing().returning();
         return created ?? null;
     });
 }
@@ -261,10 +228,7 @@ export function unlinkCellRequirement(cellId: string, requirementId: string) {
     return dbEffect(async () => {
         const [deleted] = await db
             .delete(behaviorCellRequirement)
-            .where(and(
-                eq(behaviorCellRequirement.cellId, cellId),
-                eq(behaviorCellRequirement.requirementId, requirementId)
-            ))
+            .where(and(eq(behaviorCellRequirement.cellId, cellId), eq(behaviorCellRequirement.requirementId, requirementId)))
             .returning();
         return deleted ?? null;
     });
@@ -294,11 +258,7 @@ export function getMatrixView(matrixId: string) {
             .where(eq(behaviorDimension.matrixId, matrixId))
             .orderBy(asc(behaviorDimension.order));
 
-        const rules = await db
-            .select()
-            .from(behaviorRule)
-            .where(eq(behaviorRule.matrixId, matrixId))
-            .orderBy(asc(behaviorRule.order));
+        const rules = await db.select().from(behaviorRule).where(eq(behaviorRule.matrixId, matrixId)).orderBy(asc(behaviorRule.order));
 
         const cells = await db
             .select({

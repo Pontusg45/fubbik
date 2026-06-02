@@ -17,10 +17,7 @@ export const userSettings = pgTable(
             .$onUpdate(() => new Date())
             .notNull()
     },
-    table => [
-        uniqueIndex("user_settings_user_key_idx").on(table.userId, table.key),
-        index("user_settings_userId_idx").on(table.userId)
-    ]
+    table => [uniqueIndex("user_settings_user_key_idx").on(table.userId, table.key), index("user_settings_userId_idx").on(table.userId)]
 );
 
 export const codebaseSettings = pgTable(

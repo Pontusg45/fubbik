@@ -19,16 +19,14 @@ export function QueryInput({ value, onChange, onSubmit }: QueryInputProps) {
                 onChange={e => onChange(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="type:note tag:architecture near:chunk-id:2 NOT text:deprecated"
-                className="w-full rounded-md border bg-background px-3 py-2 font-mono text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring"
+                className="bg-background text-foreground placeholder:text-muted-foreground/50 focus:ring-ring w-full rounded-md border px-3 py-2 font-mono text-sm focus:ring-2 focus:outline-none"
                 spellCheck={false}
                 autoComplete="off"
             />
-            <p className="text-[10px] text-muted-foreground/60">
+            <p className="text-muted-foreground/60 text-[10px]">
                 Supports:{" "}
-                <span className="font-mono">
-                    type: tag: connections: updated: origin: review: near: hops: path: affected-by: NOT
-                </span>
-                {" "}· Press <span className="font-mono">Enter</span> to search
+                <span className="font-mono">type: tag: connections: updated: origin: review: near: hops: path: affected-by: NOT</span> ·
+                Press <span className="font-mono">Enter</span> to search
             </p>
         </div>
     );

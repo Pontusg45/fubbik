@@ -113,10 +113,7 @@ function ActivityPage() {
 
     return (
         <PageContainer>
-            <PageHeader
-                title="Activity"
-                description="Recent changes across your knowledge base."
-            />
+            <PageHeader title="Activity" description="Recent changes across your knowledge base." />
 
             <div className="mb-4 space-y-2">
                 <div className="flex flex-wrap gap-1">
@@ -137,7 +134,10 @@ function ActivityPage() {
                             key={a.value}
                             variant={actionFilter === a.value ? "default" : "outline"}
                             size="xs"
-                            onClick={() => { setActionFilter(a.value); setDisplayCount(20); }}
+                            onClick={() => {
+                                setActionFilter(a.value);
+                                setDisplayCount(20);
+                            }}
                         >
                             {a.label}
                         </Button>

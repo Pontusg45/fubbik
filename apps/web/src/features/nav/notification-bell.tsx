@@ -91,7 +91,13 @@ export function NotificationBell() {
     return (
         <Popover>
             <PopoverTrigger>
-                <Button variant="ghost" size="icon" className="relative" aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ""}`} render={<span />}>
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    className="relative"
+                    aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ""}`}
+                    render={<span />}
+                >
                     <Bell className="size-4" />
                     {unreadCount > 0 && (
                         <Badge
@@ -145,7 +151,7 @@ export function NotificationBell() {
                                             e.stopPropagation();
                                             deleteMutation.mutate(n.id);
                                         }}
-                                        className="shrink-0 text-muted-foreground/50 hover:text-destructive transition-colors"
+                                        className="text-muted-foreground/50 hover:text-destructive shrink-0 transition-colors"
                                     >
                                         <Trash2 className="size-3" />
                                     </Button>

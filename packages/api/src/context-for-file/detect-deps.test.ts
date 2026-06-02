@@ -43,11 +43,7 @@ require (
 )
 `;
             const deps = parseDependencies("go.mod", content);
-            expect(deps).toEqual([
-                "github.com/gin-gonic/gin",
-                "github.com/jackc/pgx/v5",
-                "golang.org/x/sync"
-            ]);
+            expect(deps).toEqual(["github.com/gin-gonic/gin", "github.com/jackc/pgx/v5", "golang.org/x/sync"]);
         });
 
         it("returns empty array when no require block", () => {

@@ -1,8 +1,10 @@
 # Visual Polish Plan
 
-> **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to
+> implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Fix visual inconsistencies: theme-safe colors, plan action cleanup, step completion styling, consistent form inputs, notification accessibility.
+**Goal:** Fix visual inconsistencies: theme-safe colors, plan action cleanup, step completion styling, consistent form inputs, notification
+accessibility.
 
 **Architecture:** Mostly CSS/Tailwind changes with some component restructuring. No backend changes. Each task is independent.
 
@@ -13,6 +15,7 @@
 ## File Structure
 
 ### Files to modify:
+
 - `apps/web/src/routes/requirements_.$requirementId.tsx` — Replace hardcoded status colors
 - `apps/web/src/routes/plans.$planId.tsx` — Cleanup action buttons into dropdown
 - `apps/web/src/features/plans/plan-step-item.tsx` — Add completion visual feedback
@@ -26,6 +29,7 @@
 ## Task 1: Theme-Safe Status Colors
 
 **Files:**
+
 - Modify: `apps/web/src/routes/requirements_.$requirementId.tsx`
 
 - [ ] **Step 1: Read the file**
@@ -34,7 +38,8 @@ Find the status button styling at lines 347-355 where `bg-emerald-500 text-white
 
 - [ ] **Step 2: Replace with theme-aware variants**
 
-The `/10` opacity versions at lines 35-39 are fine (they work in both themes). The issue is the **full solid** colors on the active state buttons. Replace:
+The `/10` opacity versions at lines 35-39 are fine (they work in both themes). The issue is the **full solid** colors on the active state
+buttons. Replace:
 
 ```tsx
 // Before:
@@ -61,6 +66,7 @@ git commit -m "fix(web): improve status color contrast in dark mode"
 ## Task 2: Plan Action Buttons Cleanup
 
 **Files:**
+
 - Modify: `apps/web/src/routes/plans.$planId.tsx`
 
 - [ ] **Step 1: Read the actions section**
@@ -97,14 +103,10 @@ Keep the most logical next action as a standalone button. Move the rest into a d
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
             {plan.status !== "draft" && (
-                <DropdownMenuItem onClick={() => updateStatusMutation.mutate("draft")}>
-                    Move to Draft
-                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => updateStatusMutation.mutate("draft")}>Move to Draft</DropdownMenuItem>
             )}
             {plan.status !== "archived" && (
-                <DropdownMenuItem onClick={() => updateStatusMutation.mutate("archived")}>
-                    Archive
-                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => updateStatusMutation.mutate("archived")}>Archive</DropdownMenuItem>
             )}
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => setShowDeleteDialog(true)} className="text-destructive">
@@ -128,6 +130,7 @@ git commit -m "feat(web): simplify plan actions with primary button + overflow m
 ## Task 3: Step Completion Visual Feedback
 
 **Files:**
+
 - Modify: `apps/web/src/features/plans/plan-step-item.tsx`
 
 - [ ] **Step 1: Read the component**
@@ -136,24 +139,23 @@ Find how completed, blocked, and in-progress steps are currently styled.
 
 - [ ] **Step 2: Enhance status styling**
 
-The component currently uses `border-b last:border-b-0` on the wrapper div (NOT `border-l-2` — that was an error). Replace the bottom border with a left border for status indication:
+The component currently uses `border-b last:border-b-0` on the wrapper div (NOT `border-l-2` — that was an error). Replace the bottom border
+with a left border for status indication:
 
 ```tsx
 // Update the wrapper div's border-left styling:
-const borderColor = {
-    done: "border-green-500/50 bg-green-500/5",
-    in_progress: "border-blue-500/50 bg-blue-500/5",
-    blocked: "border-red-500/50 bg-red-500/5",
-    skipped: "border-muted bg-muted/20",
-    pending: "border-muted",
-}[step.status] ?? "border-muted";
+const borderColor =
+    {
+        done: "border-green-500/50 bg-green-500/5",
+        in_progress: "border-blue-500/50 bg-blue-500/5",
+        blocked: "border-red-500/50 bg-red-500/5",
+        skipped: "border-muted bg-muted/20",
+        pending: "border-muted"
+    }[step.status] ?? "border-muted";
 
 // Update the description text:
-const textStyle = step.status === "done"
-    ? "line-through text-muted-foreground"
-    : step.status === "blocked"
-    ? "text-red-600 dark:text-red-400"
-    : "";
+const textStyle =
+    step.status === "done" ? "line-through text-muted-foreground" : step.status === "blocked" ? "text-red-600 dark:text-red-400" : "";
 ```
 
 - [ ] **Step 3: Commit**
@@ -167,6 +169,7 @@ git commit -m "feat(web): enhance plan step visual feedback with status colors"
 ## Task 4: Notification Delete Button Accessibility
 
 **Files:**
+
 - Modify: `apps/web/src/features/nav/notification-bell.tsx`
 
 - [ ] **Step 1: Find the opacity-0 button**
@@ -177,10 +180,10 @@ At line 147: `className="shrink-0 opacity-0 transition-opacity group-hover:opaci
 
 ```tsx
 // Before:
-className="shrink-0 opacity-0 transition-opacity group-hover:opacity-100 hover:opacity-100 focus:opacity-100"
+className = "shrink-0 opacity-0 transition-opacity group-hover:opacity-100 hover:opacity-100 focus:opacity-100";
 
 // After:
-className="shrink-0 text-muted-foreground/50 hover:text-destructive transition-colors"
+className = "shrink-0 text-muted-foreground/50 hover:text-destructive transition-colors";
 ```
 
 This makes the button always visible but subtle, becoming red on hover. Works on mobile and for keyboard users.
@@ -196,6 +199,7 @@ git commit -m "fix(web): make notification delete button always visible for acce
 ## Task 5: Consistent Form Inputs
 
 **Files:**
+
 - Modify: `apps/web/src/routes/chunks.new.tsx`
 - Modify: `apps/web/src/routes/chunks.$chunkId_.edit.tsx`
 
@@ -224,8 +228,9 @@ The `<Input>` component already includes all the necessary styling.
 - [ ] **Step 3: Fix template overlay backdrop**
 
 In `apps/web/src/routes/templates.tsx`, find `bg-black/50` overlay and replace with:
+
 ```tsx
-className="bg-background/80 backdrop-blur-sm"
+className = "bg-background/80 backdrop-blur-sm";
 ```
 
 - [ ] **Step 4: Commit**

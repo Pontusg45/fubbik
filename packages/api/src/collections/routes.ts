@@ -18,20 +18,14 @@ const CollectionFilterSchema = t.Object({
 
 export const collectionRoutes = new Elysia()
     .get("/collections", ctx =>
-        Effect.runPromise(
-            requireSession(ctx).pipe(
-                Effect.flatMap(session => collectionService.listCollections(session.user.id))
-            )
-        )
+        Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(session => collectionService.listCollections(session.user.id))))
     )
     .post(
         "/collections",
         ctx =>
             Effect.runPromise(
                 requireSession(ctx).pipe(
-                    Effect.flatMap(session =>
-                        collectionService.createCollection(session.user.id, ctx.body)
-                    ),
+                    Effect.flatMap(session => collectionService.createCollection(session.user.id, ctx.body)),
                     Effect.tap(() =>
                         Effect.sync(() => {
                             ctx.set.status = 201;
@@ -53,9 +47,7 @@ export const collectionRoutes = new Elysia()
         ctx =>
             Effect.runPromise(
                 requireSession(ctx).pipe(
-                    Effect.flatMap(session =>
-                        collectionService.updateCollection(ctx.params.id, session.user.id, ctx.body)
-                    )
+                    Effect.flatMap(session => collectionService.updateCollection(ctx.params.id, session.user.id, ctx.body))
                 )
             ),
         {
@@ -69,19 +61,13 @@ export const collectionRoutes = new Elysia()
     .delete("/collections/:id", ctx =>
         Effect.runPromise(
             requireSession(ctx).pipe(
-                Effect.flatMap(session =>
-                    collectionService.deleteCollection(ctx.params.id, session.user.id)
-                ),
+                Effect.flatMap(session => collectionService.deleteCollection(ctx.params.id, session.user.id)),
                 Effect.map(() => ({ message: "Deleted" }))
             )
         )
     )
     .get("/collections/:id/chunks", ctx =>
         Effect.runPromise(
-            requireSession(ctx).pipe(
-                Effect.flatMap(session =>
-                    collectionService.getCollectionChunks(ctx.params.id, session.user.id)
-                )
-            )
+            requireSession(ctx).pipe(Effect.flatMap(session => collectionService.getCollectionChunks(ctx.params.id, session.user.id)))
         )
     );

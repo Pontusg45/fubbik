@@ -1,10 +1,14 @@
 # Header Search Bar Redesign Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to
+> implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Replace the 160px plain-text header search input with a ~460px pill-based advanced search bar that has live autocomplete, saved/recent query suggestions, and context-aware Enter behavior.
+**Goal:** Replace the 160px plain-text header search input with a ~460px pill-based advanced search bar that has live autocomplete,
+saved/recent query suggestions, and context-aware Enter behavior.
 
-**Architecture:** Three new frontend files (`header-search-bar.tsx`, `header-search-dropdown.tsx`, `use-recent-queries.ts`). Modify `__root.tsx` to swap in the new component and consolidate primary nav from 7 to 4 links. Reuse existing `/api/search/parse`, `/api/search/autocomplete`, `/api/search/saved` endpoints and `FILTER_COLORS`/`FILTER_CATEGORIES` constants.
+**Architecture:** Three new frontend files (`header-search-bar.tsx`, `header-search-dropdown.tsx`, `use-recent-queries.ts`). Modify
+`__root.tsx` to swap in the new component and consolidate primary nav from 7 to 4 links. Reuse existing `/api/search/parse`,
+`/api/search/autocomplete`, `/api/search/saved` endpoints and `FILTER_COLORS`/`FILTER_CATEGORIES` constants.
 
 **Tech Stack:** React, TanStack Router, TanStack Query, shadcn-ui, Tailwind CSS, Eden API client
 
@@ -12,21 +16,23 @@
 
 ## File Structure
 
-| File | Action | Responsibility |
-|------|--------|---------------|
-| `apps/web/src/hooks/use-recent-queries.ts` | Create | Session-storage hook for recent query strings |
-| `apps/web/src/features/nav/header-search-dropdown.tsx` | Create | The contextual autocomplete/saved/recent dropdown |
-| `apps/web/src/features/nav/header-search-bar.tsx` | Create | The main pill-based search bar component |
-| `apps/web/src/routes/__root.tsx` | Modify | Replace old input with new component, consolidate nav links |
+| File                                                   | Action | Responsibility                                              |
+| ------------------------------------------------------ | ------ | ----------------------------------------------------------- |
+| `apps/web/src/hooks/use-recent-queries.ts`             | Create | Session-storage hook for recent query strings               |
+| `apps/web/src/features/nav/header-search-dropdown.tsx` | Create | The contextual autocomplete/saved/recent dropdown           |
+| `apps/web/src/features/nav/header-search-bar.tsx`      | Create | The main pill-based search bar component                    |
+| `apps/web/src/routes/__root.tsx`                       | Modify | Replace old input with new component, consolidate nav links |
 
 ---
 
 ### Task 1: Create the recent queries hook
 
 **Files:**
+
 - Create: `apps/web/src/hooks/use-recent-queries.ts`
 
-**Context:** Session-storage hook for tracking recent query strings. Pattern identical to `use-recently-viewed.ts` but scoped to sessionStorage (per-browser-session) and stores plain query strings with timestamps.
+**Context:** Session-storage hook for tracking recent query strings. Pattern identical to `use-recently-viewed.ts` but scoped to
+sessionStorage (per-browser-session) and stores plain query strings with timestamps.
 
 - [ ] **Step 1: Create the hook file**
 
@@ -99,9 +105,11 @@ git commit -m "feat(nav): add useRecentQueries hook for sessionStorage query his
 ### Task 2: Create the header search dropdown
 
 **Files:**
+
 - Create: `apps/web/src/features/nav/header-search-dropdown.tsx`
 
-**Context:** The contextual dropdown shown below the search bar. Four states: empty (saved + recent), field prefix, field value, and free text (chunks + search-for-text item).
+**Context:** The contextual dropdown shown below the search bar. Four states: empty (saved + recent), field prefix, field value, and free
+text (chunks + search-for-text item).
 
 - [ ] **Step 1: Create the dropdown file**
 
@@ -530,9 +538,11 @@ git commit -m "feat(nav): add HeaderSearchDropdown with contextual suggestions"
 ### Task 3: Create the header search bar
 
 **Files:**
+
 - Create: `apps/web/src/features/nav/header-search-bar.tsx`
 
-**Context:** The main pill-based search bar component. Manages clauses, raw input, autocomplete state, and keyboard navigation. Syncs with the `/search` route via URL params.
+**Context:** The main pill-based search bar component. Manages clauses, raw input, autocomplete state, and keyboard navigation. Syncs with
+the `/search` route via URL params.
 
 - [ ] **Step 1: Create the component**
 
@@ -874,24 +884,29 @@ git commit -m "feat(nav): add HeaderSearchBar with pills, autocomplete, and cont
 ### Task 4: Wire into root layout
 
 **Files:**
+
 - Modify: `apps/web/src/routes/__root.tsx`
 
-**Context:** Replace the current `<input>`-based search with `<HeaderSearchBar />`. Consolidate primary nav from 7 links to 4. Move Features, Reviews, Docs into the Manage dropdown under a new "Navigate" section.
+**Context:** Replace the current `<input>`-based search with `<HeaderSearchBar />`. Consolidate primary nav from 7 links to 4. Move
+Features, Reviews, Docs into the Manage dropdown under a new "Navigate" section.
 
 - [ ] **Step 1: Update imports**
 
 In `apps/web/src/routes/__root.tsx`, at the top:
 
-Remove: `Search` from `lucide-react` import (no longer needed — HeaderSearchBar owns the icon). Add these to the lucide-react import: `Compass, FileText, MessageSquare` (for Navigate menu items).
+Remove: `Search` from `lucide-react` import (no longer needed — HeaderSearchBar owns the icon). Add these to the lucide-react import:
+`Compass, FileText, MessageSquare` (for Navigate menu items).
 
 Actually check the current lucide imports first. `FileText` may already be imported. Add only missing ones.
 
 Add the new import:
+
 ```typescript
 import { HeaderSearchBar } from "@/features/nav/header-search-bar";
 ```
 
 Remove these hooks/state:
+
 - `useNavigate` — may still be needed elsewhere in the file
 - `const [navSearch, setNavSearch] = useState("");`
 - `const searchInputRef = useRef<HTMLInputElement>(null);`
@@ -900,6 +915,7 @@ Remove these hooks/state:
 - [ ] **Step 2: Replace the old search input block**
 
 Find this block in the nav:
+
 ```tsx
 <div className="relative hidden md:block">
     <Search className="text-muted-foreground pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2" />
@@ -926,6 +942,7 @@ Find this block in the nav:
 ```
 
 Replace with:
+
 ```tsx
 <HeaderSearchBar />
 ```
@@ -935,6 +952,7 @@ Replace with:
 Delete the three `<Link>` elements for Features, Reviews, and Docs from the primary nav.
 
 Find each one and delete. Example:
+
 ```tsx
 <Link
     to="/features"
@@ -948,7 +966,8 @@ Same for `/reviews` and `/docs`.
 
 - [ ] **Step 4: Add the Navigate section to the Manage dropdown**
 
-Find the existing `<DropdownMenuContent align="start">` inside the Manage dropdown. Add these items at the top, before the existing "Tags" item:
+Find the existing `<DropdownMenuContent align="start">` inside the Manage dropdown. Add these items at the top, before the existing "Tags"
+item:
 
 ```tsx
 <DropdownMenuItem render={<Link to="/features" />}>
@@ -971,6 +990,7 @@ Make sure `Compass` and `MessageSquare` are imported from lucide-react (add to e
 - [ ] **Step 5: Remove the `/` keyboard shortcut useEffect**
 
 The `/` key handler is now inside `HeaderSearchBar`. Remove this block from `__root.tsx`:
+
 ```typescript
 useEffect(() => {
     function isInputFocused() {
@@ -988,7 +1008,8 @@ useEffect(() => {
 }, []);
 ```
 
-Also remove `useEffect`, `useRef`, `useState` from the React import if they're no longer used in `__root.tsx`. Keep them if they're still used by other code in the file.
+Also remove `useEffect`, `useRef`, `useState` from the React import if they're no longer used in `__root.tsx`. Keep them if they're still
+used by other code in the file.
 
 - [ ] **Step 6: Verify type check**
 
@@ -1001,6 +1022,7 @@ Expected: No new errors. If `useNavigate` is no longer used, remove it from the 
 Run: `pnpm dev`
 
 Navigate to any non-landing page and verify:
+
 1. Search bar shows at ~460px width in the nav row
 2. Dashboard, Chunks, Graph, Requirements are the only primary nav links
 3. Manage dropdown contains Features, Reviews, Docs at the top
@@ -1039,28 +1061,29 @@ Expected: Success.
 
 - [ ] **Step 3: Manual checklist**
 
-| Test | Expected |
-|------|----------|
-| Open any non-landing page | Larger search bar visible, ~460px max |
-| Press `/` | Bar focuses |
-| Type `type:` | Dropdown shows 5 type values |
-| Pick "reference" | Pill forms, input clears |
-| Type `tag:` | Dropdown shows live tag autocomplete |
-| Type free text "auth" | Dropdown shows matching chunks |
-| Click a chunk suggestion | Navigates to chunk detail |
-| Focus empty bar | Dropdown shows saved + recent queries |
-| Click a saved query | Pills load, navigates to /search |
-| Press Backspace with empty input | Last pill removed |
-| Press Enter with pills | Navigates to /search?q=... |
-| Already on /search, press Enter | URL updates in place, search re-runs |
-| Nav has only 4 primary links | Dashboard, Chunks, Graph, Requirements |
-| Manage dropdown has Features/Reviews/Docs at top | ✓ |
-| Press Escape with focus | Dropdown closes, input blurs |
-| Click outside the bar | Dropdown closes |
+| Test                                             | Expected                               |
+| ------------------------------------------------ | -------------------------------------- |
+| Open any non-landing page                        | Larger search bar visible, ~460px max  |
+| Press `/`                                        | Bar focuses                            |
+| Type `type:`                                     | Dropdown shows 5 type values           |
+| Pick "reference"                                 | Pill forms, input clears               |
+| Type `tag:`                                      | Dropdown shows live tag autocomplete   |
+| Type free text "auth"                            | Dropdown shows matching chunks         |
+| Click a chunk suggestion                         | Navigates to chunk detail              |
+| Focus empty bar                                  | Dropdown shows saved + recent queries  |
+| Click a saved query                              | Pills load, navigates to /search       |
+| Press Backspace with empty input                 | Last pill removed                      |
+| Press Enter with pills                           | Navigates to /search?q=...             |
+| Already on /search, press Enter                  | URL updates in place, search re-runs   |
+| Nav has only 4 primary links                     | Dashboard, Chunks, Graph, Requirements |
+| Manage dropdown has Features/Reviews/Docs at top | ✓                                      |
+| Press Escape with focus                          | Dropdown closes, input blurs           |
+| Click outside the bar                            | Dropdown closes                        |
 
 - [ ] **Step 4: Commit fixes if needed**
 
 If any smoke tests fail, fix and commit:
+
 ```bash
 git commit -am "fix(nav): resolve header search bar smoke test issues"
 ```

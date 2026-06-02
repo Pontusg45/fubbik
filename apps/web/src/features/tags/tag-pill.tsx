@@ -1,5 +1,5 @@
-import { GitMerge, MoreHorizontal, Palette, Pencil, Trash2 } from "lucide-react";
 import { Link } from "@tanstack/react-router";
+import { GitMerge, MoreHorizontal, Palette, Pencil, Trash2 } from "lucide-react";
 
 import {
     DropdownMenu,
@@ -9,7 +9,7 @@ import {
     DropdownMenuSub,
     DropdownMenuSubContent,
     DropdownMenuSubTrigger,
-    DropdownMenuTrigger,
+    DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
 
 import type { Tag, TagType } from "./tag-types";
@@ -39,40 +39,35 @@ export function TagPill({
     onCancelRename,
     onAssignType,
     onMerge,
-    onDelete,
+    onDelete
 }: TagPillProps) {
     return (
-        <div className="group flex items-center gap-1.5 rounded-lg border px-3 py-1.5 transition-colors hover:bg-muted/50">
-            {tag.tagTypeColor && (
-                <div
-                    className="size-2 rounded-full shrink-0"
-                    style={{ backgroundColor: tag.tagTypeColor }}
-                />
-            )}
+        <div className="group hover:bg-muted/50 flex items-center gap-1.5 rounded-lg border px-3 py-1.5 transition-colors">
+            {tag.tagTypeColor && <div className="size-2 shrink-0 rounded-full" style={{ backgroundColor: tag.tagTypeColor }} />}
             {isRenaming ? (
                 <input
                     value={renameValue}
                     onChange={e => setRenameValue(e.target.value)}
                     onBlur={onCommitRename}
                     onKeyDown={e => {
-                        if (e.key === "Enter") { e.preventDefault(); onCommitRename(); }
-                        if (e.key === "Escape") { e.preventDefault(); onCancelRename(); }
+                        if (e.key === "Enter") {
+                            e.preventDefault();
+                            onCommitRename();
+                        }
+                        if (e.key === "Escape") {
+                            e.preventDefault();
+                            onCancelRename();
+                        }
                     }}
                     autoFocus
-                    className="bg-background w-24 rounded border px-1 text-sm outline-none focus:ring-1 focus:ring-ring"
+                    className="bg-background focus:ring-ring w-24 rounded border px-1 text-sm outline-none focus:ring-1"
                 />
             ) : (
-                <Link
-                    to="/chunks"
-                    search={{ tags: tag.name }}
-                    className="text-sm hover:underline"
-                >
+                <Link to="/chunks" search={{ tags: tag.name }} className="text-sm hover:underline">
                     {tag.name}
                 </Link>
             )}
-            {tag.chunkCount > 0 && (
-                <span className="text-muted-foreground ml-0.5 text-xs tabular-nums">{tag.chunkCount}</span>
-            )}
+            {tag.chunkCount > 0 && <span className="text-muted-foreground ml-0.5 text-xs tabular-nums">{tag.chunkCount}</span>}
             {!isRenaming && (
                 <DropdownMenu>
                     <DropdownMenuTrigger

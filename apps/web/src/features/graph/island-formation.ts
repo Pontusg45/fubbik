@@ -70,7 +70,7 @@ export function formIslands(input: IslandFormationInput): IslandFormationResult 
             name,
             chunkIds,
             ghostChunkIds: islandGhosts.get(name) ?? [],
-            isSingleton: chunkIds.length === 1 && name !== "ungrouped",
+            isSingleton: chunkIds.length === 1 && name !== "ungrouped"
         });
     }
     for (const [name] of islandGhosts) {
@@ -79,7 +79,7 @@ export function formIslands(input: IslandFormationInput): IslandFormationResult 
         }
     }
 
-    const bridgeKey = (a: string, b: string) => a < b ? `${a}|${b}` : `${b}|${a}`;
+    const bridgeKey = (a: string, b: string) => (a < b ? `${a}|${b}` : `${b}|${a}`);
     const bridgeData = new Map<string, { from: string; to: string; relations: string[] }>();
 
     for (const conn of connections) {
@@ -103,13 +103,16 @@ export function formIslands(input: IslandFormationInput): IslandFormationResult 
         let dominant = data.relations[0]!;
         let maxCount = 0;
         for (const [r, c] of freq) {
-            if (c > maxCount) { dominant = r; maxCount = c; }
+            if (c > maxCount) {
+                dominant = r;
+                maxCount = c;
+            }
         }
         bridges.push({
             fromIslandId: data.from,
             toIslandId: data.to,
             count: data.relations.length,
-            dominantRelation: dominant,
+            dominantRelation: dominant
         });
     }
 

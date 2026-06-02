@@ -2,13 +2,17 @@
 
 ## Problem
 
-When an AI agent modifies an existing chunk via the MCP `update_chunk` tool, the change is applied immediately — there's no human review step. The version history captures the before-state, but only after the fact. For a knowledge base where accuracy matters, AI edits should be staged for human review before going live.
+When an AI agent modifies an existing chunk via the MCP `update_chunk` tool, the change is applied immediately — there's no human review
+step. The version history captures the before-state, but only after the fact. For a knowledge base where accuracy matters, AI edits should
+be staged for human review before going live.
 
 AI-created chunks already start as `draft` (via the existing `reviewStatus` field), but edits to existing chunks bypass this entirely.
 
 ## Goal
 
-Add a proposal system where AI agents suggest changes to existing chunks. Proposals are saved as pending drafts. Humans review proposals in a dedicated queue or inline on the chunk detail page, then approve (applies the change) or reject (discards it). Multiple proposals can be pending per chunk simultaneously.
+Add a proposal system where AI agents suggest changes to existing chunks. Proposals are saved as pending drafts. Humans review proposals in
+a dedicated queue or inline on the chunk detail page, then approve (applies the change) or reject (discards it). Multiple proposals can be
+pending per chunk simultaneously.
 
 ---
 
@@ -18,18 +22,18 @@ One new table. No changes to existing tables.
 
 ### `chunk_proposal`
 
-| column | type | notes |
-|---|---|---|
-| `id` | `text` pk | `$defaultFn(() => crypto.randomUUID())` |
-| `chunkId` | `text` fk → `chunk.id` cascade delete | the chunk being changed |
-| `changes` | `jsonb` not null | snapshot of proposed field values — only changed fields present |
-| `reason` | `text` nullable | optional explanation of why the AI proposed this change |
-| `status` | `text` not null default `"pending"` | `pending \| approved \| rejected \| superseded` |
-| `proposedBy` | `text` not null | user ID or `"ai"` |
-| `reviewedBy` | `text` nullable fk → `user.id` | who approved/rejected |
-| `reviewedAt` | `timestamp` nullable | when approved/rejected |
-| `reviewNote` | `text` nullable | reviewer's comment (optional) |
-| `createdAt` | `timestamp` not null defaultNow | |
+| column       | type                                  | notes                                                           |
+| ------------ | ------------------------------------- | --------------------------------------------------------------- |
+| `id`         | `text` pk                             | `$defaultFn(() => crypto.randomUUID())`                         |
+| `chunkId`    | `text` fk → `chunk.id` cascade delete | the chunk being changed                                         |
+| `changes`    | `jsonb` not null                      | snapshot of proposed field values — only changed fields present |
+| `reason`     | `text` nullable                       | optional explanation of why the AI proposed this change         |
+| `status`     | `text` not null default `"pending"`   | `pending \| approved \| rejected \| superseded`                 |
+| `proposedBy` | `text` not null                       | user ID or `"ai"`                                               |
+| `reviewedBy` | `text` nullable fk → `user.id`        | who approved/rejected                                           |
+| `reviewedAt` | `timestamp` nullable                  | when approved/rejected                                          |
+| `reviewNote` | `text` nullable                       | reviewer's comment (optional)                                   |
+| `createdAt`  | `timestamp` not null defaultNow       |                                                                 |
 
 Indexes: `(chunkId)`, `(status)`, `(chunkId, status)`.
 
@@ -60,22 +64,23 @@ Multiple `pending` proposals can exist per chunk. They are ordered by `createdAt
 
 ### Proposal CRUD
 
-| method | path | body / query | notes |
-|---|---|---|---|
-| `POST` | `/api/chunks/:id/proposals` | `{ changes: ProposedChanges, reason?: string }` | Creates a pending proposal. `proposedBy` from session user (or `"ai"` via MCP). |
-| `GET` | `/api/chunks/:id/proposals` | `status?` | List proposals for a chunk. Returns newest first. |
-| `GET` | `/api/proposals` | `status?` (default: `pending`), `chunkId?`, `limit?`, `offset?` | Global review queue. Returns proposals with chunk title + type for display context. |
-| `GET` | `/api/proposals/:proposalId` | — | Single proposal with full chunk snapshot for diff rendering. |
-| `POST` | `/api/proposals/:proposalId/approve` | `{ note?: string }` | Applies `changes` to the chunk via existing `updateChunk` flow. Sets `status: approved`, `reviewedBy`, `reviewedAt`. |
-| `POST` | `/api/proposals/:proposalId/reject` | `{ note?: string }` | Sets `status: rejected`. Chunk untouched. |
-| `POST` | `/api/proposals/bulk` | `{ actions: Array<{ proposalId: string, action: "approve" \| "reject", note?: string }> }` | Batch approve/reject. Processes in order. |
-| `GET` | `/api/proposals/count` | — | Returns `{ pending: number }`. Powers the nav badge. |
+| method | path                                 | body / query                                                                               | notes                                                                                                                |
+| ------ | ------------------------------------ | ------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
+| `POST` | `/api/chunks/:id/proposals`          | `{ changes: ProposedChanges, reason?: string }`                                            | Creates a pending proposal. `proposedBy` from session user (or `"ai"` via MCP).                                      |
+| `GET`  | `/api/chunks/:id/proposals`          | `status?`                                                                                  | List proposals for a chunk. Returns newest first.                                                                    |
+| `GET`  | `/api/proposals`                     | `status?` (default: `pending`), `chunkId?`, `limit?`, `offset?`                            | Global review queue. Returns proposals with chunk title + type for display context.                                  |
+| `GET`  | `/api/proposals/:proposalId`         | —                                                                                          | Single proposal with full chunk snapshot for diff rendering.                                                         |
+| `POST` | `/api/proposals/:proposalId/approve` | `{ note?: string }`                                                                        | Applies `changes` to the chunk via existing `updateChunk` flow. Sets `status: approved`, `reviewedBy`, `reviewedAt`. |
+| `POST` | `/api/proposals/:proposalId/reject`  | `{ note?: string }`                                                                        | Sets `status: rejected`. Chunk untouched.                                                                            |
+| `POST` | `/api/proposals/bulk`                | `{ actions: Array<{ proposalId: string, action: "approve" \| "reject", note?: string }> }` | Batch approve/reject. Processes in order.                                                                            |
+| `GET`  | `/api/proposals/count`               | —                                                                                          | Returns `{ pending: number }`. Powers the nav badge.                                                                 |
 
 ### MCP tool (new)
 
 New tool: `propose_chunk_update`
 
 Parameters:
+
 - `chunkId: string` (required)
 - `changes: ProposedChanges` (required) — same shape as the JSONB
 - `reason?: string` (optional)
@@ -93,9 +98,9 @@ The existing `update_chunk` tool is unchanged and continues to apply direct edit
 1. `POST /api/proposals/:proposalId/approve` is called
 2. Service reads the proposal's `changes` JSONB
 3. Calls the existing `updateChunk(chunkId, userId, changes)` — which:
-   - Creates a `chunk_version` row (captures before-state)
-   - Updates the live chunk fields
-   - Triggers async re-enrichment if title or content changed
+    - Creates a `chunk_version` row (captures before-state)
+    - Updates the live chunk fields
+    - Triggers async re-enrichment if title or content changed
 4. If `changes.tags` is present, calls `setChunkTags(chunkId, changes.tags)` to replace the tag list
 5. Sets proposal `status: approved`, `reviewedBy: userId`, `reviewedAt: now()`
 6. Returns the updated chunk
@@ -111,7 +116,9 @@ Approving a proposal is identical to a human making the same edit manually. No n
 
 ### Conflict handling
 
-If the live chunk was edited between proposal creation and approval, the proposal still applies — it overwrites the fields it touches. The reviewer sees the current live state and the proposed state at review time, so they can judge whether the proposal is still relevant. If the chunk has diverged significantly, the reviewer rejects and the AI re-proposes.
+If the live chunk was edited between proposal creation and approval, the proposal still applies — it overwrites the fields it touches. The
+reviewer sees the current live state and the proposed state at review time, so they can judge whether the proposal is still relevant. If the
+chunk has diverged significantly, the reviewer rejects and the AI re-proposes.
 
 No automatic conflict detection or merge.
 
@@ -124,13 +131,14 @@ No automatic conflict detection or merge.
 - Header: "Review Queue" with pending count
 - Filter bar: status toggle (`pending` / `approved` / `rejected` / `all`), optional chunk search
 - List of proposal cards, each showing:
-  - Chunk title + type badge
-  - Proposal age ("2h ago")
-  - Reason (if provided, truncated to one line)
-  - Changed fields summary as small pills (e.g., `title`, `content`, `tags`)
-  - Approve / Reject buttons directly on the card (quick action)
-  - Click card → expands to show field-by-field diff inline
-- Field-by-field diff format: field name → current value → proposed value, with changed text highlighted. For `content` diffs: show truncated inline diff (first 5 changed lines), expandable to full.
+    - Chunk title + type badge
+    - Proposal age ("2h ago")
+    - Reason (if provided, truncated to one line)
+    - Changed fields summary as small pills (e.g., `title`, `content`, `tags`)
+    - Approve / Reject buttons directly on the card (quick action)
+    - Click card → expands to show field-by-field diff inline
+- Field-by-field diff format: field name → current value → proposed value, with changed text highlighted. For `content` diffs: show
+  truncated inline diff (first 5 changed lines), expandable to full.
 - Bulk actions: "Approve all" / "Reject all" for the visible set (with confirmation dialog)
 - Empty state: "No proposals waiting for review"
 
@@ -140,11 +148,11 @@ When a chunk has pending proposals, a collapsible section appears below the exis
 
 - Section header: "Pending proposals (N)" with amber indicator
 - Each proposal as a compact card:
-  - Reason (if any)
-  - Field-by-field diff (field name → current → proposed, changed text highlighted)
-  - For `content`: truncated diff, expandable
-  - Approve / Reject buttons
-  - Timestamp + "proposed by AI"
+    - Reason (if any)
+    - Field-by-field diff (field name → current → proposed, changed text highlighted)
+    - For `content`: truncated diff, expandable
+    - Approve / Reject buttons
+    - Timestamp + "proposed by AI"
 - Proposals ordered oldest-first (review in chronological order)
 
 ### 4c: Nav badge
@@ -159,27 +167,27 @@ When a chunk has pending proposals, a collapsible section appears below the exis
 
 ### New files
 
-| Path | Responsibility |
-|---|---|
-| `packages/db/src/schema/chunk-proposal.ts` | Schema definition for `chunk_proposal` table |
-| `packages/db/src/repository/chunk-proposal.ts` | Effect-based CRUD for proposals |
-| `packages/api/src/proposals/service.ts` | Proposal business logic (create, approve with updateChunk, reject, list, count) |
-| `packages/api/src/proposals/routes.ts` | Elysia route definitions |
-| `apps/web/src/routes/review.tsx` | Review queue page |
-| `apps/web/src/features/proposals/proposal-card.tsx` | Reusable proposal card with diff + approve/reject |
-| `apps/web/src/features/proposals/proposal-diff.tsx` | Field-by-field diff renderer |
-| `apps/web/src/features/proposals/chunk-proposals-section.tsx` | Inline section for chunk detail page |
+| Path                                                          | Responsibility                                                                  |
+| ------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| `packages/db/src/schema/chunk-proposal.ts`                    | Schema definition for `chunk_proposal` table                                    |
+| `packages/db/src/repository/chunk-proposal.ts`                | Effect-based CRUD for proposals                                                 |
+| `packages/api/src/proposals/service.ts`                       | Proposal business logic (create, approve with updateChunk, reject, list, count) |
+| `packages/api/src/proposals/routes.ts`                        | Elysia route definitions                                                        |
+| `apps/web/src/routes/review.tsx`                              | Review queue page                                                               |
+| `apps/web/src/features/proposals/proposal-card.tsx`           | Reusable proposal card with diff + approve/reject                               |
+| `apps/web/src/features/proposals/proposal-diff.tsx`           | Field-by-field diff renderer                                                    |
+| `apps/web/src/features/proposals/chunk-proposals-section.tsx` | Inline section for chunk detail page                                            |
 
 ### Modified
 
-| Path | Change |
-|---|---|
-| `packages/db/src/schema/index.ts` | Add `chunk-proposal` export |
-| `packages/db/src/repository/index.ts` | Add `chunk-proposal` export |
-| `packages/api/src/index.ts` | Mount proposal routes |
-| `packages/mcp/src/tools.ts` (or new `proposal-tools.ts`) | Add `propose_chunk_update` tool |
-| `packages/mcp/src/index.ts` | Register proposal tools |
-| `apps/web/src/routes/__root.tsx` | Add nav badge for pending proposals |
+| Path                                                                     | Change                               |
+| ------------------------------------------------------------------------ | ------------------------------------ |
+| `packages/db/src/schema/index.ts`                                        | Add `chunk-proposal` export          |
+| `packages/db/src/repository/index.ts`                                    | Add `chunk-proposal` export          |
+| `packages/api/src/index.ts`                                              | Mount proposal routes                |
+| `packages/mcp/src/tools.ts` (or new `proposal-tools.ts`)                 | Add `propose_chunk_update` tool      |
+| `packages/mcp/src/index.ts`                                              | Register proposal tools              |
+| `apps/web/src/routes/__root.tsx`                                         | Add nav badge for pending proposals  |
 | `apps/web/src/routes/chunks.$chunkId.tsx` (or relevant detail component) | Mount `ChunkProposalsSection` inline |
 
 ### Unchanged
@@ -199,8 +207,10 @@ When a chunk has pending proposals, a collapsible section appears below the exis
 - **Proposal expiry** — proposals stay `pending` indefinitely until reviewed.
 - **Push notifications** — no email/push on proposal creation. Discovery via nav badge + review queue.
 - **Proposal comments/discussion** — no thread. Just the single `reviewNote` on approve/reject.
-- **Chunk creation proposals** — this spec covers edits to existing chunks only. AI-created chunks already start as `draft` via the existing `reviewStatus` field.
-- **Connection/applies-to/file-ref proposals** — `changes` JSONB covers chunk fields only. Proposing structural changes (connections, file refs) is a separate concern.
+- **Chunk creation proposals** — this spec covers edits to existing chunks only. AI-created chunks already start as `draft` via the existing
+  `reviewStatus` field.
+- **Connection/applies-to/file-ref proposals** — `changes` JSONB covers chunk fields only. Proposing structural changes (connections, file
+  refs) is a separate concern.
 
 ---
 

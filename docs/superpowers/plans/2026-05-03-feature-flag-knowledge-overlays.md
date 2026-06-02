@@ -1,10 +1,14 @@
 # Feature Flag Knowledge Overlays Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to
+> implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build a delta/overlay system that associates chunk modifications with named features, enabling feature-scoped knowledge that can be toggled, prioritized, and merged.
+**Goal:** Build a delta/overlay system that associates chunk modifications with named features, enabling feature-scoped knowledge that can
+be toggled, prioritized, and merged.
 
-**Architecture:** New `feature`, `feature_codebase`, `chunk_feature_delta`, and `user_active_feature` tables in Drizzle. Repository → Service → Route layers following existing patterns. A resolution utility applies deltas to base chunks at the service layer. Frontend gets a feature switcher in the nav and a management page.
+**Architecture:** New `feature`, `feature_codebase`, `chunk_feature_delta`, and `user_active_feature` tables in Drizzle. Repository →
+Service → Route layers following existing patterns. A resolution utility applies deltas to base chunks at the service layer. Frontend gets a
+feature switcher in the nav and a management page.
 
 **Tech Stack:** Drizzle ORM, Effect, Elysia, TanStack Router/Query, React
 
@@ -16,34 +20,35 @@
 
 ### New files
 
-| File | Responsibility |
-|------|---------------|
-| `packages/db/src/schema/feature.ts` | `feature`, `feature_codebase`, `chunk_feature_delta`, `user_active_feature` table + relation definitions |
-| `packages/db/src/repository/feature.ts` | Feature CRUD, codebase association, active feature reads/writes |
-| `packages/db/src/repository/chunk-feature-delta.ts` | Delta CRUD, batch fetch for resolution |
-| `packages/api/src/features/service.ts` | Feature business logic, merge flow, priority reordering |
-| `packages/api/src/features/resolve.ts` | `resolveChunk()` and `resolveChunks()` pure utilities |
-| `packages/api/src/features/resolve.test.ts` | Tests for resolution logic |
-| `packages/api/src/features/routes.ts` | Elysia routes for feature CRUD, activation, delta endpoints |
-| `apps/web/src/features/feature-flags/use-active-features.ts` | Hook for reading/writing active features (server-persisted, fetched via API) |
-| `apps/web/src/features/feature-flags/feature-switcher.tsx` | Nav dropdown to toggle features on/off |
-| `apps/web/src/routes/features.tsx` | Feature management page |
+| File                                                         | Responsibility                                                                                           |
+| ------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------- |
+| `packages/db/src/schema/feature.ts`                          | `feature`, `feature_codebase`, `chunk_feature_delta`, `user_active_feature` table + relation definitions |
+| `packages/db/src/repository/feature.ts`                      | Feature CRUD, codebase association, active feature reads/writes                                          |
+| `packages/db/src/repository/chunk-feature-delta.ts`          | Delta CRUD, batch fetch for resolution                                                                   |
+| `packages/api/src/features/service.ts`                       | Feature business logic, merge flow, priority reordering                                                  |
+| `packages/api/src/features/resolve.ts`                       | `resolveChunk()` and `resolveChunks()` pure utilities                                                    |
+| `packages/api/src/features/resolve.test.ts`                  | Tests for resolution logic                                                                               |
+| `packages/api/src/features/routes.ts`                        | Elysia routes for feature CRUD, activation, delta endpoints                                              |
+| `apps/web/src/features/feature-flags/use-active-features.ts` | Hook for reading/writing active features (server-persisted, fetched via API)                             |
+| `apps/web/src/features/feature-flags/feature-switcher.tsx`   | Nav dropdown to toggle features on/off                                                                   |
+| `apps/web/src/routes/features.tsx`                           | Feature management page                                                                                  |
 
 ### Modified files
 
-| File | Change |
-|------|--------|
-| `packages/db/src/schema/index.ts` | Add `export * from "./feature"` |
-| `packages/db/src/repository/index.ts` | Add exports for feature + delta repos |
-| `packages/api/src/index.ts` | Mount `featureRoutes`, add active feature resolution to `.resolve()` |
-| `packages/api/src/chunks/service.ts` | Call `resolveChunks()` in `listChunks` and `getChunkDetail` |
-| `apps/web/src/routes/__root.tsx` | Add `<FeatureSwitcher />` to nav |
+| File                                  | Change                                                               |
+| ------------------------------------- | -------------------------------------------------------------------- |
+| `packages/db/src/schema/index.ts`     | Add `export * from "./feature"`                                      |
+| `packages/db/src/repository/index.ts` | Add exports for feature + delta repos                                |
+| `packages/api/src/index.ts`           | Mount `featureRoutes`, add active feature resolution to `.resolve()` |
+| `packages/api/src/chunks/service.ts`  | Call `resolveChunks()` in `listChunks` and `getChunkDetail`          |
+| `apps/web/src/routes/__root.tsx`      | Add `<FeatureSwitcher />` to nav                                     |
 
 ---
 
 ### Task 1: Schema definitions
 
 **Files:**
+
 - Create: `packages/db/src/schema/feature.ts`
 - Modify: `packages/db/src/schema/index.ts`
 
@@ -72,7 +77,10 @@ export const feature = pgTable(
             .notNull()
             .references(() => user.id, { onDelete: "cascade" }),
         createdAt: timestamp("created_at").defaultNow().notNull(),
-        updatedAt: timestamp("updated_at").defaultNow().notNull().$onUpdate(() => new Date())
+        updatedAt: timestamp("updated_at")
+            .defaultNow()
+            .notNull()
+            .$onUpdate(() => new Date())
     },
     table => [
         uniqueIndex("feature_user_name_idx").on(table.userId, table.name),
@@ -105,7 +113,10 @@ export const chunkFeatureDelta = pgTable(
             .references(() => feature.id, { onDelete: "cascade" }),
         delta: jsonb("delta").notNull().$type<Record<string, unknown>>(),
         createdAt: timestamp("created_at").defaultNow().notNull(),
-        updatedAt: timestamp("updated_at").defaultNow().notNull().$onUpdate(() => new Date())
+        updatedAt: timestamp("updated_at")
+            .defaultNow()
+            .notNull()
+            .$onUpdate(() => new Date())
     },
     table => [
         uniqueIndex("chunk_feature_delta_chunk_feature_idx").on(table.chunkId, table.featureId),
@@ -175,6 +186,7 @@ git commit -m "feat: add feature flag knowledge overlay schema"
 ### Task 2: Feature repository
 
 **Files:**
+
 - Create: `packages/db/src/repository/feature.ts`
 - Modify: `packages/db/src/repository/index.ts`
 
@@ -253,22 +265,24 @@ export function listFeatures(userId: string, filters?: { codebaseId?: string; st
         const idSet = new Set(featureIdsInCodebase.map(r => r.featureId));
 
         // Include features linked to this codebase OR features with no codebase links (global)
-        const allLinked = await db
-            .select({ featureId: featureCodebase.featureId })
-            .from(featureCodebase);
+        const allLinked = await db.select({ featureId: featureCodebase.featureId }).from(featureCodebase);
         const linkedSet = new Set(allLinked.map(r => r.featureId));
 
         return features.filter(f => idSet.has(f.id) || !linkedSet.has(f.id));
     });
 }
 
-export function updateFeature(id: string, userId: string, data: {
-    name?: string;
-    description?: string | null;
-    priority?: number;
-    status?: string;
-    color?: string | null;
-}) {
+export function updateFeature(
+    id: string,
+    userId: string,
+    data: {
+        name?: string;
+        description?: string | null;
+        priority?: number;
+        status?: string;
+        color?: string | null;
+    }
+) {
     return dbEffect(async () => {
         const [updated] = await db
             .update(feature)
@@ -340,10 +354,7 @@ export function getMaxPriority(userId: string) {
 
 export function getActiveFeatureIds(userId: string) {
     return dbEffect(() =>
-        db
-            .select({ featureId: userActiveFeature.featureId })
-            .from(userActiveFeature)
-            .where(eq(userActiveFeature.userId, userId))
+        db.select({ featureId: userActiveFeature.featureId }).from(userActiveFeature).where(eq(userActiveFeature.userId, userId))
     );
 }
 
@@ -390,6 +401,7 @@ git commit -m "feat: add feature repository with CRUD and active feature managem
 ### Task 3: Delta repository
 
 **Files:**
+
 - Create: `packages/db/src/repository/chunk-feature-delta.ts`
 - Modify: `packages/db/src/repository/index.ts`
 
@@ -474,12 +486,7 @@ export function batchFetchDeltas(chunkIds: string[], featureIds: string[]) {
             })
             .from(chunkFeatureDelta)
             .innerJoin(feature, eq(chunkFeatureDelta.featureId, feature.id))
-            .where(
-                and(
-                    inArray(chunkFeatureDelta.chunkId, chunkIds),
-                    inArray(chunkFeatureDelta.featureId, featureIds)
-                )
-            )
+            .where(and(inArray(chunkFeatureDelta.chunkId, chunkIds), inArray(chunkFeatureDelta.featureId, featureIds)))
             .orderBy(feature.priority)
     );
 }
@@ -488,12 +495,7 @@ export function deleteDelta(chunkId: string, featureId: string) {
     return dbEffect(async () => {
         const [deleted] = await db
             .delete(chunkFeatureDelta)
-            .where(
-                and(
-                    eq(chunkFeatureDelta.chunkId, chunkId),
-                    eq(chunkFeatureDelta.featureId, featureId)
-                )
-            )
+            .where(and(eq(chunkFeatureDelta.chunkId, chunkId), eq(chunkFeatureDelta.featureId, featureId)))
             .returning();
         return deleted ?? null;
     });
@@ -501,9 +503,7 @@ export function deleteDelta(chunkId: string, featureId: string) {
 
 export function deleteDeltasForFeature(featureId: string) {
     return dbEffect(async () => {
-        await db
-            .delete(chunkFeatureDelta)
-            .where(eq(chunkFeatureDelta.featureId, featureId));
+        await db.delete(chunkFeatureDelta).where(eq(chunkFeatureDelta.featureId, featureId));
     });
 }
 ```
@@ -528,6 +528,7 @@ git commit -m "feat: add chunk feature delta repository"
 ### Task 4: Resolution utility with tests
 
 **Files:**
+
 - Create: `packages/api/src/features/resolve.ts`
 - Create: `packages/api/src/features/resolve.test.ts`
 
@@ -558,9 +559,7 @@ describe("resolveChunk", () => {
     });
 
     it("applies a single delta", () => {
-        const deltas = [
-            { featureId: "f1", delta: { content: "Feature content" }, priority: 1 }
-        ];
+        const deltas = [{ featureId: "f1", delta: { content: "Feature content" }, priority: 1 }];
         const result = resolveChunk(baseChunk, deltas);
         expect(result.title).toBe("Base Title");
         expect(result.content).toBe("Feature content");
@@ -610,9 +609,7 @@ describe("resolveChunks", () => {
             { id: "c1", title: "Chunk 1", content: "Content 1" },
             { id: "c2", title: "Chunk 2", content: "Content 2" }
         ];
-        const deltas = [
-            { chunkId: "c1", featureId: "f1", delta: { title: "Modified 1" }, priority: 1 }
-        ];
+        const deltas = [{ chunkId: "c1", featureId: "f1", delta: { title: "Modified 1" }, priority: 1 }];
         const result = resolveChunks(chunks, ["f1"], deltas);
         expect(result[0].title).toBe("Modified 1");
         expect(result[0]._hasDeltas).toBe(true);
@@ -707,6 +704,7 @@ git commit -m "feat: add chunk feature delta resolution utility with tests"
 ### Task 5: Feature service
 
 **Files:**
+
 - Create: `packages/api/src/features/service.ts`
 
 - [ ] **Step 1: Create the feature service**
@@ -736,12 +734,7 @@ import {
     upsertDelta as upsertDeltaRepo,
     deleteDelta as deleteDeltaRepo
 } from "@fubbik/db/repository";
-import {
-    getChunkById,
-    getNextVersionNumber,
-    createVersion,
-    updateChunk as updateChunkRepo
-} from "@fubbik/db/repository";
+import { getChunkById, getNextVersionNumber, createVersion, updateChunk as updateChunkRepo } from "@fubbik/db/repository";
 import { Effect } from "effect";
 
 import { NotFoundError, ValidationError } from "../errors";
@@ -753,7 +746,11 @@ const DELTA_ALLOWED_FIELDS = new Set(["title", "content", "type", "rationale", "
 function validateDelta(delta: Record<string, unknown>): Effect.Effect<Record<string, unknown>, ValidationError> {
     const invalid = Object.keys(delta).filter(k => !DELTA_ALLOWED_FIELDS.has(k));
     if (invalid.length > 0) {
-        return Effect.fail(new ValidationError({ message: `Invalid delta fields: ${invalid.join(", ")}. Allowed: ${[...DELTA_ALLOWED_FIELDS].join(", ")}` }));
+        return Effect.fail(
+            new ValidationError({
+                message: `Invalid delta fields: ${invalid.join(", ")}. Allowed: ${[...DELTA_ALLOWED_FIELDS].join(", ")}`
+            })
+        );
     }
     if (Object.keys(delta).length === 0) {
         return Effect.fail(new ValidationError({ message: "Delta must contain at least one field" }));
@@ -761,13 +758,16 @@ function validateDelta(delta: Record<string, unknown>): Effect.Effect<Record<str
     return Effect.succeed(delta);
 }
 
-export function createFeature(userId: string, body: {
-    name: string;
-    description?: string;
-    priority?: number;
-    color?: string;
-    codebaseIds?: string[];
-}) {
+export function createFeature(
+    userId: string,
+    body: {
+        name: string;
+        description?: string;
+        priority?: number;
+        color?: string;
+        codebaseIds?: string[];
+    }
+) {
     const id = crypto.randomUUID();
     return (body.priority !== undefined ? Effect.succeed(body.priority) : getMaxPriority(userId).pipe(Effect.map(max => max + 1))).pipe(
         Effect.flatMap(priority =>
@@ -799,23 +799,28 @@ export function listFeatures(userId: string, filters?: { codebaseId?: string; st
     return listFeaturesRepo(userId, filters);
 }
 
-export function updateFeature(featureId: string, userId: string, body: {
-    name?: string;
-    description?: string | null;
-    priority?: number;
-    status?: string;
-    color?: string | null;
-    codebaseIds?: string[];
-}) {
-    const guard = body.name !== undefined
-        ? featureNameConflict(featureId, userId, body.name).pipe(
-            Effect.flatMap(conflict =>
-                conflict
-                    ? Effect.fail(new ValidationError({ message: `Feature "${body.name}" already exists` }))
-                    : Effect.succeed(undefined)
-            )
-        )
-        : Effect.succeed(undefined);
+export function updateFeature(
+    featureId: string,
+    userId: string,
+    body: {
+        name?: string;
+        description?: string | null;
+        priority?: number;
+        status?: string;
+        color?: string | null;
+        codebaseIds?: string[];
+    }
+) {
+    const guard =
+        body.name !== undefined
+            ? featureNameConflict(featureId, userId, body.name).pipe(
+                  Effect.flatMap(conflict =>
+                      conflict
+                          ? Effect.fail(new ValidationError({ message: `Feature "${body.name}" already exists` }))
+                          : Effect.succeed(undefined)
+                  )
+              )
+            : Effect.succeed(undefined);
 
     const { codebaseIds, ...repoBody } = body;
 
@@ -853,9 +858,7 @@ export function reorderFeature(featureId: string, userId: string, newPriority: n
 // --- Active features ---
 
 export function getActiveFeatures(userId: string) {
-    return getActiveFeatureIdsRepo(userId).pipe(
-        Effect.map(rows => rows.map(r => r.featureId))
-    );
+    return getActiveFeatureIdsRepo(userId).pipe(Effect.map(rows => rows.map(r => r.featureId)));
 }
 
 export function setActiveFeatures(userId: string, featureIds: string[]) {
@@ -962,6 +965,7 @@ git commit -m "feat: add feature service with CRUD, delta management, and merge 
 ### Task 6: Feature routes
 
 **Files:**
+
 - Create: `packages/api/src/features/routes.ts`
 - Modify: `packages/api/src/index.ts`
 
@@ -1005,7 +1009,11 @@ export const featureRoutes = new Elysia()
             Effect.runPromise(
                 requireSession(ctx).pipe(
                     Effect.flatMap(session => featureService.createFeature(session.user.id, ctx.body)),
-                    Effect.tap(() => Effect.sync(() => { ctx.set.status = 201; }))
+                    Effect.tap(() =>
+                        Effect.sync(() => {
+                            ctx.set.status = 201;
+                        })
+                    )
                 )
             ),
         {
@@ -1019,11 +1027,7 @@ export const featureRoutes = new Elysia()
         }
     )
     .get("/features/active", ctx =>
-        Effect.runPromise(
-            requireSession(ctx).pipe(
-                Effect.flatMap(session => featureService.getActiveFeatures(session.user.id))
-            )
-        )
+        Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(session => featureService.getActiveFeatures(session.user.id))))
     )
     .put(
         "/features/active",
@@ -1042,18 +1046,14 @@ export const featureRoutes = new Elysia()
     )
     .get("/features/:id", ctx =>
         Effect.runPromise(
-            requireSession(ctx).pipe(
-                Effect.flatMap(session => featureService.getFeatureDetail(ctx.params.id, session.user.id))
-            )
+            requireSession(ctx).pipe(Effect.flatMap(session => featureService.getFeatureDetail(ctx.params.id, session.user.id)))
         )
     )
     .patch(
         "/features/:id",
         ctx =>
             Effect.runPromise(
-                requireSession(ctx).pipe(
-                    Effect.flatMap(session => featureService.updateFeature(ctx.params.id, session.user.id, ctx.body))
-                )
+                requireSession(ctx).pipe(Effect.flatMap(session => featureService.updateFeature(ctx.params.id, session.user.id, ctx.body)))
             ),
         {
             body: t.Object({
@@ -1098,11 +1098,7 @@ export const featureRoutes = new Elysia()
     )
     // --- Delta endpoints mounted under chunks ---
     .get("/chunks/:id/deltas", ctx =>
-        Effect.runPromise(
-            requireSession(ctx).pipe(
-                Effect.flatMap(() => featureService.getDeltasForChunk(ctx.params.id))
-            )
-        )
+        Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(() => featureService.getDeltasForChunk(ctx.params.id))))
     )
     .put(
         "/chunks/:id/deltas/:featureId",
@@ -1123,9 +1119,7 @@ export const featureRoutes = new Elysia()
     .delete("/chunks/:id/deltas/:featureId", ctx =>
         Effect.runPromise(
             requireSession(ctx).pipe(
-                Effect.flatMap(session =>
-                    featureService.deleteDelta(ctx.params.id, ctx.params.featureId, session.user.id)
-                ),
+                Effect.flatMap(session => featureService.deleteDelta(ctx.params.id, ctx.params.featureId, session.user.id)),
                 Effect.map(() => ({ message: "Delta deleted" }))
             )
         )
@@ -1135,9 +1129,7 @@ export const featureRoutes = new Elysia()
             requireSession(ctx).pipe(
                 Effect.flatMap(session => {
                     // Verify ownership by fetching the feature first
-                    return featureService.getFeatureDetail(ctx.params.id, session.user.id).pipe(
-                        Effect.map(detail => detail.deltas)
-                    );
+                    return featureService.getFeatureDetail(ctx.params.id, session.user.id).pipe(Effect.map(detail => detail.deltas));
                 })
             )
         )
@@ -1178,6 +1170,7 @@ git commit -m "feat: add feature routes and mount in API"
 ### Task 7: Active feature context injection
 
 **Files:**
+
 - Modify: `packages/api/src/index.ts`
 
 - [ ] **Step 1: Add active feature resolution to the `.resolve()` block**
@@ -1227,6 +1220,7 @@ git commit -m "feat: inject active feature IDs into request context"
 ### Task 8: Chunk service feature resolution integration
 
 **Files:**
+
 - Modify: `packages/api/src/chunks/service.ts`
 
 - [ ] **Step 1: Add feature resolution to `listChunks`**
@@ -1238,7 +1232,8 @@ import { batchFetchDeltas, getDeltasForChunk as getDeltasForChunkRepo } from "@f
 import { resolveChunks } from "../features/resolve";
 ```
 
-Modify the `listChunks` function. After the final `.pipe(Effect.flatMap(...))` that returns the result, add resolution. Change the return to wrap with resolution. The function currently returns:
+Modify the `listChunks` function. After the final `.pipe(Effect.flatMap(...))` that returns the result, add resolution. Change the return to
+wrap with resolution. The function currently returns:
 
 ```typescript
     return listChunksRepo({ ... }).pipe(
@@ -1286,7 +1281,8 @@ Add `activeFeatureIds: string[] = []` as a third parameter to `getChunkDetail`:
 export function getChunkDetail(chunkId: string, userId?: string, activeFeatureIds: string[] = []) {
 ```
 
-At the end of the `getChunkDetail` function, before the final `Effect.map(result => { ... return { ...result, healthScore }; })`, add delta fetching. Modify the `Effect.all` block to include deltas:
+At the end of the `getChunkDetail` function, before the final `Effect.map(result => { ... return { ...result, healthScore }; })`, add delta
+fetching. Modify the `Effect.all` block to include deltas:
 
 ```typescript
         Effect.flatMap(found =>
@@ -1352,7 +1348,7 @@ In `packages/api/src/chunks/routes.ts`, update the `GET /chunks` handler to pass
 Update the `GET /chunks/:id` handler similarly:
 
 ```typescript
-        Effect.flatMap(session => chunkService.getChunkDetail(ctx.params.id, session.user.id, (ctx as any).activeFeatureIds ?? []))
+Effect.flatMap(session => chunkService.getChunkDetail(ctx.params.id, session.user.id, (ctx as any).activeFeatureIds ?? []));
 ```
 
 - [ ] **Step 4: Verify compilation**
@@ -1373,6 +1369,7 @@ git commit -m "feat: integrate feature resolution into chunk list and detail end
 ### Task 9: Frontend — active features hook
 
 **Files:**
+
 - Create: `apps/web/src/features/feature-flags/use-active-features.ts`
 
 - [ ] **Step 1: Create the hook**
@@ -1405,9 +1402,7 @@ export function useActiveFeatures() {
 
     const toggleFeature = (featureId: string) => {
         const current = activeFeatureIds as string[];
-        const next = current.includes(featureId)
-            ? current.filter(id => id !== featureId)
-            : [...current, featureId];
+        const next = current.includes(featureId) ? current.filter(id => id !== featureId) : [...current, featureId];
         toggleMutation.mutate(next);
     };
 
@@ -1429,6 +1424,7 @@ git commit -m "feat: add useActiveFeatures hook for toggling feature overlays"
 ### Task 10: Frontend — feature switcher component
 
 **Files:**
+
 - Create: `apps/web/src/features/feature-flags/feature-switcher.tsx`
 - Modify: `apps/web/src/routes/__root.tsx`
 
@@ -1540,6 +1536,7 @@ git commit -m "feat: add feature switcher dropdown in nav bar"
 ### Task 11: Frontend — features management page
 
 **Files:**
+
 - Create: `apps/web/src/routes/features.tsx`
 
 - [ ] **Step 1: Create the features page**
@@ -1855,6 +1852,7 @@ git commit -m "feat: add features management page"
 ### Task 12: Frontend — chunk detail delta indicators
 
 **Files:**
+
 - Modify: `apps/web/src/routes/chunks.$id.tsx` (or wherever the chunk detail component lives)
 
 - [ ] **Step 1: Find the chunk detail page**
@@ -1863,7 +1861,8 @@ Run: `ls apps/web/src/routes/chunks*` to locate the exact file path.
 
 - [ ] **Step 2: Add delta overlay section to chunk detail**
 
-At the bottom of the chunk detail page (after existing sections like connections, appliesTo, etc.), add a "Feature Overlays" section. The data is already available in the API response via the `deltas` and `_appliedFeatures` fields added in Task 8.
+At the bottom of the chunk detail page (after existing sections like connections, appliesTo, etc.), add a "Feature Overlays" section. The
+data is already available in the API response via the `deltas` and `_appliedFeatures` fields added in Task 8.
 
 Add the following section component:
 
@@ -1937,6 +1936,7 @@ git commit -m "feat: show feature overlay indicators on chunk detail page"
 ### Task 13: Frontend — chunk edit save-to-feature dialog
 
 **Files:**
+
 - Modify: The chunk edit page (likely `apps/web/src/routes/chunks.$id.edit.tsx`)
 
 - [ ] **Step 1: Find the chunk edit page**
@@ -2000,8 +2000,10 @@ function SaveTargetDialog({
 ```
 
 In the submit handler logic:
+
 - If `target === "base"`, save normally via `PATCH /api/chunks/:id`.
-- If `target` is a feature ID, compute the delta (diff the edited fields against the base chunk), then call `PUT /api/chunks/:id/deltas/:featureId` with the delta.
+- If `target` is a feature ID, compute the delta (diff the edited fields against the base chunk), then call
+  `PUT /api/chunks/:id/deltas/:featureId` with the delta.
 
 Use the `useActiveFeatures` hook to check if features are active and decide whether to show the dialog.
 
@@ -2023,6 +2025,7 @@ git commit -m "feat: add save-to-feature dialog when editing chunks with active 
 ### Task 14: Update CLAUDE.md
 
 **Files:**
+
 - Modify: `CLAUDE.md`
 
 - [ ] **Step 1: Add feature overlays documentation**
@@ -2032,7 +2035,8 @@ Add a new section under "## Core Concepts" for Features:
 ```markdown
 ### Features (Knowledge Overlays)
 
-Named entities that track field-level modifications to chunks. Each feature stores deltas — sparse JSONB objects containing only the changed fields. Features have a priority (higher wins on same-field conflicts) and can be toggled on/off globally via the nav switcher.
+Named entities that track field-level modifications to chunks. Each feature stores deltas — sparse JSONB objects containing only the changed
+fields. Features have a priority (higher wins on same-field conflicts) and can be toggled on/off globally via the nav switcher.
 
 - `feature` table: `name`, `description`, `priority` (unique per user), `status` (inactive/active/merged/archived), `color`, `userId`
 - `feature_codebase` join table (optional codebase association)
@@ -2046,6 +2050,7 @@ Add to the API endpoints section:
 
 ```markdown
 ### Features
+
 - `GET /api/features` — list (filters: `codebaseId`, `status`, `search`)
 - `POST /api/features` — create
 - `GET /api/features/:id` — detail with codebases and deltas
@@ -2074,19 +2079,19 @@ git commit -m "docs: add feature overlays to CLAUDE.md"
 
 ## Summary
 
-| Task | Description | New Files | Modified Files |
-|------|-------------|-----------|----------------|
-| 1 | Schema definitions | `packages/db/src/schema/feature.ts` | `packages/db/src/schema/index.ts` |
-| 2 | Feature repository | `packages/db/src/repository/feature.ts` | `packages/db/src/repository/index.ts` |
-| 3 | Delta repository | `packages/db/src/repository/chunk-feature-delta.ts` | `packages/db/src/repository/index.ts` |
-| 4 | Resolution utility + tests | `packages/api/src/features/resolve.ts`, `resolve.test.ts` | — |
-| 5 | Feature service | `packages/api/src/features/service.ts` | — |
-| 6 | Feature routes + mount | `packages/api/src/features/routes.ts` | `packages/api/src/index.ts` |
-| 7 | Active feature context injection | — | `packages/api/src/index.ts` |
-| 8 | Chunk service integration | — | `chunks/service.ts`, `chunks/routes.ts` |
-| 9 | Active features hook | `use-active-features.ts` | — |
-| 10 | Feature switcher component | `feature-switcher.tsx` | `__root.tsx` |
-| 11 | Features management page | `routes/features.tsx` | — |
-| 12 | Chunk detail delta indicators | — | `chunks.$id.tsx` |
-| 13 | Chunk edit save-to dialog | — | `chunks.$id.edit.tsx` |
-| 14 | Update CLAUDE.md | — | `CLAUDE.md` |
+| Task | Description                      | New Files                                                 | Modified Files                          |
+| ---- | -------------------------------- | --------------------------------------------------------- | --------------------------------------- |
+| 1    | Schema definitions               | `packages/db/src/schema/feature.ts`                       | `packages/db/src/schema/index.ts`       |
+| 2    | Feature repository               | `packages/db/src/repository/feature.ts`                   | `packages/db/src/repository/index.ts`   |
+| 3    | Delta repository                 | `packages/db/src/repository/chunk-feature-delta.ts`       | `packages/db/src/repository/index.ts`   |
+| 4    | Resolution utility + tests       | `packages/api/src/features/resolve.ts`, `resolve.test.ts` | —                                       |
+| 5    | Feature service                  | `packages/api/src/features/service.ts`                    | —                                       |
+| 6    | Feature routes + mount           | `packages/api/src/features/routes.ts`                     | `packages/api/src/index.ts`             |
+| 7    | Active feature context injection | —                                                         | `packages/api/src/index.ts`             |
+| 8    | Chunk service integration        | —                                                         | `chunks/service.ts`, `chunks/routes.ts` |
+| 9    | Active features hook             | `use-active-features.ts`                                  | —                                       |
+| 10   | Feature switcher component       | `feature-switcher.tsx`                                    | `__root.tsx`                            |
+| 11   | Features management page         | `routes/features.tsx`                                     | —                                       |
+| 12   | Chunk detail delta indicators    | —                                                         | `chunks.$id.tsx`                        |
+| 13   | Chunk edit save-to dialog        | —                                                         | `chunks.$id.edit.tsx`                   |
+| 14   | Update CLAUDE.md                 | —                                                         | `CLAUDE.md`                             |

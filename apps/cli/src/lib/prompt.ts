@@ -6,8 +6,8 @@ export function parseConfirmInput(input: string): boolean {
 
 export async function confirm(message: string): Promise<boolean> {
     const rl = readline.createInterface({ input: process.stdin, output: process.stderr });
-    return new Promise((resolve) => {
-        rl.question(`${message} [y/N] `, (answer) => {
+    return new Promise(resolve => {
+        rl.question(`${message} [y/N] `, answer => {
             rl.close();
             resolve(parseConfirmInput(answer));
         });
@@ -17,8 +17,8 @@ export async function confirm(message: string): Promise<boolean> {
 export async function promptInput(message: string, defaultValue = ""): Promise<string> {
     const rl = readline.createInterface({ input: process.stdin, output: process.stderr });
     const suffix = defaultValue ? ` (${defaultValue})` : "";
-    return new Promise((resolve) => {
-        rl.question(`${message}${suffix}: `, (answer) => {
+    return new Promise(resolve => {
+        rl.question(`${message}${suffix}: `, answer => {
             rl.close();
             resolve(answer.trim() || defaultValue);
         });
@@ -43,6 +43,8 @@ export async function openEditor(initialContent = ""): Promise<string> {
 
         return readFileSync(tmpFile, "utf-8");
     } finally {
-        try { unlinkSync(tmpFile); } catch {}
+        try {
+            unlinkSync(tmpFile);
+        } catch {}
     }
 }

@@ -35,9 +35,8 @@ export function HeaderSearchDropdown({
     recentQueries,
     selectedIdx,
     onSelect,
-    onHover,
+    onHover
 }: HeaderSearchDropdownProps) {
-
     if (!open || suggestions.length === 0) return null;
 
     const sectionHeader = (() => {
@@ -55,7 +54,7 @@ export function HeaderSearchDropdown({
 
     return (
         <div
-            className="absolute left-0 right-0 top-full z-50 mt-1 max-h-80 overflow-y-auto rounded-md border bg-card shadow-xl"
+            className="bg-card absolute top-full right-0 left-0 z-50 mt-1 max-h-80 overflow-y-auto rounded-md border shadow-xl"
             role="listbox"
         >
             {mode === "empty" ? (
@@ -69,7 +68,7 @@ export function HeaderSearchDropdown({
             ) : (
                 <>
                     {sectionHeader && (
-                        <div className="border-b px-3 py-1.5 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        <div className="text-muted-foreground border-b px-3 py-1.5 text-[9px] font-semibold tracking-wider uppercase">
                             {sectionHeader}
                         </div>
                     )}
@@ -86,7 +85,7 @@ export function HeaderSearchDropdown({
                     </div>
                 </>
             )}
-            <div className="border-t px-3 py-1 text-[9px] text-muted-foreground flex justify-between font-mono">
+            <div className="text-muted-foreground flex justify-between border-t px-3 py-1 font-mono text-[9px]">
                 <span>↑↓ navigate · ⏎ select</span>
                 <span>⇧⏎ full search</span>
             </div>
@@ -96,12 +95,18 @@ export function HeaderSearchDropdown({
 
 function suggestionKey(s: SuggestionKind, i: number): string {
     switch (s.type) {
-        case "saved": return `saved-${s.name}-${i}`;
-        case "recent": return `recent-${s.q}-${i}`;
-        case "field": return `field-${s.field}`;
-        case "value": return `value-${s.field}-${s.value}-${i}`;
-        case "chunk": return `chunk-${s.id}`;
-        case "text-search": return `text-${s.q}`;
+        case "saved":
+            return `saved-${s.name}-${i}`;
+        case "recent":
+            return `recent-${s.q}-${i}`;
+        case "field":
+            return `field-${s.field}`;
+        case "value":
+            return `value-${s.field}-${s.value}-${i}`;
+        case "chunk":
+            return `chunk-${s.id}`;
+        case "text-search":
+            return `text-${s.q}`;
     }
 }
 
@@ -110,7 +115,7 @@ function EmptyStateContent({
     recentQueries,
     selectedIdx,
     onSelect,
-    onHover,
+    onHover
 }: {
     savedQueries: Array<{ id: string; name: string; query: unknown }>;
     recentQueries: RecentQuery[];
@@ -127,7 +132,7 @@ function EmptyStateContent({
         <>
             {savedToShow.length > 0 && (
                 <>
-                    <div className="border-b px-3 py-1.5 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    <div className="text-muted-foreground border-b px-3 py-1.5 text-[9px] font-semibold tracking-wider uppercase">
                         Saved queries
                     </div>
                     <div className="py-1">
@@ -135,22 +140,21 @@ function EmptyStateContent({
                             const currentIdx = idx++;
                             const query = (saved.query as any) ?? {};
                             const clauses = (query.clauses ?? []) as QueryClause[];
-                            const preview = clauses
-                                .map(c => `${c.negate ? "NOT " : ""}${c.field}:${c.value}`)
-                                .join(" ");
+                            const preview = clauses.map(c => `${c.negate ? "NOT " : ""}${c.field}:${c.value}`).join(" ");
                             return (
                                 <button
                                     key={`saved-${saved.id}`}
                                     type="button"
-                                    onMouseDown={e => { e.preventDefault(); onSelect({ type: "saved", name: saved.name, clauses }); }}
+                                    onMouseDown={e => {
+                                        e.preventDefault();
+                                        onSelect({ type: "saved", name: saved.name, clauses });
+                                    }}
                                     onMouseEnter={() => onHover(currentIdx)}
                                     className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs transition-colors ${currentIdx === selectedIdx ? "bg-muted" : "hover:bg-muted/50"}`}
                                 >
                                     <Star className="size-3 shrink-0 text-yellow-500/70" />
                                     <span className="shrink-0 truncate">{saved.name}</span>
-                                    <span className="ml-auto truncate text-[10px] text-muted-foreground/60 font-mono">
-                                        {preview}
-                                    </span>
+                                    <span className="text-muted-foreground/60 ml-auto truncate font-mono text-[10px]">{preview}</span>
                                 </button>
                             );
                         })}
@@ -159,7 +163,7 @@ function EmptyStateContent({
             )}
             {recentToShow.length > 0 && (
                 <>
-                    <div className="border-t border-b px-3 py-1.5 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    <div className="text-muted-foreground border-t border-b px-3 py-1.5 text-[9px] font-semibold tracking-wider uppercase">
                         Recent
                     </div>
                     <div className="py-1">
@@ -169,11 +173,14 @@ function EmptyStateContent({
                                 <button
                                     key={`recent-${recent.q}-${recent.usedAt}`}
                                     type="button"
-                                    onMouseDown={e => { e.preventDefault(); onSelect({ type: "recent", q: recent.q, usedAt: recent.usedAt }); }}
+                                    onMouseDown={e => {
+                                        e.preventDefault();
+                                        onSelect({ type: "recent", q: recent.q, usedAt: recent.usedAt });
+                                    }}
                                     onMouseEnter={() => onHover(currentIdx)}
                                     className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs transition-colors ${currentIdx === selectedIdx ? "bg-muted" : "hover:bg-muted/50"}`}
                                 >
-                                    <Clock className="size-3 shrink-0 text-muted-foreground/60" />
+                                    <Clock className="text-muted-foreground/60 size-3 shrink-0" />
                                     <span className="truncate font-mono text-[10px]">{recent.q}</span>
                                 </button>
                             );
@@ -182,9 +189,7 @@ function EmptyStateContent({
                 </>
             )}
             {savedToShow.length === 0 && recentToShow.length === 0 && (
-                <div className="px-3 py-4 text-center text-xs text-muted-foreground">
-                    Start typing to search or filter
-                </div>
+                <div className="text-muted-foreground px-3 py-4 text-center text-xs">Start typing to search or filter</div>
             )}
         </>
     );
@@ -194,7 +199,7 @@ function SuggestionRow({
     suggestion,
     selected,
     onSelect,
-    onHover,
+    onHover
 }: {
     suggestion: SuggestionKind;
     selected: boolean;
@@ -203,46 +208,62 @@ function SuggestionRow({
 }) {
     const icon = (() => {
         switch (suggestion.type) {
-            case "field": return <Search className="size-3 shrink-0 text-muted-foreground/60" />;
-            case "value": return <Badge variant="secondary" size="sm" className="shrink-0 font-mono text-[8px]">{suggestion.field}</Badge>;
-            case "chunk": return <FileText className="size-3 shrink-0 text-muted-foreground/60" />;
-            case "text-search": return <Search className="size-3 shrink-0 text-muted-foreground/60" />;
-            default: return null;
+            case "field":
+                return <Search className="text-muted-foreground/60 size-3 shrink-0" />;
+            case "value":
+                return (
+                    <Badge variant="secondary" size="sm" className="shrink-0 font-mono text-[8px]">
+                        {suggestion.field}
+                    </Badge>
+                );
+            case "chunk":
+                return <FileText className="text-muted-foreground/60 size-3 shrink-0" />;
+            case "text-search":
+                return <Search className="text-muted-foreground/60 size-3 shrink-0" />;
+            default:
+                return null;
         }
     })();
 
     const label = (() => {
         switch (suggestion.type) {
-            case "field": return suggestion.label;
-            case "value": return suggestion.label ?? suggestion.value;
-            case "chunk": return suggestion.title;
-            case "text-search": return `Search for "${suggestion.q}"`;
-            default: return "";
+            case "field":
+                return suggestion.label;
+            case "value":
+                return suggestion.label ?? suggestion.value;
+            case "chunk":
+                return suggestion.title;
+            case "text-search":
+                return `Search for "${suggestion.q}"`;
+            default:
+                return "";
         }
     })();
 
     const rightMeta = (() => {
         switch (suggestion.type) {
-            case "field": return suggestion.description;
-            case "chunk": return suggestion.chunkType;
-            default: return null;
+            case "field":
+                return suggestion.description;
+            case "chunk":
+                return suggestion.chunkType;
+            default:
+                return null;
         }
     })();
 
     return (
         <button
             type="button"
-            onMouseDown={e => { e.preventDefault(); onSelect(); }}
+            onMouseDown={e => {
+                e.preventDefault();
+                onSelect();
+            }}
             onMouseEnter={onHover}
             className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs transition-colors ${selected ? "bg-muted" : "hover:bg-muted/50"}`}
         >
             {icon}
             <span className="truncate">{label}</span>
-            {rightMeta && (
-                <span className="ml-auto shrink-0 text-[10px] text-muted-foreground/60 font-mono">
-                    {rightMeta}
-                </span>
-            )}
+            {rightMeta && <span className="text-muted-foreground/60 ml-auto shrink-0 font-mono text-[10px]">{rightMeta}</span>}
         </button>
     );
 }

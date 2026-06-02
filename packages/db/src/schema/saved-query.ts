@@ -16,9 +16,7 @@ export const savedQuery = pgTable(
         spaceId: text("space_id").references(() => space.id, { onDelete: "set null" }),
         createdAt: timestamp("created_at").defaultNow().notNull()
     },
-    table => [
-        index("saved_query_userId_idx").on(table.userId)
-    ]
+    table => [index("saved_query_userId_idx").on(table.userId)]
 );
 
 export const savedQueryRelations = relations(savedQuery, ({ one }) => ({

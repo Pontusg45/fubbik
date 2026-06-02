@@ -6,7 +6,7 @@ export function highlightMatches(text: string, query: string): React.ReactNode[]
     const parts = text.split(regex);
     return parts.map((part, i) =>
         regex.test(part) ? (
-            <mark key={i} className="bg-yellow-200 dark:bg-yellow-800 rounded px-0.5">
+            <mark key={i} className="rounded bg-yellow-200 px-0.5 dark:bg-yellow-800">
                 {part}
             </mark>
         ) : (

@@ -19,40 +19,36 @@ export const promptCommand = new Command("prompt")
     .description("Manage reusable prompt templates")
 
     .addCommand(
-        new Command("list")
-            .description("List all prompt templates")
-            .action(async (_opts, cmd) => {
-                const serverUrl = requireServer();
+        new Command("list").description("List all prompt templates").action(async (_opts, cmd) => {
+            const serverUrl = requireServer();
 
-                try {
-                    const res = await fetch(`${serverUrl}/api/chunks?tags=prompt&limit=50`);
-                    if (!res.ok) {
-                        outputError("Failed to fetch prompts");
-                        return;
-                    }
-                    const { chunks } = (await res.json()) as { chunks: any[] };
-
-                    if (isJson(cmd)) {
-                        console.log(JSON.stringify(chunks, null, 2));
-                        return;
-                    }
-
-                    if (chunks.length === 0) {
-                        console.error(formatDim("No prompt templates found. Create chunks with the 'prompt' tag."));
-                        return;
-                    }
-
-                    console.error(formatBold(`${chunks.length} prompt template(s):\n`));
-                    for (const c of chunks) {
-                        console.error(
-                            `  ${formatType(c.type)} ${formatBold(c.title)} ${formatDim(`(${c.id.slice(0, 8)})`)}`
-                        );
-                        if (c.summary) console.error(`    ${formatDim(c.summary)}`);
-                    }
-                } catch (e: any) {
-                    outputError(e.message);
+            try {
+                const res = await fetch(`${serverUrl}/api/chunks?tags=prompt&limit=50`);
+                if (!res.ok) {
+                    outputError("Failed to fetch prompts");
+                    return;
                 }
-            })
+                const { chunks } = (await res.json()) as { chunks: any[] };
+
+                if (isJson(cmd)) {
+                    console.log(JSON.stringify(chunks, null, 2));
+                    return;
+                }
+
+                if (chunks.length === 0) {
+                    console.error(formatDim("No prompt templates found. Create chunks with the 'prompt' tag."));
+                    return;
+                }
+
+                console.error(formatBold(`${chunks.length} prompt template(s):\n`));
+                for (const c of chunks) {
+                    console.error(`  ${formatType(c.type)} ${formatBold(c.title)} ${formatDim(`(${c.id.slice(0, 8)})`)}`);
+                    if (c.summary) console.error(`    ${formatDim(c.summary)}`);
+                }
+            } catch (e: any) {
+                outputError(e.message);
+            }
+        })
     )
 
     .addCommand(
@@ -75,9 +71,7 @@ export const promptCommand = new Command("prompt")
 
                     // Try search by title among prompt-tagged chunks
                     if (!chunk) {
-                        const searchRes = await fetch(
-                            `${serverUrl}/api/chunks?tags=prompt&search=${encodeURIComponent(name)}&limit=1`
-                        );
+                        const searchRes = await fetch(`${serverUrl}/api/chunks?tags=prompt&search=${encodeURIComponent(name)}&limit=1`);
                         if (searchRes.ok) {
                             const { chunks } = (await searchRes.json()) as { chunks: any[] };
                             if (chunks.length > 0) chunk = chunks[0];
@@ -114,10 +108,7 @@ export const promptCommand = new Command("prompt")
                 try {
                     let content = opts.content ?? "";
                     if (opts.contentFile) {
-                        content = readFileSync(
-                            opts.contentFile === "-" ? "/dev/stdin" : opts.contentFile,
-                            "utf-8"
-                        );
+                        content = readFileSync(opts.contentFile === "-" ? "/dev/stdin" : opts.contentFile, "utf-8");
                     }
 
                     const res = await fetch(`${serverUrl}/api/chunks`, {

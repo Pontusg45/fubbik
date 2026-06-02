@@ -1,8 +1,9 @@
 import { relations } from "drizzle-orm";
 import { index, integer, pgTable, primaryKey, text, timestamp, unique } from "drizzle-orm/pg-core";
+
 import { user } from "./auth";
-import { space } from "./space";
 import { requirement } from "./requirement";
+import { space } from "./space";
 
 export const behaviorMatrix = pgTable(
     "behavior_matrix",
@@ -21,10 +22,7 @@ export const behaviorMatrix = pgTable(
             .$onUpdate(() => new Date())
             .notNull()
     },
-    table => [
-        index("behavior_matrix_userId_idx").on(table.userId),
-        index("behavior_matrix_layer_idx").on(table.layer)
-    ]
+    table => [index("behavior_matrix_userId_idx").on(table.userId), index("behavior_matrix_layer_idx").on(table.layer)]
 );
 
 export const behaviorDimension = pgTable(
@@ -61,9 +59,7 @@ export const behaviorRule = pgTable(
             .$onUpdate(() => new Date())
             .notNull()
     },
-    table => [
-        index("behavior_rule_matrixId_idx").on(table.matrixId)
-    ]
+    table => [index("behavior_rule_matrixId_idx").on(table.matrixId)]
 );
 
 export const behaviorCell = pgTable(

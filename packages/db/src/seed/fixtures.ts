@@ -18,12 +18,13 @@
  *   await loadConnectionFixtures(ctx, links);
  */
 
+import { eq, and } from "drizzle-orm";
+
 import { chunk, chunkConnection } from "../schema/chunk";
 import { chunkSpace } from "../schema/space";
 import { chunkTag, tag } from "../schema/tag";
-import { eq, and } from "drizzle-orm";
-import { makeChunk, makeConnection } from "./factories";
 import type { SeedContext } from "./context";
+import { makeChunk, makeConnection } from "./factories";
 
 export interface ChunkFixture {
     /** Stable name for cross-references within this seed run. */
@@ -49,11 +50,7 @@ export interface ConnectionFixture {
  * Insert chunks from a fixture list, register their IDs under ctx.ids.chunks,
  * optionally link them to a codebase and apply tags.
  */
-export async function loadChunkFixtures(
-    ctx: SeedContext,
-    fixtures: ChunkFixture[],
-    opts?: { codebaseId?: string }
-): Promise<string[]> {
+export async function loadChunkFixtures(ctx: SeedContext, fixtures: ChunkFixture[], opts?: { codebaseId?: string }): Promise<string[]> {
     if (fixtures.length === 0) return [];
 
     const rows = fixtures.map(fx => {
@@ -75,9 +72,7 @@ export async function loadChunkFixtures(
 
     if (opts?.codebaseId) {
         const spaceId = opts.codebaseId;
-        await ctx.db
-            .insert(chunkSpace)
-            .values(rows.flatMap(r => r.id ? [{ chunkId: r.id, spaceId }] : []));
+        await ctx.db.insert(chunkSpace).values(rows.flatMap(r => (r.id ? [{ chunkId: r.id, spaceId }] : [])));
     }
 
     // Tag associations — one query per fixture that declares tags (usually small).
@@ -96,7 +91,7 @@ export async function loadChunkFixtures(
     }
 
     ctx.counters["chunks"] = (ctx.counters["chunks"] ?? 0) + rows.length;
-    return rows.flatMap(r => r.id ? [r.id] : []);
+    return rows.flatMap(r => (r.id ? [r.id] : []));
 }
 
 /**
@@ -104,10 +99,7 @@ export async function loadChunkFixtures(
  * then falls back to the raw string (so callers can pass IDs directly if they
  * prefer). Throws if a name doesn't resolve.
  */
-export async function loadConnectionFixtures(
-    ctx: SeedContext,
-    fixtures: ConnectionFixture[]
-): Promise<void> {
+export async function loadConnectionFixtures(ctx: SeedContext, fixtures: ConnectionFixture[]): Promise<void> {
     if (fixtures.length === 0) return;
 
     const rows = fixtures.map(fx => {

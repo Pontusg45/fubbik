@@ -8,24 +8,24 @@ export function listActivity(
     opts: { spaceId?: string; entityType?: string; entityId?: string; limit?: number; offset?: number } = {}
 ) {
     return dbEffect(() => {
-            const conditions = [eq(activityLog.userId, userId)];
-            if (opts.spaceId) {
-                conditions.push(eq(activityLog.spaceId, opts.spaceId));
-            }
-            if (opts.entityType) {
-                conditions.push(eq(activityLog.entityType, opts.entityType));
-            }
-            if (opts.entityId) {
-                conditions.push(eq(activityLog.entityId, opts.entityId));
-            }
-            return db
-                .select()
-                .from(activityLog)
-                .where(and(...conditions))
-                .orderBy(desc(activityLog.createdAt))
-                .limit(opts.limit ?? 50)
-                .offset(opts.offset ?? 0);
-        });
+        const conditions = [eq(activityLog.userId, userId)];
+        if (opts.spaceId) {
+            conditions.push(eq(activityLog.spaceId, opts.spaceId));
+        }
+        if (opts.entityType) {
+            conditions.push(eq(activityLog.entityType, opts.entityType));
+        }
+        if (opts.entityId) {
+            conditions.push(eq(activityLog.entityId, opts.entityId));
+        }
+        return db
+            .select()
+            .from(activityLog)
+            .where(and(...conditions))
+            .orderBy(desc(activityLog.createdAt))
+            .limit(opts.limit ?? 50)
+            .offset(opts.offset ?? 0);
+    });
 }
 
 export function createActivity(params: {
@@ -38,7 +38,7 @@ export function createActivity(params: {
     spaceId?: string;
 }) {
     return dbEffect(async () => {
-            const [created] = await db.insert(activityLog).values(params).returning();
-            return created!;
-        });
+        const [created] = await db.insert(activityLog).values(params).returning();
+        return created!;
+    });
 }

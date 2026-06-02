@@ -1,10 +1,14 @@
 # CLI `fubbik setup` Command Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to
+> implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add a `fubbik setup` CLI command that scans a project across three tiers (docs, metadata, code patterns), previews findings, and imports to the server in one confirmed shot.
+**Goal:** Add a `fubbik setup` CLI command that scans a project across three tiers (docs, metadata, code patterns), previews findings, and
+imports to the server in one confirmed shot.
 
-**Architecture:** A new `setup.ts` command orchestrates six phases (preflight → discover → preview → confirm → import → tips). Discovery logic lives in `apps/cli/src/lib/setup/` with one file per tier. The existing doc-scanning logic from `scanner.ts` is extracted to `tier1-docs.ts` and reused by both `init --scan` and `setup`.
+**Architecture:** A new `setup.ts` command orchestrates six phases (preflight → discover → preview → confirm → import → tips). Discovery
+logic lives in `apps/cli/src/lib/setup/` with one file per tier. The existing doc-scanning logic from `scanner.ts` is extracted to
+`tier1-docs.ts` and reused by both `init --scan` and `setup`.
 
 **Tech Stack:** Commander.js (CLI), picocolors (output), existing fubbik API endpoints (no new server code)
 
@@ -49,6 +53,7 @@ apps/cli/src/
 ## Task 1: Types and Shared Types File
 
 **Files:**
+
 - Create: `apps/cli/src/lib/setup/types.ts`
 
 - [ ] **Step 1: Create the types file**
@@ -90,7 +95,6 @@ export interface DiscoveryResult {
     tags: string[];
     tips: Tip[];
 }
-
 ```
 
 - [ ] **Step 2: Create the index re-export file**
@@ -98,18 +102,14 @@ export interface DiscoveryResult {
 ```typescript
 // apps/cli/src/lib/setup/index.ts
 
-export type {
-    DiscoveredChunk,
-    DiscoveredConnection,
-    DiscoveryResult,
-    Tip,
-} from "./types";
+export type { DiscoveredChunk, DiscoveredConnection, DiscoveryResult, Tip } from "./types";
 export { discover } from "./discover";
 export { formatPreview } from "./preview";
 export { importToServer } from "./import-chunks";
 ```
 
-Note: `discover`, `formatPreview`, and `importToServer` don't exist yet — they'll be created in subsequent tasks. This file will cause type errors until then, which is expected.
+Note: `discover`, `formatPreview`, and `importToServer` don't exist yet — they'll be created in subsequent tasks. This file will cause type
+errors until then, which is expected.
 
 - [ ] **Step 3: Commit**
 
@@ -123,6 +123,7 @@ git commit -m "feat(cli): add setup command types and index"
 ## Task 2: Extract Tier 1 Doc Scanning from scanner.ts
 
 **Files:**
+
 - Create: `apps/cli/src/lib/setup/tier1-docs.ts`
 - Create: `apps/cli/src/__tests__/setup/tier1-docs.test.ts`
 - Modify: `apps/cli/src/lib/scanner.ts`
@@ -186,8 +187,7 @@ describe("scanDocs", () => {
 
 - [ ] **Step 2: Run the test to verify it fails**
 
-Run: `cd apps/cli && pnpm vitest run src/__tests__/setup/tier1-docs.test.ts`
-Expected: FAIL — `scanDocs` does not exist yet.
+Run: `cd apps/cli && pnpm vitest run src/__tests__/setup/tier1-docs.test.ts` Expected: FAIL — `scanDocs` does not exist yet.
 
 - [ ] **Step 3: Create tier1-docs.ts by extracting from scanner.ts**
 
@@ -203,10 +203,7 @@ import { DEFAULT_THRESHOLDS } from "@fubbik/api/chunk-size";
 
 import type { DiscoveredChunk } from "./types";
 
-const IGNORE_DIRS = new Set([
-    "node_modules", ".git", ".turbo", "dist", "build",
-    ".next", ".output", ".cache", "coverage", ".fubbik",
-]);
+const IGNORE_DIRS = new Set(["node_modules", ".git", ".turbo", "dist", "build", ".next", ".output", ".cache", "coverage", ".fubbik"]);
 
 const DOC_FILES = ["README.md", "CLAUDE.md", "CONTRIBUTING.md", "Agents.md", "CHANGELOG.md"];
 
@@ -215,7 +212,7 @@ const DOC_FILE_TITLES: Record<string, string> = {
     "CLAUDE.md": "AI Assistant Instructions (CLAUDE.md)",
     "CONTRIBUTING.md": "Contributing Guide",
     "Agents.md": "AI Agents Documentation",
-    "CHANGELOG.md": "Changelog",
+    "CHANGELOG.md": "Changelog"
 };
 
 /**
@@ -238,7 +235,7 @@ export function scanDocs(dir: string): DiscoveredChunk[] {
                     tags: ["documentation", "project"],
                     tier: 1,
                     category: "documents",
-                    source: docFile,
+                    source: docFile
                 });
             }
         }
@@ -258,7 +255,7 @@ export function scanDocs(dir: string): DiscoveredChunk[] {
                 tags: ["documentation", ...pathTags(rel)],
                 tier: 1,
                 category: "documents",
-                source: rel,
+                source: rel
             });
         }
     }
@@ -279,7 +276,7 @@ export function scanDocs(dir: string): DiscoveredChunk[] {
             tags: ["documentation", ...pathTags(rel)],
             tier: 1,
             category: "documents",
-            source: rel,
+            source: rel
         });
     }
 
@@ -289,10 +286,7 @@ export function scanDocs(dir: string): DiscoveredChunk[] {
 // --- Auto-split ---
 
 function exceedsWarning(content: string): boolean {
-    return (
-        content.split("\n").length > DEFAULT_THRESHOLDS.warningLines ||
-        content.length > DEFAULT_THRESHOLDS.warningChars
-    );
+    return content.split("\n").length > DEFAULT_THRESHOLDS.warningLines || content.length > DEFAULT_THRESHOLDS.warningChars;
 }
 
 function splitByHeadings(content: string): { title: string; content: string }[] | null {
@@ -344,7 +338,7 @@ function addChunkWithAutoSplit(chunks: DiscoveredChunk[], chunk: DiscoveredChunk
             tags: chunk.tags,
             tier: 1,
             category: "documents",
-            source: chunk.source,
+            source: chunk.source
         });
     }
 }
@@ -358,9 +352,7 @@ function extractMarkdownTitle(content: string): string | null {
 
 function pathTags(relPath: string): string[] {
     const parts = relPath.split("/").filter(Boolean);
-    return parts
-        .filter(p => !["src", "lib", "index.ts", "package.json"].includes(p))
-        .slice(0, 3);
+    return parts.filter(p => !["src", "lib", "index.ts", "package.json"].includes(p)).slice(0, 3);
 }
 
 function findFiles(dir: string, ext: string, maxDepth = 5, depth = 0): string[] {
@@ -386,7 +378,8 @@ function findFiles(dir: string, ext: string, maxDepth = 5, depth = 0): string[] 
 
 - [ ] **Step 4: Update scanner.ts to delegate to tier1-docs.ts**
 
-Replace the duplicated logic in `scanner.ts` with an import from tier1-docs. The `ScannedChunk` type and `scanProject` function signature remain unchanged for backward compatibility:
+Replace the duplicated logic in `scanner.ts` with an import from tier1-docs. The `ScannedChunk` type and `scanProject` function signature
+remain unchanged for backward compatibility:
 
 ```typescript
 // apps/cli/src/lib/scanner.ts
@@ -419,20 +412,18 @@ export function scanProject(opts: ScanOptions): ScannedChunk[] {
         type: d.type,
         tags: d.tags,
         folder: ".",
-        isIndex: false,
+        isIndex: false
     }));
 }
 ```
 
 - [ ] **Step 5: Run the tier1-docs test to verify it passes**
 
-Run: `cd apps/cli && pnpm vitest run src/__tests__/setup/tier1-docs.test.ts`
-Expected: PASS — all 4 tests green.
+Run: `cd apps/cli && pnpm vitest run src/__tests__/setup/tier1-docs.test.ts` Expected: PASS — all 4 tests green.
 
 - [ ] **Step 6: Run existing tests to verify no regressions**
 
-Run: `cd apps/cli && pnpm vitest run`
-Expected: All existing tests pass (including the init/scan behavior via `scanner.ts`).
+Run: `cd apps/cli && pnpm vitest run` Expected: All existing tests pass (including the init/scan behavior via `scanner.ts`).
 
 - [ ] **Step 7: Commit**
 
@@ -446,6 +437,7 @@ git commit -m "refactor(cli): extract doc scanning to tier1-docs.ts for reuse"
 ## Task 3: Tier 2 — Project Metadata Scanner
 
 **Files:**
+
 - Create: `apps/cli/src/lib/setup/tier2-metadata.ts`
 - Create: `apps/cli/src/__tests__/setup/tier2-metadata.test.ts`
 
@@ -477,8 +469,8 @@ describe("scanMetadata", () => {
             join(TMP_DIR, "package.json"),
             JSON.stringify({
                 name: "my-app",
-                dependencies: { react: "^18.0.0", "next": "^14.0.0" },
-                devDependencies: { vitest: "^1.0.0", typescript: "^5.0.0" },
+                dependencies: { react: "^18.0.0", next: "^14.0.0" },
+                devDependencies: { vitest: "^1.0.0", typescript: "^5.0.0" }
             })
         );
         const { chunks, tips } = scanMetadata(TMP_DIR);
@@ -496,7 +488,7 @@ describe("scanMetadata", () => {
             join(TMP_DIR, "package.json"),
             JSON.stringify({
                 name: "my-monorepo",
-                workspaces: ["apps/*", "packages/*"],
+                workspaces: ["apps/*", "packages/*"]
             })
         );
         mkdirSync(join(TMP_DIR, "apps", "web"), { recursive: true });
@@ -557,8 +549,7 @@ describe("scanMetadata", () => {
 
 - [ ] **Step 2: Run the test to verify it fails**
 
-Run: `cd apps/cli && pnpm vitest run src/__tests__/setup/tier2-metadata.test.ts`
-Expected: FAIL — `scanMetadata` does not exist.
+Run: `cd apps/cli && pnpm vitest run src/__tests__/setup/tier2-metadata.test.ts` Expected: FAIL — `scanMetadata` does not exist.
 
 - [ ] **Step 3: Implement tier2-metadata.ts**
 
@@ -676,14 +667,12 @@ function buildTechStackChunk(pkg: PackageJson, dir: string): DiscoveredChunk | n
         tags,
         tier: 2,
         category: "tech-stack",
-        source: "package.json",
+        source: "package.json"
     };
 }
 
 function buildStructureChunk(pkg: PackageJson, dir: string): DiscoveredChunk | null {
-    const workspaceGlobs = Array.isArray(pkg.workspaces)
-        ? pkg.workspaces
-        : pkg.workspaces?.packages;
+    const workspaceGlobs = Array.isArray(pkg.workspaces) ? pkg.workspaces : pkg.workspaces?.packages;
     if (!workspaceGlobs) return null;
 
     // Find actual workspace packages
@@ -700,7 +689,7 @@ function buildStructureChunk(pkg: PackageJson, dir: string): DiscoveredChunk | n
                     const sub = readJson<{ name?: string }>(pkgPath);
                     packages.push({
                         name: sub?.name ?? entry.name,
-                        path: relative(dir, join(fullBase, entry.name)),
+                        path: relative(dir, join(fullBase, entry.name))
                     });
                 }
             }
@@ -717,7 +706,7 @@ function buildStructureChunk(pkg: PackageJson, dir: string): DiscoveredChunk | n
         ...workspaceGlobs.map(g => `- \`${g}\``),
         "",
         `## Packages\n`,
-        ...packages.map(p => `- **${p.name}** — \`${p.path}\``),
+        ...packages.map(p => `- **${p.name}** — \`${p.path}\``)
     ];
 
     return {
@@ -727,13 +716,12 @@ function buildStructureChunk(pkg: PackageJson, dir: string): DiscoveredChunk | n
         tags: ["structure", "monorepo"],
         tier: 2,
         category: "structure",
-        source: "package.json",
+        source: "package.json"
     };
 }
 
 function buildTsConfigChunk(dir: string): DiscoveredChunk | null {
-    const tsconfig = readJson<TsConfig>(join(dir, "tsconfig.json"))
-        ?? readJson<TsConfig>(join(dir, "jsconfig.json"));
+    const tsconfig = readJson<TsConfig>(join(dir, "tsconfig.json")) ?? readJson<TsConfig>(join(dir, "jsconfig.json"));
     if (!tsconfig) return null;
 
     const opts = tsconfig.compilerOptions ?? {};
@@ -758,14 +746,13 @@ function buildTsConfigChunk(dir: string): DiscoveredChunk | null {
         tags: ["config", "typescript"],
         tier: 2,
         category: "config",
-        source: existsSync(join(dir, "tsconfig.json")) ? "tsconfig.json" : "jsconfig.json",
+        source: existsSync(join(dir, "tsconfig.json")) ? "tsconfig.json" : "jsconfig.json"
     };
 }
 
 function buildEnvChunk(dir: string): DiscoveredChunk | null {
     // Only read example files — NEVER .env
-    const envFile = [".env.example", ".env.local.example", ".env.sample"]
-        .find(f => existsSync(join(dir, f)));
+    const envFile = [".env.example", ".env.local.example", ".env.sample"].find(f => existsSync(join(dir, f)));
     if (!envFile) return null;
 
     const content = readFileSync(join(dir, envFile), "utf-8");
@@ -783,7 +770,7 @@ function buildEnvChunk(dir: string): DiscoveredChunk | null {
 
     const lines = [
         `Environment variables required by this project (from \`${envFile}\`):\n`,
-        ...vars.map(v => v.comment ? `- \`${v.key}\` — ${v.comment}` : `- \`${v.key}\``),
+        ...vars.map(v => (v.comment ? `- \`${v.key}\` — ${v.comment}` : `- \`${v.key}\``))
     ];
 
     return {
@@ -793,7 +780,7 @@ function buildEnvChunk(dir: string): DiscoveredChunk | null {
         tags: ["config", "environment"],
         tier: 2,
         category: "config",
-        source: envFile,
+        source: envFile
     };
 }
 
@@ -801,8 +788,7 @@ function buildDockerChunk(dir: string): DiscoveredChunk | null {
     const lines: string[] = [];
 
     // docker-compose.yml
-    const composePath = ["docker-compose.yml", "docker-compose.yaml", "compose.yml", "compose.yaml"]
-        .find(f => existsSync(join(dir, f)));
+    const composePath = ["docker-compose.yml", "docker-compose.yaml", "compose.yml", "compose.yaml"].find(f => existsSync(join(dir, f)));
     if (composePath) {
         const content = readFileSync(join(dir, composePath), "utf-8");
         // Extract service names from YAML (simple regex, no full parser)
@@ -817,8 +803,7 @@ function buildDockerChunk(dir: string): DiscoveredChunk | null {
     // Dockerfile
     if (existsSync(join(dir, "Dockerfile"))) {
         const content = readFileSync(join(dir, "Dockerfile"), "utf-8");
-        const stages = [...content.matchAll(/^FROM\s+\S+(?:\s+AS\s+(\S+))?/gmi)]
-            .map(m => m[1] ?? "base");
+        const stages = [...content.matchAll(/^FROM\s+\S+(?:\s+AS\s+(\S+))?/gim)].map(m => m[1] ?? "base");
         if (stages.length > 0) {
             lines.push(`## Dockerfile Stages\n`);
             for (const stage of stages) lines.push(`- \`${stage}\``);
@@ -834,7 +819,7 @@ function buildDockerChunk(dir: string): DiscoveredChunk | null {
         tags: ["infrastructure", "docker"],
         tier: 2,
         category: "config",
-        source: composePath ?? "Dockerfile",
+        source: composePath ?? "Dockerfile"
     };
 }
 
@@ -844,11 +829,7 @@ function buildPipelineChunk(dir: string): DiscoveredChunk | null {
     if (turboConfig) {
         const tasks = Object.keys(turboConfig.tasks ?? turboConfig.pipeline ?? {});
         if (tasks.length === 0) return null;
-        const lines = [
-            `Build pipeline managed by **Turborepo**.\n`,
-            `## Tasks\n`,
-            ...tasks.map(t => `- \`${t}\``),
-        ];
+        const lines = [`Build pipeline managed by **Turborepo**.\n`, `## Tasks\n`, ...tasks.map(t => `- \`${t}\``)];
         return {
             title: "Build Pipeline (Turborepo)",
             content: lines.join("\n"),
@@ -856,7 +837,7 @@ function buildPipelineChunk(dir: string): DiscoveredChunk | null {
             tags: ["config", "build", "turborepo"],
             tier: 2,
             category: "config",
-            source: "turbo.json",
+            source: "turbo.json"
         };
     }
 
@@ -870,7 +851,7 @@ function buildPipelineChunk(dir: string): DiscoveredChunk | null {
             tags: ["config", "build", "nx"],
             tier: 2,
             category: "config",
-            source: "nx.json",
+            source: "nx.json"
         };
     }
 
@@ -913,20 +894,36 @@ function buildCiChunk(dir: string): DiscoveredChunk | null {
         tags: ["config", "ci"],
         tier: 2,
         category: "config",
-        source,
+        source
     };
 }
 
 // --- Detection helpers ---
 
-interface FrameworkInfo { name: string; version: string }
-interface LibraryInfo { name: string; version: string; category: string }
+interface FrameworkInfo {
+    name: string;
+    version: string;
+}
+interface LibraryInfo {
+    name: string;
+    version: string;
+    category: string;
+}
 
 const FRAMEWORK_PATTERNS: [string, string][] = [
-    ["next", "Next.js"], ["react", "React"], ["vue", "Vue"], ["svelte", "Svelte"],
-    ["@angular/core", "Angular"], ["elysia", "Elysia"], ["express", "Express"],
-    ["fastify", "Fastify"], ["hono", "Hono"], ["nuxt", "Nuxt"],
-    ["astro", "Astro"], ["remix", "Remix"], ["solid-js", "SolidJS"],
+    ["next", "Next.js"],
+    ["react", "React"],
+    ["vue", "Vue"],
+    ["svelte", "Svelte"],
+    ["@angular/core", "Angular"],
+    ["elysia", "Elysia"],
+    ["express", "Express"],
+    ["fastify", "Fastify"],
+    ["hono", "Hono"],
+    ["nuxt", "Nuxt"],
+    ["astro", "Astro"],
+    ["remix", "Remix"],
+    ["solid-js", "SolidJS"]
 ];
 
 const LIBRARY_PATTERNS: [string, string, string][] = [
@@ -941,14 +938,22 @@ const LIBRARY_PATTERNS: [string, string, string][] = [
     ["effect", "Effect", "fp"],
     ["zod", "Zod", "validation"],
     ["trpc", "tRPC", "api"],
-    ["@trpc/server", "tRPC", "api"],
+    ["@trpc/server", "tRPC", "api"]
 ];
 
 const DEV_TOOL_PATTERNS: [string, string][] = [
-    ["vitest", "Vitest"], ["jest", "Jest"], ["mocha", "Mocha"],
-    ["typescript", "TypeScript"], ["eslint", "ESLint"], ["prettier", "Prettier"],
-    ["biome", "Biome"], ["tsup", "tsup"], ["esbuild", "esbuild"],
-    ["vite", "Vite"], ["webpack", "Webpack"], ["rollup", "Rollup"],
+    ["vitest", "Vitest"],
+    ["jest", "Jest"],
+    ["mocha", "Mocha"],
+    ["typescript", "TypeScript"],
+    ["eslint", "ESLint"],
+    ["prettier", "Prettier"],
+    ["biome", "Biome"],
+    ["tsup", "tsup"],
+    ["esbuild", "esbuild"],
+    ["vite", "Vite"],
+    ["webpack", "Webpack"],
+    ["rollup", "Rollup"]
 ];
 
 function detectFrameworks(deps: Record<string, string>): FrameworkInfo[] {
@@ -1010,8 +1015,7 @@ function readJson<T>(path: string): T | null {
 
 - [ ] **Step 4: Run the test to verify it passes**
 
-Run: `cd apps/cli && pnpm vitest run src/__tests__/setup/tier2-metadata.test.ts`
-Expected: PASS — all 6 tests green.
+Run: `cd apps/cli && pnpm vitest run src/__tests__/setup/tier2-metadata.test.ts` Expected: PASS — all 6 tests green.
 
 - [ ] **Step 5: Commit**
 
@@ -1025,6 +1029,7 @@ git commit -m "feat(cli): add tier 2 project metadata scanner"
 ## Task 4: Tier 3 — Code Pattern Detection
 
 **Files:**
+
 - Create: `apps/cli/src/lib/setup/tier3-patterns.ts`
 - Create: `apps/cli/src/__tests__/setup/tier3-patterns.test.ts`
 
@@ -1052,10 +1057,7 @@ afterEach(() => {
 
 /** Helper: write a package.json with given deps */
 function writePkg(deps: Record<string, string> = {}, devDeps: Record<string, string> = {}) {
-    writeFileSync(
-        join(TMP_DIR, "package.json"),
-        JSON.stringify({ name: "test", dependencies: deps, devDependencies: devDeps })
-    );
+    writeFileSync(join(TMP_DIR, "package.json"), JSON.stringify({ name: "test", dependencies: deps, devDependencies: devDeps }));
 }
 
 describe("scanPatterns", () => {
@@ -1117,8 +1119,7 @@ describe("scanPatterns", () => {
 
 - [ ] **Step 2: Run the test to verify it fails**
 
-Run: `cd apps/cli && pnpm vitest run src/__tests__/setup/tier3-patterns.test.ts`
-Expected: FAIL — `scanPatterns` does not exist.
+Run: `cd apps/cli && pnpm vitest run src/__tests__/setup/tier3-patterns.test.ts` Expected: FAIL — `scanPatterns` does not exist.
 
 - [ ] **Step 3: Implement tier3-patterns.ts**
 
@@ -1159,12 +1160,12 @@ export function scanPatterns(dir: string): PatternResult {
         } else if (hasDep && !hasFiles) {
             tips.push({
                 title: detector.tipTitle,
-                detail: `${detector.depLabel} dependency found but no matching file structure detected`,
+                detail: `${detector.depLabel} dependency found but no matching file structure detected`
             });
         } else if (!hasDep && hasFiles) {
             tips.push({
                 title: detector.tipTitle,
-                detail: `${detector.fileLabel} found but no matching dependency in package.json`,
+                detail: `${detector.fileLabel} found but no matching dependency in package.json`
             });
         }
     }
@@ -1224,9 +1225,9 @@ const DETECTORS: PatternDetector[] = [
                 tier: 3,
                 category: "conventions",
                 source: `pattern:routes`,
-                appliesTo: files.paths.map(p => `${p}/**/*`),
+                appliesTo: files.paths.map(p => `${p}/**/*`)
             };
-        },
+        }
     },
 
     // Test patterns
@@ -1244,7 +1245,11 @@ const DETECTORS: PatternDetector[] = [
             });
             // Also look for *.test.ts / *.spec.ts files
             const testFiles = findFilesByPattern(dir, /\.(test|spec)\.(ts|tsx|js|jsx)$/);
-            return { found: found.length > 0 || testFiles.length > 0, paths: found, details: testFiles.length > 0 ? `${testFiles.length} test files` : undefined };
+            return {
+                found: found.length > 0 || testFiles.length > 0,
+                paths: found,
+                details: testFiles.length > 0 ? `${testFiles.length} test files` : undefined
+            };
         },
         buildChunk(dir, depName, version, files) {
             const lines = [`Tests use **${depName}** (${version}).`];
@@ -1261,9 +1266,9 @@ const DETECTORS: PatternDetector[] = [
                 tags: ["testing", "convention"],
                 tier: 3,
                 category: "conventions",
-                source: "pattern:testing",
+                source: "pattern:testing"
             };
-        },
+        }
     },
 
     // Database/ORM
@@ -1295,9 +1300,9 @@ const DETECTORS: PatternDetector[] = [
                 tier: 3,
                 category: "conventions",
                 source: "pattern:database",
-                appliesTo: files.paths.filter(p => !p.endsWith(".ts") && !p.endsWith(".js")).map(p => `${p}/**/*`),
+                appliesTo: files.paths.filter(p => !p.endsWith(".ts") && !p.endsWith(".js")).map(p => `${p}/**/*`)
             };
-        },
+        }
     },
 
     // Component structure
@@ -1326,9 +1331,9 @@ const DETECTORS: PatternDetector[] = [
                 tier: 3,
                 category: "structure",
                 source: "pattern:components",
-                appliesTo: files.paths.map(p => `${p}/**/*`),
+                appliesTo: files.paths.map(p => `${p}/**/*`)
             };
-        },
+        }
     },
 
     // Auth
@@ -1358,10 +1363,10 @@ const DETECTORS: PatternDetector[] = [
                 tier: 3,
                 category: "conventions",
                 source: "pattern:auth",
-                appliesTo: files.paths.filter(p => !p.endsWith(".ts") && !p.endsWith(".js")).map(p => `${p}/**/*`),
+                appliesTo: files.paths.filter(p => !p.endsWith(".ts") && !p.endsWith(".js")).map(p => `${p}/**/*`)
             };
-        },
-    },
+        }
+    }
 ];
 
 // --- File system helpers ---
@@ -1406,10 +1411,7 @@ function findFilesByPattern(dir: string, pattern: RegExp, maxDepth = 5, depth = 
     return results;
 }
 
-const IGNORE_DIRS = new Set([
-    "node_modules", ".git", ".turbo", "dist", "build",
-    ".next", ".output", ".cache", "coverage", ".fubbik",
-]);
+const IGNORE_DIRS = new Set(["node_modules", ".git", ".turbo", "dist", "build", ".next", ".output", ".cache", "coverage", ".fubbik"]);
 
 function readJson<T>(path: string): T | null {
     try {
@@ -1423,8 +1425,7 @@ function readJson<T>(path: string): T | null {
 
 - [ ] **Step 4: Run the test to verify it passes**
 
-Run: `cd apps/cli && pnpm vitest run src/__tests__/setup/tier3-patterns.test.ts`
-Expected: PASS — all 6 tests green.
+Run: `cd apps/cli && pnpm vitest run src/__tests__/setup/tier3-patterns.test.ts` Expected: PASS — all 6 tests green.
 
 - [ ] **Step 5: Commit**
 
@@ -1438,6 +1439,7 @@ git commit -m "feat(cli): add tier 3 code pattern scanner"
 ## Task 5: Connection Inference
 
 **Files:**
+
 - Create: `apps/cli/src/lib/setup/connections.ts`
 - Create: `apps/cli/src/__tests__/setup/connections.test.ts`
 
@@ -1459,7 +1461,7 @@ function makeChunk(overrides: Partial<DiscoveredChunk> & { title: string }): Dis
         tier: 1,
         category: "documents",
         source: "test",
-        ...overrides,
+        ...overrides
     };
 }
 
@@ -1467,59 +1469,59 @@ describe("inferConnections", () => {
     it("creates references connections for markdown links between tier-1 docs", () => {
         const chunks = [
             makeChunk({ title: "README", content: "See [Guide](./docs/guide.md) for details" }),
-            makeChunk({ title: "Guide", source: "docs/guide.md", content: "The guide" }),
+            makeChunk({ title: "Guide", source: "docs/guide.md", content: "The guide" })
         ];
         const connections = inferConnections(chunks);
         expect(connections).toContainEqual({
             sourceTitle: "README",
             targetTitle: "Guide",
-            relation: "references",
+            relation: "references"
         });
     });
 
     it("creates part_of connections for monorepo packages", () => {
         const chunks = [
             makeChunk({ title: "Project Structure (Monorepo)", tier: 2, category: "structure", content: "monorepo with 2 packages" }),
-            makeChunk({ title: "Tech Stack — @mono/web", tier: 2, category: "tech-stack", content: "web app" }),
+            makeChunk({ title: "Tech Stack — @mono/web", tier: 2, category: "tech-stack", content: "web app" })
         ];
         const connections = inferConnections(chunks);
         expect(connections).toContainEqual({
             sourceTitle: "Tech Stack — @mono/web",
             targetTitle: "Project Structure (Monorepo)",
-            relation: "part_of",
+            relation: "part_of"
         });
     });
 
     it("creates depends_on between routes and database", () => {
         const chunks = [
             makeChunk({ title: "Route Structure", tier: 3, category: "conventions", tags: ["routing"] }),
-            makeChunk({ title: "Database Schema", tier: 3, category: "conventions", tags: ["database"] }),
+            makeChunk({ title: "Database Schema", tier: 3, category: "conventions", tags: ["database"] })
         ];
         const connections = inferConnections(chunks);
         expect(connections).toContainEqual({
             sourceTitle: "Route Structure",
             targetTitle: "Database Schema",
-            relation: "depends_on",
+            relation: "depends_on"
         });
     });
 
     it("creates supports connections when tier2/3 keywords appear in tier1 content", () => {
         const chunks = [
             makeChunk({ title: "README", tier: 1, content: "This project uses Drizzle ORM for database access" }),
-            makeChunk({ title: "Database Schema", tier: 3, category: "conventions", tags: ["database"], content: "drizzle-orm" }),
+            makeChunk({ title: "Database Schema", tier: 3, category: "conventions", tags: ["database"], content: "drizzle-orm" })
         ];
         const connections = inferConnections(chunks);
         expect(connections).toContainEqual({
             sourceTitle: "Database Schema",
             targetTitle: "README",
-            relation: "supports",
+            relation: "supports"
         });
     });
 
     it("returns empty for unrelated chunks", () => {
         const chunks = [
             makeChunk({ title: "README", content: "A simple hello world project" }),
-            makeChunk({ title: "CI/CD Configuration", tier: 2, category: "config", content: "GitHub Actions" }),
+            makeChunk({ title: "CI/CD Configuration", tier: 2, category: "config", content: "GitHub Actions" })
         ];
         const connections = inferConnections(chunks);
         // CI/CD isn't mentioned in README content, so no supports connection
@@ -1530,8 +1532,7 @@ describe("inferConnections", () => {
 
 - [ ] **Step 2: Run the test to verify it fails**
 
-Run: `cd apps/cli && pnpm vitest run src/__tests__/setup/connections.test.ts`
-Expected: FAIL — `inferConnections` does not exist.
+Run: `cd apps/cli && pnpm vitest run src/__tests__/setup/connections.test.ts` Expected: FAIL — `inferConnections` does not exist.
 
 - [ ] **Step 3: Implement connections.ts**
 
@@ -1659,8 +1660,7 @@ function extractKeywords(chunk: DiscoveredChunk): string[] {
 
 - [ ] **Step 4: Run the test to verify it passes**
 
-Run: `cd apps/cli && pnpm vitest run src/__tests__/setup/connections.test.ts`
-Expected: PASS — all 5 tests green.
+Run: `cd apps/cli && pnpm vitest run src/__tests__/setup/connections.test.ts` Expected: PASS — all 5 tests green.
 
 - [ ] **Step 5: Commit**
 
@@ -1674,6 +1674,7 @@ git commit -m "feat(cli): add connection inference for setup discovery"
 ## Task 6: Tips Generation
 
 **Files:**
+
 - Create: `apps/cli/src/lib/setup/tips.ts`
 - Create: `apps/cli/src/__tests__/setup/tips.test.ts`
 
@@ -1691,7 +1692,7 @@ describe("mergeTips", () => {
     it("deduplicates tips with the same title", () => {
         const tips: Tip[] = [
             { title: "Testing Patterns", detail: "vitest dep found" },
-            { title: "Testing Patterns", detail: "test files found" },
+            { title: "Testing Patterns", detail: "test files found" }
         ];
         const merged = mergeTips(tips);
         expect(merged.length).toBe(1);
@@ -1701,7 +1702,7 @@ describe("mergeTips", () => {
     it("keeps tips with different titles", () => {
         const tips: Tip[] = [
             { title: "Testing Patterns", detail: "vitest found" },
-            { title: "Database Patterns", detail: "drizzle found" },
+            { title: "Database Patterns", detail: "drizzle found" }
         ];
         const merged = mergeTips(tips);
         expect(merged.length).toBe(2);
@@ -1715,8 +1716,7 @@ describe("mergeTips", () => {
 
 - [ ] **Step 2: Run the test to verify it fails**
 
-Run: `cd apps/cli && pnpm vitest run src/__tests__/setup/tips.test.ts`
-Expected: FAIL — `mergeTips` does not exist.
+Run: `cd apps/cli && pnpm vitest run src/__tests__/setup/tips.test.ts` Expected: FAIL — `mergeTips` does not exist.
 
 - [ ] **Step 3: Implement tips.ts**
 
@@ -1742,8 +1742,7 @@ export function mergeTips(tips: Tip[]): Tip[] {
 
 - [ ] **Step 4: Run the test to verify it passes**
 
-Run: `cd apps/cli && pnpm vitest run src/__tests__/setup/tips.test.ts`
-Expected: PASS.
+Run: `cd apps/cli && pnpm vitest run src/__tests__/setup/tips.test.ts` Expected: PASS.
 
 - [ ] **Step 5: Commit**
 
@@ -1757,6 +1756,7 @@ git commit -m "feat(cli): add tip deduplication for setup command"
 ## Task 7: Discovery Orchestrator
 
 **Files:**
+
 - Create: `apps/cli/src/lib/setup/discover.ts`
 - Create: `apps/cli/src/__tests__/setup/discover.test.ts`
 
@@ -1792,7 +1792,7 @@ describe("discover", () => {
             JSON.stringify({
                 name: "my-app",
                 dependencies: { react: "^18.0.0" },
-                devDependencies: { vitest: "^1.0.0" },
+                devDependencies: { vitest: "^1.0.0" }
             })
         );
         // Tier 3: test files + dep to trigger full detection
@@ -1820,8 +1820,7 @@ describe("discover", () => {
 
 - [ ] **Step 2: Run the test to verify it fails**
 
-Run: `cd apps/cli && pnpm vitest run src/__tests__/setup/discover.test.ts`
-Expected: FAIL — `discover` does not exist.
+Run: `cd apps/cli && pnpm vitest run src/__tests__/setup/discover.test.ts` Expected: FAIL — `discover` does not exist.
 
 - [ ] **Step 3: Implement discover.ts**
 
@@ -1838,10 +1837,7 @@ import { mergeTips } from "./tips";
 /**
  * Run all three discovery tiers and combine into a single result.
  */
-export function discover(
-    dir: string,
-    codebase: { name: string; remoteUrl: string | null; localPath: string },
-): DiscoveryResult {
+export function discover(dir: string, codebase: { name: string; remoteUrl: string | null; localPath: string }): DiscoveryResult {
     // Tier 1: Documents
     const tier1Chunks = scanDocs(dir);
 
@@ -1867,15 +1863,14 @@ export function discover(
         chunks: allChunks,
         connections,
         tags,
-        tips,
+        tips
     };
 }
 ```
 
 - [ ] **Step 4: Run the test to verify it passes**
 
-Run: `cd apps/cli && pnpm vitest run src/__tests__/setup/discover.test.ts`
-Expected: PASS.
+Run: `cd apps/cli && pnpm vitest run src/__tests__/setup/discover.test.ts` Expected: PASS.
 
 - [ ] **Step 5: Commit**
 
@@ -1889,6 +1884,7 @@ git commit -m "feat(cli): add discovery orchestrator combining all tiers"
 ## Task 8: Preview Table Formatter
 
 **Files:**
+
 - Create: `apps/cli/src/lib/setup/preview.ts`
 - Create: `apps/cli/src/__tests__/setup/preview.test.ts`
 
@@ -1909,7 +1905,7 @@ function makeChunk(overrides: Partial<DiscoveredChunk> & { title: string; catego
         tags: [],
         tier: 1,
         source: "test",
-        ...overrides,
+        ...overrides
     };
 }
 
@@ -1918,7 +1914,7 @@ describe("formatPreview", () => {
         const chunks: DiscoveredChunk[] = [
             makeChunk({ title: "README", category: "documents" }),
             makeChunk({ title: "Guide", category: "documents" }),
-            makeChunk({ title: "Tech Stack", category: "tech-stack" }),
+            makeChunk({ title: "Tech Stack", category: "tech-stack" })
         ];
         const output = formatPreview(chunks, [], []);
         expect(output).toContain("Documents");
@@ -1929,12 +1925,10 @@ describe("formatPreview", () => {
     });
 
     it("shows connection count", () => {
-        const chunks: DiscoveredChunk[] = [
-            makeChunk({ title: "A", category: "documents" }),
-        ];
+        const chunks: DiscoveredChunk[] = [makeChunk({ title: "A", category: "documents" })];
         const connections: DiscoveredConnection[] = [
             { sourceTitle: "A", targetTitle: "B", relation: "references" },
-            { sourceTitle: "C", targetTitle: "D", relation: "depends_on" },
+            { sourceTitle: "C", targetTitle: "D", relation: "depends_on" }
         ];
         const output = formatPreview(chunks, connections, []);
         expect(output).toContain("2 connections");
@@ -1943,7 +1937,7 @@ describe("formatPreview", () => {
     it("shows example titles per category", () => {
         const chunks: DiscoveredChunk[] = [
             makeChunk({ title: "README", category: "documents" }),
-            makeChunk({ title: "Contributing Guide", category: "documents" }),
+            makeChunk({ title: "Contributing Guide", category: "documents" })
         ];
         const output = formatPreview(chunks, [], []);
         expect(output).toContain("README");
@@ -1953,8 +1947,7 @@ describe("formatPreview", () => {
 
 - [ ] **Step 2: Run the test to verify it fails**
 
-Run: `cd apps/cli && pnpm vitest run src/__tests__/setup/preview.test.ts`
-Expected: FAIL — `formatPreview` does not exist.
+Run: `cd apps/cli && pnpm vitest run src/__tests__/setup/preview.test.ts` Expected: FAIL — `formatPreview` does not exist.
 
 - [ ] **Step 3: Implement preview.ts**
 
@@ -1966,25 +1959,19 @@ import pc from "picocolors";
 import type { DiscoveredChunk, DiscoveredConnection } from "./types";
 
 const CATEGORY_LABELS: Record<DiscoveredChunk["category"], string> = {
-    "documents": "Documents",
+    documents: "Documents",
     "tech-stack": "Tech stack",
-    "structure": "Structure",
-    "conventions": "Conventions",
-    "config": "Config",
+    structure: "Structure",
+    conventions: "Conventions",
+    config: "Config"
 };
 
-const CATEGORY_ORDER: DiscoveredChunk["category"][] = [
-    "documents", "tech-stack", "structure", "conventions", "config",
-];
+const CATEGORY_ORDER: DiscoveredChunk["category"][] = ["documents", "tech-stack", "structure", "conventions", "config"];
 
 /**
  * Format the discovery preview as a human-readable summary table.
  */
-export function formatPreview(
-    chunks: DiscoveredChunk[],
-    connections: DiscoveredConnection[],
-    tags: string[],
-): string {
+export function formatPreview(chunks: DiscoveredChunk[], connections: DiscoveredConnection[], tags: string[]): string {
     const total = chunks.length;
 
     // Group by category
@@ -2007,7 +1994,7 @@ export function formatPreview(
         if (!catChunks || catChunks.length === 0) continue;
         const examples = catChunks
             .slice(0, 3)
-            .map(c => c.title.length > 25 ? c.title.slice(0, 23) + ".." : c.title)
+            .map(c => (c.title.length > 25 ? c.title.slice(0, 23) + ".." : c.title))
             .join(", ");
         rows.push([CATEGORY_LABELS[cat], catChunks.length, examples]);
     }
@@ -2042,18 +2029,14 @@ export function formatPreview(
 /**
  * Format the discovery result as a JSON-serializable object (for --json mode).
  */
-export function formatPreviewJson(
-    chunks: DiscoveredChunk[],
-    connections: DiscoveredConnection[],
-    tags: string[],
-): Record<string, unknown> {
+export function formatPreviewJson(chunks: DiscoveredChunk[], connections: DiscoveredConnection[], tags: string[]): Record<string, unknown> {
     const groups: Record<string, { count: number; titles: string[] }> = {};
     for (const cat of CATEGORY_ORDER) {
         const catChunks = chunks.filter(c => c.category === cat);
         if (catChunks.length > 0) {
             groups[cat] = {
                 count: catChunks.length,
-                titles: catChunks.map(c => c.title),
+                titles: catChunks.map(c => c.title)
             };
         }
     }
@@ -2061,15 +2044,14 @@ export function formatPreviewJson(
         totalChunks: chunks.length,
         groups,
         connections: connections.length,
-        tags,
+        tags
     };
 }
 ```
 
 - [ ] **Step 4: Run the test to verify it passes**
 
-Run: `cd apps/cli && pnpm vitest run src/__tests__/setup/preview.test.ts`
-Expected: PASS.
+Run: `cd apps/cli && pnpm vitest run src/__tests__/setup/preview.test.ts` Expected: PASS.
 
 - [ ] **Step 5: Commit**
 
@@ -2083,11 +2065,13 @@ git commit -m "feat(cli): add preview table formatter for setup command"
 ## Task 9: Server Import Logic
 
 **Files:**
+
 - Create: `apps/cli/src/lib/setup/import-chunks.ts`
 
 - [ ] **Step 1: Implement import-chunks.ts**
 
-This module handles the server API calls to import discovered chunks and connections. No unit test for this file — it's a thin HTTP client that will be covered by the integration/e2e-style testing of the setup command itself.
+This module handles the server API calls to import discovered chunks and connections. No unit test for this file — it's a thin HTTP client
+that will be covered by the integration/e2e-style testing of the setup command itself.
 
 ```typescript
 // apps/cli/src/lib/setup/import-chunks.ts
@@ -2117,7 +2101,7 @@ export async function importToServer(
     chunks: DiscoveredChunk[],
     connections: DiscoveredConnection[],
     dir: string,
-    onProgress?: (message: string) => void,
+    onProgress?: (message: string) => void
 ): Promise<ImportResult> {
     const errors: { item: string; error: string }[] = [];
     let chunksCreated = 0;
@@ -2151,7 +2135,7 @@ export async function importToServer(
                 const res = await fetch(`${serverUrl}/api/chunks/import-docs`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ files, codebaseId }),
+                    body: JSON.stringify({ files, codebaseId })
                 });
 
                 if (res.ok) {
@@ -2184,13 +2168,13 @@ export async function importToServer(
                         type: chunk.type,
                         tags: chunk.tags,
                         codebaseIds: [codebaseId],
-                        origin: "ai",
+                        origin: "ai"
                     };
 
                     const res = await fetch(`${serverUrl}/api/chunks`, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify(body),
+                        body: JSON.stringify(body)
                     });
 
                     if (!res.ok) {
@@ -2200,7 +2184,7 @@ export async function importToServer(
                     const data = (await res.json()) as { id: string };
                     titleToId.set(chunk.title, data.id);
                     return data;
-                }),
+                })
             );
 
             for (let j = 0; j < results.length; j++) {
@@ -2249,8 +2233,8 @@ export async function importToServer(
                         sourceId,
                         targetId,
                         relation: conn.relation,
-                        origin: "ai",
-                    }),
+                        origin: "ai"
+                    })
                 });
 
                 if (res.ok) {
@@ -2280,6 +2264,7 @@ git commit -m "feat(cli): add server import logic for setup command"
 ## Task 10: Update Index Re-exports
 
 **Files:**
+
 - Modify: `apps/cli/src/lib/setup/index.ts`
 
 - [ ] **Step 1: Update index.ts with all exports**
@@ -2289,12 +2274,7 @@ Now that all modules exist, update the barrel file:
 ```typescript
 // apps/cli/src/lib/setup/index.ts
 
-export type {
-    DiscoveredChunk,
-    DiscoveredConnection,
-    DiscoveryResult,
-    Tip,
-} from "./types";
+export type { DiscoveredChunk, DiscoveredConnection, DiscoveryResult, Tip } from "./types";
 export { discover } from "./discover";
 export { formatPreview, formatPreviewJson } from "./preview";
 export { importToServer } from "./import-chunks";
@@ -2312,6 +2292,7 @@ git commit -m "chore(cli): update setup index exports"
 ## Task 11: The Setup Command
 
 **Files:**
+
 - Create: `apps/cli/src/commands/setup.ts`
 - Modify: `apps/cli/src/index.ts`
 - Modify: `apps/cli/src/__tests__/commands.test.ts`
@@ -2402,8 +2383,8 @@ export const setupCommand = new Command("setup")
                     body: JSON.stringify({
                         name: codebaseName!,
                         remoteUrl: remoteUrl ?? undefined,
-                        localPaths: [localPath],
-                    }),
+                        localPaths: [localPath]
+                    })
                 });
                 if (res.ok) {
                     const data = (await res.json()) as { id: string };
@@ -2419,7 +2400,9 @@ export const setupCommand = new Command("setup")
         }
 
         if (!jsonMode) {
-            console.log(`\n${formatBold("📍")} Detected codebase: ${formatBold(codebaseName!)}${remoteUrl ? ` (${formatDim(remoteUrl)})` : ""}\n`);
+            console.log(
+                `\n${formatBold("📍")} Detected codebase: ${formatBold(codebaseName!)}${remoteUrl ? ` (${formatDim(remoteUrl)})` : ""}\n`
+            );
         }
 
         // Check if codebase already has chunks
@@ -2452,7 +2435,7 @@ export const setupCommand = new Command("setup")
         const result = discover(localPath, {
             name: codebaseName!,
             remoteUrl,
-            localPath,
+            localPath
         });
 
         if (result.chunks.length === 0) {
@@ -2504,7 +2487,7 @@ export const setupCommand = new Command("setup")
             result.chunks,
             result.connections,
             localPath,
-            jsonMode ? undefined : (msg) => console.log(`  ${formatDim(msg)}`),
+            jsonMode ? undefined : msg => console.log(`  ${formatDim(msg)}`)
         );
 
         if (!jsonMode) {
@@ -2540,12 +2523,16 @@ export const setupCommand = new Command("setup")
 
         // JSON output
         if (jsonMode) {
-            output(cmd, {
-                chunksCreated: importResult.chunksCreated,
-                connectionsCreated: importResult.connectionsCreated,
-                errors: importResult.errors,
-                tips: result.tips,
-            }, "");
+            output(
+                cmd,
+                {
+                    chunksCreated: importResult.chunksCreated,
+                    connectionsCreated: importResult.connectionsCreated,
+                    errors: importResult.errors,
+                    tips: result.tips
+                },
+                ""
+            );
         }
     });
 ```
@@ -2555,11 +2542,13 @@ export const setupCommand = new Command("setup")
 Add the import and registration to `apps/cli/src/index.ts`:
 
 Add after the existing imports (around line 30):
+
 ```typescript
 import { setupCommand } from "./commands/setup";
 ```
 
 Add after the `initCommand` registration (around line 70):
+
 ```typescript
 program.addCommand(setupCommand);
 ```
@@ -2569,26 +2558,26 @@ program.addCommand(setupCommand);
 Add to the existing `describe("CLI help output", ...)` block in `apps/cli/src/__tests__/commands.test.ts`:
 
 ```typescript
-    it("setup --help shows options", () => {
-        const { stdout } = runCli("setup --help");
-        expect(stdout).toContain("--server");
-        expect(stdout).toContain("--dry-run");
-        expect(stdout).toContain("--yes");
-        expect(stdout).toContain("--force");
-    });
+it("setup --help shows options", () => {
+    const { stdout } = runCli("setup --help");
+    expect(stdout).toContain("--server");
+    expect(stdout).toContain("--dry-run");
+    expect(stdout).toContain("--yes");
+    expect(stdout).toContain("--force");
+});
 ```
 
 Also update the root help test to include `setup`:
 
 In the `"root --help lists all commands"` test, add:
+
 ```typescript
-        expect(stdout).toContain("setup");
+expect(stdout).toContain("setup");
 ```
 
 - [ ] **Step 4: Run all tests**
 
-Run: `cd apps/cli && pnpm vitest run`
-Expected: All tests pass, including the new setup help test.
+Run: `cd apps/cli && pnpm vitest run` Expected: All tests pass, including the new setup help test.
 
 - [ ] **Step 5: Commit**
 
@@ -2605,24 +2594,23 @@ git commit -m "feat(cli): add fubbik setup command with full phase orchestration
 
 - [ ] **Step 1: Run type checking**
 
-Run: `pnpm run check-types`
-Expected: No type errors. If there are errors, fix them.
+Run: `pnpm run check-types` Expected: No type errors. If there are errors, fix them.
 
 - [ ] **Step 2: Run linting**
 
-Run: `pnpm lint`
-Expected: No lint errors in the new files.
+Run: `pnpm lint` Expected: No lint errors in the new files.
 
 - [ ] **Step 3: Run all CLI tests**
 
-Run: `cd apps/cli && pnpm vitest run`
-Expected: All tests pass.
+Run: `cd apps/cli && pnpm vitest run` Expected: All tests pass.
 
 - [ ] **Step 4: Test dry-run manually (if server running)**
 
-Run: `cd /tmp && mkdir test-project && cd test-project && git init && echo '# Test' > README.md && echo '{"name":"test","dependencies":{"react":"^18.0.0"},"devDependencies":{"vitest":"^1.0.0"}}' > package.json && mkdir -p src/__tests__ && echo 'test("ok", () => {})' > src/__tests__/app.test.ts && fubbik setup --server http://localhost:3000 --dry-run`
+Run:
+`cd /tmp && mkdir test-project && cd test-project && git init && echo '# Test' > README.md && echo '{"name":"test","dependencies":{"react":"^18.0.0"},"devDependencies":{"vitest":"^1.0.0"}}' > package.json && mkdir -p src/__tests__ && echo 'test("ok", () => {})' > src/__tests__/app.test.ts && fubbik setup --server http://localhost:3000 --dry-run`
 
-Expected: Shows the preview table with at least a README doc chunk, a tech stack chunk (react), and a testing convention chunk. Does not import anything.
+Expected: Shows the preview table with at least a README doc chunk, a tech stack chunk (react), and a testing convention chunk. Does not
+import anything.
 
 - [ ] **Step 5: Clean up and final commit if any fixes were needed**
 

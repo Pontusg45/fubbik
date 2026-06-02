@@ -3,9 +3,9 @@ import { createFileRoute, useSearch } from "@tanstack/react-router";
 import { Columns2 } from "lucide-react";
 import { useMemo, useState } from "react";
 
+import { MarkdownRenderer } from "@/components/markdown-renderer";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardPanel } from "@/components/ui/card";
-import { MarkdownRenderer } from "@/components/markdown-renderer";
 import { PageContainer, PageHeader, PageLoading } from "@/components/ui/page";
 import { getUser } from "@/functions/get-user";
 import { api } from "@/utils/api";
@@ -91,9 +91,7 @@ function ChunkSelector({
                 </div>
             )}
             {value && !search && (
-                <p className="text-muted-foreground text-xs">
-                    Selected: {chunks.find(c => c.id === value)?.title ?? value}
-                </p>
+                <p className="text-muted-foreground text-xs">Selected: {chunks.find(c => c.id === value)?.title ?? value}</p>
             )}
         </div>
     );
@@ -201,19 +199,13 @@ function ComparePage() {
             {leftQuery.data && rightQuery.data && (
                 <>
                     <div className="mb-4 flex items-center gap-3">
-                        <button
-                            onClick={() => setShowDiff(d => !d)}
-                            className="text-sm font-medium underline"
-                        >
+                        <button onClick={() => setShowDiff(d => !d)} className="text-sm font-medium underline">
                             {showDiff ? "Show rendered" : "Show diff"}
                         </button>
                     </div>
 
                     {showDiff ? (
-                        <DiffView
-                            leftContent={leftQuery.data.content}
-                            rightContent={rightQuery.data.content}
-                        />
+                        <DiffView leftContent={leftQuery.data.content} rightContent={rightQuery.data.content} />
                     ) : (
                         <div className="grid grid-cols-2 gap-6">
                             <Card>

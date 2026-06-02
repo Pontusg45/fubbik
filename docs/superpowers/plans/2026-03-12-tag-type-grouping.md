@@ -1,12 +1,17 @@
 # Tag Type Grouping Implementation Plan
 
-> **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to
+> implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Normalize tags into structured tables with user-defined tag types, and add visual tag-type-based grouping to the graph view with convex hull background regions and cross-group edge dimming.
+**Goal:** Normalize tags into structured tables with user-defined tag types, and add visual tag-type-based grouping to the graph view with
+convex hull background regions and cross-group edge dimming.
 
-**Architecture:** Three new DB tables (`tag_type`, `tag`, `chunk_tag`) replace the JSONB `tags` column. The graph API returns tag/type data alongside chunks. The force layout gains tag-based attractor forces, and an SVG overlay renders convex hull regions behind grouped nodes. A new filter panel section lets users toggle grouping by tag type.
+**Architecture:** Three new DB tables (`tag_type`, `tag`, `chunk_tag`) replace the JSONB `tags` column. The graph API returns tag/type data
+alongside chunks. The force layout gains tag-based attractor forces, and an SVG overlay renders convex hull regions behind grouped nodes. A
+new filter panel section lets users toggle grouping by tag type.
 
-**Tech Stack:** Drizzle ORM (schema + migration), Elysia (routes), Effect (error handling), @xyflow/react (graph rendering), SVG (convex hull regions)
+**Tech Stack:** Drizzle ORM (schema + migration), Elysia (routes), Effect (error handling), @xyflow/react (graph rendering), SVG (convex
+hull regions)
 
 **Spec:** `docs/superpowers/specs/2026-03-12-tag-type-grouping-design.md`
 
@@ -17,6 +22,7 @@
 ### Task 1: Create tag_type schema
 
 **Files:**
+
 - Create: `packages/db/src/schema/tag.ts`
 - Modify: `packages/db/src/schema/index.ts`
 
@@ -89,18 +95,17 @@ export const chunkTagRelations = relations(chunkTag, ({ one }) => ({
 }));
 ```
 
-
 - [ ] **Step 2: Export from schema index**
 
 Add to `packages/db/src/schema/index.ts`:
+
 ```typescript
 export * from "./tag";
 ```
 
 - [ ] **Step 3: Push schema to database**
 
-Run: `pnpm db:push`
-Expected: Tables `tag_type`, `tag`, `chunk_tag` created successfully.
+Run: `pnpm db:push` Expected: Tables `tag_type`, `tag`, `chunk_tag` created successfully.
 
 - [ ] **Step 4: Commit**
 
@@ -114,6 +119,7 @@ git commit -m "feat: add tag_type, tag, and chunk_tag schema tables"
 ### Task 2: Create tag type repository
 
 **Files:**
+
 - Create: `packages/db/src/repository/tag-type.ts`
 - Modify: `packages/db/src/repository/index.ts`
 
@@ -176,6 +182,7 @@ export function deleteTagType(id: string, userId: string) {
 - [ ] **Step 2: Export from repository index**
 
 Add to `packages/db/src/repository/index.ts`:
+
 ```typescript
 export * from "./tag-type";
 ```
@@ -192,6 +199,7 @@ git commit -m "feat: add tag type repository with CRUD operations"
 ### Task 3: Create tag repository (with chunk_tag join operations)
 
 **Files:**
+
 - Create: `packages/db/src/repository/tag-new.ts`
 - Modify: `packages/db/src/repository/index.ts`
 
@@ -330,6 +338,7 @@ export function findOrCreateTag(name: string, userId: string) {
 - [ ] **Step 2: Export from repository index**
 
 Add to `packages/db/src/repository/index.ts`:
+
 ```typescript
 export * from "./tag-new";
 ```
@@ -346,6 +355,7 @@ git commit -m "feat: add tag and chunk_tag repository with join operations"
 ### Task 4: Migrate existing JSONB tags to new tables
 
 **Files:**
+
 - Create: `packages/db/src/migrate-tags.ts` (one-time migration script)
 
 - [ ] **Step 1: Write the migration script**
@@ -361,9 +371,7 @@ async function migrateTags() {
     console.log("Starting tag migration...");
 
     // 1. Get all chunks with their JSONB tags
-    const chunks = await db
-        .select({ id: chunk.id, tags: chunk.tags, userId: chunk.userId })
-        .from(chunk);
+    const chunks = await db.select({ id: chunk.id, tags: chunk.tags, userId: chunk.userId }).from(chunk);
 
     // 2. Collect unique tag names per user
     const userTags = new Map<string, Set<string>>();
@@ -418,8 +426,7 @@ migrateTags()
 
 - [ ] **Step 2: Run the migration**
 
-Run: `cd packages/db && npx tsx src/migrate-tags.ts`
-Expected: "Migration complete" with count of tags and associations.
+Run: `cd packages/db && npx tsx src/migrate-tags.ts` Expected: "Migration complete" with count of tags and associations.
 
 - [ ] **Step 3: Verify migration**
 
@@ -439,6 +446,7 @@ git commit -m "feat: add one-time migration script for JSONB tags to normalized 
 ### Task 5: Create tag type API routes
 
 **Files:**
+
 - Create: `packages/api/src/tag-types/service.ts`
 - Create: `packages/api/src/tag-types/routes.ts`
 - Modify: `packages/api/src/index.ts`
@@ -447,7 +455,12 @@ git commit -m "feat: add one-time migration script for JSONB tags to normalized 
 
 ```typescript
 // packages/api/src/tag-types/service.ts
-import { createTagType as createTagTypeRepo, deleteTagType as deleteTagTypeRepo, getTagTypesForUser, updateTagType as updateTagTypeRepo } from "@fubbik/db/repository";
+import {
+    createTagType as createTagTypeRepo,
+    deleteTagType as deleteTagTypeRepo,
+    getTagTypesForUser,
+    updateTagType as updateTagTypeRepo
+} from "@fubbik/db/repository";
 import { Effect } from "effect";
 
 import { NotFoundError } from "../errors";
@@ -494,7 +507,11 @@ export const tagTypeRoutes = new Elysia()
             Effect.runPromise(
                 requireSession(ctx).pipe(
                     Effect.flatMap(session => tagTypeService.createTagType(session.user.id, ctx.body)),
-                    Effect.tap(() => Effect.sync(() => { ctx.set.status = 201; }))
+                    Effect.tap(() =>
+                        Effect.sync(() => {
+                            ctx.set.status = 201;
+                        })
+                    )
                 )
             ),
         {
@@ -508,9 +525,7 @@ export const tagTypeRoutes = new Elysia()
         "/tag-types/:id",
         ctx =>
             Effect.runPromise(
-                requireSession(ctx).pipe(
-                    Effect.flatMap(session => tagTypeService.updateTagType(ctx.params.id, session.user.id, ctx.body))
-                )
+                requireSession(ctx).pipe(Effect.flatMap(session => tagTypeService.updateTagType(ctx.params.id, session.user.id, ctx.body)))
             ),
         {
             body: t.Object({
@@ -545,6 +560,7 @@ git commit -m "feat: add tag type CRUD API routes"
 ### Task 6: Update tag API routes to use new tables
 
 **Files:**
+
 - Create: `packages/api/src/tags/service-new.ts` (replaces current service)
 - Modify: `packages/api/src/tags/routes.ts`
 
@@ -605,16 +621,18 @@ import { requireSession } from "../require-session";
 import * as tagService from "./service-new";
 
 export const tagRoutes = new Elysia()
-    .get("/tags", ctx =>
-        Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(session => tagService.getUserTags(session.user.id))))
-    )
+    .get("/tags", ctx => Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(session => tagService.getUserTags(session.user.id)))))
     .post(
         "/tags",
         ctx =>
             Effect.runPromise(
                 requireSession(ctx).pipe(
                     Effect.flatMap(session => tagService.createUserTag(session.user.id, ctx.body)),
-                    Effect.tap(() => Effect.sync(() => { ctx.set.status = 201; }))
+                    Effect.tap(() =>
+                        Effect.sync(() => {
+                            ctx.set.status = 201;
+                        })
+                    )
                 )
             ),
         {
@@ -628,9 +646,7 @@ export const tagRoutes = new Elysia()
         "/tags/:id",
         ctx =>
             Effect.runPromise(
-                requireSession(ctx).pipe(
-                    Effect.flatMap(session => tagService.updateUserTag(ctx.params.id, session.user.id, ctx.body))
-                )
+                requireSession(ctx).pipe(Effect.flatMap(session => tagService.updateUserTag(ctx.params.id, session.user.id, ctx.body)))
             ),
         {
             body: t.Object({
@@ -665,6 +681,7 @@ git commit -m "feat: update tag routes to use normalized tag tables, remove old 
 ### Task 7: Extend graph API to include tag data
 
 **Files:**
+
 - Modify: `packages/api/src/graph/service.ts`
 - Modify: `packages/db/src/repository/graph.ts`
 
@@ -737,8 +754,8 @@ export function getUserGraph(userId?: string) {
 
 - [ ] **Step 3: Verify the API returns tag data**
 
-Run: `pnpm dev` then `curl http://localhost:3000/api/graph | jq '.tagTypes, .chunkTags[0:2]'`
-Expected: Tag types array and chunk tag associations with type info.
+Run: `pnpm dev` then `curl http://localhost:3000/api/graph | jq '.tagTypes, .chunkTags[0:2]'` Expected: Tag types array and chunk tag
+associations with type info.
 
 - [ ] **Step 4: Commit**
 
@@ -752,9 +769,11 @@ git commit -m "feat: extend graph API to include tag type and chunk tag data"
 ### Task 8: Update chunk create/update to use normalized tags
 
 **Files:**
+
 - Modify: `packages/api/src/chunks/service.ts`
 
-The chunk create/update routes currently accept `tags: string[]` in the body. We keep that interface but internally resolve tag names to the `tag` table and create `chunk_tag` associations.
+The chunk create/update routes currently accept `tags: string[]` in the body. We keep that interface but internally resolve tag names to the
+`tag` table and create `chunk_tag` associations.
 
 - [ ] **Step 1: Update createChunk**
 
@@ -776,8 +795,16 @@ export function createChunk(userId: string, body: { title: string; content?: str
         Effect.tap(() => {
             // Sync to normalized tag tables
             if (body.tags && body.tags.length > 0) {
-                return Effect.all(body.tags.map(name => findOrCreateTag(name, userId)), { concurrency: 5 }).pipe(
-                    Effect.flatMap(tags => setChunkTags(id, tags.map(t => t.id)))
+                return Effect.all(
+                    body.tags.map(name => findOrCreateTag(name, userId)),
+                    { concurrency: 5 }
+                ).pipe(
+                    Effect.flatMap(tags =>
+                        setChunkTags(
+                            id,
+                            tags.map(t => t.id)
+                        )
+                    )
                 );
             }
             return Effect.void;
@@ -826,6 +853,7 @@ git commit -m "feat: sync chunk tags to normalized tables on create/update"
 ### Task 9: Drop JSONB tags column from chunk table
 
 **Files:**
+
 - Modify: `packages/db/src/schema/chunk.ts`
 - Modify: `packages/db/src/repository/chunk.ts`
 - Modify: `packages/db/src/repository/graph.ts`
@@ -835,6 +863,7 @@ git commit -m "feat: sync chunk tags to normalized tables on create/update"
 - [ ] **Step 1: Remove `tags` column from chunk schema**
 
 In `packages/db/src/schema/chunk.ts`, remove the line:
+
 ```typescript
 tags: jsonb("tags").$type<string[]>().notNull().default([]),
 ```
@@ -842,38 +871,41 @@ tags: jsonb("tags").$type<string[]>().notNull().default([]),
 - [ ] **Step 2: Update chunk repository**
 
 In `packages/db/src/repository/chunk.ts`:
+
 - Remove `tags` from all `select()` calls and `insert().values()` params
 - Remove any `tags`-related filtering (e.g., JSONB contains queries)
 - Update `CreateChunkParams` type to remove `tags`
 
 - [ ] **Step 3: Update graph repository**
 
-In `packages/db/src/repository/graph.ts`, remove `tags: chunk.tags` from the `getAllChunksMeta` select. Tags now come from `getAllTagsWithTypes`.
+In `packages/db/src/repository/graph.ts`, remove `tags: chunk.tags` from the `getAllChunksMeta` select. Tags now come from
+`getAllTagsWithTypes`.
 
 - [ ] **Step 4: Update chunk service**
 
 In `packages/api/src/chunks/service.ts`:
+
 - Remove `tags: body.tags ?? []` from `createChunkRepo()` calls
 - Remove `tags: existing.tags as string[]` from `createVersion()` calls
 - Keep the `findOrCreateTag` + `setChunkTags` syncing logic (this is now the only source of truth)
 
 - [ ] **Step 5: Update chunk routes**
 
-In `packages/api/src/chunks/routes.ts`, keep `tags` in the request body schema (it's still accepted as input), but it's only used for the normalized tables now, not stored in JSONB.
+In `packages/api/src/chunks/routes.ts`, keep `tags` in the request body schema (it's still accepted as input), but it's only used for the
+normalized tables now, not stored in JSONB.
 
 - [ ] **Step 6: Update chunk-version schema if it references tags**
 
-Check `packages/db/src/schema/chunk-version.ts` — if it has a `tags` column, keep it (versions are historical snapshots). If the version `createVersion` call references `existing.tags`, update it to fetch tags from the `chunk_tag` join instead.
+Check `packages/db/src/schema/chunk-version.ts` — if it has a `tags` column, keep it (versions are historical snapshots). If the version
+`createVersion` call references `existing.tags`, update it to fetch tags from the `chunk_tag` join instead.
 
 - [ ] **Step 7: Push schema changes**
 
-Run: `pnpm db:push`
-Expected: `tags` column dropped from `chunk` table.
+Run: `pnpm db:push` Expected: `tags` column dropped from `chunk` table.
 
 - [ ] **Step 8: Run type checks**
 
-Run: `pnpm run check-types`
-Expected: No type errors (fix any remaining references to `chunk.tags`).
+Run: `pnpm run check-types` Expected: No type errors (fix any remaining references to `chunk.tags`).
 
 - [ ] **Step 9: Commit**
 
@@ -889,6 +921,7 @@ git commit -m "feat: drop JSONB tags column from chunk table, use normalized tab
 ### Task 10: Update force layout to support tag-based clustering
 
 **Files:**
+
 - Modify: `apps/web/src/features/graph/force-layout.ts`
 - Modify: `apps/web/src/features/graph/layout.worker.ts`
 
@@ -913,10 +946,16 @@ if (tagGroups && tagGroups.size > 0) {
     const TAG_CLUSTER_K = 0.003; // Stronger than type clustering
     const tagCentroids = new Map<string, { x: number; y: number; count: number }>();
     for (const [tagValue, nodeIds] of tagGroups) {
-        let cx = 0, cy = 0, count = 0;
+        let cx = 0,
+            cy = 0,
+            count = 0;
         for (const nid of nodeIds) {
             const p = pos.get(nid);
-            if (p) { cx += p.x; cy += p.y; count++; }
+            if (p) {
+                cx += p.x;
+                cy += p.y;
+                count++;
+            }
         }
         if (count > 0) tagCentroids.set(tagValue, { x: cx / count, y: cy / count, count });
     }
@@ -965,6 +1004,7 @@ git commit -m "feat: add tag-based clustering forces to force layout"
 ### Task 11: Add tag grouping state and filter UI
 
 **Files:**
+
 - Modify: `apps/web/src/features/graph/graph-filters.tsx`
 - Modify: `apps/web/src/features/graph/graph-view.tsx`
 
@@ -1186,11 +1226,13 @@ git commit -m "feat: add tag type grouping state and filter panel UI"
 ### Task 12: Apply cross-group edge opacity
 
 **Files:**
+
 - Modify: `apps/web/src/features/graph/graph-view.tsx`
 
 - [ ] **Step 1: Add tag grouping to edge styling logic**
 
-In the consolidated node/edge styling `useEffect` (around line 671), add a new condition for tag grouping. In the edge styling section, add a branch before the final `else` fallback (before `styledEdges = layoutEdges`):
+In the consolidated node/edge styling `useEffect` (around line 671), add a new condition for tag grouping. In the edge styling section, add
+a branch before the final `else` fallback (before `styledEdges = layoutEdges`):
 
 ```typescript
 // After the existing selectedEdgeIds branch, before the final else:
@@ -1279,6 +1321,7 @@ git commit -m "feat: apply cross-group edge dimming and selected node override"
 ### Task 13: Create convex hull SVG background regions
 
 **Files:**
+
 - Create: `apps/web/src/features/graph/graph-tag-regions.tsx`
 - Modify: `apps/web/src/features/graph/graph-view.tsx`
 
@@ -1443,7 +1486,8 @@ export function GraphTagRegions({
 
 - [ ] **Step 2: Integrate into graph-view.tsx**
 
-Import and render `GraphTagRegions` inside the ReactFlow container. Add it inside the ReactFlow panel area, before the `<Background>` component.
+Import and render `GraphTagRegions` inside the ReactFlow container. Add it inside the ReactFlow panel area, before the `<Background>`
+component.
 
 First, compute node positions as a Map for the region component. Add a memo:
 
@@ -1480,12 +1524,14 @@ const tagRegions = useMemo(() => {
 }, [tagGroups, data]);
 ```
 
-Render as a sibling *outside* the `<ReactFlow>` component but inside the same wrapper div (`relative flex-1`). The SVG applies its own viewport transform, so it must NOT be inside `<ReactFlow>` (which would double-apply the transform). Place it after the `</ReactFlow>` closing tag but inside the wrapper div:
+Render as a sibling _outside_ the `<ReactFlow>` component but inside the same wrapper div (`relative flex-1`). The SVG applies its own
+viewport transform, so it must NOT be inside `<ReactFlow>` (which would double-apply the transform). Place it after the `</ReactFlow>`
+closing tag but inside the wrapper div:
 
 ```tsx
-{tagRegions.length > 0 && (
-    <GraphTagRegions regions={tagRegions} nodePositions={nodePositionMap} />
-)}
+{
+    tagRegions.length > 0 && <GraphTagRegions regions={tagRegions} nodePositions={nodePositionMap} />;
+}
 ```
 
 - [ ] **Step 3: Commit**
@@ -1500,11 +1546,13 @@ git commit -m "feat: add convex hull SVG background regions for tag groups"
 ### Task 14: Handle node duplication for multi-tag chunks
 
 **Files:**
+
 - Modify: `apps/web/src/features/graph/graph-view.tsx`
 
 - [ ] **Step 1: Add ghost node generation**
 
-When tag grouping is active, chunks belonging to multiple tag groups need duplicate "ghost" nodes. Add this logic in the `filteredGraph` memo or the node generation memo.
+When tag grouping is active, chunks belonging to multiple tag groups need duplicate "ghost" nodes. Add this logic in the `filteredGraph`
+memo or the node generation memo.
 
 In the `{ layoutNodes, layoutEdges }` memo (around line 417), after building `rawNodes`, insert ghost node logic:
 
@@ -1557,7 +1605,8 @@ onNodeClick={(event, node) => {
 
 - [ ] **Step 3: Create ghost-aware tag groups for layout**
 
-Add a memo that extends `tagGroups` with ghost node IDs so they cluster correctly. Place this after both `tagGroups` and the ghost node generation:
+Add a memo that extends `tagGroups` with ghost node IDs so they cluster correctly. Place this after both `tagGroups` and the ghost node
+generation:
 
 ```typescript
 const tagGroupsWithGhosts = useMemo(() => {
@@ -1606,12 +1655,14 @@ git commit -m "feat: add ghost node duplication for multi-tag chunks"
 ### Task 15: Update graph-view.tsx to track viewport for SVG regions
 
 **Files:**
+
 - Modify: `apps/web/src/features/graph/graph-view.tsx`
 - Modify: `apps/web/src/features/graph/graph-tag-regions.tsx`
 
 - [ ] **Step 1: Pass viewport to tag regions**
 
-The `GraphTagRegions` component needs to update when the viewport changes (pan/zoom). Use the `onMoveEnd` callback to trigger re-renders, or use `useStore` from @xyflow/react to subscribe to viewport changes.
+The `GraphTagRegions` component needs to update when the viewport changes (pan/zoom). Use the `onMoveEnd` callback to trigger re-renders, or
+use `useStore` from @xyflow/react to subscribe to viewport changes.
 
 Update `GraphTagRegions` to use `useStore` for reactive viewport:
 
@@ -1637,23 +1688,21 @@ git commit -m "fix: use reactive viewport store for tag region SVG transforms"
 
 - [ ] **Step 1: Run type checks**
 
-Run: `pnpm run check-types`
-Expected: No type errors.
+Run: `pnpm run check-types` Expected: No type errors.
 
 - [ ] **Step 2: Run tests**
 
-Run: `pnpm test`
-Expected: All tests pass.
+Run: `pnpm test` Expected: All tests pass.
 
 - [ ] **Step 3: Run lint**
 
-Run: `pnpm ci`
-Expected: All checks pass.
+Run: `pnpm ci` Expected: All checks pass.
 
 - [ ] **Step 4: Manual verification**
 
 1. Start dev server: `pnpm dev`
-2. Create tag types via API: `curl -X POST http://localhost:3000/api/tag-types -H 'Content-Type: application/json' -d '{"name":"feature","color":"#f59e0b"}'`
+2. Create tag types via API:
+   `curl -X POST http://localhost:3000/api/tag-types -H 'Content-Type: application/json' -d '{"name":"feature","color":"#f59e0b"}'`
 3. Create tags and assign to chunks
 4. Open graph view, verify "Group by Tag Type" section appears in filters
 5. Click a tag type — verify nodes cluster, background regions appear, cross-group edges dim

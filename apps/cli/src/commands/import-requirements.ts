@@ -27,7 +27,7 @@ function parseGherkin(content: string): ParsedRequirement[] {
             current = {
                 title: line.replace(/Scenario(?: Outline)?:/, "").trim(),
                 description: featureDesc,
-                steps: [],
+                steps: []
             };
         } else if (current) {
             const match = line.match(/^(Given|When|Then|And|But)\s+(.+)/i);
@@ -36,7 +36,7 @@ function parseGherkin(content: string): ParsedRequirement[] {
             if (kw && txt) {
                 current.steps.push({
                     keyword: kw.toLowerCase() as ParsedRequirement["steps"][number]["keyword"],
-                    text: txt,
+                    text: txt
                 });
             }
         }
@@ -87,7 +87,7 @@ export const importRequirementsCommand = new Command("import")
                 title: req.title,
                 description: req.description,
                 steps: req.steps,
-                priority: opts.priority,
+                priority: opts.priority
             };
             if (spaceId) body.spaceId = spaceId;
 
@@ -95,7 +95,7 @@ export const importRequirementsCommand = new Command("import")
                 const res = await fetch(`${serverUrl}/api/requirements`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(body),
+                    body: JSON.stringify(body)
                 });
 
                 if (!res.ok) {

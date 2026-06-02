@@ -5,15 +5,7 @@ import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-    Dialog,
-    DialogPopup,
-    DialogHeader,
-    DialogTitle,
-    DialogDescription,
-    DialogPanel,
-    DialogFooter,
-} from "@/components/ui/dialog";
+import { Dialog, DialogPopup, DialogHeader, DialogTitle, DialogDescription, DialogPanel, DialogFooter } from "@/components/ui/dialog";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
@@ -42,7 +34,7 @@ export function BulkTagEditor({ chunkIds, open, onOpenChange }: BulkTagEditorPro
     const tagsQuery = useQuery<Array<{ id: string; name: string }>>({
         queryKey: ["tags-all"],
         queryFn: async () => unwrapEden(await api.api.tags.get()) as Array<{ id: string; name: string }>,
-        enabled: open,
+        enabled: open
     });
 
     const allTagNames = useMemo(() => (tagsQuery.data ?? []).map(t => t.name), [tagsQuery.data]);
@@ -63,7 +55,7 @@ export function BulkTagEditor({ chunkIds, open, onOpenChange }: BulkTagEditorPro
             );
             return results.filter((c): c is NonNullable<typeof c> => !!c);
         },
-        enabled: open && chunkIds.length > 0,
+        enabled: open && chunkIds.length > 0
     });
 
     // Initialize chunk states when data loads
@@ -78,7 +70,7 @@ export function BulkTagEditor({ chunkIds, open, onOpenChange }: BulkTagEditorPro
                         id: chunkRec.id as string,
                         title: chunkRec.title as string,
                         tags: [...tags],
-                        originalTags: [...tags],
+                        originalTags: [...tags]
                     };
                 })
             );
@@ -86,22 +78,14 @@ export function BulkTagEditor({ chunkIds, open, onOpenChange }: BulkTagEditorPro
     }, [chunksQuery.data]);
 
     const removeTag = useCallback((chunkId: string, tagName: string) => {
-        setChunkStates(prev =>
-            prev.map(cs =>
-                cs.id === chunkId ? { ...cs, tags: cs.tags.filter(t => t !== tagName) } : cs
-            )
-        );
+        setChunkStates(prev => prev.map(cs => (cs.id === chunkId ? { ...cs, tags: cs.tags.filter(t => t !== tagName) } : cs)));
     }, []);
 
     const addTag = useCallback((chunkId: string, tagName: string) => {
         const trimmed = tagName.trim().toLowerCase();
         if (!trimmed) return;
         setChunkStates(prev =>
-            prev.map(cs =>
-                cs.id === chunkId && !cs.tags.includes(trimmed)
-                    ? { ...cs, tags: [...cs.tags, trimmed] }
-                    : cs
-            )
+            prev.map(cs => (cs.id === chunkId && !cs.tags.includes(trimmed) ? { ...cs, tags: [...cs.tags, trimmed] } : cs))
         );
         setTagInput("");
         setAddingTagForChunk(null);
@@ -132,7 +116,7 @@ export function BulkTagEditor({ chunkIds, open, onOpenChange }: BulkTagEditorPro
             }
             return changed.length;
         },
-        onSuccess: (count) => {
+        onSuccess: count => {
             toast.success(`Updated tags on ${count} chunk${count !== 1 ? "s" : ""}`);
             queryClient.invalidateQueries({ queryKey: ["chunks-list"] });
             queryClient.invalidateQueries({ queryKey: ["tags"] });
@@ -140,7 +124,7 @@ export function BulkTagEditor({ chunkIds, open, onOpenChange }: BulkTagEditorPro
         },
         onError: () => {
             toast.error("Failed to update tags");
-        },
+        }
     });
 
     const hasChanges = chunkStates.some(cs => {
@@ -249,11 +233,7 @@ export function BulkTagEditor({ chunkIds, open, onOpenChange }: BulkTagEditorPro
                     <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
                         Cancel
                     </Button>
-                    <Button
-                        size="sm"
-                        onClick={() => saveMutation.mutate()}
-                        disabled={!hasChanges || saveMutation.isPending}
-                    >
+                    <Button size="sm" onClick={() => saveMutation.mutate()} disabled={!hasChanges || saveMutation.isPending}>
                         {saveMutation.isPending ? "Saving..." : "Save Changes"}
                     </Button>
                 </DialogFooter>

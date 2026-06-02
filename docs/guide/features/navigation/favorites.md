@@ -1,8 +1,8 @@
 ---
 tags:
-  - guide
-  - navigation
-  - favorites
+    - guide
+    - navigation
+    - favorites
 description: Favorites and pinned chunks for quick access
 ---
 

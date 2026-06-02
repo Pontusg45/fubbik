@@ -1,10 +1,14 @@
 # CLAUDE.md Auto-Sync Plan
 
-> **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to
+> implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** `fubbik sync-claude-md` watches chunks tagged "claude-context" (or in a named collection) and generates/updates a `.claude/CLAUDE.md` file, keeping AI assistant context fresh.
+**Goal:** `fubbik sync-claude-md` watches chunks tagged "claude-context" (or in a named collection) and generates/updates a
+`.claude/CLAUDE.md` file, keeping AI assistant context fresh.
 
-**Architecture:** New CLI command that fetches chunks matching a tag or collection, formats them using the existing context export scoring algorithm, and writes to a file. Optionally runs in watch mode (polls for changes). Also add an API endpoint so the web UI can trigger a preview.
+**Architecture:** New CLI command that fetches chunks matching a tag or collection, formats them using the existing context export scoring
+algorithm, and writes to a file. Optionally runs in watch mode (polls for changes). Also add an API endpoint so the web UI can trigger a
+preview.
 
 **Tech Stack:** Commander.js, Bun, fetch API, existing context export service
 
@@ -13,10 +17,12 @@
 ## File Structure
 
 ### New files:
+
 - `packages/api/src/context-export/claude-md.ts` — Service to generate CLAUDE.md content from tagged chunks
 - `apps/cli/src/commands/sync-claude-md.ts` — CLI command
 
 ### Files to modify:
+
 - `packages/api/src/context-export/routes.ts` — Add CLAUDE.md preview endpoint
 - `apps/cli/src/index.ts` — Register command
 
@@ -25,11 +31,13 @@
 ## Task 1: CLAUDE.md Generation Service
 
 **Files:**
+
 - Create: `packages/api/src/context-export/claude-md.ts`
 
 - [ ] **Step 1: Read existing context export**
 
-Read `packages/api/src/context-export/service.ts` to understand the scoring and token budget algorithm. The new service reuses this logic but filters by tag.
+Read `packages/api/src/context-export/service.ts` to understand the scoring and token budget algorithm. The new service reuses this logic
+but filters by tag.
 
 - [ ] **Step 2: Create CLAUDE.md generator**
 
@@ -41,8 +49,8 @@ import { listChunks } from "@fubbik/db/repository";
 interface ClaudeMdOptions {
     userId: string;
     codebaseId?: string;
-    tag?: string;           // default: "claude-context"
-    maxTokens?: number;     // default: 8000
+    tag?: string; // default: "claude-context"
+    maxTokens?: number; // default: 8000
     codebaseName?: string;
 }
 
@@ -65,7 +73,7 @@ export function generateClaudeMd(opts: ClaudeMdOptions) {
             codebaseId: opts.codebaseId,
             sort: "updated",
             limit: 200,
-            offset: 0,
+            offset: 0
         });
 
         // Filter by tag — read getTagsForChunk or query chunk_tag join directly
@@ -118,7 +126,9 @@ export function generateClaudeMd(opts: ClaudeMdOptions) {
 
 - [ ] **Step 3: Add API endpoint**
 
-In `packages/api/src/context-export/routes.ts`, chain onto the existing Elysia instance (it's a single `.get()` — just add another `.get()` to the chain). The routes are already mounted in `packages/api/src/index.ts` so no additional registration is needed. Add:
+In `packages/api/src/context-export/routes.ts`, chain onto the existing Elysia instance (it's a single `.get()` — just add another `.get()`
+to the chain). The routes are already mounted in `packages/api/src/index.ts` so no additional registration is needed. Add:
+
 ```ts
 .get("/chunks/export/claude-md", ctx => Effect.runPromise(
     requireSession(ctx).pipe(
@@ -143,6 +153,7 @@ git commit -m "feat: add CLAUDE.md generation service and API endpoint"
 ## Task 2: CLI sync-claude-md Command
 
 **Files:**
+
 - Create: `apps/cli/src/commands/sync-claude-md.ts`
 - Modify: `apps/cli/src/index.ts`
 
@@ -164,19 +175,27 @@ export const syncClaudeMdCommand = new Command("sync-claude-md")
     .option("--codebase <name>", "scope to codebase")
     .option("--watch", "poll for changes every 60s")
     .option("--interval <seconds>", "poll interval in seconds", "60")
-    .action(async (opts) => {
+    .action(async opts => {
         let serverUrl: string;
-        try { serverUrl = getServerUrl()!; if (!serverUrl) throw new Error(); }
-        catch { outputError("Server URL required. Run 'fubbik init'."); return; }
+        try {
+            serverUrl = getServerUrl()!;
+            if (!serverUrl) throw new Error();
+        } catch {
+            outputError("Server URL required. Run 'fubbik init'.");
+            return;
+        }
 
         const generate = async () => {
             const params = new URLSearchParams({ tag: opts.tag });
             if (opts.codebase) params.set("codebaseId", opts.codebase);
 
             const res = await fetch(`${serverUrl}/api/chunks/export/claude-md?${params}`);
-            if (!res.ok) { outputError(`API error: ${res.statusText}`); return false; }
+            if (!res.ok) {
+                outputError(`API error: ${res.statusText}`);
+                return false;
+            }
 
-            const data = await res.json() as { content: string; chunks: number };
+            const data = (await res.json()) as { content: string; chunks: number };
             if (data.chunks === 0) {
                 console.error(formatDim(`No chunks tagged "${opts.tag}" found. Tag chunks to include them.`));
                 return false;

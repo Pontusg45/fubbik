@@ -14,7 +14,12 @@ import { suggestTagsFromGraph } from "./tag-suggestions";
 export const chunkRoutes = new Elysia()
     .get(
         "/chunks",
-        ctx => Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(session => chunkService.listChunks(session.user.id, ctx.query, (ctx as any).activeFeatureIds ?? [])))),
+        ctx =>
+            Effect.runPromise(
+                requireSession(ctx).pipe(
+                    Effect.flatMap(session => chunkService.listChunks(session.user.id, ctx.query, (ctx as any).activeFeatureIds ?? []))
+                )
+            ),
         {
             query: t.Object({
                 type: t.Optional(t.String()),
@@ -70,9 +75,7 @@ export const chunkRoutes = new Elysia()
         ctx =>
             Effect.runPromise(
                 requireSession(ctx).pipe(
-                    Effect.flatMap(session =>
-                        chunkService.previewImportDocs(session.user.id, ctx.body.files, ctx.body.spaceId)
-                    )
+                    Effect.flatMap(session => chunkService.previewImportDocs(session.user.id, ctx.body.files, ctx.body.spaceId))
                 )
             ),
         {
@@ -80,12 +83,12 @@ export const chunkRoutes = new Elysia()
                 files: t.Array(
                     t.Object({
                         path: t.String({ maxLength: 500 }),
-                        content: t.String({ maxLength: 100000 }),
+                        content: t.String({ maxLength: 100000 })
                     }),
                     { maxItems: 500 }
                 ),
-                spaceId: t.String(),
-            }),
+                spaceId: t.String()
+            })
         }
     )
     .post(
@@ -102,12 +105,7 @@ export const chunkRoutes = new Elysia()
                                 retryAfter: Math.ceil((rl.resetAt - Date.now()) / 1000)
                             } as any);
                         }
-                        return chunkService.importDocs(
-                            session.user.id,
-                            ctx.body.files,
-                            ctx.body.spaceId,
-                            ctx.body.templateOverrides
-                        );
+                        return chunkService.importDocs(session.user.id, ctx.body.files, ctx.body.spaceId, ctx.body.templateOverrides);
                     })
                 )
             ),
@@ -127,7 +125,7 @@ export const chunkRoutes = new Elysia()
     )
     .post(
         "/chunks/import-docs/stream",
-        async (ctx) => {
+        async ctx => {
             const session = await Effect.runPromise(requireSession(ctx));
             const rl = checkRateLimit(`import-docs:${session.user.id}`, 5, 60_000);
             if (!rl.allowed) {
@@ -135,19 +133,14 @@ export const chunkRoutes = new Elysia()
                 return { error: "Rate limit exceeded", retryAfter: Math.ceil((rl.resetAt - Date.now()) / 1000) };
             }
 
-            const stream = chunkService.importDocsStream(
-                session.user.id,
-                ctx.body.files,
-                ctx.body.spaceId,
-                ctx.body.templateOverrides
-            );
+            const stream = chunkService.importDocsStream(session.user.id, ctx.body.files, ctx.body.spaceId, ctx.body.templateOverrides);
 
             return new Response(stream, {
                 headers: {
                     "Content-Type": "text/event-stream",
                     "Cache-Control": "no-cache",
-                    "Connection": "keep-alive",
-                },
+                    Connection: "keep-alive"
+                }
             });
         },
         {
@@ -166,12 +159,7 @@ export const chunkRoutes = new Elysia()
     )
     .post(
         "/chunks/bulk-update",
-        ctx =>
-            Effect.runPromise(
-                requireSession(ctx).pipe(
-                    Effect.flatMap(session => bulkService.bulkUpdate(session.user.id, ctx.body))
-                )
-            ),
+        ctx => Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(session => bulkService.bulkUpdate(session.user.id, ctx.body)))),
         {
             body: t.Object({
                 ids: t.Array(t.String(), { maxItems: 100 }),
@@ -192,9 +180,7 @@ export const chunkRoutes = new Elysia()
         "/chunks/archived",
         ctx =>
             Effect.runPromise(
-                requireSession(ctx).pipe(
-                    Effect.flatMap(session => chunkService.listArchivedChunks(session.user.id, ctx.query.spaceId))
-                )
+                requireSession(ctx).pipe(Effect.flatMap(session => chunkService.listArchivedChunks(session.user.id, ctx.query.spaceId)))
             ),
         {
             query: t.Object({
@@ -239,7 +225,7 @@ export const chunkRoutes = new Elysia()
                             title: ctx.body.title,
                             content: ctx.body.content,
                             userId: session.user.id,
-                            excludeId: ctx.body.excludeId,
+                            excludeId: ctx.body.excludeId
                         })
                     )
                 )
@@ -248,16 +234,13 @@ export const chunkRoutes = new Elysia()
             body: t.Object({
                 title: t.String(),
                 content: t.String(),
-                excludeId: t.Optional(t.String()),
-            }),
+                excludeId: t.Optional(t.String())
+            })
         }
     )
     .get(
         "/chunks/search/federated",
-        ctx =>
-            Effect.runPromise(
-                requireSession(ctx).pipe(Effect.flatMap(session => federatedSearch(session.user.id, ctx.query)))
-            ),
+        ctx => Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(session => federatedSearch(session.user.id, ctx.query)))),
         {
             query: t.Object({
                 search: t.Optional(t.String()),
@@ -274,9 +257,7 @@ export const chunkRoutes = new Elysia()
         ctx =>
             Effect.runPromise(
                 requireSession(ctx).pipe(
-                    Effect.flatMap(session =>
-                        chunkService.listUpdatesByTag(session.user.id, ctx.query.tag, ctx.query.spaceId)
-                    ),
+                    Effect.flatMap(session => chunkService.listUpdatesByTag(session.user.id, ctx.query.tag, ctx.query.spaceId)),
                     Effect.map(updates => ({ updates }))
                 )
             ),
@@ -292,9 +273,7 @@ export const chunkRoutes = new Elysia()
         ctx =>
             Effect.runPromise(
                 requireSession(ctx).pipe(
-                    Effect.flatMap(session =>
-                        chunkService.listUpdateTags(session.user.id, ctx.query.spaceId)
-                    ),
+                    Effect.flatMap(session => chunkService.listUpdateTags(session.user.id, ctx.query.spaceId)),
                     Effect.map(tags => ({ tags }))
                 )
             ),
@@ -309,12 +288,7 @@ export const chunkRoutes = new Elysia()
     )
     .get(
         "/chunks/:id/tag-suggestions",
-        ctx =>
-            Effect.runPromise(
-                requireSession(ctx).pipe(
-                    Effect.flatMap(() => suggestTagsFromGraph(ctx.params.id))
-                )
-            ),
+        ctx => Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(() => suggestTagsFromGraph(ctx.params.id)))),
         { params: t.Object({ id: t.String() }) }
     )
     .get("/chunks/:id/history", ctx =>
@@ -338,7 +312,11 @@ export const chunkRoutes = new Elysia()
         }
     )
     .get("/chunks/:id", ctx =>
-        Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(session => chunkService.getChunkDetail(ctx.params.id, session.user.id, (ctx as any).activeFeatureIds ?? []))))
+        Effect.runPromise(
+            requireSession(ctx).pipe(
+                Effect.flatMap(session => chunkService.getChunkDetail(ctx.params.id, session.user.id, (ctx as any).activeFeatureIds ?? []))
+            )
+        )
     )
     .post("/chunks/:id/archive", ctx =>
         Effect.runPromise(
@@ -442,9 +420,7 @@ export const chunkRoutes = new Elysia()
         ctx =>
             Effect.runPromise(
                 requireSession(ctx).pipe(
-                    Effect.flatMap(session =>
-                        chunkService.mergeChunks(session.user.id, ctx.body.sourceId, ctx.body.targetId)
-                    )
+                    Effect.flatMap(session => chunkService.mergeChunks(session.user.id, ctx.body.sourceId, ctx.body.targetId))
                 )
             ),
         {

@@ -1,9 +1,10 @@
 import { Command } from "commander";
 import pc from "picocolors";
+
 import { apiFetch } from "../lib/api-fetch";
+import { resolveSpaceId } from "../lib/detect-space";
 import { output, outputError } from "../lib/output";
 import { getServerUrl } from "../lib/store";
-import { resolveSpaceId } from "../lib/detect-space";
 
 export const whyCommand = new Command("why")
     .description("Show reasoning and decisions behind a file")
@@ -40,7 +41,7 @@ export const whyCommand = new Command("why")
         const reasoningChunks = allChunks.filter((c: any) => {
             if (c.rationale || c.alternatives?.length || c.consequences) return true;
             if (c.type === "convention") return true;
-            const tags = (c.tags ?? []).map((t: any) => typeof t === "string" ? t : t.name);
+            const tags = (c.tags ?? []).map((t: any) => (typeof t === "string" ? t : t.name));
             if (tags.some((t: string) => decisionTags.has(t.toLowerCase()))) return true;
             return false;
         });

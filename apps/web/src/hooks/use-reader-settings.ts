@@ -11,7 +11,7 @@ export interface ReaderSettings {
 const DEFAULTS: ReaderSettings = {
     fontSize: "base",
     lineHeight: "normal",
-    maxWidth: "normal",
+    maxWidth: "normal"
 };
 
 export function useReaderSettings() {
@@ -46,17 +46,17 @@ export function getReaderClasses(settings: ReaderSettings): string {
         sm: "text-sm",
         base: "text-base",
         lg: "text-lg",
-        xl: "text-xl",
+        xl: "text-xl"
     }[settings.fontSize];
     const lineHeight = {
         tight: "leading-tight",
         normal: "leading-relaxed",
-        relaxed: "leading-loose",
+        relaxed: "leading-loose"
     }[settings.lineHeight];
     const maxWidth = {
         narrow: "max-w-2xl",
         normal: "max-w-3xl",
-        wide: "max-w-5xl",
+        wide: "max-w-5xl"
     }[settings.maxWidth];
     return `${fontSize} ${lineHeight} ${maxWidth}`;
 }

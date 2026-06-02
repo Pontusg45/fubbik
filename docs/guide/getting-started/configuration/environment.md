@@ -1,8 +1,8 @@
 ---
 tags:
-  - guide
-  - configuration
-  - environment
+    - guide
+    - configuration
+    - environment
 description: Required and optional environment variables
 ---
 

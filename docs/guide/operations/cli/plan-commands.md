@@ -1,8 +1,8 @@
 ---
 tags:
-  - guide
-  - cli
-  - plans
+    - guide
+    - cli
+    - plans
 description: CLI commands for managing plans, steps, and requirements
 ---
 

@@ -2,8 +2,9 @@ import { ChevronDown, ChevronRight, FileText, FolderOpen, Tag } from "lucide-rea
 import { useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
-import { filenameFromPath, getStaleness, type FolderNode } from "./document-utils";
+
 import type { DocumentListItem } from "./document-types";
+import { filenameFromPath, getStaleness, type FolderNode } from "./document-utils";
 
 /* ─── Folder Tree Sidebar Node ─── */
 
@@ -49,7 +50,7 @@ export function FolderTreeNode({ node, depth, selectedId, onSelect, defaultOpen 
                         >
                             <FileText className="size-3.5 shrink-0" />
                             <span className="min-w-0 flex-1 truncate">{doc.title || filenameFromPath(doc.sourcePath)}</span>
-                            <Badge variant="secondary" size="sm" className="shrink-0 font-mono text-[9px] mr-2">
+                            <Badge variant="secondary" size="sm" className="mr-2 shrink-0 font-mono text-[9px]">
                                 {doc.chunkCount}
                             </Badge>
                         </button>
@@ -83,7 +84,7 @@ export function IndexTree({ node, depth, onSelect }: IndexTreeProps) {
         <>
             {depth > 0 && (
                 <h3
-                    className="text-sm font-semibold text-muted-foreground mb-2 mt-4 flex items-center gap-1.5"
+                    className="text-muted-foreground mt-4 mb-2 flex items-center gap-1.5 text-sm font-semibold"
                     style={{ paddingLeft: (depth - 1) * 16 }}
                 >
                     <FolderOpen className="size-3.5" />
@@ -97,14 +98,12 @@ export function IndexTree({ node, depth, onSelect }: IndexTreeProps) {
                         <button
                             key={doc.id}
                             onClick={() => onSelect(doc.id)}
-                            className="text-foreground hover:text-foreground/80 flex items-center gap-2 text-sm w-full text-left"
+                            className="text-foreground hover:text-foreground/80 flex w-full items-center gap-2 text-left text-sm"
                         >
-                            <FileText className="size-3.5 text-muted-foreground shrink-0" />
+                            <FileText className="text-muted-foreground size-3.5 shrink-0" />
                             <span>{doc.title}</span>
-                            {doc.description && (
-                                <span className="text-muted-foreground text-xs truncate">— {doc.description}</span>
-                            )}
-                            <span className={`text-xs ml-auto shrink-0 ${staleness.color}`} title={staleness.tooltip}>
+                            {doc.description && <span className="text-muted-foreground truncate text-xs">— {doc.description}</span>}
+                            <span className={`ml-auto shrink-0 text-xs ${staleness.color}`} title={staleness.tooltip}>
                                 {staleness.label}
                             </span>
                         </button>
@@ -147,9 +146,7 @@ export function TagGroupNode({ name, docs, selectedId, selectedGroup, onSelect, 
                     type="button"
                     onClick={() => onGroupSelect(name)}
                     className={`flex flex-1 items-center gap-1 rounded-md px-1 py-1 text-xs font-medium transition-colors ${
-                        isGroupSelected
-                            ? "bg-muted text-foreground"
-                            : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                        isGroupSelected ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                     }`}
                 >
                     <Tag className="size-3.5" />
@@ -174,7 +171,7 @@ export function TagGroupNode({ name, docs, selectedId, selectedGroup, onSelect, 
                         >
                             <FileText className="size-3.5 shrink-0" />
                             <span className="min-w-0 flex-1 truncate">{doc.title || doc.sourcePath.split("/").pop()}</span>
-                            <Badge variant="secondary" size="sm" className="shrink-0 font-mono text-[9px] mr-2">
+                            <Badge variant="secondary" size="sm" className="mr-2 shrink-0 font-mono text-[9px]">
                                 {doc.chunkCount}
                             </Badge>
                         </button>

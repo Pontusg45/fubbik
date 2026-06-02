@@ -1,8 +1,8 @@
 ---
 tags:
-  - guide
-  - onboarding
-  - installation
+    - guide
+    - onboarding
+    - installation
 description: How to clone, install, and set up fubbik
 ---
 

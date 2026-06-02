@@ -23,7 +23,7 @@ export function layoutIslands(input: IslandLayoutInput): Record<string, { x: num
             x: Math.cos(angle) * radius,
             y: Math.sin(angle) * radius,
             vx: 0,
-            vy: 0,
+            vy: 0
         });
     }
 
@@ -38,8 +38,10 @@ export function layoutIslands(input: IslandLayoutInput): Record<string, { x: num
                 const force = REPULSION / (dist * dist);
                 const fx = (dx / dist) * force;
                 const fy = (dy / dist) * force;
-                a.vx += fx; a.vy += fy;
-                b.vx -= fx; b.vy -= fy;
+                a.vx += fx;
+                a.vy += fy;
+                b.vx -= fx;
+                b.vy -= fy;
             }
         }
 
@@ -54,8 +56,10 @@ export function layoutIslands(input: IslandLayoutInput): Record<string, { x: num
             const force = SPRING_K * displacement * Math.min(bridge.count, 10);
             const fx = (dx / dist) * force;
             const fy = (dy / dist) * force;
-            a.vx += fx; a.vy += fy;
-            b.vx -= fx; b.vy -= fy;
+            a.vx += fx;
+            a.vy += fy;
+            b.vx -= fx;
+            b.vy -= fy;
         }
 
         for (const s of state.values()) {
@@ -64,8 +68,10 @@ export function layoutIslands(input: IslandLayoutInput): Record<string, { x: num
         }
 
         for (const s of state.values()) {
-            s.x += s.vx; s.y += s.vy;
-            s.vx *= DAMPING; s.vy *= DAMPING;
+            s.x += s.vx;
+            s.y += s.vy;
+            s.vx *= DAMPING;
+            s.vy *= DAMPING;
         }
     }
 

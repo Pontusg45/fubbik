@@ -1,8 +1,8 @@
 ---
 tags:
-  - guide
-  - cli
-  - context
+    - guide
+    - cli
+    - context
 description: CLI commands for context export and CLAUDE.md generation
 ---
 

@@ -16,78 +16,73 @@ export interface CreateUseCaseParams {
 
 export function createUseCase(params: CreateUseCaseParams) {
     return dbEffect(async () => {
-            const [created] = await db.insert(useCase).values(params).returning();
-            return created!;
-        });
+        const [created] = await db.insert(useCase).values(params).returning();
+        return created!;
+    });
 }
 
 export function getUseCaseByName(userId: string, name: string) {
     return dbEffect(async () => {
-            const [found] = await db
-                .select()
-                .from(useCase)
-                .where(and(eq(useCase.userId, userId), eq(useCase.name, name)));
-            return found ?? null;
-        });
+        const [found] = await db
+            .select()
+            .from(useCase)
+            .where(and(eq(useCase.userId, userId), eq(useCase.name, name)));
+        return found ?? null;
+    });
 }
 
 export function getUseCaseById(id: string, userId?: string) {
     return dbEffect(async () => {
-            const conditions = [eq(useCase.id, id)];
-            if (userId) conditions.push(eq(useCase.userId, userId));
-            const [found] = await db
-                .select()
-                .from(useCase)
-                .where(and(...conditions));
-            return found ?? null;
-        });
+        const conditions = [eq(useCase.id, id)];
+        if (userId) conditions.push(eq(useCase.userId, userId));
+        const [found] = await db
+            .select()
+            .from(useCase)
+            .where(and(...conditions));
+        return found ?? null;
+    });
 }
 
 export function listUseCases(userId: string, spaceId?: string) {
     return dbEffect(async () => {
-            const conditions = [eq(useCase.userId, userId)];
-            if (spaceId) conditions.push(eq(useCase.spaceId, spaceId));
+        const conditions = [eq(useCase.userId, userId)];
+        if (spaceId) conditions.push(eq(useCase.spaceId, spaceId));
 
-            const useCases = await db
-                .select({
-                    id: useCase.id,
-                    name: useCase.name,
-                    description: useCase.description,
-                    spaceId: useCase.spaceId,
-                    userId: useCase.userId,
-                    order: useCase.order,
-                    parentId: useCase.parentId,
-                    createdAt: useCase.createdAt,
-                    updatedAt: useCase.updatedAt,
-                    childCount: sql<number>`(SELECT count(*) FROM use_case uc2 WHERE uc2.parent_id = ${useCase.id})`.as("child_count")
-                })
-                .from(useCase)
-                .where(and(...conditions))
-                .orderBy(asc(useCase.order), asc(useCase.name));
+        const useCases = await db
+            .select({
+                id: useCase.id,
+                name: useCase.name,
+                description: useCase.description,
+                spaceId: useCase.spaceId,
+                userId: useCase.userId,
+                order: useCase.order,
+                parentId: useCase.parentId,
+                createdAt: useCase.createdAt,
+                updatedAt: useCase.updatedAt,
+                childCount: sql<number>`(SELECT count(*) FROM use_case uc2 WHERE uc2.parent_id = ${useCase.id})`.as("child_count")
+            })
+            .from(useCase)
+            .where(and(...conditions))
+            .orderBy(asc(useCase.order), asc(useCase.name));
 
-            // Get requirement counts per use case
-            const counts = await db
-                .select({
-                    useCaseId: requirement.useCaseId,
-                    count: sql<number>`count(*)`
-                })
-                .from(requirement)
-                .where(
-                    and(
-                        eq(requirement.userId, userId),
-                        sql`${requirement.useCaseId} IS NOT NULL`
-                    )
-                )
-                .groupBy(requirement.useCaseId);
+        // Get requirement counts per use case
+        const counts = await db
+            .select({
+                useCaseId: requirement.useCaseId,
+                count: sql<number>`count(*)`
+            })
+            .from(requirement)
+            .where(and(eq(requirement.userId, userId), sql`${requirement.useCaseId} IS NOT NULL`))
+            .groupBy(requirement.useCaseId);
 
-            const countMap = new Map(counts.map(c => [c.useCaseId, Number(c.count)]));
+        const countMap = new Map(counts.map(c => [c.useCaseId, Number(c.count)]));
 
-            return useCases.map(uc => ({
-                ...uc,
-                childCount: Number(uc.childCount),
-                requirementCount: countMap.get(uc.id) ?? 0
-            }));
-        });
+        return useCases.map(uc => ({
+            ...uc,
+            childCount: Number(uc.childCount),
+            requirementCount: countMap.get(uc.id) ?? 0
+        }));
+    });
 }
 
 export interface UpdateUseCaseParams {
@@ -99,55 +94,47 @@ export interface UpdateUseCaseParams {
 
 export function updateUseCase(id: string, userId: string, params: UpdateUseCaseParams) {
     return dbEffect(async () => {
-            const setClause: Record<string, unknown> = {};
-            if (params.name !== undefined) setClause.name = params.name;
-            if (params.description !== undefined) setClause.description = params.description;
-            if (params.order !== undefined) setClause.order = params.order;
-            if (params.parentId !== undefined) setClause.parentId = params.parentId;
+        const setClause: Record<string, unknown> = {};
+        if (params.name !== undefined) setClause.name = params.name;
+        if (params.description !== undefined) setClause.description = params.description;
+        if (params.order !== undefined) setClause.order = params.order;
+        if (params.parentId !== undefined) setClause.parentId = params.parentId;
 
-            if (Object.keys(setClause).length === 0) {
-                const [found] = await db
-                    .select()
-                    .from(useCase)
-                    .where(and(eq(useCase.id, id), eq(useCase.userId, userId)));
-                return found ?? null;
-            }
+        if (Object.keys(setClause).length === 0) {
+            const [found] = await db
+                .select()
+                .from(useCase)
+                .where(and(eq(useCase.id, id), eq(useCase.userId, userId)));
+            return found ?? null;
+        }
 
-            const [updated] = await db
-                .update(useCase)
-                .set(setClause)
-                .where(and(eq(useCase.id, id), eq(useCase.userId, userId)))
-                .returning();
-            return updated ?? null;
-        });
+        const [updated] = await db
+            .update(useCase)
+            .set(setClause)
+            .where(and(eq(useCase.id, id), eq(useCase.userId, userId)))
+            .returning();
+        return updated ?? null;
+    });
 }
 
 export function deleteUseCase(id: string, userId: string) {
     return dbEffect(async () => {
-            // Unlink requirements first (set useCaseId to null)
-            await db
-                .update(requirement)
-                .set({ useCaseId: null })
-                .where(eq(requirement.useCaseId, id));
+        // Unlink requirements first (set useCaseId to null)
+        await db.update(requirement).set({ useCaseId: null }).where(eq(requirement.useCaseId, id));
 
-            const [deleted] = await db
-                .delete(useCase)
-                .where(and(eq(useCase.id, id), eq(useCase.userId, userId)))
-                .returning();
-            return deleted ?? null;
-        });
+        const [deleted] = await db
+            .delete(useCase)
+            .where(and(eq(useCase.id, id), eq(useCase.userId, userId)))
+            .returning();
+        return deleted ?? null;
+    });
 }
 
 export function listRequirementsByUseCase(useCaseId: string, userId: string) {
     return dbEffect(async () => {
-            return db
-                .select()
-                .from(requirement)
-                .where(
-                    and(
-                        eq(requirement.useCaseId, useCaseId),
-                        eq(requirement.userId, userId)
-                    )
-                );
-        });
+        return db
+            .select()
+            .from(requirement)
+            .where(and(eq(requirement.useCaseId, useCaseId), eq(requirement.userId, userId)));
+    });
 }

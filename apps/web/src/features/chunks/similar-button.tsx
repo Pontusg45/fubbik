@@ -1,5 +1,6 @@
 import { useNavigate } from "@tanstack/react-router";
 import { Sparkles } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 
 export function SimilarButton({ chunkTitle }: { chunkTitle: string }) {

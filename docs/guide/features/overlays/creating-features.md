@@ -1,9 +1,9 @@
 ---
 tags:
-  - guide
-  - features
-  - overlays
-  - lifecycle
+    - guide
+    - features
+    - overlays
+    - lifecycle
 description: Feature lifecycle — creating, activating, deactivating, and priority ordering
 ---
 
@@ -21,16 +21,17 @@ At `/features`, click "New Feature" and provide:
 
 ## Feature Status
 
-| Status | Meaning |
-|--------|---------|
+| Status     | Meaning                                                  |
+| ---------- | -------------------------------------------------------- |
 | `inactive` | Created but not active — deltas exist but aren't applied |
-| `active` | Currently enabled — deltas overlay on base chunks |
-| `merged` | Permanently applied to base chunks |
-| `archived` | Discarded — no longer visible |
+| `active`   | Currently enabled — deltas overlay on base chunks        |
+| `merged`   | Permanently applied to base chunks                       |
+| `archived` | Discarded — no longer visible                            |
 
 ## Activating Features
 
-Use the feature switcher in the nav bar (alongside the codebase switcher) to toggle features on and off. Multiple features can be active simultaneously — priority determines which delta wins when two features modify the same field on the same chunk.
+Use the feature switcher in the nav bar (alongside the codebase switcher) to toggle features on and off. Multiple features can be active
+simultaneously — priority determines which delta wins when two features modify the same field on the same chunk.
 
 ## Priority and Conflict Resolution
 

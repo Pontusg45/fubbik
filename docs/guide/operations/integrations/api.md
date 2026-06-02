@@ -1,8 +1,8 @@
 ---
 tags:
-  - guide
-  - integrations
-  - api
+    - guide
+    - integrations
+    - api
 description: Programmatic access via the Elysia REST API
 ---
 
@@ -28,11 +28,13 @@ GET    /api/requirements              # List requirements
 
 ## Authentication
 
-All endpoints require authentication via Better Auth session cookies. The web app handles auth automatically. For API access from scripts, use the session token.
+All endpoints require authentication via Better Auth session cookies. The web app handles auth automatically. For API access from scripts,
+use the session token.
 
 ## Error Handling
 
 The API uses Effect-based error handling. Errors map to HTTP status codes:
+
 - `ValidationError` → 400
 - `AuthError` → 401
 - `NotFoundError` → 404

@@ -41,9 +41,7 @@ export function createSpace(userId: string, body: CreateSpaceBody) {
         if (kind !== "code" || !remoteUrl) return Effect.void;
         return getCodeSpaceByRemoteUrl(remoteUrl, userId).pipe(
             Effect.flatMap(existing =>
-                existing
-                    ? Effect.fail(new ValidationError({ message: "A space with this remote URL already exists" }))
-                    : Effect.void
+                existing ? Effect.fail(new ValidationError({ message: "A space with this remote URL already exists" })) : Effect.void
             )
         );
     }).pipe(
@@ -75,10 +73,7 @@ export function updateSpace(spaceId: string, userId: string, body: UpdateSpaceBo
             updateSpaceRepo(spaceId, userId, {
                 name: body.name,
                 description: body.description,
-                code:
-                    found.kind === "code"
-                        ? { remoteUrl: remoteUrl ?? null, localPaths: body.localPaths ?? [] }
-                        : undefined
+                code: found.kind === "code" ? { remoteUrl: remoteUrl ?? null, localPaths: body.localPaths ?? [] } : undefined
             })
         )
     );

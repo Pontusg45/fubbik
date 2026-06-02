@@ -1,5 +1,6 @@
 import { relations } from "drizzle-orm";
 import { index, integer, pgTable, text, timestamp, uniqueIndex, type AnyPgColumn } from "drizzle-orm/pg-core";
+
 import { user } from "./auth";
 import { space } from "./space";
 

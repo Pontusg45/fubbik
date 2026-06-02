@@ -10,10 +10,7 @@ import {
 } from "@fubbik/db/repository";
 import { Effect } from "effect";
 
-export function getSuggestContext(
-    userId: string,
-    query: { focus?: string; spaceId?: string }
-) {
+export function getSuggestContext(userId: string, query: { focus?: string; spaceId?: string }) {
     return Effect.gen(function* () {
         const { focus, spaceId } = query;
 
@@ -29,9 +26,7 @@ export function getSuggestContext(
 
         for (const uc of useCases) {
             const reqs = yield* listRequirementsByUseCase(uc.id, userId);
-            const filtered = focus
-                ? reqs.filter(r => r.title.toLowerCase().includes(focus.toLowerCase()))
-                : reqs;
+            const filtered = focus ? reqs.filter(r => r.title.toLowerCase().includes(focus.toLowerCase())) : reqs;
             if (focus && filtered.length === 0) continue;
             useCasesWithRequirements.push({
                 id: uc.id,
@@ -54,9 +49,7 @@ export function getSuggestContext(
             offset: 0
         });
         const ungrouped = ungroupedResult.requirements.filter(r => r.useCaseId === null);
-        const filteredUngrouped = focus
-            ? ungrouped.filter(r => r.title.toLowerCase().includes(focus.toLowerCase()))
-            : ungrouped;
+        const filteredUngrouped = focus ? ungrouped.filter(r => r.title.toLowerCase().includes(focus.toLowerCase())) : ungrouped;
 
         // 2. Fetch coverage gaps
         const coverageChunks = yield* getChunkCoverage(userId, spaceId);
@@ -64,9 +57,7 @@ export function getSuggestContext(
         if (focus) {
             uncovered = uncovered.filter(c => c.title.toLowerCase().includes(focus.toLowerCase()));
         }
-        const coverageGaps = uncovered
-            .slice(0, focus ? 20 : 10)
-            .map(c => ({ id: c.id, title: c.title }));
+        const coverageGaps = uncovered.slice(0, focus ? 20 : 10).map(c => ({ id: c.id, title: c.title }));
 
         // 3. Fetch health issue counts
         const [orphans, stale, thin] = yield* Effect.all([

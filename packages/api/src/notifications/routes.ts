@@ -5,15 +5,13 @@ import { requireSession } from "../require-session";
 import * as notificationService from "./service";
 
 export const notificationRoutes = new Elysia()
-    .get(
-        "/notifications/count",
-        ctx =>
-            Effect.runPromise(
-                requireSession(ctx).pipe(
-                    Effect.flatMap(session => notificationService.getUnreadCount(session.user.id)),
-                    Effect.map(count => ({ count }))
-                )
+    .get("/notifications/count", ctx =>
+        Effect.runPromise(
+            requireSession(ctx).pipe(
+                Effect.flatMap(session => notificationService.getUnreadCount(session.user.id)),
+                Effect.map(count => ({ count }))
             )
+        )
     )
     .post("/notifications/read-all", ctx =>
         Effect.runPromise(
@@ -45,9 +43,7 @@ export const notificationRoutes = new Elysia()
     )
     .patch("/notifications/:id/read", ctx =>
         Effect.runPromise(
-            requireSession(ctx).pipe(
-                Effect.flatMap(session => notificationService.markAsRead(ctx.params.id, session.user.id))
-            )
+            requireSession(ctx).pipe(Effect.flatMap(session => notificationService.markAsRead(ctx.params.id, session.user.id)))
         )
     )
     .delete("/notifications/:id", ctx =>

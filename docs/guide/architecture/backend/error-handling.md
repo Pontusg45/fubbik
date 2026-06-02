@@ -1,9 +1,9 @@
 ---
 tags:
-  - guide
-  - architecture
-  - backend
-  - errors
+    - guide
+    - architecture
+    - backend
+    - errors
 description: Effect-based typed errors and the global error handler
 ---
 
@@ -41,7 +41,7 @@ The global error handler in `packages/api/src/index.ts` extracts Effect errors f
 Services create errors via tagged constructors:
 
 ```typescript
-yield* Effect.fail(new NotFoundError({ message: "Chunk not found" }));
+yield * Effect.fail(new NotFoundError({ message: "Chunk not found" }));
 ```
 
 Routes call `Effect.runPromise()` — unhandled errors propagate to the global handler automatically.

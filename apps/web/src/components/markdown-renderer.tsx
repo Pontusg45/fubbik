@@ -1,17 +1,19 @@
-import { createContext, memo, useContext, useEffect, useId, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
+import { createContext, memo, useContext, useEffect, useId, useMemo, useState } from "react";
 import Markdown, { type Components } from "react-markdown";
 import rehypeRaw from "rehype-raw";
 import remarkGfm from "remark-gfm";
+
 import { matchInCode, matchVocabularyInText, useSmartLinks } from "./smart-link-provider";
 import { VocabularyPopover } from "./vocabulary-popover";
 
-const mermaidPromise = typeof window !== "undefined"
-    ? import("mermaid").then(m => {
-        m.default.initialize({ startOnLoad: false, theme: "dark" });
-        return m.default;
-    })
-    : null;
+const mermaidPromise =
+    typeof window !== "undefined"
+        ? import("mermaid").then(m => {
+              m.default.initialize({ startOnLoad: false, theme: "dark" });
+              return m.default;
+          })
+        : null;
 
 const remarkPlugins = [remarkGfm];
 const rehypePlugins = [rehypeRaw];
@@ -36,12 +38,14 @@ function MermaidBlock({ children }: { children: string }) {
                 if (!cancelled) setError(String(err));
             });
 
-        return () => { cancelled = true; };
+        return () => {
+            cancelled = true;
+        };
     }, [children, id]);
 
     if (error) {
         return (
-            <pre className="overflow-x-auto rounded-lg bg-red-950/30 border border-red-500/20 p-4 text-sm text-red-400">
+            <pre className="overflow-x-auto rounded-lg border border-red-500/20 bg-red-950/30 p-4 text-sm text-red-400">
                 <code>{children}</code>
             </pre>
         );
@@ -49,18 +53,13 @@ function MermaidBlock({ children }: { children: string }) {
 
     if (!svg) {
         return (
-            <div className="flex items-center justify-center rounded-lg border border-border/40 bg-muted/20 p-8 text-sm text-muted-foreground">
+            <div className="border-border/40 bg-muted/20 text-muted-foreground flex items-center justify-center rounded-lg border p-8 text-sm">
                 Rendering diagram...
             </div>
         );
     }
 
-    return (
-        <div
-            className="my-4 flex justify-center overflow-x-auto [&_svg]:max-w-full"
-            dangerouslySetInnerHTML={{ __html: svg }}
-        />
-    );
+    return <div className="my-4 flex justify-center overflow-x-auto [&_svg]:max-w-full" dangerouslySetInnerHTML={{ __html: svg }} />;
 }
 
 /* ─── Copy button ─── */
@@ -78,15 +77,33 @@ function CopyButton({ code }: { code: string }) {
     return (
         <button
             onClick={handleCopy}
-            className="rounded p-0.5 text-muted-foreground/60 opacity-0 transition-all hover:text-foreground group-hover:opacity-100"
+            className="text-muted-foreground/60 hover:text-foreground rounded p-0.5 opacity-0 transition-all group-hover:opacity-100"
             aria-label="Copy code"
         >
             {copied ? (
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                >
                     <polyline points="20 6 9 17 4 12" />
                 </svg>
             ) : (
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                >
                     <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
                     <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
                 </svg>
@@ -98,19 +115,37 @@ function CopyButton({ code }: { code: string }) {
 /* ─── Language label mapping ─── */
 
 const LANG_LABELS: Record<string, string> = {
-    ts: "TypeScript", typescript: "TypeScript",
-    js: "JavaScript", javascript: "JavaScript",
-    tsx: "TSX", jsx: "JSX",
-    py: "Python", python: "Python",
-    rb: "Ruby", ruby: "Ruby",
-    rs: "Rust", rust: "Rust",
-    go: "Go", sh: "Shell", bash: "Bash", zsh: "Shell",
-    sql: "SQL", json: "JSON", yaml: "YAML", yml: "YAML",
-    html: "HTML", css: "CSS", scss: "SCSS",
-    md: "Markdown", markdown: "Markdown",
-    toml: "TOML", xml: "XML", graphql: "GraphQL",
-    dockerfile: "Dockerfile", docker: "Docker",
-    text: "Plain Text",
+    ts: "TypeScript",
+    typescript: "TypeScript",
+    js: "JavaScript",
+    javascript: "JavaScript",
+    tsx: "TSX",
+    jsx: "JSX",
+    py: "Python",
+    python: "Python",
+    rb: "Ruby",
+    ruby: "Ruby",
+    rs: "Rust",
+    rust: "Rust",
+    go: "Go",
+    sh: "Shell",
+    bash: "Bash",
+    zsh: "Shell",
+    sql: "SQL",
+    json: "JSON",
+    yaml: "YAML",
+    yml: "YAML",
+    html: "HTML",
+    css: "CSS",
+    scss: "SCSS",
+    md: "Markdown",
+    markdown: "Markdown",
+    toml: "TOML",
+    xml: "XML",
+    graphql: "GraphQL",
+    dockerfile: "Dockerfile",
+    docker: "Docker",
+    text: "Plain Text"
 };
 
 function langLabel(lang: string): string | null {
@@ -131,13 +166,14 @@ function CodeBlock({ className, children }: { className?: string; children: stri
         if (lang === "mermaid") return;
         let cancelled = false;
 
-        import("shiki").then(({ codeToHtml }) =>
-            codeToHtml(code, {
-                lang: lang || "text",
-                themes: { light: "github-light", dark: "github-dark-dimmed" },
-                defaultColor: false,
-            })
-        )
+        import("shiki")
+            .then(({ codeToHtml }) =>
+                codeToHtml(code, {
+                    lang: lang || "text",
+                    themes: { light: "github-light", dark: "github-dark-dimmed" },
+                    defaultColor: false
+                })
+            )
             .then(result => {
                 if (!cancelled) setHtml(result);
             })
@@ -145,7 +181,9 @@ function CodeBlock({ className, children }: { className?: string; children: stri
                 if (!cancelled) setHtml(null);
             });
 
-        return () => { cancelled = true; };
+        return () => {
+            cancelled = true;
+        };
     }, [code, lang]);
 
     if (lang === "mermaid") {
@@ -153,10 +191,10 @@ function CodeBlock({ className, children }: { className?: string; children: stri
     }
 
     const header = label ? (
-        <div className="flex items-center justify-between border-b border-border/20 bg-muted/30 px-4 py-1.5">
-            <span className="text-[10px] font-medium text-muted-foreground">{label}</span>
+        <div className="border-border/20 bg-muted/30 flex items-center justify-between border-b px-4 py-1.5">
+            <span className="text-muted-foreground text-[10px] font-medium">{label}</span>
             <div className="flex items-center gap-2">
-                <span className="text-[10px] text-muted-foreground/60">{lineCount} lines</span>
+                <span className="text-muted-foreground/60 text-[10px]">{lineCount} lines</span>
                 <CopyButton code={code} />
             </div>
         </div>
@@ -164,10 +202,10 @@ function CodeBlock({ className, children }: { className?: string; children: stri
 
     if (html) {
         return (
-            <div className="group relative my-3 overflow-hidden rounded-lg border border-border/30 bg-[#f6f8fa] dark:bg-[#22272e]">
+            <div className="group border-border/30 relative my-3 overflow-hidden rounded-lg border bg-[#f6f8fa] dark:bg-[#22272e]">
                 {header}
                 <div
-                    className="overflow-x-auto font-mono text-sm [&_pre]:!p-4 [&_pre]:!m-0 [&_pre]:!rounded-none [&_.shiki]:!bg-transparent"
+                    className="overflow-x-auto font-mono text-sm [&_.shiki]:!bg-transparent [&_pre]:!m-0 [&_pre]:!rounded-none [&_pre]:!p-4"
                     dangerouslySetInnerHTML={{ __html: html }}
                 />
             </div>
@@ -175,7 +213,7 @@ function CodeBlock({ className, children }: { className?: string; children: stri
     }
 
     return (
-        <div className="group relative my-3 overflow-hidden rounded-lg border border-border/30 bg-[#f6f8fa] dark:bg-[#22272e]">
+        <div className="group border-border/30 relative my-3 overflow-hidden rounded-lg border bg-[#f6f8fa] dark:bg-[#22272e]">
             {header}
             <pre className="overflow-x-auto p-4 font-mono text-sm">
                 <code className="text-muted-foreground">{code}</code>
@@ -188,11 +226,7 @@ const ExcludeChunkContext = createContext<string | undefined>(undefined);
 
 /* ─── Smart inline code ─── */
 
-function SmartCode({ children, className, ...props }: {
-    children: string;
-    className?: string;
-    [key: string]: unknown;
-}) {
+function SmartCode({ children, className, ...props }: { children: string; className?: string; [key: string]: unknown }) {
     const { chunkIndex, fileRefIndex, vocabIndex } = useSmartLinks();
     const excludeChunkId = useContext(ExcludeChunkContext);
     const text = String(children);
@@ -209,7 +243,7 @@ function SmartCode({ children, className, ...props }: {
             <Link
                 to="/chunks/$chunkId"
                 params={{ chunkId: match.id }}
-                className="rounded bg-primary/10 px-1.5 py-0.5 text-sm font-mono text-primary hover:bg-primary/20 transition-colors"
+                className="bg-primary/10 text-primary hover:bg-primary/20 rounded px-1.5 py-0.5 font-mono text-sm transition-colors"
             >
                 {children}
             </Link>
@@ -221,7 +255,7 @@ function SmartCode({ children, className, ...props }: {
             <Link
                 to="/chunks/$chunkId"
                 params={{ chunkId: match.chunkId }}
-                className="rounded bg-primary/10 px-1.5 py-0.5 text-sm font-mono text-primary hover:bg-primary/20 transition-colors"
+                className="bg-primary/10 text-primary hover:bg-primary/20 rounded px-1.5 py-0.5 font-mono text-sm transition-colors"
                 title={match.path}
             >
                 {children}
@@ -232,7 +266,7 @@ function SmartCode({ children, className, ...props }: {
     if (match?.type === "vocabulary") {
         return (
             <VocabularyPopover word={match.word} definition={match.definition} category={match.category} expects={match.expects}>
-                <code className="rounded bg-muted px-1.5 py-0.5 text-sm font-mono" {...props}>
+                <code className="bg-muted rounded px-1.5 py-0.5 font-mono text-sm" {...props}>
                     {children}
                 </code>
             </VocabularyPopover>
@@ -240,7 +274,7 @@ function SmartCode({ children, className, ...props }: {
     }
 
     return (
-        <code className="rounded bg-muted/80 border border-border/40 px-1.5 py-0.5 text-[0.85em] font-mono" {...props}>
+        <code className="bg-muted/80 border-border/40 rounded border px-1.5 py-0.5 font-mono text-[0.85em]" {...props}>
             {children}
         </code>
     );
@@ -250,10 +284,7 @@ function SmartCode({ children, className, ...props }: {
 
 const SmartText = memo(function SmartText({ children }: { children: string }) {
     const { vocabIndex, vocabPattern } = useSmartLinks();
-    const matches = useMemo(
-        () => matchVocabularyInText(children, vocabIndex, vocabPattern),
-        [children, vocabIndex, vocabPattern]
-    );
+    const matches = useMemo(() => matchVocabularyInText(children, vocabIndex, vocabPattern), [children, vocabIndex, vocabPattern]);
 
     if (matches.length === 0) return <>{children}</>;
 
@@ -335,7 +366,7 @@ function extractToc(markdown: string): TocEntry[] {
         entries.push({
             level: match[1]!.length,
             text: match[2]!.trim(),
-            slug: slugify(match[2]!.trim()),
+            slug: slugify(match[2]!.trim())
         });
     }
     return entries;
@@ -345,17 +376,12 @@ function TableOfContents({ entries }: { entries: TocEntry[] }) {
     const minLevel = Math.min(...entries.map(e => e.level));
 
     return (
-        <nav className="mb-6 rounded-lg border border-border/50 bg-muted/20 px-4 py-3">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Table of Contents
-            </p>
+        <nav className="border-border/50 bg-muted/20 mb-6 rounded-lg border px-4 py-3">
+            <p className="text-muted-foreground mb-2 text-xs font-semibold tracking-wider uppercase">Table of Contents</p>
             <ul className="space-y-1 text-sm">
                 {entries.map((entry, i) => (
                     <li key={i} style={{ marginLeft: `${(entry.level - minLevel) * 16}px` }}>
-                        <a
-                            href={`#${entry.slug}`}
-                            className="text-muted-foreground hover:text-foreground transition-colors"
-                        >
+                        <a href={`#${entry.slug}`} className="text-muted-foreground hover:text-foreground transition-colors">
                             {entry.text}
                         </a>
                     </li>
@@ -376,38 +402,38 @@ const components: Components = {
         const text = String(children);
         const isInline = !className && !text.includes("\n");
         if (isInline) {
-            return <SmartCode className={className} {...props}>{text}</SmartCode>;
+            return (
+                <SmartCode className={className} {...props}>
+                    {text}
+                </SmartCode>
+            );
         }
         return <CodeBlock className={className}>{text}</CodeBlock>;
     },
     table({ children }) {
         return (
-            <div className="my-4 overflow-x-auto rounded-lg border border-border">
+            <div className="border-border my-4 overflow-x-auto rounded-lg border">
                 <table className="w-full text-sm">{children}</table>
             </div>
         );
     },
     thead({ children }) {
-        return <thead className="border-b border-border bg-muted/50">{children}</thead>;
+        return <thead className="border-border bg-muted/50 border-b">{children}</thead>;
     },
     th({ children }) {
-        return <th className="px-4 py-2 text-left text-xs font-semibold text-muted-foreground">{children}</th>;
+        return <th className="text-muted-foreground px-4 py-2 text-left text-xs font-semibold">{children}</th>;
     },
     td({ children }) {
-        return <td className="border-t border-border/50 px-4 py-2">{children}</td>;
+        return <td className="border-border/50 border-t px-4 py-2">{children}</td>;
     },
     blockquote({ children }) {
-        return (
-            <blockquote className="my-3 border-l-2 border-primary/40 pl-4 text-muted-foreground italic">
-                {children}
-            </blockquote>
-        );
+        return <blockquote className="border-primary/40 text-muted-foreground my-3 border-l-2 pl-4 italic">{children}</blockquote>;
     },
     a({ href, children }) {
         return (
             <a
                 href={href}
-                className="text-primary underline underline-offset-2 hover:text-primary/80"
+                className="text-primary hover:text-primary/80 underline underline-offset-2"
                 target={href?.startsWith("http") ? "_blank" : undefined}
                 rel={href?.startsWith("http") ? "noopener noreferrer" : undefined}
             >
@@ -416,7 +442,7 @@ const components: Components = {
         );
     },
     hr() {
-        return <hr className="my-6 border-border/50" />;
+        return <hr className="border-border/50 my-6" />;
     },
     p({ children }) {
         return <SmartParagraph>{children}</SmartParagraph>;
@@ -425,14 +451,7 @@ const components: Components = {
         return <SmartListItem>{children}</SmartListItem>;
     },
     img({ src, alt }) {
-        return (
-            <img
-                src={src}
-                alt={alt ?? ""}
-                className="my-4 max-w-full rounded-lg border border-border/30"
-                loading="lazy"
-            />
-        );
+        return <img src={src} alt={alt ?? ""} className="border-border/30 my-4 max-w-full rounded-lg border" loading="lazy" />;
     },
     h1({ children }) {
         const text = typeof children === "string" ? children : String(children);
@@ -457,7 +476,7 @@ const components: Components = {
     h6({ children }) {
         const text = typeof children === "string" ? children : String(children);
         return <h6 id={slugify(text)}>{children}</h6>;
-    },
+    }
 };
 
 /* ─── Renderer ─── */
@@ -468,11 +487,7 @@ export function MarkdownRenderer({ children, excludeChunkId }: { children: strin
     return (
         <ExcludeChunkContext.Provider value={excludeChunkId}>
             {tocEntries.length >= 3 && <TableOfContents entries={tocEntries} />}
-            <Markdown
-                remarkPlugins={remarkPlugins}
-                rehypePlugins={rehypePlugins}
-                components={components}
-            >
+            <Markdown remarkPlugins={remarkPlugins} rehypePlugins={rehypePlugins} components={components}>
                 {children}
             </Markdown>
         </ExcludeChunkContext.Provider>

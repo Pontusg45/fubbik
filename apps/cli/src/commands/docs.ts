@@ -4,7 +4,7 @@ import { join, resolve } from "node:path";
 import { Command } from "commander";
 
 import { formatBold, formatDim, formatSuccess } from "../lib/colors";
-import { resolveCodebaseId } from "../lib/detect-codebase";
+import { resolveSpaceId } from "../lib/detect-space";
 import { isJson, output, outputError, outputQuiet } from "../lib/output";
 import { getServerUrl } from "../lib/store";
 
@@ -58,11 +58,12 @@ interface Document {
 const importDoc = new Command("import")
     .description("Import a single markdown file as a document")
     .argument("<path>", "path to .md file")
-    .option("--codebase <name>", "target codebase name")
-    .action(async (filePath: string, opts: { codebase?: string }, cmd: Command) => {
+    .option("-s, --space <name>", "target space name")
+    .option("--codebase <name>", "alias for --space (deprecated)")
+    .action(async (filePath: string, opts: { space?: string; codebase?: string }, cmd: Command) => {
         try {
             const serverUrl = requireServer();
-            const codebaseId = await resolveCodebaseId(serverUrl, opts);
+            const spaceId = await resolveSpaceId(serverUrl, { space: opts.space, codebase: opts.codebase });
 
             const absPath = resolve(filePath);
             const content = readFileSync(absPath, "utf-8");
@@ -71,7 +72,7 @@ const importDoc = new Command("import")
                 sourcePath: absPath,
                 content
             };
-            if (codebaseId) body.codebaseId = codebaseId;
+            if (spaceId) body.spaceId = spaceId;
 
             const res = await fetchApi("/documents/import", {
                 method: "POST",
@@ -85,7 +86,13 @@ const importDoc = new Command("import")
 
             const result = (await res.json()) as { document: Document; created: number; updated: number; status: string };
             outputQuiet(cmd, result.document.id);
-            output(cmd, result, formatSuccess(`Imported "${result.document.title}" (${result.document.id}) — ${result.status}, ${result.created} created, ${result.updated} updated`));
+            output(
+                cmd,
+                result,
+                formatSuccess(
+                    `Imported "${result.document.title}" (${result.document.id}) — ${result.status}, ${result.created} created, ${result.updated} updated`
+                )
+            );
         } catch (err) {
             outputError(String(err));
             process.exit(1);
@@ -95,11 +102,12 @@ const importDoc = new Command("import")
 const importDir = new Command("import-dir")
     .description("Import a directory of markdown files as documents")
     .argument("<dir>", "path to directory")
-    .option("--codebase <name>", "target codebase name")
-    .action(async (dirPath: string, opts: { codebase?: string }, cmd: Command) => {
+    .option("-s, --space <name>", "target space name")
+    .option("--codebase <name>", "alias for --space (deprecated)")
+    .action(async (dirPath: string, opts: { space?: string; codebase?: string }, cmd: Command) => {
         try {
             const serverUrl = requireServer();
-            const codebaseId = await resolveCodebaseId(serverUrl, opts);
+            const spaceId = await resolveSpaceId(serverUrl, { space: opts.space, codebase: opts.codebase });
 
             const absDir = resolve(dirPath);
             const stat = statSync(absDir);
@@ -120,7 +128,7 @@ const importDir = new Command("import-dir")
             }));
 
             const body: Record<string, unknown> = { files };
-            if (codebaseId) body.codebaseId = codebaseId;
+            if (spaceId) body.spaceId = spaceId;
 
             const res = await fetchApi("/documents/import-dir", {
                 method: "POST",
@@ -139,11 +147,7 @@ const importDir = new Command("import-dir")
             }
 
             outputQuiet(cmd, results.map(r => r.document.id).join("\n"));
-            output(
-                cmd,
-                results,
-                formatSuccess(`Imported ${results.length} document(s) from ${absDir}`)
-            );
+            output(cmd, results, formatSuccess(`Imported ${results.length} document(s) from ${absDir}`));
         } catch (err) {
             outputError(String(err));
             process.exit(1);
@@ -152,14 +156,15 @@ const importDir = new Command("import-dir")
 
 const listDocs = new Command("list")
     .description("List imported documents")
-    .option("--codebase <name>", "filter by codebase name")
-    .action(async (opts: { codebase?: string }, cmd: Command) => {
+    .option("-s, --space <name>", "filter by space name")
+    .option("--codebase <name>", "alias for --space (deprecated)")
+    .action(async (opts: { space?: string; codebase?: string }, cmd: Command) => {
         try {
             const serverUrl = requireServer();
-            const codebaseId = await resolveCodebaseId(serverUrl, opts);
+            const spaceId = await resolveSpaceId(serverUrl, { space: opts.space, codebase: opts.codebase });
 
             const params = new URLSearchParams();
-            if (codebaseId) params.set("codebaseId", codebaseId);
+            if (spaceId) params.set("spaceId", spaceId);
             const qs = params.toString();
 
             const res = await fetchApi(`/documents${qs ? `?${qs}` : ""}`);
@@ -241,11 +246,12 @@ const showDoc = new Command("show")
 const syncDoc = new Command("sync")
     .description("Re-import a document from its source file on disk")
     .argument("<id>", "document ID")
-    .option("--codebase <name>", "target codebase name")
-    .action(async (id: string, opts: { codebase?: string }, cmd: Command) => {
+    .option("-s, --space <name>", "target space name")
+    .option("--codebase <name>", "alias for --space (deprecated)")
+    .action(async (id: string, opts: { space?: string; codebase?: string }, cmd: Command) => {
         try {
             const serverUrl = requireServer();
-            const codebaseId = await resolveCodebaseId(serverUrl, opts);
+            const spaceId = await resolveSpaceId(serverUrl, { space: opts.space, codebase: opts.codebase });
 
             // First get the document to find its source path
             const getRes = await fetchApi(`/documents/${id}`);
@@ -263,7 +269,7 @@ const syncDoc = new Command("sync")
             const content = readFileSync(doc.sourcePath, "utf-8");
 
             const body: Record<string, unknown> = { content };
-            if (codebaseId) body.codebaseId = codebaseId;
+            if (spaceId) body.spaceId = spaceId;
 
             const res = await fetchApi(`/documents/${id}/sync`, {
                 method: "POST",
@@ -276,7 +282,13 @@ const syncDoc = new Command("sync")
             }
 
             const result = (await res.json()) as { document: Document; created: number; updated: number; status: string };
-            output(cmd, result, formatSuccess(`Synced "${result.document.title}" from ${doc.sourcePath} — ${result.created} created, ${result.updated} updated`));
+            output(
+                cmd,
+                result,
+                formatSuccess(
+                    `Synced "${result.document.title}" from ${doc.sourcePath} — ${result.created} created, ${result.updated} updated`
+                )
+            );
         } catch (err) {
             outputError(String(err));
             process.exit(1);

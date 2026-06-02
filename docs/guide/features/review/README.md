@@ -1,7 +1,7 @@
 ---
 tags:
-  - guide
-  - review
+    - guide
+    - review
 description: Review section index — proposals, review queue, and bulk operations
 ---
 

@@ -12,7 +12,7 @@ import type { SuggestionKind } from "./header-search-dropdown";
 const ENUM_VALUES: Record<string, string[]> = {
     type: ["note", "document", "reference", "schema", "checklist"],
     origin: ["human", "ai"],
-    review: ["draft", "reviewed", "approved"],
+    review: ["draft", "reviewed", "approved"]
 };
 
 export type HeaderSearchMode = "empty" | "field-prefix" | "value" | "free-text";
@@ -50,7 +50,7 @@ export function useHeaderSearchSuggestions(
     rawInput: string,
     hasPills: boolean,
     savedQueries: Array<{ id: string; name: string; query: unknown }>,
-    recentQueries: RecentQuery[],
+    recentQueries: RecentQuery[]
 ): HeaderSearchSuggestionsResult {
     const { mode, field, prefix } = parseMode(rawInput);
 
@@ -58,19 +58,20 @@ export function useHeaderSearchSuggestions(
         queryKey: ["header-search-autocomplete", field, prefix],
         queryFn: async () => {
             if (!field) return [];
-            const acField = field === "near" || field === "path" || field === "similar-to"
-                ? "chunk"
-                : field === "affected-by"
-                  ? "requirement"
-                  : field === "tag"
-                    ? "tag"
-                    : null;
+            const acField =
+                field === "near" || field === "path" || field === "similar-to"
+                    ? "chunk"
+                    : field === "affected-by"
+                      ? "requirement"
+                      : field === "tag"
+                        ? "tag"
+                        : null;
             if (!acField) return [];
             try {
                 const result = unwrapEden(
                     await api.api.search.autocomplete.get({
-                        query: { field: acField, prefix } as any,
-                    }),
+                        query: { field: acField, prefix } as any
+                    })
                 );
                 return (result as any) ?? [];
             } catch {
@@ -78,7 +79,7 @@ export function useHeaderSearchSuggestions(
             }
         },
         enabled: mode === "value" && !!field,
-        staleTime: 30_000,
+        staleTime: 30_000
     });
 
     const chunkSearch = useQuery({
@@ -87,8 +88,8 @@ export function useHeaderSearchSuggestions(
             try {
                 const result = unwrapEden(
                     await api.api.search.autocomplete.get({
-                        query: { field: "chunk", prefix } as any,
-                    }),
+                        query: { field: "chunk", prefix } as any
+                    })
                 );
                 return (result as any) ?? [];
             } catch {
@@ -96,7 +97,7 @@ export function useHeaderSearchSuggestions(
             }
         },
         enabled: mode === "free-text" && prefix.length >= 1,
-        staleTime: 30_000,
+        staleTime: 30_000
     });
 
     const suggestions: SuggestionKind[] = useMemo(() => {
@@ -125,9 +126,7 @@ export function useHeaderSearchSuggestions(
 
         if (mode === "value" && field) {
             if (ENUM_VALUES[field]) {
-                const values = ENUM_VALUES[field].filter(v =>
-                    v.toLowerCase().startsWith(prefix.toLowerCase()),
-                );
+                const values = ENUM_VALUES[field].filter(v => v.toLowerCase().startsWith(prefix.toLowerCase()));
                 for (const value of values) {
                     list.push({ type: "value", field, value });
                 }
@@ -135,7 +134,7 @@ export function useHeaderSearchSuggestions(
             }
             const results = (valueAutocomplete.data as any[]) ?? [];
             for (const r of results.slice(0, 8)) {
-                const name = typeof r === "string" ? r : r.name ?? r.title ?? r.id;
+                const name = typeof r === "string" ? r : (r.name ?? r.title ?? r.id);
                 const id = typeof r === "object" ? r.id : undefined;
                 list.push({ type: "value", field, value: id ?? name, label: name });
             }
@@ -148,8 +147,8 @@ export function useHeaderSearchSuggestions(
                 list.push({
                     type: "chunk",
                     id: (typeof r === "object" ? r.id : r) as string,
-                    title: (typeof r === "object" ? r.title ?? r.name : r) as string,
-                    chunkType: (typeof r === "object" ? r.type : "note") as string,
+                    title: (typeof r === "object" ? (r.title ?? r.name) : r) as string,
+                    chunkType: (typeof r === "object" ? r.type : "note") as string
                 });
             }
             if (prefix.trim().length > 0) {

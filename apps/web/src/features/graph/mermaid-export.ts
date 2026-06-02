@@ -14,11 +14,7 @@ export interface MermaidExportOptions {
 
 const DEFAULT_MAX_NODES = 100;
 
-export function buildMermaidFromGraph(
-    nodes: Node[],
-    edges: Edge[],
-    opts: MermaidExportOptions = {}
-): MermaidExportResult {
+export function buildMermaidFromGraph(nodes: Node[], edges: Edge[], opts: MermaidExportOptions = {}): MermaidExportResult {
     const maxNodes = opts.maxNodes ?? DEFAULT_MAX_NODES;
     const direction = opts.direction ?? "LR";
 

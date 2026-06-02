@@ -1,11 +1,10 @@
-import * as vscode from "vscode";
 import { exec } from "child_process";
+
+import * as vscode from "vscode";
+
 import { FubbikApi, DetectResult } from "./api";
 
-function execAsync(
-    command: string,
-    cwd: string
-): Promise<{ stdout: string; stderr: string }> {
+function execAsync(command: string, cwd: string): Promise<{ stdout: string; stderr: string }> {
     return new Promise((resolve, reject) => {
         exec(command, { cwd }, (error, stdout, stderr) => {
             if (error) {
@@ -17,9 +16,7 @@ function execAsync(
     });
 }
 
-export async function detectSpace(
-    api: FubbikApi
-): Promise<DetectResult | null> {
+export async function detectSpace(api: FubbikApi): Promise<DetectResult | null> {
     const folders = vscode.workspace.workspaceFolders;
     if (!folders || folders.length === 0) {
         return null;
@@ -28,10 +25,7 @@ export async function detectSpace(
     const workspacePath = folders[0].uri.fsPath;
 
     try {
-        const { stdout } = await execAsync(
-            "git remote get-url origin",
-            workspacePath
-        );
+        const { stdout } = await execAsync("git remote get-url origin", workspacePath);
         const remoteUrl = stdout.trim();
 
         if (remoteUrl) {

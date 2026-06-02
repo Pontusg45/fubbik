@@ -11,7 +11,7 @@ function makeChunk(overrides: Partial<DiscoveredChunk> & { title: string }): Dis
         tier: 1,
         category: "documents",
         source: "test",
-        ...overrides,
+        ...overrides
     };
 }
 
@@ -21,19 +21,17 @@ describe("inferConnections", () => {
             title: "README",
             content: "See the [Guide](./docs/guide.md) for more info.",
             tier: 1,
-            source: "README.md",
+            source: "README.md"
         });
         const guide = makeChunk({
             title: "Guide",
             tier: 1,
-            source: "docs/guide.md",
+            source: "docs/guide.md"
         });
 
         const connections = inferConnections([readme, guide]);
 
-        const ref = connections.find(
-            c => c.sourceTitle === "README" && c.targetTitle === "Guide" && c.relation === "references",
-        );
+        const ref = connections.find(c => c.sourceTitle === "README" && c.targetTitle === "Guide" && c.relation === "references");
         expect(ref).toBeDefined();
     });
 
@@ -42,22 +40,19 @@ describe("inferConnections", () => {
             title: "Project Structure (Monorepo)",
             tier: 2,
             category: "structure",
-            source: "package.json",
+            source: "package.json"
         });
         const techStack = makeChunk({
             title: "Tech Stack — @mono/web",
             tier: 2,
             category: "tech-stack",
-            source: "apps/web/package.json",
+            source: "apps/web/package.json"
         });
 
         const connections = inferConnections([structure, techStack]);
 
         const partOf = connections.find(
-            c =>
-                c.sourceTitle === "Tech Stack — @mono/web" &&
-                c.targetTitle === "Project Structure (Monorepo)" &&
-                c.relation === "part_of",
+            c => c.sourceTitle === "Tech Stack — @mono/web" && c.targetTitle === "Project Structure (Monorepo)" && c.relation === "part_of"
         );
         expect(partOf).toBeDefined();
     });
@@ -67,22 +62,19 @@ describe("inferConnections", () => {
             title: "API Routes",
             tier: 3,
             tags: ["routing"],
-            source: "src/routes",
+            source: "src/routes"
         });
         const db = makeChunk({
             title: "Database Schema",
             tier: 3,
             tags: ["database"],
-            source: "src/db",
+            source: "src/db"
         });
 
         const connections = inferConnections([routes, db]);
 
         const dep = connections.find(
-            c =>
-                c.sourceTitle === "API Routes" &&
-                c.targetTitle === "Database Schema" &&
-                c.relation === "depends_on",
+            c => c.sourceTitle === "API Routes" && c.targetTitle === "Database Schema" && c.relation === "depends_on"
         );
         expect(dep).toBeDefined();
     });
@@ -92,23 +84,20 @@ describe("inferConnections", () => {
             title: "README",
             content: "This project uses Drizzle ORM for database access",
             tier: 1,
-            source: "README.md",
+            source: "README.md"
         });
         const dbSchema = makeChunk({
             title: "Database Schema",
             content: "drizzle-orm",
             tier: 3,
             tags: ["database"],
-            source: "src/db",
+            source: "src/db"
         });
 
         const connections = inferConnections([readme, dbSchema]);
 
         const supports = connections.find(
-            c =>
-                c.sourceTitle === "Database Schema" &&
-                c.targetTitle === "README" &&
-                c.relation === "supports",
+            c => c.sourceTitle === "Database Schema" && c.targetTitle === "README" && c.relation === "supports"
         );
         expect(supports).toBeDefined();
     });
@@ -118,14 +107,14 @@ describe("inferConnections", () => {
             title: "README",
             content: "A simple hello world project",
             tier: 1,
-            source: "README.md",
+            source: "README.md"
         });
         const ci = makeChunk({
             title: "CI Pipeline",
             tier: 2,
             category: "config",
             tags: ["ci"],
-            source: ".github/workflows/ci.yml",
+            source: ".github/workflows/ci.yml"
         });
 
         const connections = inferConnections([readme, ci]);

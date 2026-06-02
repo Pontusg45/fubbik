@@ -6,11 +6,7 @@ import * as favoriteService from "./service";
 
 export const favoriteRoutes = new Elysia()
     .get("/favorites", ctx =>
-        Effect.runPromise(
-            requireSession(ctx).pipe(
-                Effect.flatMap(session => favoriteService.listFavorites(session.user.id))
-            )
-        )
+        Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(session => favoriteService.listFavorites(session.user.id))))
     )
     .post(
         "/favorites",

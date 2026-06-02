@@ -32,8 +32,5 @@ export const collection = pgTable(
             .$onUpdate(() => new Date())
             .notNull()
     },
-    table => [
-        index("collection_userId_idx").on(table.userId),
-        uniqueIndex("collection_user_name_idx").on(table.userId, table.name)
-    ]
+    table => [index("collection_userId_idx").on(table.userId), uniqueIndex("collection_user_name_idx").on(table.userId, table.name)]
 );

@@ -33,7 +33,7 @@ interface MatrixGridProps {
 const STATUS_COLORS: Record<string, string> = {
     specified: "bg-emerald-500/20 hover:bg-emerald-500/30 border-emerald-500/40 text-emerald-700 dark:text-emerald-300",
     unspecified: "bg-amber-500/20 hover:bg-amber-500/30 border-amber-500/40 text-amber-700 dark:text-amber-300",
-    violated: "bg-red-500/20 hover:bg-red-500/30 border-red-500/40 text-red-700 dark:text-red-300",
+    violated: "bg-red-500/20 hover:bg-red-500/30 border-red-500/40 text-red-700 dark:text-red-300"
 };
 
 const EMPTY_CELL = "bg-muted/30 hover:bg-muted/60 border-muted-foreground/10 text-muted-foreground";
@@ -72,13 +72,11 @@ export function MatrixGrid({ dimensions, rules, cells, onCellClick, onToggleCell
             <table className="w-full border-collapse text-sm">
                 <thead>
                     <tr>
-                        <th className="bg-muted/50 border-b border-r px-3 py-2 text-left font-medium">
-                            Rule / Dimension
-                        </th>
+                        <th className="bg-muted/50 border-r border-b px-3 py-2 text-left font-medium">Rule / Dimension</th>
                         {dimensions.map(dim => (
                             <th
                                 key={dim.id}
-                                className="bg-muted/50 border-b px-3 py-2 text-center font-medium min-w-[80px]"
+                                className="bg-muted/50 min-w-[80px] border-b px-3 py-2 text-center font-medium"
                                 title={dim.name}
                             >
                                 <span className="line-clamp-2">{dim.name}</span>
@@ -131,26 +129,19 @@ function CategoryGroup({
     onToggleCategory,
     onCellClick,
     onToggleCell,
-    showCategoryHeader,
+    showCategoryHeader
 }: CategoryGroupProps) {
     return (
         <>
             {showCategoryHeader && (
                 <tr>
-                    <td
-                        colSpan={dimensions.length + 1}
-                        className="bg-muted/30 border-b px-3 py-1.5"
-                    >
+                    <td colSpan={dimensions.length + 1} className="bg-muted/30 border-b px-3 py-1.5">
                         <button
                             type="button"
                             onClick={onToggleCategory}
-                            className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground hover:text-foreground transition-colors"
+                            className="text-muted-foreground hover:text-foreground flex items-center gap-1.5 text-xs font-semibold tracking-wide uppercase transition-colors"
                         >
-                            {isCollapsed ? (
-                                <ChevronRight className="size-3.5" />
-                            ) : (
-                                <ChevronDown className="size-3.5" />
-                            )}
+                            {isCollapsed ? <ChevronRight className="size-3.5" /> : <ChevronDown className="size-3.5" />}
                             {category}
                             <span className="font-normal normal-case">({rules.length})</span>
                         </button>
@@ -160,10 +151,7 @@ function CategoryGroup({
             {!isCollapsed &&
                 rules.map(rule => (
                     <tr key={rule.id} className="border-b last:border-b-0">
-                        <td
-                            className="border-r px-3 py-2 font-medium min-w-[160px] max-w-[240px]"
-                            title={rule.description ?? undefined}
-                        >
+                        <td className="max-w-[240px] min-w-[160px] border-r px-3 py-2 font-medium" title={rule.description ?? undefined}>
                             <span className="line-clamp-1">{rule.title}</span>
                         </td>
                         {dimensions.map(dim => {

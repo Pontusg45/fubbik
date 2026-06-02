@@ -15,28 +15,28 @@ export interface ListCatalogParams {
  */
 export function listChunkTypes(params: ListCatalogParams = {}) {
     return dbEffect(() => {
-            const conditions = [eq(chunkType.builtIn, true)];
-            if (params.userId) conditions.push(eq(chunkType.userId, params.userId));
-            if (params.spaceId) conditions.push(eq(chunkType.spaceId, params.spaceId));
-            return db
-                .select()
-                .from(chunkType)
-                .where(or(...conditions))
-                .orderBy(asc(chunkType.displayOrder), asc(chunkType.id));
-        });
+        const conditions = [eq(chunkType.builtIn, true)];
+        if (params.userId) conditions.push(eq(chunkType.userId, params.userId));
+        if (params.spaceId) conditions.push(eq(chunkType.spaceId, params.spaceId));
+        return db
+            .select()
+            .from(chunkType)
+            .where(or(...conditions))
+            .orderBy(asc(chunkType.displayOrder), asc(chunkType.id));
+    });
 }
 
 export function listConnectionRelations(params: ListCatalogParams = {}) {
     return dbEffect(() => {
-            const conditions = [eq(connectionRelation.builtIn, true)];
-            if (params.userId) conditions.push(eq(connectionRelation.userId, params.userId));
-            if (params.spaceId) conditions.push(eq(connectionRelation.spaceId, params.spaceId));
-            return db
-                .select()
-                .from(connectionRelation)
-                .where(or(...conditions))
-                .orderBy(asc(connectionRelation.displayOrder), asc(connectionRelation.id));
-        });
+        const conditions = [eq(connectionRelation.builtIn, true)];
+        if (params.userId) conditions.push(eq(connectionRelation.userId, params.userId));
+        if (params.spaceId) conditions.push(eq(connectionRelation.spaceId, params.spaceId));
+        return db
+            .select()
+            .from(connectionRelation)
+            .where(or(...conditions))
+            .orderBy(asc(connectionRelation.displayOrder), asc(connectionRelation.id));
+    });
 }
 
 // --- writes ------------------------------------------------------------
@@ -55,58 +55,58 @@ export interface ChunkTypeInsert {
 
 export function createChunkType(row: ChunkTypeInsert) {
     return dbEffect(async () => {
-            const [created] = await db
-                .insert(chunkType)
-                .values({
-                    id: row.id,
-                    label: row.label,
-                    description: row.description ?? null,
-                    icon: row.icon ?? null,
-                    color: row.color ?? "#8b5cf6",
-                    examples: row.examples ?? [],
-                    displayOrder: row.displayOrder ?? 500,
-                    builtIn: false,
-                    userId: row.userId,
-                    spaceId: row.spaceId ?? null
-                })
-                .returning();
-            return created!;
-        });
+        const [created] = await db
+            .insert(chunkType)
+            .values({
+                id: row.id,
+                label: row.label,
+                description: row.description ?? null,
+                icon: row.icon ?? null,
+                color: row.color ?? "#8b5cf6",
+                examples: row.examples ?? [],
+                displayOrder: row.displayOrder ?? 500,
+                builtIn: false,
+                userId: row.userId,
+                spaceId: row.spaceId ?? null
+            })
+            .returning();
+        return created!;
+    });
 }
 
 export function findChunkTypeById(id: string) {
     return dbEffect(async () => {
-            const [row] = await db.select().from(chunkType).where(eq(chunkType.id, id));
-            return row ?? null;
-        });
+        const [row] = await db.select().from(chunkType).where(eq(chunkType.id, id));
+        return row ?? null;
+    });
 }
 
 export function updateChunkTypeRow(id: string, userId: string, data: Partial<Omit<ChunkTypeInsert, "id" | "userId">>) {
     return dbEffect(async () => {
-            const [updated] = await db
-                .update(chunkType)
-                .set({
-                    ...(data.label !== undefined && { label: data.label }),
-                    ...(data.description !== undefined && { description: data.description }),
-                    ...(data.icon !== undefined && { icon: data.icon }),
-                    ...(data.color !== undefined && { color: data.color }),
-                    ...(data.examples !== undefined && { examples: data.examples }),
-                    ...(data.displayOrder !== undefined && { displayOrder: data.displayOrder })
-                })
-                .where(and(eq(chunkType.id, id), eq(chunkType.userId, userId)))
-                .returning();
-            return updated ?? null;
-        });
+        const [updated] = await db
+            .update(chunkType)
+            .set({
+                ...(data.label !== undefined && { label: data.label }),
+                ...(data.description !== undefined && { description: data.description }),
+                ...(data.icon !== undefined && { icon: data.icon }),
+                ...(data.color !== undefined && { color: data.color }),
+                ...(data.examples !== undefined && { examples: data.examples }),
+                ...(data.displayOrder !== undefined && { displayOrder: data.displayOrder })
+            })
+            .where(and(eq(chunkType.id, id), eq(chunkType.userId, userId)))
+            .returning();
+        return updated ?? null;
+    });
 }
 
 export function deleteChunkTypeRow(id: string, userId: string) {
     return dbEffect(async () => {
-            const [deleted] = await db
-                .delete(chunkType)
-                .where(and(eq(chunkType.id, id), eq(chunkType.userId, userId)))
-                .returning();
-            return deleted ?? null;
-        });
+        const [deleted] = await db
+            .delete(chunkType)
+            .where(and(eq(chunkType.id, id), eq(chunkType.userId, userId)))
+            .returning();
+        return deleted ?? null;
+    });
 }
 
 export interface ConnectionRelationInsert {
@@ -124,63 +124,58 @@ export interface ConnectionRelationInsert {
 
 export function createConnectionRelation(row: ConnectionRelationInsert) {
     return dbEffect(async () => {
-            const [created] = await db
-                .insert(connectionRelation)
-                .values({
-                    id: row.id,
-                    label: row.label,
-                    description: row.description ?? null,
-                    arrowStyle: row.arrowStyle ?? "solid",
-                    direction: row.direction ?? "forward",
-                    color: row.color ?? "#64748b",
-                    inverseOfId: row.inverseOfId ?? null,
-                    displayOrder: row.displayOrder ?? 500,
-                    builtIn: false,
-                    userId: row.userId,
-                    spaceId: row.spaceId ?? null
-                })
-                .returning();
-            return created!;
-        });
+        const [created] = await db
+            .insert(connectionRelation)
+            .values({
+                id: row.id,
+                label: row.label,
+                description: row.description ?? null,
+                arrowStyle: row.arrowStyle ?? "solid",
+                direction: row.direction ?? "forward",
+                color: row.color ?? "#64748b",
+                inverseOfId: row.inverseOfId ?? null,
+                displayOrder: row.displayOrder ?? 500,
+                builtIn: false,
+                userId: row.userId,
+                spaceId: row.spaceId ?? null
+            })
+            .returning();
+        return created!;
+    });
 }
 
 export function findConnectionRelationById(id: string) {
     return dbEffect(async () => {
-            const [row] = await db.select().from(connectionRelation).where(eq(connectionRelation.id, id));
-            return row ?? null;
-        });
+        const [row] = await db.select().from(connectionRelation).where(eq(connectionRelation.id, id));
+        return row ?? null;
+    });
 }
 
-export function updateConnectionRelationRow(
-    id: string,
-    userId: string,
-    data: Partial<Omit<ConnectionRelationInsert, "id" | "userId">>
-) {
+export function updateConnectionRelationRow(id: string, userId: string, data: Partial<Omit<ConnectionRelationInsert, "id" | "userId">>) {
     return dbEffect(async () => {
-            const [updated] = await db
-                .update(connectionRelation)
-                .set({
-                    ...(data.label !== undefined && { label: data.label }),
-                    ...(data.description !== undefined && { description: data.description }),
-                    ...(data.arrowStyle !== undefined && { arrowStyle: data.arrowStyle }),
-                    ...(data.direction !== undefined && { direction: data.direction }),
-                    ...(data.color !== undefined && { color: data.color }),
-                    ...(data.inverseOfId !== undefined && { inverseOfId: data.inverseOfId }),
-                    ...(data.displayOrder !== undefined && { displayOrder: data.displayOrder })
-                })
-                .where(and(eq(connectionRelation.id, id), eq(connectionRelation.userId, userId)))
-                .returning();
-            return updated ?? null;
-        });
+        const [updated] = await db
+            .update(connectionRelation)
+            .set({
+                ...(data.label !== undefined && { label: data.label }),
+                ...(data.description !== undefined && { description: data.description }),
+                ...(data.arrowStyle !== undefined && { arrowStyle: data.arrowStyle }),
+                ...(data.direction !== undefined && { direction: data.direction }),
+                ...(data.color !== undefined && { color: data.color }),
+                ...(data.inverseOfId !== undefined && { inverseOfId: data.inverseOfId }),
+                ...(data.displayOrder !== undefined && { displayOrder: data.displayOrder })
+            })
+            .where(and(eq(connectionRelation.id, id), eq(connectionRelation.userId, userId)))
+            .returning();
+        return updated ?? null;
+    });
 }
 
 export function deleteConnectionRelationRow(id: string, userId: string) {
     return dbEffect(async () => {
-            const [deleted] = await db
-                .delete(connectionRelation)
-                .where(and(eq(connectionRelation.id, id), eq(connectionRelation.userId, userId)))
-                .returning();
-            return deleted ?? null;
-        });
+        const [deleted] = await db
+            .delete(connectionRelation)
+            .where(and(eq(connectionRelation.id, id), eq(connectionRelation.userId, userId)))
+            .returning();
+        return deleted ?? null;
+    });
 }
-

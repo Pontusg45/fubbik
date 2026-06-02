@@ -7,9 +7,7 @@ export const logger = winston.createLogger({
     level: logLevel,
     format: winston.format.combine(
         winston.format.timestamp(),
-        env.NODE_ENV === "production"
-            ? winston.format.json()
-            : winston.format.combine(winston.format.colorize(), winston.format.simple())
+        env.NODE_ENV === "production" ? winston.format.json() : winston.format.combine(winston.format.colorize(), winston.format.simple())
     ),
     defaultMeta: { env: env.NODE_ENV },
     transports: [

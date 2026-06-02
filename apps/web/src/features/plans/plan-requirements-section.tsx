@@ -27,7 +27,7 @@ export function PlanRequirementsSection({ planId, requirements, onUpdate }: Plan
             const res = unwrapEden(await api.api.requirements.get({ query: {} as any })) as any;
             const all: any[] = res?.requirements ?? res ?? [];
             return all.filter((r: any) => reqIds.includes(r.id));
-        },
+        }
     });
 
     const searchQuery = useQuery({
@@ -36,27 +36,23 @@ export function PlanRequirementsSection({ planId, requirements, onUpdate }: Plan
             const res = unwrapEden(await api.api.requirements.get({ query: {} as any })) as any;
             const all: any[] = res?.requirements ?? res ?? [];
             if (!pickerQuery) return all.slice(0, 10);
-            return all
-                .filter((r: any) => r.title.toLowerCase().includes(pickerQuery.toLowerCase()))
-                .slice(0, 10);
+            return all.filter((r: any) => r.title.toLowerCase().includes(pickerQuery.toLowerCase())).slice(0, 10);
         },
-        enabled: pickerOpen,
+        enabled: pickerOpen
     });
 
     const addMutation = useMutation({
-        mutationFn: async (requirementId: string) =>
-            unwrapEden(await (api.api as any).plans[planId].requirements.post({ requirementId })),
+        mutationFn: async (requirementId: string) => unwrapEden(await (api.api as any).plans[planId].requirements.post({ requirementId })),
         onSuccess: () => {
             setPickerOpen(false);
             setPickerQuery("");
             onUpdate();
-        },
+        }
     });
 
     const removeMutation = useMutation({
-        mutationFn: async (requirementId: string) =>
-            unwrapEden(await (api.api as any).plans[planId].requirements[requirementId].delete()),
-        onSuccess: () => onUpdate(),
+        mutationFn: async (requirementId: string) => unwrapEden(await (api.api as any).plans[planId].requirements[requirementId].delete()),
+        onSuccess: () => onUpdate()
     });
 
     const linkedIds = new Set(reqIds);
@@ -65,8 +61,8 @@ export function PlanRequirementsSection({ planId, requirements, onUpdate }: Plan
     return (
         <section className="space-y-2">
             <div className="flex items-center justify-between">
-                <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    Requirements <span className="ml-1 font-mono text-muted-foreground/60">({requirements.length})</span>
+                <h2 className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">
+                    Requirements <span className="text-muted-foreground/60 ml-1 font-mono">({requirements.length})</span>
                 </h2>
                 <Button size="sm" variant="ghost" onClick={() => setPickerOpen(o => !o)}>
                     <Plus className="size-3.5" />
@@ -74,7 +70,7 @@ export function PlanRequirementsSection({ planId, requirements, onUpdate }: Plan
                 </Button>
             </div>
             {pickerOpen && (
-                <div className="rounded-md border bg-card p-2 shadow-sm">
+                <div className="bg-card rounded-md border p-2 shadow-sm">
                     <Input
                         autoFocus
                         placeholder="Search requirements…"
@@ -84,17 +80,17 @@ export function PlanRequirementsSection({ planId, requirements, onUpdate }: Plan
                     />
                     <div className="max-h-60 space-y-1 overflow-y-auto">
                         {available.length === 0 ? (
-                            <div className="py-3 text-center text-xs text-muted-foreground">No matches</div>
+                            <div className="text-muted-foreground py-3 text-center text-xs">No matches</div>
                         ) : (
                             available.map((r: any) => (
                                 <button
                                     key={r.id}
                                     type="button"
                                     onClick={() => addMutation.mutate(r.id)}
-                                    className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs hover:bg-muted"
+                                    className="hover:bg-muted flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs"
                                 >
                                     <span className="flex-1 truncate">{r.title}</span>
-                                    <span className="text-[9px] uppercase text-muted-foreground">{r.priority}</span>
+                                    <span className="text-muted-foreground text-[9px] uppercase">{r.priority}</span>
                                 </button>
                             ))
                         )}
@@ -102,7 +98,7 @@ export function PlanRequirementsSection({ planId, requirements, onUpdate }: Plan
                 </div>
             )}
             {requirements.length === 0 ? (
-                <div className="rounded-md border border-dashed p-4 text-center text-xs text-muted-foreground">
+                <div className="text-muted-foreground rounded-md border border-dashed p-4 text-center text-xs">
                     No requirements linked. Add one to document what this plan must satisfy.
                 </div>
             ) : (
@@ -110,8 +106,8 @@ export function PlanRequirementsSection({ planId, requirements, onUpdate }: Plan
                     {(requirementDetailsQuery.data ?? []).map((r: any) => (
                         <div key={r.id} className="flex items-center gap-2 rounded-md border px-3 py-2">
                             <span className="flex-1 truncate text-sm">{r.title}</span>
-                            <span className="text-[10px] uppercase text-muted-foreground">{r.status}</span>
-                            <span className="text-[10px] uppercase text-muted-foreground">{r.priority}</span>
+                            <span className="text-muted-foreground text-[10px] uppercase">{r.status}</span>
+                            <span className="text-muted-foreground text-[10px] uppercase">{r.priority}</span>
                             <button
                                 type="button"
                                 onClick={() => removeMutation.mutate(r.id)}
@@ -120,7 +116,11 @@ export function PlanRequirementsSection({ planId, requirements, onUpdate }: Plan
                             >
                                 <X className="size-3" />
                             </button>
-                            <Link to="/requirements/$requirementId" params={{ requirementId: r.id }} className="text-muted-foreground hover:text-foreground">
+                            <Link
+                                to="/requirements/$requirementId"
+                                params={{ requirementId: r.id }}
+                                className="text-muted-foreground hover:text-foreground"
+                            >
                                 <ChevronRight className="size-4" />
                             </Link>
                         </div>

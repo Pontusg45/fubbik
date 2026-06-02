@@ -1,15 +1,17 @@
 # Tagged Chunk Updates
 
-**Date:** 2026-05-06
-**Scope:** Add per-edit update tags to the chunk version system, with cross-codebase querying and diff support
+**Date:** 2026-05-06 **Scope:** Add per-edit update tags to the chunk version system, with cross-codebase querying and diff support
 
 ## Overview
 
-Extend the existing `chunk_version` table with an `updateTag` field so each chunk edit (or creation) can be labeled with a tag like "feature-x". A query endpoint returns all updates with a given tag across codebases, including before/after diffs. CLI and MCP tools support passing and querying tags.
+Extend the existing `chunk_version` table with an `updateTag` field so each chunk edit (or creation) can be labeled with a tag like
+"feature-x". A query endpoint returns all updates with a given tag across codebases, including before/after diffs. CLI and MCP tools support
+passing and querying tags.
 
 ## Approach
 
-**Extend `chunk_version` (Approach A):** Add columns to the existing version table rather than creating new tables. The version system already snapshots chunk state on every edit — adding a tag column and expanding the snapshot fields is minimal.
+**Extend `chunk_version` (Approach A):** Add columns to the existing version table rather than creating new tables. The version system
+already snapshots chunk state on every edit — adding a tag column and expanding the snapshot fields is minimal.
 
 ## Design
 
@@ -23,7 +25,8 @@ The `chunk_version` table gains these columns:
 - `alternatives` (text array, nullable) — pre-edit alternatives snapshot
 - `consequences` (text, nullable) — pre-edit consequences snapshot
 
-The version row continues to capture the **pre-edit state**. When a tag is provided during an update, it's stored on the version that records what changed. No new tables.
+The version row continues to capture the **pre-edit state**. When a tag is provided during an update, it's stored on the version that
+records what changed. No new tables.
 
 Index: `chunk_version_update_tag_idx` on `(updateTag)` where `updateTag IS NOT NULL`.
 
@@ -33,9 +36,11 @@ Index: `chunk_version_update_tag_idx` on `(updateTag)` where `updateTag IS NOT N
 
 ### 2. API changes
 
-**Update endpoint** — `PATCH /api/chunks/:id` gains an optional `updateTag` body field. When provided, the version created during the update stores the tag.
+**Update endpoint** — `PATCH /api/chunks/:id` gains an optional `updateTag` body field. When provided, the version created during the update
+stores the tag.
 
-**Create endpoint** — `POST /api/chunks` gains an optional `updateTag` body field. When provided, a version-0 row is created with all before fields null and the tag stored, representing a tagged creation.
+**Create endpoint** — `POST /api/chunks` gains an optional `updateTag` body field. When provided, a version-0 row is created with all before
+fields null and the tag stored, representing a tagged creation.
 
 **Query endpoint** — `GET /api/chunks/updates?tag=feature-x&codebaseId=<optional>` returns all versions with that tag. Response:
 
@@ -76,7 +81,9 @@ Index: `chunk_version_update_tag_idx` on `(updateTag)` where `updateTag IS NOT N
 **Tag listing endpoint** — `GET /api/chunks/updates/tags?codebaseId=<optional>` returns distinct update tags with counts:
 
 ```typescript
-{ tags: Array<{ tag: string; count: number }> }
+{
+    tags: Array<{ tag: string; count: number }>;
+}
 ```
 
 #### Files
@@ -86,11 +93,15 @@ Index: `chunk_version_update_tag_idx` on `(updateTag)` where `updateTag IS NOT N
 
 ### 3. Service layer
 
-**`updateChunk`** — accepts optional `updateTag?: string`. Passes it to `createVersion()`. The version snapshot now also captures `scope`, `rationale`, `alternatives`, `consequences` from the existing chunk state.
+**`updateChunk`** — accepts optional `updateTag?: string`. Passes it to `createVersion()`. The version snapshot now also captures `scope`,
+`rationale`, `alternatives`, `consequences` from the existing chunk state.
 
-**`createChunk`** — accepts optional `updateTag?: string`. When provided, creates a version-0 row (before fields null, tag stored) after chunk creation.
+**`createChunk`** — accepts optional `updateTag?: string`. When provided, creates a version-0 row (before fields null, tag stored) after
+chunk creation.
 
-**`listUpdatesByTag(userId, tag, codebaseId?)`** — new service function. Queries versions with the given tag, filtered to chunks owned by (or accessible to) the user via a join through `chunk.userId`. For each, computes `after` by either:
+**`listUpdatesByTag(userId, tag, codebaseId?)`** — new service function. Queries versions with the given tag, filtered to chunks owned by
+(or accessible to) the user via a join through `chunk.userId`. For each, computes `after` by either:
+
 - Finding the next version row for the same chunk (via `LEAD` window function or a correlated subquery)
 - Falling back to the chunk's current state if this is the most recent version
 
@@ -104,6 +115,7 @@ Index: `chunk_version_update_tag_idx` on `(updateTag)` where `updateTag IS NOT N
 ### 4. Chunk creation tagging
 
 When `POST /api/chunks` includes an `updateTag`, after the chunk is created:
+
 - A version row is inserted with `version: 0`, all snapshot fields null, and the tag
 - The query endpoint treats version-0 rows as "created" events (before is empty, after is the chunk's initial state)
 
@@ -112,12 +124,14 @@ This ensures `GET /api/chunks/updates?tag=feature-x` shows both created and modi
 ### 5. CLI and MCP support
 
 **CLI commands:**
+
 - `fubbik update <id> --tag feature-x` — passes tag to PATCH endpoint
 - `fubbik add --tag feature-x` / `fubbik quick "title" --tag feature-x` — passes tag to POST endpoint
 - `fubbik updates --tag feature-x` — lists all updates with that tag (calls query endpoint), shows chunk title + diff summary
 - `fubbik updates --tags` — lists all distinct update tags with counts
 
 **MCP tools:**
+
 - `update_chunk` — gains optional `updateTag` parameter
 - `create_chunk` — gains optional `updateTag` parameter
 - New `list_updates` tool — accepts `tag` parameter, returns tagged updates for current codebase
@@ -132,8 +146,10 @@ This ensures `GET /api/chunks/updates?tag=feature-x` shows both created and modi
 
 ## Testing
 
-- **Version creation tests:** Verify `updateTag` is stored on the version row when provided. Verify expanded fields (scope, rationale, etc.) are captured.
+- **Version creation tests:** Verify `updateTag` is stored on the version row when provided. Verify expanded fields (scope, rationale, etc.)
+  are captured.
 - **Creation tagging tests:** Verify version-0 row created with null before-fields and tag stored.
-- **Query tests:** Verify `listUpdatesByTag` returns correct before/after pairs. Verify version-0 entries show null before. Verify cross-codebase querying works. Verify codebaseId filter narrows results.
+- **Query tests:** Verify `listUpdatesByTag` returns correct before/after pairs. Verify version-0 entries show null before. Verify
+  cross-codebase querying works. Verify codebaseId filter narrows results.
 - **Tag listing tests:** Verify distinct tags with correct counts. Verify codebaseId filtering.
 - **CLI tests:** Verify `--tag` flag passes through to API. Verify `updates` command output format.

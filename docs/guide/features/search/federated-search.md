@@ -1,8 +1,8 @@
 ---
 tags:
-  - guide
-  - search
-  - federated
+    - guide
+    - search
+    - federated
 description: Cross-codebase search with codebase attribution
 ---
 
@@ -14,7 +14,8 @@ Federated search finds chunks across all codebases simultaneously, showing which
 GET /api/chunks/search/federated?q=authentication
 ```
 
-This is useful for finding patterns and conventions that exist across multiple projects — for example, discovering that both the frontend and backend repos have authentication-related chunks with different approaches.
+This is useful for finding patterns and conventions that exist across multiple projects — for example, discovering that both the frontend
+and backend repos have authentication-related chunks with different approaches.
 
 ## Use Cases
 

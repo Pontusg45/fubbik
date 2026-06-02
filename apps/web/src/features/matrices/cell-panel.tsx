@@ -27,7 +27,7 @@ interface CellRequirement {
 const STATUS_BADGE: Record<string, "success" | "destructive" | "secondary"> = {
     passing: "success",
     failing: "destructive",
-    untested: "secondary",
+    untested: "secondary"
 };
 
 export function CellPanel({ matrixId, cellId, ruleTitle, dimensionName, onClose }: CellPanelProps) {
@@ -36,16 +36,13 @@ export function CellPanel({ matrixId, cellId, ruleTitle, dimensionName, onClose 
 
     const requirementsQuery = useApiQuery<CellRequirement[]>({
         queryKey: ["matrix-cell-requirements", cellId],
-        queryFn: () =>
-            api.api.matrices({ id: matrixId }).cells({ cellId }).requirements.get(),
-        fallback: [],
+        queryFn: () => api.api.matrices({ id: matrixId }).cells({ cellId }).requirements.get(),
+        fallback: []
     });
 
     const linkMutation = useMutation({
         mutationFn: async (reqId: string) =>
-            unwrapEden(
-                await api.api.matrices({ id: matrixId }).cells({ cellId }).requirements.post({ requirementId: reqId })
-            ),
+            unwrapEden(await api.api.matrices({ id: matrixId }).cells({ cellId }).requirements.post({ requirementId: reqId })),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["matrix-cell-requirements", cellId] });
             queryClient.invalidateQueries({ queryKey: ["matrix-view", matrixId] });
@@ -55,14 +52,12 @@ export function CellPanel({ matrixId, cellId, ruleTitle, dimensionName, onClose 
         onError: (err: unknown) => {
             const msg = err instanceof Error ? err.message : "Failed to link requirement";
             toast.error(msg);
-        },
+        }
     });
 
     const unlinkMutation = useMutation({
         mutationFn: async (reqId: string) =>
-            unwrapEden(
-                await api.api.matrices({ id: matrixId }).cells({ cellId }).requirements({ reqId }).delete()
-            ),
+            unwrapEden(await api.api.matrices({ id: matrixId }).cells({ cellId }).requirements({ reqId }).delete()),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["matrix-cell-requirements", cellId] });
             queryClient.invalidateQueries({ queryKey: ["matrix-view", matrixId] });
@@ -71,7 +66,7 @@ export function CellPanel({ matrixId, cellId, ruleTitle, dimensionName, onClose 
         onError: (err: unknown) => {
             const msg = err instanceof Error ? err.message : "Failed to unlink requirement";
             toast.error(msg);
-        },
+        }
     });
 
     function handleLink(e: React.FormEvent) {
@@ -84,46 +79,33 @@ export function CellPanel({ matrixId, cellId, ruleTitle, dimensionName, onClose 
     const requirements = Array.isArray(requirementsQuery.data) ? requirementsQuery.data : [];
 
     return (
-        <div className="fixed inset-y-0 right-0 z-40 flex w-full max-w-sm flex-col border-l bg-background shadow-lg">
+        <div className="bg-background fixed inset-y-0 right-0 z-40 flex w-full max-w-sm flex-col border-l shadow-lg">
             {/* Header */}
             <div className="flex items-start justify-between gap-3 border-b px-4 py-4">
                 <div className="min-w-0">
-                    <h3 className="font-semibold leading-tight">{ruleTitle}</h3>
+                    <h3 className="leading-tight font-semibold">{ruleTitle}</h3>
                     <p className="text-muted-foreground mt-0.5 text-sm">{dimensionName}</p>
                 </div>
-                <Button
-                    size="icon-xs"
-                    variant="ghost"
-                    onClick={onClose}
-                    aria-label="Close panel"
-                >
+                <Button size="icon-xs" variant="ghost" onClick={onClose} aria-label="Close panel">
                     <X className="size-4" />
                 </Button>
             </div>
 
             {/* Requirements list */}
             <div className="flex-1 overflow-y-auto px-4 py-3">
-                <h4 className="text-muted-foreground mb-2 text-xs font-semibold uppercase tracking-wide">
+                <h4 className="text-muted-foreground mb-2 text-xs font-semibold tracking-wide uppercase">
                     Requirements ({requirements.length})
                 </h4>
                 {requirements.length === 0 ? (
-                    <p className="text-muted-foreground py-4 text-center text-sm">
-                        No requirements linked to this cell.
-                    </p>
+                    <p className="text-muted-foreground py-4 text-center text-sm">No requirements linked to this cell.</p>
                 ) : (
                     <ul className="space-y-2">
                         {requirements.map(req => (
-                            <li
-                                key={req.id}
-                                className="flex items-center gap-2 rounded-md border px-3 py-2"
-                            >
+                            <li key={req.id} className="flex items-center gap-2 rounded-md border px-3 py-2">
                                 <div className="min-w-0 flex-1">
-                                    <span className="text-sm font-medium line-clamp-1">{req.title}</span>
+                                    <span className="line-clamp-1 text-sm font-medium">{req.title}</span>
                                 </div>
-                                <Badge
-                                    variant={STATUS_BADGE[req.status] ?? "secondary"}
-                                    size="sm"
-                                >
+                                <Badge variant={STATUS_BADGE[req.status] ?? "secondary"} size="sm">
                                     {req.status}
                                 </Badge>
                                 <Button
@@ -151,11 +133,7 @@ export function CellPanel({ matrixId, cellId, ruleTitle, dimensionName, onClose 
                         onChange={e => setRequirementId(e.target.value)}
                         size="sm"
                     />
-                    <Button
-                        type="submit"
-                        size="sm"
-                        disabled={!requirementId.trim() || linkMutation.isPending}
-                    >
+                    <Button type="submit" size="sm" disabled={!requirementId.trim() || linkMutation.isPending}>
                         <Plus className="size-3.5" />
                         Link
                     </Button>

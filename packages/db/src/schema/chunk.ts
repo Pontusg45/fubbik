@@ -24,7 +24,10 @@ export const chunk = pgTable(
         id: text("id").primaryKey(),
         title: text("title").notNull(),
         content: text("content").notNull().default(""),
-        type: text("type").notNull().default("note").references(() => chunkType.id, { onDelete: "restrict" }),
+        type: text("type")
+            .notNull()
+            .default("note")
+            .references(() => chunkType.id, { onDelete: "restrict" }),
         userId: text("user_id")
             .notNull()
             .references(() => user.id, { onDelete: "cascade" }),
@@ -56,7 +59,9 @@ export const chunk = pgTable(
         index("chunk_type_idx").on(table.type),
         index("chunk_archivedAt_idx").on(table.archivedAt),
         index("chunk_updatedAt_idx").on(table.updatedAt),
-        uniqueIndex("chunk_document_order_idx").on(table.documentId, table.documentOrder).where(sql`${table.documentId} IS NOT NULL`)
+        uniqueIndex("chunk_document_order_idx")
+            .on(table.documentId, table.documentOrder)
+            .where(sql`${table.documentId} IS NOT NULL`)
     ]
 );
 
@@ -70,7 +75,10 @@ export const chunkConnection = pgTable(
         targetId: text("target_id")
             .notNull()
             .references(() => chunk.id, { onDelete: "cascade" }),
-        relation: text("relation").notNull().default("related_to").references(() => connectionRelation.id, { onDelete: "restrict" }),
+        relation: text("relation")
+            .notNull()
+            .default("related_to")
+            .references(() => connectionRelation.id, { onDelete: "restrict" }),
         createdAt: timestamp("created_at").defaultNow().notNull(),
         origin: text("origin").notNull().default("human"),
         reviewStatus: text("review_status").notNull().default("approved"),

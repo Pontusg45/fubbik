@@ -1,8 +1,8 @@
 ---
 tags:
-  - guide
-  - activity
-  - audit
+    - guide
+    - activity
+    - audit
 description: Activity log with action and entity type filtering
 ---
 
@@ -12,12 +12,12 @@ The activity view at `/activity` shows a chronological log of all changes in you
 
 ## Tracked Actions
 
-| Action | Examples |
-|--------|---------|
-| `created` | New chunk, connection, tag, plan |
-| `updated` | Content edit, status change, tag modification |
-| `deleted` | Chunk removal, connection deletion |
-| `archived` | Chunk archival |
+| Action     | Examples                                      |
+| ---------- | --------------------------------------------- |
+| `created`  | New chunk, connection, tag, plan              |
+| `updated`  | Content edit, status change, tag modification |
+| `deleted`  | Chunk removal, connection deletion            |
+| `archived` | Chunk archival                                |
 
 ## Tracked Entities
 
@@ -31,6 +31,7 @@ The activity view at `/activity` shows a chronological log of all changes in you
 ## Filtering
 
 Filter the log by:
+
 - **Action type** — show only creates, updates, or deletes
 - **Entity type** — show only chunks, connections, etc.
 - **Date range** — focus on a specific time period

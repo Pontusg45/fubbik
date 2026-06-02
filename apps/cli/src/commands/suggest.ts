@@ -42,7 +42,7 @@ export const suggestCommand = new Command("suggest")
             functions: (content.match(/(?:function |const \w+ = (?:async )?\(|(?:export )?(?:async )?function)/g) || []).length,
             imports: (content.match(/^import /gm) || []).length,
             exports: (content.match(/^export /gm) || []).length,
-            classes: (content.match(/^(?:export )?class /gm) || []).length,
+            classes: (content.match(/^(?:export )?class /gm) || []).length
         };
 
         // Check existing coverage
@@ -82,7 +82,7 @@ export const suggestCommand = new Command("suggest")
             suggestions.push({
                 type: "reference",
                 title: `${fileName} Documentation`,
-                reason: "No chunks reference this file",
+                reason: "No chunks reference this file"
             });
         }
 
@@ -90,7 +90,7 @@ export const suggestCommand = new Command("suggest")
             suggestions.push({
                 type: "reference",
                 title: `${fileName} API Reference`,
-                reason: `${stats.functions} functions found but no reference chunk`,
+                reason: `${stats.functions} functions found but no reference chunk`
             });
         }
 
@@ -98,7 +98,7 @@ export const suggestCommand = new Command("suggest")
             suggestions.push({
                 type: "document",
                 title: `${fileName} Architecture`,
-                reason: `${stats.exports} exports suggest this is a key module`,
+                reason: `${stats.exports} exports suggest this is a key module`
             });
         }
 
@@ -106,7 +106,7 @@ export const suggestCommand = new Command("suggest")
             suggestions.push({
                 type: "note",
                 title: `${fileName} Conventions`,
-                reason: `Large file (${stats.lines} lines) may have implicit conventions`,
+                reason: `Large file (${stats.lines} lines) may have implicit conventions`
             });
         }
 
@@ -114,7 +114,7 @@ export const suggestCommand = new Command("suggest")
             suggestions.push({
                 type: "schema",
                 title: `${fileName} Class Schema`,
-                reason: `${stats.classes} class(es) found but no schema chunk`,
+                reason: `${stats.classes} class(es) found but no schema chunk`
             });
         }
 
@@ -125,8 +125,10 @@ export const suggestCommand = new Command("suggest")
         } else {
             const humanLines: string[] = [
                 formatBold(`${suggestions.length} suggestion(s) for ${filePath}:`),
-                formatDim(`  Analysis: ${stats.lines} lines, ${stats.functions} functions, ${stats.imports} imports, ${stats.exports} exports`),
-                "",
+                formatDim(
+                    `  Analysis: ${stats.lines} lines, ${stats.functions} functions, ${stats.imports} imports, ${stats.exports} exports`
+                ),
+                ""
             ];
             for (const s of suggestions) {
                 humanLines.push(`  ${formatType(s.type)} ${formatBold(s.title)}`);

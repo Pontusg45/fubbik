@@ -6,8 +6,8 @@ import { useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardPanel, CardTitle } from "@/components/ui/card";
-import { useActiveSpace } from "@/features/spaces/use-active-space";
 import { TraceabilityContent } from "@/features/coverage/traceability-content";
+import { useActiveSpace } from "@/features/spaces/use-active-space";
 import { getUser } from "@/functions/get-user";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
@@ -27,7 +27,6 @@ export const Route = createFileRoute("/coverage")({
 
 type Tab = "coverage" | "traceability";
 
-
 function CoveragePage() {
     const { spaceId } = useActiveSpace();
     const [tab, setTab] = useState<Tab>("coverage");
@@ -41,9 +40,7 @@ function CoveragePage() {
                     <BarChart3 className="size-6" />
                     Requirement Coverage
                 </h1>
-                <p className="text-muted-foreground mt-1 text-sm">
-                    Track how chunks and requirements connect across plans and sessions.
-                </p>
+                <p className="text-muted-foreground mt-1 text-sm">Track how chunks and requirements connect across plans and sessions.</p>
             </div>
 
             {/* Tabs */}
@@ -134,10 +131,7 @@ function ChunkCoverageTab({
 
     const allChunks = useMemo(() => {
         if (!data) return [];
-        return [
-            ...data.covered.map(c => ({ id: c.id, title: c.title })),
-            ...data.uncovered.map(c => ({ id: c.id, title: c.title }))
-        ];
+        return [...data.covered.map(c => ({ id: c.id, title: c.title })), ...data.uncovered.map(c => ({ id: c.id, title: c.title }))];
     }, [data]);
 
     const coverageMap = useMemo(() => {
@@ -150,8 +144,7 @@ function ChunkCoverageTab({
         return map;
     }, [data?.matrix]);
 
-    const isCovered = (chunkId: string) =>
-        coverageMap.has(chunkId) && coverageMap.get(chunkId)!.size > 0;
+    const isCovered = (chunkId: string) => coverageMap.has(chunkId) && coverageMap.get(chunkId)!.size > 0;
 
     if (coverageQuery.isLoading) {
         return <p className="text-muted-foreground">Loading coverage data...</p>;
@@ -170,13 +163,13 @@ function ChunkCoverageTab({
                 </Card>
                 <Card>
                     <CardPanel className="text-center">
-                        <p className="text-xs font-medium uppercase text-green-600">Covered</p>
+                        <p className="text-xs font-medium text-green-600 uppercase">Covered</p>
                         <p className="text-3xl font-bold text-green-600">{data.stats.covered}</p>
                     </CardPanel>
                 </Card>
                 <Card>
                     <CardPanel className="text-center">
-                        <p className="text-xs font-medium uppercase text-red-600">Uncovered</p>
+                        <p className="text-xs font-medium text-red-600 uppercase">Uncovered</p>
                         <p className="text-3xl font-bold text-red-600">{data.stats.uncovered}</p>
                     </CardPanel>
                 </Card>
@@ -189,18 +182,11 @@ function ChunkCoverageTab({
             </div>
 
             <div className="mb-4 h-3 w-full overflow-hidden rounded-full bg-red-100 dark:bg-red-900/30">
-                <div
-                    className="h-full rounded-full bg-green-500 transition-all"
-                    style={{ width: `${data.stats.percentage}%` }}
-                />
+                <div className="h-full rounded-full bg-green-500 transition-all" style={{ width: `${data.stats.percentage}%` }} />
             </div>
 
             <div className="mb-4 flex items-center justify-between">
-                <Button
-                    variant={showMatrix ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setShowMatrix(!showMatrix)}
-                >
+                <Button variant={showMatrix ? "default" : "outline"} size="sm" onClick={() => setShowMatrix(!showMatrix)}>
                     <Grid3x3 className="mr-1 size-4" />
                     {showMatrix ? "Hide Matrix" : "Show Matrix"}
                 </Button>
@@ -216,10 +202,7 @@ function ChunkCoverageTab({
                                         Chunk
                                     </th>
                                     {uniqueRequirements.map(req => (
-                                        <th
-                                            key={req.id}
-                                            className="min-w-[100px] px-3 py-2 text-center"
-                                        >
+                                        <th key={req.id} className="min-w-[100px] px-3 py-2 text-center">
                                             <Link
                                                 to="/requirements/$requirementId"
                                                 params={{ requirementId: req.id }}
@@ -233,12 +216,7 @@ function ChunkCoverageTab({
                             </thead>
                             <tbody>
                                 {allChunks.map(chunk => (
-                                    <tr
-                                        key={chunk.id}
-                                        className={
-                                            isCovered(chunk.id) ? "" : "bg-amber-500/5"
-                                        }
-                                    >
+                                    <tr key={chunk.id} className={isCovered(chunk.id) ? "" : "bg-amber-500/5"}>
                                         <td className="bg-background sticky left-0 z-10 border-t px-4 py-2">
                                             <Link
                                                 to="/chunks/$chunkId"
@@ -249,10 +227,7 @@ function ChunkCoverageTab({
                                             </Link>
                                         </td>
                                         {uniqueRequirements.map(req => (
-                                            <td
-                                                key={req.id}
-                                                className="border-t px-3 py-2 text-center"
-                                            >
+                                            <td key={req.id} className="border-t px-3 py-2 text-center">
                                                 {coverageMap.get(chunk.id)?.has(req.id) ? (
                                                     <CheckCircle className="inline size-4 text-emerald-500" />
                                                 ) : null}
@@ -285,11 +260,7 @@ function ChunkCoverageTab({
                                     key={c.id}
                                     className="hover:bg-muted flex items-center justify-between rounded-md border px-3 py-2 text-sm transition-colors"
                                 >
-                                    <Link
-                                        to="/chunks/$chunkId"
-                                        params={{ chunkId: c.id }}
-                                        className="hover:underline"
-                                    >
+                                    <Link to="/chunks/$chunkId" params={{ chunkId: c.id }} className="hover:underline">
                                         {c.title}
                                     </Link>
                                 </div>
@@ -305,11 +276,7 @@ function ChunkCoverageTab({
                                 <CheckCircle className="size-4 text-green-500" />
                                 Covered ({data.covered.length})
                             </CardTitle>
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => setShowCovered(!showCovered)}
-                            >
+                            <Button variant="ghost" size="sm" onClick={() => setShowCovered(!showCovered)}>
                                 {showCovered ? "Hide" : "Show"}
                             </Button>
                         </div>
@@ -324,11 +291,7 @@ function ChunkCoverageTab({
                                         key={c.id}
                                         className="hover:bg-muted flex items-center justify-between rounded-md border px-3 py-2 text-sm transition-colors"
                                     >
-                                        <Link
-                                            to="/chunks/$chunkId"
-                                            params={{ chunkId: c.id }}
-                                            className="hover:underline"
-                                        >
+                                        <Link to="/chunks/$chunkId" params={{ chunkId: c.id }} className="hover:underline">
                                             {c.title}
                                         </Link>
                                         <Badge variant="secondary" size="sm">
@@ -344,4 +307,3 @@ function ChunkCoverageTab({
         </>
     );
 }
-

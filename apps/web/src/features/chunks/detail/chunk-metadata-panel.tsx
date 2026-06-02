@@ -2,9 +2,9 @@ import { Link } from "@tanstack/react-router";
 
 import { Badge } from "@/components/ui/badge";
 import { ChunkHealthBadge } from "@/features/chunks/chunk-health-badge";
-import { ChunkNeighbors } from "@/features/chunks/detail/chunk-neighbors";
-import { ChunkToc } from "@/features/chunks/chunk-toc";
 import { getChunkSize } from "@/features/chunks/chunk-size";
+import { ChunkToc } from "@/features/chunks/chunk-toc";
+import { ChunkNeighbors } from "@/features/chunks/detail/chunk-neighbors";
 import { InlineTagEditor } from "@/features/chunks/inline-tag-editor";
 
 export interface ChunkMetadataPanelProps {
@@ -42,7 +42,7 @@ export function ChunkMetadataPanel({
     origin,
     reviewStatus,
     healthScore,
-    onShowConnections,
+    onShowConnections
 }: ChunkMetadataPanelProps) {
     const size = getChunkSize(content);
     const created = new Date(createdAt);
@@ -50,32 +50,23 @@ export function ChunkMetadataPanel({
     const primaryCodebase = codebases && codebases.length > 0 ? codebases[0] : undefined;
 
     return (
-        <aside
-            className="hidden lg:block w-[220px] shrink-0 print:hidden"
-            data-focus-hide="true"
-        >
+        <aside className="hidden w-[220px] shrink-0 lg:block print:hidden" data-focus-hide="true">
             <div className="sticky top-8 space-y-6">
                 <ChunkToc content={content} />
 
                 <div className="border-t pt-4">
-                    <div className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground mb-3">
-                        Details
-                    </div>
+                    <div className="text-muted-foreground mb-3 text-[9px] font-semibold tracking-wider uppercase">Details</div>
 
                     {healthScore && (
                         <div className="mb-3 flex items-center justify-between">
-                            <span className="text-[11px] text-muted-foreground">Health</span>
+                            <span className="text-muted-foreground text-[11px]">Health</span>
                             <ChunkHealthBadge healthScore={healthScore} />
                         </div>
                     )}
 
                     <div className="mb-4">
-                        <div className="text-[11px] text-muted-foreground mb-1.5">Tags</div>
-                        <InlineTagEditor
-                            tags={tags}
-                            onUpdate={onTagsUpdate}
-                            loading={tagsLoading}
-                        />
+                        <div className="text-muted-foreground mb-1.5 text-[11px]">Tags</div>
+                        <InlineTagEditor tags={tags} onUpdate={onTagsUpdate} loading={tagsLoading} />
                     </div>
 
                     <dl className="space-y-1.5 text-[11px]">
@@ -97,7 +88,7 @@ export function ChunkMetadataPanel({
                             <button
                                 type="button"
                                 onClick={onShowConnections}
-                                className="hover:text-foreground transition-colors underline-offset-2 hover:underline"
+                                className="hover:text-foreground underline-offset-2 transition-colors hover:underline"
                             >
                                 {connectionCount}
                             </button>
@@ -107,7 +98,7 @@ export function ChunkMetadataPanel({
                                 <Link
                                     to="/spaces/$spaceId"
                                     params={{ spaceId: primaryCodebase.id }}
-                                    className="hover:text-foreground transition-colors truncate"
+                                    className="hover:text-foreground truncate transition-colors"
                                 >
                                     {primaryCodebase.name}
                                 </Link>
@@ -140,7 +131,7 @@ function MetaRow({ label, children }: { label: string; children: React.ReactNode
     return (
         <div className="flex items-center justify-between gap-2">
             <dt className="text-muted-foreground shrink-0">{label}</dt>
-            <dd className="text-right min-w-0 truncate">{children}</dd>
+            <dd className="min-w-0 truncate text-right">{children}</dd>
         </div>
     );
 }

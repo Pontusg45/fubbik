@@ -23,16 +23,12 @@ export function RecentlyViewed() {
         <Popover>
             <PopoverTrigger className="text-muted-foreground hover:text-foreground relative rounded-md p-1.5 transition-colors">
                 <Clock className="size-4" />
-                {items.length > 0 && (
-                    <span className="bg-primary absolute -top-0.5 -right-0.5 size-2 rounded-full" />
-                )}
+                {items.length > 0 && <span className="bg-primary absolute -top-0.5 -right-0.5 size-2 rounded-full" />}
             </PopoverTrigger>
             <PopoverContent side="bottom" align="end" className="w-72">
                 <p className="mb-3 text-sm font-semibold">Recently Viewed</p>
                 {items.length === 0 ? (
-                    <p className="text-muted-foreground py-4 text-center text-xs">
-                        No recently viewed chunks
-                    </p>
+                    <p className="text-muted-foreground py-4 text-center text-xs">No recently viewed chunks</p>
                 ) : (
                     <div className="-mx-4 space-y-0.5">
                         {items.map(item => (
@@ -49,9 +45,7 @@ export function RecentlyViewed() {
                                         <Badge variant="secondary" size="sm" className="font-mono text-[10px]">
                                             {item.type}
                                         </Badge>
-                                        <span className="text-muted-foreground text-[10px]">
-                                            {timeAgo(item.viewedAt)}
-                                        </span>
+                                        <span className="text-muted-foreground text-[10px]">{timeAgo(item.viewedAt)}</span>
                                     </div>
                                 </div>
                             </Link>

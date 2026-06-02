@@ -1,8 +1,8 @@
 ---
 tags:
-  - guide
-  - architecture
-  - backend
+    - guide
+    - architecture
+    - backend
 description: Backend architecture — repository, service, and route patterns
 ---
 

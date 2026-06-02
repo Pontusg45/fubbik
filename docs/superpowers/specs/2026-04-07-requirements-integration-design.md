@@ -2,11 +2,15 @@
 
 ## Problem
 
-The core plumbing between requirements, plans, sessions, and chunks is solid — full M:N relationships, session auto-sync, MCP tooling. But four key systems don't leverage this data at all: CLAUDE.md export, context-for-file, health scoring, and staleness detection. The dashboard also underrepresents requirements/plans. The result is that requirements and plans feel like optional side features rather than integral parts of the knowledge lifecycle.
+The core plumbing between requirements, plans, sessions, and chunks is solid — full M:N relationships, session auto-sync, MCP tooling. But
+four key systems don't leverage this data at all: CLAUDE.md export, context-for-file, health scoring, and staleness detection. The dashboard
+also underrepresents requirements/plans. The result is that requirements and plans feel like optional side features rather than integral
+parts of the knowledge lifecycle.
 
 ## Goal
 
-Make requirements and plans visible everywhere knowledge is consumed — by AI agents (CLAUDE.md, context-for-file, MCP), by health monitoring (scoring, staleness), and by humans (dashboard). No new schema tables; this is purely about surfacing existing relationships.
+Make requirements and plans visible everywhere knowledge is consumed — by AI agents (CLAUDE.md, context-for-file, MCP), by health monitoring
+(scoring, staleness), and by humans (dashboard). No new schema tables; this is purely about surfacing existing relationships.
 
 ---
 
@@ -14,11 +18,13 @@ Make requirements and plans visible everywhere knowledge is consumed — by AI a
 
 **File:** `packages/api/src/context-export/claude-md.ts`
 
-`GET /api/chunks/export/claude-md` currently outputs chunks grouped by type. Add three new sections appended after chunks, sharing the existing token budget.
+`GET /api/chunks/export/claude-md` currently outputs chunks grouped by type. Add three new sections appended after chunks, sharing the
+existing token budget.
 
 ### Requirements Section
 
 Group by status: failing first, then untested, then passing. Each requirement shows:
+
 - Title, priority (must/should/could/wont), status
 - BDD steps (Given/When/Then) as a compact list
 - Linked chunk titles (for cross-reference)
@@ -27,6 +33,7 @@ Group by status: failing first, then untested, then passing. Each requirement sh
 ### Active Plans Section
 
 Only plans with status `active`. Each shows:
+
 - Title, completion percentage (e.g. "4/7 steps done")
 - Pending step descriptions (skip completed/skipped steps)
 - Exclude completed/archived plans
@@ -34,13 +41,15 @@ Only plans with status `active`. Each shows:
 ### Recent Sessions Section
 
 Last 5 completed sessions. Each shows:
+
 - Title, review status (pending/approved/rejected)
 - Requirements addressed count
 - Unresolved assumptions (if any)
 
 ### Token Budget
 
-Requirements and plans are compact (a few lines each). They are appended after chunks within the existing token budget. If the budget is tight, chunks take priority — requirements/plans are trimmed last-in-first-out (sessions first, then plans, then requirements).
+Requirements and plans are compact (a few lines each). They are appended after chunks within the existing token budget. If the budget is
+tight, chunks take priority — requirements/plans are trimmed last-in-first-out (sessions first, then plans, then requirements).
 
 ---
 
@@ -48,11 +57,13 @@ Requirements and plans are compact (a few lines each). They are appended after c
 
 **File:** `packages/api/src/context-for-file/service.ts`
 
-`GET /api/context/for-file?path=<path>` returns chunks relevant to a file. Extend to also surface requirements linked to those matched chunks.
+`GET /api/context/for-file?path=<path>` returns chunks relevant to a file. Extend to also surface requirements linked to those matched
+chunks.
 
 ### Lookup Logic
 
-After matching chunks (via file-refs, appliesTo globs, dependency matching), query `requirement_chunk` for any requirements linked to matched chunk IDs. Deduplicate by requirement ID.
+After matching chunks (via file-refs, appliesTo globs, dependency matching), query `requirement_chunk` for any requirements linked to
+matched chunk IDs. Deduplicate by requirement ID.
 
 ### Response Shape Change
 
@@ -70,7 +81,8 @@ After matching chunks (via file-refs, appliesTo globs, dependency matching), que
 }
 ```
 
-`matchedChunkIds` indicates which file-relevant chunks triggered this requirement — useful for MCP and VS Code to explain why a requirement appeared.
+`matchedChunkIds` indicates which file-relevant chunks triggered this requirement — useful for MCP and VS Code to explain why a requirement
+appeared.
 
 ### Downstream Consumers
 
@@ -89,25 +101,29 @@ After matching chunks (via file-refs, appliesTo globs, dependency matching), que
 ### New: 5 dimensions at 0-20 each (max 100)
 
 **Existing dimensions (rescaled from 0-25 to 0-20):**
+
 - **Freshness** (0-20): days since last update, same logic scaled down
 - **Completeness** (0-20): has rationale/alternatives/consequences
 - **Richness** (0-20): content length + AI enrichment (summary, aliases)
 - **Connectivity** (0-20): number of connections
 
 **New dimension:**
+
 - **Coverage** (0-20): requirement backing
-  - 0 — no requirements linked
-  - 10 — linked to at least one requirement (any status)
-  - 15 — all linked requirements are "passing"
-  - 20 — all linked requirements passing AND chunk was referenced in a completed implementation session
+    - 0 — no requirements linked
+    - 10 — linked to at least one requirement (any status)
+    - 15 — all linked requirements are "passing"
+    - 20 — all linked requirements passing AND chunk was referenced in a completed implementation session
 
 ### API Response Change
 
-The chunk detail endpoint already returns `{ freshness, completeness, richness, connectivity, total }` in the health score breakdown. Add `coverage` to this object. The total remains max 100 (5 × 20).
+The chunk detail endpoint already returns `{ freshness, completeness, richness, connectivity, total }` in the health score breakdown. Add
+`coverage` to this object. The total remains max 100 (5 × 20).
 
 ### Implication
 
-Chunks with no requirement links score max 80/100. This creates gentle pressure to link chunks to requirements without making unlinked chunks look broken.
+Chunks with no requirement links score max 80/100. This creates gentle pressure to link chunks to requirements without making unlinked
+chunks look broken.
 
 ---
 
@@ -134,6 +150,7 @@ During age-based scans (`POST /api/chunks/stale/scan-age`), flag chunks that are
 ### Where These Surface
 
 All existing staleness UI already works:
+
 - Dashboard "Attention Needed" widget — new reasons appear alongside file-changed and age flags
 - Chunk detail page — amber staleness banner
 - Nav badge count — counts undismissed flags (new reasons add to count)
@@ -156,6 +173,7 @@ The `reason` column in `chunk_staleness` is a text field, so no schema migration
 ### Expand Requirements Stat Card
 
 Replace the single "Requirements" count with a breakdown:
+
 - Passing count (green)
 - Failing count (red)
 - Untested count (amber)
@@ -164,6 +182,7 @@ Replace the single "Requirements" count with a breakdown:
 ### Add "Active Plans" Widget
 
 Below the stats bar, alongside existing recent chunks widget:
+
 - Lists plans with status `active` (max 5)
 - Each shows: title, progress bar (completed/total steps), last updated time
 - Click navigates to `/plans/:id`
@@ -173,6 +192,7 @@ Below the stats bar, alongside existing recent chunks widget:
 ### Add "Recent Sessions" Widget
 
 Compact list of last 3 completed sessions:
+
 - Title, completion date, requirements addressed count, review status badge (pending/approved/rejected)
 - Click navigates to `/reviews/:sessionId`
 - Empty state: "No recent sessions"

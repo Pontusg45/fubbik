@@ -18,9 +18,7 @@ export interface Suggestion {
 
 export function getConnectionSuggestions(chunkId: string, userId: string) {
     return getChunkById(chunkId, userId).pipe(
-        Effect.flatMap(found =>
-            found ? Effect.succeed(found) : Effect.fail(new NotFoundError({ resource: "Chunk" }))
-        ),
+        Effect.flatMap(found => (found ? Effect.succeed(found) : Effect.fail(new NotFoundError({ resource: "Chunk" })))),
         Effect.flatMap(targetChunk =>
             Effect.all({
                 targetChunk: Effect.succeed(targetChunk),
@@ -37,7 +35,12 @@ export function getConnectionSuggestions(chunkId: string, userId: string) {
             }
 
             return Effect.all({
-                tagMatches: findChunksSharingTags(chunkId, userId, tags.map(t => t.id), connectedIds),
+                tagMatches: findChunksSharingTags(
+                    chunkId,
+                    userId,
+                    tags.map(t => t.id),
+                    connectedIds
+                ),
                 titleMatches: findChunksWithSimilarTitle(targetChunk.title, userId, connectedIds)
             }).pipe(
                 Effect.map(({ tagMatches, titleMatches }) => {

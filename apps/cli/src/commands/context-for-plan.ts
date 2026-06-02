@@ -14,7 +14,7 @@ export const contextForPlanCommand = new Command("for-plan")
             const params = new URLSearchParams({
                 planId,
                 maxTokens: opts.maxTokens,
-                format: isJson(cmd) ? "structured-json" : "structured-md",
+                format: isJson(cmd) ? "structured-json" : "structured-md"
             });
             const spaceId = opts.space ?? opts.codebase;
             if (spaceId) params.set("spaceId", spaceId);

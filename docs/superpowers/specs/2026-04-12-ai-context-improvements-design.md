@@ -2,7 +2,9 @@
 
 ## Problem
 
-The fubbik context system is file-centric: you give it a file path and it returns relevant chunks. AI agents often think in concepts, plans, or diffs — not individual file paths. The context output is flat text with no freshness signals, no staleness warnings, and no awareness of pending proposals. AI agents can't get context scoped to their current plan or task.
+The fubbik context system is file-centric: you give it a file path and it returns relevant chunks. AI agents often think in concepts, plans,
+or diffs — not individual file paths. The context output is flat text with no freshness signals, no staleness warnings, and no awareness of
+pending proposals. AI agents can't get context scoped to their current plan or task.
 
 ## Goal
 
@@ -27,9 +29,12 @@ All features share a unified context pipeline:
 Input Source → Chunk Resolver → Scorer + Budgeter → Structured Formatter → Output
 ```
 
-- **Chunk Resolver** — each feature has its own resolver that produces candidate chunks with match reasons. Resolvers are composable (plan resolver + file resolver can be combined).
-- **Scorer + Budgeter** — reuses the existing `scoreChunk()` + `estimateTokens()` + greedy selection from `packages/api/src/context-export/service.ts`.
-- **Structured Formatter** — new: groups chunks by type into labeled sections with per-chunk metadata (health score, staleness flags, pending proposals).
+- **Chunk Resolver** — each feature has its own resolver that produces candidate chunks with match reasons. Resolvers are composable (plan
+  resolver + file resolver can be combined).
+- **Scorer + Budgeter** — reuses the existing `scoreChunk()` + `estimateTokens()` + greedy selection from
+  `packages/api/src/context-export/service.ts`.
+- **Structured Formatter** — new: groups chunks by type into labeled sections with per-chunk metadata (health score, staleness flags,
+  pending proposals).
 
 ---
 
@@ -47,7 +52,8 @@ Collects chunks from three sources, deduplicates by chunk ID:
 2. `plan_requirement` → `requirement_chunk` — chunks linked to the plan's requirements
 3. `plan_task_chunk` — chunks linked to the plan's tasks
 
-All three are queryable via existing repository functions (`listAnalyzeItems`, `listPlanRequirements` + `getRequirementsForChunks`, `listTaskChunks`).
+All three are queryable via existing repository functions (`listAnalyzeItems`, `listPlanRequirements` + `getRequirementsForChunks`,
+`listTaskChunks`).
 
 ### CLI
 
@@ -91,13 +97,15 @@ Accepts comma-separated file paths or glob patterns (e.g., `src/auth/**/*.ts,src
 
 ### Resolver
 
-1. Expand globs by matching against `chunk_applies_to` patterns and `chunk_file_ref` paths in the database (no filesystem access needed — the patterns are already in the DB).
+1. Expand globs by matching against `chunk_applies_to` patterns and `chunk_file_ref` paths in the database (no filesystem access needed —
+   the patterns are already in the DB).
 2. For each expanded path, run the existing `getContextForFile()` resolver.
 3. Deduplicate by chunk ID. Chunks matched by multiple files keep the highest match score.
 
 ### CLI
 
-`fubbik context for "<glob-or-path>"` — the existing `context for` command is extended. When the argument contains `*` or `**`, it switches to multi-file mode via the new endpoint. Non-glob arguments use the existing single-file endpoint as before.
+`fubbik context for "<glob-or-path>"` — the existing `context for` command is extended. When the argument contains `*` or `**`, it switches
+to multi-file mode via the new endpoint. Non-glob arguments use the existing single-file endpoint as before.
 
 ---
 
@@ -105,7 +113,8 @@ Accepts comma-separated file paths or glob patterns (e.g., `src/auth/**/*.ts,src
 
 ### Implementation
 
-CLI-side feature — no new API endpoint needed. The CLI runs `git diff`, extracts changed file paths, and calls the multi-file endpoint (Feature 3).
+CLI-side feature — no new API endpoint needed. The CLI runs `git diff`, extracts changed file paths, and calls the multi-file endpoint
+(Feature 3).
 
 ### CLI
 
@@ -127,16 +136,17 @@ Applies to ALL context output — features 1-4 and the existing `GET /api/chunks
 
 Chunks are grouped by type:
 
-| chunk type | Section heading |
-|---|---|
-| `note` with tag containing "convention" | **Conventions** |
-| `note` (other) | **Notes** |
-| `document` | **Architecture** |
-| `reference` | **API Reference** |
-| `schema` | **Schemas** |
-| `checklist` | **Checklists** |
+| chunk type                              | Section heading   |
+| --------------------------------------- | ----------------- |
+| `note` with tag containing "convention" | **Conventions**   |
+| `note` (other)                          | **Notes**         |
+| `document`                              | **Architecture**  |
+| `reference`                             | **API Reference** |
+| `schema`                                | **Schemas**       |
+| `checklist`                             | **Checklists**    |
 
-Additionally, chunks with health score < 50 or active staleness flags are collected into a **Known Issues** section at the bottom (they also appear in their primary section).
+Additionally, chunks with health score < 50 or active staleness flags are collected into a **Known Issues** section at the bottom (they also
+appear in their primary section).
 
 ### Per-chunk metadata
 
@@ -144,22 +154,27 @@ Each chunk in the output includes:
 
 - **Health score** — `[health: N]` (0-100, from the existing `computeHealthScore`)
 - **Staleness flag** — `⚠ STALE` if the chunk has an undismissed staleness flag (query `chunk_staleness` table)
-- **Pending proposal** — `⚠ PENDING PROPOSAL` if the chunk has a pending `chunk_proposal` (query `chunk_proposal` table where `status=pending`)
+- **Pending proposal** — `⚠ PENDING PROPOSAL` if the chunk has a pending `chunk_proposal` (query `chunk_proposal` table where
+  `status=pending`)
 
 ### Markdown format
 
 ```markdown
 ## Conventions
-[health: 85] Authentication uses JWT tokens stored in httpOnly cookies.
-[health: 72] ⚠ STALE (120 days) API rate limiting: 100 req/min per user.
+
+[health: 85] Authentication uses JWT tokens stored in httpOnly cookies. [health: 72] ⚠ STALE (120 days) API rate limiting: 100 req/min per
+user.
 
 ## Architecture
+
 [health: 92] Session management flow: login → token → refresh → logout.
 
 ## API Reference
+
 [health: 88] ⚠ PENDING PROPOSAL POST /api/auth/login endpoint.
 
 ## Known Issues
+
 [health: 45] ⚠ STALE Error handling in auth middleware is incomplete.
 ```
 
@@ -190,7 +205,9 @@ Same structure but metadata as typed fields:
 
 ### Opt-in
 
-The structured format is a new `format` option: `format=structured-md` or `format=structured-json`. The existing `format=md` and `format=json` outputs remain unchanged for backward compatibility. The new format becomes the default for new endpoints (features 1-4) but is opt-in for the existing `GET /api/chunks/export/context`.
+The structured format is a new `format` option: `format=structured-md` or `format=structured-json`. The existing `format=md` and
+`format=json` outputs remain unchanged for backward compatibility. The new format becomes the default for new endpoints (features 1-4) but
+is opt-in for the existing `GET /api/chunks/export/context`.
 
 ---
 
@@ -201,6 +218,7 @@ The structured format is a new `format` option: `format=structured-md` or `forma
 A unified context tool that dispatches to the appropriate resolver based on which params are provided.
 
 Parameters:
+
 - `planId?: string` — scope to a plan (Feature 1 resolver)
 - `filePath?: string` — scope to a file (existing resolver)
 - `concept?: string` — scope to a concept (Feature 2 resolver)
@@ -208,6 +226,7 @@ Parameters:
 - `codebaseId?: string` — codebase filter
 
 When `planId` is provided alongside `filePath` or `concept`:
+
 - Both resolvers run independently
 - Results are merged and deduplicated
 - Plan-scoped chunks get a +15 score boost (same pattern as the existing `forPath` boost)
@@ -216,7 +235,8 @@ Returns structured markdown (Feature 5 format).
 
 ### Existing `sync_claude_md` tool
 
-Unchanged. It serves a different purpose (generating `.claude/CLAUDE.md` from tagged chunks). The new `get_context` tool is for in-session context retrieval.
+Unchanged. It serves a different purpose (generating `.claude/CLAUDE.md` from tagged chunks). The new `get_context` tool is for in-session
+context retrieval.
 
 ---
 
@@ -225,11 +245,13 @@ Unchanged. It serves a different purpose (generating `.claude/CLAUDE.md` from ta
 ### New MCP tool: `get_context_for_task`
 
 Parameters:
+
 - `planId: string` (required)
 - `taskId: string` (required)
 - `maxTokens?: number` — token budget (default 4000)
 
 Resolver:
+
 1. Fetch the task's directly linked chunks (`plan_task_chunk` where `taskId`)
 2. Fetch the plan's analyze chunks (`plan_analyze_item` where `kind=chunk`)
 3. Fetch 1-hop connected chunks (via `connection` table) for all chunks from steps 1-2
@@ -245,25 +267,25 @@ Returns structured markdown (Feature 5 format), tightly scoped to what matters f
 
 New table: `context_snapshot`
 
-| column | type | notes |
-|---|---|---|
-| `id` | `text` pk | `$defaultFn(() => crypto.randomUUID())` |
-| `userId` | `text` fk → `user.id` | who created it |
-| `query` | `jsonb` not null | the input params that produced this snapshot |
-| `chunks` | `jsonb` not null | array of `{ id, title, content, type, health, stale, pendingProposal }` — frozen at snapshot time |
-| `tokenCount` | `integer` not null | total tokens in the snapshot |
-| `createdAt` | `timestamp` not null | |
+| column       | type                  | notes                                                                                             |
+| ------------ | --------------------- | ------------------------------------------------------------------------------------------------- |
+| `id`         | `text` pk             | `$defaultFn(() => crypto.randomUUID())`                                                           |
+| `userId`     | `text` fk → `user.id` | who created it                                                                                    |
+| `query`      | `jsonb` not null      | the input params that produced this snapshot                                                      |
+| `chunks`     | `jsonb` not null      | array of `{ id, title, content, type, health, stale, pendingProposal }` — frozen at snapshot time |
+| `tokenCount` | `integer` not null    | total tokens in the snapshot                                                                      |
+| `createdAt`  | `timestamp` not null  |                                                                                                   |
 
 No TTL — snapshots persist until explicitly deleted.
 
 ### API
 
-| method | path | notes |
-|---|---|---|
-| `POST` | `/api/context/snapshot` | body: `{ planId?, taskId?, filePaths?, concept?, maxTokens? }`. Runs the appropriate resolver, freezes the result, returns the snapshot. |
-| `GET` | `/api/context/snapshot/:id` | Returns the frozen snapshot content in structured format. |
-| `DELETE` | `/api/context/snapshot/:id` | Deletes the snapshot. |
-| `GET` | `/api/context/snapshots` | Lists snapshots for the current user. |
+| method   | path                        | notes                                                                                                                                    |
+| -------- | --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `POST`   | `/api/context/snapshot`     | body: `{ planId?, taskId?, filePaths?, concept?, maxTokens? }`. Runs the appropriate resolver, freezes the result, returns the snapshot. |
+| `GET`    | `/api/context/snapshot/:id` | Returns the frozen snapshot content in structured format.                                                                                |
+| `DELETE` | `/api/context/snapshot/:id` | Deletes the snapshot.                                                                                                                    |
+| `GET`    | `/api/context/snapshots`    | Lists snapshots for the current user.                                                                                                    |
 
 ### MCP tools
 
@@ -290,32 +312,32 @@ No TTL — snapshots persist until explicitly deleted.
 
 ### New files
 
-| Path | Responsibility |
-|---|---|
-| `packages/api/src/context/resolvers.ts` | Resolver functions for plan, concept, multi-file, diff |
-| `packages/api/src/context/formatter.ts` | Structured section formatter with metadata |
-| `packages/api/src/context/routes.ts` | New endpoints: for-plan, about, for-files |
-| `packages/db/src/schema/context-snapshot.ts` | Snapshot table schema |
-| `packages/db/src/repository/context-snapshot.ts` | Snapshot CRUD |
-| `packages/api/src/context/snapshot-service.ts` | Snapshot create/get/list/delete |
-| `packages/api/src/context/snapshot-routes.ts` | Snapshot API endpoints |
-| `apps/cli/src/commands/context-for-plan.ts` | CLI: `context for-plan` |
-| `apps/cli/src/commands/context-about.ts` | CLI: `context about` |
-| `apps/cli/src/commands/context-for-diff.ts` | CLI: `context for-diff` |
-| `apps/cli/src/commands/context-snapshot.ts` | CLI: `context snapshot` subgroup |
+| Path                                             | Responsibility                                         |
+| ------------------------------------------------ | ------------------------------------------------------ |
+| `packages/api/src/context/resolvers.ts`          | Resolver functions for plan, concept, multi-file, diff |
+| `packages/api/src/context/formatter.ts`          | Structured section formatter with metadata             |
+| `packages/api/src/context/routes.ts`             | New endpoints: for-plan, about, for-files              |
+| `packages/db/src/schema/context-snapshot.ts`     | Snapshot table schema                                  |
+| `packages/db/src/repository/context-snapshot.ts` | Snapshot CRUD                                          |
+| `packages/api/src/context/snapshot-service.ts`   | Snapshot create/get/list/delete                        |
+| `packages/api/src/context/snapshot-routes.ts`    | Snapshot API endpoints                                 |
+| `apps/cli/src/commands/context-for-plan.ts`      | CLI: `context for-plan`                                |
+| `apps/cli/src/commands/context-about.ts`         | CLI: `context about`                                   |
+| `apps/cli/src/commands/context-for-diff.ts`      | CLI: `context for-diff`                                |
+| `apps/cli/src/commands/context-snapshot.ts`      | CLI: `context snapshot` subgroup                       |
 
 ### Modified
 
-| Path | Change |
-|---|---|
-| `packages/api/src/context-export/service.ts` | Extract `scoreChunk` + `estimateTokens` + budgeting into shared utils (or import from new `context/` module) |
-| `packages/api/src/context-for-file/service.ts` | Export resolver function for reuse by multi-file feature |
-| `packages/api/src/index.ts` | Mount new context routes + snapshot routes |
-| `packages/mcp/src/context-tools.ts` | Add `get_context`, `get_context_for_task`, `create_context_snapshot`, `get_context_snapshot` tools |
-| `packages/db/src/schema/index.ts` | Add snapshot schema export |
-| `packages/db/src/repository/index.ts` | Add snapshot repo export |
-| `apps/cli/src/commands/context-group.ts` | Add new subcommands: for-plan, about, for-diff, snapshot |
-| `apps/cli/src/commands/context-for.ts` | Extend to handle glob patterns (multi-file mode) |
+| Path                                           | Change                                                                                                       |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `packages/api/src/context-export/service.ts`   | Extract `scoreChunk` + `estimateTokens` + budgeting into shared utils (or import from new `context/` module) |
+| `packages/api/src/context-for-file/service.ts` | Export resolver function for reuse by multi-file feature                                                     |
+| `packages/api/src/index.ts`                    | Mount new context routes + snapshot routes                                                                   |
+| `packages/mcp/src/context-tools.ts`            | Add `get_context`, `get_context_for_task`, `create_context_snapshot`, `get_context_snapshot` tools           |
+| `packages/db/src/schema/index.ts`              | Add snapshot schema export                                                                                   |
+| `packages/db/src/repository/index.ts`          | Add snapshot repo export                                                                                     |
+| `apps/cli/src/commands/context-group.ts`       | Add new subcommands: for-plan, about, for-diff, snapshot                                                     |
+| `apps/cli/src/commands/context-for.ts`         | Extend to handle glob patterns (multi-file mode)                                                             |
 
 ### Unchanged
 
@@ -327,7 +349,8 @@ No TTL — snapshots persist until explicitly deleted.
 
 ## Out of Scope
 
-- **Freshness signal #5 (from original list)** — incorporated into Feature 5 (structured sections) as per-chunk metadata. Not a separate feature.
+- **Freshness signal #5 (from original list)** — incorporated into Feature 5 (structured sections) as per-chunk metadata. Not a separate
+  feature.
 - **Automatic snapshot expiry** — snapshots don't expire. Manual deletion only.
 - **Real-time snapshot invalidation** — snapshots are frozen by design. No push notifications when underlying chunks change.
 - **Web UI for snapshots** — CLI and MCP only. No web page.

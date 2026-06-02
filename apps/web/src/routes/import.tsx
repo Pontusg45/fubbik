@@ -3,9 +3,9 @@ import { Upload } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { PageContainer, PageHeader } from "@/components/ui/page";
-import { getUser } from "@/functions/get-user";
 import { ImportQuickMode } from "@/features/import/quick-mode";
 import { ImportWizard } from "@/features/import/wizard";
+import { getUser } from "@/functions/get-user";
 
 export const Route = createFileRoute("/import")({
     component: ImportPage,
@@ -42,7 +42,7 @@ function ImportPage() {
                 title="Import Docs"
                 description="Import a folder of markdown files as knowledge chunks"
                 actions={
-                    <div className="flex rounded-md border overflow-hidden text-sm">
+                    <div className="flex overflow-hidden rounded-md border text-sm">
                         <button
                             type="button"
                             className={`px-3 py-1.5 transition-colors ${
@@ -56,7 +56,7 @@ function ImportPage() {
                         </button>
                         <button
                             type="button"
-                            className={`px-3 py-1.5 transition-colors border-l ${
+                            className={`border-l px-3 py-1.5 transition-colors ${
                                 mode === "wizard"
                                     ? "bg-primary text-primary-foreground"
                                     : "bg-background text-muted-foreground hover:text-foreground"

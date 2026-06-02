@@ -1,10 +1,15 @@
 # PostgreSQL 18 Upgrade Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to
+> implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Upgrade from PostgreSQL 16 (pgvector 0.8.0) to PostgreSQL 18 (pgvector 0.8.2), updating all Docker configuration, documentation, and providing a migration path for existing deployments.
+**Goal:** Upgrade from PostgreSQL 16 (pgvector 0.8.0) to PostgreSQL 18 (pgvector 0.8.2), updating all Docker configuration, documentation,
+and providing a migration path for existing deployments.
 
-**Architecture:** The upgrade touches Docker Compose files (image tag + volume mount path), documentation files (CLAUDE.md, CONTRIBUTING.md, getting-started guide), and adds a new migration guide for selfhosters. No application code changes needed — the `pg` driver, Drizzle ORM, pgvector, and pg_trgm all work with PG18. The critical gotcha is PG18's Docker `PGDATA` path change from `/var/lib/postgresql/data` to `/var/lib/postgresql/18/docker`, which breaks naive image-tag swaps.
+**Architecture:** The upgrade touches Docker Compose files (image tag + volume mount path), documentation files (CLAUDE.md, CONTRIBUTING.md,
+getting-started guide), and adds a new migration guide for selfhosters. No application code changes needed — the `pg` driver, Drizzle ORM,
+pgvector, and pg_trgm all work with PG18. The critical gotcha is PG18's Docker `PGDATA` path change from `/var/lib/postgresql/data` to
+`/var/lib/postgresql/18/docker`, which breaks naive image-tag swaps.
 
 **Tech Stack:** PostgreSQL 18, pgvector 0.8.2, Docker Compose
 
@@ -12,20 +17,21 @@
 
 ## File Map
 
-| Action | File | Responsibility |
-|--------|------|----------------|
-| Modify | `docker-compose.yml:70-81` | Dev Docker: image tag + volume mount |
-| Modify | `docker-compose.selfhost.yml:18,24` | Selfhost Docker: image tag + volume mount |
-| Modify | `CLAUDE.md` | Project docs: note PG18 |
-| Modify | `CONTRIBUTING.md:8` | Prerequisites: note PG18 |
-| Modify | `docs/guide/getting-started.md` | Getting started: note PG18 |
-| Create | `docs/guide/upgrading-postgresql.md` | Migration guide for existing users |
+| Action | File                                 | Responsibility                            |
+| ------ | ------------------------------------ | ----------------------------------------- |
+| Modify | `docker-compose.yml:70-81`           | Dev Docker: image tag + volume mount      |
+| Modify | `docker-compose.selfhost.yml:18,24`  | Selfhost Docker: image tag + volume mount |
+| Modify | `CLAUDE.md`                          | Project docs: note PG18                   |
+| Modify | `CONTRIBUTING.md:8`                  | Prerequisites: note PG18                  |
+| Modify | `docs/guide/getting-started.md`      | Getting started: note PG18                |
+| Create | `docs/guide/upgrading-postgresql.md` | Migration guide for existing users        |
 
 ---
 
 ### Task 1: Update docker-compose.yml
 
 **Files:**
+
 - Modify: `docker-compose.yml:70-81`
 
 - [ ] **Step 1: Update image tag**
@@ -58,7 +64,9 @@ volumes:
     - fubbik_postgres_data:/var/lib/postgresql
 ```
 
-This is required because PG18's Docker image changed `PGDATA` to `/var/lib/postgresql/18/docker` (version-specific subdirectory). Mounting at the parent directory lets PG18 create its own subdirectory and also enables future `pg_upgrade` across major versions without mount boundary issues.
+This is required because PG18's Docker image changed `PGDATA` to `/var/lib/postgresql/18/docker` (version-specific subdirectory). Mounting
+at the parent directory lets PG18 create its own subdirectory and also enables future `pg_upgrade` across major versions without mount
+boundary issues.
 
 - [ ] **Step 3: Verify the file looks correct**
 
@@ -78,6 +86,7 @@ git commit -m "chore: upgrade docker-compose db to PostgreSQL 18 + pgvector 0.8.
 ### Task 2: Update docker-compose.selfhost.yml
 
 **Files:**
+
 - Modify: `docker-compose.selfhost.yml:18,24`
 
 - [ ] **Step 1: Update image tag**
@@ -128,6 +137,7 @@ git commit -m "chore: upgrade selfhost docker-compose db to PostgreSQL 18 + pgve
 ### Task 3: Update CLAUDE.md
 
 **Files:**
+
 - Modify: `CLAUDE.md`
 
 - [ ] **Step 1: Update the Database section**
@@ -170,6 +180,7 @@ git commit -m "docs: update CLAUDE.md to reflect PostgreSQL 18 + pgvector 0.8.2"
 ### Task 4: Update CONTRIBUTING.md
 
 **Files:**
+
 - Modify: `CONTRIBUTING.md:8`
 
 - [ ] **Step 1: Update PostgreSQL prerequisite**
@@ -198,13 +209,16 @@ git commit -m "docs: update CONTRIBUTING.md PostgreSQL version requirement"
 ### Task 5: Update getting-started guide
 
 **Files:**
+
 - Modify: `docs/guide/getting-started.md` (check for any PostgreSQL version references)
 
 - [ ] **Step 1: Read the file and find PostgreSQL references**
 
 Run: `grep -n -i 'postgres\|pgvector\|pg16\|pg_' docs/guide/getting-started.md`
 
-Update any version-specific references to reflect PostgreSQL 18. If the file references `pgvector/pgvector:0.8.0-pg16` or a specific PG version, update it to `pgvector/pgvector:0.8.2-pg18`. If it references the volume path `/var/lib/postgresql/data`, update to `/var/lib/postgresql`.
+Update any version-specific references to reflect PostgreSQL 18. If the file references `pgvector/pgvector:0.8.0-pg16` or a specific PG
+version, update it to `pgvector/pgvector:0.8.2-pg18`. If it references the volume path `/var/lib/postgresql/data`, update to
+`/var/lib/postgresql`.
 
 - [ ] **Step 2: Commit (if changes were made)**
 
@@ -218,20 +232,20 @@ git commit -m "docs: update getting-started guide for PostgreSQL 18"
 ### Task 6: Create PostgreSQL upgrade migration guide
 
 **Files:**
+
 - Create: `docs/guide/upgrading-postgresql.md`
 
 - [ ] **Step 1: Create the migration guide**
 
 Create `docs/guide/upgrading-postgresql.md` with the following content:
 
-```markdown
+````markdown
 # Upgrading PostgreSQL
 
 ## PG16 → PG18 (pgvector 0.8.0 → 0.8.2)
 
-PostgreSQL 18 changed the default data directory inside Docker from
-`/var/lib/postgresql/data` to `/var/lib/postgresql/18/docker`. This means you
-**cannot** simply change the image tag — the new container won't find your data.
+PostgreSQL 18 changed the default data directory inside Docker from `/var/lib/postgresql/data` to `/var/lib/postgresql/18/docker`. This
+means you **cannot** simply change the image tag — the new container won't find your data.
 
 ### Prerequisites
 
@@ -240,8 +254,7 @@ PostgreSQL 18 changed the default data directory inside Docker from
 
 ### Option A: Dump & Restore (recommended)
 
-Best for most fubbik installations. Downtime: a few seconds to minutes depending
-on data size.
+Best for most fubbik installations. Downtime: a few seconds to minutes depending on data size.
 
 **1. Dump the database from the running PG16 container:**
 
@@ -252,6 +265,7 @@ docker exec fubbik-postgres pg_dumpall -U postgres > fubbik_backup.sql
 # For docker-compose.selfhost.yml
 docker exec fubbik-selfhost-db-1 pg_dumpall -U fubbik > fubbik_backup.sql
 ```
+````
 
 **2. Stop all services:**
 
@@ -342,8 +356,7 @@ curl http://localhost:3000/api/health
 
 ### Option B: Fresh start (no existing data)
 
-If you don't need to preserve data (e.g., dev environment), just remove the old
-volume and start fresh:
+If you don't need to preserve data (e.g., dev environment), just remove the old volume and start fresh:
 
 ```bash
 docker compose down
@@ -351,34 +364,29 @@ docker volume rm fubbik_fubbik_postgres_data
 docker compose up -d
 ```
 
-The entrypoint script will run migrations and optionally seed the database
-(`SEED_DATABASE=true`).
+The entrypoint script will run migrations and optionally seed the database (`SEED_DATABASE=true`).
 
 ### Post-Upgrade Notes
 
-- **pg_trgm indexes:** PG18 changed collation handling. The `REINDEX` in step 7
-  ensures trigram indexes for fuzzy search are correct.
-- **pgvector HNSW index:** The reindex also covers the embedding index. No
-  separate action needed.
-- **Drizzle migrations:** The entrypoint runs `drizzle-kit migrate` on startup.
-  No manual migration step required.
-- **New PG18 features available:** `uuidv7()`, virtual generated columns,
-  `RETURNING OLD/NEW`, async I/O (up to 3× read perf improvement).
-```
+- **pg_trgm indexes:** PG18 changed collation handling. The `REINDEX` in step 7 ensures trigram indexes for fuzzy search are correct.
+- **pgvector HNSW index:** The reindex also covers the embedding index. No separate action needed.
+- **Drizzle migrations:** The entrypoint runs `drizzle-kit migrate` on startup. No manual migration step required.
+- **New PG18 features available:** `uuidv7()`, virtual generated columns, `RETURNING OLD/NEW`, async I/O (up to 3× read perf improvement).
+
+````
 
 - [ ] **Step 2: Commit**
 
 ```bash
 git add docs/guide/upgrading-postgresql.md
 git commit -m "docs: add PostgreSQL upgrade guide (PG16 → PG18)"
-```
+````
 
 ---
 
 ### Task 7: Local dev verification (non-Docker)
 
-If you run PostgreSQL locally (outside Docker, e.g., via Homebrew), this task
-covers upgrading your local instance.
+If you run PostgreSQL locally (outside Docker, e.g., via Homebrew), this task covers upgrading your local instance.
 
 **Files:** None (operational task)
 
@@ -436,8 +444,7 @@ Should show `vector` and `pg_trgm`.
 pnpm dev
 ```
 
-Hit `http://localhost:3000/api/health` — should return OK.
-Run a search on `http://localhost:3001/search` to exercise pg_trgm.
+Hit `http://localhost:3000/api/health` — should return OK. Run a search on `http://localhost:3001/search` to exercise pg_trgm.
 
 ---
 

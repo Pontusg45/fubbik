@@ -67,19 +67,19 @@ export function TraceabilityContent() {
                 </Card>
                 <Card>
                     <CardPanel className="text-center">
-                        <p className="text-xs font-medium uppercase text-blue-600">With Plan</p>
+                        <p className="text-xs font-medium text-blue-600 uppercase">With Plan</p>
                         <p className="text-3xl font-bold text-blue-600">{withPlan.length}</p>
                     </CardPanel>
                 </Card>
                 <Card>
                     <CardPanel className="text-center">
-                        <p className="text-xs font-medium uppercase text-purple-600">With Session</p>
+                        <p className="text-xs font-medium text-purple-600 uppercase">With Session</p>
                         <p className="text-3xl font-bold text-purple-600">{withSession.length}</p>
                     </CardPanel>
                 </Card>
                 <Card>
                     <CardPanel className="text-center">
-                        <p className="text-xs font-medium uppercase text-amber-600">Gaps</p>
+                        <p className="text-xs font-medium text-amber-600 uppercase">Gaps</p>
                         <p className="text-3xl font-bold text-amber-600">{gaps.length}</p>
                     </CardPanel>
                 </Card>
@@ -89,7 +89,10 @@ export function TraceabilityContent() {
             <div className="space-y-3">
                 {rows.map(req => {
                     // Group plan steps by plan
-                    const planGroups = new Map<string, { planId: string; planTitle: string; planStatus: string; steps: typeof req.planSteps }>();
+                    const planGroups = new Map<
+                        string,
+                        { planId: string; planTitle: string; planStatus: string; steps: typeof req.planSteps }
+                    >();
                     for (const step of req.planSteps) {
                         if (!planGroups.has(step.planId)) {
                             planGroups.set(step.planId, {
@@ -117,10 +120,7 @@ export function TraceabilityContent() {
                                             >
                                                 {req.title}
                                             </Link>
-                                            <Badge
-                                                variant="outline"
-                                                className={STATUS_STYLES[req.status] ?? STATUS_STYLES.untested}
-                                            >
+                                            <Badge variant="outline" className={STATUS_STYLES[req.status] ?? STATUS_STYLES.untested}>
                                                 {req.status}
                                             </Badge>
                                             {req.priority && (
@@ -158,9 +158,7 @@ export function TraceabilityContent() {
                                         </div>
                                     </div>
 
-                                    {hasGap && (
-                                        <AlertTriangle className="mt-1 size-4 shrink-0 text-amber-500" />
-                                    )}
+                                    {hasGap && <AlertTriangle className="mt-1 size-4 shrink-0 text-amber-500" />}
                                 </div>
                             </CardPanel>
                         </Card>

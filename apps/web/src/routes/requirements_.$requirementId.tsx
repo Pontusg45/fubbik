@@ -179,9 +179,7 @@ function RequirementDetail() {
 
     async function handleExport(format: "gherkin" | "vitest" | "markdown") {
         try {
-            const result = unwrapEden(
-                await api.api.requirements({ id: requirementId }).export.get({ query: { format } })
-            );
+            const result = unwrapEden(await api.api.requirements({ id: requirementId }).export.get({ query: { format } }));
             const text = typeof result === "string" ? result : JSON.stringify(result, null, 2);
             await navigator.clipboard.writeText(text);
             toast.success(`${format.charAt(0).toUpperCase() + format.slice(1)} copied to clipboard`);
@@ -239,9 +237,7 @@ function RequirementDetail() {
                             <Badge variant="outline" className={STATUS_STYLES[status] ?? STATUS_STYLES.untested}>
                                 {status}
                             </Badge>
-                            {priority && (
-                                <Badge variant="secondary">{PRIORITY_LABELS[priority] ?? priority}</Badge>
-                            )}
+                            {priority && <Badge variant="secondary">{PRIORITY_LABELS[priority] ?? priority}</Badge>}
                             {isAi && (
                                 <Badge
                                     variant="outline"
@@ -259,9 +255,7 @@ function RequirementDetail() {
                             )}
                         </div>
                     )}
-                    {!editing && description && (
-                        <p className="text-muted-foreground mt-3 text-sm leading-relaxed">{description}</p>
-                    )}
+                    {!editing && description && <p className="text-muted-foreground mt-3 text-sm leading-relaxed">{description}</p>}
                 </div>
                 {!editing && (
                     <Button variant="outline" size="sm" onClick={enterEditMode}>
@@ -309,7 +303,9 @@ function RequirementDetail() {
                             >
                                 <option value="">(none)</option>
                                 {(useCasesQuery.data ?? []).map(uc => (
-                                    <option key={uc.id} value={uc.id}>{uc.name}</option>
+                                    <option key={uc.id} value={uc.id}>
+                                        {uc.name}
+                                    </option>
                                 ))}
                             </select>
                         </div>
@@ -320,7 +316,9 @@ function RequirementDetail() {
                     <ChunkLinker selectedChunkIds={editChunkIds} onSelectedChunkIdsChange={setEditChunkIds} codebaseId={spaceId} />
                     {/* Save/Cancel */}
                     <div className="flex justify-end gap-2 border-t pt-4">
-                        <Button variant="outline" onClick={() => setEditing(false)}>Cancel</Button>
+                        <Button variant="outline" onClick={() => setEditing(false)}>
+                            Cancel
+                        </Button>
                         <Button onClick={handleSave} disabled={updateMutation.isPending}>
                             {updateMutation.isPending ? "Saving..." : "Save Changes"}
                         </Button>
@@ -330,7 +328,7 @@ function RequirementDetail() {
                 <>
                     {/* Status + Review controls */}
                     <div className="mb-6 flex flex-wrap items-center gap-3 rounded-lg border p-3">
-                        <span className="text-muted-foreground text-xs font-medium uppercase tracking-wide">Status</span>
+                        <span className="text-muted-foreground text-xs font-medium tracking-wide uppercase">Status</span>
                         <div className="flex gap-1">
                             {(["passing", "failing", "untested"] as const).map(s => (
                                 <button
@@ -357,14 +355,24 @@ function RequirementDetail() {
                         {isAi && reviewStatus !== "approved" && (
                             <>
                                 <div className="bg-border h-6 w-px" />
-                                <span className="text-muted-foreground text-xs font-medium uppercase tracking-wide">Review</span>
+                                <span className="text-muted-foreground text-xs font-medium tracking-wide uppercase">Review</span>
                                 <div className="flex gap-1">
                                     {reviewStatus === "draft" && (
-                                        <Button variant="outline" size="sm" onClick={() => reviewMutation.mutate("reviewed")} disabled={reviewMutation.isPending}>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => reviewMutation.mutate("reviewed")}
+                                            disabled={reviewMutation.isPending}
+                                        >
                                             Mark Reviewed
                                         </Button>
                                     )}
-                                    <Button variant="outline" size="sm" onClick={() => reviewMutation.mutate("approved")} disabled={reviewMutation.isPending}>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => reviewMutation.mutate("approved")}
+                                        disabled={reviewMutation.isPending}
+                                    >
                                         Approve
                                     </Button>
                                 </div>
@@ -377,11 +385,10 @@ function RequirementDetail() {
                         <h2 className="mb-3 text-sm font-semibold">Steps</h2>
                         <div className="rounded-lg border">
                             {steps.map((step, i) => (
-                                <div
-                                    key={i}
-                                    className={`flex gap-3 px-4 py-2.5 ${i > 0 ? "border-t" : ""}`}
-                                >
-                                    <span className={`w-14 shrink-0 text-right font-mono text-xs font-bold uppercase ${KEYWORD_STYLES[step.keyword] ?? ""}`}>
+                                <div key={i} className={`flex gap-3 px-4 py-2.5 ${i > 0 ? "border-t" : ""}`}>
+                                    <span
+                                        className={`w-14 shrink-0 text-right font-mono text-xs font-bold uppercase ${KEYWORD_STYLES[step.keyword] ?? ""}`}
+                                    >
                                         {step.keyword}
                                     </span>
                                     <span className="text-sm">{step.text}</span>
@@ -399,12 +406,13 @@ function RequirementDetail() {
                     {/* Warnings */}
                     {warnings.length > 0 && (
                         <div className="mb-6 rounded-lg border border-yellow-500/30 bg-yellow-500/5 p-4">
-                            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-yellow-600 dark:text-yellow-400">
+                            <h3 className="mb-2 text-xs font-semibold tracking-wide text-yellow-600 uppercase dark:text-yellow-400">
                                 Cross-reference Warnings
                             </h3>
                             {warnings.map((w, i) => (
                                 <p key={i} className="text-sm text-yellow-700 dark:text-yellow-300">
-                                    {w.step >= 0 ? `Step ${w.step + 1}: ` : ""}{w.warning}
+                                    {w.step >= 0 ? `Step ${w.step + 1}: ` : ""}
+                                    {w.warning}
                                 </p>
                             ))}
                         </div>
@@ -412,7 +420,7 @@ function RequirementDetail() {
 
                     {vocabWarnings.length > 0 && (
                         <div className="mb-6 rounded-lg border border-amber-500/30 bg-amber-500/5 p-4">
-                            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400">
+                            <h3 className="mb-2 text-xs font-semibold tracking-wide text-amber-600 uppercase dark:text-amber-400">
                                 Vocabulary Warnings
                             </h3>
                             {vocabWarnings.map((w, i) => (

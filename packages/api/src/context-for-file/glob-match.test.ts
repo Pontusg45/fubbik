@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { globMatch, normalizePath } from "./glob-match";
 
 describe("normalizePath", () => {

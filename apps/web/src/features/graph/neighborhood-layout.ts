@@ -63,15 +63,13 @@ export function layoutNeighborhood(input: NeighborhoodInput): NeighborhoodResult
             const angle = (2 * Math.PI * i) / ids.length - Math.PI / 2;
             positions[ids[i]!] = {
                 x: Math.round(Math.cos(angle) * radius),
-                y: Math.round(Math.sin(angle) * radius),
+                y: Math.round(Math.sin(angle) * radius)
             };
         }
     }
 
     const visibleIds = new Set(Object.keys(positions));
-    const visibleConnections = connections.filter(
-        c => visibleIds.has(c.sourceId) && visibleIds.has(c.targetId)
-    );
+    const visibleConnections = connections.filter(c => visibleIds.has(c.sourceId) && visibleIds.has(c.targetId));
 
     return { positions, hops, visibleConnections };
 }

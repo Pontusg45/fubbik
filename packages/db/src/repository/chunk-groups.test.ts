@@ -24,7 +24,7 @@ const chainMethods = {
     innerJoin: mockInnerJoin,
     orderBy: mockOrderBy,
     limit: mockLimit,
-    offset: mockOffset,
+    offset: mockOffset
 };
 
 // Each chain method returns the chain so they're composable
@@ -37,14 +37,14 @@ vi.mock("../index", () => ({
     dbEffect: <T>(fn: () => Promise<T>) =>
         Effect.tryPromise({
             try: fn,
-            catch: (cause) => new DatabaseError({ cause }),
-        }),
+            catch: cause => new DatabaseError({ cause })
+        })
 }));
 
 // Also mock the AGE sync module since chunk.ts schema imports may reference it indirectly
 vi.mock("../age/sync", () => ({
     ensureVertex: vi.fn(),
-    deleteVertex: vi.fn(),
+    deleteVertex: vi.fn()
 }));
 
 // ---------------------------------------------------------------------------
@@ -65,7 +65,7 @@ describe("getGroupedCounts", () => {
     it("returns grouped counts for groupBy: type", async () => {
         const mockData = [
             { groupName: "note", count: 5 },
-            { groupName: "document", count: 3 },
+            { groupName: "document", count: 3 }
         ];
         // The terminal call in the chain resolves to mockData
         mockGroupBy.mockResolvedValueOnce(mockData);
@@ -73,7 +73,7 @@ describe("getGroupedCounts", () => {
         const result = await Effect.runPromise(
             getGroupedCounts({
                 groupBy: "type",
-                userId: "user-1",
+                userId: "user-1"
             })
         );
 
@@ -88,14 +88,14 @@ describe("getGroupedCounts", () => {
     it("returns grouped counts for groupBy: status", async () => {
         const mockData = [
             { groupName: "approved", count: 10 },
-            { groupName: "draft", count: 2 },
+            { groupName: "draft", count: 2 }
         ];
         mockGroupBy.mockResolvedValueOnce(mockData);
 
         const result = await Effect.runPromise(
             getGroupedCounts({
                 groupBy: "status",
-                userId: "user-1",
+                userId: "user-1"
             })
         );
 
@@ -105,14 +105,14 @@ describe("getGroupedCounts", () => {
     it("returns grouped counts for groupBy: origin", async () => {
         const mockData = [
             { groupName: "human", count: 7 },
-            { groupName: "ai", count: 4 },
+            { groupName: "ai", count: 4 }
         ];
         mockGroupBy.mockResolvedValueOnce(mockData);
 
         const result = await Effect.runPromise(
             getGroupedCounts({
                 groupBy: "origin",
-                userId: "user-1",
+                userId: "user-1"
             })
         );
 
@@ -124,14 +124,14 @@ describe("getGroupedCounts", () => {
             { groupName: "This week", count: 3 },
             { groupName: "This month", count: 5 },
             { groupName: "Last 3 months", count: 8 },
-            { groupName: "Older", count: 2 },
+            { groupName: "Older", count: 2 }
         ];
         mockGroupBy.mockResolvedValueOnce(mockData);
 
         const result = await Effect.runPromise(
             getGroupedCounts({
                 groupBy: "freshness",
-                userId: "user-1",
+                userId: "user-1"
             })
         );
 
@@ -141,7 +141,7 @@ describe("getGroupedCounts", () => {
     it("returns grouped counts for groupBy: tagtype with tagTypeId", async () => {
         const mockData = [
             { groupName: "frontend", count: 4 },
-            { groupName: "backend", count: 6 },
+            { groupName: "backend", count: 6 }
         ];
         mockGroupBy.mockResolvedValueOnce(mockData);
 
@@ -149,7 +149,7 @@ describe("getGroupedCounts", () => {
             getGroupedCounts({
                 groupBy: "tagtype",
                 tagTypeId: "tag-type-1",
-                userId: "user-1",
+                userId: "user-1"
             })
         );
 
@@ -162,7 +162,7 @@ describe("getGroupedCounts", () => {
         const result = await Effect.runPromise(
             getGroupedCounts({
                 groupBy: "type",
-                userId: "user-1",
+                userId: "user-1"
             })
         );
 
@@ -175,7 +175,7 @@ describe("getGroupedCounts", () => {
         const result = await Effect.runPromiseExit(
             getGroupedCounts({
                 groupBy: "type",
-                userId: "user-1",
+                userId: "user-1"
             })
         );
 
@@ -194,7 +194,7 @@ describe("getChunksInGroup", () => {
     it("returns chunks and total for a type group", async () => {
         const mockChunks = [
             { id: "c1", title: "Chunk 1", type: "note" },
-            { id: "c2", title: "Chunk 2", type: "note" },
+            { id: "c2", title: "Chunk 2", type: "note" }
         ];
 
         // getChunksInGroup performs two sequential queries:
@@ -224,7 +224,7 @@ describe("getChunksInGroup", () => {
                 groupName: "note",
                 userId: "user-1",
                 limit: 20,
-                offset: 0,
+                offset: 0
             })
         );
 
@@ -244,7 +244,7 @@ describe("getChunksInGroup", () => {
                 groupName: "note",
                 userId: "user-1",
                 limit: 20,
-                offset: 0,
+                offset: 0
             })
         );
 

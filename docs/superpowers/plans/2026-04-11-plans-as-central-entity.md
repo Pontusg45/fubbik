@@ -1,12 +1,18 @@
 # Plans as a Central Entity Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to
+> implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Rewrite `Plan` as the central unit of work in fubbik — a single entity holding description, linked requirements, structured analyze fields (chunks, files, risks, assumptions, questions), and enriched tasks — while deleting the entire `implementation_session` subsystem.
+**Goal:** Rewrite `Plan` as the central unit of work in fubbik — a single entity holding description, linked requirements, structured
+analyze fields (chunks, files, risks, assumptions, questions), and enriched tasks — while deleting the entire `implementation_session`
+subsystem.
 
-**Architecture:** Clean rewrite of six new DB tables (`plan`, `plan_requirement`, `plan_analyze_item`, `plan_task`, `plan_task_chunk`, `plan_task_dependency`), backend API, MCP tools, CLI commands, and the `/plans` web pages. All seven old plan/session tables are dropped in a single Drizzle migration. Web navigation swaps `Requirements` out of the primary nav in favor of `Plans`.
+**Architecture:** Clean rewrite of six new DB tables (`plan`, `plan_requirement`, `plan_analyze_item`, `plan_task`, `plan_task_chunk`,
+`plan_task_dependency`), backend API, MCP tools, CLI commands, and the `/plans` web pages. All seven old plan/session tables are dropped in
+a single Drizzle migration. Web navigation swaps `Requirements` out of the primary nav in favor of `Plans`.
 
-**Tech Stack:** Drizzle ORM (PostgreSQL), Elysia + Effect (backend), Model Context Protocol SDK, Commander.js (CLI), TanStack Start + TanStack Query (web), shadcn-ui on base-ui, Tailwind CSS, Vitest.
+**Tech Stack:** Drizzle ORM (PostgreSQL), Elysia + Effect (backend), Model Context Protocol SDK, Commander.js (CLI), TanStack Start +
+TanStack Query (web), shadcn-ui on base-ui, Tailwind CSS, Vitest.
 
 **Spec:** `docs/superpowers/specs/2026-04-11-plans-as-central-entity-design.md`
 
@@ -16,76 +22,76 @@
 
 ### Created
 
-| Path | Responsibility |
-|---|---|
-| `packages/db/src/migrations/NNNN_plans_rewrite.sql` | Drop old tables + create six new tables |
-| `packages/api/src/plans/requirements.ts` | Service for plan→requirement linking |
-| `packages/api/src/plans/analyze.ts` | Service for analyze item CRUD |
-| `packages/api/src/plans/tasks.ts` | Service for task CRUD + auto-unblock |
-| `apps/web/src/features/plans/plan-detail-header.tsx` | Sticky detail page header |
-| `apps/web/src/features/plans/plan-description-section.tsx` | Section 1 |
-| `apps/web/src/features/plans/plan-requirements-section.tsx` | Section 2 |
-| `apps/web/src/features/plans/plan-analyze-section.tsx` | Section 3 (+ 5 sub-components) |
-| `apps/web/src/features/plans/plan-analyze-chunks.tsx` | Analyze sub-section |
-| `apps/web/src/features/plans/plan-analyze-files.tsx` | Analyze sub-section |
-| `apps/web/src/features/plans/plan-analyze-risks.tsx` | Analyze sub-section |
-| `apps/web/src/features/plans/plan-analyze-assumptions.tsx` | Analyze sub-section |
-| `apps/web/src/features/plans/plan-analyze-questions.tsx` | Analyze sub-section |
-| `apps/web/src/features/plans/plan-tasks-section.tsx` | Section 4 |
-| `apps/web/src/features/plans/plan-task-card.tsx` | Single task card |
-| `apps/web/src/features/plans/plan-detail-right-rail.tsx` | Summary rail (desktop) |
-| `apps/web/src/features/plans/plan-status-pill.tsx` | Status pill (reused across pages) |
+| Path                                                        | Responsibility                          |
+| ----------------------------------------------------------- | --------------------------------------- |
+| `packages/db/src/migrations/NNNN_plans_rewrite.sql`         | Drop old tables + create six new tables |
+| `packages/api/src/plans/requirements.ts`                    | Service for plan→requirement linking    |
+| `packages/api/src/plans/analyze.ts`                         | Service for analyze item CRUD           |
+| `packages/api/src/plans/tasks.ts`                           | Service for task CRUD + auto-unblock    |
+| `apps/web/src/features/plans/plan-detail-header.tsx`        | Sticky detail page header               |
+| `apps/web/src/features/plans/plan-description-section.tsx`  | Section 1                               |
+| `apps/web/src/features/plans/plan-requirements-section.tsx` | Section 2                               |
+| `apps/web/src/features/plans/plan-analyze-section.tsx`      | Section 3 (+ 5 sub-components)          |
+| `apps/web/src/features/plans/plan-analyze-chunks.tsx`       | Analyze sub-section                     |
+| `apps/web/src/features/plans/plan-analyze-files.tsx`        | Analyze sub-section                     |
+| `apps/web/src/features/plans/plan-analyze-risks.tsx`        | Analyze sub-section                     |
+| `apps/web/src/features/plans/plan-analyze-assumptions.tsx`  | Analyze sub-section                     |
+| `apps/web/src/features/plans/plan-analyze-questions.tsx`    | Analyze sub-section                     |
+| `apps/web/src/features/plans/plan-tasks-section.tsx`        | Section 4                               |
+| `apps/web/src/features/plans/plan-task-card.tsx`            | Single task card                        |
+| `apps/web/src/features/plans/plan-detail-right-rail.tsx`    | Summary rail (desktop)                  |
+| `apps/web/src/features/plans/plan-status-pill.tsx`          | Status pill (reused across pages)       |
 
 ### Rewritten (full replacement)
 
-| Path | Responsibility |
-|---|---|
-| `packages/db/src/schema/plan.ts` | New six-table schema |
-| `packages/db/src/repository/plan.ts` | Effect-based data access |
-| `packages/api/src/plans/service.ts` | Plan CRUD + status transitions |
-| `packages/api/src/plans/routes.ts` | Elysia route definitions |
-| `packages/mcp/src/plan-tools.ts` | MCP tool registrations |
-| `apps/cli/src/commands/plan.ts` | CLI commands |
-| `apps/web/src/routes/plans.index.tsx` | Plans list page |
-| `apps/web/src/routes/plans.new.tsx` | Plan creation page |
-| `apps/web/src/routes/plans.$planId.tsx` | Plan detail page |
-| `packages/db/src/seed.ts` | Seed data (plans section) |
+| Path                                    | Responsibility                 |
+| --------------------------------------- | ------------------------------ |
+| `packages/db/src/schema/plan.ts`        | New six-table schema           |
+| `packages/db/src/repository/plan.ts`    | Effect-based data access       |
+| `packages/api/src/plans/service.ts`     | Plan CRUD + status transitions |
+| `packages/api/src/plans/routes.ts`      | Elysia route definitions       |
+| `packages/mcp/src/plan-tools.ts`        | MCP tool registrations         |
+| `apps/cli/src/commands/plan.ts`         | CLI commands                   |
+| `apps/web/src/routes/plans.index.tsx`   | Plans list page                |
+| `apps/web/src/routes/plans.new.tsx`     | Plan creation page             |
+| `apps/web/src/routes/plans.$planId.tsx` | Plan detail page               |
+| `packages/db/src/seed.ts`               | Seed data (plans section)      |
 
 ### Modified
 
-| Path | Responsibility |
-|---|---|
-| `packages/db/src/schema/index.ts` | Drop session exports, update plan exports |
-| `packages/api/src/index.ts` | Unmount session routes |
-| `packages/mcp/src/index.ts` | Unregister session tools |
-| `apps/cli/src/index.ts` | (if session commands exist) Remove session command registration |
-| `apps/web/src/routes/__root.tsx` | Nav swap, Manage dropdown update |
-| `CLAUDE.md` | Update Plans + API Endpoints sections, remove session references |
+| Path                              | Responsibility                                                   |
+| --------------------------------- | ---------------------------------------------------------------- |
+| `packages/db/src/schema/index.ts` | Drop session exports, update plan exports                        |
+| `packages/api/src/index.ts`       | Unmount session routes                                           |
+| `packages/mcp/src/index.ts`       | Unregister session tools                                         |
+| `apps/cli/src/index.ts`           | (if session commands exist) Remove session command registration  |
+| `apps/web/src/routes/__root.tsx`  | Nav swap, Manage dropdown update                                 |
+| `CLAUDE.md`                       | Update Plans + API Endpoints sections, remove session references |
 
 ### Deleted
 
-| Path | Reason |
-|---|---|
-| `packages/db/src/schema/implementation-session.ts` | Sessions removed |
-| `packages/db/src/repository/implementation-session.ts` | Sessions removed |
-| `packages/api/src/sessions/routes.ts` | Sessions removed |
-| `packages/api/src/sessions/service.ts` | Sessions removed |
-| `packages/api/src/sessions/brief-generator.ts` | Sessions removed |
-| `packages/api/src/plans/generate-from-requirements.ts` | Templated generation parked |
-| `packages/api/src/plans/generate-from-requirements.test.ts` | Templated generation parked |
-| `packages/api/src/plans/parse-plan-markdown.ts` | Markdown import parked |
-| `packages/api/src/plans/parse-plan-markdown.test.ts` | Markdown import parked |
-| `packages/mcp/src/session-tools.ts` | Sessions removed |
-| `apps/web/src/routes/reviews.tsx` | Sessions removed |
-| `apps/web/src/routes/reviews_.queue.tsx` | Sessions removed |
-| `apps/web/src/routes/reviews_.$sessionId.tsx` | Sessions removed |
-| `apps/web/src/features/reviews/assumption-resolver.tsx` | Sessions removed |
-| `apps/web/src/features/reviews/review-queue-content.tsx` | Sessions removed |
-| `apps/web/src/features/reviews/session-card.tsx` | Sessions removed |
-| `apps/web/src/features/plans/plan-progress-bar.tsx` | Replaced by new component |
-| `apps/web/src/features/plans/plan-step-item.tsx` | Steps → tasks |
-| `apps/web/src/features/plans/plan-timeline.tsx` | Not in new detail page design |
-| `apps/web/src/features/plans/plans-list-content.tsx` | Replaced by new list |
+| Path                                                        | Reason                        |
+| ----------------------------------------------------------- | ----------------------------- |
+| `packages/db/src/schema/implementation-session.ts`          | Sessions removed              |
+| `packages/db/src/repository/implementation-session.ts`      | Sessions removed              |
+| `packages/api/src/sessions/routes.ts`                       | Sessions removed              |
+| `packages/api/src/sessions/service.ts`                      | Sessions removed              |
+| `packages/api/src/sessions/brief-generator.ts`              | Sessions removed              |
+| `packages/api/src/plans/generate-from-requirements.ts`      | Templated generation parked   |
+| `packages/api/src/plans/generate-from-requirements.test.ts` | Templated generation parked   |
+| `packages/api/src/plans/parse-plan-markdown.ts`             | Markdown import parked        |
+| `packages/api/src/plans/parse-plan-markdown.test.ts`        | Markdown import parked        |
+| `packages/mcp/src/session-tools.ts`                         | Sessions removed              |
+| `apps/web/src/routes/reviews.tsx`                           | Sessions removed              |
+| `apps/web/src/routes/reviews_.queue.tsx`                    | Sessions removed              |
+| `apps/web/src/routes/reviews_.$sessionId.tsx`               | Sessions removed              |
+| `apps/web/src/features/reviews/assumption-resolver.tsx`     | Sessions removed              |
+| `apps/web/src/features/reviews/review-queue-content.tsx`    | Sessions removed              |
+| `apps/web/src/features/reviews/session-card.tsx`            | Sessions removed              |
+| `apps/web/src/features/plans/plan-progress-bar.tsx`         | Replaced by new component     |
+| `apps/web/src/features/plans/plan-step-item.tsx`            | Steps → tasks                 |
+| `apps/web/src/features/plans/plan-timeline.tsx`             | Not in new detail page design |
+| `apps/web/src/features/plans/plans-list-content.tsx`        | Replaced by new list          |
 
 ---
 
@@ -116,6 +122,7 @@
 ## Task 1: Schema Rewrite + Migration
 
 **Files:**
+
 - Rewrite: `packages/db/src/schema/plan.ts`
 - Delete: `packages/db/src/schema/implementation-session.ts`
 - Modify: `packages/db/src/schema/index.ts` (drop session exports)
@@ -123,7 +130,9 @@
 
 - [ ] **Step 1: Read the current schema files to understand existing imports and patterns**
 
-Run: `cat packages/db/src/schema/plan.ts` and `cat packages/db/src/schema/implementation-session.ts` and `cat packages/db/src/schema/index.ts` — take note of imported helpers (`pgTable`, `text`, `uuid`, `timestamp`, etc.), foreign-key patterns, and existing `chunk` / `requirement` / `user` / `codebase` table imports.
+Run: `cat packages/db/src/schema/plan.ts` and `cat packages/db/src/schema/implementation-session.ts` and
+`cat packages/db/src/schema/index.ts` — take note of imported helpers (`pgTable`, `text`, `uuid`, `timestamp`, etc.), foreign-key patterns,
+and existing `chunk` / `requirement` / `user` / `codebase` table imports.
 
 - [ ] **Step 2: Rewrite `packages/db/src/schema/plan.ts`**
 
@@ -154,7 +163,7 @@ export const plan = pgTable("plan", {
     codebaseId: uuid("codebase_id").references(() => codebase.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-    completedAt: timestamp("completed_at", { withTimezone: true }),
+    completedAt: timestamp("completed_at", { withTimezone: true })
 });
 
 export const planRequirement = pgTable(
@@ -168,11 +177,11 @@ export const planRequirement = pgTable(
             .notNull()
             .references(() => requirement.id, { onDelete: "cascade" }),
         order: integer("order").notNull().default(0),
-        createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+        createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
     },
     t => ({
-        planRequirementUnique: uniqueIndex("plan_requirement_unique_idx").on(t.planId, t.requirementId),
-    }),
+        planRequirementUnique: uniqueIndex("plan_requirement_unique_idx").on(t.planId, t.requirementId)
+    })
 );
 
 /**
@@ -191,7 +200,7 @@ export const planAnalyzeItem = pgTable("plan_analyze_item", {
     text: text("text"),
     metadata: jsonb("metadata").notNull().default({}),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
 });
 
 export const planTask = pgTable("plan_task", {
@@ -206,7 +215,7 @@ export const planTask = pgTable("plan_task", {
     // pending | in_progress | done | skipped | blocked
     order: integer("order").notNull().default(0),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
 });
 
 export const planTaskChunk = pgTable(
@@ -220,11 +229,11 @@ export const planTaskChunk = pgTable(
             .notNull()
             .references(() => chunk.id, { onDelete: "cascade" }),
         relation: text("relation").notNull(), // context | created | modified
-        createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+        createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
     },
     t => ({
-        taskChunkUnique: uniqueIndex("plan_task_chunk_unique_idx").on(t.taskId, t.chunkId, t.relation),
-    }),
+        taskChunkUnique: uniqueIndex("plan_task_chunk_unique_idx").on(t.taskId, t.chunkId, t.relation)
+    })
 );
 
 export const planTaskDependency = pgTable(
@@ -237,11 +246,11 @@ export const planTaskDependency = pgTable(
         dependsOnTaskId: uuid("depends_on_task_id")
             .notNull()
             .references(() => planTask.id, { onDelete: "cascade" }),
-        createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+        createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
     },
     t => ({
-        taskDepUnique: uniqueIndex("plan_task_dependency_unique_idx").on(t.taskId, t.dependsOnTaskId),
-    }),
+        taskDepUnique: uniqueIndex("plan_task_dependency_unique_idx").on(t.taskId, t.dependsOnTaskId)
+    })
 );
 
 // Relations
@@ -250,27 +259,27 @@ export const planRelations = relations(plan, ({ many, one }) => ({
     analyzeItems: many(planAnalyzeItem),
     tasks: many(planTask),
     codebase: one(codebase, { fields: [plan.codebaseId], references: [codebase.id] }),
-    user: one(user, { fields: [plan.userId], references: [user.id] }),
+    user: one(user, { fields: [plan.userId], references: [user.id] })
 }));
 
 export const planRequirementRelations = relations(planRequirement, ({ one }) => ({
     plan: one(plan, { fields: [planRequirement.planId], references: [plan.id] }),
-    requirement: one(requirement, { fields: [planRequirement.requirementId], references: [requirement.id] }),
+    requirement: one(requirement, { fields: [planRequirement.requirementId], references: [requirement.id] })
 }));
 
 export const planAnalyzeItemRelations = relations(planAnalyzeItem, ({ one }) => ({
     plan: one(plan, { fields: [planAnalyzeItem.planId], references: [plan.id] }),
-    chunk: one(chunk, { fields: [planAnalyzeItem.chunkId], references: [chunk.id] }),
+    chunk: one(chunk, { fields: [planAnalyzeItem.chunkId], references: [chunk.id] })
 }));
 
 export const planTaskRelations = relations(planTask, ({ many, one }) => ({
     plan: one(plan, { fields: [planTask.planId], references: [plan.id] }),
-    chunks: many(planTaskChunk),
+    chunks: many(planTaskChunk)
 }));
 
 export const planTaskChunkRelations = relations(planTaskChunk, ({ one }) => ({
     task: one(planTask, { fields: [planTaskChunk.taskId], references: [planTask.id] }),
-    chunk: one(chunk, { fields: [planTaskChunk.chunkId], references: [chunk.id] }),
+    chunk: one(chunk, { fields: [planTaskChunk.chunkId], references: [chunk.id] })
 }));
 
 // Inferred types
@@ -298,7 +307,9 @@ rm packages/db/src/schema/implementation-session.ts
 
 - [ ] **Step 4: Update `packages/db/src/schema/index.ts`**
 
-Read it first, then remove every line that exports from `./implementation-session`. Verify the `./plan` re-export still exists and now picks up the new exports automatically (same file path). Add `planRequirement`, `planAnalyzeItem`, `planTask`, `planTaskChunk`, `planTaskDependency` to the export list if it uses named re-exports.
+Read it first, then remove every line that exports from `./implementation-session`. Verify the `./plan` re-export still exists and now picks
+up the new exports automatically (same file path). Add `planRequirement`, `planAnalyzeItem`, `planTask`, `planTaskChunk`,
+`planTaskDependency` to the export list if it uses named re-exports.
 
 Example, if the file currently reads:
 
@@ -319,7 +330,9 @@ If it uses named exports, list every symbol exported from plan.ts above.
 
 Run: `pnpm db:generate`
 
-Expected: A new migration file appears under `packages/db/src/migrations/` with `DROP TABLE` statements for all old tables and `CREATE TABLE` statements for the new ones. If Drizzle's generated diff is missing the `DROP` statements (because it doesn't see the old session schema file any more), manually edit the migration file to prepend these statements in order at the top:
+Expected: A new migration file appears under `packages/db/src/migrations/` with `DROP TABLE` statements for all old tables and
+`CREATE TABLE` statements for the new ones. If Drizzle's generated diff is missing the `DROP` statements (because it doesn't see the old
+session schema file any more), manually edit the migration file to prepend these statements in order at the top:
 
 ```sql
 DROP TABLE IF EXISTS "session_requirement_ref" CASCADE;
@@ -331,7 +344,8 @@ DROP TABLE IF EXISTS "plan_step" CASCADE;
 DROP TABLE IF EXISTS "plan" CASCADE;
 ```
 
-Note: `plan` is listed last among drops because `plan_step` and `plan_chunk_ref` reference it. Listing the drops in this order (child-then-parent) works even without CASCADE, but `CASCADE` covers residual fk constraints.
+Note: `plan` is listed last among drops because `plan_step` and `plan_chunk_ref` reference it. Listing the drops in this order
+(child-then-parent) works even without CASCADE, but `CASCADE` covers residual fk constraints.
 
 - [ ] **Step 6: Apply the migration**
 
@@ -345,7 +359,8 @@ Verify the new shape:
 psql "$DATABASE_URL" -c "\dt plan*"
 ```
 
-Expected output includes: `plan`, `plan_requirement`, `plan_analyze_item`, `plan_task`, `plan_task_chunk`, `plan_task_dependency`. No `implementation_session`, `session_*`, `plan_step`, or `plan_chunk_ref`.
+Expected output includes: `plan`, `plan_requirement`, `plan_analyze_item`, `plan_task`, `plan_task_chunk`, `plan_task_dependency`. No
+`implementation_session`, `session_*`, `plan_step`, or `plan_chunk_ref`.
 
 - [ ] **Step 7: Commit**
 
@@ -361,16 +376,20 @@ Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>"
 ## Task 2: Rewrite Plan Repository
 
 **Files:**
+
 - Rewrite: `packages/db/src/repository/plan.ts`
 - Delete: `packages/db/src/repository/implementation-session.ts`
 
-**Context:** The repository layer returns `Effect<T, DatabaseError>`. Services compose these Effects. The existing `DatabaseError` type and the pattern of `Effect.tryPromise` with tagged errors already exist in the codebase — follow the shape used by `packages/db/src/repository/chunk.ts` (read it first for reference).
+**Context:** The repository layer returns `Effect<T, DatabaseError>`. Services compose these Effects. The existing `DatabaseError` type and
+the pattern of `Effect.tryPromise` with tagged errors already exist in the codebase — follow the shape used by
+`packages/db/src/repository/chunk.ts` (read it first for reference).
 
 - [ ] **Step 1: Read the reference repository to match the existing pattern**
 
 Run: `cat packages/db/src/repository/chunk.ts | head -100`
 
-Take note of: how `DatabaseError` is imported, how `Effect.tryPromise` is used, how the `db` instance is imported, how to return `Effect.succeed` vs `Effect.fail`.
+Take note of: how `DatabaseError` is imported, how `Effect.tryPromise` is used, how the `db` instance is imported, how to return
+`Effect.succeed` vs `Effect.fail`.
 
 - [ ] **Step 2: Rewrite `packages/db/src/repository/plan.ts`**
 
@@ -399,7 +418,7 @@ import {
     type PlanTaskChunk,
     type PlanTaskChunkRelation,
     type PlanTaskDependency,
-    type PlanTaskStatus,
+    type PlanTaskStatus
 } from "../schema/plan";
 
 // --- Plan CRUD ---
@@ -431,10 +450,14 @@ export function listPlans(filter: ListPlansFilter): Effect.Effect<Plan[], Databa
                 if (ids.length === 0) return [];
                 conditions.push(inArray(plan.id, ids));
             }
-            rows = await db.select().from(plan).where(and(...conditions)).orderBy(asc(plan.createdAt));
+            rows = await db
+                .select()
+                .from(plan)
+                .where(and(...conditions))
+                .orderBy(asc(plan.createdAt));
             return rows;
         },
-        catch: e => new DatabaseError({ cause: e, message: "Failed to list plans" }),
+        catch: e => new DatabaseError({ cause: e, message: "Failed to list plans" })
     });
 }
 
@@ -444,7 +467,7 @@ export function getPlan(id: string): Effect.Effect<Plan | null, DatabaseError> {
             const [row] = await db.select().from(plan).where(eq(plan.id, id)).limit(1);
             return row ?? null;
         },
-        catch: e => new DatabaseError({ cause: e, message: "Failed to get plan" }),
+        catch: e => new DatabaseError({ cause: e, message: "Failed to get plan" })
     });
 }
 
@@ -455,7 +478,7 @@ export function createPlan(input: NewPlan): Effect.Effect<Plan, DatabaseError> {
             if (!row) throw new Error("Insert returned no row");
             return row;
         },
-        catch: e => new DatabaseError({ cause: e, message: "Failed to create plan" }),
+        catch: e => new DatabaseError({ cause: e, message: "Failed to create plan" })
     });
 }
 
@@ -470,7 +493,7 @@ export function updatePlan(id: string, patch: Partial<NewPlan>): Effect.Effect<P
             if (!row) throw new Error("Plan not found");
             return row;
         },
-        catch: e => new DatabaseError({ cause: e, message: "Failed to update plan" }),
+        catch: e => new DatabaseError({ cause: e, message: "Failed to update plan" })
     });
 }
 
@@ -479,7 +502,7 @@ export function deletePlan(id: string): Effect.Effect<void, DatabaseError> {
         try: async () => {
             await db.delete(plan).where(eq(plan.id, id));
         },
-        catch: e => new DatabaseError({ cause: e, message: "Failed to delete plan" }),
+        catch: e => new DatabaseError({ cause: e, message: "Failed to delete plan" })
     });
 }
 
@@ -487,13 +510,8 @@ export function deletePlan(id: string): Effect.Effect<void, DatabaseError> {
 
 export function listPlanRequirements(planId: string): Effect.Effect<PlanRequirement[], DatabaseError> {
     return Effect.tryPromise({
-        try: async () =>
-            db
-                .select()
-                .from(planRequirement)
-                .where(eq(planRequirement.planId, planId))
-                .orderBy(asc(planRequirement.order)),
-        catch: e => new DatabaseError({ cause: e, message: "Failed to list plan requirements" }),
+        try: async () => db.select().from(planRequirement).where(eq(planRequirement.planId, planId)).orderBy(asc(planRequirement.order)),
+        catch: e => new DatabaseError({ cause: e, message: "Failed to list plan requirements" })
     });
 }
 
@@ -506,14 +524,11 @@ export function addPlanRequirement(planId: string, requirementId: string): Effec
                 .where(eq(planRequirement.planId, planId))
                 .orderBy(asc(planRequirement.order));
             const nextOrder = maxRow ? maxRow.order + 1 : 0;
-            const [row] = await db
-                .insert(planRequirement)
-                .values({ planId, requirementId, order: nextOrder })
-                .returning();
+            const [row] = await db.insert(planRequirement).values({ planId, requirementId, order: nextOrder }).returning();
             if (!row) throw new Error("Insert returned no row");
             return row;
         },
-        catch: e => new DatabaseError({ cause: e, message: "Failed to add plan requirement" }),
+        catch: e => new DatabaseError({ cause: e, message: "Failed to add plan requirement" })
     });
 }
 
@@ -524,7 +539,7 @@ export function removePlanRequirement(planId: string, requirementId: string): Ef
                 .delete(planRequirement)
                 .where(and(eq(planRequirement.planId, planId), eq(planRequirement.requirementId, requirementId)));
         },
-        catch: e => new DatabaseError({ cause: e, message: "Failed to remove plan requirement" }),
+        catch: e => new DatabaseError({ cause: e, message: "Failed to remove plan requirement" })
     });
 }
 
@@ -542,7 +557,7 @@ export function reorderPlanRequirements(planId: string, requirementIds: string[]
                 }
             });
         },
-        catch: e => new DatabaseError({ cause: e, message: "Failed to reorder plan requirements" }),
+        catch: e => new DatabaseError({ cause: e, message: "Failed to reorder plan requirements" })
     });
 }
 
@@ -556,7 +571,7 @@ export function listAnalyzeItems(planId: string): Effect.Effect<PlanAnalyzeItem[
                 .from(planAnalyzeItem)
                 .where(eq(planAnalyzeItem.planId, planId))
                 .orderBy(asc(planAnalyzeItem.kind), asc(planAnalyzeItem.order)),
-        catch: e => new DatabaseError({ cause: e, message: "Failed to list analyze items" }),
+        catch: e => new DatabaseError({ cause: e, message: "Failed to list analyze items" })
     });
 }
 
@@ -576,14 +591,11 @@ export function createAnalyzeItem(input: NewPlanAnalyzeItem): Effect.Effect<Plan
             if (!row) throw new Error("Insert returned no row");
             return row;
         },
-        catch: e => new DatabaseError({ cause: e, message: "Failed to create analyze item" }),
+        catch: e => new DatabaseError({ cause: e, message: "Failed to create analyze item" })
     });
 }
 
-export function updateAnalyzeItem(
-    itemId: string,
-    patch: Partial<NewPlanAnalyzeItem>,
-): Effect.Effect<PlanAnalyzeItem, DatabaseError> {
+export function updateAnalyzeItem(itemId: string, patch: Partial<NewPlanAnalyzeItem>): Effect.Effect<PlanAnalyzeItem, DatabaseError> {
     return Effect.tryPromise({
         try: async () => {
             const [row] = await db
@@ -594,7 +606,7 @@ export function updateAnalyzeItem(
             if (!row) throw new Error("Analyze item not found");
             return row;
         },
-        catch: e => new DatabaseError({ cause: e, message: "Failed to update analyze item" }),
+        catch: e => new DatabaseError({ cause: e, message: "Failed to update analyze item" })
     });
 }
 
@@ -603,15 +615,11 @@ export function deleteAnalyzeItem(itemId: string): Effect.Effect<void, DatabaseE
         try: async () => {
             await db.delete(planAnalyzeItem).where(eq(planAnalyzeItem.id, itemId));
         },
-        catch: e => new DatabaseError({ cause: e, message: "Failed to delete analyze item" }),
+        catch: e => new DatabaseError({ cause: e, message: "Failed to delete analyze item" })
     });
 }
 
-export function reorderAnalyzeItems(
-    planId: string,
-    kind: PlanAnalyzeKind,
-    itemIds: string[],
-): Effect.Effect<void, DatabaseError> {
+export function reorderAnalyzeItems(planId: string, kind: PlanAnalyzeKind, itemIds: string[]): Effect.Effect<void, DatabaseError> {
     return Effect.tryPromise({
         try: async () => {
             await db.transaction(async tx => {
@@ -621,17 +629,11 @@ export function reorderAnalyzeItems(
                     await tx
                         .update(planAnalyzeItem)
                         .set({ order: i })
-                        .where(
-                            and(
-                                eq(planAnalyzeItem.id, id),
-                                eq(planAnalyzeItem.planId, planId),
-                                eq(planAnalyzeItem.kind, kind),
-                            ),
-                        );
+                        .where(and(eq(planAnalyzeItem.id, id), eq(planAnalyzeItem.planId, planId), eq(planAnalyzeItem.kind, kind)));
                 }
             });
         },
-        catch: e => new DatabaseError({ cause: e, message: "Failed to reorder analyze items" }),
+        catch: e => new DatabaseError({ cause: e, message: "Failed to reorder analyze items" })
     });
 }
 
@@ -639,13 +641,8 @@ export function reorderAnalyzeItems(
 
 export function listTasks(planId: string): Effect.Effect<PlanTask[], DatabaseError> {
     return Effect.tryPromise({
-        try: async () =>
-            db
-                .select()
-                .from(planTask)
-                .where(eq(planTask.planId, planId))
-                .orderBy(asc(planTask.order)),
-        catch: e => new DatabaseError({ cause: e, message: "Failed to list tasks" }),
+        try: async () => db.select().from(planTask).where(eq(planTask.planId, planId)).orderBy(asc(planTask.order)),
+        catch: e => new DatabaseError({ cause: e, message: "Failed to list tasks" })
     });
 }
 
@@ -665,7 +662,7 @@ export function createTask(input: NewPlanTask): Effect.Effect<PlanTask, Database
             if (!row) throw new Error("Insert returned no row");
             return row;
         },
-        catch: e => new DatabaseError({ cause: e, message: "Failed to create task" }),
+        catch: e => new DatabaseError({ cause: e, message: "Failed to create task" })
     });
 }
 
@@ -680,7 +677,7 @@ export function updateTask(taskId: string, patch: Partial<NewPlanTask>): Effect.
             if (!row) throw new Error("Task not found");
             return row;
         },
-        catch: e => new DatabaseError({ cause: e, message: "Failed to update task" }),
+        catch: e => new DatabaseError({ cause: e, message: "Failed to update task" })
     });
 }
 
@@ -689,7 +686,7 @@ export function deleteTask(taskId: string): Effect.Effect<void, DatabaseError> {
         try: async () => {
             await db.delete(planTask).where(eq(planTask.id, taskId));
         },
-        catch: e => new DatabaseError({ cause: e, message: "Failed to delete task" }),
+        catch: e => new DatabaseError({ cause: e, message: "Failed to delete task" })
     });
 }
 
@@ -707,7 +704,7 @@ export function reorderTasks(planId: string, taskIds: string[]): Effect.Effect<v
                 }
             });
         },
-        catch: e => new DatabaseError({ cause: e, message: "Failed to reorder tasks" }),
+        catch: e => new DatabaseError({ cause: e, message: "Failed to reorder tasks" })
     });
 }
 
@@ -716,14 +713,14 @@ export function reorderTasks(planId: string, taskIds: string[]): Effect.Effect<v
 export function listTaskChunks(taskId: string): Effect.Effect<PlanTaskChunk[], DatabaseError> {
     return Effect.tryPromise({
         try: async () => db.select().from(planTaskChunk).where(eq(planTaskChunk.taskId, taskId)),
-        catch: e => new DatabaseError({ cause: e, message: "Failed to list task chunks" }),
+        catch: e => new DatabaseError({ cause: e, message: "Failed to list task chunks" })
     });
 }
 
 export function addTaskChunk(
     taskId: string,
     chunkId: string,
-    relation: PlanTaskChunkRelation,
+    relation: PlanTaskChunkRelation
 ): Effect.Effect<PlanTaskChunk, DatabaseError> {
     return Effect.tryPromise({
         try: async () => {
@@ -731,7 +728,7 @@ export function addTaskChunk(
             if (!row) throw new Error("Insert returned no row");
             return row;
         },
-        catch: e => new DatabaseError({ cause: e, message: "Failed to add task chunk" }),
+        catch: e => new DatabaseError({ cause: e, message: "Failed to add task chunk" })
     });
 }
 
@@ -740,7 +737,7 @@ export function removeTaskChunk(linkId: string): Effect.Effect<void, DatabaseErr
         try: async () => {
             await db.delete(planTaskChunk).where(eq(planTaskChunk.id, linkId));
         },
-        catch: e => new DatabaseError({ cause: e, message: "Failed to remove task chunk" }),
+        catch: e => new DatabaseError({ cause: e, message: "Failed to remove task chunk" })
     });
 }
 
@@ -754,29 +751,23 @@ export function listTaskDependencies(planId: string): Effect.Effect<PlanTaskDepe
                     id: planTaskDependency.id,
                     taskId: planTaskDependency.taskId,
                     dependsOnTaskId: planTaskDependency.dependsOnTaskId,
-                    createdAt: planTaskDependency.createdAt,
+                    createdAt: planTaskDependency.createdAt
                 })
                 .from(planTaskDependency)
                 .innerJoin(planTask, eq(planTask.id, planTaskDependency.taskId))
                 .where(eq(planTask.planId, planId)),
-        catch: e => new DatabaseError({ cause: e, message: "Failed to list task dependencies" }),
+        catch: e => new DatabaseError({ cause: e, message: "Failed to list task dependencies" })
     });
 }
 
-export function addTaskDependency(
-    taskId: string,
-    dependsOnTaskId: string,
-): Effect.Effect<PlanTaskDependency, DatabaseError> {
+export function addTaskDependency(taskId: string, dependsOnTaskId: string): Effect.Effect<PlanTaskDependency, DatabaseError> {
     return Effect.tryPromise({
         try: async () => {
-            const [row] = await db
-                .insert(planTaskDependency)
-                .values({ taskId, dependsOnTaskId })
-                .returning();
+            const [row] = await db.insert(planTaskDependency).values({ taskId, dependsOnTaskId }).returning();
             if (!row) throw new Error("Insert returned no row");
             return row;
         },
-        catch: e => new DatabaseError({ cause: e, message: "Failed to add task dependency" }),
+        catch: e => new DatabaseError({ cause: e, message: "Failed to add task dependency" })
     });
 }
 
@@ -785,7 +776,7 @@ export function removeTaskDependency(depId: string): Effect.Effect<void, Databas
         try: async () => {
             await db.delete(planTaskDependency).where(eq(planTaskDependency.id, depId));
         },
-        catch: e => new DatabaseError({ cause: e, message: "Failed to remove task dependency" }),
+        catch: e => new DatabaseError({ cause: e, message: "Failed to remove task dependency" })
     });
 }
 
@@ -809,7 +800,7 @@ export function unblockDependentsOf(taskId: string): Effect.Effect<string[], Dat
                 .returning({ id: planTask.id });
             return result.map(r => r.id);
         },
-        catch: e => new DatabaseError({ cause: e, message: "Failed to unblock dependents" }),
+        catch: e => new DatabaseError({ cause: e, message: "Failed to unblock dependents" })
     });
 }
 
@@ -848,6 +839,7 @@ Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>"
 ## Task 3: Plan CRUD Service + Routes
 
 **Files:**
+
 - Rewrite: `packages/api/src/plans/service.ts`
 - Rewrite: `packages/api/src/plans/routes.ts`
 - Delete: `packages/api/src/plans/generate-from-requirements.ts`
@@ -855,7 +847,9 @@ Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>"
 - Delete: `packages/api/src/plans/parse-plan-markdown.ts`
 - Delete: `packages/api/src/plans/parse-plan-markdown.test.ts`
 
-**Context:** Plan routes live in Elysia. Services return Effects. The global `.onError` handler in `packages/api/src/index.ts` maps Effect tagged errors to HTTP status codes. Read `packages/api/src/chunks/routes.ts` or similar for the `Effect.runPromise(requireSession(ctx).pipe(...))` pattern before writing.
+**Context:** Plan routes live in Elysia. Services return Effects. The global `.onError` handler in `packages/api/src/index.ts` maps Effect
+tagged errors to HTTP status codes. Read `packages/api/src/chunks/routes.ts` or similar for the
+`Effect.runPromise(requireSession(ctx).pipe(...))` pattern before writing.
 
 - [ ] **Step 1: Read the reference routes file**
 
@@ -878,13 +872,7 @@ rm packages/api/src/plans/generate-from-requirements.ts \
 import { Effect } from "effect";
 
 import * as planRepo from "@fubbik/db/repository/plan";
-import type {
-    Plan,
-    PlanStatus,
-    PlanAnalyzeKind,
-    PlanTaskChunkRelation,
-    NewPlanTask,
-} from "@fubbik/db/schema/plan";
+import type { Plan, PlanStatus, PlanAnalyzeKind, PlanTaskChunkRelation, NewPlanTask } from "@fubbik/db/schema/plan";
 
 import { NotFoundError, ValidationError } from "../errors";
 
@@ -917,16 +905,14 @@ export function listPlans(input: ListPlansInput) {
         codebaseId: input.codebaseId,
         status: input.status as PlanStatus | undefined,
         requirementId: input.requirementId,
-        includeArchived: input.includeArchived,
+        includeArchived: input.includeArchived
     });
 }
 
 export function getPlan(id: string) {
-    return planRepo.getPlan(id).pipe(
-        Effect.flatMap(plan =>
-            plan ? Effect.succeed(plan) : Effect.fail(new NotFoundError({ message: `Plan ${id} not found` })),
-        ),
-    );
+    return planRepo
+        .getPlan(id)
+        .pipe(Effect.flatMap(plan => (plan ? Effect.succeed(plan) : Effect.fail(new NotFoundError({ message: `Plan ${id} not found` })))));
 }
 
 /**
@@ -947,7 +933,7 @@ export function getPlanDetail(id: string) {
             file: [],
             risk: [],
             assumption: [],
-            question: [],
+            question: []
         };
         for (const item of analyzeItems) {
             if (VALID_ANALYZE_KINDS.includes(item.kind as PlanAnalyzeKind)) {
@@ -956,9 +942,7 @@ export function getPlanDetail(id: string) {
         }
 
         // Fetch chunk links for each task in parallel
-        const taskChunks = yield* Effect.all(
-            tasks.map(t => planRepo.listTaskChunks(t.id)),
-        );
+        const taskChunks = yield* Effect.all(tasks.map(t => planRepo.listTaskChunks(t.id)));
         const tasksWithChunks = tasks.map((t, i) => ({ ...t, chunks: taskChunks[i] ?? [] }));
 
         return { plan, requirements, analyze, tasks: tasksWithChunks, dependencies };
@@ -975,7 +959,7 @@ export function createPlan(userId: string, input: CreatePlanInput) {
             description: input.description ?? null,
             codebaseId: input.codebaseId ?? null,
             userId,
-            status: "draft",
+            status: "draft"
         });
         if (input.requirementIds) {
             for (const rid of input.requirementIds) {
@@ -989,7 +973,7 @@ export function createPlan(userId: string, input: CreatePlanInput) {
                     title: t.title,
                     description: t.description ?? null,
                     acceptanceCriteria: t.acceptanceCriteria ?? [],
-                    status: "pending",
+                    status: "pending"
                 });
             }
         }
@@ -1058,10 +1042,10 @@ export const planRoutes = new Elysia({ prefix: "/api/plans" })
                             codebaseId: ctx.query.codebaseId,
                             status: ctx.query.status,
                             requirementId: ctx.query.requirementId,
-                            includeArchived: ctx.query.includeArchived === "true",
-                        }),
-                    ),
-                ),
+                            includeArchived: ctx.query.includeArchived === "true"
+                        })
+                    )
+                )
             );
             return result;
         },
@@ -1070,23 +1054,19 @@ export const planRoutes = new Elysia({ prefix: "/api/plans" })
                 codebaseId: t.Optional(t.String()),
                 status: t.Optional(t.String()),
                 requirementId: t.Optional(t.String()),
-                includeArchived: t.Optional(t.String()),
-            }),
-        },
+                includeArchived: t.Optional(t.String())
+            })
+        }
     )
     .get("/:id", async ctx => {
-        const result = await Effect.runPromise(
-            requireSession(ctx).pipe(Effect.flatMap(() => planService.getPlanDetail(ctx.params.id))),
-        );
+        const result = await Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(() => planService.getPlanDetail(ctx.params.id))));
         return result;
     })
     .post(
         "/",
         async ctx => {
             const result = await Effect.runPromise(
-                requireSession(ctx).pipe(
-                    Effect.flatMap(session => planService.createPlan(session.user.id, ctx.body)),
-                ),
+                requireSession(ctx).pipe(Effect.flatMap(session => planService.createPlan(session.user.id, ctx.body)))
             );
             return result;
         },
@@ -1101,18 +1081,18 @@ export const planRoutes = new Elysia({ prefix: "/api/plans" })
                         t.Object({
                             title: t.String(),
                             description: t.Optional(t.String()),
-                            acceptanceCriteria: t.Optional(t.Array(t.String())),
-                        }),
-                    ),
-                ),
-            }),
-        },
+                            acceptanceCriteria: t.Optional(t.Array(t.String()))
+                        })
+                    )
+                )
+            })
+        }
     )
     .patch(
         "/:id",
         async ctx => {
             const result = await Effect.runPromise(
-                requireSession(ctx).pipe(Effect.flatMap(() => planService.updatePlan(ctx.params.id, ctx.body))),
+                requireSession(ctx).pipe(Effect.flatMap(() => planService.updatePlan(ctx.params.id, ctx.body)))
             );
             return result;
         },
@@ -1121,14 +1101,12 @@ export const planRoutes = new Elysia({ prefix: "/api/plans" })
                 title: t.Optional(t.String()),
                 description: t.Optional(t.Union([t.String(), t.Null()])),
                 status: t.Optional(t.String()),
-                codebaseId: t.Optional(t.Union([t.String(), t.Null()])),
-            }),
-        },
+                codebaseId: t.Optional(t.Union([t.String(), t.Null()]))
+            })
+        }
     )
     .delete("/:id", async ctx => {
-        await Effect.runPromise(
-            requireSession(ctx).pipe(Effect.flatMap(() => planService.deletePlan(ctx.params.id))),
-        );
+        await Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(() => planService.deletePlan(ctx.params.id))));
         return { ok: true };
     });
 ```
@@ -1137,7 +1115,8 @@ export const planRoutes = new Elysia({ prefix: "/api/plans" })
 
 Run: `pnpm --filter @fubbik/api run check-types 2>&1 | grep -E "plans/(service|routes)" | head -20`
 
-Expected: zero errors in plans/service.ts and plans/routes.ts. Errors may exist elsewhere (tasks, analyze, requirements routes aren't added yet, and sessions still exist).
+Expected: zero errors in plans/service.ts and plans/routes.ts. Errors may exist elsewhere (tasks, analyze, requirements routes aren't added
+yet, and sessions still exist).
 
 - [ ] **Step 6: Commit**
 
@@ -1153,6 +1132,7 @@ Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>"
 ## Task 4: Requirements Link Routes
 
 **Files:**
+
 - Create: `packages/api/src/plans/requirements.ts`
 - Modify: `packages/api/src/plans/routes.ts` (mount sub-routes)
 
@@ -1174,21 +1154,19 @@ export const planRequirementRoutes = new Elysia({ prefix: "/api/plans/:id/requir
             const result = await Effect.runPromise(
                 requireSession(ctx).pipe(
                     Effect.flatMap(() => getPlan(ctx.params.id)),
-                    Effect.flatMap(() => planRepo.addPlanRequirement(ctx.params.id, ctx.body.requirementId)),
-                ),
+                    Effect.flatMap(() => planRepo.addPlanRequirement(ctx.params.id, ctx.body.requirementId))
+                )
             );
             return result;
         },
-        { body: t.Object({ requirementId: t.String() }) },
+        { body: t.Object({ requirementId: t.String() }) }
     )
     .delete("/:requirementId", async ctx => {
         await Effect.runPromise(
             requireSession(ctx).pipe(
                 Effect.flatMap(() => getPlan(ctx.params.id)),
-                Effect.flatMap(() =>
-                    planRepo.removePlanRequirement(ctx.params.id, ctx.params.requirementId),
-                ),
-            ),
+                Effect.flatMap(() => planRepo.removePlanRequirement(ctx.params.id, ctx.params.requirementId))
+            )
         );
         return { ok: true };
     })
@@ -1198,12 +1176,12 @@ export const planRequirementRoutes = new Elysia({ prefix: "/api/plans/:id/requir
             await Effect.runPromise(
                 requireSession(ctx).pipe(
                     Effect.flatMap(() => getPlan(ctx.params.id)),
-                    Effect.flatMap(() => planRepo.reorderPlanRequirements(ctx.params.id, ctx.body.requirementIds)),
-                ),
+                    Effect.flatMap(() => planRepo.reorderPlanRequirements(ctx.params.id, ctx.body.requirementIds))
+                )
             );
             return { ok: true };
         },
-        { body: t.Object({ requirementIds: t.Array(t.String()) }) },
+        { body: t.Object({ requirementIds: t.Array(t.String()) }) }
     );
 ```
 
@@ -1215,7 +1193,8 @@ Open `packages/api/src/plans/routes.ts` and add the import at the top:
 import { planRequirementRoutes } from "./requirements";
 ```
 
-At the bottom of the file, change the final export to chain the sub-routes. Find the current export line (it should be `export const planRoutes = new Elysia(...)...` chain). Change the end of the chain to call `.use(planRequirementRoutes)`:
+At the bottom of the file, change the final export to chain the sub-routes. Find the current export line (it should be
+`export const planRoutes = new Elysia(...)...` chain). Change the end of the chain to call `.use(planRequirementRoutes)`:
 
 ```typescript
 export const planRoutes = new Elysia({ prefix: "/api/plans" })
@@ -1264,6 +1243,7 @@ Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>"
 ## Task 5: Analyze Routes
 
 **Files:**
+
 - Create: `packages/api/src/plans/analyze.ts`
 - Modify: `packages/api/src/plans/routes.ts` (mount)
 
@@ -1286,7 +1266,7 @@ function groupByKind(items: PlanAnalyzeItem[]) {
         file: [],
         risk: [],
         assumption: [],
-        question: [],
+        question: []
     };
     for (const item of items) {
         if (VALID_ANALYZE_KINDS.includes(item.kind as PlanAnalyzeKind)) {
@@ -1309,8 +1289,8 @@ export const planAnalyzeRoutes = new Elysia({ prefix: "/api/plans/:id/analyze" }
             requireSession(ctx).pipe(
                 Effect.flatMap(() => getPlan(ctx.params.id)),
                 Effect.flatMap(() => planRepo.listAnalyzeItems(ctx.params.id)),
-                Effect.map(groupByKind),
-            ),
+                Effect.map(groupByKind)
+            )
         );
         return result;
     })
@@ -1328,10 +1308,10 @@ export const planAnalyzeRoutes = new Elysia({ prefix: "/api/plans/:id/analyze" }
                             chunkId: ctx.body.chunkId ?? null,
                             filePath: ctx.body.filePath ?? null,
                             text: ctx.body.text ?? null,
-                            metadata: ctx.body.metadata ?? {},
-                        }),
-                    ),
-                ),
+                            metadata: ctx.body.metadata ?? {}
+                        })
+                    )
+                )
             );
             return result;
         },
@@ -1341,9 +1321,9 @@ export const planAnalyzeRoutes = new Elysia({ prefix: "/api/plans/:id/analyze" }
                 chunkId: t.Optional(t.String()),
                 filePath: t.Optional(t.String()),
                 text: t.Optional(t.String()),
-                metadata: t.Optional(t.Any()),
-            }),
-        },
+                metadata: t.Optional(t.Any())
+            })
+        }
     )
     .patch(
         "/:itemId",
@@ -1351,8 +1331,8 @@ export const planAnalyzeRoutes = new Elysia({ prefix: "/api/plans/:id/analyze" }
             const result = await Effect.runPromise(
                 requireSession(ctx).pipe(
                     Effect.flatMap(() => getPlan(ctx.params.id)),
-                    Effect.flatMap(() => planRepo.updateAnalyzeItem(ctx.params.itemId, ctx.body)),
-                ),
+                    Effect.flatMap(() => planRepo.updateAnalyzeItem(ctx.params.itemId, ctx.body))
+                )
             );
             return result;
         },
@@ -1361,16 +1341,16 @@ export const planAnalyzeRoutes = new Elysia({ prefix: "/api/plans/:id/analyze" }
                 text: t.Optional(t.String()),
                 metadata: t.Optional(t.Any()),
                 chunkId: t.Optional(t.String()),
-                filePath: t.Optional(t.String()),
-            }),
-        },
+                filePath: t.Optional(t.String())
+            })
+        }
     )
     .delete("/:itemId", async ctx => {
         await Effect.runPromise(
             requireSession(ctx).pipe(
                 Effect.flatMap(() => getPlan(ctx.params.id)),
-                Effect.flatMap(() => planRepo.deleteAnalyzeItem(ctx.params.itemId)),
-            ),
+                Effect.flatMap(() => planRepo.deleteAnalyzeItem(ctx.params.itemId))
+            )
         );
         return { ok: true };
     })
@@ -1381,14 +1361,12 @@ export const planAnalyzeRoutes = new Elysia({ prefix: "/api/plans/:id/analyze" }
                 requireSession(ctx).pipe(
                     Effect.flatMap(() => getPlan(ctx.params.id)),
                     Effect.flatMap(() => validateKind(ctx.body.kind)),
-                    Effect.flatMap(kind =>
-                        planRepo.reorderAnalyzeItems(ctx.params.id, kind, ctx.body.itemIds),
-                    ),
-                ),
+                    Effect.flatMap(kind => planRepo.reorderAnalyzeItems(ctx.params.id, kind, ctx.body.itemIds))
+                )
             );
             return { ok: true };
         },
-        { body: t.Object({ kind: t.String(), itemIds: t.Array(t.String()) }) },
+        { body: t.Object({ kind: t.String(), itemIds: t.Array(t.String()) }) }
     );
 ```
 
@@ -1403,10 +1381,7 @@ import { planAnalyzeRoutes } from "./analyze";
 Update the final composed export to include it:
 
 ```typescript
-export const planRoutes = new Elysia()
-    .use(planBase)
-    .use(planRequirementRoutes)
-    .use(planAnalyzeRoutes);
+export const planRoutes = new Elysia().use(planBase).use(planRequirementRoutes).use(planAnalyzeRoutes);
 ```
 
 - [ ] **Step 3: Type check**
@@ -1429,6 +1404,7 @@ Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>"
 ## Task 6: Tasks Routes + Auto-unblock Unit Test
 
 **Files:**
+
 - Create: `packages/api/src/plans/tasks.ts`
 - Modify: `packages/api/src/plans/routes.ts` (mount)
 - Create: `packages/db/src/__tests__/plan-unblock.test.ts`
@@ -1475,8 +1451,8 @@ export const planTaskRoutes = new Elysia({ prefix: "/api/plans/:id/tasks" })
                             title: ctx.body.title,
                             description: ctx.body.description ?? null,
                             acceptanceCriteria: ctx.body.acceptanceCriteria ?? [],
-                            status: "pending",
-                        }),
+                            status: "pending"
+                        })
                     ),
                     Effect.flatMap(task =>
                         Effect.gen(function* () {
@@ -1492,9 +1468,9 @@ export const planTaskRoutes = new Elysia({ prefix: "/api/plans/:id/tasks" })
                                 }
                             }
                             return task;
-                        }),
-                    ),
-                ),
+                        })
+                    )
+                )
             );
             return result;
         },
@@ -1503,12 +1479,10 @@ export const planTaskRoutes = new Elysia({ prefix: "/api/plans/:id/tasks" })
                 title: t.String(),
                 description: t.Optional(t.String()),
                 acceptanceCriteria: t.Optional(t.Array(t.String())),
-                chunks: t.Optional(
-                    t.Array(t.Object({ chunkId: t.String(), relation: t.String() })),
-                ),
-                dependsOnTaskIds: t.Optional(t.Array(t.String())),
-            }),
-        },
+                chunks: t.Optional(t.Array(t.Object({ chunkId: t.String(), relation: t.String() }))),
+                dependsOnTaskIds: t.Optional(t.Array(t.String()))
+            })
+        }
     )
     .patch(
         "/:taskId",
@@ -1521,8 +1495,7 @@ export const planTaskRoutes = new Elysia({ prefix: "/api/plans/:id/tasks" })
                             const patch: Record<string, unknown> = {};
                             if (ctx.body.title !== undefined) patch.title = ctx.body.title;
                             if (ctx.body.description !== undefined) patch.description = ctx.body.description;
-                            if (ctx.body.acceptanceCriteria !== undefined)
-                                patch.acceptanceCriteria = ctx.body.acceptanceCriteria;
+                            if (ctx.body.acceptanceCriteria !== undefined) patch.acceptanceCriteria = ctx.body.acceptanceCriteria;
                             let markedDone = false;
                             if (ctx.body.status !== undefined) {
                                 const status = yield* validateStatus(ctx.body.status);
@@ -1534,9 +1507,9 @@ export const planTaskRoutes = new Elysia({ prefix: "/api/plans/:id/tasks" })
                                 yield* planRepo.unblockDependentsOf(ctx.params.taskId);
                             }
                             return updated;
-                        }),
-                    ),
-                ),
+                        })
+                    )
+                )
             );
             return result;
         },
@@ -1545,16 +1518,16 @@ export const planTaskRoutes = new Elysia({ prefix: "/api/plans/:id/tasks" })
                 title: t.Optional(t.String()),
                 description: t.Optional(t.Union([t.String(), t.Null()])),
                 acceptanceCriteria: t.Optional(t.Array(t.String())),
-                status: t.Optional(t.String()),
-            }),
-        },
+                status: t.Optional(t.String())
+            })
+        }
     )
     .delete("/:taskId", async ctx => {
         await Effect.runPromise(
             requireSession(ctx).pipe(
                 Effect.flatMap(() => getPlan(ctx.params.id)),
-                Effect.flatMap(() => planRepo.deleteTask(ctx.params.taskId)),
-            ),
+                Effect.flatMap(() => planRepo.deleteTask(ctx.params.taskId))
+            )
         );
         return { ok: true };
     })
@@ -1564,12 +1537,12 @@ export const planTaskRoutes = new Elysia({ prefix: "/api/plans/:id/tasks" })
             await Effect.runPromise(
                 requireSession(ctx).pipe(
                     Effect.flatMap(() => getPlan(ctx.params.id)),
-                    Effect.flatMap(() => planRepo.reorderTasks(ctx.params.id, ctx.body.taskIds)),
-                ),
+                    Effect.flatMap(() => planRepo.reorderTasks(ctx.params.id, ctx.body.taskIds))
+                )
             );
             return { ok: true };
         },
-        { body: t.Object({ taskIds: t.Array(t.String()) }) },
+        { body: t.Object({ taskIds: t.Array(t.String()) }) }
     )
     .post(
         "/:taskId/chunks",
@@ -1578,19 +1551,19 @@ export const planTaskRoutes = new Elysia({ prefix: "/api/plans/:id/tasks" })
                 requireSession(ctx).pipe(
                     Effect.flatMap(() => getPlan(ctx.params.id)),
                     Effect.flatMap(() => validateRelation(ctx.body.relation)),
-                    Effect.flatMap(rel => planRepo.addTaskChunk(ctx.params.taskId, ctx.body.chunkId, rel)),
-                ),
+                    Effect.flatMap(rel => planRepo.addTaskChunk(ctx.params.taskId, ctx.body.chunkId, rel))
+                )
             );
             return result;
         },
-        { body: t.Object({ chunkId: t.String(), relation: t.String() }) },
+        { body: t.Object({ chunkId: t.String(), relation: t.String() }) }
     )
     .delete("/:taskId/chunks/:linkId", async ctx => {
         await Effect.runPromise(
             requireSession(ctx).pipe(
                 Effect.flatMap(() => getPlan(ctx.params.id)),
-                Effect.flatMap(() => planRepo.removeTaskChunk(ctx.params.linkId)),
-            ),
+                Effect.flatMap(() => planRepo.removeTaskChunk(ctx.params.linkId))
+            )
         );
         return { ok: true };
     });
@@ -1603,11 +1576,7 @@ Add import and compose:
 ```typescript
 import { planTaskRoutes } from "./tasks";
 
-export const planRoutes = new Elysia()
-    .use(planBase)
-    .use(planRequirementRoutes)
-    .use(planAnalyzeRoutes)
-    .use(planTaskRoutes);
+export const planRoutes = new Elysia().use(planBase).use(planRequirementRoutes).use(planAnalyzeRoutes).use(planTaskRoutes);
 ```
 
 - [ ] **Step 3: Write auto-unblock repository test**
@@ -1637,7 +1606,7 @@ describe("unblockDependentsOf", () => {
                 name: "Test",
                 emailVerified: false,
                 createdAt: new Date(),
-                updatedAt: new Date(),
+                updatedAt: new Date()
             })
             .returning();
         if (!u) throw new Error("user insert failed");
@@ -1655,10 +1624,7 @@ describe("unblockDependentsOf", () => {
 
     it("unblocks tasks whose dependency is marked done", async () => {
         const [t1] = await db.insert(planTask).values({ planId: testPlanId, title: "Dep" }).returning();
-        const [t2] = await db
-            .insert(planTask)
-            .values({ planId: testPlanId, title: "Dependent", status: "blocked" })
-            .returning();
+        const [t2] = await db.insert(planTask).values({ planId: testPlanId, title: "Dependent", status: "blocked" }).returning();
         if (!t1 || !t2) throw new Error("task insert failed");
 
         await db.insert(planTaskDependency).values({ taskId: t2.id, dependsOnTaskId: t1.id });
@@ -1673,10 +1639,7 @@ describe("unblockDependentsOf", () => {
 
     it("does not touch tasks already in pending/in_progress", async () => {
         const [t1] = await db.insert(planTask).values({ planId: testPlanId, title: "Dep" }).returning();
-        const [t2] = await db
-            .insert(planTask)
-            .values({ planId: testPlanId, title: "Dependent", status: "in_progress" })
-            .returning();
+        const [t2] = await db.insert(planTask).values({ planId: testPlanId, title: "Dependent", status: "in_progress" }).returning();
         if (!t1 || !t2) throw new Error("task insert failed");
 
         await db.insert(planTaskDependency).values({ taskId: t2.id, dependsOnTaskId: t1.id });
@@ -1699,7 +1662,8 @@ import { eq } from "drizzle-orm";
 
 Run: `pnpm --filter @fubbik/db test plan-unblock`
 
-Expected: 2 tests passing. If the test fails due to `user` table shape differences, read `packages/db/src/schema/auth.ts` and adjust the insert to match the actual user schema.
+Expected: 2 tests passing. If the test fails due to `user` table shape differences, read `packages/db/src/schema/auth.ts` and adjust the
+insert to match the actual user schema.
 
 - [ ] **Step 5: Type check the API**
 
@@ -1721,6 +1685,7 @@ Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>"
 ## Task 7: Delete Sessions from API
 
 **Files:**
+
 - Delete: `packages/api/src/sessions/routes.ts`
 - Delete: `packages/api/src/sessions/service.ts`
 - Delete: `packages/api/src/sessions/brief-generator.ts`
@@ -1736,13 +1701,15 @@ rm -rf packages/api/src/sessions/
 
 Read it first: `cat packages/api/src/index.ts`
 
-Remove the line `import { sessionRoutes } from "./sessions/routes";` (or similar). Remove any `.use(sessionRoutes)` call from the Elysia chain. If there's an eden treaty type export that includes `sessionRoutes` in a union, remove it there too.
+Remove the line `import { sessionRoutes } from "./sessions/routes";` (or similar). Remove any `.use(sessionRoutes)` call from the Elysia
+chain. If there's an eden treaty type export that includes `sessionRoutes` in a union, remove it there too.
 
 - [ ] **Step 3: Type check**
 
 Run: `pnpm --filter @fubbik/api run check-types 2>&1 | tail -30`
 
-Expected: no errors referencing `sessions/` or `sessionRoutes`. If there are lingering references (e.g., other modules importing from sessions), fix them by removing the imports.
+Expected: no errors referencing `sessions/` or `sessionRoutes`. If there are lingering references (e.g., other modules importing from
+sessions), fix them by removing the imports.
 
 - [ ] **Step 4: Commit**
 
@@ -1758,6 +1725,7 @@ Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>"
 ## Task 8: Rewrite MCP Plan Tools + Delete Session Tools
 
 **Files:**
+
 - Rewrite: `packages/mcp/src/plan-tools.ts`
 - Delete: `packages/mcp/src/session-tools.ts`
 - Modify: `packages/mcp/src/index.ts` (unregister session tools)
@@ -1786,15 +1754,15 @@ export function registerPlanTools(server: McpServer) {
             title: z.string(),
             description: z.string().optional(),
             codebaseId: z.string().optional(),
-            requirementIds: z.array(z.string()).optional(),
+            requirementIds: z.array(z.string()).optional()
         },
         async ({ title, description, codebaseId, requirementIds }) => {
             const plan = await apiFetch("/api/plans", {
                 method: "POST",
-                body: { title, description, codebaseId, requirementIds },
+                body: { title, description, codebaseId, requirementIds }
             });
             return { content: [{ type: "text", text: JSON.stringify(plan, null, 2) }] };
-        },
+        }
     );
 
     server.tool(
@@ -1802,7 +1770,7 @@ export function registerPlanTools(server: McpServer) {
         {
             codebaseId: z.string().optional(),
             status: z.string().optional(),
-            requirementId: z.string().optional(),
+            requirementId: z.string().optional()
         },
         async args => {
             const params = new URLSearchParams();
@@ -1811,7 +1779,7 @@ export function registerPlanTools(server: McpServer) {
             if (args.requirementId) params.set("requirementId", args.requirementId);
             const plans = await apiFetch(`/api/plans?${params}`);
             return { content: [{ type: "text", text: JSON.stringify(plans, null, 2) }] };
-        },
+        }
     );
 
     server.tool("get_plan", { planId: z.string() }, async ({ planId }) => {
@@ -1825,34 +1793,26 @@ export function registerPlanTools(server: McpServer) {
             planId: z.string(),
             title: z.string().optional(),
             description: z.string().optional(),
-            status: z.string().optional(),
+            status: z.string().optional()
         },
         async ({ planId, ...patch }) => {
             const plan = await apiFetch(`/api/plans/${planId}`, { method: "PATCH", body: patch });
             return { content: [{ type: "text", text: JSON.stringify(plan, null, 2) }] };
-        },
+        }
     );
 
-    server.tool(
-        "link_requirement",
-        { planId: z.string(), requirementId: z.string() },
-        async ({ planId, requirementId }) => {
-            await apiFetch(`/api/plans/${planId}/requirements`, {
-                method: "POST",
-                body: { requirementId },
-            });
-            return { content: [{ type: "text", text: "Requirement linked" }] };
-        },
-    );
+    server.tool("link_requirement", { planId: z.string(), requirementId: z.string() }, async ({ planId, requirementId }) => {
+        await apiFetch(`/api/plans/${planId}/requirements`, {
+            method: "POST",
+            body: { requirementId }
+        });
+        return { content: [{ type: "text", text: "Requirement linked" }] };
+    });
 
-    server.tool(
-        "unlink_requirement",
-        { planId: z.string(), requirementId: z.string() },
-        async ({ planId, requirementId }) => {
-            await apiFetch(`/api/plans/${planId}/requirements/${requirementId}`, { method: "DELETE" });
-            return { content: [{ type: "text", text: "Requirement unlinked" }] };
-        },
-    );
+    server.tool("unlink_requirement", { planId: z.string(), requirementId: z.string() }, async ({ planId, requirementId }) => {
+        await apiFetch(`/api/plans/${planId}/requirements/${requirementId}`, { method: "DELETE" });
+        return { content: [{ type: "text", text: "Requirement unlinked" }] };
+    });
 
     server.tool(
         "add_analyze_item",
@@ -1862,12 +1822,12 @@ export function registerPlanTools(server: McpServer) {
             chunkId: z.string().optional(),
             filePath: z.string().optional(),
             text: z.string().optional(),
-            metadata: z.record(z.unknown()).optional(),
+            metadata: z.record(z.unknown()).optional()
         },
         async ({ planId, ...body }) => {
             const item = await apiFetch(`/api/plans/${planId}/analyze`, { method: "POST", body });
             return { content: [{ type: "text", text: JSON.stringify(item, null, 2) }] };
-        },
+        }
     );
 
     server.tool(
@@ -1876,25 +1836,21 @@ export function registerPlanTools(server: McpServer) {
             planId: z.string(),
             itemId: z.string(),
             text: z.string().optional(),
-            metadata: z.record(z.unknown()).optional(),
+            metadata: z.record(z.unknown()).optional()
         },
         async ({ planId, itemId, ...patch }) => {
             const item = await apiFetch(`/api/plans/${planId}/analyze/${itemId}`, {
                 method: "PATCH",
-                body: patch,
+                body: patch
             });
             return { content: [{ type: "text", text: JSON.stringify(item, null, 2) }] };
-        },
+        }
     );
 
-    server.tool(
-        "delete_analyze_item",
-        { planId: z.string(), itemId: z.string() },
-        async ({ planId, itemId }) => {
-            await apiFetch(`/api/plans/${planId}/analyze/${itemId}`, { method: "DELETE" });
-            return { content: [{ type: "text", text: "Analyze item deleted" }] };
-        },
-    );
+    server.tool("delete_analyze_item", { planId: z.string(), itemId: z.string() }, async ({ planId, itemId }) => {
+        await apiFetch(`/api/plans/${planId}/analyze/${itemId}`, { method: "DELETE" });
+        return { content: [{ type: "text", text: "Analyze item deleted" }] };
+    });
 
     server.tool(
         "add_task",
@@ -1903,15 +1859,13 @@ export function registerPlanTools(server: McpServer) {
             title: z.string(),
             description: z.string().optional(),
             acceptanceCriteria: z.array(z.string()).optional(),
-            chunks: z
-                .array(z.object({ chunkId: z.string(), relation: z.enum(["context", "created", "modified"]) }))
-                .optional(),
-            dependsOnTaskIds: z.array(z.string()).optional(),
+            chunks: z.array(z.object({ chunkId: z.string(), relation: z.enum(["context", "created", "modified"]) })).optional(),
+            dependsOnTaskIds: z.array(z.string()).optional()
         },
         async ({ planId, ...body }) => {
             const task = await apiFetch(`/api/plans/${planId}/tasks`, { method: "POST", body });
             return { content: [{ type: "text", text: JSON.stringify(task, null, 2) }] };
-        },
+        }
     );
 
     server.tool(
@@ -1922,25 +1876,21 @@ export function registerPlanTools(server: McpServer) {
             title: z.string().optional(),
             description: z.string().optional(),
             acceptanceCriteria: z.array(z.string()).optional(),
-            status: z.enum(["pending", "in_progress", "done", "skipped", "blocked"]).optional(),
+            status: z.enum(["pending", "in_progress", "done", "skipped", "blocked"]).optional()
         },
         async ({ planId, taskId, ...patch }) => {
             const task = await apiFetch(`/api/plans/${planId}/tasks/${taskId}`, {
                 method: "PATCH",
-                body: patch,
+                body: patch
             });
             return { content: [{ type: "text", text: JSON.stringify(task, null, 2) }] };
-        },
+        }
     );
 
-    server.tool(
-        "delete_task",
-        { planId: z.string(), taskId: z.string() },
-        async ({ planId, taskId }) => {
-            await apiFetch(`/api/plans/${planId}/tasks/${taskId}`, { method: "DELETE" });
-            return { content: [{ type: "text", text: "Task deleted" }] };
-        },
-    );
+    server.tool("delete_task", { planId: z.string(), taskId: z.string() }, async ({ planId, taskId }) => {
+        await apiFetch(`/api/plans/${planId}/tasks/${taskId}`, { method: "DELETE" });
+        return { content: [{ type: "text", text: "Task deleted" }] };
+    });
 
     server.tool(
         "link_task_chunk",
@@ -1948,15 +1898,15 @@ export function registerPlanTools(server: McpServer) {
             planId: z.string(),
             taskId: z.string(),
             chunkId: z.string(),
-            relation: z.enum(["context", "created", "modified"]),
+            relation: z.enum(["context", "created", "modified"])
         },
         async ({ planId, taskId, chunkId, relation }) => {
             const link = await apiFetch(`/api/plans/${planId}/tasks/${taskId}/chunks`, {
                 method: "POST",
-                body: { chunkId, relation },
+                body: { chunkId, relation }
             });
             return { content: [{ type: "text", text: JSON.stringify(link, null, 2) }] };
-        },
+        }
     );
 }
 ```
@@ -1991,9 +1941,11 @@ Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>"
 ## Task 9: Update CLI Plan Commands
 
 **Files:**
+
 - Rewrite: `apps/cli/src/commands/plan.ts`
 
-**Context:** The CLI commander registers commands against the server API. Read the current file first to learn the registration pattern and the `apiClient` helper.
+**Context:** The CLI commander registers commands against the server API. Read the current file first to learn the registration pattern and
+the `apiClient` helper.
 
 - [ ] **Step 1: Read the current file**
 
@@ -2005,7 +1957,8 @@ Take note of: how commands are registered, how API calls are made, output format
 
 - [ ] **Step 2: Rewrite `apps/cli/src/commands/plan.ts`**
 
-Replace with a minimal command set matching the new API. Preserve the registration style from the current file (Commander.js). Example outline:
+Replace with a minimal command set matching the new API. Preserve the registration style from the current file (Commander.js). Example
+outline:
 
 ```typescript
 import { Command } from "commander";
@@ -2016,8 +1969,7 @@ import { printTable, printKeyValue } from "../output";
 export function registerPlanCommands(program: Command) {
     const plan = program.command("plan").description("Manage plans");
 
-    plan
-        .command("create <title>")
+    plan.command("create <title>")
         .description("Create a new plan")
         .option("-d, --description <description>", "Plan description")
         .option("-c, --codebase <codebaseId>", "Codebase ID")
@@ -2025,13 +1977,12 @@ export function registerPlanCommands(program: Command) {
             const created = await apiClient.post("/api/plans", {
                 title,
                 description: opts.description,
-                codebaseId: opts.codebase,
+                codebaseId: opts.codebase
             });
             printKeyValue(created);
         });
 
-    plan
-        .command("list")
+    plan.command("list")
         .description("List plans")
         .option("-s, --status <status>", "Filter by status")
         .option("-c, --codebase <codebaseId>", "Filter by codebase")
@@ -2045,44 +1996,39 @@ export function registerPlanCommands(program: Command) {
             printTable(plans, ["id", "title", "status", "createdAt"]);
         });
 
-    plan
-        .command("show <planId>")
+    plan.command("show <planId>")
         .description("Show plan detail")
         .action(async (planId: string) => {
             const detail = await apiClient.get(`/api/plans/${planId}`);
             console.log(JSON.stringify(detail, null, 2));
         });
 
-    plan
-        .command("status <planId> <status>")
+    plan.command("status <planId> <status>")
         .description("Update plan status (draft, analyzing, ready, in_progress, completed, archived)")
         .action(async (planId: string, status: string) => {
             const updated = await apiClient.patch(`/api/plans/${planId}`, { status });
             printKeyValue(updated);
         });
 
-    plan
-        .command("add-task <planId> <title>")
+    plan.command("add-task <planId> <title>")
         .description("Add a task to a plan")
         .option("-d, --description <description>", "Task description")
         .action(async (planId: string, title: string, opts) => {
             const task = await apiClient.post(`/api/plans/${planId}/tasks`, {
                 title,
-                description: opts.description,
+                description: opts.description
             });
             printKeyValue(task);
         });
 
-    plan
-        .command("task-done <planId> <taskId>")
+    plan.command("task-done <planId> <taskId>")
         .description("Mark a task as done")
         .action(async (planId: string, taskId: string) => {
             const updated = await apiClient.patch(`/api/plans/${planId}/tasks/${taskId}`, { status: "done" });
             printKeyValue(updated);
         });
 
-    plan
-        .command("link-requirement <planId> <requirementId>")
+    plan.command("link-requirement <planId> <requirementId>")
         .description("Link a requirement to a plan")
         .action(async (planId: string, requirementId: string) => {
             await apiClient.post(`/api/plans/${planId}/requirements`, { requirementId });
@@ -2091,7 +2037,8 @@ export function registerPlanCommands(program: Command) {
 }
 ```
 
-**Important:** If the actual `apiClient` in the repo has a different method shape (e.g., `apiClient.get<T>(...)` with a `.data` unwrap), adapt the calls to match. Read `apps/cli/src/api-client.ts` (or wherever it lives) to confirm.
+**Important:** If the actual `apiClient` in the repo has a different method shape (e.g., `apiClient.get<T>(...)` with a `.data` unwrap),
+adapt the calls to match. Read `apps/cli/src/api-client.ts` (or wherever it lives) to confirm.
 
 - [ ] **Step 3: Type check**
 
@@ -2119,6 +2066,7 @@ Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>"
 ## Task 10: Web Nav + Delete Reviews + Old Plans Components
 
 **Files:**
+
 - Modify: `apps/web/src/routes/__root.tsx` (nav swap, Manage dropdown)
 - Delete: `apps/web/src/routes/reviews.tsx`
 - Delete: `apps/web/src/routes/reviews_.queue.tsx`
@@ -2149,7 +2097,8 @@ rm apps/web/src/features/plans/plan-progress-bar.tsx \
 
 - [ ] **Step 3: Regenerate the TanStack Router route tree**
 
-Run: `pnpm --filter web run dev 2>&1 | head -5 &` and then kill it after a second. (The TanStack Router plugin regenerates `routeTree.gen.ts` on dev startup.) Alternatively: `pnpm --filter web run build` — the plugin regenerates as part of the build.
+Run: `pnpm --filter web run dev 2>&1 | head -5 &` and then kill it after a second. (The TanStack Router plugin regenerates
+`routeTree.gen.ts` on dev startup.) Alternatively: `pnpm --filter web run build` — the plugin regenerates as part of the build.
 
 Verify: `grep -E "reviews" apps/web/src/routeTree.gen.ts` returns nothing.
 
@@ -2157,7 +2106,8 @@ Verify: `grep -E "reviews" apps/web/src/routeTree.gen.ts` returns nothing.
 
 Read it first: `cat apps/web/src/routes/__root.tsx | head -250`
 
-Find the primary nav. Find the `<Link to="/requirements">Requirements</Link>` element and replace it with `<Link to="/plans">Plans</Link>` (matching the same className pattern). Exact replacement:
+Find the primary nav. Find the `<Link to="/requirements">Requirements</Link>` element and replace it with `<Link to="/plans">Plans</Link>`
+(matching the same className pattern). Exact replacement:
 
 ```tsx
 <Link
@@ -2168,7 +2118,8 @@ Find the primary nav. Find the `<Link to="/requirements">Requirements</Link>` el
 </Link>
 ```
 
-In the Manage dropdown content, the previous header-search redesign added Features / Reviews / Docs at the top with a DropdownMenuLabel "Navigate" and a separator. Now:
+In the Manage dropdown content, the previous header-search redesign added Features / Reviews / Docs at the top with a DropdownMenuLabel
+"Navigate" and a separator. Now:
 
 1. **Remove** the Reviews entry (the MessageSquare icon one)
 2. **Add** a `Requirements` entry with a `ClipboardList` icon in the Navigate section:
@@ -2187,6 +2138,7 @@ In the Manage dropdown content, the previous header-search redesign added Featur
 Read it first: `cat apps/web/src/features/nav/mobile-nav.tsx`
 
 Expect to find `<Link to="/requirements">`, `<Link to="/reviews">`, and possibly `<Link to="/plans">` entries. Changes:
+
 - Remove the `/reviews` link entirely
 - Ensure `/plans` is a top-level entry (not buried in a collapsible)
 - Demote `/requirements` below `/plans` or into a secondary group
@@ -2194,18 +2146,23 @@ Expect to find `<Link to="/requirements">`, `<Link to="/reviews">`, and possibly
 
 - [ ] **Step 6: Update the dashboard widget if it references sessions**
 
-Run: `grep -rn "sessions\|reviews\|implementationSession" apps/web/src/routes/dashboard.tsx apps/web/src/features/dashboard 2>/dev/null | head -20`
+Run:
+`grep -rn "sessions\|reviews\|implementationSession" apps/web/src/routes/dashboard.tsx apps/web/src/features/dashboard 2>/dev/null | head -20`
 
 If there are hits, open each file and:
+
 - Remove any "Review Queue" widget (imports from `@/features/reviews/`, or calls `api.api.sessions.*`)
-- Update any "Recent Plans" widget to use the new shape: show `title`, `status` pill (using `PlanStatusPill` from `@/features/plans/plan-status-pill` — this will be created in Task 11, so if Task 10 is dispatched before Task 11, stub the pill with plain text for now and circle back)
+- Update any "Recent Plans" widget to use the new shape: show `title`, `status` pill (using `PlanStatusPill` from
+  `@/features/plans/plan-status-pill` — this will be created in Task 11, so if Task 10 is dispatched before Task 11, stub the pill with
+  plain text for now and circle back)
 - Any call to `api.api.sessions.*` must be deleted
 
 If the grep returns nothing, skip this step.
 
 - [ ] **Step 7: Check for any remaining session/review references**
 
-Run: `grep -rn "reviews\|sessionRoutes\|implementationSession" apps/web/src --include="*.tsx" --include="*.ts" | grep -v "node_modules\|useSession\|better-auth" | head -20`
+Run:
+`grep -rn "reviews\|sessionRoutes\|implementationSession" apps/web/src --include="*.tsx" --include="*.ts" | grep -v "node_modules\|useSession\|better-auth" | head -20`
 
 Expected: only unrelated hits (e.g., `better-auth` session cookies, TanStack Router helper types). Remove any genuinely stale references.
 
@@ -2213,7 +2170,8 @@ Expected: only unrelated hits (e.g., `better-auth` session cookies, TanStack Rou
 
 Run: `pnpm --filter web run check-types 2>&1 | grep -E "(__root|reviews)" | head -20`
 
-Expected: any errors in __root.tsx are about the old Requirements link being gone. The rest of the web package may have errors in `plans.*.tsx` files — those are rewritten in later tasks.
+Expected: any errors in \_\_root.tsx are about the old Requirements link being gone. The rest of the web package may have errors in
+`plans.*.tsx` files — those are rewritten in later tasks.
 
 - [ ] **Step 8: Type check**
 
@@ -2237,6 +2195,7 @@ Note: the `git add` for dashboard paths will silently skip if those files didn't
 ## Task 11: Plans List Page
 
 **Files:**
+
 - Rewrite: `apps/web/src/routes/plans.index.tsx`
 - Create: `apps/web/src/features/plans/plan-status-pill.tsx`
 
@@ -2383,6 +2342,7 @@ Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>"
 ## Task 12: Plan Create Page
 
 **Files:**
+
 - Rewrite: `apps/web/src/routes/plans.new.tsx`
 
 - [ ] **Step 1: Rewrite `apps/web/src/routes/plans.new.tsx`**
@@ -2498,11 +2458,13 @@ Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>"
 ## Task 13: Plan Detail — Shell + Sticky Header + Description
 
 **Files:**
+
 - Rewrite: `apps/web/src/routes/plans.$planId.tsx`
 - Create: `apps/web/src/features/plans/plan-detail-header.tsx`
 - Create: `apps/web/src/features/plans/plan-description-section.tsx`
 
-**Context:** The detail page is a single scrollable column. Subsequent tasks (14-17) add the four content sections as their own components so this shell stays short.
+**Context:** The detail page is a single scrollable column. Subsequent tasks (14-17) add the four content sections as their own components
+so this shell stays short.
 
 - [ ] **Step 1: Create `apps/web/src/features/plans/plan-detail-header.tsx`**
 
@@ -2725,7 +2687,8 @@ function PlanDetailPage() {
 
 Run: `pnpm --filter web run check-types 2>&1 | grep -E "plans\.\\\$planId|plan-detail-header|plan-description-section" | head -10`
 
-Expected: zero errors. Note: the `(api.api.plans as any)[planId]` pattern is a deliberate Eden escape hatch since param-keyed routes need runtime indexing.
+Expected: zero errors. Note: the `(api.api.plans as any)[planId]` pattern is a deliberate Eden escape hatch since param-keyed routes need
+runtime indexing.
 
 - [ ] **Step 5: Commit**
 
@@ -2741,6 +2704,7 @@ Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>"
 ## Task 14: Plan Detail — Requirements Section
 
 **Files:**
+
 - Create: `apps/web/src/features/plans/plan-requirements-section.tsx`
 - Modify: `apps/web/src/routes/plans.$planId.tsx` (mount)
 
@@ -2894,11 +2858,7 @@ import { PlanRequirementsSection } from "@/features/plans/plan-requirements-sect
 Below `PlanDescriptionSection`, render:
 
 ```tsx
-<PlanRequirementsSection
-    planId={plan.id}
-    requirements={detail.requirements ?? []}
-    onUpdate={refetch}
-/>
+<PlanRequirementsSection planId={plan.id} requirements={detail.requirements ?? []} onUpdate={refetch} />
 ```
 
 - [ ] **Step 3: Type check**
@@ -2921,10 +2881,12 @@ Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>"
 ## Task 15: Plan Detail — Analyze Section
 
 **Files:**
+
 - Create: `apps/web/src/features/plans/plan-analyze-section.tsx`
 - Modify: `apps/web/src/routes/plans.$planId.tsx` (mount)
 
-**Context:** To keep this task bounded, we implement the Analyze section as a single component that handles all five kinds inline with kind-specific input fields. Drag-reorder is out of scope for v1 (YAGNI — can be added later).
+**Context:** To keep this task bounded, we implement the Analyze section as a single component that handles all five kinds inline with
+kind-specific input fields. Drag-reorder is out of scope for v1 (YAGNI — can be added later).
 
 - [ ] **Step 1: Create `apps/web/src/features/plans/plan-analyze-section.tsx`**
 
@@ -3211,6 +3173,7 @@ Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>"
 ## Task 16: Plan Detail — Tasks Section
 
 **Files:**
+
 - Create: `apps/web/src/features/plans/plan-tasks-section.tsx`
 - Create: `apps/web/src/features/plans/plan-task-card.tsx`
 - Modify: `apps/web/src/routes/plans.$planId.tsx` (mount)
@@ -3451,9 +3414,11 @@ Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>"
 ## Task 17: Seed Script Rewrite
 
 **Files:**
+
 - Modify: `packages/db/src/seed.ts`
 
-**Context:** Only the plan-related sections of the seed script need updating. Other seed data (chunks, requirements, codebases, tags) stays unchanged.
+**Context:** Only the plan-related sections of the seed script need updating. Other seed data (chunks, requirements, codebases, tags) stays
+unchanged.
 
 - [ ] **Step 1: Read the current seed script**
 
@@ -3465,7 +3430,8 @@ Identify where plans were previously seeded. The old pattern likely inserts into
 
 - [ ] **Step 2: Replace the plan-seeding section**
 
-Find the section that seeds plans. Replace it with code that creates three plans in the new shape. The exact insertion style (using `db.insert(plan).values(...)` or a helper) should match the surrounding seed code. Example:
+Find the section that seeds plans. Replace it with code that creates three plans in the new shape. The exact insertion style (using
+`db.insert(plan).values(...)` or a helper) should match the surrounding seed code. Example:
 
 ```typescript
 // Seed plans
@@ -3477,7 +3443,7 @@ const [planCompleted] = await db
         status: "completed",
         userId: devUserId,
         codebaseId: fubbikCodebaseId,
-        completedAt: new Date(),
+        completedAt: new Date()
     })
     .returning();
 
@@ -3486,7 +3452,7 @@ if (!planCompleted) throw new Error("failed to seed completed plan");
 await db.insert(planTask).values([
     { planId: planCompleted.id, title: "Add avatar column to user table", status: "done", order: 0 },
     { planId: planCompleted.id, title: "Wire upload endpoint", status: "done", order: 1 },
-    { planId: planCompleted.id, title: "Render avatar in nav", status: "done", order: 2 },
+    { planId: planCompleted.id, title: "Render avatar in nav", status: "done", order: 2 }
 ]);
 
 const [planInProgress] = await db
@@ -3496,7 +3462,7 @@ const [planInProgress] = await db
         description: "Search chunks across all linked codebases from one query. Returns results grouped by codebase.",
         status: "in_progress",
         userId: devUserId,
-        codebaseId: fubbikCodebaseId,
+        codebaseId: fubbikCodebaseId
     })
     .returning();
 
@@ -3513,7 +3479,7 @@ await db.insert(planAnalyzeItem).values([
         kind: "chunk",
         chunkId: chunkIds[0] ?? null,
         text: "Existing search service lives here",
-        order: 0,
+        order: 0
     },
     {
         planId: planInProgress.id,
@@ -3521,29 +3487,29 @@ await db.insert(planAnalyzeItem).values([
         filePath: "packages/api/src/search/service.ts",
         text: "Main search entry point",
         metadata: { lineStart: 1, lineEnd: 50 },
-        order: 0,
+        order: 0
     },
     {
         planId: planInProgress.id,
         kind: "risk",
         text: "Cross-codebase indexes may blow up memory for 10+ codebases",
         metadata: { severity: "medium" },
-        order: 0,
+        order: 0
     },
     {
         planId: planInProgress.id,
         kind: "assumption",
         text: "All codebases share the same embedding model",
         metadata: { verified: false },
-        order: 0,
+        order: 0
     },
     {
         planId: planInProgress.id,
         kind: "question",
         text: "Should archived codebases be searchable?",
         metadata: { answered: false },
-        order: 0,
-    },
+        order: 0
+    }
 ]);
 
 await db.insert(planTask).values([
@@ -3551,17 +3517,18 @@ await db.insert(planTask).values([
     { planId: planInProgress.id, title: "Group results by codebase in response", status: "in_progress", order: 1 },
     { planId: planInProgress.id, title: "Add federated mode toggle to search page", status: "pending", order: 2 },
     { planId: planInProgress.id, title: "Integration test: 3 codebases, 1 query", status: "pending", order: 3 },
-    { planId: planInProgress.id, title: "Update CLAUDE.md with federated search docs", status: "pending", order: 4 },
+    { planId: planInProgress.id, title: "Update CLAUDE.md with federated search docs", status: "pending", order: 4 }
 ]);
 
 const [planAnalyzing] = await db
     .insert(plan)
     .values({
         title: "Plans as a central entity",
-        description: "Make Plan the home for a unit of work — description, linked requirements, structured analyze fields, and enriched tasks.",
+        description:
+            "Make Plan the home for a unit of work — description, linked requirements, structured analyze fields, and enriched tasks.",
         status: "analyzing",
         userId: devUserId,
-        codebaseId: fubbikCodebaseId,
+        codebaseId: fubbikCodebaseId
     })
     .returning();
 
@@ -3573,25 +3540,27 @@ await db.insert(planAnalyzeItem).values([
         kind: "risk",
         text: "Dropping session data loses review history",
         metadata: { severity: "low" },
-        order: 0,
+        order: 0
     },
     {
         planId: planAnalyzing.id,
         kind: "assumption",
         text: "Existing plan data is mostly seed/scratch, safe to wipe",
         metadata: { verified: true },
-        order: 0,
-    },
+        order: 0
+    }
 ]);
 ```
 
-Adapt the variable names (`devUserId`, `fubbikCodebaseId`, `requirementIds`, `chunkIds`) to match whatever names the existing seed file uses.
+Adapt the variable names (`devUserId`, `fubbikCodebaseId`, `requirementIds`, `chunkIds`) to match whatever names the existing seed file
+uses.
 
 Remove the old plan-seeding code that uses `plan_step`, `plan_chunk_ref`, and `implementation_session`.
 
 - [ ] **Step 3: Update the imports at the top of `seed.ts`**
 
 Add:
+
 ```typescript
 import { plan, planRequirement, planAnalyzeItem, planTask } from "./schema/plan";
 ```
@@ -3620,6 +3589,7 @@ Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>"
 ## Task 18: CLAUDE.md + Final Verification
 
 **Files:**
+
 - Modify: `CLAUDE.md`
 
 - [ ] **Step 1: Update the "Plans" core concept section in `CLAUDE.md`**
@@ -3631,9 +3601,11 @@ Find the "### Plans" subsection under "## Core Concepts". Replace its body with:
 
 The central unit of work. Each plan holds a description, linked requirements, structured analyze fields, and enriched tasks.
 
-- `plan` table: `title`, `description` (markdown), `status` (`draft | analyzing | ready | in_progress | completed | archived` — labels only, ungated), `userId`, `codebaseId`, `completedAt`
+- `plan` table: `title`, `description` (markdown), `status` (`draft | analyzing | ready | in_progress | completed | archived` — labels only,
+  ungated), `userId`, `codebaseId`, `completedAt`
 - `plan_requirement` — many-to-many link to existing `requirement` entities at the plan level
-- `plan_analyze_item` — discriminated table holding five kinds: `chunk`, `file`, `risk`, `assumption`, `question`, each with kind-specific metadata (severity for risks, verified flag for assumptions, answer for questions, line range for files)
+- `plan_analyze_item` — discriminated table holding five kinds: `chunk`, `file`, `risk`, `assumption`, `question`, each with kind-specific
+  metadata (severity for risks, verified flag for assumptions, answer for questions, line range for files)
 - `plan_task` — enriched tasks with `title`, `description`, `acceptanceCriteria` (JSONB string array), `status`
 - `plan_task_chunk` — many-to-many linking tasks to multiple chunks with a relation (`context | created | modified`)
 - `plan_task_dependency` — task dependencies; marking a task `done` auto-unblocks dependents in `blocked` state
@@ -3651,14 +3623,17 @@ Replace the `### Plans` subsection with the new route list:
 
 ```markdown
 ### Plans
+
 - `GET /api/plans` — list (filters: `codebaseId`, `status`, `requirementId`, `includeArchived`)
 - `POST /api/plans` — create (body: `title`, `description?`, `codebaseId?`, `requirementIds?`, `tasks?`)
 - `GET /api/plans/:id` — detail (plan + requirements + analyze grouped by kind + tasks with chunks + dependencies)
 - `PATCH /api/plans/:id` — update title/description/status/codebaseId
 - `DELETE /api/plans/:id`
 - `POST /api/plans/:id/requirements` / `DELETE /api/plans/:id/requirements/:requirementId` / `POST /api/plans/:id/requirements/reorder`
-- `GET /api/plans/:id/analyze` / `POST /api/plans/:id/analyze` / `PATCH /api/plans/:id/analyze/:itemId` / `DELETE /api/plans/:id/analyze/:itemId` / `POST /api/plans/:id/analyze/reorder`
-- `POST /api/plans/:id/tasks` / `PATCH /api/plans/:id/tasks/:taskId` / `DELETE /api/plans/:id/tasks/:taskId` / `POST /api/plans/:id/tasks/reorder`
+- `GET /api/plans/:id/analyze` / `POST /api/plans/:id/analyze` / `PATCH /api/plans/:id/analyze/:itemId` /
+  `DELETE /api/plans/:id/analyze/:itemId` / `POST /api/plans/:id/analyze/reorder`
+- `POST /api/plans/:id/tasks` / `PATCH /api/plans/:id/tasks/:taskId` / `DELETE /api/plans/:id/tasks/:taskId` /
+  `POST /api/plans/:id/tasks/reorder`
 - `POST /api/plans/:id/tasks/:taskId/chunks` / `DELETE /api/plans/:id/tasks/:taskId/chunks/:linkId`
 ```
 
@@ -3697,7 +3672,9 @@ Remove any `fubbik session*` lines.
 pnpm ci
 ```
 
-Expected: type-check, lint, test, build, format-check, sherif — all pass. Pre-existing unrelated type errors (e.g., in `broken-link-checker`, `dashboard`, `import`) are out of scope and may still exist. Fail the task only on NEW errors in files touched by this plan.
+Expected: type-check, lint, test, build, format-check, sherif — all pass. Pre-existing unrelated type errors (e.g., in
+`broken-link-checker`, `dashboard`, `import`) are out of scope and may still exist. Fail the task only on NEW errors in files touched by
+this plan.
 
 If any fail, fix them in this task (not a new commit) until clean.
 
@@ -3712,13 +3689,15 @@ pnpm dev
 Navigate through these flows:
 
 1. Open `/plans` — shows the three seeded plans with status pills
-2. Click the in-progress plan — detail page shows sticky header, description, 1 requirement, analyze with items in all 5 kinds, 5 tasks with 1 done + 1 in_progress
+2. Click the in-progress plan — detail page shows sticky header, description, 1 requirement, analyze with items in all 5 kinds, 5 tasks with
+   1 done + 1 in_progress
 3. Click the status pill — cycles to `completed`; click again — cycles back through the labels
 4. Click the title — inline edit mode, edit, blur — title updates
 5. In the Tasks section, click a task checkbox — toggles `done` state, visual line-through
 6. In the Analyze section, expand Risks, click `+`, add a new risk with severity `high` — appears in the list
 7. In Requirements, click `+ Add`, search for a requirement, click one — pill appears
-8. In the header nav, verify: `Dashboard · Chunks · Graph · Plans` (primary), and Manage dropdown has `Requirements` in the top "Navigate" group (no Reviews entry)
+8. In the header nav, verify: `Dashboard · Chunks · Graph · Plans` (primary), and Manage dropdown has `Requirements` in the top "Navigate"
+   group (no Reviews entry)
 9. `/reviews` should 404 (route deleted)
 
 - [ ] **Step 8: Commit**
@@ -3736,9 +3715,13 @@ Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>"
 
 These items from the spec are intentionally deferred to a follow-up PR to keep this rewrite bounded:
 
-- **Right rail** (Section 5) — the desktop-only `≥1280px` summary rail with status / progress ring / analyze counts / "jump to" anchor links. Not essential to functionality; the main column works standalone. Add in a follow-up.
-- **Drag-to-reorder** in Requirements, Analyze, and Tasks sections — the reorder API routes exist (`POST .../reorder`) but no drag UI is wired. Add `@dnd-kit` integration in a follow-up.
-- **Chunk picker integration** in analyze chunks + task chunks — v1 asks for a raw chunk ID. Wire the existing chunk picker component in a follow-up.
-- **Acceptance criteria checklist UI** — v1 renders as plain bullets in the expanded task card. Make them toggleable (local/ephemeral state) in a follow-up.
+- **Right rail** (Section 5) — the desktop-only `≥1280px` summary rail with status / progress ring / analyze counts / "jump to" anchor
+  links. Not essential to functionality; the main column works standalone. Add in a follow-up.
+- **Drag-to-reorder** in Requirements, Analyze, and Tasks sections — the reorder API routes exist (`POST .../reorder`) but no drag UI is
+  wired. Add `@dnd-kit` integration in a follow-up.
+- **Chunk picker integration** in analyze chunks + task chunks — v1 asks for a raw chunk ID. Wire the existing chunk picker component in a
+  follow-up.
+- **Acceptance criteria checklist UI** — v1 renders as plain bullets in the expanded task card. Make them toggleable (local/ephemeral state)
+  in a follow-up.
 - **Status transition via keyboard / command palette** — currently requires clicking the pill.
 - **Keyboard shortcuts in Tasks section** (`j/k`, `space`, `n`, `enter`) — specced but not implemented in Task 16. Add as a follow-up.

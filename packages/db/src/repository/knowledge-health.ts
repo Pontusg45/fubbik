@@ -3,56 +3,53 @@ import { and, eq, isNotNull, sql } from "drizzle-orm";
 import { getOrphanChunkIds } from "../age/query";
 import { db, dbEffect } from "../index";
 import { chunk, chunkConnection } from "../schema/chunk";
-import { chunkSpace } from "../schema/space";
 import { chunkFileRef } from "../schema/file-ref";
+import { chunkSpace } from "../schema/space";
 
 function spaceConditions(spaceId?: string) {
     if (!spaceId) return [];
-    const inSpace = db
-        .select({ chunkId: chunkSpace.chunkId })
-        .from(chunkSpace)
-        .where(eq(chunkSpace.spaceId, spaceId));
+    const inSpace = db.select({ chunkId: chunkSpace.chunkId }).from(chunkSpace).where(eq(chunkSpace.spaceId, spaceId));
     const inAnySpace = db.select({ chunkId: chunkSpace.chunkId }).from(chunkSpace);
     return [sql`(${chunk.id} IN (${inSpace}) OR ${chunk.id} NOT IN (${inAnySpace}))`];
 }
 
 export function getOrphanChunks(userId: string, spaceId?: string) {
     return dbEffect(async () => {
-            const conditions = [
-                eq(chunk.userId, userId),
-                sql`${chunk.id} NOT IN (SELECT ${chunkConnection.sourceId} FROM ${chunkConnection})`,
-                sql`${chunk.id} NOT IN (SELECT ${chunkConnection.targetId} FROM ${chunkConnection})`,
-                ...spaceConditions(spaceId)
-            ];
+        const conditions = [
+            eq(chunk.userId, userId),
+            sql`${chunk.id} NOT IN (SELECT ${chunkConnection.sourceId} FROM ${chunkConnection})`,
+            sql`${chunk.id} NOT IN (SELECT ${chunkConnection.targetId} FROM ${chunkConnection})`,
+            ...spaceConditions(spaceId)
+        ];
 
-            const chunks = await db
-                .select({
-                    id: chunk.id,
-                    title: chunk.title,
-                    type: chunk.type,
-                    createdAt: chunk.createdAt
-                })
-                .from(chunk)
-                .where(and(...conditions))
-                .limit(50);
+        const chunks = await db
+            .select({
+                id: chunk.id,
+                title: chunk.title,
+                type: chunk.type,
+                createdAt: chunk.createdAt
+            })
+            .from(chunk)
+            .where(and(...conditions))
+            .limit(50);
 
-            const countResult = await db
-                .select({ count: sql<number>`count(*)` })
-                .from(chunk)
-                .where(and(...conditions));
+        const countResult = await db
+            .select({ count: sql<number>`count(*)` })
+            .from(chunk)
+            .where(and(...conditions));
 
-            return { chunks, count: Number(countResult[0]?.count ?? 0) };
-        });
+        return { chunks, count: Number(countResult[0]?.count ?? 0) };
+    });
 }
 
 export function getStaleChunks(userId: string, spaceId?: string) {
     return dbEffect(async () => {
-            const thirtyDaysAgo = sql`NOW() - INTERVAL '30 days'`;
-            const sevenDaysAgo = sql`NOW() - INTERVAL '7 days'`;
+        const thirtyDaysAgo = sql`NOW() - INTERVAL '30 days'`;
+        const sevenDaysAgo = sql`NOW() - INTERVAL '7 days'`;
 
-            // NOTE: Must use "chunk"."id" (fully qualified) to avoid ambiguity
-            // with the "neighbor" alias which is also the chunk table.
-            const neighborExists = sql`EXISTS (
+        // NOTE: Must use "chunk"."id" (fully qualified) to avoid ambiguity
+        // with the "neighbor" alias which is also the chunk table.
+        const neighborExists = sql`EXISTS (
                 SELECT 1 FROM "chunk_connection" cc
                 INNER JOIN "chunk" neighbor
                     ON neighbor.id = CASE
@@ -63,7 +60,7 @@ export function getStaleChunks(userId: string, spaceId?: string) {
                     AND neighbor.updated_at > ${sevenDaysAgo}
             )`;
 
-            const newestNeighborUpdate = sql<Date>`(
+        const newestNeighborUpdate = sql<Date>`(
                 SELECT MAX(neighbor.updated_at) FROM "chunk_connection" cc
                 INNER JOIN "chunk" neighbor
                     ON neighbor.id = CASE
@@ -73,90 +70,86 @@ export function getStaleChunks(userId: string, spaceId?: string) {
                 WHERE (cc.source_id = "chunk"."id" OR cc.target_id = "chunk"."id")
             )`;
 
-            const conditions = [
-                eq(chunk.userId, userId),
-                sql`${chunk.updatedAt} < ${thirtyDaysAgo}`,
-                neighborExists,
-                ...spaceConditions(spaceId)
-            ];
+        const conditions = [
+            eq(chunk.userId, userId),
+            sql`${chunk.updatedAt} < ${thirtyDaysAgo}`,
+            neighborExists,
+            ...spaceConditions(spaceId)
+        ];
 
-            const chunks = await db
-                .select({
-                    id: chunk.id,
-                    title: chunk.title,
-                    type: chunk.type,
-                    updatedAt: chunk.updatedAt,
-                    newestNeighborUpdate
-                })
-                .from(chunk)
-                .where(and(...conditions))
-                .limit(50);
+        const chunks = await db
+            .select({
+                id: chunk.id,
+                title: chunk.title,
+                type: chunk.type,
+                updatedAt: chunk.updatedAt,
+                newestNeighborUpdate
+            })
+            .from(chunk)
+            .where(and(...conditions))
+            .limit(50);
 
-            const countResult = await db
-                .select({ count: sql<number>`count(*)` })
-                .from(chunk)
-                .where(and(...conditions));
+        const countResult = await db
+            .select({ count: sql<number>`count(*)` })
+            .from(chunk)
+            .where(and(...conditions));
 
-            return { chunks, count: Number(countResult[0]?.count ?? 0) };
-        });
+        return { chunks, count: Number(countResult[0]?.count ?? 0) };
+    });
 }
 
 export function getThinChunks(userId: string, spaceId?: string) {
     return dbEffect(async () => {
-            const conditions = [
-                eq(chunk.userId, userId),
-                sql`LENGTH(${chunk.content}) < 100`,
-                ...spaceConditions(spaceId)
-            ];
+        const conditions = [eq(chunk.userId, userId), sql`LENGTH(${chunk.content}) < 100`, ...spaceConditions(spaceId)];
 
-            const chunks = await db
-                .select({
-                    id: chunk.id,
-                    title: chunk.title,
-                    type: chunk.type,
-                    contentLength: sql<number>`LENGTH(${chunk.content})`
-                })
-                .from(chunk)
-                .where(and(...conditions))
-                .limit(50);
+        const chunks = await db
+            .select({
+                id: chunk.id,
+                title: chunk.title,
+                type: chunk.type,
+                contentLength: sql<number>`LENGTH(${chunk.content})`
+            })
+            .from(chunk)
+            .where(and(...conditions))
+            .limit(50);
 
-            const countResult = await db
-                .select({ count: sql<number>`count(*)` })
-                .from(chunk)
-                .where(and(...conditions));
+        const countResult = await db
+            .select({ count: sql<number>`count(*)` })
+            .from(chunk)
+            .where(and(...conditions));
 
-            return { chunks, count: Number(countResult[0]?.count ?? 0) };
-        });
+        return { chunks, count: Number(countResult[0]?.count ?? 0) };
+    });
 }
 
 export function getStaleEmbeddings(userId: string, spaceId?: string) {
     return dbEffect(async () => {
-            const conditions = [
-                eq(chunk.userId, userId),
-                isNotNull(chunk.embedding),
-                sql`${chunk.updatedAt} > ${chunk.embeddingUpdatedAt}`,
-                ...spaceConditions(spaceId)
-            ];
+        const conditions = [
+            eq(chunk.userId, userId),
+            isNotNull(chunk.embedding),
+            sql`${chunk.updatedAt} > ${chunk.embeddingUpdatedAt}`,
+            ...spaceConditions(spaceId)
+        ];
 
-            const chunks = await db
-                .select({
-                    id: chunk.id,
-                    title: chunk.title,
-                    type: chunk.type,
-                    updatedAt: chunk.updatedAt,
-                    embeddingUpdatedAt: chunk.embeddingUpdatedAt
-                })
-                .from(chunk)
-                .where(and(...conditions))
-                .limit(50);
+        const chunks = await db
+            .select({
+                id: chunk.id,
+                title: chunk.title,
+                type: chunk.type,
+                updatedAt: chunk.updatedAt,
+                embeddingUpdatedAt: chunk.embeddingUpdatedAt
+            })
+            .from(chunk)
+            .where(and(...conditions))
+            .limit(50);
 
-            const countResult = await db
-                .select({ count: sql<number>`count(*)` })
-                .from(chunk)
-                .where(and(...conditions));
+        const countResult = await db
+            .select({ count: sql<number>`count(*)` })
+            .from(chunk)
+            .where(and(...conditions));
 
-            return { chunks, count: Number(countResult[0]?.count ?? 0) };
-        });
+        return { chunks, count: Number(countResult[0]?.count ?? 0) };
+    });
 }
 
 export function getOrphanChunkIdsViaAge() {
@@ -165,28 +158,28 @@ export function getOrphanChunkIdsViaAge() {
 
 export function getFileRefsForHealth(userId: string, spaceId?: string) {
     return dbEffect(async () => {
-            const conditions = [eq(chunk.userId, userId), ...spaceConditions(spaceId)];
+        const conditions = [eq(chunk.userId, userId), ...spaceConditions(spaceId)];
 
-            const refs = await db
-                .select({
-                    refId: chunkFileRef.id,
-                    chunkId: chunkFileRef.chunkId,
-                    chunkTitle: chunk.title,
-                    chunkType: chunk.type,
-                    path: chunkFileRef.path,
-                    relation: chunkFileRef.relation
-                })
-                .from(chunkFileRef)
-                .innerJoin(chunk, eq(chunkFileRef.chunkId, chunk.id))
-                .where(and(...conditions))
-                .limit(100);
+        const refs = await db
+            .select({
+                refId: chunkFileRef.id,
+                chunkId: chunkFileRef.chunkId,
+                chunkTitle: chunk.title,
+                chunkType: chunk.type,
+                path: chunkFileRef.path,
+                relation: chunkFileRef.relation
+            })
+            .from(chunkFileRef)
+            .innerJoin(chunk, eq(chunkFileRef.chunkId, chunk.id))
+            .where(and(...conditions))
+            .limit(100);
 
-            const countResult = await db
-                .select({ count: sql<number>`count(*)` })
-                .from(chunkFileRef)
-                .innerJoin(chunk, eq(chunkFileRef.chunkId, chunk.id))
-                .where(and(...conditions));
+        const countResult = await db
+            .select({ count: sql<number>`count(*)` })
+            .from(chunkFileRef)
+            .innerJoin(chunk, eq(chunkFileRef.chunkId, chunk.id))
+            .where(and(...conditions));
 
-            return { refs, count: Number(countResult[0]?.count ?? 0) };
-        });
+        return { refs, count: Number(countResult[0]?.count ?? 0) };
+    });
 }

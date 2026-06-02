@@ -1,8 +1,8 @@
-
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
+
 import { INDEX_FILE_NAMES, type FileConfig, type FileEntry, type PreviewFileResult } from "../types";
 
 // ---------------------------------------------------------------------------
@@ -75,15 +75,7 @@ interface StepReviewProps {
 // StepReview component
 // ---------------------------------------------------------------------------
 
-export function StepReview({
-    files,
-    selectedPaths,
-    preview,
-    overrides,
-    existingHashes,
-    spaceName,
-    onGoToFile
-}: StepReviewProps) {
+export function StepReview({ files, selectedPaths, preview, overrides, existingHashes, spaceName, onGoToFile }: StepReviewProps) {
     const [computedHashes, setComputedHashes] = useState<Record<string, string>>({});
     const [newExpanded, setNewExpanded] = useState(true);
     const [skippedExpanded, setSkippedExpanded] = useState(false);
@@ -97,9 +89,7 @@ export function StepReview({
         let cancelled = false;
 
         const run = async () => {
-            const entries = await Promise.all(
-                selectedFiles.map(async f => [f.path, await hashContent(f.content)] as const)
-            );
+            const entries = await Promise.all(selectedFiles.map(async f => [f.path, await hashContent(f.content)] as const));
             if (!cancelled) {
                 setComputedHashes(Object.fromEntries(entries));
             }
@@ -185,14 +175,12 @@ export function StepReview({
                 borderColorClass="border-emerald-200 dark:border-emerald-800"
             >
                 {newFiles.length === 0 ? (
-                    <p className="text-sm text-muted-foreground px-3 py-2">
-                        No new chunks to import.
-                    </p>
+                    <p className="text-muted-foreground px-3 py-2 text-sm">No new chunks to import.</p>
                 ) : (
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm">
                             <thead>
-                                <tr className="border-b text-left text-muted-foreground">
+                                <tr className="text-muted-foreground border-b text-left">
                                     <th className="px-3 py-2 font-medium">Path</th>
                                     <th className="px-3 py-2 font-medium">Title</th>
                                     <th className="px-3 py-2 font-medium">Type</th>
@@ -207,48 +195,33 @@ export function StepReview({
                                     return (
                                         <tr
                                             key={pf.path}
-                                            className={`border-b last:border-0 cursor-pointer hover:bg-muted/50 transition-colors ${
-                                                hasTemplate
-                                                    ? "bg-green-50/50 dark:bg-green-950/20"
-                                                    : ""
+                                            className={`hover:bg-muted/50 cursor-pointer border-b transition-colors last:border-0 ${
+                                                hasTemplate ? "bg-green-50/50 dark:bg-green-950/20" : ""
                                             }`}
                                             onClick={() => onGoToFile(pf.path)}
                                         >
-                                            <td className="px-3 py-2 font-mono text-xs text-muted-foreground max-w-[180px] truncate">
+                                            <td className="text-muted-foreground max-w-[180px] truncate px-3 py-2 font-mono text-xs">
                                                 {pf.path}
                                             </td>
-                                            <td className="px-3 py-2 max-w-[200px] truncate">
-                                                {config?.title ?? pf.title}
-                                            </td>
+                                            <td className="max-w-[200px] truncate px-3 py-2">{config?.title ?? pf.title}</td>
                                             <td className="px-3 py-2">
                                                 <Badge variant="secondary" className="text-xs">
                                                     {config?.type ?? pf.parsed.type}
                                                 </Badge>
                                             </td>
-                                            <td className="px-3 py-2 text-xs text-muted-foreground">
-                                                {config?.templateId
-                                                    ? pf.suggestedTemplate?.name ?? "—"
-                                                    : "—"}
+                                            <td className="text-muted-foreground px-3 py-2 text-xs">
+                                                {config?.templateId ? (pf.suggestedTemplate?.name ?? "—") : "—"}
                                             </td>
                                             <td className="px-3 py-2">
                                                 <div className="flex flex-wrap gap-1">
-                                                    {(config?.tags ?? pf.parsed.tags)
-                                                        .slice(0, 3)
-                                                        .map(tag => (
-                                                            <Badge
-                                                                key={tag}
-                                                                variant="outline"
-                                                                className="text-xs px-1 py-0"
-                                                            >
-                                                                {tag}
-                                                            </Badge>
-                                                        ))}
-                                                    {(config?.tags ?? pf.parsed.tags).length >
-                                                        3 && (
-                                                        <span className="text-xs text-muted-foreground">
-                                                            +
-                                                            {(config?.tags ?? pf.parsed.tags)
-                                                                .length - 3}
+                                                    {(config?.tags ?? pf.parsed.tags).slice(0, 3).map(tag => (
+                                                        <Badge key={tag} variant="outline" className="px-1 py-0 text-xs">
+                                                            {tag}
+                                                        </Badge>
+                                                    ))}
+                                                    {(config?.tags ?? pf.parsed.tags).length > 3 && (
+                                                        <span className="text-muted-foreground text-xs">
+                                                            +{(config?.tags ?? pf.parsed.tags).length - 3}
                                                         </span>
                                                     )}
                                                 </div>
@@ -271,23 +244,15 @@ export function StepReview({
                 borderColorClass="border-amber-200 dark:border-amber-800"
             >
                 {skippedFiles.length === 0 ? (
-                    <p className="text-sm text-muted-foreground px-3 py-2">
-                        No files will be skipped.
-                    </p>
+                    <p className="text-muted-foreground px-3 py-2 text-sm">No files will be skipped.</p>
                 ) : (
                     <div className="flex flex-col gap-1 px-3 py-2">
-                        <p className="text-sm text-muted-foreground mb-2">
-                            These files were already imported with identical content and will be
-                            skipped during import.
+                        <p className="text-muted-foreground mb-2 text-sm">
+                            These files were already imported with identical content and will be skipped during import.
                         </p>
                         {skippedFiles.map(pf => (
-                            <div
-                                key={pf.path}
-                                className="flex items-center gap-2 text-sm"
-                            >
-                                <span className="font-mono text-xs text-muted-foreground">
-                                    {pf.path}
-                                </span>
+                            <div key={pf.path} className="flex items-center gap-2 text-sm">
+                                <span className="text-muted-foreground font-mono text-xs">{pf.path}</span>
                             </div>
                         ))}
                     </div>
@@ -303,25 +268,18 @@ export function StepReview({
                 borderColorClass="border-purple-200 dark:border-purple-800"
             >
                 {connections.length === 0 ? (
-                    <p className="text-sm text-muted-foreground px-3 py-2">
-                        No folder connections detected. Add an index.md or readme.md file to a
-                        folder to create part_of connections.
+                    <p className="text-muted-foreground px-3 py-2 text-sm">
+                        No folder connections detected. Add an index.md or readme.md file to a folder to create part_of connections.
                     </p>
                 ) : (
                     <div className="flex flex-col gap-1 px-3 py-2">
                         {connections.map((c, i) => (
                             <div key={i} className="flex items-center gap-2 text-sm">
-                                <span className="font-mono text-xs text-muted-foreground truncate max-w-[200px]">
-                                    {c.source}
-                                </span>
-                                <span className="text-purple-500 shrink-0">→</span>
-                                <span className="text-xs text-purple-600 dark:text-purple-400 shrink-0">
-                                    part_of
-                                </span>
-                                <span className="text-purple-500 shrink-0">→</span>
-                                <span className="font-mono text-xs text-muted-foreground truncate max-w-[200px]">
-                                    {c.target}
-                                </span>
+                                <span className="text-muted-foreground max-w-[200px] truncate font-mono text-xs">{c.source}</span>
+                                <span className="shrink-0 text-purple-500">→</span>
+                                <span className="shrink-0 text-xs text-purple-600 dark:text-purple-400">part_of</span>
+                                <span className="shrink-0 text-purple-500">→</span>
+                                <span className="text-muted-foreground max-w-[200px] truncate font-mono text-xs">{c.target}</span>
                             </div>
                         ))}
                     </div>
@@ -329,7 +287,7 @@ export function StepReview({
             </CollapsibleSection>
 
             {/* Space reminder */}
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <div className="text-muted-foreground flex items-center gap-2 text-sm">
                 <span>Importing into:</span>
                 <Badge variant="secondary">{spaceName}</Badge>
             </div>
@@ -354,9 +312,7 @@ function StatCard({ value, label, subtitle, colorClass, bgClass }: StatCardProps
         <div className={`rounded-lg border p-3 ${bgClass}`}>
             <div className={`text-2xl font-bold ${colorClass}`}>{value}</div>
             <div className="text-sm font-medium">{label}</div>
-            {subtitle && (
-                <div className="text-xs text-muted-foreground">{subtitle}</div>
-            )}
+            {subtitle && <div className="text-muted-foreground text-xs">{subtitle}</div>}
         </div>
     );
 }
@@ -370,26 +326,15 @@ interface CollapsibleSectionProps {
     children: React.ReactNode;
 }
 
-function CollapsibleSection({
-    title,
-    expanded,
-    onToggle,
-    headerColorClass,
-    borderColorClass,
-    children
-}: CollapsibleSectionProps) {
+function CollapsibleSection({ title, expanded, onToggle, headerColorClass, borderColorClass, children }: CollapsibleSectionProps) {
     return (
         <div className={`rounded-lg border ${borderColorClass} overflow-hidden`}>
             <button
                 type="button"
-                className={`flex w-full items-center gap-2 px-3 py-2.5 text-sm font-medium hover:bg-muted/30 transition-colors ${headerColorClass}`}
+                className={`hover:bg-muted/30 flex w-full items-center gap-2 px-3 py-2.5 text-sm font-medium transition-colors ${headerColorClass}`}
                 onClick={onToggle}
             >
-                {expanded ? (
-                    <ChevronDown className="size-4 shrink-0" />
-                ) : (
-                    <ChevronRight className="size-4 shrink-0" />
-                )}
+                {expanded ? <ChevronDown className="size-4 shrink-0" /> : <ChevronRight className="size-4 shrink-0" />}
                 {title}
             </button>
             {expanded && <div className="border-t">{children}</div>}

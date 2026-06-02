@@ -7,7 +7,7 @@ import {
     DropdownMenuItem,
     DropdownMenuLabel,
     DropdownMenuSeparator,
-    DropdownMenuTrigger,
+    DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 
@@ -57,9 +57,7 @@ export function DocFilterPresets({ currentFilters, onApplyPreset }: DocFilterPre
                     <DropdownMenuLabel>Saved Presets</DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     {presets.length === 0 ? (
-                        <div className="text-muted-foreground px-2 py-3 text-center text-xs">
-                            No saved presets yet
-                        </div>
+                        <div className="text-muted-foreground px-2 py-3 text-center text-xs">No saved presets yet</div>
                     ) : (
                         presets.map((preset, i) => (
                             <DropdownMenuItem
@@ -71,7 +69,7 @@ export function DocFilterPresets({ currentFilters, onApplyPreset }: DocFilterPre
                                 <button
                                     type="button"
                                     className="text-muted-foreground hover:text-destructive shrink-0 rounded p-0.5 transition-colors"
-                                    onClick={(e) => handleDelete(i, e)}
+                                    onClick={e => handleDelete(i, e)}
                                     aria-label={`Delete preset ${preset.name}`}
                                 >
                                     <Trash2 className="size-3" />
@@ -90,16 +88,31 @@ export function DocFilterPresets({ currentFilters, onApplyPreset }: DocFilterPre
                         onChange={e => setPresetName(e.target.value)}
                         onKeyDown={e => {
                             if (e.key === "Enter") handleSave();
-                            if (e.key === "Escape") { setIsSaving(false); setPresetName(""); }
+                            if (e.key === "Escape") {
+                                setIsSaving(false);
+                                setPresetName("");
+                            }
                         }}
                         placeholder="Name..."
-                        className="bg-background border-input min-w-0 flex-1 rounded border px-1.5 py-0.5 text-[10px] outline-none focus:ring-1 focus:ring-ring"
+                        className="bg-background border-input focus:ring-ring min-w-0 flex-1 rounded border px-1.5 py-0.5 text-[10px] outline-none focus:ring-1"
                         autoFocus
                     />
-                    <button type="button" onClick={handleSave} disabled={!presetName.trim()} className="text-muted-foreground hover:text-foreground disabled:opacity-40">
+                    <button
+                        type="button"
+                        onClick={handleSave}
+                        disabled={!presetName.trim()}
+                        className="text-muted-foreground hover:text-foreground disabled:opacity-40"
+                    >
                         <Save className="size-3" />
                     </button>
-                    <button type="button" onClick={() => { setIsSaving(false); setPresetName(""); }} className="text-muted-foreground hover:text-foreground">
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setIsSaving(false);
+                            setPresetName("");
+                        }}
+                        className="text-muted-foreground hover:text-foreground"
+                    >
                         <X className="size-3" />
                     </button>
                 </div>

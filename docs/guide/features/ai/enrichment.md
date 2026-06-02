@@ -1,8 +1,8 @@
 ---
 tags:
-  - guide
-  - ai
-  - enrichment
+    - guide
+    - ai
+    - enrichment
 description: Auto-generated summaries, aliases, and metadata via Ollama
 ---
 
@@ -30,11 +30,14 @@ In the web UI, click the "Enrich" button on any chunk's detail page.
 
 ## Vector Embeddings
 
-Each chunk gets a 768-dimensional vector embedding using `nomic-embed-text`. These power semantic search — finding chunks by meaning rather than exact keyword matches.
+Each chunk gets a 768-dimensional vector embedding using `nomic-embed-text`. These power semantic search — finding chunks by meaning rather
+than exact keyword matches.
 
 Embeddings are generated:
+
 - Automatically when a chunk is created or its content changes
 - In bulk via `fubbik enrich --all`
 - On demand via the enrich button
 
-The `embeddingUpdatedAt` field tracks when each chunk's embedding was last refreshed. The health dashboard flags chunks with stale embeddings.
+The `embeddingUpdatedAt` field tracks when each chunk's embedding was last refreshed. The health dashboard flags chunks with stale
+embeddings.

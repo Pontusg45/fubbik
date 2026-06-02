@@ -1,6 +1,6 @@
 import { lookupChunksByFilePath } from "@fubbik/db/repository";
-import { Effect } from "effect";
 import type { RequirementStep } from "@fubbik/db/schema/requirement";
+import { Effect } from "effect";
 
 export interface CrossRefWarning {
     step: number;
@@ -24,10 +24,7 @@ function extractFilePaths(text: string): string[] {
     return [...new Set(paths)];
 }
 
-export function crossReferenceSteps(
-    steps: RequirementStep[],
-    userId: string
-): Effect.Effect<CrossRefWarning[], never> {
+export function crossReferenceSteps(steps: RequirementStep[], userId: string): Effect.Effect<CrossRefWarning[], never> {
     return Effect.tryPromise({
         try: async () => {
             const warnings: CrossRefWarning[] = [];
@@ -36,9 +33,7 @@ export function crossReferenceSteps(
                 const paths = extractFilePaths(steps[i]!.text);
                 for (const path of paths) {
                     const results = await Effect.runPromise(
-                        lookupChunksByFilePath(path, userId).pipe(
-                            Effect.catchAll(() => Effect.succeed([]))
-                        )
+                        lookupChunksByFilePath(path, userId).pipe(Effect.catchAll(() => Effect.succeed([])))
                     );
                     if (results.length === 0) {
                         warnings.push({

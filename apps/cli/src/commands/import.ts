@@ -80,10 +80,7 @@ function parseFrontmatter(content: string): {
 export const importCommand = new Command("import")
     .description("Import chunks from a JSON file, markdown file, or directory")
     .argument("<path>", "path to JSON file, .md file, or directory of .md files")
-    .option(
-        "--server",
-        "send to server (required for frontmatter parsing and space scoping)"
-    )
+    .option("--server", "send to server (required for frontmatter parsing and space scoping)")
     .option("-s, --space <name>", "space name (implies --server)")
     .option("--codebase <name>", "alias for --space (deprecated)")
     .option("--type <type>", "default chunk type", "document")
@@ -123,9 +120,7 @@ export const importCommand = new Command("import")
                 if (useServer) {
                     const serverUrl = getServerUrl();
                     if (!serverUrl) {
-                        outputError(
-                            "No server URL configured. Run 'fubbik init' first."
-                        );
+                        outputError("No server URL configured. Run 'fubbik init' first.");
                         process.exit(1);
                     }
                     const res = await fetch(`${serverUrl}/api/chunks/import`, {
@@ -139,13 +134,7 @@ export const importCommand = new Command("import")
                         process.exit(1);
                     }
                     const data = (await res.json()) as { imported: number };
-                    output(
-                        cmd,
-                        data,
-                        formatSuccess(
-                            `Imported ${data.imported} chunks to server`
-                        )
-                    );
+                    output(cmd, data, formatSuccess(`Imported ${data.imported} chunks to server`));
                 } else {
                     const added = chunks.map((c: any) =>
                         addChunk({
@@ -156,11 +145,7 @@ export const importCommand = new Command("import")
                         })
                     );
                     outputQuiet(cmd, added.map(a => a.id).join("\n"));
-                    output(
-                        cmd,
-                        { added: added.length },
-                        formatSuccess(`Imported ${added.length} chunks locally`)
-                    );
+                    output(cmd, { added: added.length }, formatSuccess(`Imported ${added.length} chunks locally`));
                 }
                 return;
             }
@@ -176,9 +161,7 @@ export const importCommand = new Command("import")
                 baseDir = resolve(inputPath);
                 mdFiles = collectMarkdownFiles(baseDir, opts.recursive);
             } else {
-                outputError(
-                    "Path must be a .json file, .md file, or directory."
-                );
+                outputError("Path must be a .json file, .md file, or directory.");
                 process.exit(1);
             }
 
@@ -187,9 +170,7 @@ export const importCommand = new Command("import")
                 process.exit(1);
             }
             if (mdFiles.length > 500) {
-                outputError(
-                    `Found ${mdFiles.length} files, max is 500. Import in smaller batches.`
-                );
+                outputError(`Found ${mdFiles.length} files, max is 500. Import in smaller batches.`);
                 process.exit(1);
             }
 
@@ -197,9 +178,7 @@ export const importCommand = new Command("import")
                 // Server mode: send raw files for server-side frontmatter parsing
                 const serverUrl = getServerUrl();
                 if (!serverUrl) {
-                    outputError(
-                        "No server URL configured. Run 'fubbik init' first."
-                    );
+                    outputError("No server URL configured. Run 'fubbik init' first.");
                     process.exit(1);
                 }
                 const spaceId = await resolveSpaceId(serverUrl, {
@@ -216,14 +195,11 @@ export const importCommand = new Command("import")
                 }));
 
                 try {
-                    const res = await fetch(
-                        `${serverUrl}/api/chunks/import-docs`,
-                        {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ files, spaceId })
-                        }
-                    );
+                    const res = await fetch(`${serverUrl}/api/chunks/import-docs`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ files, spaceId })
+                    });
 
                     if (!res.ok) {
                         const text = await res.text();
@@ -244,13 +220,7 @@ export const importCommand = new Command("import")
                     }
 
                     outputQuiet(cmd, String(data.created));
-                    output(
-                        cmd,
-                        data,
-                        formatSuccess(
-                            `Created: ${data.created} | Skipped: ${data.skipped} | Errors: ${data.errors.length}`
-                        )
-                    );
+                    output(cmd, data, formatSuccess(`Created: ${data.created} | Skipped: ${data.skipped} | Errors: ${data.errors.length}`));
                 } catch (err) {
                     outputError(`Failed to connect to server: ${err}`);
                     process.exit(1);
@@ -261,9 +231,7 @@ export const importCommand = new Command("import")
                 for (const filePath of mdFiles) {
                     const raw = readFileSync(filePath, "utf-8");
                     const { meta, body } = parseFrontmatter(raw);
-                    const title =
-                        (meta.title as string)?.replace(/^"|"$/g, "") ??
-                        titleFromFilename(filePath);
+                    const title = (meta.title as string)?.replace(/^"|"$/g, "") ?? titleFromFilename(filePath);
                     const fmTags = Array.isArray(meta.tags) ? meta.tags : [];
                     const folderTags = tagsFromPath(filePath, baseDir);
                     const tags = [...new Set([...fmTags, ...folderTags])];
@@ -281,9 +249,7 @@ export const importCommand = new Command("import")
                 output(
                     cmd,
                     { added: added.length, files: mdFiles.length },
-                    formatSuccess(
-                        `Imported ${added.length} chunks from ${mdFiles.length} files`
-                    )
+                    formatSuccess(`Imported ${added.length} chunks from ${mdFiles.length} files`)
                 );
             }
         }

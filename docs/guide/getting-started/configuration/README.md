@@ -1,7 +1,7 @@
 ---
 tags:
-  - guide
-  - configuration
+    - guide
+    - configuration
 description: Configuration section index — environment, database, and Ollama setup
 ---
 

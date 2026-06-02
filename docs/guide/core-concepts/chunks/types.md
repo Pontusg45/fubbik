@@ -1,8 +1,8 @@
 ---
 tags:
-  - guide
-  - chunks
-  - types
+    - guide
+    - chunks
+    - types
 description: Chunk types and decision context fields
 ---
 
@@ -10,13 +10,13 @@ description: Chunk types and decision context fields
 
 ## Types
 
-| Type | Use For |
-|------|---------|
-| `note` | General knowledge, conventions, tips |
-| `document` | Architecture docs, guides, imported docs |
+| Type        | Use For                                  |
+| ----------- | ---------------------------------------- |
+| `note`      | General knowledge, conventions, tips     |
+| `document`  | Architecture docs, guides, imported docs |
 | `reference` | API docs, specifications, external links |
-| `schema` | Data models, type definitions |
-| `checklist` | Step-by-step procedures, runbooks |
+| `schema`    | Data models, type definitions            |
+| `checklist` | Step-by-step procedures, runbooks        |
 
 ## Decision Context
 

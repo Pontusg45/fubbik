@@ -1,10 +1,13 @@
 # Docs as Chunks — Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to
+> implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Import markdown docs, split on H2 headings into ordered chunks tracked by a document entity, and render them as browsable pages in the web UI.
+**Goal:** Import markdown docs, split on H2 headings into ordered chunks tracked by a document entity, and render them as browsable pages in
+the web UI.
 
-**Architecture:** New `document` table with source path + content hash tracking. Two new nullable columns on `chunk` (`documentId`, `documentOrder`). New API route module, CLI subcommand group, and a "Documents" tab on the existing `/docs` page.
+**Architecture:** New `document` table with source path + content hash tracking. Two new nullable columns on `chunk` (`documentId`,
+`documentOrder`). New API route module, CLI subcommand group, and a "Documents" tab on the existing `/docs` page.
 
 **Tech Stack:** Drizzle ORM, Effect, Elysia, TanStack Router + React Query, Commander.js
 
@@ -13,33 +16,36 @@
 ## File Structure
 
 ### New Files
-| File | Responsibility |
-|------|---------------|
-| `packages/db/src/schema/document.ts` | Document table + relations |
-| `packages/db/src/repository/document.ts` | Document CRUD with Effect |
-| `packages/api/src/documents/service.ts` | Split, sync, render logic |
-| `packages/api/src/documents/routes.ts` | HTTP endpoints |
-| `packages/api/src/documents/split-markdown.ts` | H2 splitting function |
-| `packages/api/src/documents/split-markdown.test.ts` | Tests for splitting |
-| `packages/api/src/documents/service.test.ts` | Tests for sync logic |
-| `apps/cli/src/commands/docs.ts` | CLI subcommand group |
-| `apps/web/src/features/documents/document-browser.tsx` | Sidebar + content reader |
+
+| File                                                   | Responsibility             |
+| ------------------------------------------------------ | -------------------------- |
+| `packages/db/src/schema/document.ts`                   | Document table + relations |
+| `packages/db/src/repository/document.ts`               | Document CRUD with Effect  |
+| `packages/api/src/documents/service.ts`                | Split, sync, render logic  |
+| `packages/api/src/documents/routes.ts`                 | HTTP endpoints             |
+| `packages/api/src/documents/split-markdown.ts`         | H2 splitting function      |
+| `packages/api/src/documents/split-markdown.test.ts`    | Tests for splitting        |
+| `packages/api/src/documents/service.test.ts`           | Tests for sync logic       |
+| `apps/cli/src/commands/docs.ts`                        | CLI subcommand group       |
+| `apps/web/src/features/documents/document-browser.tsx` | Sidebar + content reader   |
 
 ### Modified Files
-| File | Changes |
-|------|---------|
-| `packages/db/src/schema/chunk.ts` | Add `documentId`, `documentOrder` columns |
-| `packages/db/src/schema/index.ts` | Export document schema |
-| `packages/db/src/repository/index.ts` | Export document repository |
-| `packages/api/src/index.ts` | Mount document routes |
-| `apps/cli/src/index.ts` | Register docs command |
-| `apps/web/src/routes/docs.tsx` | Add "Documents" tab |
+
+| File                                  | Changes                                   |
+| ------------------------------------- | ----------------------------------------- |
+| `packages/db/src/schema/chunk.ts`     | Add `documentId`, `documentOrder` columns |
+| `packages/db/src/schema/index.ts`     | Export document schema                    |
+| `packages/db/src/repository/index.ts` | Export document repository                |
+| `packages/api/src/index.ts`           | Mount document routes                     |
+| `apps/cli/src/index.ts`               | Register docs command                     |
+| `apps/web/src/routes/docs.tsx`        | Add "Documents" tab                       |
 
 ---
 
 ### Task 1: Database Schema — Document Table
 
 **Files:**
+
 - Create: `packages/db/src/schema/document.ts`
 - Modify: `packages/db/src/schema/chunk.ts`
 - Modify: `packages/db/src/schema/index.ts`
@@ -92,11 +98,13 @@ export const documentRelations = relations(document, ({ one, many }) => ({
 In `packages/db/src/schema/chunk.ts`, add two columns to the `chunk` table definition and an import for the `document` table:
 
 Add import at the top:
+
 ```typescript
 import { document } from "./document";
 ```
 
 Add columns after `archivedAt`:
+
 ```typescript
         documentId: text("document_id").references(() => document.id, { onDelete: "set null" }),
         documentOrder: integer("document_order"),
@@ -105,13 +113,17 @@ Add columns after `archivedAt`:
 Also add `integer` to the `drizzle-orm/pg-core` import.
 
 Add a unique index in the table's index array:
+
 ```typescript
-        uniqueIndex("chunk_document_order_idx").on(table.documentId, table.documentOrder).where(sql`${table.documentId} IS NOT NULL`)
+uniqueIndex("chunk_document_order_idx")
+    .on(table.documentId, table.documentOrder)
+    .where(sql`${table.documentId} IS NOT NULL`);
 ```
 
 Also add `sql` to the `drizzle-orm` import.
 
 Add a relation to `chunkRelations`:
+
 ```typescript
     document: one(document, { fields: [chunk.documentId], references: [document.id] }),
 ```
@@ -119,14 +131,14 @@ Add a relation to `chunkRelations`:
 - [ ] **Step 3: Export document schema from index**
 
 Add to `packages/db/src/schema/index.ts`:
+
 ```typescript
 export * from "./document";
 ```
 
 - [ ] **Step 4: Push schema to database**
 
-Run: `cd packages/db && pnpm db:push`
-Expected: Schema changes applied (new table + new columns)
+Run: `cd packages/db && pnpm db:push` Expected: Schema changes applied (new table + new columns)
 
 - [ ] **Step 5: Commit**
 
@@ -140,6 +152,7 @@ git commit -m "feat(db): add document table and chunk document columns"
 ### Task 2: H2 Markdown Splitting Function
 
 **Files:**
+
 - Create: `packages/api/src/documents/split-markdown.ts`
 - Test: `packages/api/src/documents/split-markdown.test.ts`
 
@@ -262,8 +275,7 @@ Just some content with no H2 headings.
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd packages/api && pnpm vitest run src/documents/split-markdown.test.ts`
-Expected: FAIL — module not found
+Run: `cd packages/api && pnpm vitest run src/documents/split-markdown.test.ts` Expected: FAIL — module not found
 
 - [ ] **Step 3: Implement the splitting function**
 
@@ -336,9 +348,7 @@ export function splitMarkdown(raw: string, filePath: string): SplitResult {
     for (let i = 0; i < matches.length; i++) {
         const heading = matches[i]!;
         const nextIndex = i + 1 < matches.length ? matches[i + 1]!.index : content.length;
-        const sectionContent = content
-            .slice(heading.index + `## ${heading.title}`.length + 1, nextIndex)
-            .trim();
+        const sectionContent = content.slice(heading.index + `## ${heading.title}`.length + 1, nextIndex).trim();
 
         sections.push({
             title: heading.title,
@@ -351,23 +361,26 @@ export function splitMarkdown(raw: string, filePath: string): SplitResult {
 }
 ```
 
-Note: This requires `extractFrontmatter` to be exported from `packages/api/src/chunks/parse-docs.ts`. If it's not already exported, add `export` to the function declaration.
+Note: This requires `extractFrontmatter` to be exported from `packages/api/src/chunks/parse-docs.ts`. If it's not already exported, add
+`export` to the function declaration.
 
 - [ ] **Step 4: Export extractFrontmatter from parse-docs**
 
 In `packages/api/src/chunks/parse-docs.ts`, change:
+
 ```typescript
-function extractFrontmatter(raw: string)
+function extractFrontmatter(raw: string);
 ```
+
 to:
+
 ```typescript
-export function extractFrontmatter(raw: string)
+export function extractFrontmatter(raw: string);
 ```
 
 - [ ] **Step 5: Run test to verify it passes**
 
-Run: `cd packages/api && pnpm vitest run src/documents/split-markdown.test.ts`
-Expected: All 6 tests PASS
+Run: `cd packages/api && pnpm vitest run src/documents/split-markdown.test.ts` Expected: All 6 tests PASS
 
 - [ ] **Step 6: Commit**
 
@@ -381,6 +394,7 @@ git commit -m "feat: add H2 markdown splitting function with tests"
 ### Task 3: Document Repository
 
 **Files:**
+
 - Create: `packages/db/src/repository/document.ts`
 - Modify: `packages/db/src/repository/index.ts`
 
@@ -435,7 +449,10 @@ export function getDocumentBySourcePath(sourcePath: string, codebaseId: string |
             } else {
                 conditions.push(isNull(document.codebaseId));
             }
-            const [doc] = await db.select().from(document).where(and(...conditions));
+            const [doc] = await db
+                .select()
+                .from(document)
+                .where(and(...conditions));
             return doc ?? null;
         },
         catch: cause => new DatabaseError({ cause })
@@ -503,11 +520,7 @@ export function deleteDocument(id: string) {
 export function getDocumentChunks(documentId: string) {
     return Effect.tryPromise({
         try: async () => {
-            const chunks = await db
-                .select()
-                .from(chunk)
-                .where(eq(chunk.documentId, documentId))
-                .orderBy(chunk.documentOrder);
+            const chunks = await db.select().from(chunk).where(eq(chunk.documentId, documentId)).orderBy(chunk.documentOrder);
             return chunks;
         },
         catch: cause => new DatabaseError({ cause })
@@ -518,6 +531,7 @@ export function getDocumentChunks(documentId: string) {
 - [ ] **Step 2: Export from repository index**
 
 Add to `packages/db/src/repository/index.ts`:
+
 ```typescript
 export * from "./document";
 ```
@@ -534,6 +548,7 @@ git commit -m "feat(db): add document repository with CRUD operations"
 ### Task 4: Document Service — Import & Render
 
 **Files:**
+
 - Create: `packages/api/src/documents/service.ts`
 
 - [ ] **Step 1: Create the document service**
@@ -568,12 +583,7 @@ function hashContent(content: string): string {
     return hasher.digest("hex");
 }
 
-export function importDocument(
-    userId: string,
-    sourcePath: string,
-    rawContent: string,
-    codebaseId?: string
-) {
+export function importDocument(userId: string, sourcePath: string, rawContent: string, codebaseId?: string) {
     return Effect.gen(function* () {
         const contentHash = hashContent(rawContent);
 
@@ -625,12 +635,7 @@ export function importDocument(
     });
 }
 
-export function syncDocument(
-    documentId: string,
-    rawContent: string,
-    userId: string,
-    codebaseId?: string
-) {
+export function syncDocument(documentId: string, rawContent: string, userId: string, codebaseId?: string) {
     return Effect.gen(function* () {
         const doc = yield* getDocumentById(documentId);
         if (!doc) return yield* Effect.fail(new NotFoundError({ resource: "document" }));
@@ -760,6 +765,7 @@ git commit -m "feat: add document service with import, sync, and render"
 ### Task 5: Document API Routes
 
 **Files:**
+
 - Create: `packages/api/src/documents/routes.ts`
 - Modify: `packages/api/src/index.ts`
 
@@ -778,11 +784,7 @@ export const documentRoutes = new Elysia()
         "/documents",
         ctx =>
             Effect.runPromise(
-                requireSession(ctx).pipe(
-                    Effect.flatMap(session =>
-                        documentService.listDocuments(session.user.id, ctx.query.codebaseId)
-                    )
-                )
+                requireSession(ctx).pipe(Effect.flatMap(session => documentService.listDocuments(session.user.id, ctx.query.codebaseId)))
             ),
         {
             query: t.Object({
@@ -792,12 +794,7 @@ export const documentRoutes = new Elysia()
     )
     .get(
         "/documents/:id",
-        ctx =>
-            Effect.runPromise(
-                requireSession(ctx).pipe(
-                    Effect.flatMap(() => documentService.getDocument(ctx.params.id))
-                )
-            ),
+        ctx => Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(() => documentService.getDocument(ctx.params.id)))),
         {
             params: t.Object({ id: t.String() })
         }
@@ -808,12 +805,7 @@ export const documentRoutes = new Elysia()
             Effect.runPromise(
                 requireSession(ctx).pipe(
                     Effect.flatMap(session =>
-                        documentService.importDocument(
-                            session.user.id,
-                            ctx.body.sourcePath,
-                            ctx.body.content,
-                            ctx.body.codebaseId
-                        )
+                        documentService.importDocument(session.user.id, ctx.body.sourcePath, ctx.body.content, ctx.body.codebaseId)
                     )
                 )
             ),
@@ -832,12 +824,7 @@ export const documentRoutes = new Elysia()
                 requireSession(ctx).pipe(
                     Effect.flatMap(session =>
                         Effect.forEach(ctx.body.files, file =>
-                            documentService.importDocument(
-                                session.user.id,
-                                file.sourcePath,
-                                file.content,
-                                ctx.body.codebaseId
-                            )
+                            documentService.importDocument(session.user.id, file.sourcePath, file.content, ctx.body.codebaseId)
                         )
                     )
                 )
@@ -861,12 +848,7 @@ export const documentRoutes = new Elysia()
             Effect.runPromise(
                 requireSession(ctx).pipe(
                     Effect.flatMap(session =>
-                        documentService.syncDocument(
-                            ctx.params.id,
-                            ctx.body.content,
-                            session.user.id,
-                            ctx.body.codebaseId
-                        )
+                        documentService.syncDocument(ctx.params.id, ctx.body.content, session.user.id, ctx.body.codebaseId)
                     )
                 )
             ),
@@ -880,24 +862,14 @@ export const documentRoutes = new Elysia()
     )
     .get(
         "/documents/:id/render",
-        ctx =>
-            Effect.runPromise(
-                requireSession(ctx).pipe(
-                    Effect.flatMap(() => documentService.renderDocument(ctx.params.id))
-                )
-            ),
+        ctx => Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(() => documentService.renderDocument(ctx.params.id)))),
         {
             params: t.Object({ id: t.String() })
         }
     )
     .delete(
         "/documents/:id",
-        ctx =>
-            Effect.runPromise(
-                requireSession(ctx).pipe(
-                    Effect.flatMap(() => documentService.removeDocument(ctx.params.id))
-                )
-            ),
+        ctx => Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(() => documentService.removeDocument(ctx.params.id)))),
         {
             params: t.Object({ id: t.String() })
         }
@@ -907,6 +879,7 @@ export const documentRoutes = new Elysia()
 - [ ] **Step 2: Mount routes in the API index**
 
 In `packages/api/src/index.ts`, add import:
+
 ```typescript
 import { documentRoutes } from "./documents/routes";
 ```
@@ -915,8 +888,7 @@ Add `.use(documentRoutes)` alongside the other `.use()` calls.
 
 - [ ] **Step 3: Verify the server starts**
 
-Run: `cd apps/server && pnpm dev`
-Expected: Server starts without errors. Check `http://localhost:3000/docs` shows the new endpoints.
+Run: `cd apps/server && pnpm dev` Expected: Server starts without errors. Check `http://localhost:3000/docs` shows the new endpoints.
 
 - [ ] **Step 4: Commit**
 
@@ -930,6 +902,7 @@ git commit -m "feat: add document API routes (list, detail, import, sync, render
 ### Task 6: Service Tests
 
 **Files:**
+
 - Create: `packages/api/src/documents/service.test.ts`
 
 - [ ] **Step 1: Write integration tests for import and sync**
@@ -1006,8 +979,7 @@ Just a simple reference document with no sections.
 
 - [ ] **Step 2: Run tests**
 
-Run: `cd packages/api && pnpm vitest run src/documents/`
-Expected: All tests PASS
+Run: `cd packages/api && pnpm vitest run src/documents/` Expected: All tests PASS
 
 - [ ] **Step 3: Commit**
 
@@ -1021,6 +993,7 @@ git commit -m "test: add document import flow tests"
 ### Task 7: CLI Docs Command
 
 **Files:**
+
 - Create: `apps/cli/src/commands/docs.ts`
 - Modify: `apps/cli/src/index.ts`
 
@@ -1069,8 +1042,7 @@ function collectMarkdownFiles(dir: string): string[] {
     return files;
 }
 
-export const docsCommand = new Command("docs")
-    .description("Manage imported documents");
+export const docsCommand = new Command("docs").description("Manage imported documents");
 
 docsCommand
     .command("import")
@@ -1200,7 +1172,9 @@ docsCommand
                     content,
                     codebaseId: doc.codebaseId
                 });
-                output(formatSuccess(`Synced "${result.document.title}" — ${result.created} new, ${result.updated} updated (${result.status})`));
+                output(
+                    formatSuccess(`Synced "${result.document.title}" — ${result.created} new, ${result.updated} updated (${result.status})`)
+                );
             } else {
                 // Sync all documents for codebase
                 const codebaseId = opts.codebase ? await resolveCodebaseId(opts.codebase) : undefined;
@@ -1254,19 +1228,20 @@ docsCommand
 - [ ] **Step 2: Register the docs command in CLI index**
 
 In `apps/cli/src/index.ts`, add import:
+
 ```typescript
 import { docsCommand } from "./commands/docs";
 ```
 
 Add after the other `addCommand` calls:
+
 ```typescript
 program.addCommand(docsCommand);
 ```
 
 - [ ] **Step 3: Verify CLI help**
 
-Run: `cd apps/cli && pnpm tsx src/index.ts docs --help`
-Expected: Shows docs subcommands (import, import-dir, list, show, sync, render)
+Run: `cd apps/cli && pnpm tsx src/index.ts docs --help` Expected: Shows docs subcommands (import, import-dir, list, show, sync, render)
 
 - [ ] **Step 4: Commit**
 
@@ -1280,12 +1255,13 @@ git commit -m "feat(cli): add docs subcommand group (import, sync, render, list)
 ### Task 8: Web UI — Documents Tab on /docs Page
 
 **Files:**
+
 - Create: `apps/web/src/features/documents/document-browser.tsx`
 - Modify: `apps/web/src/routes/docs.tsx`
 
 - [ ] **Step 1: Create the document browser component**
 
-```tsx
+````tsx
 // apps/web/src/features/documents/document-browser.tsx
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
@@ -1340,19 +1316,16 @@ function MarkdownContent({ content }: { content: string }) {
         .replace(/^#### (.+)$/gm, '<h4 class="text-sm font-semibold mt-4 mb-1">$1</h4>')
         .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
         .replace(/`([^`]+)`/g, '<code class="bg-muted px-1.5 py-0.5 rounded text-[13px] font-mono">$1</code>')
-        .replace(/^```(\w*)\n([\s\S]*?)```$/gm, (_m, _lang, code) =>
-            `<pre class="bg-muted/50 border rounded-lg p-4 text-[13px] font-mono overflow-x-auto my-3 leading-relaxed"><code>${code.trim()}</code></pre>`
+        .replace(
+            /^```(\w*)\n([\s\S]*?)```$/gm,
+            (_m, _lang, code) =>
+                `<pre class="bg-muted/50 border rounded-lg p-4 text-[13px] font-mono overflow-x-auto my-3 leading-relaxed"><code>${code.trim()}</code></pre>`
         )
         .replace(/^- (.+)$/gm, '<li class="text-sm ml-4 list-disc mb-1">$1</li>')
         .replace(/^\d+\. (.+)$/gm, '<li class="text-sm ml-4 list-decimal mb-1">$1</li>')
         .replace(/\n{2,}/g, '<div class="h-3"></div>');
 
-    return (
-        <div
-            className="text-foreground/90 text-sm leading-relaxed"
-            dangerouslySetInnerHTML={{ __html: html }}
-        />
-    );
+    return <div className="text-foreground/90 text-sm leading-relaxed" dangerouslySetInnerHTML={{ __html: html }} />;
 }
 
 export function DocumentBrowser() {
@@ -1380,9 +1353,7 @@ export function DocumentBrowser() {
         queryFn: async () => {
             if (!selectedDocId) return null;
             try {
-                return unwrapEden(
-                    await api.api.documents({ id: selectedDocId }).get()
-                ) as DocumentDetail;
+                return unwrapEden(await api.api.documents({ id: selectedDocId }).get()) as DocumentDetail;
             } catch {
                 return null;
             }
@@ -1392,7 +1363,9 @@ export function DocumentBrowser() {
 
     const docs = docsQuery.data ?? [];
     const filteredDocs = search
-        ? docs.filter(d => d.title.toLowerCase().includes(search.toLowerCase()) || d.sourcePath.toLowerCase().includes(search.toLowerCase()))
+        ? docs.filter(
+              d => d.title.toLowerCase().includes(search.toLowerCase()) || d.sourcePath.toLowerCase().includes(search.toLowerCase())
+          )
         : docs;
     const folderTree = useMemo(() => buildFolderTree(filteredDocs), [filteredDocs]);
     const detail = docDetailQuery.data;
@@ -1464,9 +1437,7 @@ export function DocumentBrowser() {
                         key={doc.id}
                         onClick={() => setSelectedDocId(doc.id)}
                         className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-                            selectedDocId === doc.id
-                                ? "bg-foreground text-background"
-                                : "bg-muted text-muted-foreground"
+                            selectedDocId === doc.id ? "bg-foreground text-background" : "bg-muted text-muted-foreground"
                         }`}
                     >
                         {doc.title}
@@ -1538,16 +1509,18 @@ export function DocumentBrowser() {
         </div>
     );
 }
-```
+````
 
 - [ ] **Step 2: Add Documents tab to the existing /docs route**
 
 In `apps/web/src/routes/docs.tsx`, add the import at the top:
+
 ```typescript
 import { DocumentBrowser } from "@/features/documents/document-browser";
 ```
 
 Add "documents" to the tab state type:
+
 ```typescript
 const [tab, setTab] = useState<"guide" | "dev" | "documents" | "api">(
     search.tab === "documents" ? "documents" : search.tab === "dev" ? "dev" : search.tab === "api" ? "api" : "guide"
@@ -1555,13 +1528,12 @@ const [tab, setTab] = useState<"guide" | "dev" | "documents" | "api">(
 ```
 
 Add the new tab button after the "Developer Docs" button (inside the tabs `<div>`):
+
 ```tsx
 <button
     onClick={() => setTab("documents")}
     className={`-mb-px border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
-        tab === "documents"
-            ? "border-foreground text-foreground"
-            : "text-muted-foreground hover:text-foreground border-transparent"
+        tab === "documents" ? "border-foreground text-foreground" : "text-muted-foreground hover:text-foreground border-transparent"
     }`}
 >
     <span className="flex items-center gap-2">
@@ -1574,11 +1546,15 @@ Add the new tab button after the "Developer Docs" button (inside the tabs `<div>
 Add the `FileText` import from lucide-react.
 
 Add the content section before the API tab content:
+
 ```tsx
-{tab === "documents" && <DocumentBrowser />}
+{
+    tab === "documents" && <DocumentBrowser />;
+}
 ```
 
 Update the `useEffect` to handle the "documents" tab:
+
 ```typescript
 if (search.tab === "documents") {
     setTab("documents");
@@ -1587,8 +1563,7 @@ if (search.tab === "documents") {
 
 - [ ] **Step 3: Verify the page loads**
 
-Run: `pnpm dev` and open `http://localhost:3001/docs?tab=documents`
-Expected: The Documents tab shows with the empty state message.
+Run: `pnpm dev` and open `http://localhost:3001/docs?tab=documents` Expected: The Documents tab shows with the empty state message.
 
 - [ ] **Step 4: Commit**
 
@@ -1601,9 +1576,11 @@ git commit -m "feat(web): add document browser tab to /docs page"
 
 ### Task 9: Update chunk repository params for documentId/documentOrder
 
-> **Note:** This task should be done right after Task 3 (before Task 4), since the document service depends on passing `documentId`/`documentOrder` to `createChunkRepo`/`updateChunkRepo`.
+> **Note:** This task should be done right after Task 3 (before Task 4), since the document service depends on passing
+> `documentId`/`documentOrder` to `createChunkRepo`/`updateChunkRepo`.
 
 **Files:**
+
 - Modify: `packages/db/src/repository/chunk.ts`
 
 - [ ] **Step 1: Ensure createChunk accepts documentId and documentOrder**
@@ -1618,19 +1595,20 @@ In `packages/db/src/repository/chunk.ts`, check the `CreateChunkParams` interfac
 And ensure the `createChunk` function passes these through in the `.values()` call.
 
 Similarly, in `UpdateChunkParams` add:
+
 ```typescript
     documentOrder?: number;
 ```
 
 And in the `updateChunk` function's `.set()` call:
+
 ```typescript
     ...(params.documentOrder !== undefined && { documentOrder: params.documentOrder }),
 ```
 
 - [ ] **Step 2: Verify nothing is broken**
 
-Run: `cd packages/api && pnpm vitest run`
-Expected: All existing tests still pass.
+Run: `cd packages/api && pnpm vitest run` Expected: All existing tests still pass.
 
 - [ ] **Step 3: Commit**
 
@@ -1682,25 +1660,25 @@ Expected: Success message showing 4 chunks created.
 
 - [ ] **Step 3: Verify list**
 
-Run: `cd apps/cli && pnpm tsx src/index.ts docs list`
-Expected: Shows the imported document with chunk count.
+Run: `cd apps/cli && pnpm tsx src/index.ts docs list` Expected: Shows the imported document with chunk count.
 
 - [ ] **Step 4: Verify render**
 
-Run: `cd apps/cli && pnpm tsx src/index.ts docs render <id from step 3>`
-Expected: Outputs reconstructed markdown matching original structure.
+Run: `cd apps/cli && pnpm tsx src/index.ts docs render <id from step 3>` Expected: Outputs reconstructed markdown matching original
+structure.
 
 - [ ] **Step 5: Test in web UI**
 
-Open `http://localhost:3001/docs?tab=documents`
-Expected: Document appears in sidebar, clicking shows ordered sections.
+Open `http://localhost:3001/docs?tab=documents` Expected: Document appears in sidebar, clicking shows ordered sections.
 
 - [ ] **Step 6: Test sync**
 
 Modify `/tmp/test-doc.md` (change content of one section), then:
+
 ```bash
 cd apps/cli && pnpm tsx src/index.ts docs sync <id>
 ```
+
 Expected: Shows updated count, unchanged sections preserved.
 
 - [ ] **Step 7: Final commit if any fixes needed**

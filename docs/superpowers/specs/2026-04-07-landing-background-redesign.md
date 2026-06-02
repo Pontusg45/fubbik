@@ -2,15 +2,18 @@
 
 ## Problem
 
-The current `KnowledgeGraphCanvas` background on the landing page is too busy. Labeled nodes with colored borders, text, and dashed edges compete with the hero content for attention. The background should support the content, not fight it.
+The current `KnowledgeGraphCanvas` background on the landing page is too busy. Labeled nodes with colored borders, text, and dashed edges
+compete with the hero content for attention. The background should support the content, not fight it.
 
 ## Design
 
-Replace the current labeled-node canvas animation with a **Soft Constellation** — abstract monochrome dots connected by barely-visible lines. No labels, no borders, no fills. The result hints at a knowledge graph without spelling it out.
+Replace the current labeled-node canvas animation with a **Soft Constellation** — abstract monochrome dots connected by barely-visible
+lines. No labels, no borders, no fills. The result hints at a knowledge graph without spelling it out.
 
 ### Visual Specification
 
 **Dots:**
+
 - ~10 primary dots, radius 1.5–2.5px
 - ~5 accent dots, radius 0.6–0.9px (scattered fill)
 - Monochrome palette: indigo-400 (`#818cf8`) and slate-400 (`#94a3b8`), alternating
@@ -18,14 +21,17 @@ Replace the current labeled-node canvas animation with a **Soft Constellation** 
 - Breathing animation: each dot pulses opacity over 4–11s (staggered, no two share a duration)
 
 **Edges:**
+
 - ~12 connection lines between primary dots
 - 0.5px stroke, slate-400 at 3–8% opacity
 - Breathing animation on opacity (5–10s cycles, staggered)
 
 **Ambient glow:**
+
 - Centered radial gradient, indigo at ~4% opacity, elliptical, covering upper-center area
 
 **Bottom fade:**
+
 - Linear gradient from background color upward, covering bottom 45% of canvas (unchanged from current)
 
 ### Animation
@@ -34,15 +40,18 @@ Replace the current labeled-node canvas animation with a **Soft Constellation** 
 
 **Breathing:** Independent opacity oscillation per dot and per edge. Staggered durations prevent synchronized pulsing.
 
-**Mouse proximity:** Dots within a 200px radius of the cursor brighten to ~0.6 opacity (smooth transition). Edges connected to brightened dots also brighten proportionally. No other mouse interaction — no repulsion, no click behavior.
+**Mouse proximity:** Dots within a 200px radius of the cursor brighten to ~0.6 opacity (smooth transition). Edges connected to brightened
+dots also brighten proportionally. No other mouse interaction — no repulsion, no click behavior.
 
-**Reduced motion:** When `prefers-reduced-motion: reduce` is active, skip all position updates (dots stay at initial positions). Breathing animation is CSS-driven and inherits the media query naturally.
+**Reduced motion:** When `prefers-reduced-motion: reduce` is active, skip all position updates (dots stay at initial positions). Breathing
+animation is CSS-driven and inherits the media query naturally.
 
 ### Implementation
 
 **File:** Replace the contents of `apps/web/src/features/landing/knowledge-graph-canvas.tsx`.
 
 **Approach:** Keep the existing canvas-based architecture. The component already handles:
+
 - DPR-aware canvas sizing
 - Resize listener
 - Mouse tracking
@@ -50,6 +59,7 @@ Replace the current labeled-node canvas animation with a **Soft Constellation** 
 - Reduced motion detection
 
 **Changes:**
+
 1. Remove `NODE_LABELS`, `NODE_TYPES`, `TYPE_COLORS`, `EDGE_TEMPLATES` constants
 2. Replace with dot position/size/opacity data and edge index pairs
 3. Simplify `createNodes` → `createDots` (no text measurement needed)
@@ -61,6 +71,7 @@ Replace the current labeled-node canvas animation with a **Soft Constellation** 
 9. Add per-dot and per-edge breathing phase (using `Math.sin` on elapsed time with per-element frequency)
 
 **No changes to:**
+
 - `apps/web/src/routes/index.tsx` (the background container and gradient overlay stay the same)
 - Canvas element class names or positioning
 - The component's public API (still a zero-prop `<KnowledgeGraphCanvas />`)
@@ -68,6 +79,7 @@ Replace the current labeled-node canvas animation with a **Soft Constellation** 
 ### Performance
 
 The new version is strictly lighter than the current one:
+
 - No `ctx.measureText` calls
 - No `ctx.fillText` calls
 - No `ctx.roundRect` + fill + stroke per node (replaced with single `ctx.arc` + fill)

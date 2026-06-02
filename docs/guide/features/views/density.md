@@ -1,8 +1,8 @@
 ---
 tags:
-  - guide
-  - views
-  - density
+    - guide
+    - views
+    - density
 description: Knowledge density map showing chunk distribution across file paths
 ---
 
@@ -12,7 +12,8 @@ The density view at `/density` visualizes how knowledge is distributed across yo
 
 ## How It Works
 
-File references and applies-to patterns from chunks are aggregated to build a tree of your codebase's directories. Directories with more associated chunks appear "hotter" (more knowledge-dense).
+File references and applies-to patterns from chunks are aggregated to build a tree of your codebase's directories. Directories with more
+associated chunks appear "hotter" (more knowledge-dense).
 
 ## Reading the Map
 

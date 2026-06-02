@@ -1,10 +1,12 @@
 # AI Requirement Suggestions — Implementation Plan
 
-> **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to
+> implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Add MCP tools for AI-driven requirement suggestions with context-aware batch creation and automatic use case resolution.
 
-**Architecture:** New `suggest-context` GET endpoint gathers focused knowledge base context. New `batch` POST endpoint creates multiple requirements with auto use case lookup/creation. Two new MCP tools wrap these endpoints. No schema changes needed.
+**Architecture:** New `suggest-context` GET endpoint gathers focused knowledge base context. New `batch` POST endpoint creates multiple
+requirements with auto use case lookup/creation. Two new MCP tools wrap these endpoints. No schema changes needed.
 
 **Tech Stack:** Elysia, Effect, Drizzle ORM, @modelcontextprotocol/sdk, Zod
 
@@ -15,6 +17,7 @@
 Gather focused context from the knowledge base for AI suggestion generation.
 
 **Files:**
+
 - Create: `packages/api/src/requirements/suggest-context-service.ts`
 - Modify: `packages/api/src/requirements/routes.ts`
 
@@ -48,19 +51,14 @@ interface SuggestContext {
     relevantChunks: Array<{ id: string; title: string; content: string }>;
 }
 
-export function getSuggestContext(
-    userId: string,
-    query: { focus?: string; codebaseId?: string }
-) {
+export function getSuggestContext(userId: string, query: { focus?: string; codebaseId?: string }) {
     return Effect.gen(function* () {
         // 1. Use cases with requirements
         const useCaseList = yield* listUseCases(userId, query.codebaseId);
         const useCasesWithReqs = [];
         for (const uc of useCaseList) {
             const reqs = yield* listRequirementsByUseCase(uc.id, userId);
-            const filtered = query.focus
-                ? reqs.filter(r => r.title.toLowerCase().includes(query.focus!.toLowerCase()))
-                : reqs;
+            const filtered = query.focus ? reqs.filter(r => r.title.toLowerCase().includes(query.focus!.toLowerCase())) : reqs;
             if (query.focus && filtered.length === 0 && reqs.length > 0) continue;
             useCasesWithReqs.push({
                 id: uc.id,
@@ -104,9 +102,7 @@ export function getSuggestContext(
         const coverage = yield* getChunkCoverage(userId, query.codebaseId);
         let gaps = coverage.filter((c: any) => Number(c.requirementCount) === 0);
         if (query.focus) {
-            gaps = gaps.filter((c: any) =>
-                c.title.toLowerCase().includes(query.focus!.toLowerCase())
-            );
+            gaps = gaps.filter((c: any) => c.title.toLowerCase().includes(query.focus!.toLowerCase()));
         }
         const coverageGaps = gaps.slice(0, query.focus ? 20 : 10).map((c: any) => ({
             id: c.id,
@@ -148,7 +144,9 @@ export function getSuggestContext(
 }
 ```
 
-Note: The exact function names and signatures may differ from what's shown. Read the actual repository files (`packages/db/src/repository/chunk.ts`, `packages/db/src/repository/use-case.ts`, etc.) to get the correct names and parameter shapes. The `listChunks` function might be called `listChunksForUser` or similar — check the chunk repository barrel export.
+Note: The exact function names and signatures may differ from what's shown. Read the actual repository files
+(`packages/db/src/repository/chunk.ts`, `packages/db/src/repository/use-case.ts`, etc.) to get the correct names and parameter shapes. The
+`listChunks` function might be called `listChunksForUser` or similar — check the chunk repository barrel export.
 
 - [ ] **Step 2: Add route to requirements routes**
 
@@ -191,6 +189,7 @@ git commit -m "feat: add suggest-context endpoint for AI requirement suggestions
 Batch create requirements with automatic use case resolution.
 
 **Files:**
+
 - Create: `packages/api/src/requirements/batch-service.ts`
 - Modify: `packages/api/src/requirements/routes.ts`
 - Modify: `packages/db/src/repository/use-case.ts` (add `getUseCaseByName`)
@@ -219,12 +218,7 @@ export function getUseCaseByName(userId: string, name: string) {
 Create `packages/api/src/requirements/batch-service.ts`:
 
 ```typescript
-import {
-    createRequirement,
-    createUseCase,
-    getUseCaseByName,
-    getUseCaseById
-} from "@fubbik/db/repository";
+import { createRequirement, createUseCase, getUseCaseByName, getUseCaseById } from "@fubbik/db/repository";
 import { Effect } from "effect";
 import { StepValidationError } from "../errors";
 import { validateSteps } from "./validator";
@@ -232,17 +226,14 @@ import { validateSteps } from "./validator";
 interface BatchRequirement {
     title: string;
     description?: string;
-    steps: Array<{ keyword: "given"|"when"|"then"|"and"|"but"; text: string }>;
+    steps: Array<{ keyword: "given" | "when" | "then" | "and" | "but"; text: string }>;
     priority?: string;
     useCaseId?: string;
     useCaseName?: string;
     parentUseCaseName?: string;
 }
 
-export function batchCreateRequirements(
-    userId: string,
-    body: { requirements: BatchRequirement[]; codebaseId?: string }
-) {
+export function batchCreateRequirements(userId: string, body: { requirements: BatchRequirement[]; codebaseId?: string }) {
     return Effect.gen(function* () {
         // 1. Validate all steps upfront
         const allErrors: Array<{ requirementIndex: number; errors: Array<{ step: number; error: string }> }> = [];
@@ -276,15 +267,18 @@ export function batchCreateRequirements(
                     parentId = useCaseCache.get(parentKey)!;
                 } else {
                     // Look up or create parent
-                    const existing = yield* getUseCaseByName(userId, req.parentUseCaseName);
+                    const existing = yield * getUseCaseByName(userId, req.parentUseCaseName);
                     if (existing) {
                         parentId = existing.id;
                     } else {
                         const id = crypto.randomUUID();
-                        yield* createUseCase({
-                            id, name: req.parentUseCaseName, userId,
-                            codebaseId: body.codebaseId
-                        });
+                        yield *
+                            createUseCase({
+                                id,
+                                name: req.parentUseCaseName,
+                                userId,
+                                codebaseId: body.codebaseId
+                            });
                         parentId = id;
                         useCasesCreated.push({ id, name: req.parentUseCaseName, parentId: null });
                     }
@@ -293,18 +287,21 @@ export function batchCreateRequirements(
             }
 
             // Look up or create the use case itself
-            const existing = yield* getUseCaseByName(userId, req.useCaseName);
+            const existing = yield * getUseCaseByName(userId, req.useCaseName);
             if (existing) {
                 useCaseCache.set(cacheKey, existing.id);
                 return existing.id;
             }
 
             const id = crypto.randomUUID();
-            yield* createUseCase({
-                id, name: req.useCaseName, userId,
-                codebaseId: body.codebaseId,
-                parentId
-            });
+            yield *
+                createUseCase({
+                    id,
+                    name: req.useCaseName,
+                    userId,
+                    codebaseId: body.codebaseId,
+                    parentId
+                });
             useCasesCreated.push({ id, name: req.useCaseName, parentId: parentId ?? null });
             useCaseCache.set(cacheKey, id);
             return id;
@@ -339,7 +336,9 @@ export function batchCreateRequirements(
 }
 ```
 
-IMPORTANT: The `resolveUseCaseId` function above mixes async/yield patterns. In practice, the implementer should use pure Effect.gen patterns throughout — no nested async functions. Use the cache Map with Effect operations. Read the existing service patterns in `packages/api/src/requirements/service.ts` to match the style.
+IMPORTANT: The `resolveUseCaseId` function above mixes async/yield patterns. In practice, the implementer should use pure Effect.gen
+patterns throughout — no nested async functions. Use the cache Map with Effect operations. Read the existing service patterns in
+`packages/api/src/requirements/service.ts` to match the style.
 
 - [ ] **Step 3: Add batch route**
 
@@ -396,6 +395,7 @@ git commit -m "feat: add batch requirement creation with use case resolution"
 Add the two new MCP tools.
 
 **Files:**
+
 - Create: `packages/mcp/src/suggestion-tools.ts`
 - Modify: `packages/mcp/src/index.ts`
 
@@ -422,9 +422,11 @@ export function registerSuggestionTools(server: McpServer): void {
             if (focus) params.set("focus", focus);
             if (codebaseId) params.set("codebaseId", codebaseId);
 
-            const data = await apiFetch(`/requirements/suggest-context?${params}`) as {
+            const data = (await apiFetch(`/requirements/suggest-context?${params}`)) as {
                 useCases: Array<{
-                    id: string; name: string; parentId: string | null;
+                    id: string;
+                    name: string;
+                    parentId: string | null;
                     requirementCount: number;
                     requirements: Array<{ id: string; title: string; status: string }>;
                 }>;
@@ -491,28 +493,39 @@ export function registerSuggestionTools(server: McpServer): void {
         "create_requirements_batch",
         "Batch create multiple requirements with automatic use case resolution. Use cases are created automatically if they don't exist.",
         {
-            requirements: z.array(z.object({
-                title: z.string().describe("Requirement title"),
-                description: z.string().optional().describe("Requirement description"),
-                steps: z.array(z.object({
-                    keyword: z.enum(["given", "when", "then", "and", "but"]),
-                    text: z.string()
-                })).min(1).describe("Given/When/Then steps"),
-                priority: z.enum(["must", "should", "could", "wont"]).optional().describe("MoSCoW priority"),
-                useCaseId: z.string().optional().describe("Existing use case ID"),
-                useCaseName: z.string().optional().describe("Use case name (created if doesn't exist)"),
-                parentUseCaseName: z.string().optional().describe("Parent use case name (created if doesn't exist)")
-            })).min(1).max(50).describe("Array of requirements to create"),
+            requirements: z
+                .array(
+                    z.object({
+                        title: z.string().describe("Requirement title"),
+                        description: z.string().optional().describe("Requirement description"),
+                        steps: z
+                            .array(
+                                z.object({
+                                    keyword: z.enum(["given", "when", "then", "and", "but"]),
+                                    text: z.string()
+                                })
+                            )
+                            .min(1)
+                            .describe("Given/When/Then steps"),
+                        priority: z.enum(["must", "should", "could", "wont"]).optional().describe("MoSCoW priority"),
+                        useCaseId: z.string().optional().describe("Existing use case ID"),
+                        useCaseName: z.string().optional().describe("Use case name (created if doesn't exist)"),
+                        parentUseCaseName: z.string().optional().describe("Parent use case name (created if doesn't exist)")
+                    })
+                )
+                .min(1)
+                .max(50)
+                .describe("Array of requirements to create"),
             codebaseId: z.string().optional().describe("Codebase ID to associate with")
         },
         async ({ requirements, codebaseId }) => {
             const body: Record<string, unknown> = { requirements };
             if (codebaseId) body.codebaseId = codebaseId;
 
-            const data = await apiFetch("/requirements/batch", {
+            const data = (await apiFetch("/requirements/batch", {
                 method: "POST",
                 body: JSON.stringify(body)
-            }) as {
+            })) as {
                 created: number;
                 requirements: Array<{ id: string; title: string; useCaseId: string | null }>;
                 useCasesCreated: Array<{ id: string; name: string; parentId: string | null }>;
@@ -541,11 +554,13 @@ export function registerSuggestionTools(server: McpServer): void {
 - [ ] **Step 2: Register in MCP server**
 
 In `packages/mcp/src/index.ts`, add:
+
 ```typescript
 import { registerSuggestionTools } from "./suggestion-tools.js";
 ```
 
 After existing registrations:
+
 ```typescript
 registerSuggestionTools(server);
 ```
@@ -573,6 +588,7 @@ Run: `pnpm test`
 - [ ] **Step 3: Manual verification**
 
 Test the MCP tools:
+
 ```bash
 # Start the API server
 pnpm dev

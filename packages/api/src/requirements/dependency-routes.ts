@@ -1,5 +1,6 @@
 import { Effect } from "effect";
 import { Elysia, t } from "elysia";
+
 import { requireSession } from "../require-session";
 import * as depService from "./dependency-service";
 
@@ -21,34 +22,28 @@ export const dependencyRoutes = new Elysia()
             })
         }
     )
-    .delete(
-        "/requirements/:id/dependencies/:dependsOnId",
-        ctx =>
-            Effect.runPromise(
-                Effect.gen(function* () {
-                    const session = yield* requireSession(ctx);
-                    yield* depService.removeDependency(ctx.params.id, ctx.params.dependsOnId, session.user.id);
-                    return { message: "Dependency removed" };
-                })
-            )
+    .delete("/requirements/:id/dependencies/:dependsOnId", ctx =>
+        Effect.runPromise(
+            Effect.gen(function* () {
+                const session = yield* requireSession(ctx);
+                yield* depService.removeDependency(ctx.params.id, ctx.params.dependsOnId, session.user.id);
+                return { message: "Dependency removed" };
+            })
+        )
     )
-    .get(
-        "/requirements/:id/dependencies",
-        ctx =>
-            Effect.runPromise(
-                Effect.gen(function* () {
-                    const session = yield* requireSession(ctx);
-                    return yield* depService.getDependencies(ctx.params.id, session.user.id);
-                })
-            )
+    .get("/requirements/:id/dependencies", ctx =>
+        Effect.runPromise(
+            Effect.gen(function* () {
+                const session = yield* requireSession(ctx);
+                return yield* depService.getDependencies(ctx.params.id, session.user.id);
+            })
+        )
     )
-    .get(
-        "/requirements/:id/dependencies/graph",
-        ctx =>
-            Effect.runPromise(
-                Effect.gen(function* () {
-                    const session = yield* requireSession(ctx);
-                    return yield* depService.getDependencyGraph(ctx.params.id, session.user.id);
-                })
-            )
+    .get("/requirements/:id/dependencies/graph", ctx =>
+        Effect.runPromise(
+            Effect.gen(function* () {
+                const session = yield* requireSession(ctx);
+                return yield* depService.getDependencyGraph(ctx.params.id, session.user.id);
+            })
+        )
     );

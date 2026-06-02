@@ -32,10 +32,7 @@ export function listVocabulary(userId: string, spaceId: string) {
     });
 }
 
-export function createEntry(
-    userId: string,
-    body: { word: string; category: string; expects?: string[]; spaceId: string }
-) {
+export function createEntry(userId: string, body: { word: string; category: string; expects?: string[]; spaceId: string }) {
     return Effect.gen(function* () {
         yield* verifySpaceOwnership(body.spaceId, userId);
 
@@ -79,11 +76,7 @@ export function createEntries(
     });
 }
 
-export function updateEntry(
-    id: string,
-    userId: string,
-    body: { word?: string; category?: string; expects?: string[] }
-) {
+export function updateEntry(id: string, userId: string, body: { word?: string; category?: string; expects?: string[] }) {
     return Effect.gen(function* () {
         const entry = yield* getVocabularyEntry(id);
         if (!entry) return yield* Effect.fail(new NotFoundError({ resource: "Vocabulary entry" }));
@@ -101,10 +94,7 @@ export function deleteEntry(id: string, userId: string) {
     });
 }
 
-export function parseStep(
-    userId: string,
-    body: { text: string; spaceId: string }
-) {
+export function parseStep(userId: string, body: { text: string; spaceId: string }) {
     return Effect.gen(function* () {
         yield* verifySpaceOwnership(body.spaceId, userId);
         const vocab = yield* listVocabularyRepo(body.spaceId);

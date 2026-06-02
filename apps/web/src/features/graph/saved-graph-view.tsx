@@ -14,16 +14,16 @@ import {
     type Edge,
     type Node
 } from "@xyflow/react";
+import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { ArrowLeft, Edit2, Pencil, Plus, Search, Trash2, X } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { Spinner } from "@/components/ui/spinner";
-import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { relationColor } from "@/features/chunks/relation-colors";
-import { TypedEdge } from "@/features/graph/typed-edge";
 import { GraphDetailPanel } from "@/features/graph/graph-detail-panel";
+import { TypedEdge } from "@/features/graph/typed-edge";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
@@ -33,8 +33,7 @@ const EDGE_TYPES = { floating: TypedEdge };
 function SavedGraphChunkNode({ data }: NodeProps) {
     const { label } = data as { label: string };
     return (
-        <div className="max-w-[250px] truncate rounded-[10px] border px-2.5 py-1.5 text-xs font-medium"
-            style={data as React.CSSProperties}>
+        <div className="max-w-[250px] truncate rounded-[10px] border px-2.5 py-1.5 text-xs font-medium" style={data as React.CSSProperties}>
             <Handle type="source" position={Position.Top} className="!invisible" />
             <Handle type="target" position={Position.Bottom} className="!invisible" />
             {label as string}
@@ -119,9 +118,9 @@ function SavedGraphViewInner() {
         queryKey: ["chunks", "graph-edit-search", debouncedSearch],
         queryFn: async () => {
             if (!debouncedSearch.trim()) return null;
-            const result = unwrapEden(
-                await api.api.chunks.get({ query: { search: debouncedSearch, limit: "10" } })
-            ) as { chunks?: Array<{ id: string; title: string; type: string }> } | null;
+            const result = unwrapEden(await api.api.chunks.get({ query: { search: debouncedSearch, limit: "10" } })) as {
+                chunks?: Array<{ id: string; title: string; type: string }>;
+            } | null;
             return result?.chunks ?? [];
         },
         enabled: !!debouncedSearch.trim() && editMode
@@ -163,9 +162,7 @@ function SavedGraphViewInner() {
     // Update positions mutation (for saving repositioned nodes)
     const updatePositionsMutation = useMutation({
         mutationFn: async (positions: Record<string, { x: number; y: number }>) => {
-            return unwrapEden(
-                await api.api["saved-graphs"]({ id: graphId }).patch({ positions })
-            );
+            return unwrapEden(await api.api["saved-graphs"]({ id: graphId }).patch({ positions }));
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["saved-graphs", graphId] });
@@ -176,9 +173,7 @@ function SavedGraphViewInner() {
     // Save edit changes mutation
     const saveEditMutation = useMutation({
         mutationFn: async (payload: { chunkIds: string[]; positions: Record<string, { x: number; y: number }> }) => {
-            return unwrapEden(
-                await api.api["saved-graphs"]({ id: graphId }).patch(payload)
-            );
+            return unwrapEden(await api.api["saved-graphs"]({ id: graphId }).patch(payload));
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["saved-graphs", graphId] });
@@ -208,17 +203,20 @@ function SavedGraphViewInner() {
     }, []);
 
     // Add chunk to edit
-    const addChunkToEdit = useCallback((chunkId: string) => {
-        if (editChunkIds.includes(chunkId)) return;
-        const viewport = getViewport();
-        // Place new node at the center of the current viewport
-        const centerX = (-viewport.x + window.innerWidth / 2) / viewport.zoom;
-        const centerY = (-viewport.y + window.innerHeight / 2) / viewport.zoom;
-        setEditChunkIds(prev => [...prev, chunkId]);
-        setEditPositions(prev => ({ ...prev, [chunkId]: { x: centerX, y: centerY } }));
-        setSearchQuery("");
-        setShowSearchResults(false);
-    }, [editChunkIds, getViewport]);
+    const addChunkToEdit = useCallback(
+        (chunkId: string) => {
+            if (editChunkIds.includes(chunkId)) return;
+            const viewport = getViewport();
+            // Place new node at the center of the current viewport
+            const centerX = (-viewport.x + window.innerWidth / 2) / viewport.zoom;
+            const centerY = (-viewport.y + window.innerHeight / 2) / viewport.zoom;
+            setEditChunkIds(prev => [...prev, chunkId]);
+            setEditPositions(prev => ({ ...prev, [chunkId]: { x: centerX, y: centerY } }));
+            setSearchQuery("");
+            setShowSearchResults(false);
+        },
+        [editChunkIds, getViewport]
+    );
 
     // Remove chunk from edit
     const removeChunkFromEdit = useCallback((chunkId: string) => {
@@ -256,12 +254,14 @@ function SavedGraphViewInner() {
         const positions = activePositions;
 
         // Filter chunks to only those in the saved graph
-        const chunks = (graphData as { chunks: Array<{ id: string; title: string; type: string }> }).chunks
-            .filter(c => savedChunkIds.has(c.id));
+        const chunks = (graphData as { chunks: Array<{ id: string; title: string; type: string }> }).chunks.filter(c =>
+            savedChunkIds.has(c.id)
+        );
 
         // Filter connections to only those between saved chunks
-        const connections = (graphData as { connections: Array<{ id: string; sourceId: string; targetId: string; relation: string }> }).connections
-            .filter(c => savedChunkIds.has(c.sourceId) && savedChunkIds.has(c.targetId));
+        const connections = (
+            graphData as { connections: Array<{ id: string; sourceId: string; targetId: string; relation: string }> }
+        ).connections.filter(c => savedChunkIds.has(c.sourceId) && savedChunkIds.has(c.targetId));
 
         const graphNodes: Node[] = chunks.map(c => {
             const typeColor = TYPE_COLORS[c.type] ?? TYPE_COLORS.note;
@@ -393,16 +393,22 @@ function SavedGraphViewInner() {
                                         setShowSearchResults(true);
                                     }}
                                     onFocus={() => setShowSearchResults(true)}
-                                    className="bg-transparent text-sm outline-none placeholder:text-muted-foreground w-full"
+                                    className="placeholder:text-muted-foreground w-full bg-transparent text-sm outline-none"
                                 />
                                 {searchQuery && (
-                                    <button onClick={() => { setSearchQuery(""); setShowSearchResults(false); }} className="text-muted-foreground hover:text-foreground">
+                                    <button
+                                        onClick={() => {
+                                            setSearchQuery("");
+                                            setShowSearchResults(false);
+                                        }}
+                                        className="text-muted-foreground hover:text-foreground"
+                                    >
                                         <X className="size-3.5" />
                                     </button>
                                 )}
                             </div>
                             {showSearchResults && searchResults && searchResults.length > 0 && (
-                                <div className="border-t max-h-64 overflow-y-auto">
+                                <div className="max-h-64 overflow-y-auto border-t">
                                     {searchResults
                                         .filter(c => !editChunkIds.includes(c.id))
                                         .map(chunk => (
@@ -476,9 +482,7 @@ function SavedGraphViewInner() {
                         </Link>
                         <div className="bg-background/80 rounded-md border px-3 py-1.5 backdrop-blur-sm">
                             <h1 className="text-sm font-semibold">{sgName}</h1>
-                            {sgDescription && (
-                                <p className="text-muted-foreground text-xs">{sgDescription}</p>
-                            )}
+                            {sgDescription && <p className="text-muted-foreground text-xs">{sgDescription}</p>}
                         </div>
                     </div>
                     <div className="pointer-events-auto flex items-center gap-2">

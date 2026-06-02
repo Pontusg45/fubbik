@@ -84,8 +84,6 @@ export function updateSavedGraph(
 
 export function deleteSavedGraph(id: string, userId: string) {
     return deleteSavedGraphRepo(id, userId).pipe(
-        Effect.flatMap(deleted =>
-            deleted ? Effect.succeed(deleted) : Effect.fail(new NotFoundError({ resource: "SavedGraph" }))
-        )
+        Effect.flatMap(deleted => (deleted ? Effect.succeed(deleted) : Effect.fail(new NotFoundError({ resource: "SavedGraph" }))))
     );
 }

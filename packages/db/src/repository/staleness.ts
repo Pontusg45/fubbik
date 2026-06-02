@@ -3,264 +3,232 @@ import { Effect } from "effect";
 
 import { db, dbEffect } from "../index";
 import { chunk } from "../schema/chunk";
-import { chunkSpace } from "../schema/space";
 import { requirementChunk } from "../schema/requirement";
+import { chunkSpace } from "../schema/space";
 import { chunkStaleness, stalenessScan } from "../schema/staleness";
 
 function spaceConditions(spaceId?: string) {
     if (!spaceId) return [];
-    const inSpace = db
-        .select({ chunkId: chunkSpace.chunkId })
-        .from(chunkSpace)
-        .where(eq(chunkSpace.spaceId, spaceId));
+    const inSpace = db.select({ chunkId: chunkSpace.chunkId }).from(chunkSpace).where(eq(chunkSpace.spaceId, spaceId));
     const inAnySpace = db.select({ chunkId: chunkSpace.chunkId }).from(chunkSpace);
     return [sql`(${chunk.id} IN (${inSpace}) OR ${chunk.id} NOT IN (${inAnySpace}))`];
 }
 
 const undismissedUnsuppressed = [isNull(chunkStaleness.dismissedAt), isNull(chunkStaleness.suppressPair)];
 
-export function getStaleFlags(
-    userId: string,
-    params?: { reason?: string; spaceId?: string; limit?: number }
-) {
+export function getStaleFlags(userId: string, params?: { reason?: string; spaceId?: string; limit?: number }) {
     return dbEffect(async () => {
-            const conditions = [
-                eq(chunk.userId, userId),
-                ...undismissedUnsuppressed,
-                ...(params?.reason ? [eq(chunkStaleness.reason, params.reason)] : []),
-                ...spaceConditions(params?.spaceId)
-            ];
+        const conditions = [
+            eq(chunk.userId, userId),
+            ...undismissedUnsuppressed,
+            ...(params?.reason ? [eq(chunkStaleness.reason, params.reason)] : []),
+            ...spaceConditions(params?.spaceId)
+        ];
 
-            return db
-                .select({
-                    id: chunkStaleness.id,
-                    chunkId: chunkStaleness.chunkId,
-                    reason: chunkStaleness.reason,
-                    detail: chunkStaleness.detail,
-                    relatedChunkId: chunkStaleness.relatedChunkId,
-                    detectedAt: chunkStaleness.detectedAt,
-                    chunkTitle: chunk.title,
-                    chunkType: chunk.type
-                })
-                .from(chunkStaleness)
-                .innerJoin(chunk, eq(chunkStaleness.chunkId, chunk.id))
-                .where(and(...conditions))
-                .orderBy(desc(chunkStaleness.detectedAt))
-                .limit(params?.limit ?? 50);
-        });
+        return db
+            .select({
+                id: chunkStaleness.id,
+                chunkId: chunkStaleness.chunkId,
+                reason: chunkStaleness.reason,
+                detail: chunkStaleness.detail,
+                relatedChunkId: chunkStaleness.relatedChunkId,
+                detectedAt: chunkStaleness.detectedAt,
+                chunkTitle: chunk.title,
+                chunkType: chunk.type
+            })
+            .from(chunkStaleness)
+            .innerJoin(chunk, eq(chunkStaleness.chunkId, chunk.id))
+            .where(and(...conditions))
+            .orderBy(desc(chunkStaleness.detectedAt))
+            .limit(params?.limit ?? 50);
+    });
 }
 
 export function getStaleCount(userId: string, spaceId?: string) {
     return dbEffect(async () => {
-            const conditions = [
-                eq(chunk.userId, userId),
-                ...undismissedUnsuppressed,
-                ...spaceConditions(spaceId)
-            ];
+        const conditions = [eq(chunk.userId, userId), ...undismissedUnsuppressed, ...spaceConditions(spaceId)];
 
-            const result = await db
-                .select({ count: sql<number>`count(*)` })
-                .from(chunkStaleness)
-                .innerJoin(chunk, eq(chunkStaleness.chunkId, chunk.id))
-                .where(and(...conditions));
+        const result = await db
+            .select({ count: sql<number>`count(*)` })
+            .from(chunkStaleness)
+            .innerJoin(chunk, eq(chunkStaleness.chunkId, chunk.id))
+            .where(and(...conditions));
 
-            return Number(result[0]?.count ?? 0);
-        });
+        return Number(result[0]?.count ?? 0);
+    });
 }
 
 export function getStaleFlagsForChunk(chunkId: string) {
     return dbEffect(() =>
-            db
-                .select({
-                    id: chunkStaleness.id,
-                    reason: chunkStaleness.reason,
-                    detail: chunkStaleness.detail,
-                    relatedChunkId: chunkStaleness.relatedChunkId,
-                    detectedAt: chunkStaleness.detectedAt
-                })
-                .from(chunkStaleness)
-                .where(
-                    and(eq(chunkStaleness.chunkId, chunkId), ...undismissedUnsuppressed)
-                ));
+        db
+            .select({
+                id: chunkStaleness.id,
+                reason: chunkStaleness.reason,
+                detail: chunkStaleness.detail,
+                relatedChunkId: chunkStaleness.relatedChunkId,
+                detectedAt: chunkStaleness.detectedAt
+            })
+            .from(chunkStaleness)
+            .where(and(eq(chunkStaleness.chunkId, chunkId), ...undismissedUnsuppressed))
+    );
 }
 
-export function createStaleFlag(data: {
-    id: string;
-    chunkId: string;
-    reason: string;
-    detail?: string;
-    relatedChunkId?: string;
-}) {
+export function createStaleFlag(data: { id: string; chunkId: string; reason: string; detail?: string; relatedChunkId?: string }) {
     return dbEffect(() =>
-            db
-                .insert(chunkStaleness)
-                .values({
-                    id: data.id,
-                    chunkId: data.chunkId,
-                    reason: data.reason,
-                    detail: data.detail ?? null,
-                    relatedChunkId: data.relatedChunkId ?? null
-                })
-                .onConflictDoNothing());
+        db
+            .insert(chunkStaleness)
+            .values({
+                id: data.id,
+                chunkId: data.chunkId,
+                reason: data.reason,
+                detail: data.detail ?? null,
+                relatedChunkId: data.relatedChunkId ?? null
+            })
+            .onConflictDoNothing()
+    );
 }
 
 export function dismissStaleFlag(flagId: string, userId: string) {
     return dbEffect(() =>
-            db
-                .update(chunkStaleness)
-                .set({ dismissedAt: new Date(), dismissedBy: userId })
-                .where(eq(chunkStaleness.id, flagId)));
+        db.update(chunkStaleness).set({ dismissedAt: new Date(), dismissedBy: userId }).where(eq(chunkStaleness.id, flagId))
+    );
 }
 
 export function suppressDuplicatePair(chunkIdA: string, chunkIdB: string) {
     const pairKey = [chunkIdA, chunkIdB].sort().join(":");
     return dbEffect(() =>
-            db
-                .update(chunkStaleness)
-                .set({ suppressPair: pairKey })
-                .where(
-                    and(
-                        eq(chunkStaleness.reason, "diverged_duplicate"),
-                        isNull(chunkStaleness.dismissedAt),
-                        sql`(${chunkStaleness.chunkId} IN (${chunkIdA}, ${chunkIdB}) OR ${chunkStaleness.relatedChunkId} IN (${chunkIdA}, ${chunkIdB}))`
-                    )
-                ));
+        db
+            .update(chunkStaleness)
+            .set({ suppressPair: pairKey })
+            .where(
+                and(
+                    eq(chunkStaleness.reason, "diverged_duplicate"),
+                    isNull(chunkStaleness.dismissedAt),
+                    sql`(${chunkStaleness.chunkId} IN (${chunkIdA}, ${chunkIdB}) OR ${chunkStaleness.relatedChunkId} IN (${chunkIdA}, ${chunkIdB}))`
+                )
+            )
+    );
 }
 
 export function detectAgeStaleChunks(userId: string, spaceId?: string, thresholdDays = 90) {
     return dbEffect(async () => {
-            const threshold = sql`NOW() - INTERVAL '${sql.raw(String(thresholdDays))} days'`;
+        const threshold = sql`NOW() - INTERVAL '${sql.raw(String(thresholdDays))} days'`;
 
-            // Find chunks already flagged for "age" (undismissed)
-            const alreadyFlagged = db
-                .select({ chunkId: chunkStaleness.chunkId })
-                .from(chunkStaleness)
-                .where(
-                    and(
-                        eq(chunkStaleness.reason, "age"),
-                        isNull(chunkStaleness.dismissedAt)
-                    )
-                );
+        // Find chunks already flagged for "age" (undismissed)
+        const alreadyFlagged = db
+            .select({ chunkId: chunkStaleness.chunkId })
+            .from(chunkStaleness)
+            .where(and(eq(chunkStaleness.reason, "age"), isNull(chunkStaleness.dismissedAt)));
 
-            const conditions = [
-                eq(chunk.userId, userId),
-                sql`${chunk.updatedAt} < ${threshold}`,
-                isNull(chunk.archivedAt),
-                sql`${chunk.id} NOT IN (${alreadyFlagged})`,
-                ...spaceConditions(spaceId)
-            ];
+        const conditions = [
+            eq(chunk.userId, userId),
+            sql`${chunk.updatedAt} < ${threshold}`,
+            isNull(chunk.archivedAt),
+            sql`${chunk.id} NOT IN (${alreadyFlagged})`,
+            ...spaceConditions(spaceId)
+        ];
 
-            const staleChunks = await db
-                .select({
-                    id: chunk.id,
-                    updatedAt: chunk.updatedAt
-                })
-                .from(chunk)
-                .where(and(...conditions));
+        const staleChunks = await db
+            .select({
+                id: chunk.id,
+                updatedAt: chunk.updatedAt
+            })
+            .from(chunk)
+            .where(and(...conditions));
 
-            if (staleChunks.length === 0) {
-                return { flagged: 0 };
-            }
+        if (staleChunks.length === 0) {
+            return { flagged: 0 };
+        }
 
-            const flags = staleChunks.map(c => ({
-                id: crypto.randomUUID(),
-                chunkId: c.id,
-                reason: "age" as const,
-                detail: `Last updated ${c.updatedAt?.toISOString().split("T")[0] ?? "unknown"}`
-            }));
+        const flags = staleChunks.map(c => ({
+            id: crypto.randomUUID(),
+            chunkId: c.id,
+            reason: "age" as const,
+            detail: `Last updated ${c.updatedAt?.toISOString().split("T")[0] ?? "unknown"}`
+        }));
 
-            await db.insert(chunkStaleness).values(flags).onConflictDoNothing();
+        await db.insert(chunkStaleness).values(flags).onConflictDoNothing();
 
-            return { flagged: flags.length };
-        });
+        return { flagged: flags.length };
+    });
 }
 
 export function getLastScan(spaceId: string) {
     return dbEffect(async () => {
-            const rows = await db
-                .select()
-                .from(stalenessScan)
-                .where(eq(stalenessScan.spaceId, spaceId))
-                .orderBy(desc(stalenessScan.scannedAt))
-                .limit(1);
-            return rows[0] ?? null;
-        });
+        const rows = await db
+            .select()
+            .from(stalenessScan)
+            .where(eq(stalenessScan.spaceId, spaceId))
+            .orderBy(desc(stalenessScan.scannedAt))
+            .limit(1);
+        return rows[0] ?? null;
+    });
 }
 
 export function upsertScan(data: { id: string; spaceId: string; lastCommitSha: string }) {
     return dbEffect(() =>
-            db
-                .insert(stalenessScan)
-                .values({
-                    id: data.id,
-                    spaceId: data.spaceId,
-                    lastCommitSha: data.lastCommitSha
-                })
-                .onConflictDoUpdate({
-                    target: stalenessScan.id,
-                    set: {
-                        lastCommitSha: data.lastCommitSha,
-                        scannedAt: new Date()
-                    }
-                }));
+        db
+            .insert(stalenessScan)
+            .values({
+                id: data.id,
+                spaceId: data.spaceId,
+                lastCommitSha: data.lastCommitSha
+            })
+            .onConflictDoUpdate({
+                target: stalenessScan.id,
+                set: {
+                    lastCommitSha: data.lastCommitSha,
+                    scannedAt: new Date()
+                }
+            })
+    );
 }
 
 export function detectUncoveredChunks(userId: string, spaceId?: string, thresholdDays = 30) {
     return dbEffect(async () => {
-            const threshold = sql`NOW() - INTERVAL '${sql.raw(String(thresholdDays))} days'`;
+        const threshold = sql`NOW() - INTERVAL '${sql.raw(String(thresholdDays))} days'`;
 
-            // Find chunks already flagged for "requirement_uncovered" (undismissed)
-            const alreadyFlagged = db
-                .select({ chunkId: chunkStaleness.chunkId })
-                .from(chunkStaleness)
-                .where(
-                    and(
-                        eq(chunkStaleness.reason, "requirement_uncovered"),
-                        isNull(chunkStaleness.dismissedAt)
-                    )
-                );
+        // Find chunks already flagged for "requirement_uncovered" (undismissed)
+        const alreadyFlagged = db
+            .select({ chunkId: chunkStaleness.chunkId })
+            .from(chunkStaleness)
+            .where(and(eq(chunkStaleness.reason, "requirement_uncovered"), isNull(chunkStaleness.dismissedAt)));
 
-            // Find chunks that have at least one requirement linked
-            const covered = db
-                .select({ chunkId: requirementChunk.chunkId })
-                .from(requirementChunk);
+        // Find chunks that have at least one requirement linked
+        const covered = db.select({ chunkId: requirementChunk.chunkId }).from(requirementChunk);
 
-            const conditions = [
-                eq(chunk.userId, userId),
-                sql`${chunk.updatedAt} < ${threshold}`,
-                isNull(chunk.archivedAt),
-                sql`${chunk.id} NOT IN (${alreadyFlagged})`,
-                sql`${chunk.id} NOT IN (${covered})`,
-                ...spaceConditions(spaceId)
-            ];
+        const conditions = [
+            eq(chunk.userId, userId),
+            sql`${chunk.updatedAt} < ${threshold}`,
+            isNull(chunk.archivedAt),
+            sql`${chunk.id} NOT IN (${alreadyFlagged})`,
+            sql`${chunk.id} NOT IN (${covered})`,
+            ...spaceConditions(spaceId)
+        ];
 
-            const uncoveredChunks = await db
-                .select({ id: chunk.id })
-                .from(chunk)
-                .where(and(...conditions));
+        const uncoveredChunks = await db
+            .select({ id: chunk.id })
+            .from(chunk)
+            .where(and(...conditions));
 
-            if (uncoveredChunks.length === 0) {
-                return { flagged: 0 };
-            }
+        if (uncoveredChunks.length === 0) {
+            return { flagged: 0 };
+        }
 
-            const flags = uncoveredChunks.map(c => ({
-                id: crypto.randomUUID(),
-                chunkId: c.id,
-                reason: "requirement_uncovered" as const,
-                detail: "No requirements linked — consider adding requirement coverage"
-            }));
+        const flags = uncoveredChunks.map(c => ({
+            id: crypto.randomUUID(),
+            chunkId: c.id,
+            reason: "requirement_uncovered" as const,
+            detail: "No requirements linked — consider adding requirement coverage"
+        }));
 
-            await db.insert(chunkStaleness).values(flags).onConflictDoNothing();
+        await db.insert(chunkStaleness).values(flags).onConflictDoNothing();
 
-            return { flagged: flags.length };
-        });
+        return { flagged: flags.length };
+    });
 }
 
-export function flagRequirementFailing(
-    requirementId: string,
-    requirementTitle: string,
-    chunkIds: string[]
-) {
+export function flagRequirementFailing(requirementId: string, requirementTitle: string, chunkIds: string[]) {
     if (chunkIds.length === 0) {
         return Effect.succeed({ flagged: 0 });
     }
@@ -268,35 +236,35 @@ export function flagRequirementFailing(
     const detail = `Requirement "${requirementTitle}" (${requirementId}) is failing`;
 
     return dbEffect(async () => {
-            // Find chunks already flagged for this specific requirement (undismissed)
-            const alreadyFlagged = await db
-                .select({ chunkId: chunkStaleness.chunkId })
-                .from(chunkStaleness)
-                .where(
-                    and(
-                        eq(chunkStaleness.reason, "requirement_failing"),
-                        eq(chunkStaleness.detail, detail),
-                        isNull(chunkStaleness.dismissedAt),
-                        inArray(chunkStaleness.chunkId, chunkIds)
-                    )
-                );
+        // Find chunks already flagged for this specific requirement (undismissed)
+        const alreadyFlagged = await db
+            .select({ chunkId: chunkStaleness.chunkId })
+            .from(chunkStaleness)
+            .where(
+                and(
+                    eq(chunkStaleness.reason, "requirement_failing"),
+                    eq(chunkStaleness.detail, detail),
+                    isNull(chunkStaleness.dismissedAt),
+                    inArray(chunkStaleness.chunkId, chunkIds)
+                )
+            );
 
-            const alreadyFlaggedIds = new Set(alreadyFlagged.map(r => r.chunkId));
-            const toFlag = chunkIds.filter(id => !alreadyFlaggedIds.has(id));
+        const alreadyFlaggedIds = new Set(alreadyFlagged.map(r => r.chunkId));
+        const toFlag = chunkIds.filter(id => !alreadyFlaggedIds.has(id));
 
-            if (toFlag.length === 0) {
-                return { flagged: 0 };
-            }
+        if (toFlag.length === 0) {
+            return { flagged: 0 };
+        }
 
-            const flags = toFlag.map(chunkId => ({
-                id: crypto.randomUUID(),
-                chunkId,
-                reason: "requirement_failing" as const,
-                detail
-            }));
+        const flags = toFlag.map(chunkId => ({
+            id: crypto.randomUUID(),
+            chunkId,
+            reason: "requirement_failing" as const,
+            detail
+        }));
 
-            await db.insert(chunkStaleness).values(flags).onConflictDoNothing();
+        await db.insert(chunkStaleness).values(flags).onConflictDoNothing();
 
-            return { flagged: flags.length };
-        });
+        return { flagged: flags.length };
+    });
 }

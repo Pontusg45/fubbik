@@ -1,7 +1,7 @@
 ---
 tags:
-  - guide
-  - views
+    - guide
+    - views
 description: Views section index — alternative ways to browse and analyze your knowledge
 ---
 

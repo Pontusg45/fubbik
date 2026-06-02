@@ -1,8 +1,8 @@
 import { eq } from "drizzle-orm";
 
 import { useCase } from "../../schema/use-case";
-import { uuid } from "../factories";
 import type { SeedContext } from "../context";
+import { uuid } from "../factories";
 
 export async function seed(ctx: SeedContext): Promise<void> {
     const rows = [

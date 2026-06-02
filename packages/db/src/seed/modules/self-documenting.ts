@@ -15,9 +15,9 @@
  */
 
 import { chunkAppliesTo } from "../../schema/applies-to";
-import { loadChunkFixtures, loadConnectionFixtures, type ChunkFixture, type ConnectionFixture } from "../fixtures";
-import { uuid } from "../factories";
 import type { SeedContext } from "../context";
+import { uuid } from "../factories";
+import { loadChunkFixtures, loadConnectionFixtures, type ChunkFixture, type ConnectionFixture } from "../fixtures";
 
 const META_CHUNKS: ChunkFixture[] = [
     {
@@ -182,12 +182,11 @@ export async function seed(ctx: SeedContext): Promise<void> {
     const linksToUse = haveSeedSystemChunk ? META_LINKS : META_LINKS.filter(l => l.to !== "seed-system" && l.from !== "seed-system");
     await loadConnectionFixtures(ctx, linksToUse);
 
-    const appliesRows = META_APPLIES
-        .flatMap(a => {
-            const chunkId = ctx.ids.chunks[a.chunkName];
-            if (!chunkId) return [];
-            return [{ id: uuid(), chunkId, pattern: a.pattern, note: a.note ?? null }];
-        });
+    const appliesRows = META_APPLIES.flatMap(a => {
+        const chunkId = ctx.ids.chunks[a.chunkName];
+        if (!chunkId) return [];
+        return [{ id: uuid(), chunkId, pattern: a.pattern, note: a.note ?? null }];
+    });
     if (appliesRows.length > 0) {
         await ctx.db.insert(chunkAppliesTo).values(appliesRows);
         ctx.counters["self_doc_applies_to"] = appliesRows.length;

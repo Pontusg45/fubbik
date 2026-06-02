@@ -27,7 +27,9 @@ export const kbDiffCommand = new Command("kb-diff")
         if (relative) {
             const amount = Number(relative[1]);
             const unit = relative[2];
-            const ms = unit ? ({ d: 86400000, h: 3600000, w: 604800000, m: 2592000000 } as Record<string, number>)[unit] ?? 86400000 : 86400000;
+            const ms = unit
+                ? (({ d: 86400000, h: 3600000, w: 604800000, m: 2592000000 } as Record<string, number>)[unit] ?? 86400000)
+                : 86400000;
             sinceDate = new Date(Date.now() - amount * ms);
         } else {
             sinceDate = new Date(opts.since);
@@ -39,7 +41,7 @@ export const kbDiffCommand = new Command("kb-diff")
             const params = new URLSearchParams({
                 after: String(days),
                 sort: "updated",
-                limit: "100",
+                limit: "100"
             });
             const spaceId = opts.space ?? opts.codebase;
             if (spaceId) params.set("spaceId", spaceId);
@@ -52,9 +54,7 @@ export const kbDiffCommand = new Command("kb-diff")
             const { chunks, total } = (await res.json()) as { chunks: any[]; total: number };
 
             if (isJson(cmd)) {
-                console.log(
-                    JSON.stringify({ since: sinceDate.toISOString(), chunks, total }, null, 2)
-                );
+                console.log(JSON.stringify({ since: sinceDate.toISOString(), chunks, total }, null, 2));
                 return;
             }
 
@@ -63,20 +63,14 @@ export const kbDiffCommand = new Command("kb-diff")
                 return;
             }
 
-            console.error(
-                formatBold(
-                    `${total} chunk(s) changed since ${sinceDate.toLocaleDateString()}:\n`
-                )
-            );
+            console.error(formatBold(`${total} chunk(s) changed since ${sinceDate.toLocaleDateString()}:\n`));
 
             for (const c of chunks) {
                 const updated = new Date(c.updatedAt);
                 const created = new Date(c.createdAt);
                 const isNew = Math.abs(updated.getTime() - created.getTime()) < 60000;
                 const label = isNew ? "NEW" : "UPD";
-                console.error(
-                    `  ${formatType(label)} ${formatBold(c.title)} ${formatDim(`(${c.type}, ${updated.toLocaleDateString()})`)}`
-                );
+                console.error(`  ${formatType(label)} ${formatBold(c.title)} ${formatDim(`(${c.type}, ${updated.toLocaleDateString()})`)}`);
             }
         } catch (e: any) {
             outputError(e.message);

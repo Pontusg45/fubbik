@@ -8,8 +8,8 @@ import { eq } from "drizzle-orm";
 
 import { space } from "../../schema/space";
 import { spaceCodeMetadata } from "../../schema/space-code-metadata";
-import { uuid } from "../factories";
 import type { SeedContext } from "../context";
+import { uuid } from "../factories";
 
 export async function seed(ctx: SeedContext): Promise<void> {
     const fubbikId = "seed-codebase-fubbik";

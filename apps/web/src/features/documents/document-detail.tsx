@@ -1,11 +1,12 @@
+import type { UseMutationResult } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { Check, ChevronLeft, ChevronRight, Eye, Link2, Pencil, Plus, Printer, X } from "lucide-react";
 import { Fragment } from "react";
-import type { UseMutationResult } from "@tanstack/react-query";
 
 import { MarkdownRenderer } from "@/components/markdown-renderer";
-import { estimateReadingTime, folderFromPath, getStaleness, mdToHtml } from "./document-utils";
+
 import type { DocumentChunk, DocumentDetail, DocumentListItem } from "./document-types";
+import { estimateReadingTime, folderFromPath, getStaleness, mdToHtml } from "./document-utils";
 
 export interface DocumentDetailViewProps {
     detail: DocumentDetail;
@@ -54,7 +55,7 @@ export function DocumentDetailView({
     onSetAddingAfter,
     onSetNewSectionTitle,
     onSetNewSectionContent,
-    onSelectDoc,
+    onSelectDoc
 }: DocumentDetailViewProps) {
     const handlePrint = () => {
         const printWindow = window.open("", "_blank");
@@ -83,11 +84,13 @@ export function DocumentDetailView({
 <body>
     <h1>${detail.title}</h1>
     <p class="meta">${detail.sourcePath}</p>
-    ${chunks.map(c => {
-        const isIntro = c.title.includes("-- Introduction") || c.title.endsWith(" Introduction");
-        const contentHtml = mdToHtml(c.content);
-        return isIntro ? contentHtml : `<h2>${c.title}</h2>\n${contentHtml}`;
-    }).join("\n\n")}
+    ${chunks
+        .map(c => {
+            const isIntro = c.title.includes("-- Introduction") || c.title.endsWith(" Introduction");
+            const contentHtml = mdToHtml(c.content);
+            return isIntro ? contentHtml : `<h2>${c.title}</h2>\n${contentHtml}`;
+        })
+        .join("\n\n")}
 </body>
 </html>`;
         printWindow.document.write(html);
@@ -99,10 +102,7 @@ export function DocumentDetailView({
         <div>
             {/* Reading progress bar */}
             <div className="bg-muted mb-4 h-0.5 w-full overflow-hidden rounded-full">
-                <div
-                    className="bg-foreground/30 h-full transition-all duration-150"
-                    style={{ width: `${readProgress}%` }}
-                />
+                <div className="bg-foreground/30 h-full transition-all duration-150" style={{ width: `${readProgress}%` }} />
             </div>
 
             {/* Document header */}
@@ -128,29 +128,29 @@ export function DocumentDetailView({
                         <Printer className="size-4" />
                     </button>
                 </div>
-                {detail.description && (
-                    <p className="text-muted-foreground mt-1 text-sm">{detail.description}</p>
-                )}
+                {detail.description && <p className="text-muted-foreground mt-1 text-sm">{detail.description}</p>}
                 <p className="text-muted-foreground mt-1 font-mono text-xs">{detail.sourcePath}</p>
-                {selectedListItem && (() => {
-                    const staleness = getStaleness(selectedListItem);
-                    const contentDate = selectedListItem.lastChunkUpdatedAt ?? selectedListItem.updatedAt;
-                    return (
-                        <p className="text-muted-foreground mt-1 flex items-center gap-2 text-xs" title={staleness.tooltip}>
-                            Last updated {new Date(contentDate).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}
-                            <span className={`font-medium ${staleness.color}`}>{staleness.label}</span>
-                        </p>
-                    );
-                })()}
-                <p className="text-muted-foreground mt-1 text-xs">
-                    ~{estimateReadingTime(detail.chunks)} min read
-                </p>
+                {selectedListItem &&
+                    (() => {
+                        const staleness = getStaleness(selectedListItem);
+                        const contentDate = selectedListItem.lastChunkUpdatedAt ?? selectedListItem.updatedAt;
+                        return (
+                            <p className="text-muted-foreground mt-1 flex items-center gap-2 text-xs" title={staleness.tooltip}>
+                                Last updated{" "}
+                                {new Date(contentDate).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}
+                                <span className={`font-medium ${staleness.color}`}>{staleness.label}</span>
+                            </p>
+                        );
+                    })()}
+                <p className="text-muted-foreground mt-1 text-xs">~{estimateReadingTime(detail.chunks)} min read</p>
             </div>
 
             {/* Search highlight banner */}
             {highlightQuery && (
                 <div className="bg-muted mb-4 flex items-center justify-between rounded-md px-3 py-2 text-sm">
-                    <span className="text-muted-foreground">Showing results for "<strong>{highlightQuery}</strong>"</span>
+                    <span className="text-muted-foreground">
+                        Showing results for "<strong>{highlightQuery}</strong>"
+                    </span>
                     <button onClick={() => onSetHighlightQuery(null)} className="text-muted-foreground hover:text-foreground">
                         <X className="size-4" />
                     </button>
@@ -166,7 +166,7 @@ export function DocumentDetailView({
                                 <Link
                                     to="/chunks/$chunkId"
                                     params={{ chunkId: chunk.id }}
-                                    className="text-lg font-semibold hover:underline underline-offset-2"
+                                    className="text-lg font-semibold underline-offset-2 hover:underline"
                                 >
                                     <h3 className="inline">{chunk.title}</h3>
                                 </Link>
@@ -188,11 +188,7 @@ export function DocumentDetailView({
                                     className="text-muted-foreground hover:text-foreground opacity-0 transition-opacity group-hover:opacity-100"
                                     title="Copy link to section"
                                 >
-                                    {copiedId === chunk.id ? (
-                                        <Check className="size-3.5 text-green-500" />
-                                    ) : (
-                                        <Link2 className="size-3.5" />
-                                    )}
+                                    {copiedId === chunk.id ? <Check className="size-3.5 text-green-500" /> : <Link2 className="size-3.5" />}
                                 </button>
                                 <button
                                     onClick={() => {
@@ -203,7 +199,7 @@ export function DocumentDetailView({
                                             onSetEditContent(chunk.content);
                                         }
                                     }}
-                                    className={`text-muted-foreground hover:text-foreground opacity-0 transition-opacity group-hover:opacity-100 ${editingChunkId === chunk.id ? "!opacity-100 text-foreground" : ""}`}
+                                    className={`text-muted-foreground hover:text-foreground opacity-0 transition-opacity group-hover:opacity-100 ${editingChunkId === chunk.id ? "text-foreground !opacity-100" : ""}`}
                                     title={editingChunkId === chunk.id ? "Cancel editing" : "Edit this section"}
                                 >
                                     <Pencil className="size-3.5" />
@@ -250,23 +246,27 @@ export function DocumentDetailView({
                         >
                             <ChevronLeft className="size-4 transition-transform group-hover:-translate-x-0.5" />
                             <div className="text-left">
-                                <p className="text-xs text-muted-foreground">Previous</p>
+                                <p className="text-muted-foreground text-xs">Previous</p>
                                 <p className="font-medium">{prevDoc.title}</p>
                             </div>
                         </button>
-                    ) : <div />}
+                    ) : (
+                        <div />
+                    )}
                     {nextDoc ? (
                         <button
                             onClick={() => onSelectDoc(nextDoc.id)}
                             className="text-muted-foreground hover:text-foreground group flex items-center gap-2 text-sm transition-colors"
                         >
                             <div className="text-right">
-                                <p className="text-xs text-muted-foreground">Next</p>
+                                <p className="text-muted-foreground text-xs">Next</p>
                                 <p className="font-medium">{nextDoc.title}</p>
                             </div>
                             <ChevronRight className="size-4 transition-transform group-hover:translate-x-0.5" />
                         </button>
-                    ) : <div />}
+                    ) : (
+                        <div />
+                    )}
                 </div>
             )}
         </div>
@@ -289,7 +289,7 @@ function EditSection({ chunk, editContent, onSetEditContent, onSetEditingChunkId
             <textarea
                 value={editContent}
                 onChange={e => onSetEditContent(e.target.value)}
-                className="border-input bg-background w-full min-h-[200px] rounded-md border p-3 font-mono text-sm leading-relaxed focus:ring-2 focus:ring-ring outline-none resize-y"
+                className="border-input bg-background focus:ring-ring min-h-[200px] w-full resize-y rounded-md border p-3 font-mono text-sm leading-relaxed outline-none focus:ring-2"
                 autoFocus
             />
             <div className="flex items-center gap-2">
@@ -301,7 +301,10 @@ function EditSection({ chunk, editContent, onSetEditContent, onSetEditingChunkId
                     {saveMutation.isPending ? "Saving..." : "Save"}
                 </button>
                 <button
-                    onClick={() => { onSetEditingChunkId(null); onSetEditContent(""); }}
+                    onClick={() => {
+                        onSetEditingChunkId(null);
+                        onSetEditContent("");
+                    }}
                     className="text-muted-foreground hover:text-foreground text-sm"
                 >
                     Cancel
@@ -334,12 +337,12 @@ function AddSectionRow({
     addSectionMutation,
     onSetAddingAfter,
     onSetNewSectionTitle,
-    onSetNewSectionContent,
+    onSetNewSectionContent
 }: AddSectionRowProps) {
     return (
         <div className="flex justify-center py-0.5">
             {addingAfter === (chunk.documentOrder ?? idx) ? (
-                <div className="border-border w-full rounded-lg border p-4 space-y-3">
+                <div className="border-border w-full space-y-3 rounded-lg border p-4">
                     <input
                         type="text"
                         placeholder="Section title"
@@ -352,22 +355,28 @@ function AddSectionRow({
                         placeholder="Section content (markdown)"
                         value={newSectionContent}
                         onChange={e => onSetNewSectionContent(e.target.value)}
-                        className="border-input bg-background w-full min-h-[100px] rounded-md border p-3 font-mono text-sm resize-y"
+                        className="border-input bg-background min-h-[100px] w-full resize-y rounded-md border p-3 font-mono text-sm"
                     />
                     <div className="flex gap-2">
                         <button
-                            onClick={() => addSectionMutation.mutate({
-                                title: newSectionTitle,
-                                content: newSectionContent,
-                                afterOrder: chunk.documentOrder ?? idx
-                            })}
+                            onClick={() =>
+                                addSectionMutation.mutate({
+                                    title: newSectionTitle,
+                                    content: newSectionContent,
+                                    afterOrder: chunk.documentOrder ?? idx
+                                })
+                            }
                             disabled={!newSectionTitle.trim() || addSectionMutation.isPending}
                             className="bg-foreground text-background rounded-md px-3 py-1.5 text-sm font-medium disabled:opacity-50"
                         >
                             {addSectionMutation.isPending ? "Adding..." : "Add Section"}
                         </button>
                         <button
-                            onClick={() => { onSetAddingAfter(null); onSetNewSectionTitle(""); onSetNewSectionContent(""); }}
+                            onClick={() => {
+                                onSetAddingAfter(null);
+                                onSetNewSectionTitle("");
+                                onSetNewSectionContent("");
+                            }}
                             className="text-muted-foreground hover:text-foreground text-sm"
                         >
                             Cancel
@@ -377,7 +386,7 @@ function AddSectionRow({
             ) : (
                 <button
                     onClick={() => onSetAddingAfter(chunk.documentOrder ?? idx)}
-                    className="text-muted-foreground/0 hover:text-muted-foreground group flex items-center gap-1 w-full transition-colors"
+                    className="text-muted-foreground/0 hover:text-muted-foreground group flex w-full items-center gap-1 transition-colors"
                 >
                     <div className="bg-border/0 group-hover:bg-border h-px flex-1 transition-colors" />
                     <Plus className="size-4" />

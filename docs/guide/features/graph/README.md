@@ -1,7 +1,7 @@
 ---
 tags:
-  - guide
-  - graph
+    - guide
+    - graph
 description: Graph section index — layouts, interactions, filtering, and path finding
 ---
 

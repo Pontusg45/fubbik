@@ -1,8 +1,8 @@
 ---
 tags:
-  - guide
-  - views
-  - timeline
+    - guide
+    - views
+    - timeline
 description: Chronological view of chunk activity grouped by day
 ---
 
@@ -13,6 +13,7 @@ The timeline view at `/timeline` shows chunk creations and updates in chronologi
 ## Date Ranges
 
 Toggle between predefined ranges:
+
 - **7 days** — recent activity
 - **30 days** — monthly overview
 - **90 days** — quarterly review
@@ -21,6 +22,7 @@ Toggle between predefined ranges:
 ## What's Shown
 
 Each entry shows:
+
 - Chunk title and type
 - Whether it was created or updated
 - Timestamp

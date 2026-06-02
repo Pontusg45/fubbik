@@ -1,11 +1,12 @@
 import { describe, expect, it } from "vitest";
+
 import { filterDocuments, groupDocuments, type EnrichedDocument } from "./filter-documents";
 
 const docs: EnrichedDocument[] = [
     { id: "1", title: "Auth Guide", sourcePath: "docs/guides/auth.md", tags: ["auth", "guides"], type: "document", chunkCount: 3 },
     { id: "2", title: "API Endpoints", sourcePath: "docs/api/endpoints.md", tags: ["api", "reference"], type: "reference", chunkCount: 5 },
     { id: "3", title: "Architecture", sourcePath: "docs/architecture.md", tags: ["backend"], type: "document", chunkCount: 4 },
-    { id: "4", title: "Errors", sourcePath: "docs/api/errors.md", tags: [], type: "document", chunkCount: 2 },
+    { id: "4", title: "Errors", sourcePath: "docs/api/errors.md", tags: [], type: "document", chunkCount: 2 }
 ];
 
 describe("filterDocuments", () => {

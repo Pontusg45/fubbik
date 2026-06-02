@@ -1,8 +1,8 @@
 ---
 tags:
-  - guide
-  - import
-  - documents
+    - guide
+    - import
+    - documents
 description: Importing markdown as structured, browsable documents
 ---
 
@@ -20,7 +20,8 @@ fubbik docs import-dir docs/guide/
 
 ## How It Works
 
-Documents track the original file path and content hash. Each document is split into sections at H2 headings, creating individual chunks that are linked with `part_of` connections.
+Documents track the original file path and content hash. Each document is split into sections at H2 headings, creating individual chunks
+that are linked with `part_of` connections.
 
 ## Re-Syncing
 

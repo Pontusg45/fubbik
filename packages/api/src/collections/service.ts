@@ -44,29 +44,21 @@ export function updateCollection(
     }
 ) {
     return getCollectionById(id, userId).pipe(
-        Effect.flatMap(found =>
-            found ? Effect.succeed(found) : Effect.fail(new NotFoundError({ resource: "Collection" }))
-        ),
+        Effect.flatMap(found => (found ? Effect.succeed(found) : Effect.fail(new NotFoundError({ resource: "Collection" })))),
         Effect.flatMap(() => updateCollectionRepo(id, userId, body)),
-        Effect.flatMap(updated =>
-            updated ? Effect.succeed(updated) : Effect.fail(new NotFoundError({ resource: "Collection" }))
-        )
+        Effect.flatMap(updated => (updated ? Effect.succeed(updated) : Effect.fail(new NotFoundError({ resource: "Collection" }))))
     );
 }
 
 export function deleteCollection(id: string, userId: string) {
     return deleteCollectionRepo(id, userId).pipe(
-        Effect.flatMap(deleted =>
-            deleted ? Effect.succeed(deleted) : Effect.fail(new NotFoundError({ resource: "Collection" }))
-        )
+        Effect.flatMap(deleted => (deleted ? Effect.succeed(deleted) : Effect.fail(new NotFoundError({ resource: "Collection" }))))
     );
 }
 
 export function getCollectionChunks(id: string, userId: string) {
     return getCollectionById(id, userId).pipe(
-        Effect.flatMap(found =>
-            found ? Effect.succeed(found) : Effect.fail(new NotFoundError({ resource: "Collection" }))
-        ),
+        Effect.flatMap(found => (found ? Effect.succeed(found) : Effect.fail(new NotFoundError({ resource: "Collection" })))),
         Effect.flatMap(col => {
             const filter = col.filter;
             return listChunks(userId, {

@@ -10,10 +10,26 @@ import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 const KNOWN_ROUTES = [
-    "/chunks", "/graph", "/dashboard", "/search", "/tags", "/spaces",
-    "/workspaces", "/templates", "/context", "/knowledge-health", "/coverage",
-    "/plans", "/requirements", "/import", "/settings", "/activity",
-    "/vocabulary", "/docs", "/compare", "/login"
+    "/chunks",
+    "/graph",
+    "/dashboard",
+    "/search",
+    "/tags",
+    "/spaces",
+    "/workspaces",
+    "/templates",
+    "/context",
+    "/knowledge-health",
+    "/coverage",
+    "/plans",
+    "/requirements",
+    "/import",
+    "/settings",
+    "/activity",
+    "/vocabulary",
+    "/docs",
+    "/compare",
+    "/login"
 ];
 
 interface LinkInfo {
@@ -94,24 +110,20 @@ export function BrokenLinkChecker() {
                     <LinkIcon className="size-4 text-indigo-500" />
                     <h2 className="text-lg font-semibold">Content Links</h2>
                     <Badge variant="secondary">{links.length}</Badge>
-                    {brokenCount > 0 && (
-                        <Badge variant="destructive">{brokenCount} broken</Badge>
-                    )}
-                    {externalCount > 0 && (
-                        <Badge variant="outline">{externalCount} external</Badge>
-                    )}
+                    {brokenCount > 0 && <Badge variant="destructive">{brokenCount} broken</Badge>}
+                    {externalCount > 0 && <Badge variant="outline">{externalCount} external</Badge>}
                 </div>
                 <p className="text-muted-foreground mb-4 text-sm">
-                    Markdown links found in chunk content. Broken links point to unrecognized internal paths.
-                    External links should be checked manually.
+                    Markdown links found in chunk content. Broken links point to unrecognized internal paths. External links should be
+                    checked manually.
                 </p>
                 <div className="max-h-96 overflow-y-auto">
                     <table className="w-full text-sm">
                         <thead className="text-muted-foreground border-b text-left text-xs">
                             <tr>
-                                <th className="pb-2 pr-3">Chunk</th>
-                                <th className="pb-2 pr-3">Link Text</th>
-                                <th className="pb-2 pr-3">URL</th>
+                                <th className="pr-3 pb-2">Chunk</th>
+                                <th className="pr-3 pb-2">Link Text</th>
+                                <th className="pr-3 pb-2">URL</th>
                                 <th className="pb-2">Status</th>
                             </tr>
                         </thead>
@@ -124,7 +136,7 @@ export function BrokenLinkChecker() {
                                             <Link
                                                 to="/chunks/$chunkId"
                                                 params={{ chunkId: link.chunkId }}
-                                                className="hover:underline font-medium"
+                                                className="font-medium hover:underline"
                                             >
                                                 {link.chunkTitle}
                                             </Link>

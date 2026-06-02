@@ -2,7 +2,7 @@ import {
     createSnapshot as createSnapshotRepo,
     deleteSnapshot as deleteSnapshotRepo,
     getSnapshotById,
-    listSnapshots as listSnapshotsRepo,
+    listSnapshots as listSnapshotsRepo
 } from "@fubbik/db/repository";
 import { Effect } from "effect";
 
@@ -55,14 +55,14 @@ export function createSnapshot(userId: string, input: SnapshotInput) {
             userId,
             query,
             chunks: budgeted,
-            tokenCount,
+            tokenCount
         });
 
         return {
             snapshotId: snapshot.id,
             tokenCount: snapshot.tokenCount,
             chunkCount: budgeted.length,
-            createdAt: snapshot.createdAt,
+            createdAt: snapshot.createdAt
         };
     });
 }
