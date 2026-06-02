@@ -6,7 +6,7 @@ import { connectionRelation } from "../schema/connection-relation";
 
 export interface ListCatalogParams {
     userId?: string;
-    codebaseId?: string;
+    spaceId?: string;
 }
 
 /**
@@ -17,7 +17,7 @@ export function listChunkTypes(params: ListCatalogParams = {}) {
     return dbEffect(() => {
             const conditions = [eq(chunkType.builtIn, true)];
             if (params.userId) conditions.push(eq(chunkType.userId, params.userId));
-            if (params.codebaseId) conditions.push(eq(chunkType.codebaseId, params.codebaseId));
+            if (params.spaceId) conditions.push(eq(chunkType.spaceId, params.spaceId));
             return db
                 .select()
                 .from(chunkType)
@@ -30,7 +30,7 @@ export function listConnectionRelations(params: ListCatalogParams = {}) {
     return dbEffect(() => {
             const conditions = [eq(connectionRelation.builtIn, true)];
             if (params.userId) conditions.push(eq(connectionRelation.userId, params.userId));
-            if (params.codebaseId) conditions.push(eq(connectionRelation.codebaseId, params.codebaseId));
+            if (params.spaceId) conditions.push(eq(connectionRelation.spaceId, params.spaceId));
             return db
                 .select()
                 .from(connectionRelation)
@@ -50,7 +50,7 @@ export interface ChunkTypeInsert {
     examples?: string[];
     displayOrder?: number;
     userId: string;
-    codebaseId?: string | null;
+    spaceId?: string | null;
 }
 
 export function createChunkType(row: ChunkTypeInsert) {
@@ -67,7 +67,7 @@ export function createChunkType(row: ChunkTypeInsert) {
                     displayOrder: row.displayOrder ?? 500,
                     builtIn: false,
                     userId: row.userId,
-                    codebaseId: row.codebaseId ?? null
+                    spaceId: row.spaceId ?? null
                 })
                 .returning();
             return created!;
@@ -119,7 +119,7 @@ export interface ConnectionRelationInsert {
     inverseOfId?: string | null;
     displayOrder?: number;
     userId: string;
-    codebaseId?: string | null;
+    spaceId?: string | null;
 }
 
 export function createConnectionRelation(row: ConnectionRelationInsert) {
@@ -137,7 +137,7 @@ export function createConnectionRelation(row: ConnectionRelationInsert) {
                     displayOrder: row.displayOrder ?? 500,
                     builtIn: false,
                     userId: row.userId,
-                    codebaseId: row.codebaseId ?? null
+                    spaceId: row.spaceId ?? null
                 })
                 .returning();
             return created!;
