@@ -3,7 +3,7 @@ import { index, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 
 import { user } from "./auth";
 import { chunk } from "./chunk";
-import { codebase } from "./codebase";
+import { space } from "./space";
 
 export const chunkStaleness = pgTable(
     "chunk_staleness",
@@ -42,11 +42,11 @@ export const stalenessScan = pgTable(
     "staleness_scan",
     {
         id: text("id").primaryKey(),
-        codebaseId: text("codebase_id")
+        spaceId: text("space_id")
             .notNull()
-            .references(() => codebase.id, { onDelete: "cascade" }),
+            .references(() => space.id, { onDelete: "cascade" }),
         lastCommitSha: text("last_commit_sha").notNull(),
         scannedAt: timestamp("scanned_at").defaultNow().notNull()
     },
-    table => [index("staleness_scan_codebaseId_idx").on(table.codebaseId)]
+    table => [index("staleness_scan_spaceId_idx").on(table.spaceId)]
 );
