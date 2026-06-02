@@ -1,4 +1,4 @@
-import { getAppliesToForChunks, getChunkById, getConnectionDegrees, getConnectionsForChunks, getGraphProximityBoost, getRequirementsForChunks, incrementConnectionWeights, listChunks, listCodebases, lookupChunksByFilePath, semanticSearch as semanticSearchRepo } from "@fubbik/db/repository";
+import { getAppliesToForChunks, getChunkById, getConnectionDegrees, getConnectionsForChunks, getGraphProximityBoost, getRequirementsForChunks, incrementConnectionWeights, listChunks, listSpaces, lookupChunksByFilePath, semanticSearch as semanticSearchRepo } from "@fubbik/db/repository";
 import { chunk as chunkTable } from "@fubbik/db/schema/chunk";
 import { Effect } from "effect";
 
@@ -60,7 +60,7 @@ function depMatchesCodebase(dep: string, codebaseName: string): boolean {
 export function getContextForFile(
     userId: string,
     filePath: string,
-    codebaseId?: string,
+    spaceId?: string,
     deps?: string[]
 ) {
     return Effect.gen(function* () {
@@ -69,7 +69,7 @@ export function getContextForFile(
         const chunkRows = new Map<string, ChunkRow>();
 
         // 1. Direct file-ref matches
-        const fileRefMatches = yield* lookupChunksByFilePath(filePath, userId, codebaseId);
+        const fileRefMatches = yield* lookupChunksByFilePath(filePath, userId, spaceId);
         for (const match of fileRefMatches) {
             if (results.has(match.chunkId)) continue;
             const full = yield* getChunkById(match.chunkId, userId);
@@ -89,7 +89,7 @@ export function getContextForFile(
         // 2. Applies-to glob pattern matches
         const { chunks } = yield* listChunks({
             userId,
-            codebaseId,
+            codebaseId: spaceId,
             limit: 1000,
             offset: 0
         });
@@ -129,7 +129,7 @@ export function getContextForFile(
 
         // 3. Dependency-based matches
         if (deps && deps.length > 0) {
-            const allCodebases = yield* listCodebases(userId);
+            const allCodebases = yield* listSpaces(userId);
             const matchedCodebaseIds: string[] = [];
             for (const cb of allCodebases) {
                 if (deps.some(dep => depMatchesCodebase(dep, cb.name))) {

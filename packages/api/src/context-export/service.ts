@@ -8,7 +8,7 @@ import { formatStructured, formatStructuredMarkdown } from "../context/formatter
 import { budgetChunks, estimateTokens, formatChunkText } from "../context/utils";
 
 interface ContextExportQuery {
-    codebaseId?: string;
+    spaceId?: string;
     maxTokens?: number;
     format?: "markdown" | "json";
     forPath?: string;
@@ -21,14 +21,14 @@ export function exportContext(userId: string, query: ContextExportQuery) {
     const fetchApproved = listChunksRepo({
         userId,
         reviewStatus: "approved",
-        codebaseId: query.codebaseId,
+        codebaseId: query.spaceId,
         limit: 500,
         offset: 0,
     });
 
     const fetchOthers = listChunksRepo({
         userId,
-        codebaseId: query.codebaseId,
+        codebaseId: query.spaceId,
         limit: 500,
         offset: 0,
     });
@@ -47,7 +47,7 @@ export function exportContext(userId: string, query: ContextExportQuery) {
                             const fileIds = yield* resolveForFiles(
                                 [query.forPath],
                                 userId,
-                                query.codebaseId,
+                                query.spaceId,
                             );
                             const fileIdSet = new Set(fileIds);
                             for (const item of enriched) {

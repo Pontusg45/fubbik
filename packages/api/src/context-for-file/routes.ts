@@ -22,7 +22,7 @@ export const contextForFileRoutes = new Elysia().get(
                         return getContextForFile(
                             session.user.id,
                             ctx.query.path,
-                            ctx.query.codebaseId,
+                            ctx.query.spaceId,
                             ctx.query.deps ? ctx.query.deps.split(",").filter(Boolean) : undefined
                         ).pipe(Effect.map(result => ({ ...result })));
                     }
@@ -34,7 +34,7 @@ export const contextForFileRoutes = new Elysia().get(
                     return resolveForFiles(
                         [ctx.query.path],
                         session.user.id,
-                        ctx.query.codebaseId,
+                        ctx.query.spaceId,
                     ).pipe(
                         Effect.flatMap(ids => enrichChunks(ids, session.user.id)),
                         Effect.map(chunks => {
@@ -56,7 +56,7 @@ export const contextForFileRoutes = new Elysia().get(
     {
         query: t.Object({
             path: t.String(),
-            codebaseId: t.Optional(t.String()),
+            spaceId: t.Optional(t.String()),
             deps: t.Optional(t.String()),
             format: t.Optional(
                 t.Union([

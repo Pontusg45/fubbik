@@ -13,7 +13,7 @@ export const contextExportRoutes = new Elysia()
                 requireSession(ctx).pipe(
                     Effect.flatMap(session =>
                         contextExportService.exportContext(session.user.id, {
-                            codebaseId: ctx.query.codebaseId,
+                            spaceId: ctx.query.spaceId,
                             maxTokens: ctx.query.maxTokens ? Number(ctx.query.maxTokens) : undefined,
                             format: ctx.query.format as "markdown" | "json" | undefined,
                             forPath: ctx.query.forPath
@@ -23,7 +23,7 @@ export const contextExportRoutes = new Elysia()
             ),
         {
             query: t.Object({
-                codebaseId: t.Optional(t.String()),
+                spaceId: t.Optional(t.String()),
                 maxTokens: t.Optional(t.String()),
                 format: t.Optional(t.Union([t.Literal("markdown"), t.Literal("json")])),
                 forPath: t.Optional(t.String())
@@ -38,7 +38,7 @@ export const contextExportRoutes = new Elysia()
                     Effect.flatMap(session =>
                         generateClaudeMd({
                             userId: session.user.id,
-                            codebaseId: ctx.query.codebaseId,
+                            spaceId: ctx.query.spaceId,
                             tag: ctx.query.tag,
                             maxTokens: ctx.query.maxTokens ? Number(ctx.query.maxTokens) : undefined
                         })
@@ -47,7 +47,7 @@ export const contextExportRoutes = new Elysia()
             ),
         {
             query: t.Object({
-                codebaseId: t.Optional(t.String()),
+                spaceId: t.Optional(t.String()),
                 tag: t.Optional(t.String()),
                 maxTokens: t.Optional(t.String())
             })

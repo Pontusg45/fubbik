@@ -70,7 +70,7 @@ export const contextRoutes = new Elysia()
                         return resolveForConcept(
                             ctx.query.q,
                             session.user.id,
-                            ctx.query.codebaseId,
+                            ctx.query.spaceId,
                         ).pipe(
                             Effect.flatMap(ids => enrichChunks(ids, session.user.id)),
                             Effect.map(chunks => {
@@ -94,7 +94,7 @@ export const contextRoutes = new Elysia()
             query: t.Object({
                 q: t.String(),
                 maxTokens: t.Optional(t.String()),
-                codebaseId: t.Optional(t.String()),
+                spaceId: t.Optional(t.String()),
                 format: t.Optional(t.Union([t.Literal("structured-md"), t.Literal("structured-json")])),
             }),
         },
@@ -119,7 +119,7 @@ export const contextRoutes = new Elysia()
                             return Effect.fail(new ValidationError({ message: "paths must contain at least one path" }));
                         }
 
-                        return resolveForFiles(paths, session.user.id, ctx.query.codebaseId).pipe(
+                        return resolveForFiles(paths, session.user.id, ctx.query.spaceId).pipe(
                             Effect.flatMap(ids => enrichChunks(ids, session.user.id)),
                             Effect.map(chunks => {
                                 const budgeted = budgetChunks(chunks, maxTokens);
@@ -142,7 +142,7 @@ export const contextRoutes = new Elysia()
             query: t.Object({
                 paths: t.String(),
                 maxTokens: t.Optional(t.String()),
-                codebaseId: t.Optional(t.String()),
+                spaceId: t.Optional(t.String()),
                 format: t.Optional(t.Union([t.Literal("structured-md"), t.Literal("structured-json")])),
             }),
         },

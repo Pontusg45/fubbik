@@ -6,7 +6,7 @@ import { estimateTokens } from "./utils";
 
 interface GenerateClaudeMdParams {
     userId: string;
-    codebaseId?: string;
+    spaceId?: string;
     tag?: string;
     maxTokens?: number;
 }
@@ -45,7 +45,7 @@ export function generateClaudeMd(params: GenerateClaudeMdParams) {
         const chunks = yield* listChunksByTag({
             userId: params.userId,
             tagName,
-            codebaseId: params.codebaseId
+            codebaseId: params.spaceId
         });
 
         const parts: string[] = ["# Project Context\n"];
@@ -76,7 +76,7 @@ export function generateClaudeMd(params: GenerateClaudeMdParams) {
         // ── Requirements section ──
         const { requirements } = yield* listRequirements({
             userId: params.userId,
-            codebaseId: params.codebaseId,
+            spaceId: params.spaceId,
             limit: 50,
             offset: 0
         });
@@ -115,7 +115,7 @@ export function generateClaudeMd(params: GenerateClaudeMdParams) {
         // ── Active plans section ──
         const plans = yield* listPlans({
             userId: params.userId,
-            codebaseId: params.codebaseId,
+            codebaseId: params.spaceId,
             status: "in_progress",
         });
 

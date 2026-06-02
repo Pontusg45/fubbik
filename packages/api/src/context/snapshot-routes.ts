@@ -23,7 +23,7 @@ export const snapshotRoutes = new Elysia()
                             filePaths: ctx.body.filePaths,
                             concept: ctx.body.concept,
                             maxTokens: ctx.body.maxTokens,
-                            codebaseId: ctx.body.codebaseId,
+                            spaceId: ctx.body.spaceId,
                         }),
                     ),
                 ),
@@ -35,7 +35,7 @@ export const snapshotRoutes = new Elysia()
                 filePaths: t.Optional(t.Array(t.String())),
                 concept: t.Optional(t.String()),
                 maxTokens: t.Optional(t.Number()),
-                codebaseId: t.Optional(t.String()),
+                spaceId: t.Optional(t.String()),
             }),
         },
     )

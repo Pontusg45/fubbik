@@ -19,7 +19,7 @@ export interface SnapshotInput {
     filePaths?: string[];
     concept?: string;
     maxTokens?: number;
-    codebaseId?: string;
+    spaceId?: string;
 }
 
 export function createSnapshot(userId: string, input: SnapshotInput) {
@@ -32,9 +32,9 @@ export function createSnapshot(userId: string, input: SnapshotInput) {
         if (input.planId) {
             chunkIds = yield* resolveForPlan(input.planId);
         } else if (input.filePaths && input.filePaths.length > 0) {
-            chunkIds = yield* resolveForFiles(input.filePaths, userId, input.codebaseId);
+            chunkIds = yield* resolveForFiles(input.filePaths, userId, input.spaceId);
         } else if (input.concept) {
-            chunkIds = yield* resolveForConcept(input.concept, userId, input.codebaseId);
+            chunkIds = yield* resolveForConcept(input.concept, userId, input.spaceId);
         }
 
         const enriched = yield* enrichChunks(chunkIds, userId);
@@ -49,7 +49,7 @@ export function createSnapshot(userId: string, input: SnapshotInput) {
         if (input.filePaths) query.filePaths = input.filePaths;
         if (input.concept) query.concept = input.concept;
         if (input.maxTokens) query.maxTokens = input.maxTokens;
-        if (input.codebaseId) query.codebaseId = input.codebaseId;
+        if (input.spaceId) query.spaceId = input.spaceId;
 
         const snapshot = yield* createSnapshotRepo({
             userId,

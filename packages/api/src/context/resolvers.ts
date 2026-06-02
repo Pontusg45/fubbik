@@ -217,7 +217,7 @@ export function resolveForPlan(planId: string): Effect.Effect<string[], never> {
 export function resolveForConcept(
     query: string,
     userId?: string,
-    codebaseId?: string,
+    spaceId?: string,
 ): Effect.Effect<string[], never> {
     return Effect.gen(function* () {
         const ids = new Set<string>();
@@ -235,7 +235,7 @@ export function resolveForConcept(
         // Text search
         const textResults = yield* listChunks({
             userId,
-            codebaseId,
+            codebaseId: spaceId,
             search: query,
             limit: 20,
             offset: 0,
@@ -256,14 +256,14 @@ export function resolveForConcept(
 export function resolveForFiles(
     paths: string[],
     userId: string,
-    codebaseId?: string,
+    spaceId?: string,
 ): Effect.Effect<string[], never> {
     return Effect.gen(function* () {
         const ids = new Set<string>();
 
         const results = yield* Effect.all(
             paths.map(path =>
-                getContextForFile(userId, path, codebaseId).pipe(
+                getContextForFile(userId, path, spaceId).pipe(
                     Effect.catchAll(() => Effect.succeed({ chunks: [], requirements: [] })),
                 ),
             ),
