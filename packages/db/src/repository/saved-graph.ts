@@ -13,7 +13,7 @@ export interface CreateSavedGraphParams {
     positions: Record<string, { x: number; y: number }>;
     layoutAlgorithm: string;
     userId: string;
-    codebaseId?: string | null;
+    spaceId?: string | null;
 }
 
 export interface UpdateSavedGraphParams {
@@ -45,10 +45,10 @@ export function getSavedGraphById(id: string, userId?: string) {
         });
 }
 
-export function listSavedGraphs(userId: string, codebaseId?: string | null) {
+export function listSavedGraphs(userId: string, spaceId?: string | null) {
     return dbEffect(() => {
             const conditions = [eq(savedGraph.userId, userId)];
-            if (codebaseId) conditions.push(eq(savedGraph.codebaseId, codebaseId));
+            if (spaceId) conditions.push(eq(savedGraph.spaceId, spaceId));
             return db
                 .select()
                 .from(savedGraph)
