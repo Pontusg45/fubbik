@@ -3,18 +3,18 @@ import { Effect } from "effect";
 
 import { db, dbEffect } from "../index";
 import { chunk } from "../schema/chunk";
-import { chunkCodebase } from "../schema/codebase";
+import { chunkSpace } from "../schema/space";
 import { requirementChunk } from "../schema/requirement";
 import { chunkStaleness, stalenessScan } from "../schema/staleness";
 
-function codebaseConditions(codebaseId?: string) {
-    if (!codebaseId) return [];
-    const inCodebase = db
-        .select({ chunkId: chunkCodebase.chunkId })
-        .from(chunkCodebase)
-        .where(eq(chunkCodebase.codebaseId, codebaseId));
-    const inAnyCodebase = db.select({ chunkId: chunkCodebase.chunkId }).from(chunkCodebase);
-    return [sql`(${chunk.id} IN (${inCodebase}) OR ${chunk.id} NOT IN (${inAnyCodebase}))`];
+function spaceConditions(spaceId?: string) {
+    if (!spaceId) return [];
+    const inSpace = db
+        .select({ chunkId: chunkSpace.chunkId })
+        .from(chunkSpace)
+        .where(eq(chunkSpace.spaceId, spaceId));
+    const inAnySpace = db.select({ chunkId: chunkSpace.chunkId }).from(chunkSpace);
+    return [sql`(${chunk.id} IN (${inSpace}) OR ${chunk.id} NOT IN (${inAnySpace}))`];
 }
 
 const undismissedUnsuppressed = [isNull(chunkStaleness.dismissedAt), isNull(chunkStaleness.suppressPair)];
@@ -28,7 +28,7 @@ export function getStaleFlags(
                 eq(chunk.userId, userId),
                 ...undismissedUnsuppressed,
                 ...(params?.reason ? [eq(chunkStaleness.reason, params.reason)] : []),
-                ...codebaseConditions(params?.codebaseId)
+                ...spaceConditions(params?.codebaseId)
             ];
 
             return db
@@ -55,7 +55,7 @@ export function getStaleCount(userId: string, codebaseId?: string) {
             const conditions = [
                 eq(chunk.userId, userId),
                 ...undismissedUnsuppressed,
-                ...codebaseConditions(codebaseId)
+                ...spaceConditions(codebaseId)
             ];
 
             const result = await db
@@ -147,7 +147,7 @@ export function detectAgeStaleChunks(userId: string, codebaseId?: string, thresh
                 sql`${chunk.updatedAt} < ${threshold}`,
                 isNull(chunk.archivedAt),
                 sql`${chunk.id} NOT IN (${alreadyFlagged})`,
-                ...codebaseConditions(codebaseId)
+                ...spaceConditions(codebaseId)
             ];
 
             const staleChunks = await db
@@ -175,25 +175,25 @@ export function detectAgeStaleChunks(userId: string, codebaseId?: string, thresh
         });
 }
 
-export function getLastScan(codebaseId: string) {
+export function getLastScan(spaceId: string) {
     return dbEffect(async () => {
             const rows = await db
                 .select()
                 .from(stalenessScan)
-                .where(eq(stalenessScan.codebaseId, codebaseId))
+                .where(eq(stalenessScan.spaceId, spaceId))
                 .orderBy(desc(stalenessScan.scannedAt))
                 .limit(1);
             return rows[0] ?? null;
         });
 }
 
-export function upsertScan(data: { id: string; codebaseId: string; lastCommitSha: string }) {
+export function upsertScan(data: { id: string; spaceId: string; lastCommitSha: string }) {
     return dbEffect(() =>
             db
                 .insert(stalenessScan)
                 .values({
                     id: data.id,
-                    codebaseId: data.codebaseId,
+                    spaceId: data.spaceId,
                     lastCommitSha: data.lastCommitSha
                 })
                 .onConflictDoUpdate({
@@ -231,7 +231,7 @@ export function detectUncoveredChunks(userId: string, codebaseId?: string, thres
                 isNull(chunk.archivedAt),
                 sql`${chunk.id} NOT IN (${alreadyFlagged})`,
                 sql`${chunk.id} NOT IN (${covered})`,
-                ...codebaseConditions(codebaseId)
+                ...spaceConditions(codebaseId)
             ];
 
             const uncoveredChunks = await db
