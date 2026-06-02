@@ -5,38 +5,38 @@ import { Badge } from "@/components/ui/badge";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
-export const Route = createFileRoute("/codebases/$codebaseId")({
-    component: CodebaseDashboard,
+export const Route = createFileRoute("/spaces/$spaceId")({
+    component: SpaceDashboard,
 });
 
-function CodebaseDashboard() {
-    const { codebaseId } = Route.useParams();
+function SpaceDashboard() {
+    const { spaceId } = Route.useParams();
 
     const statsQuery = useQuery({
-        queryKey: ["codebase-stats", codebaseId],
-        queryFn: async () => unwrapEden(await api.api.stats.get({ query: { codebaseId } as any })),
+        queryKey: ["space-stats", spaceId],
+        queryFn: async () => unwrapEden(await api.api.stats.get({ query: { spaceId } as any })),
     });
 
     const chunksQuery = useQuery({
-        queryKey: ["codebase-chunks", codebaseId],
-        queryFn: async () => unwrapEden(await api.api.chunks.get({ query: { codebaseId, limit: "10", sort: "updated" } as any })),
+        queryKey: ["space-chunks", spaceId],
+        queryFn: async () => unwrapEden(await api.api.chunks.get({ query: { spaceId, limit: "10", sort: "updated" } as any })),
     });
 
-    const codebaseQuery = useQuery({
-        queryKey: ["codebase", codebaseId],
-        queryFn: async () => unwrapEden(await api.api.codebases({ id: codebaseId }).get()),
+    const spaceQuery = useQuery({
+        queryKey: ["space", spaceId],
+        queryFn: async () => unwrapEden(await api.api.spaces({ id: spaceId }).get()),
     });
 
-    const codebase = codebaseQuery.data as any;
+    const space = spaceQuery.data as any;
     const stats = statsQuery.data as any;
     const chunks = ((chunksQuery.data as any)?.chunks ?? []) as Array<{ id: string; title: string; type: string; updatedAt: string }>;
 
     return (
         <div className="container mx-auto max-w-6xl px-4 py-8">
             <div className="mb-8">
-                <h1 className="text-2xl font-bold tracking-tight">{codebase?.name ?? "Codebase"}</h1>
-                {codebase?.remoteUrl && (
-                    <p className="text-xs text-muted-foreground font-mono mt-1">{codebase.remoteUrl}</p>
+                <h1 className="text-2xl font-bold tracking-tight">{space?.name ?? "Space"}</h1>
+                {space?.remoteUrl && (
+                    <p className="text-xs text-muted-foreground font-mono mt-1">{space.remoteUrl}</p>
                 )}
             </div>
 
@@ -45,7 +45,7 @@ function CodebaseDashboard() {
                 <StatCard icon={Blocks} label="Chunks" value={stats?.chunks} />
                 <StatCard icon={Network} label="Connections" value={stats?.connections} />
                 <StatCard icon={Tag} label="Tags" value={stats?.tags} />
-                <StatCard icon={Clock} label="Updated" value={codebase?.updatedAt ? new Date(codebase.updatedAt).toLocaleDateString() : "—"} />
+                <StatCard icon={Clock} label="Updated" value={space?.updatedAt ? new Date(space.updatedAt).toLocaleDateString() : "—"} />
             </div>
 
             {/* Recent chunks */}
@@ -55,7 +55,7 @@ function CodebaseDashboard() {
                 </div>
                 {chunks.length === 0 ? (
                     <div className="p-6 text-center text-sm text-muted-foreground">
-                        No chunks in this codebase yet.
+                        No chunks in this space yet.
                     </div>
                 ) : (
                     <div className="divide-y">

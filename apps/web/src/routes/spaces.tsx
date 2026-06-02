@@ -13,8 +13,8 @@ import { getUser } from "@/functions/get-user";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
-export const Route = createFileRoute("/codebases")({
-    component: CodebasesPage,
+export const Route = createFileRoute("/spaces")({
+    component: SpacesPage,
     beforeLoad: async () => {
         let session = null;
         try {
@@ -30,20 +30,20 @@ type ConfirmAction = {
     name: string;
 };
 
-function CodebasesPage() {
+function SpacesPage() {
     const [name, setName] = useState("");
     const [remoteUrl, setRemoteUrl] = useState("");
     const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null);
 
-    const codebasesQuery = useApiQuery<any[]>({
-        queryKey: ["codebases"],
-        queryFn: () => api.api.codebases.get(),
+    const spacesQuery = useApiQuery<any[]>({
+        queryKey: ["spaces"],
+        queryFn: () => api.api.spaces.get(),
         fallback: [],
     });
 
     const createMutation = useApiMutation<unknown, { name: string; remoteUrl?: string }>({
-        mutationFn: body => api.api.codebases.post(body),
-        invalidate: ["codebases"],
+        mutationFn: body => api.api.spaces.post(body),
+        invalidate: ["spaces"],
         successToast: false,
         onSuccess: () => {
             setName("");
@@ -52,9 +52,9 @@ function CodebasesPage() {
     });
 
     const deleteMutation = useApiMutation<unknown, string>({
-        mutationFn: id => api.api.codebases({ id }).delete(),
-        invalidate: ["codebases", "chunks", "graph", "stats"],
-        successToast: "Codebase deleted",
+        mutationFn: id => api.api.spaces({ id }).delete(),
+        invalidate: ["spaces", "chunks", "graph", "stats"],
+        successToast: "Space deleted",
     });
 
     const resetMutation = useApiMutation<
@@ -62,21 +62,21 @@ function CodebasesPage() {
         string
     >({
         mutationFn: async (id) => {
-            const result = unwrapEden(await api.api.codebases({ id }).reset.post());
+            const result = unwrapEden(await api.api.spaces({ id }).reset.post());
             return result as any;
         },
-        invalidate: ["codebases", "chunks", "graph", "stats"],
+        invalidate: ["spaces", "chunks", "graph", "stats"],
         successToast: (data) => {
             const parts = [];
             if (data.chunksDeleted) parts.push(`${data.chunksDeleted} chunks`);
             if (data.docsDeleted) parts.push(`${data.docsDeleted} docs`);
             if (data.plansDeleted) parts.push(`${data.plansDeleted} plans`);
             if (data.requirementsDeleted) parts.push(`${data.requirementsDeleted} requirements`);
-            return parts.length > 0 ? `Reset: removed ${parts.join(", ")}` : "Codebase reset (was already empty)";
+            return parts.length > 0 ? `Reset: removed ${parts.join(", ")}` : "Space reset (was already empty)";
         },
     });
 
-    const codebases = Array.isArray(codebasesQuery.data) ? codebasesQuery.data : [];
+    const spaces = Array.isArray(spacesQuery.data) ? spacesQuery.data : [];
 
     function handleCreate(e: React.FormEvent) {
         e.preventDefault();
@@ -103,14 +103,14 @@ function CodebasesPage() {
         <PageContainer>
             <PageHeader
                 icon={FolderGit2}
-                title="Codebases"
-                count={codebases.length}
+                title="Spaces"
+                count={spaces.length}
             />
 
             <Card className="mb-6">
                 <CardPanel className="p-6">
                     <form onSubmit={handleCreate} className="flex flex-col gap-3">
-                        <h2 className="text-sm font-medium">Add Codebase</h2>
+                        <h2 className="text-sm font-medium">Add Space</h2>
                         <div className="flex flex-col gap-2 sm:flex-row">
                             <Input
                                 placeholder="Name"
@@ -136,18 +136,18 @@ function CodebasesPage() {
 
             <Card>
                 <CardPanel className="p-6">
-                    {codebasesQuery.isLoading ? (
+                    {spacesQuery.isLoading ? (
                         <PageLoading count={3} />
-                    ) : codebases.length === 0 ? (
+                    ) : spaces.length === 0 ? (
                         <PageEmpty
                             icon={GitBranch}
-                            title="No codebases"
-                            description="Add a codebase to scope chunks to specific projects."
-                            action={<Button onClick={() => document.querySelector<HTMLInputElement>('input[placeholder="Name"]')?.focus()}>Add Codebase</Button>}
+                            title="No spaces"
+                            description="Add a space to scope chunks to specific projects."
+                            action={<Button onClick={() => document.querySelector<HTMLInputElement>('input[placeholder="Name"]')?.focus()}>Add Space</Button>}
                         />
                     ) : (
                         <div className="divide-y">
-                            {codebases.map(c => (
+                            {spaces.map(c => (
                                 <div key={c.id} className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
                                     <div className="min-w-0 flex-1">
                                         <p className="font-medium">{c.name}</p>
@@ -177,7 +177,7 @@ function CodebasesPage() {
                                             size="sm"
                                             onClick={() => setConfirmAction({ type: "delete", id: c.id, name: c.name })}
                                             disabled={isPending}
-                                            title="Delete codebase and all its data"
+                                            title="Delete space and all its data"
                                         >
                                             <Trash2 className="size-4" />
                                         </Button>
@@ -192,10 +192,10 @@ function CodebasesPage() {
             <ConfirmDialog
                 open={confirmAction !== null}
                 onOpenChange={(open) => { if (!open) setConfirmAction(null); }}
-                title={confirmAction?.type === "reset" ? "Reset codebase" : "Delete codebase"}
+                title={confirmAction?.type === "reset" ? "Reset space" : "Delete space"}
                 description={
                     confirmAction?.type === "reset"
-                        ? `This will delete all chunks, documents, plans, and requirements in "${confirmAction.name}". The codebase itself will be kept.`
+                        ? `This will delete all chunks, documents, plans, and requirements in "${confirmAction.name}". The space itself will be kept.`
                         : confirmAction
                         ? `This will delete "${confirmAction.name}" and all its chunks, documents, plans, and requirements. This cannot be undone.`
                         : ""
