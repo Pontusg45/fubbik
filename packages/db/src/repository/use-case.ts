@@ -8,7 +8,7 @@ export interface CreateUseCaseParams {
     id: string;
     name: string;
     description?: string;
-    codebaseId?: string;
+    spaceId?: string;
     userId: string;
     order?: number;
     parentId?: string;
@@ -43,17 +43,17 @@ export function getUseCaseById(id: string, userId?: string) {
         });
 }
 
-export function listUseCases(userId: string, codebaseId?: string) {
+export function listUseCases(userId: string, spaceId?: string) {
     return dbEffect(async () => {
             const conditions = [eq(useCase.userId, userId)];
-            if (codebaseId) conditions.push(eq(useCase.codebaseId, codebaseId));
+            if (spaceId) conditions.push(eq(useCase.spaceId, spaceId));
 
             const useCases = await db
                 .select({
                     id: useCase.id,
                     name: useCase.name,
                     description: useCase.description,
-                    codebaseId: useCase.codebaseId,
+                    spaceId: useCase.spaceId,
                     userId: useCase.userId,
                     order: useCase.order,
                     parentId: useCase.parentId,
