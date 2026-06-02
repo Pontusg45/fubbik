@@ -1,4 +1,7 @@
+import { relations } from "drizzle-orm";
 import { boolean, integer, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+
+import { space } from "./space";
 
 export const spaceKind = pgTable("space_kind", {
     id: text("id").primaryKey(),
@@ -13,3 +16,7 @@ export const spaceKind = pgTable("space_kind", {
         .$onUpdate(() => new Date())
         .notNull()
 });
+
+export const spaceKindRelations = relations(spaceKind, ({ many }) => ({
+    spaces: many(space)
+}));
