@@ -3,6 +3,7 @@ import { Command } from "commander";
 // Group commands
 import { chunkCommand } from "./commands/chunk";
 import { codebaseCommand } from "./commands/codebase";
+import { spaceCommand } from "./commands/space";
 import { contextGroupCommand } from "./commands/context-group";
 import { maintainCommand } from "./commands/maintain";
 import { matrixCommand } from "./commands/matrix";
@@ -51,6 +52,7 @@ program
 
 // Groups
 program.addCommand(chunkCommand);
+program.addCommand(spaceCommand);
 program.addCommand(codebaseCommand);
 program.addCommand(contextGroupCommand);
 program.addCommand(maintainCommand);
