@@ -48,9 +48,9 @@ export interface PreviewFileResult {
     };
 }
 
-export function getExistingHashes(codebaseId: string, userId: string) {
+export function getExistingHashes(spaceId: string, userId: string) {
     return Effect.gen(function* () {
-        const docs = yield* listDocumentsRepo(userId, codebaseId);
+        const docs = yield* listDocumentsRepo(userId, spaceId);
         const hashes: Record<string, string> = {};
         for (const doc of docs) {
             if (doc.sourcePath && doc.contentHash) {
@@ -64,7 +64,7 @@ export function getExistingHashes(codebaseId: string, userId: string) {
 export function createFolderConnections(
     _userId: string,
     fileChunks: Map<string, string>,
-    _codebaseId: string
+    _spaceId: string
 ) {
     return Effect.gen(function* () {
         const byDir = new Map<string, { path: string; chunkId: string; isIndex: boolean }[]>();
@@ -101,7 +101,7 @@ export function createFolderConnections(
 export function importDocs(
     userId: string,
     files: { path: string; content: string }[],
-    codebaseId: string,
+    spaceId: string,
     templateOverrides?: Record<string, string | null>
 ) {
     const results: { created: number; skipped: number; connections: number; errors: { path: string; error: string }[] } = {
@@ -117,7 +117,7 @@ export function importDocs(
         files,
         file => {
             const templateId = templateOverrides?.[file.path] ?? undefined;
-            return importDocument(userId, file.path, file.content, codebaseId, templateId ?? undefined).pipe(
+            return importDocument(userId, file.path, file.content, spaceId, templateId ?? undefined).pipe(
                 Effect.map(result => {
                     if (result.status === "unchanged") {
                         results.skipped++;
@@ -136,7 +136,7 @@ export function importDocs(
         },
         { concurrency: 5 }
     ).pipe(
-        Effect.flatMap(() => createFolderConnections(userId, fileChunks, codebaseId)),
+        Effect.flatMap(() => createFolderConnections(userId, fileChunks, spaceId)),
         Effect.map(connectionsCreated => {
             results.connections = connectionsCreated;
             return results;
@@ -147,7 +147,7 @@ export function importDocs(
 export function importDocsStream(
     userId: string,
     files: { path: string; content: string }[],
-    codebaseId: string,
+    spaceId: string,
     templateOverrides?: Record<string, string | null>
 ): ReadableStream {
     const encoder = new TextEncoder();
@@ -169,7 +169,7 @@ export function importDocsStream(
                 try {
                     const templateId = templateOverrides?.[file.path] ?? undefined;
                     const result = await Effect.runPromise(
-                        importDocument(userId, file.path, file.content, codebaseId, templateId ?? undefined)
+                        importDocument(userId, file.path, file.content, spaceId, templateId ?? undefined)
                     );
                     if (result.status === "unchanged") {
                         skipped++;
@@ -189,7 +189,7 @@ export function importDocsStream(
 
             let connections = 0;
             try {
-                connections = await Effect.runPromise(createFolderConnections(userId, fileChunks, codebaseId));
+                connections = await Effect.runPromise(createFolderConnections(userId, fileChunks, spaceId));
             } catch {}
 
             controller.enqueue(encode("done", { type: "done", created, skipped, errors, connections, elapsed: Date.now() - startTime }));
@@ -201,10 +201,10 @@ export function importDocsStream(
 export function previewImportDocs(
     userId: string,
     files: { path: string; content: string }[],
-    codebaseId: string
+    spaceId: string
 ) {
     return Effect.gen(function* () {
-        const existingHashes = yield* getExistingHashes(codebaseId, userId);
+        const existingHashes = yield* getExistingHashes(spaceId, userId);
         const allTemplates = yield* listTemplatesRepo(userId);
 
         const templatesWithRules: TemplateWithRules[] = allTemplates

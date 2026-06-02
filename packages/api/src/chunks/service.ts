@@ -3,8 +3,8 @@ import {
     getAppliesToForChunk,
     getChunkById,
     getChunkConnections,
-    getCodebasesForChunk,
-    getCodebasesForChunks,
+    getSpacesForChunk,
+    getSpacesForChunks,
     getDeltasForChunk as getDeltasForChunkRepo,
     getFileRefsForChunk,
     getRequirementsForChunks,
@@ -38,12 +38,12 @@ export function listChunks(
         after?: string;
         enrichment?: "missing" | "complete";
         minConnections?: string;
-        codebaseId?: string;
+        spaceId?: string;
         workspaceId?: string;
         global?: string;
         origin?: string;
         reviewStatus?: string;
-        allCodebases?: string;
+        allSpaces?: string;
     },
     activeFeatureIds: string[] = []
 ) {
@@ -66,7 +66,7 @@ export function listChunks(
     const after = query.after ? new Date(Date.now() - Number(query.after) * 86400000) : undefined;
     const minConnections = query.minConnections ? Number(query.minConnections) : undefined;
     const globalOnly = query.global === "true";
-    const searchAllCodebases = query.allCodebases === "true";
+    const searchAllSpaces = query.allSpaces === "true";
     return listChunksRepo({
         userId,
         type: query.type,
@@ -80,29 +80,29 @@ export function listChunks(
         after,
         enrichment: query.enrichment,
         minConnections,
-        codebaseId: searchAllCodebases ? undefined : query.codebaseId,
-        workspaceId: searchAllCodebases ? undefined : query.workspaceId,
-        globalOnly: searchAllCodebases ? false : globalOnly,
+        codebaseId: searchAllSpaces ? undefined : query.spaceId,
+        workspaceId: searchAllSpaces ? undefined : query.workspaceId,
+        globalOnly: searchAllSpaces ? false : globalOnly,
         origin: query.origin,
         reviewStatus: query.reviewStatus,
         limit,
         offset
     }).pipe(
         Effect.flatMap(result => {
-            if (!searchAllCodebases || result.chunks.length === 0) {
+            if (!searchAllSpaces || result.chunks.length === 0) {
                 return Effect.succeed({ ...result, limit, offset });
             }
-            return getCodebasesForChunks(result.chunks.map(c => c.id)).pipe(
-                Effect.map(codebaseMap => {
+            return getSpacesForChunks(result.chunks.map(c => c.id)).pipe(
+                Effect.map(spaceMap => {
                     const lookup = new Map<string, string[]>();
-                    for (const entry of codebaseMap) {
+                    for (const entry of spaceMap) {
                         const existing = lookup.get(entry.chunkId) ?? [];
-                        existing.push(entry.codebaseName);
+                        existing.push(entry.spaceName);
                         lookup.set(entry.chunkId, existing);
                     }
                     const chunks = result.chunks.map(c => ({
                         ...c,
-                        codebaseNames: lookup.get(c.id) ?? []
+                        spaceNames: lookup.get(c.id) ?? []
                     }));
                     return { ...result, chunks, limit, offset };
                 })
@@ -131,7 +131,7 @@ export function getChunkDetail(chunkId: string, userId?: string, activeFeatureId
             Effect.all({
                 chunk: Effect.succeed(found),
                 connections: getChunkConnections(chunkId),
-                codebases: getCodebasesForChunk(chunkId),
+                spaces: getSpacesForChunk(chunkId),
                 appliesTo: getAppliesToForChunk(chunkId),
                 fileReferences: getFileRefsForChunk(chunkId),
                 tags: getTagsForChunk(chunkId),

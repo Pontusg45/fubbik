@@ -11,7 +11,7 @@ import {
     mergeChunks as mergeChunksRepo,
     listArchivedChunks as listArchivedChunksRepo,
     restoreChunk as restoreChunkRepo,
-    setChunkCodebases,
+    setChunkSpaces,
     setChunkTags,
     updateChunk as updateChunkRepo,
     type UpdateChunkParams
@@ -65,7 +65,7 @@ export function createChunk(
         content?: string;
         type?: string;
         tags?: string[];
-        codebaseIds?: string[];
+        spaceIds?: string[];
         rationale?: string;
         alternatives?: string[];
         consequences?: string;
@@ -103,8 +103,8 @@ export function createChunk(
             return Effect.void;
         }),
         Effect.tap(() => {
-            if (body.codebaseIds && body.codebaseIds.length > 0) {
-                return setChunkCodebases(id, body.codebaseIds);
+            if (body.spaceIds && body.spaceIds.length > 0) {
+                return setChunkSpaces(id, body.spaceIds);
             }
             return Effect.void;
         }),
@@ -138,7 +138,7 @@ export function updateChunk(
         content?: string;
         type?: string;
         tags?: string[];
-        codebaseIds?: string[];
+        spaceIds?: string[];
         summary?: string | null;
         aliases?: string[];
         notAbout?: string[];
@@ -172,7 +172,7 @@ export function updateChunk(
             })
         ),
         Effect.flatMap(() => {
-            const { tags: _tags, codebaseIds: _codebaseIds, updateTag: _updateTag, ...repoBody } = body;
+            const { tags: _tags, spaceIds: _spaceIds, updateTag: _updateTag, ...repoBody } = body;
             const updateData: UpdateChunkParams = { ...repoBody };
             if (body.reviewStatus !== undefined) {
                 updateData.reviewedBy = userId;
@@ -190,8 +190,8 @@ export function updateChunk(
             return Effect.void;
         }),
         Effect.tap(() => {
-            if (body.codebaseIds) {
-                return setChunkCodebases(chunkId, body.codebaseIds);
+            if (body.spaceIds) {
+                return setChunkSpaces(chunkId, body.spaceIds);
             }
             return Effect.void;
         }),
@@ -233,8 +233,8 @@ export function restoreChunk(chunkId: string, userId: string) {
     );
 }
 
-export function listArchivedChunks(userId: string, codebaseId?: string) {
-    return listArchivedChunksRepo(userId, codebaseId);
+export function listArchivedChunks(userId: string, spaceId?: string) {
+    return listArchivedChunksRepo(userId, spaceId);
 }
 
 /**

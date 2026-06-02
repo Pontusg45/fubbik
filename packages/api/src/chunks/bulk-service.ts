@@ -4,7 +4,7 @@ import {
     findOrCreateTag,
     getChunkById,
     getTagsForChunks,
-    setChunkCodebases,
+    setChunkSpaces,
     setChunkTags,
     updateManyChunks
 } from "@fubbik/db/repository";
@@ -105,9 +105,9 @@ export function bulkUpdate(
                     );
                 }
                 case "set_codebase": {
-                    const codebaseIds = value ? [value] : [];
+                    const spaceIds = value ? [value] : [];
                     return Effect.all(
-                        ids.map(id => setChunkCodebases(id, codebaseIds)),
+                        ids.map(id => setChunkSpaces(id, spaceIds)),
                         { concurrency: 10 }
                     ).pipe(Effect.map(() => ({ updated: ids.length })));
                 }

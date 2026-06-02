@@ -9,7 +9,7 @@ vi.mock("@fubbik/db/repository", () => ({
     getTagsForChunks: vi.fn(),
     setChunkTags: vi.fn(),
     updateManyChunks: vi.fn(),
-    setChunkCodebases: vi.fn(),
+    setChunkSpaces: vi.fn(),
     archiveMany: vi.fn(),
     deleteMany: vi.fn(),
 }));
@@ -20,7 +20,7 @@ import {
     getTagsForChunks,
     setChunkTags,
     updateManyChunks,
-    setChunkCodebases,
+    setChunkSpaces,
     archiveMany,
     deleteMany,
 } from "@fubbik/db/repository";
@@ -145,27 +145,27 @@ describe("bulkUpdate", () => {
 
     describe("set_codebase", () => {
         it("sets codebase on all chunks", async () => {
-            vi.mocked(setChunkCodebases).mockReturnValue(Effect.succeed(undefined as any));
+            vi.mocked(setChunkSpaces).mockReturnValue(Effect.succeed(undefined as any));
 
             const result = await Effect.runPromise(
-                bulkUpdate(userId, { ids: chunkIds, action: "set_codebase", value: "codebase-1" })
+                bulkUpdate(userId, { ids: chunkIds, action: "set_codebase", value: "space-1" })
             );
 
             expect(result).toEqual({ updated: 2 });
-            expect(setChunkCodebases).toHaveBeenCalledWith("chunk-1", ["codebase-1"]);
-            expect(setChunkCodebases).toHaveBeenCalledWith("chunk-2", ["codebase-1"]);
+            expect(setChunkSpaces).toHaveBeenCalledWith("chunk-1", ["space-1"]);
+            expect(setChunkSpaces).toHaveBeenCalledWith("chunk-2", ["space-1"]);
         });
 
         it("clears codebase when value is null", async () => {
-            vi.mocked(setChunkCodebases).mockReturnValue(Effect.succeed(undefined as any));
+            vi.mocked(setChunkSpaces).mockReturnValue(Effect.succeed(undefined as any));
 
             const result = await Effect.runPromise(
                 bulkUpdate(userId, { ids: chunkIds, action: "set_codebase", value: null })
             );
 
             expect(result).toEqual({ updated: 2 });
-            expect(setChunkCodebases).toHaveBeenCalledWith("chunk-1", []);
-            expect(setChunkCodebases).toHaveBeenCalledWith("chunk-2", []);
+            expect(setChunkSpaces).toHaveBeenCalledWith("chunk-1", []);
+            expect(setChunkSpaces).toHaveBeenCalledWith("chunk-2", []);
         });
     });
 

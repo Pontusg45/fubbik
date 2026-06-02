@@ -73,8 +73,8 @@ export function semanticSearch(userId: string | undefined, query: { q: string; l
     );
 }
 
-export function listUpdatesByTag(userId: string, tag: string, codebaseId?: string) {
-    return getVersionsByTag(tag, userId, codebaseId).pipe(
+export function listUpdatesByTag(userId: string, tag: string, spaceId?: string) {
+    return getVersionsByTag(tag, userId, spaceId).pipe(
         Effect.map(versions => versions.map(v => ({
             versionId: v.versionId,
             chunkId: v.chunkId,
@@ -98,6 +98,6 @@ export function listUpdatesByTag(userId: string, tag: string, codebaseId?: strin
     );
 }
 
-export function listUpdateTags(userId: string, codebaseId?: string) {
-    return getDistinctUpdateTags(userId, codebaseId);
+export function listUpdateTags(userId: string, spaceId?: string) {
+    return getDistinctUpdateTags(userId, spaceId);
 }

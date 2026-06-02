@@ -30,12 +30,12 @@ export const chunkRoutes = new Elysia()
                 after: t.Optional(t.String()),
                 enrichment: t.Optional(t.Union([t.Literal("missing"), t.Literal("complete")])),
                 minConnections: t.Optional(t.String()),
-                codebaseId: t.Optional(t.String()),
+                spaceId: t.Optional(t.String()),
                 workspaceId: t.Optional(t.String()),
                 global: t.Optional(t.String()),
                 origin: t.Optional(t.Union([t.Literal("human"), t.Literal("ai")])),
                 reviewStatus: t.Optional(t.Union([t.Literal("draft"), t.Literal("reviewed"), t.Literal("approved")])),
-                allCodebases: t.Optional(t.String())
+                allSpaces: t.Optional(t.String())
             })
         }
     )
@@ -71,7 +71,7 @@ export const chunkRoutes = new Elysia()
             Effect.runPromise(
                 requireSession(ctx).pipe(
                     Effect.flatMap(session =>
-                        chunkService.previewImportDocs(session.user.id, ctx.body.files, ctx.body.codebaseId)
+                        chunkService.previewImportDocs(session.user.id, ctx.body.files, ctx.body.spaceId)
                     )
                 )
             ),
@@ -84,7 +84,7 @@ export const chunkRoutes = new Elysia()
                     }),
                     { maxItems: 500 }
                 ),
-                codebaseId: t.String(),
+                spaceId: t.String(),
             }),
         }
     )
@@ -105,7 +105,7 @@ export const chunkRoutes = new Elysia()
                         return chunkService.importDocs(
                             session.user.id,
                             ctx.body.files,
-                            ctx.body.codebaseId,
+                            ctx.body.spaceId,
                             ctx.body.templateOverrides
                         );
                     })
@@ -120,7 +120,7 @@ export const chunkRoutes = new Elysia()
                     }),
                     { maxItems: 500 }
                 ),
-                codebaseId: t.String(),
+                spaceId: t.String(),
                 templateOverrides: t.Optional(t.Record(t.String(), t.Union([t.String(), t.Null()])))
             })
         }
@@ -138,7 +138,7 @@ export const chunkRoutes = new Elysia()
             const stream = chunkService.importDocsStream(
                 session.user.id,
                 ctx.body.files,
-                ctx.body.codebaseId,
+                ctx.body.spaceId,
                 ctx.body.templateOverrides
             );
 
@@ -159,7 +159,7 @@ export const chunkRoutes = new Elysia()
                     }),
                     { maxItems: 500 }
                 ),
-                codebaseId: t.String(),
+                spaceId: t.String(),
                 templateOverrides: t.Optional(t.Record(t.String(), t.Union([t.String(), t.Null()])))
             })
         }
@@ -193,12 +193,12 @@ export const chunkRoutes = new Elysia()
         ctx =>
             Effect.runPromise(
                 requireSession(ctx).pipe(
-                    Effect.flatMap(session => chunkService.listArchivedChunks(session.user.id, ctx.query.codebaseId))
+                    Effect.flatMap(session => chunkService.listArchivedChunks(session.user.id, ctx.query.spaceId))
                 )
             ),
         {
             query: t.Object({
-                codebaseId: t.Optional(t.String())
+                spaceId: t.Optional(t.String())
             })
         }
     )
@@ -275,7 +275,7 @@ export const chunkRoutes = new Elysia()
             Effect.runPromise(
                 requireSession(ctx).pipe(
                     Effect.flatMap(session =>
-                        chunkService.listUpdatesByTag(session.user.id, ctx.query.tag, ctx.query.codebaseId)
+                        chunkService.listUpdatesByTag(session.user.id, ctx.query.tag, ctx.query.spaceId)
                     ),
                     Effect.map(updates => ({ updates }))
                 )
@@ -283,7 +283,7 @@ export const chunkRoutes = new Elysia()
         {
             query: t.Object({
                 tag: t.String({ minLength: 1, maxLength: 100 }),
-                codebaseId: t.Optional(t.String())
+                spaceId: t.Optional(t.String())
             })
         }
     )
@@ -293,14 +293,14 @@ export const chunkRoutes = new Elysia()
             Effect.runPromise(
                 requireSession(ctx).pipe(
                     Effect.flatMap(session =>
-                        chunkService.listUpdateTags(session.user.id, ctx.query.codebaseId)
+                        chunkService.listUpdateTags(session.user.id, ctx.query.spaceId)
                     ),
                     Effect.map(tags => ({ tags }))
                 )
             ),
         {
             query: t.Object({
-                codebaseId: t.Optional(t.String())
+                spaceId: t.Optional(t.String())
             })
         }
     )
@@ -375,7 +375,7 @@ export const chunkRoutes = new Elysia()
                 content: t.Optional(t.String({ maxLength: 50000 })),
                 type: t.Optional(t.String({ maxLength: 20 })),
                 tags: t.Optional(t.Array(t.String({ maxLength: 50 }), { maxItems: 20 })),
-                codebaseIds: t.Optional(t.Array(t.String(), { maxItems: 20 })),
+                spaceIds: t.Optional(t.Array(t.String(), { maxItems: 20 })),
                 scope: scopeSchema,
                 rationale: t.Optional(t.String({ maxLength: 5000 })),
                 alternatives: alternativesSchema,
@@ -399,7 +399,7 @@ export const chunkRoutes = new Elysia()
                 content: t.Optional(t.String({ maxLength: 50000 })),
                 type: t.Optional(t.String({ maxLength: 20 })),
                 tags: t.Optional(t.Array(t.String({ maxLength: 50 }), { maxItems: 20 })),
-                codebaseIds: t.Optional(t.Array(t.String(), { maxItems: 20 })),
+                spaceIds: t.Optional(t.Array(t.String(), { maxItems: 20 })),
                 summary: t.Optional(t.Union([t.String({ maxLength: 500 }), t.Null()])),
                 aliases: aliasesSchema,
                 notAbout: t.Optional(t.Array(t.String({ maxLength: 100 }), { maxItems: 20 })),
