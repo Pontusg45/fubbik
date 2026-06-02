@@ -1,7 +1,7 @@
 import { relations } from "drizzle-orm";
 import { index, integer, pgTable, primaryKey, text, timestamp, unique } from "drizzle-orm/pg-core";
 import { user } from "./auth";
-import { codebase } from "./codebase";
+import { space } from "./space";
 import { requirement } from "./requirement";
 
 export const behaviorMatrix = pgTable(
@@ -11,7 +11,7 @@ export const behaviorMatrix = pgTable(
         name: text("name").notNull(),
         layer: text("layer").notNull(),
         description: text("description"),
-        codebaseId: text("codebase_id").references(() => codebase.id, { onDelete: "set null" }),
+        spaceId: text("space_id").references(() => space.id, { onDelete: "set null" }),
         userId: text("user_id")
             .notNull()
             .references(() => user.id, { onDelete: "cascade" }),
@@ -100,7 +100,7 @@ export const behaviorCellRequirement = pgTable(
 
 export const behaviorMatrixRelations = relations(behaviorMatrix, ({ one, many }) => ({
     user: one(user, { fields: [behaviorMatrix.userId], references: [user.id] }),
-    codebase: one(codebase, { fields: [behaviorMatrix.codebaseId], references: [codebase.id] }),
+    space: one(space, { fields: [behaviorMatrix.spaceId], references: [space.id] }),
     dimensions: many(behaviorDimension),
     rules: many(behaviorRule)
 }));
