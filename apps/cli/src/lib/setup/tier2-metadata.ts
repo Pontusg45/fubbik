@@ -337,7 +337,8 @@ function scanBuildPipeline(dir: string): DiscoveredChunk | null {
     ];
 
     const found = tools.filter(t => existsSync(join(dir, t.file)));
-    if (found.length === 0) return null;
+    const first = found[0];
+    if (!first) return null;
 
     const toolNames = found.map(t => t.name).join(", ");
     return {
@@ -347,7 +348,7 @@ function scanBuildPipeline(dir: string): DiscoveredChunk | null {
         tags: ["build", "tooling", "config"],
         tier: 2,
         category: "config",
-        source: found[0]!.file,
+        source: first.file,
     };
 }
 

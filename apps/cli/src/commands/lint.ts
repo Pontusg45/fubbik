@@ -290,12 +290,17 @@ export const lintCommand = new Command("lint")
             const grouped = new Map<string, LintIssue[]>();
             for (const issue of issues) {
                 const key = issue.chunkId;
-                if (!grouped.has(key)) grouped.set(key, []);
-                grouped.get(key)!.push(issue);
+                const existing = grouped.get(key);
+                if (existing) {
+                    existing.push(issue);
+                } else {
+                    grouped.set(key, [issue]);
+                }
             }
 
             for (const [, chunkIssues] of grouped) {
-                const first = chunkIssues[0]!;
+                const first = chunkIssues[0];
+                if (!first) continue;
                 console.error(`  ${formatBold(first.chunkTitle)} ${formatDim(`(${first.chunkId.slice(0, 8)})`)}`);
                 for (const issue of chunkIssues) {
                     const icon =

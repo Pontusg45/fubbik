@@ -8,6 +8,10 @@ import { requireSession } from "../require-session";
 import { ValidationError } from "../errors";
 import { VALID_ANALYZE_KINDS, getPlan } from "./service";
 
+function isAnalyzeKind(s: string): s is PlanAnalyzeKind {
+    return (VALID_ANALYZE_KINDS as readonly string[]).includes(s);
+}
+
 function groupByKind(items: PlanAnalyzeItem[]) {
     const grouped: Record<PlanAnalyzeKind, PlanAnalyzeItem[]> = {
         chunk: [],
@@ -17,18 +21,18 @@ function groupByKind(items: PlanAnalyzeItem[]) {
         question: [],
     };
     for (const item of items) {
-        if (VALID_ANALYZE_KINDS.includes(item.kind as PlanAnalyzeKind)) {
-            grouped[item.kind as PlanAnalyzeKind].push(item);
+        if (isAnalyzeKind(item.kind)) {
+            grouped[item.kind].push(item);
         }
     }
     return grouped;
 }
 
 function validateKind(kind: string): Effect.Effect<PlanAnalyzeKind, ValidationError> {
-    if (!VALID_ANALYZE_KINDS.includes(kind as PlanAnalyzeKind)) {
+    if (!isAnalyzeKind(kind)) {
         return Effect.fail(new ValidationError({ message: `Invalid analyze kind: ${kind}` }));
     }
-    return Effect.succeed(kind as PlanAnalyzeKind);
+    return Effect.succeed(kind);
 }
 
 const AnalyzeMetadataSchema = t.Optional(

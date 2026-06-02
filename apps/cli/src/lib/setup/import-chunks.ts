@@ -81,9 +81,13 @@ export async function importToServer(
 				}),
 			);
 			for (let j = 0; j < results.length; j++) {
-				const result = results[j]!;
+				const result = results[j];
+				if (!result) continue;
 				if (result.status === "fulfilled") chunksCreated++;
-				else errors.push({ item: batch[j]!.title, error: String(result.reason) });
+				else {
+					const batchItem = batch[j];
+					errors.push({ item: batchItem?.title ?? `item ${j}`, error: String(result.reason) });
+				}
 			}
 		}
 	}

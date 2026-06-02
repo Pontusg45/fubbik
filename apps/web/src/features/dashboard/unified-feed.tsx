@@ -28,6 +28,32 @@ interface FeedItem {
     entityId?: string;
 }
 
+interface ProposalData {
+    id: string;
+    createdAt: string;
+    chunkTitle?: string;
+    chunkId: string;
+    reason?: string;
+}
+
+interface StaleData {
+    id: string;
+    createdAt?: string;
+    chunkTitle?: string;
+    chunkId: string;
+    detail?: string;
+    reason?: string;
+}
+
+interface ActivityData {
+    id: string;
+    createdAt: string | Date;
+    entityTitle?: string | null;
+    entityId?: string;
+    entityType?: string;
+    action?: string;
+}
+
 type TabValue = "all" | FeedKind;
 
 const TABS: { value: TabValue; label: string }[] = [
@@ -149,19 +175,19 @@ export function UnifiedFeed() {
     const proposalsQuery = useQuery({
         queryKey: ["proposals-pending-feed"],
         queryFn: async () =>
-            unwrapEden(await (api.api as any).proposals.get({ query: { status: "pending" } })),
+            unwrapEden(await (api.api as any).proposals.get({ query: { status: "pending" } })) as ProposalData[],
     });
 
     const staleQuery = useQuery({
         queryKey: ["stale-flags-feed"],
         queryFn: async () =>
-            unwrapEden(await api.api.chunks.stale.get({ query: { limit: 10 } })),
+            unwrapEden(await api.api.chunks.stale.get({ query: { limit: 10 } })) as StaleData[],
     });
 
     const activityQuery = useQuery({
         queryKey: ["activity-feed"],
         queryFn: async () =>
-            unwrapEden(await api.api.activity.get({ query: { limit: "20" } as any })),
+            unwrapEden(await api.api.activity.get({ query: { limit: "20" } as any })) as ActivityData[] | { activities: ActivityData[] },
     });
 
     const invalidateProposals = () => {
@@ -171,9 +197,9 @@ export function UnifiedFeed() {
 
     // ─── Map sources into FeedItem[] ────────────────────────────────────────
 
-    const proposalItems: FeedItem[] = ((proposalsQuery.data as any) ?? []).map((p: any) => ({
+    const proposalItems: FeedItem[] = (proposalsQuery.data ?? []).map(p => ({
         id: `proposal-${p.id}`,
-        kind: "proposal" as FeedKind,
+        kind: "proposal" as const,
         timestamp: p.createdAt,
         title: p.chunkTitle ?? p.chunkId,
         subtitle: p.reason ?? undefined,
@@ -181,9 +207,9 @@ export function UnifiedFeed() {
         chunkId: p.chunkId,
     }));
 
-    const staleItems: FeedItem[] = ((staleQuery.data as any) ?? []).map((f: any) => ({
+    const staleItems: FeedItem[] = (staleQuery.data ?? []).map(f => ({
         id: `stale-${f.id}`,
-        kind: "stale" as FeedKind,
+        kind: "stale" as const,
         timestamp: f.createdAt ?? new Date(0).toISOString(),
         title: f.chunkTitle ?? f.chunkId,
         subtitle: f.detail ?? f.reason ?? undefined,
@@ -191,15 +217,15 @@ export function UnifiedFeed() {
         chunkId: f.chunkId,
     }));
 
-    const rawActivities = (activityQuery.data as any) ?? [];
-    const activityArr = Array.isArray(rawActivities)
+    const rawActivities = activityQuery.data;
+    const activityArr: ActivityData[] = Array.isArray(rawActivities)
         ? rawActivities
-        : rawActivities.activities ?? [];
+        : (rawActivities as { activities: ActivityData[] } | undefined)?.activities ?? [];
 
-    const activityItems: FeedItem[] = activityArr.map((e: any) => ({
+    const activityItems: FeedItem[] = activityArr.map(e => ({
         id: `activity-${e.id}`,
-        kind: "activity" as FeedKind,
-        timestamp: e.createdAt,
+        kind: "activity" as const,
+        timestamp: typeof e.createdAt === "string" ? e.createdAt : e.createdAt.toISOString(),
         title: e.entityTitle ?? e.entityId ?? "—",
         subtitle: e.entityType,
         action: e.action,

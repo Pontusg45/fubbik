@@ -20,7 +20,7 @@ export function SuggestedConnections({ chunkId }: { chunkId: string }) {
     const [expanded, setExpanded] = useState(false);
     const queryClient = useQueryClient();
 
-    const suggestionsQuery = useQuery({
+    const suggestionsQuery = useQuery<Suggestion[]>({
         queryKey: ["chunk-suggestions", chunkId],
         queryFn: async () => {
             const { data, error } = await api.api.chunks({ id: chunkId }).suggestions.get();

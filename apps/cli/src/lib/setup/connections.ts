@@ -21,7 +21,8 @@ function extractBoldKeywords(content: string): string[] {
     const keywords: string[] = [];
     let m: RegExpExecArray | null;
     while ((m = boldRe.exec(content)) !== null) {
-        keywords.push(m[1]!.toLowerCase());
+        const captured = m[1];
+        if (captured) keywords.push(captured.toLowerCase());
     }
     return keywords;
 }

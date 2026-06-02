@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import React from "react";
 
-import type { CommandGroup, CommandItem, RecentPage } from "./command-types";
+import type { CommandItem, RecentPage } from "./command-types";
 
 // ---------------------------------------------------------------------------
 // Static constant definitions
@@ -69,7 +69,7 @@ export function buildCodebaseItems(
     return filtered.map((cb) => ({
         id: `cb-${cb.id}`,
         title: cb.name,
-        group: "Codebases" as CommandGroup,
+        group: "Codebases",
         icon: React.createElement(Server, { className: "size-4" }),
         badge: cb.remoteUrl ? "git" : undefined,
         onSelect: () => onSelect(cb.id),
@@ -95,7 +95,7 @@ export function buildChunkQuickOpenItems(
     return filtered.map((chunk) => ({
         id: `qo-${chunk.id}`,
         title: chunk.title,
-        group: "Chunks" as CommandGroup,
+        group: "Chunks",
         icon: React.createElement(Blocks, { className: "size-4" }),
         badge: chunk.type,
         onSelect: () => onSelect(chunk.id),
@@ -103,16 +103,16 @@ export function buildChunkQuickOpenItems(
 }
 
 export function buildFederatedItems(
-    chunks: Array<Record<string, unknown>>,
+    chunks: Array<{ id: string; title?: string | null; codebaseName?: string | null }>,
     onSelect: (id: string) => void
 ): CommandItem[] {
     return chunks.map((chunk) => ({
-        id: `fed-${chunk.id as string}`,
-        title: (chunk.title as string) ?? `Chunk ${(chunk.id as string).slice(0, 8)}`,
-        group: "All Codebases" as CommandGroup,
+        id: `fed-${chunk.id}`,
+        title: chunk.title ?? `Chunk ${chunk.id.slice(0, 8)}`,
+        group: "All Codebases",
         icon: React.createElement(Globe, { className: "size-4" }),
-        badge: (chunk.codebaseName as string | null) ?? "Global",
-        onSelect: () => onSelect(chunk.id as string),
+        badge: chunk.codebaseName ?? "Global",
+        onSelect: () => onSelect(chunk.id),
     }));
 }
 
@@ -127,7 +127,7 @@ export function buildTagItems(
     return filtered.slice(0, 10).map((tag) => ({
         id: `tag-${tag.id}`,
         title: `#${tag.name}`,
-        group: "Tags" as CommandGroup,
+        group: "Tags",
         icon: React.createElement(Hash, { className: "size-4" }),
         onSelect: () => onSelect(tag.name),
     }));
@@ -140,7 +140,7 @@ export function buildRecentPageItems(
     return recentPages.map((page) => ({
         id: `recent-page-${page.path}`,
         title: page.title,
-        group: "Recent" as CommandGroup,
+        group: "Recent",
         icon: React.createElement(Clock, { className: "size-4" }),
         badge: "Page",
         onSelect: () => onSelect(page.path),
@@ -148,19 +148,20 @@ export function buildRecentPageItems(
 }
 
 export function buildRecentChunkItems(
-    recentChunks: Array<unknown>,
+    recentChunks: Array<{ chunk: Record<string, unknown> } | null | undefined>,
     onSelect: (id: string) => void
 ): CommandItem[] {
     const items: CommandItem[] = [];
     for (const item of recentChunks) {
         if (!item) continue;
-        const c = (item as { chunk: { id: string; title: string } }).chunk;
+        const id = item.chunk.id as string;
+        const title = item.chunk.title as string | undefined;
         items.push({
-            id: `recent-${c.id}`,
-            title: c.title ?? `Chunk ${c.id.slice(0, 8)}`,
-            group: "Recent" as CommandGroup,
+            id: `recent-${id}`,
+            title: title ?? `Chunk ${id.slice(0, 8)}`,
+            group: "Recent",
             icon: React.createElement(Clock, { className: "size-4" }),
-            onSelect: () => onSelect(c.id),
+            onSelect: () => onSelect(id),
         });
     }
     return items;
@@ -176,7 +177,7 @@ export function buildPageItems(
     return filtered.map((page) => ({
         id: page.id,
         title: page.title,
-        group: "Pages" as CommandGroup,
+        group: "Pages",
         icon: page.icon,
         onSelect: () => onSelect(page.path),
     }));
@@ -189,7 +190,7 @@ export function buildChunkSearchItems(
     return chunks.map((chunk) => ({
         id: `chunk-${chunk.id}`,
         title: chunk.title ?? `Chunk ${chunk.id.slice(0, 8)}`,
-        group: "Chunks" as CommandGroup,
+        group: "Chunks",
         icon: React.createElement(Blocks, { className: "size-4" }),
         onSelect: () => onSelect(chunk.id),
     }));
@@ -202,7 +203,7 @@ export function buildRequirementItems(
     return requirements.slice(0, 5).map((req) => ({
         id: `req-${req.id}`,
         title: req.title,
-        group: "Requirements" as CommandGroup,
+        group: "Requirements",
         icon: React.createElement(ClipboardCheck, { className: "size-4" }),
         badge: req.status,
         onSelect: () => onSelect(req.id),
@@ -220,7 +221,7 @@ export function buildPlanItems(
     return filtered.map((plan) => ({
         id: `plan-${plan.id}`,
         title: plan.title,
-        group: "Plans" as CommandGroup,
+        group: "Plans",
         icon: React.createElement(ListChecks, { className: "size-4" }),
         badge: plan.status,
         onSelect: () => onSelect(plan.id),
@@ -237,7 +238,7 @@ export function buildActionItems(
     return filtered.map((action) => ({
         id: action.id,
         title: action.title,
-        group: "Actions" as CommandGroup,
+        group: "Actions",
         icon: action.icon,
         onSelect: () => onSelect(action),
     }));

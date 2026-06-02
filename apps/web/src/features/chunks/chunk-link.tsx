@@ -6,6 +6,11 @@ import { api } from "@/utils/api";
 
 import { ChunkPreviewCard } from "./chunk-preview";
 
+interface ChunkPreviewData {
+    chunk: { title: string; type: string; content: string; createdAt: string | Date };
+    tags?: Array<{ id: string; name: string }>;
+}
+
 export function ChunkLink({ chunkId, children }: { chunkId: string; children: React.ReactNode }) {
     const [showPreview, setShowPreview] = useState(false);
     const [hoverEnabled, setHoverEnabled] = useState(false);
@@ -16,7 +21,7 @@ export function ChunkLink({ chunkId, children }: { chunkId: string; children: Re
         queryFn: async () => {
             const { data, error } = await api.api.chunks({ id: chunkId }).get();
             if (error) throw new Error("Failed to load chunk");
-            return data;
+            return data as unknown as ChunkPreviewData;
         },
         enabled: hoverEnabled,
         staleTime: 5 * 60 * 1000
@@ -44,12 +49,10 @@ export function ChunkLink({ chunkId, children }: { chunkId: string; children: Re
             {showPreview && previewData?.chunk && (
                 <ChunkPreviewCard
                     data={{
-                        title: previewData.chunk.title as string,
-                        type: previewData.chunk.type as string,
-                        content: previewData.chunk.content as string,
-                        tags: (previewData as Record<string, unknown>).tags as
-                            | Array<{ id: string; name: string }>
-                            | undefined,
+                        title: previewData.chunk.title,
+                        type: previewData.chunk.type,
+                        content: previewData.chunk.content,
+                        tags: previewData.tags,
                         createdAt: String(previewData.chunk.createdAt)
                     }}
                 />

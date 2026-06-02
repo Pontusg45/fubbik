@@ -3,6 +3,7 @@ import {
     getRequirementById,
     listRequirements as listRequirementsRepo,
     updateRequirement as updateRequirementRepo,
+    type UpdateRequirementParams,
     deleteRequirement as deleteRequirementRepo,
     updateRequirementStatus,
     setRequirementChunks,
@@ -50,7 +51,7 @@ function getVocabularyWarnings(
             }
             return allWarnings;
         }),
-        Effect.catchAll(() => Effect.succeed([] as StepVocabularyWarning[]))
+        Effect.catchAll((): Effect.Effect<StepVocabularyWarning[]> => Effect.succeed([]))
     );
 }
 
@@ -163,13 +164,13 @@ export function updateRequirement(
             }
         }
 
-        const repoBody: Record<string, unknown> = { ...body };
+        const repoBody: UpdateRequirementParams = { ...body };
         if (body.reviewStatus !== undefined) {
             repoBody.reviewedBy = userId;
             repoBody.reviewedAt = new Date();
         }
 
-        const requirement = yield* updateRequirementRepo(id, userId, repoBody as Parameters<typeof updateRequirementRepo>[2]);
+        const requirement = yield* updateRequirementRepo(id, userId, repoBody);
         if (!requirement) return yield* Effect.fail(new NotFoundError({ resource: "Requirement" }));
 
         if (body.status === "failing") {
@@ -178,14 +179,16 @@ export function updateRequirement(
             yield* flagRequirementFailing(id, requirement.title, chunkIds);
         }
 
+        const emptyWarnings: CrossRefWarning[] = [];
         const warnings = body.steps
             ? yield* crossReferenceSteps(body.steps, userId)
-            : ([] as CrossRefWarning[]);
+            : emptyWarnings;
 
         const codebaseId = body.codebaseId !== undefined ? body.codebaseId : existing.codebaseId;
+        const emptyVocabWarnings: StepVocabularyWarning[] = [];
         const vocabularyWarnings = body.steps
             ? yield* getVocabularyWarnings(body.steps, codebaseId)
-            : ([] as StepVocabularyWarning[]);
+            : emptyVocabWarnings;
 
         return { requirement, warnings, vocabularyWarnings };
     });

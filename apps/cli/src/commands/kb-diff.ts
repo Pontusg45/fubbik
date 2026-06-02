@@ -26,7 +26,7 @@ export const kbDiffCommand = new Command("kb-diff")
         if (relative) {
             const amount = Number(relative[1]);
             const unit = relative[2];
-            const ms = { d: 86400000, h: 3600000, w: 604800000, m: 2592000000 }[unit!]!;
+            const ms = unit ? ({ d: 86400000, h: 3600000, w: 604800000, m: 2592000000 } as Record<string, number>)[unit] ?? 86400000 : 86400000;
             sinceDate = new Date(Date.now() - amount * ms);
         } else {
             sinceDate = new Date(opts.since);

@@ -14,7 +14,7 @@ export const contextForFileRoutes = new Elysia().get(
     ctx =>
         Effect.runPromise(
             requireSession(ctx).pipe(
-                Effect.flatMap(session => {
+                Effect.flatMap((session): Effect.Effect<Record<string, unknown>, unknown> => {
                     const format = ctx.query.format ?? "structured-md";
 
                     // Legacy JSON format for backwards compatibility
@@ -24,7 +24,7 @@ export const contextForFileRoutes = new Elysia().get(
                             ctx.query.path,
                             ctx.query.codebaseId,
                             ctx.query.deps ? ctx.query.deps.split(",").filter(Boolean) : undefined
-                        ).pipe(Effect.map(result => result as Record<string, unknown>));
+                        ).pipe(Effect.map(result => ({ ...result })));
                     }
 
                     const maxTokens = ctx.query.maxTokens
@@ -41,13 +41,13 @@ export const contextForFileRoutes = new Elysia().get(
                             const budgeted = budgetChunks(chunks, maxTokens);
                             const structured = formatStructured(budgeted);
                             if (format === "structured-json") {
-                                return { format: "structured-json" as const, ...structured } as Record<string, unknown>;
+                                return { format: "structured-json" as const, ...structured };
                             }
                             return {
                                 format: "structured-md" as const,
                                 content: formatStructuredMarkdown(structured),
                                 totalChunks: structured.totalChunks,
-                            } as Record<string, unknown>;
+                            };
                         }),
                     );
                 }),

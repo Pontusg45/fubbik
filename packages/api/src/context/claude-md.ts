@@ -98,7 +98,7 @@ export function generateClaudeMd(params: GenerateClaudeMdParams) {
                 parts.push(`### ${req.title}${priority} — ${req.status}${marker}`);
 
                 if (req.steps && Array.isArray(req.steps)) {
-                    const stepsText = (req.steps as Array<{ keyword: string; text: string }>)
+                    const stepsText = req.steps
                         .map(s => `- **${s.keyword}** ${s.text}`)
                         .join("\n");
                     parts.push(stepsText);

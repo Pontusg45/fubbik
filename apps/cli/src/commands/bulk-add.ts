@@ -23,7 +23,9 @@ export const bulkAddCommand = new Command("bulk-add")
 
         for (let i = 0; i < lines.length; i++) {
             try {
-                const obj = JSON.parse(lines[i]!) as { title?: string; content?: string; type?: string; tags?: string[] };
+                const line = lines[i];
+                if (!line) continue;
+                const obj = JSON.parse(line) as { title?: string; content?: string; type?: string; tags?: string[] };
                 if (!obj.title) {
                     errors.push({ line: i + 1, error: "missing title" });
                     continue;

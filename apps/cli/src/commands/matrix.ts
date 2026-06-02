@@ -259,9 +259,12 @@ const showGaps = new Command("gaps")
             let count = 0;
             for (const [key, cell] of Object.entries(cells)) {
                 if (cell && (cell.status === "unspecified" || cell.status === "violated")) {
-                    const [ruleId, dimId] = key.split(":");
+                    const parts = key.split(":");
+                    const ruleId = parts[0] ?? "";
+                    const dimId = parts[1] ?? "";
                     const status = cell.status === "violated" ? "VIOLATED" : "GAP";
-                    lines.push(`[${status}] "${ruleMap.get(ruleId!)}" × "${dimMap.get(dimId!)}"`);
+                    lines.push(`[${status}] "${ruleMap.get(ruleId)}" × "${dimMap.get(dimId)}"`)
+;
                     count++;
                 }
             }

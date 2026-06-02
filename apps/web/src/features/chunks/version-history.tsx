@@ -26,12 +26,12 @@ export function VersionHistory({ chunkId }: { chunkId: string }) {
     const historyQuery = useQuery({
         queryKey: ["chunk-history", chunkId],
         queryFn: async () => {
-            return unwrapEden(await api.api.chunks({ id: chunkId }).history.get());
+            return unwrapEden(await api.api.chunks({ id: chunkId }).history.get()) as VersionEntry[];
         },
         enabled: open
     });
 
-    const versions = (historyQuery.data ?? []) as VersionEntry[];
+    const versions = historyQuery.data ?? [];
 
     const fromVersion = versions.find(v => v.id === compareFrom);
     const toVersion = versions.find(v => v.id === compareTo);

@@ -13,7 +13,8 @@ import {
     restoreChunk as restoreChunkRepo,
     setChunkCodebases,
     setChunkTags,
-    updateChunk as updateChunkRepo
+    updateChunk as updateChunkRepo,
+    type UpdateChunkParams
 } from "@fubbik/db/repository";
 import { Effect } from "effect";
 
@@ -172,13 +173,13 @@ export function updateChunk(
         ),
         Effect.flatMap(() => {
             const { tags: _tags, codebaseIds: _codebaseIds, updateTag: _updateTag, ...repoBody } = body;
-            const updateData: Record<string, unknown> = { ...repoBody };
+            const updateData: UpdateChunkParams = { ...repoBody };
             if (body.reviewStatus !== undefined) {
                 updateData.reviewedBy = userId;
                 updateData.reviewedAt = new Date();
             }
             if (Object.keys(updateData).length === 0) return Effect.void;
-            return updateChunkRepo(chunkId, updateData as Parameters<typeof updateChunkRepo>[1]).pipe(Effect.asVoid);
+            return updateChunkRepo(chunkId, updateData).pipe(Effect.asVoid);
         }),
         Effect.tap(() => {
             if (body.tags) {

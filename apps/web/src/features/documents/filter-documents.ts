@@ -12,10 +12,10 @@ export interface DocFilters {
     activeTypes: string[];
 }
 
-export function filterDocuments(
-    documents: EnrichedDocument[],
+export function filterDocuments<T extends EnrichedDocument>(
+    documents: T[],
     filters: DocFilters
-): EnrichedDocument[] {
+): T[] {
     const { activeTags, activeTypes } = filters;
 
     return documents.filter(doc => {
@@ -37,11 +37,11 @@ function folderFromPath(sourcePath: string): string {
     return parts.slice(0, -1).join("/");
 }
 
-export function groupDocuments(
-    documents: EnrichedDocument[],
+export function groupDocuments<T extends EnrichedDocument>(
+    documents: T[],
     groupBy: "folder" | "tag"
-): Map<string, EnrichedDocument[]> {
-    const groups = new Map<string, EnrichedDocument[]>();
+): Map<string, T[]> {
+    const groups = new Map<string, T[]>();
 
     if (groupBy === "folder") {
         for (const doc of documents) {

@@ -83,8 +83,10 @@ export async function resolveCodebaseFromConfig(serverUrl: string): Promise<stri
         const res = await fetch(`${serverUrl}/api/codebases`);
         if (!res.ok) return null;
         const codebases = (await res.json()) as { id: string; name: string }[];
+        const codebaseName = config.codebase;
+        if (!codebaseName) return null;
         const match = codebases.find(
-            (c) => c.name.toLowerCase() === config.codebase!.toLowerCase()
+            (c) => c.name.toLowerCase() === codebaseName.toLowerCase()
         );
         return match?.id ?? null;
     } catch {

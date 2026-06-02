@@ -14,10 +14,10 @@ export function ChunkProposalsSection({ chunkId }: ChunkProposalsSectionProps) {
     const proposalsQuery = useQuery({
         queryKey: ["chunk-proposals", chunkId],
         queryFn: async () =>
-            unwrapEden(await (api.api as any).chunks[chunkId].proposals.get({ query: { status: "pending" } })),
+            unwrapEden(await (api.api as any).chunks[chunkId].proposals.get({ query: { status: "pending" } })) as Proposal[],
     });
 
-    const proposals = (proposalsQuery.data ?? []) as Proposal[];
+    const proposals = proposalsQuery.data ?? [];
     if (proposals.length === 0) return null;
 
     return (

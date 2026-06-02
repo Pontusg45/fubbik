@@ -22,8 +22,9 @@ export async function seed(ctx: SeedContext): Promise<void> {
         }
     ];
     await ctx.db.insert(useCase).values(rows);
-    ctx.ids.useCases["onboarding"] = rows[0]!.id;
-    ctx.ids.useCases["decisions"] = rows[1]!.id;
+    const [onboarding, decisions] = rows;
+    if (onboarding) ctx.ids.useCases["onboarding"] = onboarding.id;
+    if (decisions) ctx.ids.useCases["decisions"] = decisions.id;
     ctx.counters["use_cases"] = rows.length;
 }
 

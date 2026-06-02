@@ -24,12 +24,13 @@ export interface CreateRequirementParams {
 export function createRequirement(params: CreateRequirementParams) {
     return dbEffect(async () => {
             const [created] = await db.insert(requirement).values(params).returning();
+            if (!created) throw new Error("createRequirement: insert returned no row");
             await Effect.runPromise(
-                ensureVertex("requirement", created!.id).pipe(
+                ensureVertex("requirement", created.id).pipe(
                     Effect.catchAll(() => Effect.succeed(undefined))
                 )
             );
-            return created!;
+            return created;
         });
 }
 
@@ -246,10 +247,12 @@ export function getRequirementsByIds(ids: string[], userId: string) {
 export function setRequirementOrder(requirementIds: string[]) {
     return dbEffect(async () => {
             for (let i = 0; i < requirementIds.length; i++) {
+                const reqId = requirementIds[i];
+                if (!reqId) continue;
                 await db
                     .update(requirement)
                     .set({ order: i })
-                    .where(eq(requirement.id, requirementIds[i]!));
+                    .where(eq(requirement.id, reqId));
             }
             return requirementIds.length;
         });

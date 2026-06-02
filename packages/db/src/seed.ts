@@ -26,7 +26,7 @@ import { collection } from "./schema/collection";
 import { workspace, workspaceCodebase } from "./schema/workspace";
 import { chunkType } from "./schema/chunk-type";
 import { connectionRelation } from "./schema/connection-relation";
-import { chunkTemplate } from "./schema/template";
+import { chunkTemplate, type TemplateMatchRules, type TemplateFieldMapping } from "./schema/template";
 
 config({ path: resolve(import.meta.dirname, "../../../apps/server/.env") });
 
@@ -2791,7 +2791,18 @@ console.log("\nSeeded default instance settings");
 // Builtin templates with match rules and field mappings.
 // Upsert on id so re-seeding is idempotent.
 // ---------------------------------------------------------------------------
-const BUILTIN_TEMPLATES = [
+const BUILTIN_TEMPLATES: Array<{
+    id: string;
+    name: string;
+    description: string;
+    type: string;
+    content: string;
+    isBuiltIn: boolean;
+    priority: number;
+    tags: string[];
+    matchRules: TemplateMatchRules;
+    fieldMappings: TemplateFieldMapping[] | null;
+}> = [
     {
         id: "builtin-decision-record",
         name: "Decision Record",

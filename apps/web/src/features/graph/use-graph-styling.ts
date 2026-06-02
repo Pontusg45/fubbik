@@ -51,7 +51,7 @@ export function useGraphStyling({
             styledNodes = layoutNodes.map(node => ({
                 ...node,
                 style: {
-                    ...(node.style as Record<string, unknown>),
+                    ...node.style,
                     opacity: pathResult.pathNodeIds.has(node.id) ? 1 : 0.1,
                     boxShadow: "none",
                     transition: "opacity 0.2s, box-shadow 0.2s"
@@ -69,9 +69,9 @@ export function useGraphStyling({
                 return {
                     ...node,
                     style: {
-                        ...(node.style as Record<string, unknown>),
+                        ...node.style,
                         opacity: isMatch ? 1 : 0.15,
-                        boxShadow: isMatch ? `0 0 12px 2px ${(node.style as Record<string, string>)?.borderColor ?? "#475569"}` : "none",
+                        boxShadow: isMatch ? `0 0 12px 2px ${(node.style as React.CSSProperties | undefined)?.borderColor ?? "#475569"}` : "none",
                         transition: "opacity 0.2s, box-shadow 0.2s"
                     }
                 };
@@ -80,7 +80,7 @@ export function useGraphStyling({
             styledNodes = layoutNodes.map(node => ({
                 ...node,
                 style: {
-                    ...(node.style as Record<string, unknown>),
+                    ...node.style,
                     opacity: focusModeNeighbors.has(node.id) ? 1 : 0.15,
                     transition: "opacity 0.3s ease"
                 }
@@ -89,7 +89,7 @@ export function useGraphStyling({
             styledNodes = layoutNodes.map(node => ({
                 ...node,
                 style: {
-                    ...(node.style as Record<string, unknown>),
+                    ...node.style,
                     opacity: focusNeighbors.has(node.id) ? 1 : 0.12,
                     transition: "opacity 0.2s"
                 }
@@ -98,7 +98,7 @@ export function useGraphStyling({
             styledNodes = layoutNodes.map(node => ({
                 ...node,
                 style: {
-                    ...(node.style as Record<string, unknown>),
+                    ...node.style,
                     opacity: selectedNeighborNodes.has(node.id) ? 1 : 0.2,
                     transition: "opacity 0.2s"
                 }
@@ -110,7 +110,7 @@ export function useGraphStyling({
                 return {
                     ...node,
                     style: {
-                        ...(node.style as Record<string, unknown>),
+                        ...node.style,
                         opacity: inGroup ? 1 : 0.85,
                         transition: "opacity 0.2s"
                     }
@@ -125,7 +125,7 @@ export function useGraphStyling({
             styledNodes = styledNodes.map(node => ({
                 ...node,
                 style: {
-                    ...(node.style as Record<string, unknown>),
+                    ...node.style,
                     outline: multiSelectedIds.has(node.id) ? "2px solid #f472b6" : "none",
                     outlineOffset: multiSelectedIds.has(node.id) ? "2px" : "0"
                 }
@@ -141,9 +141,9 @@ export function useGraphStyling({
             styledEdges = layoutEdges.map(edge => ({
                 ...edge,
                 style: {
-                    ...(edge.style as Record<string, unknown>),
+                    ...edge.style,
                     opacity: pathResult.pathEdgeIds.has(edge.id) ? 1 : 0.05,
-                    strokeWidth: pathResult.pathEdgeIds.has(edge.id) ? 3 : ((edge.style as Record<string, number>)?.strokeWidth ?? 2),
+                    strokeWidth: pathResult.pathEdgeIds.has(edge.id) ? 3 : ((edge.style as React.CSSProperties | undefined)?.strokeWidth ?? 2),
                     transition: "opacity 0.2s"
                 }
             }));
@@ -157,7 +157,7 @@ export function useGraphStyling({
             styledEdges = layoutEdges.map(edge => ({
                 ...edge,
                 style: {
-                    ...(edge.style as Record<string, unknown>),
+                    ...edge.style,
                     opacity: matchIds.has(edge.source) || matchIds.has(edge.target) ? 1 : 0.1
                 }
             }));
@@ -165,7 +165,7 @@ export function useGraphStyling({
             styledEdges = layoutEdges.map(edge => ({
                 ...edge,
                 style: {
-                    ...(edge.style as Record<string, unknown>),
+                    ...edge.style,
                     opacity: focusModeNeighbors.has(edge.source) && focusModeNeighbors.has(edge.target) ? 1 : 0.08,
                     transition: "opacity 0.3s ease"
                 }
@@ -174,7 +174,7 @@ export function useGraphStyling({
             styledEdges = layoutEdges.map(edge => ({
                 ...edge,
                 style: {
-                    ...(edge.style as Record<string, unknown>),
+                    ...edge.style,
                     opacity: focusNeighbors.has(edge.source) && focusNeighbors.has(edge.target) ? 1 : 0.06,
                     transition: "opacity 0.2s"
                 }
@@ -183,7 +183,7 @@ export function useGraphStyling({
             styledEdges = layoutEdges.map(edge => ({
                 ...edge,
                 style: {
-                    ...(edge.style as Record<string, unknown>),
+                    ...edge.style,
                     opacity: selectedEdgeIds.has(edge.id) ? 1 : 0.1,
                     transition: "opacity 0.2s"
                 }
@@ -201,7 +201,7 @@ export function useGraphStyling({
                 return {
                     ...edge,
                     style: {
-                        ...(edge.style as Record<string, unknown>),
+                        ...edge.style,
                         opacity: sameGroup ? 1 : 0.15,
                         transition: "opacity 0.3s ease"
                     }
@@ -221,7 +221,7 @@ export function useGraphStyling({
             }
             styledEdges = styledEdges.map(edge => {
                 if (selectedDirectEdgeIds.has(edge.id)) {
-                    return { ...edge, style: { ...(edge.style as Record<string, unknown>), opacity: 1 } };
+                    return { ...edge, style: { ...edge.style, opacity: 1 } };
                 }
                 return edge;
             });

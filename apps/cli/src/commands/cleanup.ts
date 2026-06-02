@@ -84,8 +84,12 @@ export const cleanupCommand = new Command("cleanup")
             const titleMap = new Map<string, any[]>();
             for (const chunk of filtered) {
                 const key = chunk.title.toLowerCase().trim();
-                if (!titleMap.has(key)) titleMap.set(key, []);
-                titleMap.get(key)!.push(chunk);
+                const existing = titleMap.get(key);
+                if (existing) {
+                    existing.push(chunk);
+                } else {
+                    titleMap.set(key, [chunk]);
+                }
             }
             for (const [, dupes] of titleMap) {
                 if (dupes.length > 1) {

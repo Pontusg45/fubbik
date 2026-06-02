@@ -1,7 +1,9 @@
 import { and, eq, or } from "drizzle-orm";
 
 import { db, dbEffect } from "../index";
-import { chunkTemplate } from "../schema/template";
+import { chunkTemplate, type TemplateMatchRules, type TemplateFieldMapping } from "../schema/template";
+
+export type { TemplateMatchRules, TemplateFieldMapping };
 
 export function listTemplates(userId: string) {
     return dbEffect(() =>
@@ -24,8 +26,8 @@ export function createTemplate(params: {
     description?: string | null;
     type: string;
     content: string;
-    matchRules?: unknown;
-    fieldMappings?: unknown;
+    matchRules?: TemplateMatchRules | null;
+    fieldMappings?: TemplateFieldMapping[] | null;
     priority?: number;
     tags?: string[];
     userId: string;
@@ -59,8 +61,8 @@ export function updateTemplate(
         description?: string | null;
         type?: string;
         content?: string;
-        matchRules?: unknown;
-        fieldMappings?: unknown;
+        matchRules?: TemplateMatchRules | null;
+        fieldMappings?: TemplateFieldMapping[] | null;
         priority?: number;
         tags?: string[];
     }

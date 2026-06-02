@@ -8,7 +8,7 @@ import { Effect } from "effect";
 import { importDocument } from "../documents/service";
 import { extractFields, parseHeadings } from "../templates/field-extraction";
 import { matchTemplates } from "../templates/match-engine";
-import type { ExtractedFields, FieldMapping, TemplateWithRules } from "../templates/types";
+import type { ExtractedFields, TemplateWithRules } from "../templates/types";
 import { extractFrontmatter, parseDocFile } from "./parse-docs";
 
 export const INDEX_FILE_NAMES = new Set(["index.md", "readme.md", "_index.md"]);
@@ -208,15 +208,15 @@ export function previewImportDocs(
         const allTemplates = yield* listTemplatesRepo(userId);
 
         const templatesWithRules: TemplateWithRules[] = allTemplates
-            .filter(t => t.matchRules != null)
+            .filter((t): t is typeof t & { matchRules: NonNullable<typeof t.matchRules> } => t.matchRules != null)
             .map(t => ({
                 id: t.id,
                 name: t.name,
                 type: t.type,
-                matchRules: t.matchRules as TemplateWithRules["matchRules"],
-                fieldMappings: (t.fieldMappings ?? null) as FieldMapping[] | null,
+                matchRules: t.matchRules,
+                fieldMappings: t.fieldMappings ?? null,
                 priority: t.priority ?? 0,
-                tags: (t.tags ?? null) as string[] | null,
+                tags: t.tags ?? null,
             }));
 
         const results: PreviewFileResult[] = [];

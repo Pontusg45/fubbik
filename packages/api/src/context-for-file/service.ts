@@ -30,6 +30,10 @@ export interface FileContext {
     requirements: ContextRequirement[];
 }
 
+type SemanticChunkResult = { id: string; title: string; type: string; content: string; summary: string | null; similarity: number };
+type ConnectionResult = { id: string; sourceId: string; targetId: string; relation: string };
+type ConnectionPair = { sourceId: string; targetId: string };
+
 const IGNORED_SEGMENTS = new Set(["src", "lib", "dist", "build", "index", "node_modules", "packages", "apps"]);
 const IGNORED_EXTENSIONS = new Set(["ts", "tsx", "js", "jsx", "mjs", "cjs", "json", "md"]);
 
@@ -164,7 +168,7 @@ export function getContextForFile(
                 Effect.flatMap(embedding =>
                     semanticSearchRepo({ embedding, userId, limit: 10 }),
                 ),
-                Effect.catchAll(() => Effect.succeed([] as Array<{ id: string; title: string; type: string; content: string; summary: string | null; similarity: number }>)),
+                Effect.catchAll((): Effect.Effect<SemanticChunkResult[]> => Effect.succeed([])),
             );
 
             for (const sc of semanticChunks) {
@@ -185,7 +189,7 @@ export function getContextForFile(
         const currentIds = Array.from(results.keys());
         if (currentIds.length > 0) {
             const allConnections = yield* getConnectionsForChunks(currentIds).pipe(
-                Effect.catchAll(() => Effect.succeed([] as Array<{ id: string; sourceId: string; targetId: string; relation: string }>)),
+                Effect.catchAll((): Effect.Effect<ConnectionResult[]> => Effect.succeed([])),
             );
 
             // Prioritize by relation type
@@ -238,7 +242,7 @@ export function getContextForFile(
         const chunkIdsForScoring = matchedChunks.map(c => c.id);
         const connections = chunkIdsForScoring.length > 0
             ? yield* getConnectionsForChunks(chunkIdsForScoring).pipe(
-                  Effect.catchAll(() => Effect.succeed([] as Array<{ sourceId: string; targetId: string }>)),
+                  Effect.catchAll((): Effect.Effect<ConnectionPair[]> => Effect.succeed([])),
               )
             : [];
 

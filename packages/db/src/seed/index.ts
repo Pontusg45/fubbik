@@ -138,8 +138,8 @@ function parseFlags(argv: string[]): CliFlags {
 
 function selectedModules(flags: CliFlags): ModuleEntry[] {
     let mods = MODULE_REGISTRY.filter(m => m.scenarios.includes(flags.scenario));
-    if (flags.only) mods = mods.filter(m => flags.only!.has(m.name));
-    if (flags.skip) mods = mods.filter(m => !flags.skip!.has(m.name));
+    if (flags.only) { const only = flags.only; mods = mods.filter(m => only.has(m.name)); }
+    if (flags.skip) { const skip = flags.skip; mods = mods.filter(m => !skip.has(m.name)); }
 
     // Validate dep ordering: every dep must either be in the selected set or
     // already in the DB from a previous run. We don't topo-sort here because

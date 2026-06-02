@@ -39,7 +39,7 @@ export function BulkTagEditor({ chunkIds, open, onOpenChange }: BulkTagEditorPro
     const inputRef = useRef<HTMLInputElement>(null);
 
     // Fetch all available tags for autocomplete
-    const tagsQuery = useQuery({
+    const tagsQuery = useQuery<Array<{ id: string; name: string }>>({
         queryKey: ["tags-all"],
         queryFn: async () => unwrapEden(await api.api.tags.get()) as Array<{ id: string; name: string }>,
         enabled: open,
@@ -71,11 +71,12 @@ export function BulkTagEditor({ chunkIds, open, onOpenChange }: BulkTagEditorPro
         if (chunksQuery.data) {
             setChunkStates(
                 chunksQuery.data.map(c => {
-                    const chunk = (c as any).chunk ?? c;
-                    const tags = ((chunk.tags ?? []) as Array<{ id: string; name: string }>).map(t => t.name);
+                    const rec = c as Record<string, unknown>;
+                    const chunkRec = (rec.chunk ?? rec) as Record<string, unknown>;
+                    const tags = ((chunkRec.tags ?? rec.tags ?? []) as Array<{ id: string; name: string }>).map(t => t.name);
                     return {
-                        id: chunk.id,
-                        title: chunk.title,
+                        id: chunkRec.id as string,
+                        title: chunkRec.title as string,
                         tags: [...tags],
                         originalTags: [...tags],
                     };

@@ -11,9 +11,10 @@ export interface TagSuggestion {
 export function suggestTagsFromGraph(chunkId: string, maxHops = 1, minFrequency = 0.5) {
     return Effect.gen(function* () {
         const neighborIds = yield* getNeighborhood(chunkId, maxHops).pipe(
-            Effect.catchAll(() => Effect.succeed([] as string[]))
+            Effect.catchAll((): Effect.Effect<string[]> => Effect.succeed([]))
         );
-        if (neighborIds.length === 0) return [] as TagSuggestion[];
+        const emptyResult: TagSuggestion[] = [];
+        if (neighborIds.length === 0) return emptyResult;
 
         const existingTags = yield* getTagsForChunk(chunkId).pipe(
             Effect.catchAll(() => Effect.succeed([]))

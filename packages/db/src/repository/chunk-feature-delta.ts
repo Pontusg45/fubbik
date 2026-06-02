@@ -20,7 +20,8 @@ export function upsertDelta(params: {
                 set: { delta: params.delta, updatedAt: new Date() }
             })
             .returning();
-        return result!;
+        if (!result) throw new Error("upsertDelta: insert returned no row");
+        return result;
     });
 }
 
@@ -148,7 +149,9 @@ export function mergeFeatureDeltas(
                     tags: []
                 });
 
-                // Apply delta to base chunk
+                // Apply delta fields to the base chunk. The delta is Record<string, unknown>
+                // (partial chunk fields), cast required because .set() expects the table's
+                // column-keyed type.
                 await tx
                     .update(chunk)
                     .set(deltaRow.delta as Record<string, unknown>)

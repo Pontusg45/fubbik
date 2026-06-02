@@ -183,13 +183,11 @@ export async function seed(ctx: SeedContext): Promise<void> {
     await loadConnectionFixtures(ctx, linksToUse);
 
     const appliesRows = META_APPLIES
-        .map(a => ({
-            id: uuid(),
-            chunkId: ctx.ids.chunks[a.chunkName],
-            pattern: a.pattern,
-            note: a.note ?? null
-        }))
-        .filter(r => !!r.chunkId) as Array<{ id: string; chunkId: string; pattern: string; note: string | null }>;
+        .flatMap(a => {
+            const chunkId = ctx.ids.chunks[a.chunkName];
+            if (!chunkId) return [];
+            return [{ id: uuid(), chunkId, pattern: a.pattern, note: a.note ?? null }];
+        });
     if (appliesRows.length > 0) {
         await ctx.db.insert(chunkAppliesTo).values(appliesRows);
         ctx.counters["self_doc_applies_to"] = appliesRows.length;

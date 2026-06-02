@@ -143,7 +143,7 @@ export function PlanTasksSection({ planId, tasks, dependencies, onUpdate }: Plan
                                 allTasks={tasks}
                                 dependsOn={dependsOnByTask.get(t.id) ?? []}
                                 dependentCount={(dependentsByTask.get(t.id) ?? []).length}
-                                dragHandleProps={dragHandleProps as React.HTMLAttributes<HTMLDivElement>}
+                                dragHandleProps={dragHandleProps}
                                 onUpdate={onUpdate}
                             />
                         )}

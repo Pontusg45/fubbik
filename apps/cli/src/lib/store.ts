@@ -91,7 +91,8 @@ export function listChunks(opts: { type?: string; tag?: string } = {}, dir?: str
         chunks = chunks.filter(c => c.type === opts.type);
     }
     if (opts.tag) {
-        chunks = chunks.filter(c => c.tags.includes(opts.tag!));
+        const tagFilter = opts.tag;
+        chunks = chunks.filter(c => c.tags.includes(tagFilter));
     }
     return chunks;
 }

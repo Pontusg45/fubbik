@@ -22,7 +22,8 @@ export function createMatrix(params: {
 }) {
     return dbEffect(async () => {
         const [created] = await db.insert(behaviorMatrix).values(params).returning();
-        return created!;
+        if (!created) throw new Error("createMatrix: insert returned no row");
+        return created;
     });
 }
 
@@ -76,7 +77,8 @@ export function deleteMatrix(id: string, userId: string) {
 export function createDimension(params: { id: string; matrixId: string; name: string; order: number }) {
     return dbEffect(async () => {
         const [created] = await db.insert(behaviorDimension).values(params).returning();
-        return created!;
+        if (!created) throw new Error("createDimension: insert returned no row");
+        return created;
     });
 }
 
@@ -124,10 +126,12 @@ export function getMaxDimensionOrder(matrixId: string) {
 export function reorderDimensions(dimensionIds: string[]) {
     return dbEffect(async () => {
         for (let i = 0; i < dimensionIds.length; i++) {
+            const dimId = dimensionIds[i];
+            if (!dimId) continue;
             await db
                 .update(behaviorDimension)
                 .set({ order: i })
-                .where(eq(behaviorDimension.id, dimensionIds[i]!));
+                .where(eq(behaviorDimension.id, dimId));
         }
     });
 }
@@ -144,7 +148,8 @@ export function createRule(params: {
 }) {
     return dbEffect(async () => {
         const [created] = await db.insert(behaviorRule).values(params).returning();
-        return created!;
+        if (!created) throw new Error("createRule: insert returned no row");
+        return created;
     });
 }
 
@@ -192,10 +197,12 @@ export function getMaxRuleOrder(matrixId: string) {
 export function reorderRules(ruleIds: string[]) {
     return dbEffect(async () => {
         for (let i = 0; i < ruleIds.length; i++) {
+            const ruleId = ruleIds[i];
+            if (!ruleId) continue;
             await db
                 .update(behaviorRule)
                 .set({ order: i })
-                .where(eq(behaviorRule.id, ruleIds[i]!));
+                .where(eq(behaviorRule.id, ruleId));
         }
     });
 }
@@ -215,7 +222,8 @@ export function getCellByRuleDimension(ruleId: string, dimensionId: string) {
 export function createCell(params: { id: string; ruleId: string; dimensionId: string }) {
     return dbEffect(async () => {
         const [created] = await db.insert(behaviorCell).values(params).returning();
-        return created!;
+        if (!created) throw new Error("createCell: insert returned no row");
+        return created;
     });
 }
 

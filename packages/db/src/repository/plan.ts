@@ -234,16 +234,20 @@ export function duplicatePlan(sourceId: string, userId: string): Effect.Effect<P
                 for (const t of sourceTasks) taskIdMap.set(t.id, crypto.randomUUID());
                 if (sourceTasks.length > 0) {
                     await tx.insert(planTask).values(
-                        sourceTasks.map(t => ({
-                            id: taskIdMap.get(t.id)!,
-                            planId: newPlanId,
-                            title: t.title,
-                            description: t.description,
-                            acceptanceCriteria: t.acceptanceCriteria,
-                            status: "pending" as PlanTaskStatus,
-                            order: t.order,
-                            metadata: t.metadata,
-                        }))
+                        sourceTasks.map(t => {
+                            const newId = taskIdMap.get(t.id);
+                            if (!newId) throw new Error(`duplicatePlan: missing mapped id for task ${t.id}`);
+                            return {
+                                id: newId,
+                                planId: newPlanId,
+                                title: t.title,
+                                description: t.description,
+                                acceptanceCriteria: t.acceptanceCriteria,
+                                status: "pending" as PlanTaskStatus,
+                                order: t.order,
+                                metadata: t.metadata,
+                            };
+                        })
                     );
                 }
 
@@ -508,6 +512,8 @@ export function listTaskChunksWithTitles(taskId: string): Effect.Effect<PlanTask
                 })
                 .from(planTaskChunk)
                 .leftJoin(chunk, eq(chunk.id, planTaskChunk.chunkId))
+                // leftJoin widens Drizzle's inferred column types; the select shape
+                // matches PlanTaskChunkWithTitle but Drizzle can't prove it.
                 .where(eq(planTaskChunk.taskId, taskId)) as unknown as Promise<PlanTaskChunkWithTitle[]>);
 }
 

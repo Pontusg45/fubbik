@@ -253,8 +253,9 @@ export function executeSearch(userId: string | undefined, searchQuery: SearchQue
 
         const total = graphIds !== undefined ? chunks.length : result.total;
 
+        const emptyPairs: Array<{ idA: string; idB: string; similarity: number }> = [];
         const pairs = yield* findDuplicatePairs({ chunkIds }).pipe(
-            Effect.orElse(() => Effect.succeed([] as Array<{ idA: string; idB: string; similarity: number }>))
+            Effect.orElse(() => Effect.succeed(emptyPairs))
         );
         const duplicateHints: DuplicateHint[] = pairs.map(p => ({
             chunkIdA: p.idA,
@@ -264,7 +265,7 @@ export function executeSearch(userId: string | undefined, searchQuery: SearchQue
 
         return { chunks, total, graphMeta, duplicateHints: duplicateHints.length > 0 ? duplicateHints : undefined } satisfies SearchResult;
     }).pipe(
-        Effect.orElse(() => Effect.succeed({ chunks: [], total: 0 } as SearchResult))
+        Effect.orElse(() => Effect.succeed<SearchResult>({ chunks: [], total: 0 }))
     );
 }
 

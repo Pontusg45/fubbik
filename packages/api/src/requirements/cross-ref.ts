@@ -52,6 +52,6 @@ export function crossReferenceSteps(
 
             return warnings;
         },
-        catch: () => [] as CrossRefWarning[]
-    }).pipe(Effect.catchAll(() => Effect.succeed([] as CrossRefWarning[])));
+        catch: (): CrossRefWarning[] => []
+    }).pipe(Effect.catchAll((): Effect.Effect<CrossRefWarning[]> => Effect.succeed([])));
 }

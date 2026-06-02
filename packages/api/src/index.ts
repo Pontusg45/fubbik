@@ -63,9 +63,13 @@ import { getActiveFeatureIds } from "@fubbik/db/repository";
 
 const FiberFailureCauseSymbol = Symbol.for("effect/Runtime/FiberFailure/Cause");
 
+function isFiberFailure(error: unknown): error is Record<symbol, unknown> {
+    return typeof error === "object" && error !== null && FiberFailureCauseSymbol in error;
+}
+
 function extractEffectError(error: unknown): Record<string, unknown> | null {
-    if (typeof error !== "object" || error === null) return null;
-    const cause = (error as Record<symbol, unknown>)[FiberFailureCauseSymbol];
+    if (!isFiberFailure(error)) return null;
+    const cause = error[FiberFailureCauseSymbol];
     if (!cause) return null;
     const option = Cause.failureOption(cause as Cause.Cause<Record<string, unknown>>);
     return Option.isSome(option) ? option.value : null;

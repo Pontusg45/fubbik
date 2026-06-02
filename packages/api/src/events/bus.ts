@@ -1,13 +1,14 @@
 import { logger } from "../logger";
 
 type EventHandler<T = unknown> = (payload: T) => void | Promise<void>;
+type AnyHandler = (payload: unknown) => void | Promise<void>;
 
 class EventBus {
-    private handlers = new Map<string, EventHandler[]>();
+    private handlers = new Map<string, AnyHandler[]>();
 
     on<T>(event: string, handler: EventHandler<T>) {
         const existing = this.handlers.get(event) ?? [];
-        existing.push(handler as EventHandler);
+        existing.push(handler as AnyHandler);
         this.handlers.set(event, existing);
         return () => {
             const list = this.handlers.get(event) ?? [];

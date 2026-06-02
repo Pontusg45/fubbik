@@ -10,7 +10,7 @@ function parseToDays(since: string): number {
     const match = since.match(/^(\d+)([dhwm])$/);
     if (!match) return 7; // default 7 days
     const [, num, unit] = match;
-    const multiplier = { d: 1, h: 1 / 24, w: 7, m: 30 }[unit!] ?? 1;
+    const multiplier = unit ? ({ d: 1, h: 1 / 24, w: 7, m: 30 } as Record<string, number>)[unit] ?? 1 : 1;
     return Math.ceil(Number(num) * multiplier);
 }
 
@@ -66,8 +66,12 @@ export const recapCommand = new Command("recap")
         const byType = new Map<string, any[]>();
         for (const c of chunks) {
             const type = c.type ?? "note";
-            if (!byType.has(type)) byType.set(type, []);
-            byType.get(type)!.push(c);
+            const existing = byType.get(type);
+            if (existing) {
+                existing.push(c);
+            } else {
+                byType.set(type, [c]);
+            }
         }
 
         // Build human-readable summary

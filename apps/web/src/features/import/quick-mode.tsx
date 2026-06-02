@@ -111,7 +111,7 @@ export function ImportQuickMode() {
     const [result, setResult] = useState<ImportResult | null>(null);
     const [showErrors, setShowErrors] = useState(false);
 
-    const { data: codebases } = useApiQuery<any[]>({
+    const { data: codebases } = useApiQuery<Array<{ id: string; name: string }>>({
         queryKey: ["codebases"],
         queryFn: () => api.api.codebases.get(),
         fallback: [],

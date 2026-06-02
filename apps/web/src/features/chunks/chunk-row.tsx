@@ -64,7 +64,7 @@ export interface ChunkRowChunk {
     updatedAt: string | Date;
     reviewStatus?: string | null;
     origin?: string | null;
-    [key: string]: unknown;
+    codebaseName?: string | null;
 }
 
 export interface ChunkRowProps {
@@ -195,21 +195,21 @@ export const ChunkRow = memo(function ChunkRow({
                             <Badge variant="secondary" size="sm" className="font-mono text-[10px]">
                                 {chunk.type}
                             </Badge>
-                            {showExtendedBadges && isFederated && !!(chunk as Record<string, unknown>).codebaseName && (
+                            {showExtendedBadges && isFederated && !!chunk.codebaseName && (
                                 <Badge variant="outline" size="sm" className="border-blue-500/30 bg-blue-500/10 text-[10px] text-blue-600">
                                     <Server className="mr-0.5 size-2.5" />
-                                    {String((chunk as Record<string, unknown>).codebaseName)}
+                                    {String(chunk.codebaseName)}
                                 </Badge>
                             )}
-                            {showExtendedBadges && (chunk as Record<string, unknown>).origin === "ai" && (
+                            {showExtendedBadges && chunk.origin === "ai" && (
                                 <>
                                     <Badge
                                         variant="outline"
                                         size="sm"
                                         className={
-                                            (chunk as Record<string, unknown>).reviewStatus === "draft"
+                                            chunk.reviewStatus === "draft"
                                                 ? "border-yellow-500/30 bg-yellow-500/10 text-[10px] text-yellow-600"
-                                                : (chunk as Record<string, unknown>).reviewStatus === "reviewed"
+                                                : chunk.reviewStatus === "reviewed"
                                                   ? "border-blue-500/30 bg-blue-500/10 text-[10px] text-blue-600"
                                                   : "border-green-500/30 bg-green-500/10 text-[10px] text-green-600"
                                         }
@@ -222,18 +222,18 @@ export const ChunkRow = memo(function ChunkRow({
                                             e.preventDefault();
                                             e.stopPropagation();
                                             const next = { draft: "reviewed", reviewed: "approved", approved: "draft" }[
-                                                (chunk as Record<string, unknown>).reviewStatus as string
+                                                chunk.reviewStatus ?? "draft"
                                             ] ?? "reviewed";
                                             onReviewCycle?.(chunk.id, next);
                                         }}
                                         className="size-2.5 shrink-0 rounded-full"
                                         style={{
                                             backgroundColor:
-                                                (chunk as Record<string, unknown>).reviewStatus === "approved" ? "#22c55e"
-                                                : (chunk as Record<string, unknown>).reviewStatus === "reviewed" ? "#3b82f6"
+                                                chunk.reviewStatus === "approved" ? "#22c55e"
+                                                : chunk.reviewStatus === "reviewed" ? "#3b82f6"
                                                 : "#f59e0b"
                                         }}
-                                        title={`Review: ${(chunk as Record<string, unknown>).reviewStatus ?? "draft"} (click to change)`}
+                                        title={`Review: ${chunk.reviewStatus ?? "draft"} (click to change)`}
                                     />
                                 </>
                             )}

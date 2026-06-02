@@ -61,8 +61,12 @@ export const tagNormalizeCommand = new Command("normalize")
                     ? chunk.tags.map((t: any) => (typeof t === "string" ? t : t.name ?? ""))
                     : [];
                 for (const tag of tags) {
-                    if (!tagUsage.has(tag)) tagUsage.set(tag, []);
-                    tagUsage.get(tag)!.push(chunk.id);
+                    const existing = tagUsage.get(tag);
+                    if (existing) {
+                        existing.push(chunk.id);
+                    } else {
+                        tagUsage.set(tag, [chunk.id]);
+                    }
                 }
             }
 
@@ -78,7 +82,7 @@ export const tagNormalizeCommand = new Command("normalize")
                         tag: variant,
                         mergeTo: canonical,
                         reason: "Variant of canonical tag",
-                        affectedChunks: tagUsage.get(variant)!.length,
+                        affectedChunks: tagUsage.get(variant)?.length ?? 0,
                     });
                 }
             }

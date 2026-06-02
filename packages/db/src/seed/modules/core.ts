@@ -10,7 +10,7 @@ import { eq } from "drizzle-orm";
 
 import { chunkType } from "../../schema/chunk-type";
 import { connectionRelation } from "../../schema/connection-relation";
-import { chunkTemplate } from "../../schema/template";
+import { chunkTemplate, type TemplateMatchRules, type TemplateFieldMapping } from "../../schema/template";
 import type { SeedContext } from "../context";
 
 const BUILTIN_CHUNK_TYPES = [
@@ -39,7 +39,18 @@ const BUILTIN_RELATIONS = [
     { id: "alternative_to", label: "Alternative to", description: "Source and target are competing approaches",                     arrowStyle: "dashed", direction: "bidirectional", color: "#a855f7", displayOrder: 80 }
 ] as const;
 
-const BUILTIN_TEMPLATES = [
+const BUILTIN_TEMPLATES: Array<{
+    id: string;
+    name: string;
+    description: string;
+    type: string;
+    content: string;
+    isBuiltIn: boolean;
+    priority: number;
+    tags: string[];
+    matchRules: TemplateMatchRules;
+    fieldMappings: TemplateFieldMapping[] | null;
+}> = [
     {
         id: "builtin-decision-record",
         name: "Decision Record",

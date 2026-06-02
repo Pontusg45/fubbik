@@ -42,7 +42,7 @@ export function PlanActivitySidebar({ planId }: { planId: string }) {
         queryKey: ["plan-activity", planId],
         queryFn: async () => {
             try {
-                return ((unwrapEden(await (api.api as any).plans[planId].activity.get())) as ActivityRow[]) ?? [];
+                return (unwrapEden(await (api.api as any).plans[planId].activity.get()) as ActivityRow[]) ?? [];
             } catch {
                 return [];
             }

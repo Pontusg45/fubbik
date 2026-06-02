@@ -13,6 +13,14 @@ const VALID_STATUSES: PlanStatus[] = ["draft", "analyzing", "ready", "in_progres
 const VALID_ANALYZE_KINDS: PlanAnalyzeKind[] = ["chunk", "file", "risk", "assumption", "question"];
 const VALID_TASK_RELATIONS: PlanTaskChunkRelation[] = ["context", "created", "modified"];
 
+function isPlanStatus(s: string): s is PlanStatus {
+    return (VALID_STATUSES as readonly string[]).includes(s);
+}
+
+function isAnalyzeKind(s: string): s is PlanAnalyzeKind {
+    return (VALID_ANALYZE_KINDS as readonly string[]).includes(s);
+}
+
 export interface CreatePlanInput {
     title: string;
     description?: string;
@@ -32,7 +40,7 @@ export interface ListPlansInput {
 
 export function listPlans(input: ListPlansInput) {
     return Effect.gen(function* () {
-        if (input.status && !VALID_STATUSES.includes(input.status as PlanStatus)) {
+        if (input.status && !isPlanStatus(input.status)) {
             return yield* Effect.fail(new ValidationError({ message: `Invalid status: ${input.status}` }));
         }
         return yield* planRepo.listPlansWithRollups({
@@ -80,8 +88,8 @@ export function getPlanDetail(id: string) {
             question: [],
         };
         for (const item of analyzeItems) {
-            if (VALID_ANALYZE_KINDS.includes(item.kind as PlanAnalyzeKind)) {
-                analyze[item.kind as PlanAnalyzeKind].push(item);
+            if (isAnalyzeKind(item.kind)) {
+                analyze[item.kind].push(item);
             }
         }
 
@@ -112,8 +120,8 @@ export function normaliseAcceptanceCriteria(raw: unknown): AcceptanceCriterion[]
         if (typeof item === "string") return { text: item, done: false };
         if (item && typeof item === "object" && "text" in item) {
             return {
-                text: String((item as { text: unknown }).text ?? ""),
-                done: Boolean((item as { done?: unknown }).done),
+                text: String(item.text ?? ""),
+                done: Boolean("done" in item ? item.done : false),
             };
         }
         return { text: "", done: false };
@@ -165,7 +173,7 @@ export interface UpdatePlanInput {
 
 export function updatePlan(id: string, input: UpdatePlanInput) {
     return Effect.gen(function* () {
-        if (input.status && !VALID_STATUSES.includes(input.status as PlanStatus)) {
+        if (input.status && !isPlanStatus(input.status)) {
             return yield* Effect.fail(new ValidationError({ message: `Invalid status: ${input.status}` }));
         }
         const existing = yield* getPlan(id);

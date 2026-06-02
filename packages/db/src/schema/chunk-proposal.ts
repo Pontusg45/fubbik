@@ -11,7 +11,7 @@ export const chunkProposal = pgTable(
         chunkId: text("chunk_id")
             .notNull()
             .references(() => chunk.id, { onDelete: "cascade" }),
-        changes: jsonb("changes").notNull(),
+        changes: jsonb("changes").notNull().$type<ProposedChanges>(),
         reason: text("reason"),
         status: text("status").notNull().default("pending"),
         proposedBy: text("proposed_by").notNull(),

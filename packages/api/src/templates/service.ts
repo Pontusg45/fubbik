@@ -3,7 +3,9 @@ import {
     deleteTemplate as deleteTemplateRepo,
     getTemplateById,
     listTemplates as listTemplatesRepo,
-    updateTemplate as updateTemplateRepo
+    updateTemplate as updateTemplateRepo,
+    type TemplateMatchRules,
+    type TemplateFieldMapping
 } from "@fubbik/db/repository";
 import { Effect } from "effect";
 
@@ -20,8 +22,8 @@ export function createTemplate(
         description?: string | null;
         type: string;
         content: string;
-        matchRules?: unknown;
-        fieldMappings?: unknown;
+        matchRules?: TemplateMatchRules | null;
+        fieldMappings?: TemplateFieldMapping[] | null;
         priority?: number;
         tags?: string[];
     }
@@ -49,8 +51,8 @@ export function updateTemplate(
         description?: string | null;
         type?: string;
         content?: string;
-        matchRules?: unknown;
-        fieldMappings?: unknown;
+        matchRules?: TemplateMatchRules | null;
+        fieldMappings?: TemplateFieldMapping[] | null;
         priority?: number;
         tags?: string[];
     }

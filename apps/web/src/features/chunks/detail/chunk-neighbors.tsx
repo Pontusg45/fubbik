@@ -25,13 +25,13 @@ function similarityBar(distance: number) {
 export function ChunkNeighbors({ chunkId }: ChunkNeighborsProps) {
     const neighborsQuery = useQuery({
         queryKey: ["chunk-neighbors", chunkId],
-        queryFn: async () => unwrapEden(await api.api.chunks({ id: chunkId }).neighbors.get({ query: { k: "10" } }))
+        queryFn: async () => unwrapEden(await api.api.chunks({ id: chunkId }).neighbors.get({ query: { k: "10" } })) as { note?: string; neighbors?: Neighbor[] }
     });
 
     const data = neighborsQuery.data;
     if (!data) return null;
     const note = data.note;
-    const neighbors = (data.neighbors ?? []) as Neighbor[];
+    const neighbors = data.neighbors ?? [];
 
     if (note || neighbors.length === 0) return null;
 

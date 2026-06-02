@@ -10,7 +10,7 @@ export function parseDocFile(path: string, raw: string): ParsedDoc {
     const { frontmatter, body } = extractFrontmatter(raw);
 
     // Title: frontmatter > first H1 > filename
-    let title = frontmatter.title as string | undefined;
+    let title = typeof frontmatter.title === "string" ? frontmatter.title : undefined;
     let content = body;
 
     if (!title) {
@@ -34,12 +34,13 @@ export function parseDocFile(path: string, raw: string): ParsedDoc {
     const tags = [...new Set([...fmTags, ...folderTags])];
 
     // Type: frontmatter or default "document"
-    const type = (frontmatter.type as string) ?? "document";
+    const type = typeof frontmatter.type === "string" ? frontmatter.type : "document";
 
     // Scope
-    const scope =
-        frontmatter.scope && typeof frontmatter.scope === "object" && !Array.isArray(frontmatter.scope)
-            ? (frontmatter.scope as Record<string, string>)
+    const rawScope = frontmatter.scope;
+    const scope: Record<string, string> | undefined =
+        rawScope && typeof rawScope === "object" && !Array.isArray(rawScope)
+            ? (Object.fromEntries(Object.entries(rawScope).map(([k, v]) => [k, String(v)])))
             : undefined;
 
     return { title, content: content.trim(), type, tags, ...(scope ? { scope } : {}) };

@@ -15,12 +15,21 @@ import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 import { useActiveFeatures } from "./use-active-features";
 
+interface FeatureItem {
+    id: string;
+    name: string;
+    color: string | null;
+    priority: number;
+    status: string;
+    deltaCount: number;
+}
+
 export function FeatureSwitcher() {
     const { activeFeatureIds, toggleFeature, isActive } = useActiveFeatures();
 
     const { data: features } = useQuery({
         queryKey: ["features"],
-        queryFn: async () => unwrapEden(await api.api.features.get({ query: {} })),
+        queryFn: async () => unwrapEden(await api.api.features.get({ query: {} })) as FeatureItem[],
         staleTime: 60_000
     });
 
@@ -41,7 +50,7 @@ export function FeatureSwitcher() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-56">
                 <DropdownMenuLabel>Feature Overlays</DropdownMenuLabel>
-                {(features as Array<{ id: string; name: string; color: string | null; priority: number; status: string; deltaCount: number }>).map(f => (
+                {features.map(f => (
                     <DropdownMenuItem
                         key={f.id}
                         onClick={() => toggleFeature(f.id)}

@@ -54,9 +54,12 @@ function parseDepsFromFile(filename: string, content: string): string[] {
         const deps: string[] = [];
         const requireBlock = content.match(/require\s*\(([\s\S]*?)\)/);
         if (requireBlock) {
-            for (const line of requireBlock[1]!.split("\n")) {
+            const blockContent = requireBlock[1];
+            if (!blockContent) return deps;
+            for (const line of blockContent.split("\n")) {
                 const match = line.trim().match(/^(\S+)\s+/);
-                if (match) deps.push(match[1]!);
+                const dep = match?.[1];
+                if (dep) deps.push(dep);
             }
         }
         return deps;

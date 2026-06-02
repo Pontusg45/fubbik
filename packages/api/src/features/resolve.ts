@@ -34,7 +34,7 @@ export function resolveChunk<T extends Record<string, unknown>>(chunk: T, deltas
     return { ...resolved, _appliedFeatures: appliedFeatures, _hasDeltas: true };
 }
 
-export function resolveChunks<T extends Record<string, unknown>>(
+export function resolveChunks<T extends { id: string } & Record<string, unknown>>(
     chunks: T[],
     activeFeatureIds: string[],
     allDeltas: DeltaWithChunk[]
@@ -51,8 +51,7 @@ export function resolveChunks<T extends Record<string, unknown>>(
     }
 
     return chunks.map(chunk => {
-        const chunkId = (chunk as Record<string, unknown>).id as string;
-        const deltas = deltasByChunk.get(chunkId) ?? [];
+        const deltas = deltasByChunk.get(chunk.id) ?? [];
         return resolveChunk(chunk, deltas);
     });
 }

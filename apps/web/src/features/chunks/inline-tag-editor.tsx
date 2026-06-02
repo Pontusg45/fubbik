@@ -98,8 +98,8 @@ export function InlineTagEditor({ tags, onUpdate, loading }: InlineTagEditorProp
             }}
             onBlur={(e) => {
               // Delay to allow click on suggestion
-              const related = e.relatedTarget as HTMLElement | null;
-              if (related && dropdownRef.current?.contains(related)) return;
+              const related = e.relatedTarget;
+              if (related instanceof HTMLElement && dropdownRef.current?.contains(related)) return;
               setTimeout(() => {
                 if (input.trim()) addTag();
                 setEditing(false);

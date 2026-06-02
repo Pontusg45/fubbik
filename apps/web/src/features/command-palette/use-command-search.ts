@@ -288,8 +288,8 @@ export function useCommandSearch({
 
         // Federated search mode: when query starts with *
         if (isFederatedSearch) {
-            const chunks = (federatedSearch.data?.chunks ?? []) as Array<Record<string, unknown>>;
-            return buildFederatedItems(chunks, handleChunkNavigate);
+            const chunks = federatedSearch.data?.chunks ?? [];
+            return buildFederatedItems(chunks as Array<{ id: string; title?: string | null; codebaseName?: string | null }>, handleChunkNavigate);
         }
 
         // Tag search mode: when query starts with #

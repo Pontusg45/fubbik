@@ -31,10 +31,12 @@ function parseGherkin(content: string): ParsedRequirement[] {
             };
         } else if (current) {
             const match = line.match(/^(Given|When|Then|And|But)\s+(.+)/i);
-            if (match) {
+            const kw = match?.[1];
+            const txt = match?.[2];
+            if (kw && txt) {
                 current.steps.push({
-                    keyword: match[1]!.toLowerCase() as ParsedRequirement["steps"][number]["keyword"],
-                    text: match[2]!,
+                    keyword: kw.toLowerCase() as ParsedRequirement["steps"][number]["keyword"],
+                    text: txt,
                 });
             }
         }

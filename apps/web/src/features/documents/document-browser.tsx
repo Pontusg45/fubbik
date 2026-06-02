@@ -10,7 +10,7 @@ import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/s
 import { useActiveCodebase } from "@/features/codebases/use-active-codebase";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { DocumentFilterBar } from "./document-filter-bar";
-import { filterDocuments, groupDocuments, collectAllTags, collectAllTypes, type EnrichedDocument } from "./filter-documents";
+import { filterDocuments, groupDocuments, collectAllTags, collectAllTypes } from "./filter-documents";
 import type { DocPresetFilters } from "./document-filter-presets";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
@@ -153,11 +153,11 @@ export function DocumentBrowser({ initialDocId, initialSection, initialGroupBy, 
 
     const documents = listQuery.data ?? [];
 
-    const allTags = useMemo(() => collectAllTags(documents as EnrichedDocument[]), [documents]);
-    const allTypes = useMemo(() => collectAllTypes(documents as EnrichedDocument[]), [documents]);
+    const allTags = useMemo(() => collectAllTags(documents), [documents]);
+    const allTypes = useMemo(() => collectAllTypes(documents), [documents]);
 
     const filteredDocuments = useMemo(
-        () => filterDocuments(documents as EnrichedDocument[], { activeTags, activeTypes }),
+        () => filterDocuments(documents, { activeTags, activeTypes }),
         [documents, activeTags, activeTypes]
     );
 
@@ -241,8 +241,8 @@ export function DocumentBrowser({ initialDocId, initialSection, initialGroupBy, 
     // Keyboard navigation
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
-            const target = e.target as HTMLElement;
-            if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable) return;
+            const target = e.target;
+            if (target instanceof HTMLElement && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) return;
 
             if (e.key === "/" && !e.metaKey && !e.ctrlKey) {
                 e.preventDefault();
@@ -385,7 +385,7 @@ export function DocumentBrowser({ initialDocId, initialSection, initialGroupBy, 
 
     // Sidebar filtering (by document title/path when not in full search mode)
     const sidebarFiltered = useMemo(() => {
-        let docs = filteredDocuments as DocumentListItem[];
+        let docs = filteredDocuments;
         if (searchQuery && !isSearching) {
             const q = searchQuery.toLowerCase();
             docs = docs.filter(
@@ -571,7 +571,7 @@ export function DocumentBrowser({ initialDocId, initialSection, initialGroupBy, 
                                     <TagGroupNode
                                         key={groupName}
                                         name={groupName}
-                                        docs={groupDocs as DocumentListItem[]}
+                                        docs={groupDocs}
                                         selectedId={selectedId}
                                         selectedGroup={selectedGroup}
                                         onSelect={handleDocClick}
@@ -690,7 +690,7 @@ export function DocumentBrowser({ initialDocId, initialSection, initialGroupBy, 
                                             {groupName}
                                         </h3>
                                         <div className="space-y-1 pl-5">
-                                            {(groupDocs as DocumentListItem[]).map(doc => {
+                                            {groupDocs.map(doc => {
                                                 const staleness = getStaleness(doc);
                                                 return (
                                                     <button

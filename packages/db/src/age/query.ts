@@ -7,6 +7,11 @@ function parseAgtypeId(val: unknown): string {
     return String(val);
 }
 
+/** Safely access a field from an untyped AGE row (Record<string, unknown>). */
+function ageField(row: Record<string, unknown>, key: string): unknown {
+    return row[key];
+}
+
 export function findShortestPath(chunkIdA: string, chunkIdB: string) {
     // AGE 1.x does not support shortestPath() or list comprehensions.
     // We simulate a shortest-path check by attempting a variable-hop traversal
@@ -18,8 +23,9 @@ export function findShortestPath(chunkIdA: string, chunkIdB: string) {
         "path agtype"
     ).pipe(
         Effect.map(rows => {
-            if (rows.length === 0) return null;
-            const raw = (rows[0] as any)?.path;
+            const first = rows[0] as Record<string, unknown> | undefined;
+            if (!first) return null;
+            const raw = first.path;
             if (!raw) return null;
             // Return a two-element array [start, end] to indicate connectivity
             const target = typeof raw === "string" ? raw.replace(/^"|"$/g, "") : String(raw);
@@ -34,7 +40,7 @@ export function getNeighborhood(chunkId: string, maxHops: number) {
          RETURN DISTINCT neighbor.id AS id`,
         "id agtype"
     ).pipe(
-        Effect.map(rows => rows.map((r: any) => parseAgtypeId(r.id)))
+        Effect.map(rows => rows.map(r => parseAgtypeId(ageField(r as Record<string, unknown>, "id"))))
     );
 }
 
@@ -45,14 +51,14 @@ export function getTransitiveDeps(requirementId: string) {
              RETURN dep.id AS id`,
             "id agtype"
         );
-        const ancestors = ancestorRows.map((r: any) => parseAgtypeId(r.id));
+        const ancestors = ancestorRows.map(r => parseAgtypeId(ageField(r as Record<string, unknown>, "id")));
 
         const descendantRows = yield* cypher(
             `MATCH (dep:requirement)-[:depends_on*]->(r:requirement {id: '${requirementId}'})
              RETURN dep.id AS id`,
             "id agtype"
         );
-        const descendants = descendantRows.map((r: any) => parseAgtypeId(r.id));
+        const descendants = descendantRows.map(r => parseAgtypeId(ageField(r as Record<string, unknown>, "id")));
 
         const allIds = [requirementId, ...ancestors, ...descendants];
         const idList = allIds.map(id => `'${id}'`).join(",");
@@ -62,10 +68,13 @@ export function getTransitiveDeps(requirementId: string) {
              RETURN a.id AS source, b.id AS target`,
             "source agtype, target agtype"
         );
-        const edges = edgeRows.map((r: any) => ({
-            source: parseAgtypeId(r.source),
-            target: parseAgtypeId(r.target)
-        }));
+        const edges = edgeRows.map(r => {
+            const row = r as Record<string, unknown>;
+            return {
+                source: parseAgtypeId(ageField(row, "source")),
+                target: parseAgtypeId(ageField(row, "target"))
+            };
+        });
 
         return { ancestors, descendants, edges };
     });
@@ -88,7 +97,7 @@ export function getChunksAffectedByRequirement(requirementId: string, hops: numb
          RETURN DISTINCT related.id AS id`,
         "id agtype"
     ).pipe(
-        Effect.map(rows => rows.map((r: any) => parseAgtypeId(r.id)))
+        Effect.map(rows => rows.map(r => parseAgtypeId(ageField(r as Record<string, unknown>, "id"))))
     );
 }
 
@@ -100,11 +109,14 @@ export function getSubgraph(chunkIds: string[]) {
          RETURN a.id AS source, e.relation AS relation, b.id AS target`,
         "source agtype, relation agtype, target agtype"
     ).pipe(
-        Effect.map(rows => rows.map((r: any) => ({
-            source: parseAgtypeId(r.source),
-            relation: parseAgtypeId(r.relation),
-            target: parseAgtypeId(r.target)
-        })))
+        Effect.map(rows => rows.map(r => {
+            const row = r as Record<string, unknown>;
+            return {
+                source: parseAgtypeId(ageField(row, "source")),
+                relation: parseAgtypeId(ageField(row, "relation")),
+                target: parseAgtypeId(ageField(row, "target"))
+            };
+        }))
     );
 }
 
@@ -122,8 +134,9 @@ export function getHopDistances(referenceId: string, targetIds: string[]) {
         Effect.map(rows => {
             const map = new Map<string, number>();
             for (const row of rows) {
-                const id = parseAgtypeId((row as any).id);
-                const hops = Number((row as any).hops);
+                const r = row as Record<string, unknown>;
+                const id = parseAgtypeId(ageField(r, "id"));
+                const hops = Number(ageField(r, "hops"));
                 map.set(id, hops);
             }
             return map;
@@ -144,8 +157,9 @@ export function getConnectionDegrees(chunkIds: string[]) {
         Effect.map(rows => {
             const map = new Map<string, number>();
             for (const row of rows) {
-                const id = parseAgtypeId((row as any).id);
-                const degree = Number((row as any).degree);
+                const r = row as Record<string, unknown>;
+                const id = parseAgtypeId(ageField(r, "id"));
+                const degree = Number(ageField(r, "degree"));
                 map.set(id, degree);
             }
             return map;
@@ -171,8 +185,9 @@ export function getGraphProximityBoost(
         Effect.map(rows => {
             const map = new Map<string, number>();
             for (const row of rows) {
-                const id = parseAgtypeId((row as any).id);
-                const hops = Number((row as any).hops);
+                const r = row as Record<string, unknown>;
+                const id = parseAgtypeId(ageField(r, "id"));
+                const hops = Number(ageField(r, "hops"));
                 map.set(id, 1 / hops);
             }
             return map;
@@ -187,7 +202,7 @@ export function getDownstreamChunks(chunkId: string, maxHops: number) {
          RETURN DISTINCT downstream.id AS id`,
         "id agtype"
     ).pipe(
-        Effect.map(rows => rows.map((r: any) => parseAgtypeId(r.id))),
+        Effect.map(rows => rows.map(r => parseAgtypeId(ageField(r as Record<string, unknown>, "id")))),
         Effect.catchAll(() => Effect.succeed([] as string[]))
     );
 }
@@ -211,8 +226,9 @@ export function detectCommunities(chunkIds: string[], _maxHops: number) {
             const adj = new Map<string, Set<string>>();
             for (const id of chunkIds) adj.set(id, new Set());
             for (const row of rows) {
-                const source = parseAgtypeId((row as any).source);
-                const target = parseAgtypeId((row as any).target);
+                const r = row as Record<string, unknown>;
+                const source = parseAgtypeId(ageField(r, "source"));
+                const target = parseAgtypeId(ageField(r, "target"));
                 adj.get(source)?.add(target);
                 adj.get(target)?.add(source);
             }
@@ -225,16 +241,17 @@ export function detectCommunities(chunkIds: string[], _maxHops: number) {
                 const members: string[] = [];
                 const queue = [id];
                 while (queue.length > 0) {
-                    const current = queue.shift()!;
-                    if (visited.has(current)) continue;
+                    const current = queue.shift();
+                    if (!current || visited.has(current)) continue;
                     visited.add(current);
                     members.push(current);
                     for (const neighbor of adj.get(current) ?? []) {
                         if (!visited.has(neighbor)) queue.push(neighbor);
                     }
                 }
-                if (members.length > 1) {
-                    communities.push({ id: members[0]!, members });
+                const communityId = members[0];
+                if (members.length > 1 && communityId) {
+                    communities.push({ id: communityId, members });
                 }
             }
 
@@ -257,8 +274,9 @@ export function findBridgeChunks(chunkIds: string[]) {
             const adj = new Map<string, Set<string>>();
             for (const id of chunkIds) adj.set(id, new Set());
             for (const row of rows) {
-                const source = parseAgtypeId((row as any).source);
-                const target = parseAgtypeId((row as any).target);
+                const r = row as Record<string, unknown>;
+                const source = parseAgtypeId(ageField(r, "source"));
+                const target = parseAgtypeId(ageField(r, "target"));
                 adj.get(source)?.add(target);
                 adj.get(target)?.add(source);
             }
@@ -278,16 +296,20 @@ export function findBridgeChunks(chunkIds: string[]) {
                 let children = 0;
                 let isArticulation = false;
 
+                const discU = disc.get(u) ?? 0;
+
                 for (const v of adj.get(u) ?? []) {
                     if (!visited.has(v)) {
                         children++;
                         parent.set(v, u);
                         dfs(v);
-                        low.set(u, Math.min(low.get(u)!, low.get(v)!));
+                        const lowV = low.get(v) ?? 0;
+                        low.set(u, Math.min(low.get(u) ?? 0, lowV));
                         if (parent.get(u) === null && children > 1) isArticulation = true;
-                        if (parent.get(u) !== null && low.get(v)! >= disc.get(u)!) isArticulation = true;
+                        if (parent.get(u) !== null && lowV >= discU) isArticulation = true;
                     } else if (v !== parent.get(u)) {
-                        low.set(u, Math.min(low.get(u)!, disc.get(v)!));
+                        const discV = disc.get(v) ?? 0;
+                        low.set(u, Math.min(low.get(u) ?? 0, discV));
                     }
                 }
                 if (isArticulation) bridges.push(u);
@@ -337,13 +359,15 @@ export function findShortestPathWithDetails(chunkIdA: string, chunkIdB: string) 
                 Effect.map(edgeRows => {
                     const adj = new Map<string, Array<{ neighbor: string; relation: string }>>();
                     const addEdge = (from: string, to: string, rel: string) => {
-                        if (!adj.has(from)) adj.set(from, []);
-                        adj.get(from)!.push({ neighbor: to, relation: rel });
+                        let list = adj.get(from);
+                        if (!list) { list = []; adj.set(from, list); }
+                        list.push({ neighbor: to, relation: rel });
                     };
                     for (const row of edgeRows) {
-                        const s = parseAgtypeId((row as any).source);
-                        const t = parseAgtypeId((row as any).target);
-                        const r = parseAgtypeId((row as any).relation);
+                        const er = row as Record<string, unknown>;
+                        const s = parseAgtypeId(ageField(er, "source"));
+                        const t = parseAgtypeId(ageField(er, "target"));
+                        const r = parseAgtypeId(ageField(er, "relation"));
                         addEdge(s, t, r);
                         addEdge(t, s, r);
                     }
@@ -355,7 +379,8 @@ export function findShortestPathWithDetails(chunkIdA: string, chunkIdB: string) 
                     parentMap.set(chunkIdA, null);
 
                     while (queue.length > 0) {
-                        const current = queue.shift()!;
+                        const current = queue.shift();
+                        if (!current) break;
                         if (current === chunkIdB) break;
                         for (const { neighbor, relation } of adj.get(current) ?? []) {
                             if (!visited.has(neighbor)) {
@@ -382,7 +407,7 @@ export function findShortestPathWithDetails(chunkIdA: string, chunkIdB: string) 
                         }
                     }
 
-                    return { nodes, edges, hops: edges.length } as DetailedPath;
+                    return { nodes, edges, hops: edges.length } satisfies DetailedPath;
                 })
             );
         }),
@@ -396,7 +421,7 @@ export function getUpstreamChunks(chunkId: string, maxHops: number) {
          RETURN DISTINCT upstream.id AS id`,
         "id agtype"
     ).pipe(
-        Effect.map(rows => rows.map((r: any) => parseAgtypeId(r.id))),
+        Effect.map(rows => rows.map(r => parseAgtypeId(ageField(r as Record<string, unknown>, "id")))),
         Effect.catchAll(() => Effect.succeed([] as string[]))
     );
 }
@@ -408,6 +433,6 @@ export function getOrphanChunkIds() {
         `MATCH (c:chunk) WHERE NOT EXISTS { MATCH (c)-[]-() } RETURN c.id AS id`,
         "id agtype"
     ).pipe(
-        Effect.map(rows => rows.map((r: any) => parseAgtypeId(r.id)))
+        Effect.map(rows => rows.map(r => parseAgtypeId(ageField(r as Record<string, unknown>, "id"))))
     );
 }

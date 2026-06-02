@@ -27,18 +27,26 @@ function normaliseCriteriaForWrite(raw: Array<string | { text: string; done: boo
 
 const VALID_TASK_STATUSES: PlanTaskStatus[] = ["pending", "in_progress", "done", "skipped", "blocked"];
 
+function isTaskStatus(s: string): s is PlanTaskStatus {
+    return (VALID_TASK_STATUSES as readonly string[]).includes(s);
+}
+
+function isTaskChunkRelation(s: string): s is PlanTaskChunkRelation {
+    return (VALID_TASK_RELATIONS as readonly string[]).includes(s);
+}
+
 function validateStatus(status: string): Effect.Effect<PlanTaskStatus, ValidationError> {
-    if (!VALID_TASK_STATUSES.includes(status as PlanTaskStatus)) {
+    if (!isTaskStatus(status)) {
         return Effect.fail(new ValidationError({ message: `Invalid task status: ${status}` }));
     }
-    return Effect.succeed(status as PlanTaskStatus);
+    return Effect.succeed(status);
 }
 
 function validateRelation(rel: string): Effect.Effect<PlanTaskChunkRelation, ValidationError> {
-    if (!VALID_TASK_RELATIONS.includes(rel as PlanTaskChunkRelation)) {
+    if (!isTaskChunkRelation(rel)) {
         return Effect.fail(new ValidationError({ message: `Invalid task chunk relation: ${rel}` }));
     }
-    return Effect.succeed(rel as PlanTaskChunkRelation);
+    return Effect.succeed(rel);
 }
 
 export const planTaskRoutes = new Elysia({ prefix: "/plans/:id/tasks" })

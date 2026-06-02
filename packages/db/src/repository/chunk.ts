@@ -305,8 +305,9 @@ export interface CreateChunkParams {
 export function createChunk(params: CreateChunkParams) {
     return dbEffect(async () => {
             const [created] = await db.insert(chunk).values({ ...params, title: params.title.trim() }).returning();
+            if (!created) throw new Error("createChunk: insert returned no row");
             await Effect.runPromise(
-                ensureVertex("chunk", created!.id).pipe(
+                ensureVertex("chunk", created.id).pipe(
                     Effect.catchAll(() => Effect.succeed(undefined))
                 )
             );
@@ -511,12 +512,13 @@ export function mergeChunks(sourceId: string, targetId: string, userId: string) 
                     .set({ content: mergedContent, updatedAt: new Date() })
                     .where(and(eq(chunk.id, targetId), eq(chunk.userId, userId)))
                     .returning();
+                if (!updated) throw new Error("mergeChunks: target chunk update returned no row");
 
                 // --- finally: delete source (cascade handles chunk_version,
                 // chunk_staleness, chunk_proposal, age vertex) ---
                 await tx.delete(chunk).where(and(eq(chunk.id, sourceId), eq(chunk.userId, userId)));
 
-                return updated!;
+                return updated;
             });
         });
 }

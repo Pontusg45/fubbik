@@ -199,7 +199,7 @@ export function mergeFeature(featureId: string, userId: string) {
             // Atomic merge: version snapshots + delta application + cleanup in one transaction
             return mergeFeatureDeltas(featureId, userId, deltas.map(d => ({
                 chunkId: d.chunkId,
-                delta: d.delta as Record<string, unknown>
+                delta: d.delta
             }))).pipe(
                 Effect.tap(affectedChunkIds => {
                     // Fire-and-forget re-enrichment for affected chunks

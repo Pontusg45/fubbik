@@ -169,10 +169,12 @@ export function registerMatrixTools(server: McpServer): void {
                     cell &&
                     (cell.status === "unspecified" || cell.status === "violated")
                 ) {
-                    const [ruleId, dimId] = key.split(":");
+                    const parts = key.split(":");
+                    const ruleId = parts[0] ?? "";
+                    const dimId = parts[1] ?? "";
                     gaps.push({
-                        rule: ruleMap.get(ruleId!) ?? ruleId!,
-                        dimension: dimMap.get(dimId!) ?? dimId!,
+                        rule: ruleMap.get(ruleId) ?? ruleId,
+                        dimension: dimMap.get(dimId) ?? dimId,
                         status: cell.status
                     });
                 }

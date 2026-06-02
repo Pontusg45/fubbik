@@ -66,22 +66,25 @@ export async function loadChunkFixtures(
             rationale: fx.rationale,
             consequences: fx.consequences
         });
-        ctx.ids.chunks[fx.name] = row.id!;
+        if (!row.id) throw new Error(`makeChunk produced no id for "${fx.name}"`);
+        ctx.ids.chunks[fx.name] = row.id;
         return row;
     });
 
     await ctx.db.insert(chunk).values(rows);
 
     if (opts?.codebaseId) {
+        const codebaseId = opts.codebaseId;
         await ctx.db
             .insert(chunkCodebase)
-            .values(rows.map(r => ({ chunkId: r.id!, codebaseId: opts.codebaseId! })));
+            .values(rows.flatMap(r => r.id ? [{ chunkId: r.id, codebaseId }] : []));
     }
 
     // Tag associations — one query per fixture that declares tags (usually small).
     for (const fx of fixtures) {
         if (!fx.tags || fx.tags.length === 0) continue;
-        const chunkId = ctx.ids.chunks[fx.name]!;
+        const chunkId = ctx.ids.chunks[fx.name];
+        if (!chunkId) throw new Error(`Missing chunk id for fixture "${fx.name}"`);
         for (const tagName of fx.tags) {
             const tagId = ctx.ids.tags[tagName];
             if (!tagId) {
@@ -93,7 +96,7 @@ export async function loadChunkFixtures(
     }
 
     ctx.counters["chunks"] = (ctx.counters["chunks"] ?? 0) + rows.length;
-    return rows.map(r => r.id!);
+    return rows.flatMap(r => r.id ? [r.id] : []);
 }
 
 /**

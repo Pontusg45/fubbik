@@ -83,7 +83,8 @@ export const addCommand = new Command("add")
                     return;
                 }
                 const templates = (await res.json()) as { name: string; type?: string; content?: string; tags?: string[] }[];
-                const template = templates.find((t) => t.name.toLowerCase() === opts.template!.toLowerCase());
+                const templateName = opts.template;
+                const template = templateName ? templates.find((t) => t.name.toLowerCase() === templateName.toLowerCase()) : undefined;
                 if (!template) {
                     const available = [...listBuiltinTemplateNames(), ...templates.map(t => t.name)].join(", ");
                     outputError(`Template "${opts.template}" not found. Available: ${available}`);

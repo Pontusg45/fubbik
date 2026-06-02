@@ -77,7 +77,7 @@ export function approveProposal(proposalId: string, reviewerId: string, note?: s
                 : Effect.succeed(proposal)
         ),
         Effect.flatMap(proposal => {
-            const changes = proposal.changes as ProposedChanges;
+            const changes = proposal.changes;
             return updateChunk(proposal.chunkId, reviewerId, {
                 ...(changes.title !== undefined && { title: changes.title }),
                 ...(changes.content !== undefined && { content: changes.content }),

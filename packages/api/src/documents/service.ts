@@ -71,7 +71,7 @@ export function importDocument(
 
             if (template) {
                 const parsed = parseDocFile(sourcePath, rawContent);
-                const fieldMappings = (template.fieldMappings ?? []) as FieldMapping[];
+                const fieldMappings: FieldMapping[] = template.fieldMappings ?? [];
 
                 const { extracted, remainingContent } =
                     fieldMappings.length > 0

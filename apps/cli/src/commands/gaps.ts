@@ -85,8 +85,12 @@ export const gapsCommand = new Command("gaps")
         const byDir = new Map<string, string[]>();
         for (const f of uncoveredFiles) {
             const dir = f.includes("/") ? f.slice(0, f.lastIndexOf("/")) : ".";
-            if (!byDir.has(dir)) byDir.set(dir, []);
-            byDir.get(dir)!.push(f);
+            const existing = byDir.get(dir);
+            if (existing) {
+                existing.push(f);
+            } else {
+                byDir.set(dir, [f]);
+            }
         }
 
         // Sort directories by number of uncovered files (most gaps first)

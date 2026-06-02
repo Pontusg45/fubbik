@@ -95,7 +95,7 @@ export function LinkChunkDialog({ chunkId }: { chunkId: string }) {
                             <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2" />
                             <Input
                                 value={search}
-                                onChange={e => setSearch((e.target as HTMLInputElement).value)}
+                                onChange={e => setSearch(e.target.value)}
                                 placeholder="Type to search..."
                                 className="pl-8"
                             />

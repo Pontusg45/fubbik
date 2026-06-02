@@ -159,7 +159,7 @@ export function getChunkDetail(chunkId: string, userId?: string, activeFeatureId
             });
 
             // Resolve chunk through active features
-            let resolvedChunk = result.chunk as Record<string, unknown>;
+            let resolvedChunk: Record<string, unknown> = { ...result.chunk };
             const _appliedFeatures: string[] = [];
             const _hasDeltas = result.allDeltas.length > 0;
             if (activeFeatureIds.length > 0 && result.allDeltas.length > 0) {
@@ -167,7 +167,7 @@ export function getChunkDetail(chunkId: string, userId?: string, activeFeatureId
                     .filter(d => activeFeatureIds.includes(d.featureId))
                     .sort((a, b) => a.featurePriority - b.featurePriority);
                 for (const d of activeDeltas) {
-                    resolvedChunk = { ...resolvedChunk, ...(d.delta as Record<string, unknown>) };
+                    resolvedChunk = { ...resolvedChunk, ...d.delta };
                     _appliedFeatures.push(d.featureId);
                 }
             }

@@ -118,11 +118,11 @@ export function InlineEdit(props: InlineEditProps) {
                 if (as === "textarea") {
                     if (e.metaKey || e.ctrlKey) {
                         e.preventDefault();
-                        (e.currentTarget as HTMLTextAreaElement).blur();
+                        e.currentTarget.blur();
                     }
                 } else {
                     e.preventDefault();
-                    (e.currentTarget as HTMLInputElement).blur();
+                    e.currentTarget.blur();
                 }
             }
         },

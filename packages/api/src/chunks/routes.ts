@@ -169,7 +169,7 @@ export const chunkRoutes = new Elysia()
         ctx =>
             Effect.runPromise(
                 requireSession(ctx).pipe(
-                    Effect.flatMap(session => bulkService.bulkUpdate(session.user.id, ctx.body) as Effect.Effect<{ updated: number }, any>)
+                    Effect.flatMap(session => bulkService.bulkUpdate(session.user.id, ctx.body))
                 )
             ),
         {

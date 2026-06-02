@@ -16,7 +16,8 @@ export async function seed(ctx: SeedContext): Promise<void> {
 
     const pairs: Array<[string, string]> = [];
     for (const cname of Object.keys(ctx.ids.codebases)) {
-        pairs.push([id, ctx.ids.codebases[cname]!]);
+        const codebaseId = ctx.ids.codebases[cname];
+        if (codebaseId) pairs.push([id, codebaseId]);
     }
     if (pairs.length > 0) {
         await ctx.db.insert(workspaceCodebase).values(

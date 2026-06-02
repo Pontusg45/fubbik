@@ -72,9 +72,13 @@ export function extractFields(
 
         switch (mapping.target) {
             case "rationale":
+                extracted.rationale = content;
+                break;
             case "consequences":
+                extracted.consequences = content;
+                break;
             case "summary":
-                (extracted as Record<string, unknown>)[mapping.target] = content;
+                extracted.summary = content;
                 break;
             case "alternatives":
                 extracted.alternatives = splitBullets(content);

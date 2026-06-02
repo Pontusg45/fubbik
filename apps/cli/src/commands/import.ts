@@ -48,7 +48,8 @@ function parseFrontmatter(content: string): {
         const arrMatch = line.match(/^\s+-\s+(.+)$/);
         if (arrMatch && currentKey) {
             if (!currentArray) currentArray = [];
-            currentArray.push(arrMatch[1]!.trim());
+            const arrVal = arrMatch[1];
+            if (arrVal) currentArray.push(arrVal.trim());
             continue;
         }
         if (currentKey && currentArray) {
@@ -57,10 +58,11 @@ function parseFrontmatter(content: string): {
         }
         const kvMatch = line.match(/^(\w+):\s*(.*)$/);
         if (kvMatch) {
-            currentKey = kvMatch[1]!;
-            const val = kvMatch[2]!.trim();
-            if (val) {
-                meta[currentKey] = val;
+            const matchedKey = kvMatch[1] ?? null;
+            currentKey = matchedKey;
+            const val = (kvMatch[2] ?? "").trim();
+            if (val && matchedKey) {
+                meta[matchedKey] = val;
                 currentKey = null;
             }
         }

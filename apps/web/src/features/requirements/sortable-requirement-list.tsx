@@ -23,8 +23,20 @@ import { RequirementCard } from "./requirement-card";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
+export interface RequirementRecord {
+    id: string;
+    title: string;
+    status?: string | null;
+    priority?: string | null;
+    steps?: Array<{ keyword: string; text: string }> | null;
+    origin?: string | null;
+    reviewStatus?: string | null;
+    useCaseId?: string | null;
+    chunkCount?: number;
+}
+
 interface SortableRequirementListProps {
-    requirements: Array<Record<string, unknown>>;
+    requirements: RequirementRecord[];
     selectedIds: string[];
     onToggleSelection: (id: string, selected: boolean) => void;
     useCaseMap: Map<string, { name: string }>;
@@ -98,17 +110,17 @@ export function SortableRequirementList({
         const { active, over } = event;
         if (!over || active.id === over.id) return;
 
-        const oldIndex = localOrder.findIndex(r => (r.id as string) === active.id);
-        const newIndex = localOrder.findIndex(r => (r.id as string) === over.id);
+        const oldIndex = localOrder.findIndex(r => r.id === active.id);
+        const newIndex = localOrder.findIndex(r => r.id === over.id);
 
         if (oldIndex === -1 || newIndex === -1) return;
 
         const newOrder = arrayMove(localOrder, oldIndex, newIndex);
         setLocalOrder(newOrder);
-        reorderMutation.mutate(newOrder.map(r => r.id as string));
+        reorderMutation.mutate(newOrder.map(r => r.id));
     }
 
-    const ids = localOrder.map(r => r.id as string);
+    const ids = localOrder.map(r => r.id);
 
     return (
         <DndContext
@@ -118,34 +130,22 @@ export function SortableRequirementList({
         >
             <SortableContext items={ids} strategy={verticalListSortingStrategy}>
                 {localOrder.map(req => {
-                    const id = req.id as string;
-                    const useCaseId = req.useCaseId as string | null | undefined;
-                    const uc = useCaseId ? useCaseMap.get(useCaseId) : undefined;
+                    const id = req.id;
+                    const uc = req.useCaseId ? useCaseMap.get(req.useCaseId) : undefined;
 
                     return (
                         <SortableItem key={id} id={id}>
                             {({ dragHandleProps }) => (
                                 <RequirementCard
                                     id={id}
-                                    title={req.title as string}
-                                    status={(req.status as string) ?? "untested"}
-                                    priority={
-                                        (req.priority as string | null) ?? null
-                                    }
-                                    steps={
-                                        (req.steps as Array<{
-                                            keyword: string;
-                                            text: string;
-                                        }>) ?? []
-                                    }
-                                    origin={(req.origin as string) ?? "human"}
-                                    reviewStatus={
-                                        (req.reviewStatus as string) ?? "draft"
-                                    }
+                                    title={req.title}
+                                    status={req.status ?? "untested"}
+                                    priority={req.priority ?? null}
+                                    steps={req.steps ?? []}
+                                    origin={req.origin ?? "human"}
+                                    reviewStatus={req.reviewStatus ?? "draft"}
                                     useCaseName={uc?.name}
-                                    chunkCount={
-                                        req.chunkCount as number | undefined
-                                    }
+                                    chunkCount={req.chunkCount}
                                     selected={selectedIds.includes(id)}
                                     onSelectChange={selected =>
                                         onToggleSelection(id, selected)

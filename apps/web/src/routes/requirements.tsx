@@ -11,7 +11,7 @@ import { useActiveCodebase } from "@/features/codebases/use-active-codebase";
 import { TraceabilityContent } from "@/features/coverage/traceability-content";
 import { BulkActions } from "@/features/requirements/bulk-actions";
 import { SidebarFilters } from "@/features/requirements/sidebar-filters";
-import { SortableRequirementList } from "@/features/requirements/sortable-requirement-list";
+import { SortableRequirementList, type RequirementRecord } from "@/features/requirements/sortable-requirement-list";
 import { getUser } from "@/functions/get-user";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
@@ -135,7 +135,7 @@ function RequirementsPage() {
     });
 
     const stats = statsQuery.data as { total: number; passing: number; failing: number; untested: number } | undefined;
-    const data = listQuery.data as { requirements: Array<Record<string, unknown>>; total: number } | undefined;
+    const data = listQuery.data as { requirements: RequirementRecord[]; total: number } | undefined;
     const useCaseMap = new Map(useCases.map(uc => [uc.id, uc]));
 
     // Client-side post-filtering for multi-select status/priority and parent use cases
@@ -143,13 +143,13 @@ function RequirementsPage() {
         if (!data?.requirements) return [];
         let reqs = data.requirements;
         if (statusFilters.length > 1) {
-            reqs = reqs.filter(r => statusFilters.includes(r.status as string));
+            reqs = reqs.filter(r => r.status && statusFilters.includes(r.status));
         }
         if (priorityFilters.length > 1) {
-            reqs = reqs.filter(r => priorityFilters.includes(r.priority as string));
+            reqs = reqs.filter(r => r.priority && priorityFilters.includes(r.priority));
         }
         if (activeUseCaseIds && activeUseCaseIds.size > 0) {
-            reqs = reqs.filter(r => activeUseCaseIds.has(r.useCaseId as string));
+            reqs = reqs.filter(r => r.useCaseId && activeUseCaseIds.has(r.useCaseId));
         }
         return reqs;
     }, [data, statusFilters, priorityFilters, activeUseCaseIds]);
