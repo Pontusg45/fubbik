@@ -19,6 +19,7 @@ import { coverageRoutes } from "./coverage/routes";
 import { diagramRoutes } from "./diagram/routes";
 import { documentRoutes } from "./documents/routes";
 import { codebaseRoutes } from "./codebases/routes";
+import { spaceRoutes } from "./spaces/routes";
 import { collectionRoutes } from "./collections/routes";
 import { connectionRoutes } from "./connections/routes";
 import { contextExportRoutes } from "./context-export/routes";
@@ -130,7 +131,9 @@ const coreRoutes = new Elysia()
     .use(enrichRoutes)
     .use(tagRoutes)
     .use(tagTypeRoutes)
+    // TODO: remove after VS Code extension is updated to /api/spaces
     .use(codebaseRoutes)
+    .use(spaceRoutes)
     .use(generateInstructionsRoutes)
     .use(fileRefRoutes)
     .use(templateRoutes)
