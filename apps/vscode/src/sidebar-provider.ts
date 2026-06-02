@@ -3,7 +3,7 @@ import type { Chunk, FubbikApi } from "./api";
 import { getBaseHtml, getNonce } from "./webview-utils";
 
 interface SidebarState {
-    codebaseName?: string;
+    spaceName?: string;
     chunks?: Chunk[];
     total?: number;
     tags?: Array<{ id: string; name: string }>;
@@ -84,13 +84,13 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
     }
 
     private buildBody(): string {
-        const { codebaseName, chunks, total, tags, error, loading, fileChunks } = this.state;
+        const { spaceName, chunks, total, tags, error, loading, fileChunks } = this.state;
 
         let html = `<div id="sidebar">`;
 
         // Header
         html += `<div style="display:flex;align-items:center;justify-content:space-between;" class="mb-3">`;
-        html += `<h2>${codebaseName ? escapeHtml(codebaseName) : "Fubbik"}</h2>`;
+        html += `<h2>${spaceName ? escapeHtml(spaceName) : "Fubbik"}</h2>`;
         html += `<button id="refreshBtn" title="Refresh" style="padding:4px 8px;font-size:1.1em;">&#8635;</button>`;
         html += `</div>`;
 

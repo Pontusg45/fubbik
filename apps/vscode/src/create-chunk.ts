@@ -7,7 +7,7 @@ const CHUNK_TYPES = ["note", "document", "reference", "schema", "checklist"];
 export function registerCreateChunkCommand(
     context: vscode.ExtensionContext,
     api: FubbikApi,
-    getCodebaseId: () => string | null,
+    getSpaceId: () => string | null,
     onChunkCreated: () => void
 ): vscode.Disposable {
     return vscode.commands.registerCommand("fubbik.addChunk", () => {
@@ -27,10 +27,10 @@ export function registerCreateChunkCommand(
             { enableScripts: true }
         );
 
-        const codebaseId = getCodebaseId();
+        const spaceId = getSpaceId();
 
         const nonce = getNonce();
-        const body = buildFormBody(firstLine, selectedText, codebaseId);
+        const body = buildFormBody(firstLine, selectedText, spaceId);
         const script = buildFormScript();
 
         panel.webview.html = getBaseHtml(panel.webview, nonce, body, script);
@@ -48,8 +48,8 @@ export function registerCreateChunkCommand(
                                     tags: message.tags || undefined,
                                 };
 
-                            if (codebaseId) {
-                                body.codebaseId = codebaseId;
+                            if (spaceId) {
+                                body.spaceIds = [spaceId];
                             }
 
                             await api.createChunk(body);
@@ -84,13 +84,13 @@ export function registerCreateChunkCommand(
 function buildFormBody(
     title: string,
     content: string,
-    codebaseId: string | null
+    spaceId: string | null
 ): string {
     let html = `<div style="max-width:600px;">`;
     html += `<h2 class="mb-3">Add to Fubbik</h2>`;
 
-    if (!codebaseId) {
-        html += `<p class="muted mb-3" style="font-size:0.9em;">No codebase detected &mdash; chunk will be global.</p>`;
+    if (!spaceId) {
+        html += `<p class="muted mb-3" style="font-size:0.9em;">No space detected &mdash; chunk will be global.</p>`;
     }
 
     // Title

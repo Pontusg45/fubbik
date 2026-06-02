@@ -4,7 +4,7 @@ export interface Chunk {
     title: string | null;
     source: string | null;
     tags: string[];
-    codebaseId: string | null;
+    spaceId: string | null;
     createdAt: string;
     updatedAt: string;
 }
@@ -14,7 +14,7 @@ export interface CreateChunkBody {
     title?: string;
     source?: string;
     tags?: string[];
-    codebaseId?: string;
+    spaceIds?: string[];
 }
 
 export interface DetectResult {
@@ -31,7 +31,7 @@ export class FubbikApi {
         this.baseUrl = serverUrl.replace(/\/+$/, "");
     }
 
-    async detectCodebase(params: {
+    async detectSpace(params: {
         remoteUrl?: string;
         localPath?: string;
     }): Promise<DetectResult | null> {
@@ -39,7 +39,7 @@ export class FubbikApi {
             const query = new URLSearchParams();
             if (params.remoteUrl) query.set("remoteUrl", params.remoteUrl);
             else if (params.localPath) query.set("localPath", params.localPath);
-            const response = await fetch(`${this.baseUrl}/api/codebases/detect?${query}`);
+            const response = await fetch(`${this.baseUrl}/api/spaces/detect?${query}`);
 
             if (!response.ok) {
                 return null;
@@ -52,11 +52,11 @@ export class FubbikApi {
     }
 
     async getChunks(
-        codebaseId?: string
+        spaceId?: string
     ): Promise<{ chunks: Chunk[]; total: number }> {
         const url = new URL(`${this.baseUrl}/api/chunks`);
-        if (codebaseId) {
-            url.searchParams.set("codebaseId", codebaseId);
+        if (spaceId) {
+            url.searchParams.set("spaceId", spaceId);
         }
 
         const response = await fetch(url.toString());
@@ -107,10 +107,10 @@ export class FubbikApi {
 
     async searchChunks(
         query: string,
-        codebaseId?: string
+        spaceId?: string
     ): Promise<{ chunks: Chunk[]; total: number }> {
         const params = new URLSearchParams({ search: query });
-        if (codebaseId) params.set("codebaseId", codebaseId);
+        if (spaceId) params.set("spaceId", spaceId);
         const response = await fetch(
             `${this.baseUrl}/api/chunks?${params}`
         );

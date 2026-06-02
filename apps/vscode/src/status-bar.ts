@@ -13,9 +13,9 @@ export class FubbikStatusBar {
         this.item.tooltip = "Fubbik Knowledge Base";
     }
 
-    async update(api: FubbikApi, codebaseId?: string) {
+    async update(api: FubbikApi, spaceId?: string) {
         try {
-            const res = await api.getChunks(codebaseId);
+            const res = await api.getChunks(spaceId);
             this.item.text = `$(book) ${res.total} chunks`;
             this.item.color = undefined;
             this.item.tooltip = "Fubbik Knowledge Base";

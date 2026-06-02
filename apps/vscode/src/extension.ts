@@ -5,12 +5,12 @@ import * as vscode from "vscode";
 
 import { FubbikApi } from "./api";
 import { registerCreateChunkCommand } from "./create-chunk";
-import { detectCodebase } from "./detect-codebase";
+import { detectSpace } from "./detect-space";
 import { getChunksForFile } from "./file-chunks";
 import { SidebarProvider } from "./sidebar-provider";
 import { FubbikStatusBar } from "./status-bar";
 
-function loadProjectConfig(): { serverUrl?: string; webAppUrl?: string; codebase?: string } {
+function loadProjectConfig(): { serverUrl?: string; webAppUrl?: string; space?: string } {
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
     if (!workspaceFolder) return {};
 
@@ -28,7 +28,7 @@ function loadProjectConfig(): { serverUrl?: string; webAppUrl?: string; codebase
     return {};
 }
 
-let codebaseId: string | null = null;
+let spaceId: string | null = null;
 
 export async function activate(context: vscode.ExtensionContext) {
     const vsCodeConfig = vscode.workspace.getConfiguration("fubbik");
@@ -53,11 +53,11 @@ export async function activate(context: vscode.ExtensionContext) {
         sidebarProvider.setState({ loading: true, error: null });
         try {
             const [chunksRes, tags] = await Promise.all([
-                api.getChunks(codebaseId ?? undefined),
+                api.getChunks(spaceId ?? undefined),
                 api.getTags(),
             ]);
             sidebarProvider.setState({ chunks: chunksRes.chunks, total: chunksRes.total, tags, loading: false });
-            statusBar.update(api, codebaseId ?? undefined);
+            statusBar.update(api, spaceId ?? undefined);
         } catch {
             sidebarProvider.setState({
                 chunks: [],
@@ -65,7 +65,7 @@ export async function activate(context: vscode.ExtensionContext) {
                 loading: false,
                 error: `Cannot connect to ${serverUrl}`
             });
-            statusBar.update(api, codebaseId ?? undefined);
+            statusBar.update(api, spaceId ?? undefined);
         }
     }
 
@@ -75,7 +75,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
     // Create chunk command
     context.subscriptions.push(
-        registerCreateChunkCommand(context, api, () => codebaseId, refreshChunks)
+        registerCreateChunkCommand(context, api, () => spaceId, refreshChunks)
     );
 
     // Search chunks command
@@ -92,7 +92,7 @@ export async function activate(context: vscode.ExtensionContext) {
                 }
                 quickPick.busy = true;
                 try {
-                    const result = await api.searchChunks(value, codebaseId ?? undefined);
+                    const result = await api.searchChunks(value, spaceId ?? undefined);
                     quickPick.items = result.chunks.map((chunk) => ({
                         label: chunk.title || "Untitled",
                         description: `${chunk.source || "note"} ${(chunk.tags || []).join(", ")}`,
@@ -155,7 +155,7 @@ export async function activate(context: vscode.ExtensionContext) {
                     title,
                     source: "note",
                 };
-                if (codebaseId) body.codebaseId = codebaseId;
+                if (spaceId) body.spaceIds = [spaceId];
                 await api.createChunk(body);
                 vscode.window.showInformationMessage("Note added to Fubbik!");
                 vscode.commands.executeCommand("fubbik.refreshSidebar");
@@ -182,17 +182,17 @@ export async function activate(context: vscode.ExtensionContext) {
         })
     );
 
-    // Detect codebase on activation
+    // Detect space on activation
     try {
-        const result = await detectCodebase(api);
+        const result = await detectSpace(api);
         if (result) {
-            codebaseId = result.id;
-            sidebarProvider.setState({ codebaseName: result.name });
+            spaceId = result.id;
+            sidebarProvider.setState({ spaceName: result.name });
         } else {
-            sidebarProvider.setState({ codebaseName: null });
+            sidebarProvider.setState({ spaceName: null });
         }
     } catch {
-        sidebarProvider.setState({ codebaseName: null });
+        sidebarProvider.setState({ spaceName: null });
     }
 
     // Fetch initial chunks
@@ -212,12 +212,12 @@ export async function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(
         vscode.workspace.onDidChangeWorkspaceFolders(async () => {
             try {
-                const result = await detectCodebase(api);
-                codebaseId = result?.id ?? null;
-                sidebarProvider.setState({ codebaseName: result?.name ?? null });
+                const result = await detectSpace(api);
+                spaceId = result?.id ?? null;
+                sidebarProvider.setState({ spaceName: result?.name ?? null });
             } catch {
-                codebaseId = null;
-                sidebarProvider.setState({ codebaseName: null });
+                spaceId = null;
+                sidebarProvider.setState({ spaceName: null });
             }
             await refreshChunks();
         })

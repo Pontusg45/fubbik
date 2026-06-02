@@ -17,7 +17,7 @@ function execAsync(
     });
 }
 
-export async function detectCodebase(
+export async function detectSpace(
     api: FubbikApi
 ): Promise<DetectResult | null> {
     const folders = vscode.workspace.workspaceFolders;
@@ -35,11 +35,11 @@ export async function detectCodebase(
         const remoteUrl = stdout.trim();
 
         if (remoteUrl) {
-            return api.detectCodebase({ remoteUrl });
+            return api.detectSpace({ remoteUrl });
         }
     } catch {
         // No git remote — fall through to local path detection
     }
 
-    return api.detectCodebase({ localPath: workspacePath });
+    return api.detectSpace({ localPath: workspacePath });
 }
