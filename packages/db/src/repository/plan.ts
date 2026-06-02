@@ -4,7 +4,7 @@ import { Effect } from "effect";
 import { DatabaseError } from "../errors";
 import { db, dbEffect } from "../index";
 import { chunk } from "../schema/chunk";
-import { codebase } from "../schema/codebase";
+import { space } from "../schema/space";
 import {
     plan,
     planAnalyzeItem,
@@ -40,7 +40,7 @@ export interface ListPlansFilter {
 export function listPlans(filter: ListPlansFilter): Effect.Effect<Plan[], DatabaseError> {
     return dbEffect(async () => {
             const conditions = [eq(plan.userId, filter.userId)];
-            if (filter.codebaseId) conditions.push(eq(plan.codebaseId, filter.codebaseId));
+            if (filter.codebaseId) conditions.push(eq(plan.spaceId, filter.codebaseId));
             if (filter.status) conditions.push(eq(plan.status, filter.status));
             if (!filter.includeArchived && !filter.status) {
                 conditions.push(ne(plan.status, "archived"));
@@ -78,7 +78,7 @@ export interface PlanListRow extends Plan {
 export function listPlansWithRollups(filter: ListPlansFilter): Effect.Effect<PlanListRow[], DatabaseError> {
     return dbEffect(async () => {
             const conditions = [eq(plan.userId, filter.userId)];
-            if (filter.codebaseId) conditions.push(eq(plan.codebaseId, filter.codebaseId));
+            if (filter.codebaseId) conditions.push(eq(plan.spaceId, filter.codebaseId));
             if (filter.status) conditions.push(eq(plan.status, filter.status));
             if (!filter.includeArchived && !filter.status) {
                 conditions.push(ne(plan.status, "archived"));
@@ -96,16 +96,16 @@ export function listPlansWithRollups(filter: ListPlansFilter): Effect.Effect<Pla
             const rows = await db
                 .select({
                     plan,
-                    codebaseName: codebase.name,
+                    codebaseName: space.name,
                     taskTotal: sql<number>`count(${planTask.id})::int`.as("task_total"),
                     taskDone: sql<number>`count(*) filter (where ${planTask.status} = 'done')::int`.as("task_done"),
                     lastTaskUpdate: sql<Date | null>`max(${planTask.updatedAt})`.as("last_task_update"),
                 })
                 .from(plan)
-                .leftJoin(codebase, eq(codebase.id, plan.codebaseId))
+                .leftJoin(space, eq(space.id, plan.spaceId))
                 .leftJoin(planTask, eq(planTask.planId, plan.id))
                 .where(and(...conditions))
-                .groupBy(plan.id, codebase.name)
+                .groupBy(plan.id, space.name)
                 .orderBy(asc(plan.createdAt));
 
             if (rows.length === 0) return [];
@@ -188,7 +188,7 @@ export function duplicatePlan(sourceId: string, userId: string): Effect.Effect<P
                         description: source.description,
                         status: "draft",
                         userId: source.userId,
-                        codebaseId: source.codebaseId,
+                        spaceId: source.spaceId,
                         metadata: source.metadata,
                     })
                     .returning();
