@@ -71,13 +71,13 @@ describe("Feature CRUD", () => {
         featuresToCleanup.push((data as any).id);
     });
 
-    it("GET /api/features/:id — returns feature detail with codebases and deltas arrays", async () => {
+    it("GET /api/features/:id — returns feature detail with spaces and deltas arrays", async () => {
         const { status, data } = await (client.api.features({ id: featureId }) as any).get();
         expect(status).toBe(200);
         const detail = data as any;
         expect(detail.feature).toBeDefined();
         expect(detail.feature.id).toBe(featureId);
-        expect(Array.isArray(detail.codebases)).toBe(true);
+        expect(Array.isArray(detail.spaces)).toBe(true);
         expect(Array.isArray(detail.deltas)).toBe(true);
     });
 
@@ -187,9 +187,9 @@ describe("Feature lifecycle", () => {
 // ---------------------------------------------------------------------------
 describe("Delta operations", () => {
     it("PUT /api/chunks/:id/deltas/:featureId — creates a delta", async () => {
-        const { status, data } = await (
-            (client.api.chunks({ id: chunkId }) as any).deltas({ featureId })
-        ).put({ delta: { content: "feature overlay content" } });
+        const { status, data } = await (client.api.chunks({ id: chunkId }) as any)
+            .deltas({ featureId })
+            .put({ delta: { content: "feature overlay content" } });
         expect(status).toBe(200);
         expect((data as any).chunkId).toBe(chunkId);
         expect((data as any).featureId).toBe(featureId);
@@ -212,28 +212,22 @@ describe("Delta operations", () => {
     });
 
     it("PUT /api/chunks/:id/deltas/:featureId — rejects invalid delta fields with 400", async () => {
-        const { status } = await (
-            (client.api.chunks({ id: chunkId }) as any).deltas({ featureId })
-        ).put({ delta: { unknownField: "bad", anotherBadField: 123 } });
+        const { status } = await (client.api.chunks({ id: chunkId }) as any)
+            .deltas({ featureId })
+            .put({ delta: { unknownField: "bad", anotherBadField: 123 } });
         expect(status).toBe(400);
     });
 
     it("PUT /api/chunks/:id/deltas/:featureId — rejects empty delta with 400", async () => {
-        const { status } = await (
-            (client.api.chunks({ id: chunkId }) as any).deltas({ featureId })
-        ).put({ delta: {} });
+        const { status } = await (client.api.chunks({ id: chunkId }) as any).deltas({ featureId }).put({ delta: {} });
         expect(status).toBe(400);
     });
 
     it("DELETE /api/chunks/:id/deltas/:featureId — removes the delta", async () => {
         // First ensure a delta exists
-        await (
-            (client.api.chunks({ id: chunkId }) as any).deltas({ featureId })
-        ).put({ delta: { content: "to be deleted" } });
+        await (client.api.chunks({ id: chunkId }) as any).deltas({ featureId }).put({ delta: { content: "to be deleted" } });
 
-        const { status } = await (
-            (client.api.chunks({ id: chunkId }) as any).deltas({ featureId })
-        ).delete();
+        const { status } = await (client.api.chunks({ id: chunkId }) as any).deltas({ featureId }).delete();
         expect(status).toBe(200);
     });
 });
