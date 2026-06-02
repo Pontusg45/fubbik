@@ -3,9 +3,9 @@ import { and, countDistinct, eq, inArray, isNull, sql } from "drizzle-orm";
 
 import { db, dbEffect } from "../index";
 import { chunk } from "../schema/chunk";
-import { chunkCodebase } from "../schema/codebase";
+import { chunkSpace } from "../schema/space";
 import { tag, chunkTag } from "../schema/tag";
-import { workspaceCodebase } from "../schema/workspace";
+import { workspaceSpace } from "../schema/workspace";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -117,34 +117,34 @@ function buildBaseConditions(params: {
         }
     }
 
-    // Workspace / codebase scoping
+    // Workspace / space scoping
     if (params.workspaceId) {
         const inWorkspace = db
-            .select({ codebaseId: workspaceCodebase.codebaseId })
-            .from(workspaceCodebase)
-            .where(eq(workspaceCodebase.workspaceId, params.workspaceId));
-        const inCodebases = db
-            .select({ chunkId: chunkCodebase.chunkId })
-            .from(chunkCodebase)
-            .where(sql`${chunkCodebase.codebaseId} IN (${inWorkspace})`);
-        const inAnyCodebase = db.select({ chunkId: chunkCodebase.chunkId }).from(chunkCodebase);
+            .select({ spaceId: workspaceSpace.spaceId })
+            .from(workspaceSpace)
+            .where(eq(workspaceSpace.workspaceId, params.workspaceId));
+        const inSpaces = db
+            .select({ chunkId: chunkSpace.chunkId })
+            .from(chunkSpace)
+            .where(sql`${chunkSpace.spaceId} IN (${inWorkspace})`);
+        const inAnySpace = db.select({ chunkId: chunkSpace.chunkId }).from(chunkSpace);
         conditions.push(
-            sql`(${chunk.id} IN (${inCodebases}) OR ${chunk.id} NOT IN (${inAnyCodebase}))`
+            sql`(${chunk.id} IN (${inSpaces}) OR ${chunk.id} NOT IN (${inAnySpace}))`
         );
     } else if (params.codebaseId) {
-        const inCodebase = db
-            .select({ chunkId: chunkCodebase.chunkId })
-            .from(chunkCodebase)
-            .where(eq(chunkCodebase.codebaseId, params.codebaseId));
-        const inAnyCodebase = db.select({ chunkId: chunkCodebase.chunkId }).from(chunkCodebase);
+        const inSpace = db
+            .select({ chunkId: chunkSpace.chunkId })
+            .from(chunkSpace)
+            .where(eq(chunkSpace.spaceId, params.codebaseId));
+        const inAnySpace = db.select({ chunkId: chunkSpace.chunkId }).from(chunkSpace);
         conditions.push(
-            sql`(${chunk.id} IN (${inCodebase}) OR ${chunk.id} NOT IN (${inAnyCodebase}))`
+            sql`(${chunk.id} IN (${inSpace}) OR ${chunk.id} NOT IN (${inAnySpace}))`
         );
     }
 
     if (params.globalOnly) {
-        const inAnyCodebase = db.select({ chunkId: chunkCodebase.chunkId }).from(chunkCodebase);
-        conditions.push(sql`${chunk.id} NOT IN (${inAnyCodebase})`);
+        const inAnySpace = db.select({ chunkId: chunkSpace.chunkId }).from(chunkSpace);
+        conditions.push(sql`${chunk.id} NOT IN (${inAnySpace})`);
     }
 
     return conditions;
