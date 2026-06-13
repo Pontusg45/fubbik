@@ -3,7 +3,7 @@ import { Effect } from "effect";
 import { readdir, readFile } from "node:fs/promises";
 import { extname, join, relative } from "node:path";
 
-import { isAgeAvailable } from "@fubbik/db/repository";
+import { isAgeAvailable, listAllFileRefs } from "@fubbik/db/repository";
 import { cypherVoid, escCypher } from "@fubbik/db/age/client";
 import { createEdge, deleteEdgesFrom, ensureVertex } from "@fubbik/db/age/sync";
 
@@ -149,5 +149,27 @@ export function syncIndexToGraph(files: IndexedFile[]) {
 
         logger.info("Code index synced to graph", { files: synced });
         return { synced };
+    });
+}
+
+export function syncAnnotatesEdges(userId: string) {
+    return Effect.gen(function* () {
+        const ageReady = yield* Effect.promise(() => isAgeAvailable());
+        if (!ageReady) return { linked: 0 };
+
+        const fileRefs = yield* listAllFileRefs(userId);
+        let linked = 0;
+
+        for (const ref of fileRefs) {
+            yield* cypherVoid(
+                `MATCH (c:chunk {id: '${escCypher(ref.chunkId)}'}), (f:code_file)
+                 WHERE f.id ENDS WITH '${escCypher(ref.path)}'
+                 MERGE (c)-[:annotates {via: 'file_ref'}]->(f)`
+            );
+            linked++;
+        }
+
+        logger.info("Annotates edges synced", { linked });
+        return { linked };
     });
 }
