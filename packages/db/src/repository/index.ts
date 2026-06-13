@@ -47,3 +47,4 @@ export * from "./scope-key";
 export * from "./behavior-matrix";
 export * from "./space";
 export * from "./graph-event";
+export * from "./usage-event";
