@@ -33,3 +33,5 @@ export * from "./behavior-matrix";
 export * from "./space";
 export * from "./space-kind";
 export * from "./space-code-metadata";
+export * from "./graph-event";
+export * from "./usage-event";
