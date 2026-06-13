@@ -3,6 +3,7 @@ import { memo } from "react";
 
 interface TypedEdgeData {
     relation: string;
+    count?: number;
     [key: string]: unknown;
 }
 
@@ -14,7 +15,8 @@ const EDGE_STYLES: Record<string, { color: string; strokeWidth: number; strokeDa
     related_to: { color: "#94a3b8", strokeWidth: 1, strokeDasharray: "6 4" },
     contradicts: { color: "#ef4444", strokeWidth: 2, strokeDasharray: "4 4" },
     alternative_to: { color: "#f59e0b", strokeWidth: 1.5 },
-    supports: { color: "#06b6d4", strokeWidth: 1.5, strokeDasharray: "8 3" }
+    supports: { color: "#06b6d4", strokeWidth: 1.5, strokeDasharray: "8 3" },
+    co_referenced: { color: "#8b5cf6", strokeWidth: 1, strokeDasharray: "4 2", markerEnd: undefined }
 };
 
 const DEFAULT_STYLE: { color: string; strokeWidth: number; strokeDasharray?: string; markerEnd?: string } = {
@@ -61,8 +63,10 @@ function TypedEdgeComponent({ id, source, target, data, style }: EdgeProps) {
 
     if (!sourceNode || !targetNode) return null;
 
-    const relation = (data as TypedEdgeData | undefined)?.relation ?? "related_to";
+    const edgeData = data as TypedEdgeData | undefined;
+    const relation = edgeData?.relation ?? "related_to";
     const edgeStyle = EDGE_STYLES[relation] ?? DEFAULT_STYLE;
+    const weight = edgeData?.count ? Math.min(6, 1 + Math.log2(edgeData.count)) : edgeStyle.strokeWidth;
 
     const sc = getNodeCenter(sourceNode);
     const tc = getNodeCenter(targetNode);
@@ -103,7 +107,7 @@ function TypedEdgeComponent({ id, source, target, data, style }: EdgeProps) {
                 d={path}
                 fill="none"
                 stroke={edgeStyle.color}
-                strokeWidth={edgeStyle.strokeWidth}
+                strokeWidth={weight}
                 strokeDasharray={edgeStyle.strokeDasharray}
                 markerEnd={markerId ? `url(#${markerId})` : undefined}
                 style={style}

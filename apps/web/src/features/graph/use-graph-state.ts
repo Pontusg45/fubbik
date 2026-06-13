@@ -19,6 +19,9 @@ export interface GraphState {
     showUngrouped: boolean;
     panelWidth: number;
     heatmapMode: boolean;
+    showCodeNodes: boolean;
+    timelineTime: Date | null;
+    isTimelinePlaying: boolean;
 }
 
 // --- Actions ---
@@ -56,6 +59,9 @@ export type GraphAction =
     // View
     | { type: "SET_PANEL_WIDTH"; width: number }
     | { type: "TOGGLE_HEATMAP" }
+    | { type: "TOGGLE_CODE_NODES" }
+    | { type: "SET_TIMELINE_TIME"; time: Date | null }
+    | { type: "TOGGLE_TIMELINE_PLAYING" }
 
     // Compound
     | { type: "DESELECT_ALL" }
@@ -79,7 +85,10 @@ export const initialGraphState: GraphState = {
     groupingTagTypeId: null,
     showUngrouped: false,
     panelWidth: 380,
-    heatmapMode: false
+    heatmapMode: false,
+    showCodeNodes: false,
+    timelineTime: null as Date | null,
+    isTimelinePlaying: false
 };
 
 // --- Reducer ---
@@ -146,6 +155,12 @@ export function graphReducer(state: GraphState, action: GraphAction): GraphState
             return { ...state, panelWidth: action.width };
         case "TOGGLE_HEATMAP":
             return { ...state, heatmapMode: !state.heatmapMode };
+        case "TOGGLE_CODE_NODES":
+            return { ...state, showCodeNodes: !state.showCodeNodes };
+        case "SET_TIMELINE_TIME":
+            return { ...state, timelineTime: action.time };
+        case "TOGGLE_TIMELINE_PLAYING":
+            return { ...state, isTimelinePlaying: !state.isTimelinePlaying };
 
         // Compound
         case "DESELECT_ALL":

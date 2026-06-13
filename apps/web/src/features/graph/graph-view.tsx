@@ -17,6 +17,8 @@ import { useTheme } from "next-themes";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { Spinner } from "@/components/ui/spinner";
+import { CodeNode } from "@/features/graph/code-node";
+import { ConceptNode } from "@/features/graph/concept-node";
 import { GraphChunkCard } from "@/features/graph/graph-chunk-card";
 import { GraphChunkDot } from "@/features/graph/graph-chunk-dot";
 import { GraphColumnView } from "@/features/graph/graph-column-view";
@@ -24,6 +26,7 @@ import { GraphDetailPanel } from "@/features/graph/graph-detail-panel";
 import { GraphIslandNode } from "@/features/graph/graph-island-node";
 import { layoutIslands } from "@/features/graph/island-layout";
 import { layoutNeighborhood, type NeighborhoodResult } from "@/features/graph/neighborhood-layout";
+import { TimelineScrubber } from "@/features/graph/timeline-scrubber";
 import { TypedEdge } from "@/features/graph/typed-edge";
 import { useGraphData } from "@/features/graph/use-graph-data";
 import { useGraphNodes } from "@/features/graph/use-graph-nodes";
@@ -35,7 +38,9 @@ type ViewMode = "graph" | "columns";
 const NODE_TYPES = {
     island: GraphIslandNode,
     chunkCard: GraphChunkCard,
-    chunkDot: GraphChunkDot
+    chunkDot: GraphChunkDot,
+    codeNode: CodeNode,
+    conceptNode: ConceptNode
 };
 const EDGE_TYPES = { typed: TypedEdge };
 
@@ -361,6 +366,19 @@ function GraphViewInner() {
                         )}
                     </ReactFlow>
 
+                    {/* Timeline scrubber */}
+                    {data?.chunks && data.chunks.length > 0 && (
+                        <div className="absolute bottom-12 left-1/2 z-10 -translate-x-1/2">
+                            <TimelineScrubber
+                                earliest={new Date(Math.min(...data.chunks.map(c => new Date(c.createdAt).getTime())))}
+                                latest={new Date()}
+                                onTimeChange={time => dispatch({ type: "SET_TIMELINE_TIME", time })}
+                                isPlaying={gs.isTimelinePlaying}
+                                onPlayToggle={() => dispatch({ type: "TOGGLE_TIMELINE_PLAYING" })}
+                            />
+                        </div>
+                    )}
+
                     {/* Top bar: breadcrumbs + controls */}
                     <div className="absolute inset-x-0 top-0 z-10 flex flex-wrap items-start justify-between gap-2 p-3">
                         {/* Breadcrumbs */}
@@ -398,6 +416,16 @@ function GraphViewInner() {
                                         }`}
                                     >
                                         Health
+                                    </button>
+                                    <button
+                                        onClick={() => dispatch({ type: "TOGGLE_CODE_NODES" })}
+                                        className={`rounded border px-2 py-1.5 text-xs ${
+                                            gs.showCodeNodes
+                                                ? "border-blue-500 bg-blue-500/20 text-blue-300"
+                                                : "bg-background/90 border backdrop-blur-sm"
+                                        }`}
+                                    >
+                                        Code
                                     </button>
                                     <select
                                         value={groupingTagTypeId ?? ""}
