@@ -1,22 +1,27 @@
-import { createStaleFlag, getDownstreamChunks, getUpstreamChunks, getStaleFlags } from "@fubbik/db/repository";
+import { computeImpactRipple } from "@fubbik/db/age/impact";
+import { createStaleFlag, getStaleFlags } from "@fubbik/db/repository";
 import { Effect } from "effect";
 
-export function flagDownstreamStale(updatedChunkId: string, updatedChunkTitle: string, userId: string) {
+export function flagImpactRipple(updatedChunkId: string, updatedChunkTitle: string, userId: string) {
     return Effect.gen(function* () {
-        const downstreamIds = yield* getDownstreamChunks(updatedChunkId, 3);
-        if (downstreamIds.length === 0) return { flagged: 0 };
+        const targets = yield* computeImpactRipple(updatedChunkId);
+        if (targets.length === 0) return { flagged: 0 };
 
-        const existingFlags = yield* getStaleFlags(userId, { reason: "upstream_changed" });
-        const alreadyFlagged = new Set(existingFlags.map(f => f.chunkId));
+        const existingFlags = yield* getStaleFlags(userId, { reason: "upstream_impact" });
+        const alreadyFlagged = new Map(
+            existingFlags
+                .filter(f => f.relatedChunkId === updatedChunkId)
+                .map(f => [f.chunkId, f])
+        );
 
         let flagged = 0;
-        for (const chunkId of downstreamIds) {
-            if (alreadyFlagged.has(chunkId)) continue;
+        for (const target of targets) {
+            if (alreadyFlagged.has(target.chunkId)) continue;
             yield* createStaleFlag({
                 id: crypto.randomUUID(),
-                chunkId,
-                reason: "upstream_changed",
-                detail: `Upstream chunk "${updatedChunkTitle}" (${updatedChunkId}) was updated`,
+                chunkId: target.chunkId,
+                reason: "upstream_impact",
+                detail: `Impacted by change to "${updatedChunkTitle}" (degree: ${target.degree.toFixed(2)}, ${target.hops} hops via ${target.path.join(" → ")})`,
                 relatedChunkId: updatedChunkId
             });
             flagged++;
@@ -26,38 +31,7 @@ export function flagDownstreamStale(updatedChunkId: string, updatedChunkTitle: s
     });
 }
 
-export function flagUpstreamStale(updatedChunkId: string, updatedChunkTitle: string, userId: string) {
-    return Effect.gen(function* () {
-        const upstreamIds = yield* getUpstreamChunks(updatedChunkId, 3);
-        if (upstreamIds.length === 0) return { flagged: 0 };
-
-        const existingFlags = yield* getStaleFlags(userId, { reason: "downstream_changed" });
-        const alreadyFlagged = new Set(existingFlags.map(f => f.chunkId));
-
-        let flagged = 0;
-        for (const chunkId of upstreamIds) {
-            if (alreadyFlagged.has(chunkId)) continue;
-            yield* createStaleFlag({
-                id: crypto.randomUUID(),
-                chunkId,
-                reason: "downstream_changed",
-                detail: `Downstream chunk "${updatedChunkTitle}" (${updatedChunkId}) was updated`,
-                relatedChunkId: updatedChunkId
-            });
-            flagged++;
-        }
-
-        return { flagged };
-    });
-}
-
+// Keep backward compatibility — flagBidirectionalImpact is called from chunk-mutations.ts
 export function flagBidirectionalImpact(updatedChunkId: string, updatedChunkTitle: string, userId: string) {
-    return Effect.all({
-        downstream: flagDownstreamStale(updatedChunkId, updatedChunkTitle, userId),
-        upstream: flagUpstreamStale(updatedChunkId, updatedChunkTitle, userId)
-    }).pipe(
-        Effect.map(({ downstream, upstream }) => ({
-            flagged: downstream.flagged + upstream.flagged
-        }))
-    );
+    return flagImpactRipple(updatedChunkId, updatedChunkTitle, userId);
 }

@@ -9,7 +9,9 @@
         "./schema/plan": "./src/schema/plan.ts",
         "./repository": "./src/repository/index.ts",
         "./repository/plan": "./src/repository/plan.ts",
-        "./errors": "./src/errors.ts"
+        "./errors": "./src/errors.ts",
+        "./age/impact": "./src/age/impact.ts",
+        "./age/client": "./src/age/client.ts"
     },
     "scripts": {
         "check-types": "tsgo -b",

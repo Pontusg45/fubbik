@@ -58,6 +58,7 @@ import { taskQueueRoutes } from "./tasks/routes";
 import { templateRoutes } from "./templates/routes";
 import { timelineRoutes } from "./timeline/routes";
 import { useCaseRoutes } from "./use-cases/routes";
+import { usageRoutes } from "./usage/routes";
 import { vocabularyCatalogRoutes } from "./vocabularies/routes";
 import { vocabularyRoutes } from "./vocabulary/routes";
 import { workspaceRoutes } from "./workspaces/routes";
@@ -167,7 +168,8 @@ const extendedRoutes = new Elysia()
     .use(learningPathRoutes)
     .use(timelineRoutes)
     .use(densityRoutes)
-    .use(vocabularyCatalogRoutes);
+    .use(vocabularyCatalogRoutes)
+    .use(usageRoutes);
 
 export const api = new Elysia({ prefix: "/api" })
     .use(healthRoutes)
