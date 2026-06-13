@@ -8,6 +8,7 @@ export interface ChunkCardData {
     tags: Array<{ name: string; color: string }>;
     healthScore: number;
     isFocus: boolean;
+    impactDegree?: number; // 0-1, from upstream_impact staleness flags
     [key: string]: unknown;
 }
 
@@ -19,11 +20,11 @@ function healthColor(score: number): string {
 }
 
 function ChunkCardComponent({ data }: NodeProps) {
-    const { title, summary, tags, healthScore, isFocus } = data as ChunkCardData;
+    const { title, summary, tags, healthScore, isFocus, impactDegree } = data as ChunkCardData;
 
     return (
         <div
-            className="max-w-[160px] rounded-[10px] border bg-slate-800 text-left"
+            className="relative max-w-[160px] rounded-[10px] border bg-slate-800 text-left"
             style={{
                 borderWidth: isFocus ? "2px" : "1px",
                 borderColor: isFocus ? "#3b82f6" : "#334155",
@@ -58,6 +59,12 @@ function ChunkCardComponent({ data }: NodeProps) {
                         </span>
                     ))}
                 </div>
+            )}
+            {impactDegree != null && impactDegree > 0 && (
+                <div
+                    className="pointer-events-none absolute inset-0 rounded-lg border-2 border-amber-400"
+                    style={{ opacity: impactDegree }}
+                />
             )}
         </div>
     );
