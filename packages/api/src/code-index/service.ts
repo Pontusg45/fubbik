@@ -45,10 +45,10 @@ function extractSymbolsRegex(content: string): ExtractedSymbol[] {
     ];
 
     for (let i = 0; i < lines.length; i++) {
-        const line = lines[i].trim();
+        const line = lines[i]!.trim();
         for (const { regex, kind } of exportPatterns) {
             const m = line.match(regex);
-            if (m) {
+            if (m && m[1]) {
                 symbols.push({ name: m[1], kind, line: i + 1, exported: true });
                 break;
             }
@@ -63,7 +63,7 @@ function extractImports(content: string): string[] {
     const importRegex = /(?:import|from)\s+['"]([^'"]+)['"]/g;
     let match;
     while ((match = importRegex.exec(content)) !== null) {
-        if (match[1].startsWith(".")) {
+        if (match[1] && match[1].startsWith(".")) {
             imports.push(match[1]);
         }
     }
