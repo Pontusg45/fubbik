@@ -3,7 +3,7 @@ import { Elysia, t } from "elysia";
 
 import { requireSession } from "../require-session";
 import { detectAgeStaleChunks } from "./detect-age";
-import { flagDownstreamStale } from "./detect-impact";
+import { flagImpactRipple } from "./detect-impact";
 import * as stalenessService from "./service";
 
 export const stalenessRoutes = new Elysia()
@@ -95,7 +95,7 @@ export const stalenessRoutes = new Elysia()
         ctx =>
             Effect.runPromise(
                 requireSession(ctx).pipe(
-                    Effect.flatMap(session => flagDownstreamStale(ctx.params.id, ctx.body.title ?? "Unknown", session.user.id))
+                    Effect.flatMap(session => flagImpactRipple(ctx.params.id, ctx.body.title ?? "Unknown", session.user.id))
                 )
             ),
         {

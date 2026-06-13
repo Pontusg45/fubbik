@@ -17,4 +17,4 @@ export {
     detectUncoveredChunks,
     flagRequirementFailing
 };
-export { flagDownstreamStale, flagUpstreamStale, flagBidirectionalImpact } from "./detect-impact";
+export { flagImpactRipple, flagBidirectionalImpact } from "./detect-impact";

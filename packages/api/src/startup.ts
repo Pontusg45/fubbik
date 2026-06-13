@@ -3,6 +3,7 @@ import { env } from "@fubbik/env/server";
 import { Effect } from "effect";
 
 import { logger } from "./logger";
+import { aggregateCoReferences } from "./usage/service";
 
 export function apiUsesImplicitDevUser(): boolean {
     return env.NODE_ENV !== "production" || env.FUBBIK_IMPLICIT_DEV_SESSION === "true";
@@ -34,6 +35,16 @@ async function runStaleScan() {
     }
 }
 
+async function runCoRefAggregation() {
+    const start = Date.now();
+    try {
+        const result = await Effect.runPromise(aggregateCoReferences());
+        logger.info("Co-reference aggregation completed", { upserted: result.upserted, durationMs: Date.now() - start });
+    } catch (err) {
+        logger.error("Co-reference aggregation failed", { error: err });
+    }
+}
+
 export function initStartupTasks() {
     const intervalHours = Number(env.STALENESS_SCAN_INTERVAL_HOURS ?? "24");
     if (intervalHours <= 0) {
@@ -46,10 +57,18 @@ export function initStartupTasks() {
         runStaleScan();
     }, 30000);
 
+    // Run co-reference aggregation offset by 5s from staleness scan
+    setTimeout(() => {
+        runCoRefAggregation();
+    }, 35000);
+
     // Schedule recurring scans
     const intervalMs = intervalHours * 60 * 60 * 1000;
     setInterval(() => {
         runStaleScan();
+    }, intervalMs);
+    setInterval(() => {
+        runCoRefAggregation();
     }, intervalMs);
 
     logger.info(`Staleness scanning enabled (every ${intervalHours}h)`);

@@ -11,7 +11,8 @@
         "./repository/plan": "./src/repository/plan.ts",
         "./errors": "./src/errors.ts",
         "./age/impact": "./src/age/impact.ts",
-        "./age/client": "./src/age/client.ts"
+        "./age/client": "./src/age/client.ts",
+        "./age/sync": "./src/age/sync.ts"
     },
     "scripts": {
         "check-types": "tsgo -b",

@@ -11,6 +11,8 @@ registerEventHandlers();
 import { getActiveFeatureIds } from "@fubbik/db/repository";
 
 import { activityRoutes } from "./activity/routes";
+import { codeIndexRoutes } from "./code-index/routes";
+import { conceptRoutes } from "./concepts/routes";
 import { aiRoutes } from "./ai/routes";
 import { appliesToRoutes } from "./applies-to/routes";
 import { clusterRoutes } from "./chunks/cluster-routes";
@@ -169,7 +171,9 @@ const extendedRoutes = new Elysia()
     .use(timelineRoutes)
     .use(densityRoutes)
     .use(vocabularyCatalogRoutes)
-    .use(usageRoutes);
+    .use(usageRoutes)
+    .use(conceptRoutes)
+    .use(codeIndexRoutes);
 
 export const api = new Elysia({ prefix: "/api" })
     .use(healthRoutes)

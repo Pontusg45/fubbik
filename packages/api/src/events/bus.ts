@@ -37,6 +37,7 @@ export const EVENTS = {
     CHUNK_CREATED: "chunk:created",
     CHUNK_UPDATED: "chunk:updated",
     CHUNK_DELETED: "chunk:deleted",
+    CHUNK_VIEWED: "chunk:viewed",
     PLAN_COMPLETED: "plan:completed",
     SESSION_COMPLETED: "session:completed",
     REQUIREMENT_STATUS_CHANGED: "requirement:status-changed"
