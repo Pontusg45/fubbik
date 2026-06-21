@@ -140,6 +140,24 @@ BDD-style requirements with Given/When/Then steps.
 - Plan steps can link to requirements via `requirementId` for full traceability
 - Requirements auto-update to "passing" when implementation sessions complete
 
+### Behavioral Matrices
+
+Grid-based specs of expected behavior. A `behavior_matrix` (`layer = invariant | contract`) holds `behavior_dimension` columns and
+`behavior_rule` rows; their intersection is a `behavior_cell`. Cells carry evidence and code links; cell status is computed on-the-fly.
+
+- `behavior_rule` documents a behavior with `title`, `description`, `category`, plus decision-context fields `rationale`, `alternatives`,
+  `consequences`, and an explicit `counterexample` (what violating it looks like).
+- `behavior_rule_version` — append-only history; the service snapshots the pre-edit rule on every update (auditable evolution).
+- `behavior_cell_requirement` — links a cell to BDD requirements (proof of behavior).
+- `behavior_cell_code` — links a cell to concrete code (`kind = file | symbol | test`, `ref`). Powers reverse lookup
+  (`GET /api/matrices/behaviors-for-file?path=`) and surfaces "Behaviors governing this file" in the file-context output.
+- `behavior_test_result` — recorded `pass`/`fail` outcomes that drive verification status from real runs.
+- Cell status (computed in the matrix view): `violated` (a failing requirement or failing test), `verified` (passing test evidence),
+  `specified` (has requirements), `unspecified` (gap). The view also returns per-cell `codeCount`/`passingTestCount`/`failingTestCount`.
+- Behavior rules are projected into the AGE graph as `behavior_rule` vertices with `governs` edges to `code_file`/`code_symbol`
+  (`syncBehaviorsToGraph`, scheduled in `startup.ts`); toggled via the "Behavior" button in the graph view.
+- Surfaces: web `/matrices` + `/matrices/:id` (editable grid, cell panel, rule history dialog), CLI `fubbik matrix …`, and MCP matrix tools.
+
 ### Chunk Health Scores
 
 Per-chunk health scores (0-100) computed on-demand from:
@@ -364,6 +382,21 @@ Input Source → Chunk Resolver → Enrichment (health, stale, features) → Sco
 - `GET /api/chunks/:id/deltas` — all deltas across features for a chunk
 - `PUT /api/chunks/:id/deltas/:featureId` — upsert delta (body: `delta`)
 - `DELETE /api/chunks/:id/deltas/:featureId` — delete delta
+
+### Behavioral Matrices
+
+- `GET/POST /api/matrices` — list/create matrices (`layer`, `spaceId` filters)
+- `GET /api/matrices/:id` / `GET /api/matrices/:id/view` — detail / computed grid (cell statuses + summary)
+- `PATCH/DELETE /api/matrices/:id`
+- `POST/PATCH/DELETE /api/matrices/:id/dimensions[...]` + `/reorder`
+- `POST/PATCH/DELETE /api/matrices/:id/rules[...]` + `/reorder` (rule body accepts `rationale`, `alternatives`, `consequences`,
+  `counterexample`)
+- `GET /api/matrices/:id/rules/:ruleId/history` — append-only rule version snapshots
+- `PUT /api/matrices/:id/cells` — toggle a cell
+- `POST/DELETE/GET /api/matrices/:id/cells/:cellId/requirements[...]` — link BDD requirements
+- `POST/DELETE/GET /api/matrices/:id/cells/:cellId/code[...]` — link code (`kind = file | symbol | test`)
+- `POST/GET /api/matrices/:id/cells/:cellId/test-results` — record/list `pass`/`fail` verification outcomes
+- `GET /api/matrices/behaviors-for-file?path=` — reverse lookup: which behaviors govern a file
 
 ### Other
 

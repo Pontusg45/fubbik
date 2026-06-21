@@ -64,6 +64,22 @@ export function getUserGraph(userId?: string, codebaseId?: string, workspaceId?:
                             ).pipe(Effect.catchAll(() => Effect.succeed([])))
                         );
 
+                        // Behavior rule vertices
+                        const behaviorRuleRows = await Effect.runPromise(
+                            cypher(
+                                `MATCH (r:behavior_rule) RETURN r.id AS id, r.title AS title, r.layer AS layer, r.matrixId AS matrixId, r.category AS category`,
+                                "id agtype, title agtype, layer agtype, matrixId agtype, category agtype"
+                            ).pipe(Effect.catchAll(() => Effect.succeed([])))
+                        );
+
+                        // Governs edges (behavior rule -> code file/symbol)
+                        const governsRows = await Effect.runPromise(
+                            cypher(
+                                `MATCH (r:behavior_rule)-[g:governs]->(c) RETURN r.id AS src, c.id AS tgt, g.kind AS kind`,
+                                "src agtype, tgt agtype, kind agtype"
+                            ).pipe(Effect.catchAll(() => Effect.succeed([])))
+                        );
+
                         return {
                             ...result,
                             communities,
@@ -94,6 +110,18 @@ export function getUserGraph(userId?: string, codebaseId?: string, workspaceId?:
                                 sourceId: String(r.src).replace(/"/g, ""),
                                 targetId: String(r.tgt).replace(/"/g, ""),
                                 count: Number(r.cnt)
+                            })),
+                            behaviorRules: behaviorRuleRows.map(r => ({
+                                id: String(r.id).replace(/"/g, ""),
+                                title: String(r.title).replace(/"/g, ""),
+                                layer: String(r.layer).replace(/"/g, ""),
+                                matrixId: String(r.matrixId).replace(/"/g, ""),
+                                category: String(r.category).replace(/"/g, "")
+                            })),
+                            governsEdges: governsRows.map(r => ({
+                                sourceId: String(r.src).replace(/"/g, ""),
+                                targetId: String(r.tgt).replace(/"/g, ""),
+                                kind: String(r.kind).replace(/"/g, "")
                             }))
                         };
                     })

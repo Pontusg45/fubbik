@@ -14,9 +14,12 @@ import {
     createRule as createRuleRepo,
     updateRule as updateRuleRepo,
     deleteRule as deleteRuleRepo,
+    getRuleById,
     getRulesForMatrix,
     getMaxRuleOrder,
     reorderRules as reorderRulesRepo,
+    insertRuleVersion as insertRuleVersionRepo,
+    getRuleVersions as getRuleVersionsRepo,
     getCellByRuleDimension,
     createCell as createCellRepo,
     deleteCell as deleteCellRepo,
@@ -24,6 +27,12 @@ import {
     linkCellRequirement as linkCellRequirementRepo,
     unlinkCellRequirement as unlinkCellRequirementRepo,
     getRequirementsForCell as getRequirementsForCellRepo,
+    linkCellCode as linkCellCodeRepo,
+    deleteCellCode as deleteCellCodeRepo,
+    getCodeForCell as getCodeForCellRepo,
+    getBehaviorsForCodePath as getBehaviorsForCodePathRepo,
+    recordTestResult as recordTestResultRepo,
+    getTestResultsForCell as getTestResultsForCellRepo,
     getMatrixView
 } from "@fubbik/db/repository";
 import { Effect } from "effect";
@@ -132,7 +141,18 @@ export function reorderDimensions(matrixId: string, userId: string, dimensionIds
 
 // --- Rules ---
 
-export function addRule(matrixId: string, userId: string, body: { title: string; description?: string; category?: string }) {
+export interface RuleWhyFields {
+    rationale?: string;
+    alternatives?: string;
+    consequences?: string;
+    counterexample?: string;
+}
+
+export function addRule(
+    matrixId: string,
+    userId: string,
+    body: { title: string; description?: string; category?: string } & RuleWhyFields
+) {
     return getMatrixById(matrixId, userId).pipe(
         Effect.flatMap(found => (found ? Effect.succeed(found) : Effect.fail(new NotFoundError({ resource: "Matrix" })))),
         Effect.flatMap(() => getMaxRuleOrder(matrixId)),
@@ -143,6 +163,10 @@ export function addRule(matrixId: string, userId: string, body: { title: string;
                 title: body.title,
                 description: body.description,
                 category: body.category,
+                rationale: body.rationale,
+                alternatives: body.alternatives,
+                consequences: body.consequences,
+                counterexample: body.counterexample,
                 order: maxOrder + 1
             })
         )
@@ -153,12 +177,46 @@ export function updateRule(
     matrixId: string,
     ruleId: string,
     userId: string,
-    body: { title?: string; description?: string | null; category?: string | null }
+    body: {
+        title?: string;
+        description?: string | null;
+        category?: string | null;
+        rationale?: string | null;
+        alternatives?: string | null;
+        consequences?: string | null;
+        counterexample?: string | null;
+    }
 ) {
     return getMatrixById(matrixId, userId).pipe(
         Effect.flatMap(found => (found ? Effect.succeed(found) : Effect.fail(new NotFoundError({ resource: "Matrix" })))),
+        Effect.flatMap(() => getRuleById(ruleId, matrixId)),
+        Effect.flatMap(existing => (existing ? Effect.succeed(existing) : Effect.fail(new NotFoundError({ resource: "Rule" })))),
+        // Snapshot the pre-edit state into append-only history before mutating.
+        Effect.tap(existing =>
+            insertRuleVersionRepo({
+                id: crypto.randomUUID(),
+                ruleId,
+                changedBy: userId,
+                snapshot: {
+                    title: existing.title,
+                    description: existing.description,
+                    category: existing.category,
+                    rationale: existing.rationale,
+                    alternatives: existing.alternatives,
+                    consequences: existing.consequences,
+                    counterexample: existing.counterexample
+                }
+            })
+        ),
         Effect.flatMap(() => updateRuleRepo(ruleId, matrixId, body)),
         Effect.flatMap(updated => (updated ? Effect.succeed(updated) : Effect.fail(new NotFoundError({ resource: "Rule" }))))
+    );
+}
+
+export function getRuleHistory(matrixId: string, ruleId: string, userId: string) {
+    return getMatrixById(matrixId, userId).pipe(
+        Effect.flatMap(found => (found ? Effect.succeed(found) : Effect.fail(new NotFoundError({ resource: "Matrix" })))),
+        Effect.flatMap(() => getRuleVersionsRepo(ruleId))
     );
 }
 
@@ -225,14 +283,68 @@ export function getRequirementsForCell(cellId: string) {
     return getRequirementsForCellRepo(cellId);
 }
 
+// --- Cell Code Links ---
+
+const CODE_LINK_KINDS = ["file", "symbol", "test"] as const;
+
+export function linkCodeToCell(cellId: string, body: { kind: string; ref: string }) {
+    return Effect.gen(function* () {
+        if (!CODE_LINK_KINDS.includes(body.kind as (typeof CODE_LINK_KINDS)[number])) {
+            return yield* Effect.fail(new ValidationError({ message: `Code link kind must be one of: ${CODE_LINK_KINDS.join(", ")}` }));
+        }
+        if (!body.ref.trim()) {
+            return yield* Effect.fail(new ValidationError({ message: "Code link ref is required" }));
+        }
+        return yield* linkCellCodeRepo({ id: crypto.randomUUID(), cellId, kind: body.kind, ref: body.ref.trim() });
+    });
+}
+
+export function unlinkCodeFromCell(cellId: string, codeId: string) {
+    return deleteCellCodeRepo(codeId, cellId).pipe(
+        Effect.flatMap(deleted => (deleted ? Effect.succeed(deleted) : Effect.fail(new NotFoundError({ resource: "Code link" }))))
+    );
+}
+
+export function getCodeForCell(cellId: string) {
+    return getCodeForCellRepo(cellId);
+}
+
+export function getBehaviorsForCodePath(userId: string, path: string) {
+    return getBehaviorsForCodePathRepo(userId, path);
+}
+
+// --- Cell Test Results ---
+
+export function recordTestResult(cellId: string, body: { testRef: string; status: string; detail?: string }) {
+    return Effect.gen(function* () {
+        if (body.status !== "pass" && body.status !== "fail") {
+            return yield* Effect.fail(new ValidationError({ message: "Test status must be 'pass' or 'fail'" }));
+        }
+        return yield* recordTestResultRepo({
+            id: crypto.randomUUID(),
+            cellId,
+            testRef: body.testRef,
+            status: body.status,
+            detail: body.detail
+        });
+    });
+}
+
+export function getTestResultsForCell(cellId: string) {
+    return getTestResultsForCellRepo(cellId);
+}
+
 // --- Matrix View ---
 
-type CellStatus = "specified" | "unspecified" | "violated";
+type CellStatus = "specified" | "unspecified" | "violated" | "verified";
 
 export interface ViewCell {
     id: string;
     status: CellStatus;
     requirementCount: number;
+    codeCount: number;
+    passingTestCount: number;
+    failingTestCount: number;
 }
 
 export function getMatrixViewService(matrixId: string, userId: string) {
@@ -245,13 +357,19 @@ export function getMatrixViewService(matrixId: string, userId: string) {
                     let specified = 0;
                     let unspecified = 0;
                     let violated = 0;
+                    let verified = 0;
 
                     for (const cell of cells) {
                         const key = `${cell.ruleId}:${cell.dimensionId}`;
                         let status: CellStatus;
-                        if (cell.failingCount > 0) {
+                        // A failing requirement or a failing test means the behavior is violated.
+                        if (cell.failingCount > 0 || cell.failingTestCount > 0) {
                             status = "violated";
                             violated++;
+                        } else if (cell.passingTestCount > 0) {
+                            // Real, passing test evidence is the strongest signal.
+                            status = "verified";
+                            verified++;
                         } else if (cell.requirementCount > 0) {
                             status = "specified";
                             specified++;
@@ -259,7 +377,14 @@ export function getMatrixViewService(matrixId: string, userId: string) {
                             status = "unspecified";
                             unspecified++;
                         }
-                        cellMap[key] = { id: cell.id, status, requirementCount: cell.requirementCount };
+                        cellMap[key] = {
+                            id: cell.id,
+                            status,
+                            requirementCount: cell.requirementCount,
+                            codeCount: cell.codeCount,
+                            passingTestCount: cell.passingTestCount,
+                            failingTestCount: cell.failingTestCount
+                        };
                     }
 
                     return {
@@ -271,7 +396,8 @@ export function getMatrixViewService(matrixId: string, userId: string) {
                             specified,
                             unspecified,
                             violated,
-                            total: specified + unspecified + violated
+                            verified,
+                            total: specified + unspecified + violated + verified
                         }
                     };
                 })

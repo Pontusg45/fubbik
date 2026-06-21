@@ -3,6 +3,7 @@ import { env } from "@fubbik/env/server";
 import { Effect } from "effect";
 
 import { logger } from "./logger";
+import { syncBehaviorsToGraph } from "./matrices/graph-sync";
 import { aggregateCoReferences } from "./usage/service";
 
 export function apiUsesImplicitDevUser(): boolean {
@@ -45,6 +46,16 @@ async function runCoRefAggregation() {
     }
 }
 
+async function runBehaviorGraphSync() {
+    const start = Date.now();
+    try {
+        const result = await Effect.runPromise(syncBehaviorsToGraph(IMPLICIT_DEV_USER_ID));
+        logger.info("Behavior graph sync completed", { synced: result.synced, durationMs: Date.now() - start });
+    } catch (err) {
+        logger.error("Behavior graph sync failed", { error: err });
+    }
+}
+
 export function initStartupTasks() {
     const intervalHours = Number(env.STALENESS_SCAN_INTERVAL_HOURS ?? "24");
     if (intervalHours <= 0) {
@@ -62,6 +73,11 @@ export function initStartupTasks() {
         runCoRefAggregation();
     }, 35000);
 
+    // Run behavior graph sync offset by 10s from staleness scan
+    setTimeout(() => {
+        runBehaviorGraphSync();
+    }, 40000);
+
     // Schedule recurring scans
     const intervalMs = intervalHours * 60 * 60 * 1000;
     setInterval(() => {
@@ -69,6 +85,9 @@ export function initStartupTasks() {
     }, intervalMs);
     setInterval(() => {
         runCoRefAggregation();
+    }, intervalMs);
+    setInterval(() => {
+        runBehaviorGraphSync();
     }, intervalMs);
 
     logger.info(`Staleness scanning enabled (every ${intervalHours}h)`);

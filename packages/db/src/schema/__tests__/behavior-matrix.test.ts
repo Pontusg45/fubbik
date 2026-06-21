@@ -1,7 +1,16 @@
 import { getTableColumns } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 
-import { behaviorMatrix, behaviorDimension, behaviorRule, behaviorCell, behaviorCellRequirement } from "../behavior-matrix";
+import {
+    behaviorMatrix,
+    behaviorDimension,
+    behaviorRule,
+    behaviorCell,
+    behaviorCellRequirement,
+    behaviorRuleVersion,
+    behaviorCellCode,
+    behaviorTestResult
+} from "../behavior-matrix";
 
 describe("behavior-matrix schema", () => {
     it("behaviorMatrix has expected columns", () => {
@@ -35,6 +44,42 @@ describe("behavior-matrix schema", () => {
         expect(cols).toHaveProperty("order");
         expect(cols).toHaveProperty("createdAt");
         expect(cols).toHaveProperty("updatedAt");
+    });
+
+    it("behaviorRule has the decision-context columns", () => {
+        const cols = getTableColumns(behaviorRule);
+        expect(cols).toHaveProperty("rationale");
+        expect(cols).toHaveProperty("alternatives");
+        expect(cols).toHaveProperty("consequences");
+        expect(cols).toHaveProperty("counterexample");
+    });
+
+    it("behaviorRuleVersion has expected columns", () => {
+        const cols = getTableColumns(behaviorRuleVersion);
+        expect(cols).toHaveProperty("id");
+        expect(cols).toHaveProperty("ruleId");
+        expect(cols).toHaveProperty("snapshot");
+        expect(cols).toHaveProperty("changedBy");
+        expect(cols).toHaveProperty("createdAt");
+    });
+
+    it("behaviorCellCode has expected columns", () => {
+        const cols = getTableColumns(behaviorCellCode);
+        expect(cols).toHaveProperty("id");
+        expect(cols).toHaveProperty("cellId");
+        expect(cols).toHaveProperty("kind");
+        expect(cols).toHaveProperty("ref");
+        expect(cols).toHaveProperty("createdAt");
+    });
+
+    it("behaviorTestResult has expected columns", () => {
+        const cols = getTableColumns(behaviorTestResult);
+        expect(cols).toHaveProperty("id");
+        expect(cols).toHaveProperty("cellId");
+        expect(cols).toHaveProperty("testRef");
+        expect(cols).toHaveProperty("status");
+        expect(cols).toHaveProperty("detail");
+        expect(cols).toHaveProperty("runAt");
     });
 
     it("behaviorCell has expected columns", () => {

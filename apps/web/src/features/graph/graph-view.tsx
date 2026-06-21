@@ -17,6 +17,7 @@ import { useTheme } from "next-themes";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { Spinner } from "@/components/ui/spinner";
+import { BehaviorNode } from "@/features/graph/behavior-node";
 import { CodeNode } from "@/features/graph/code-node";
 import { ConceptNode } from "@/features/graph/concept-node";
 import { GraphChunkCard } from "@/features/graph/graph-chunk-card";
@@ -40,7 +41,8 @@ const NODE_TYPES = {
     chunkCard: GraphChunkCard,
     chunkDot: GraphChunkDot,
     codeNode: CodeNode,
-    conceptNode: ConceptNode
+    conceptNode: ConceptNode,
+    behaviorNode: BehaviorNode
 };
 const EDGE_TYPES = { typed: TypedEdge };
 
@@ -140,7 +142,8 @@ function GraphViewInner() {
         chunkTags,
         filterTypes: gs.filterTypes,
         filterRelations: gs.filterRelations,
-        heatmapMode: gs.heatmapMode
+        heatmapMode: gs.heatmapMode,
+        showBehaviorNodes: gs.showBehaviorNodes
     });
 
     // --- React Flow state ---
@@ -426,6 +429,16 @@ function GraphViewInner() {
                                         }`}
                                     >
                                         Code
+                                    </button>
+                                    <button
+                                        onClick={() => dispatch({ type: "TOGGLE_BEHAVIOR_NODES" })}
+                                        className={`rounded border px-2 py-1.5 text-xs ${
+                                            gs.showBehaviorNodes
+                                                ? "border-amber-500 bg-amber-500/20 text-amber-300"
+                                                : "bg-background/90 border backdrop-blur-sm"
+                                        }`}
+                                    >
+                                        Behavior
                                     </button>
                                     <select
                                         value={groupingTagTypeId ?? ""}

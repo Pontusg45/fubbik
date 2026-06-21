@@ -187,29 +187,44 @@ const addRule = new Command("add-rule")
     .argument("<matrixId>", "matrix ID")
     .argument("<title>", "rule title")
     .option("--category <category>", "Category for grouping")
-    .action(async (matrixId: string, title: string, opts: { category?: string }, cmd: Command) => {
-        try {
-            const body: Record<string, unknown> = { title };
-            if (opts.category) body.category = opts.category;
+    .option("--rationale <text>", "Why this rule exists")
+    .option("--alternatives <text>", "Alternatives that were considered")
+    .option("--consequences <text>", "Consequences of this rule")
+    .option("--counterexample <text>", "A counterexample illustrating a violation")
+    .action(
+        async (
+            matrixId: string,
+            title: string,
+            opts: { category?: string; rationale?: string; alternatives?: string; consequences?: string; counterexample?: string },
+            cmd: Command
+        ) => {
+            try {
+                const body: Record<string, unknown> = { title };
+                if (opts.category) body.category = opts.category;
+                if (opts.rationale) body.rationale = opts.rationale;
+                if (opts.alternatives) body.alternatives = opts.alternatives;
+                if (opts.consequences) body.consequences = opts.consequences;
+                if (opts.counterexample) body.counterexample = opts.counterexample;
 
-            const res = await fetchApi(`/matrices/${matrixId}/rules`, {
-                method: "POST",
-                body: JSON.stringify(body)
-            });
+                const res = await fetchApi(`/matrices/${matrixId}/rules`, {
+                    method: "POST",
+                    body: JSON.stringify(body)
+                });
 
-            if (!res.ok) {
-                outputError(`Failed to add rule: ${res.status} ${await res.text()}`);
+                if (!res.ok) {
+                    outputError(`Failed to add rule: ${res.status} ${await res.text()}`);
+                    process.exit(1);
+                }
+
+                const rule = (await res.json()) as { id: string; title: string };
+                outputQuiet(cmd, rule.id);
+                output(cmd, rule, formatSuccess(`Added rule "${title}"`));
+            } catch (err) {
+                outputError(String(err));
                 process.exit(1);
             }
-
-            const rule = (await res.json()) as { id: string; title: string };
-            outputQuiet(cmd, rule.id);
-            output(cmd, rule, formatSuccess(`Added rule "${title}"`));
-        } catch (err) {
-            outputError(String(err));
-            process.exit(1);
         }
-    });
+    );
 
 const cellToggle = new Command("cell")
     .description("Toggle a cell (mark as relevant or remove)")
@@ -310,6 +325,176 @@ const linkRequirement = new Command("link")
         }
     });
 
+const linkCode = new Command("link-code")
+    .description("Link a code reference (file, symbol, or test) to a cell")
+    .argument("<cellId>", "cell ID")
+    .requiredOption("--matrix <matrixId>", "Matrix ID")
+    .requiredOption("--kind <kind>", "Reference kind: file, symbol, or test")
+    .requiredOption("--ref <ref>", "The reference (path, symbol name, or test id)")
+    .action(async (cellId: string, opts: { matrix: string; kind: string; ref: string }, cmd: Command) => {
+        try {
+            const res = await fetchApi(`/matrices/${opts.matrix}/cells/${cellId}/code`, {
+                method: "POST",
+                body: JSON.stringify({ kind: opts.kind, ref: opts.ref })
+            });
+
+            if (!res.ok) {
+                outputError(`Failed to link code: ${res.status} ${await res.text()}`);
+                process.exit(1);
+            }
+
+            const link = (await res.json()) as { id: string };
+            outputQuiet(cmd, link.id);
+            output(cmd, link, formatSuccess(`Linked ${opts.kind} "${opts.ref}" to cell`));
+        } catch (err) {
+            outputError(String(err));
+            process.exit(1);
+        }
+    });
+
+const reportTest = new Command("report-test")
+    .description("Report a test result for a cell")
+    .argument("<cellId>", "cell ID")
+    .requiredOption("--matrix <matrixId>", "Matrix ID")
+    .requiredOption("--test-ref <ref>", "Test reference")
+    .requiredOption("--status <status>", "Result status: pass or fail")
+    .option("--detail <text>", "Optional detail")
+    .action(async (cellId: string, opts: { matrix: string; testRef: string; status: string; detail?: string }, cmd: Command) => {
+        try {
+            const body: Record<string, unknown> = { testRef: opts.testRef, status: opts.status };
+            if (opts.detail) body.detail = opts.detail;
+
+            const res = await fetchApi(`/matrices/${opts.matrix}/cells/${cellId}/test-results`, {
+                method: "POST",
+                body: JSON.stringify(body)
+            });
+
+            if (!res.ok) {
+                outputError(`Failed to report test result: ${res.status} ${await res.text()}`);
+                process.exit(1);
+            }
+
+            const result = (await res.json()) as { id: string };
+            outputQuiet(cmd, result.id);
+            output(cmd, result, formatSuccess(`Reported ${opts.status} for "${opts.testRef}"`));
+        } catch (err) {
+            outputError(String(err));
+            process.exit(1);
+        }
+    });
+
+interface RuleVersion {
+    id: string;
+    ruleId: string;
+    snapshot: {
+        title: string;
+        description: string | null;
+        category: string | null;
+        rationale: string | null;
+        alternatives: string | null;
+        consequences: string | null;
+        counterexample: string | null;
+    };
+    changedBy: string | null;
+    createdAt: string;
+}
+
+const ruleHistory = new Command("history")
+    .description("Show the version history of a rule (newest first)")
+    .argument("<ruleId>", "rule ID")
+    .requiredOption("--matrix <matrixId>", "Matrix ID")
+    .action(async (ruleId: string, opts: { matrix: string }, cmd: Command) => {
+        try {
+            const res = await fetchApi(`/matrices/${opts.matrix}/rules/${ruleId}/history`);
+            if (!res.ok) {
+                outputError(`Failed to get rule history: ${res.status} ${await res.text()}`);
+                process.exit(1);
+            }
+
+            const versions = (await res.json()) as RuleVersion[];
+
+            if (isJson(cmd)) {
+                console.log(JSON.stringify(versions, null, 2));
+                return;
+            }
+
+            outputQuiet(cmd, versions.map(v => v.id).join("\n"));
+
+            if (versions.length === 0) {
+                output(cmd, versions, "No history found.");
+                return;
+            }
+
+            const lines: string[] = [];
+            for (const v of versions) {
+                lines.push(`  ${formatBold(v.snapshot.title)} ${formatDim(`(${v.id})`)}`);
+                lines.push(`    ${formatDim(`${v.createdAt}${v.changedBy ? ` by ${v.changedBy}` : ""}`)}`);
+                if (v.snapshot.category) lines.push(`    category: ${v.snapshot.category}`);
+                if (v.snapshot.rationale) lines.push(`    rationale: ${v.snapshot.rationale}`);
+                if (v.snapshot.alternatives) lines.push(`    alternatives: ${v.snapshot.alternatives}`);
+                if (v.snapshot.consequences) lines.push(`    consequences: ${v.snapshot.consequences}`);
+                if (v.snapshot.counterexample) lines.push(`    counterexample: ${v.snapshot.counterexample}`);
+                lines.push("");
+            }
+            output(cmd, versions, lines.join("\n"));
+        } catch (err) {
+            outputError(String(err));
+            process.exit(1);
+        }
+    });
+
+interface BehaviorForFile {
+    ruleId: string;
+    ruleTitle: string;
+    description: string | null;
+    rationale: string | null;
+    counterexample: string | null;
+    matrixId: string;
+    matrixName: string;
+    layer: string;
+    dimensionName: string;
+    kind: string;
+    ref: string;
+}
+
+const behaviorsFor = new Command("behaviors-for")
+    .description("Find the behavioral rules that govern a file")
+    .argument("<path>", "file path")
+    .action(async (path: string, _opts: Record<string, unknown>, cmd: Command) => {
+        try {
+            const res = await fetchApi(`/matrices/behaviors-for-file?path=${encodeURIComponent(path)}`);
+            if (!res.ok) {
+                outputError(`Failed to look up behaviors: ${res.status} ${await res.text()}`);
+                process.exit(1);
+            }
+
+            const behaviors = (await res.json()) as BehaviorForFile[];
+
+            if (isJson(cmd)) {
+                console.log(JSON.stringify(behaviors, null, 2));
+                return;
+            }
+
+            outputQuiet(cmd, behaviors.map(b => b.ruleId).join("\n"));
+
+            if (behaviors.length === 0) {
+                output(cmd, behaviors, `No behavioral rules govern "${path}".`);
+                return;
+            }
+
+            const lines: string[] = [];
+            for (const b of behaviors) {
+                lines.push(`  ${formatBold(b.ruleTitle)} ${formatDim(`[${b.layer}] ${b.matrixName} × ${b.dimensionName}`)}`);
+                if (b.description) lines.push(`    ${b.description}`);
+                if (b.counterexample) lines.push(`    ${formatDim(`counterexample: ${b.counterexample}`)}`);
+            }
+            output(cmd, behaviors, lines.join("\n"));
+        } catch (err) {
+            outputError(String(err));
+            process.exit(1);
+        }
+    });
+
 // ── Export ───────────────────────────────────────────────────────────
 
 export const matrixCommand = new Command("matrix")
@@ -321,4 +506,8 @@ export const matrixCommand = new Command("matrix")
     .addCommand(addRule)
     .addCommand(cellToggle)
     .addCommand(showGaps)
-    .addCommand(linkRequirement);
+    .addCommand(linkRequirement)
+    .addCommand(linkCode)
+    .addCommand(reportTest)
+    .addCommand(ruleHistory)
+    .addCommand(behaviorsFor);

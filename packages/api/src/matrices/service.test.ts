@@ -19,6 +19,9 @@ vi.mock("@fubbik/db/repository", () => ({
     getRulesForMatrix: vi.fn(),
     getMaxRuleOrder: vi.fn(),
     reorderRules: vi.fn(),
+    getRuleById: vi.fn(),
+    insertRuleVersion: vi.fn(),
+    getRuleVersions: vi.fn(),
     getCellByRuleDimension: vi.fn(),
     createCell: vi.fn(),
     deleteCell: vi.fn(),
@@ -26,6 +29,12 @@ vi.mock("@fubbik/db/repository", () => ({
     linkCellRequirement: vi.fn(),
     unlinkCellRequirement: vi.fn(),
     getRequirementsForCell: vi.fn(),
+    linkCellCode: vi.fn(),
+    deleteCellCode: vi.fn(),
+    getCodeForCell: vi.fn(),
+    getBehaviorsForCodePath: vi.fn(),
+    recordTestResult: vi.fn(),
+    getTestResultsForCell: vi.fn(),
     getMatrixView: vi.fn()
 }));
 
@@ -43,6 +52,11 @@ import {
     deleteCell as deleteCellRepo,
     getCellRequirementCount,
     unlinkCellRequirement as unlinkCellRequirementRepo,
+    getRuleById,
+    insertRuleVersion as insertRuleVersionRepo,
+    updateRule as updateRuleRepo,
+    linkCellCode as linkCellCodeRepo,
+    recordTestResult as recordTestResultRepo,
     getMatrixView
 } from "@fubbik/db/repository";
 
@@ -189,6 +203,132 @@ describe("unlinkRequirementFromCell", () => {
     });
 });
 
+describe("updateRule", () => {
+    function existingRule(overrides?: Record<string, unknown>) {
+        return {
+            id: "rule-1",
+            matrixId: "mat-1",
+            title: "Cascade deletes",
+            description: "old description",
+            category: "data-integrity",
+            rationale: "old rationale",
+            alternatives: "old alternatives",
+            consequences: "old consequences",
+            counterexample: "old counterexample",
+            order: 0,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            ...overrides
+        };
+    }
+
+    it("snapshots the pre-edit rule into version history before updating", async () => {
+        vi.mocked(getMatrixById).mockReturnValue(Effect.succeed(mockMatrix()) as any);
+        vi.mocked(getRuleById).mockReturnValue(Effect.succeed(existingRule()) as any);
+        vi.mocked(insertRuleVersionRepo).mockReturnValue(Effect.succeed({ id: "ver-1" }) as any);
+        vi.mocked(updateRuleRepo).mockReturnValue(Effect.succeed(existingRule({ title: "New title" })) as any);
+
+        const result = await Effect.runPromise(
+            service.updateRule("mat-1", "rule-1", "user-1", { title: "New title" })
+        );
+
+        expect(result.title).toBe("New title");
+        expect(insertRuleVersionRepo).toHaveBeenCalledOnce();
+        expect(insertRuleVersionRepo).toHaveBeenCalledWith(
+            expect.objectContaining({
+                ruleId: "rule-1",
+                changedBy: "user-1",
+                snapshot: {
+                    title: "Cascade deletes",
+                    description: "old description",
+                    category: "data-integrity",
+                    rationale: "old rationale",
+                    alternatives: "old alternatives",
+                    consequences: "old consequences",
+                    counterexample: "old counterexample"
+                }
+            })
+        );
+        // Version must be snapshotted before the row is mutated.
+        const versionOrder = vi.mocked(insertRuleVersionRepo).mock.invocationCallOrder[0]!;
+        const updateOrder = vi.mocked(updateRuleRepo).mock.invocationCallOrder[0]!;
+        expect(versionOrder).toBeLessThan(updateOrder);
+    });
+
+    it("fails with NotFoundError when rule does not exist", async () => {
+        vi.mocked(getMatrixById).mockReturnValue(Effect.succeed(mockMatrix()) as any);
+        vi.mocked(getRuleById).mockReturnValue(Effect.succeed(null) as any);
+
+        await expect(
+            Effect.runPromise(service.updateRule("mat-1", "nope", "user-1", { title: "x" }))
+        ).rejects.toThrow();
+        expect(insertRuleVersionRepo).not.toHaveBeenCalled();
+    });
+});
+
+describe("linkCodeToCell", () => {
+    it("links code with a valid kind and trimmed ref", async () => {
+        vi.mocked(linkCellCodeRepo).mockReturnValue(
+            Effect.succeed({ id: "code-1", cellId: "cell-1", kind: "file", ref: "src/foo.ts" }) as any
+        );
+
+        const result = await Effect.runPromise(
+            service.linkCodeToCell("cell-1", { kind: "file", ref: "  src/foo.ts  " })
+        );
+
+        expect(result).toMatchObject({ kind: "file", ref: "src/foo.ts" });
+        expect(linkCellCodeRepo).toHaveBeenCalledWith(
+            expect.objectContaining({ cellId: "cell-1", kind: "file", ref: "src/foo.ts" })
+        );
+    });
+
+    it.each(["symbol", "test"])("accepts kind %s", async kind => {
+        vi.mocked(linkCellCodeRepo).mockReturnValue(Effect.succeed({ id: "code-1", kind }) as any);
+
+        const result = await Effect.runPromise(service.linkCodeToCell("cell-1", { kind, ref: "x" }));
+
+        expect(result).toMatchObject({ kind });
+    });
+
+    it("rejects an invalid kind", async () => {
+        await expect(
+            Effect.runPromise(service.linkCodeToCell("cell-1", { kind: "module", ref: "src/foo.ts" }))
+        ).rejects.toThrow();
+        expect(linkCellCodeRepo).not.toHaveBeenCalled();
+    });
+
+    it("rejects an empty ref", async () => {
+        await expect(
+            Effect.runPromise(service.linkCodeToCell("cell-1", { kind: "file", ref: "   " }))
+        ).rejects.toThrow();
+        expect(linkCellCodeRepo).not.toHaveBeenCalled();
+    });
+});
+
+describe("recordTestResult", () => {
+    it.each(["pass", "fail"])("accepts status %s", async status => {
+        vi.mocked(recordTestResultRepo).mockReturnValue(
+            Effect.succeed({ id: "res-1", cellId: "cell-1", testRef: "t", status, detail: null }) as any
+        );
+
+        const result = await Effect.runPromise(
+            service.recordTestResult("cell-1", { testRef: "t", status })
+        );
+
+        expect(result).toMatchObject({ status });
+        expect(recordTestResultRepo).toHaveBeenCalledWith(
+            expect.objectContaining({ cellId: "cell-1", testRef: "t", status })
+        );
+    });
+
+    it("rejects an invalid status", async () => {
+        await expect(
+            Effect.runPromise(service.recordTestResult("cell-1", { testRef: "t", status: "skipped" }))
+        ).rejects.toThrow();
+        expect(recordTestResultRepo).not.toHaveBeenCalled();
+    });
+});
+
 describe("getMatrixView", () => {
     it("computes cell statuses correctly", async () => {
         vi.mocked(getMatrixById).mockReturnValue(Effect.succeed(mockMatrix()) as any);
@@ -197,9 +337,61 @@ describe("getMatrixView", () => {
                 dimensions: [{ id: "dim-1", name: "Chunk", order: 0 }],
                 rules: [{ id: "rule-1", title: "Cascade", category: null, order: 0 }],
                 cells: [
-                    { id: "c1", ruleId: "rule-1", dimensionId: "dim-1", requirementCount: 2, failingCount: 0 },
-                    { id: "c2", ruleId: "rule-1", dimensionId: "dim-2", requirementCount: 0, failingCount: 0 },
-                    { id: "c3", ruleId: "rule-1", dimensionId: "dim-3", requirementCount: 3, failingCount: 1 }
+                    // requirement only -> specified
+                    {
+                        id: "c1",
+                        ruleId: "rule-1",
+                        dimensionId: "dim-1",
+                        requirementCount: 2,
+                        failingCount: 0,
+                        codeCount: 0,
+                        passingTestCount: 0,
+                        failingTestCount: 0
+                    },
+                    // nothing -> unspecified
+                    {
+                        id: "c2",
+                        ruleId: "rule-1",
+                        dimensionId: "dim-2",
+                        requirementCount: 0,
+                        failingCount: 0,
+                        codeCount: 0,
+                        passingTestCount: 0,
+                        failingTestCount: 0
+                    },
+                    // failing requirement -> violated
+                    {
+                        id: "c3",
+                        ruleId: "rule-1",
+                        dimensionId: "dim-3",
+                        requirementCount: 3,
+                        failingCount: 1,
+                        codeCount: 0,
+                        passingTestCount: 0,
+                        failingTestCount: 0
+                    },
+                    // passing test, no failures -> verified
+                    {
+                        id: "c4",
+                        ruleId: "rule-1",
+                        dimensionId: "dim-4",
+                        requirementCount: 1,
+                        failingCount: 0,
+                        codeCount: 2,
+                        passingTestCount: 3,
+                        failingTestCount: 0
+                    },
+                    // failing test -> violated (even with passing tests present)
+                    {
+                        id: "c5",
+                        ruleId: "rule-1",
+                        dimensionId: "dim-5",
+                        requirementCount: 0,
+                        failingCount: 0,
+                        codeCount: 1,
+                        passingTestCount: 2,
+                        failingTestCount: 1
+                    }
                 ]
             }) as any
         );
@@ -210,10 +402,21 @@ describe("getMatrixView", () => {
         expect(cells["rule-1:dim-1"]?.status).toBe("specified");
         expect(cells["rule-1:dim-2"]?.status).toBe("unspecified");
         expect(cells["rule-1:dim-3"]?.status).toBe("violated");
+        expect(cells["rule-1:dim-4"]?.status).toBe("verified");
+        expect(cells["rule-1:dim-5"]?.status).toBe("violated");
+
+        // View cells expose the new counts.
+        expect(cells["rule-1:dim-4"]).toMatchObject({
+            codeCount: 2,
+            passingTestCount: 3,
+            failingTestCount: 0
+        });
+
         expect(result.summary.specified).toBe(1);
         expect(result.summary.unspecified).toBe(1);
-        expect(result.summary.violated).toBe(1);
-        expect(result.summary.total).toBe(3);
+        expect(result.summary.violated).toBe(2);
+        expect(result.summary.verified).toBe(1);
+        expect(result.summary.total).toBe(5);
     });
 
     it("fails with NotFoundError for missing matrix", async () => {

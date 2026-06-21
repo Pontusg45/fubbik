@@ -81,12 +81,16 @@ export function registerMatrixTools(server: McpServer): void {
             matrixId: z.string().describe("Matrix ID"),
             title: z.string().describe("Rule title, e.g. 'Cascade deletes to children'"),
             description: z.string().optional(),
-            category: z.string().optional().describe("Category for grouping rules")
+            category: z.string().optional().describe("Category for grouping rules"),
+            rationale: z.string().optional().describe("Why this rule exists"),
+            alternatives: z.string().optional().describe("Alternatives that were considered"),
+            consequences: z.string().optional().describe("Consequences of this rule"),
+            counterexample: z.string().optional().describe("A counterexample illustrating a violation")
         },
-        async ({ matrixId, title, description, category }) => {
+        async ({ matrixId, title, description, category, rationale, alternatives, consequences, counterexample }) => {
             const result = await apiFetch(`/matrices/${matrixId}/rules`, {
                 method: "POST",
-                body: JSON.stringify({ title, description, category })
+                body: JSON.stringify({ title, description, category, rationale, alternatives, consequences, counterexample })
             });
             return {
                 content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }]
@@ -126,6 +130,74 @@ export function registerMatrixTools(server: McpServer): void {
                 method: "POST",
                 body: JSON.stringify({ requirementId })
             });
+            return {
+                content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }]
+            };
+        }
+    );
+
+    server.tool(
+        "link_cell_code",
+        "Link a code reference (file, symbol, or test) to a matrix cell so the behavior is traceable to its implementation",
+        {
+            matrixId: z.string().describe("Matrix ID"),
+            cellId: z.string().describe("Cell ID"),
+            kind: z.enum(["file", "symbol", "test"]).describe("Kind of code reference"),
+            ref: z.string().describe("The reference: a file path, symbol name, or test id")
+        },
+        async ({ matrixId, cellId, kind, ref }) => {
+            const result = await apiFetch(`/matrices/${matrixId}/cells/${cellId}/code`, {
+                method: "POST",
+                body: JSON.stringify({ kind, ref })
+            });
+            return {
+                content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }]
+            };
+        }
+    );
+
+    server.tool(
+        "record_test_result",
+        "Record a test result (pass/fail) for a matrix cell",
+        {
+            matrixId: z.string().describe("Matrix ID"),
+            cellId: z.string().describe("Cell ID"),
+            testRef: z.string().describe("Test reference"),
+            status: z.enum(["pass", "fail"]).describe("Test outcome"),
+            detail: z.string().optional().describe("Optional detail, e.g. failure message")
+        },
+        async ({ matrixId, cellId, testRef, status, detail }) => {
+            const result = await apiFetch(`/matrices/${matrixId}/cells/${cellId}/test-results`, {
+                method: "POST",
+                body: JSON.stringify({ testRef, status, detail })
+            });
+            return {
+                content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }]
+            };
+        }
+    );
+
+    server.tool(
+        "get_rule_history",
+        "Get the version history of a rule (newest first), showing how its title, rationale, and other fields changed over time",
+        {
+            matrixId: z.string().describe("Matrix ID"),
+            ruleId: z.string().describe("Rule ID")
+        },
+        async ({ matrixId, ruleId }) => {
+            const result = await apiFetch(`/matrices/${matrixId}/rules/${ruleId}/history`);
+            return {
+                content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }]
+            };
+        }
+    );
+
+    server.tool(
+        "get_behaviors_for_file",
+        "Reverse lookup: find the behavioral rules that govern a given file, including their rationale and counterexamples",
+        { path: z.string().describe("File path to look up") },
+        async ({ path }) => {
+            const result = await apiFetch(`/matrices/behaviors-for-file?path=${encodeURIComponent(path)}`);
             return {
                 content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }]
             };

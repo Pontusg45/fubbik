@@ -20,6 +20,7 @@ export interface GraphState {
     panelWidth: number;
     heatmapMode: boolean;
     showCodeNodes: boolean;
+    showBehaviorNodes: boolean;
     timelineTime: Date | null;
     isTimelinePlaying: boolean;
 }
@@ -60,6 +61,7 @@ export type GraphAction =
     | { type: "SET_PANEL_WIDTH"; width: number }
     | { type: "TOGGLE_HEATMAP" }
     | { type: "TOGGLE_CODE_NODES" }
+    | { type: "TOGGLE_BEHAVIOR_NODES" }
     | { type: "SET_TIMELINE_TIME"; time: Date | null }
     | { type: "TOGGLE_TIMELINE_PLAYING" }
 
@@ -87,6 +89,7 @@ export const initialGraphState: GraphState = {
     panelWidth: 380,
     heatmapMode: false,
     showCodeNodes: false,
+    showBehaviorNodes: false,
     timelineTime: null as Date | null,
     isTimelinePlaying: false
 };
@@ -157,6 +160,8 @@ export function graphReducer(state: GraphState, action: GraphAction): GraphState
             return { ...state, heatmapMode: !state.heatmapMode };
         case "TOGGLE_CODE_NODES":
             return { ...state, showCodeNodes: !state.showCodeNodes };
+        case "TOGGLE_BEHAVIOR_NODES":
+            return { ...state, showBehaviorNodes: !state.showBehaviorNodes };
         case "SET_TIMELINE_TIME":
             return { ...state, timelineTime: action.time };
         case "TOGGLE_TIMELINE_PLAYING":

@@ -150,7 +150,11 @@ export const matrixRoutes = new Elysia()
             body: t.Object({
                 title: t.String({ maxLength: 200 }),
                 description: t.Optional(t.String({ maxLength: 1000 })),
-                category: t.Optional(t.String({ maxLength: 100 }))
+                category: t.Optional(t.String({ maxLength: 100 })),
+                rationale: t.Optional(t.String({ maxLength: 2000 })),
+                alternatives: t.Optional(t.String({ maxLength: 2000 })),
+                consequences: t.Optional(t.String({ maxLength: 2000 })),
+                counterexample: t.Optional(t.String({ maxLength: 2000 }))
             })
         }
     )
@@ -166,9 +170,20 @@ export const matrixRoutes = new Elysia()
             body: t.Object({
                 title: t.Optional(t.String({ maxLength: 200 })),
                 description: t.Optional(t.Union([t.String({ maxLength: 1000 }), t.Null()])),
-                category: t.Optional(t.Union([t.String({ maxLength: 100 }), t.Null()]))
+                category: t.Optional(t.Union([t.String({ maxLength: 100 }), t.Null()])),
+                rationale: t.Optional(t.Union([t.String({ maxLength: 2000 }), t.Null()])),
+                alternatives: t.Optional(t.Union([t.String({ maxLength: 2000 }), t.Null()])),
+                consequences: t.Optional(t.Union([t.String({ maxLength: 2000 }), t.Null()])),
+                counterexample: t.Optional(t.Union([t.String({ maxLength: 2000 }), t.Null()]))
             })
         }
+    )
+    .get("/matrices/:id/rules/:ruleId/history", ctx =>
+        Effect.runPromise(
+            requireSession(ctx).pipe(
+                Effect.flatMap(session => matrixService.getRuleHistory(ctx.params.id, ctx.params.ruleId, session.user.id))
+            )
+        )
     )
     .delete("/matrices/:id/rules/:ruleId", ctx =>
         Effect.runPromise(
@@ -234,4 +249,74 @@ export const matrixRoutes = new Elysia()
     )
     .get("/matrices/:id/cells/:cellId/requirements", ctx =>
         Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(() => matrixService.getRequirementsForCell(ctx.params.cellId))))
+    )
+    // --- Cell code links (behavior ↔ code) ---
+    .post(
+        "/matrices/:id/cells/:cellId/code",
+        ctx =>
+            Effect.runPromise(
+                requireSession(ctx).pipe(
+                    Effect.flatMap(() => matrixService.linkCodeToCell(ctx.params.cellId, ctx.body)),
+                    Effect.tap(() =>
+                        Effect.sync(() => {
+                            ctx.set.status = 201;
+                        })
+                    )
+                )
+            ),
+        {
+            body: t.Object({
+                kind: t.Union([t.Literal("file"), t.Literal("symbol"), t.Literal("test")]),
+                ref: t.String({ maxLength: 500 })
+            })
+        }
+    )
+    .delete("/matrices/:id/cells/:cellId/code/:codeId", ctx =>
+        Effect.runPromise(
+            requireSession(ctx).pipe(
+                Effect.flatMap(() => matrixService.unlinkCodeFromCell(ctx.params.cellId, ctx.params.codeId)),
+                Effect.map(() => ({ message: "Unlinked" }))
+            )
+        )
+    )
+    .get("/matrices/:id/cells/:cellId/code", ctx =>
+        Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(() => matrixService.getCodeForCell(ctx.params.cellId))))
+    )
+    // --- Cell test results (behavior verification) ---
+    .post(
+        "/matrices/:id/cells/:cellId/test-results",
+        ctx =>
+            Effect.runPromise(
+                requireSession(ctx).pipe(
+                    Effect.flatMap(() => matrixService.recordTestResult(ctx.params.cellId, ctx.body)),
+                    Effect.tap(() =>
+                        Effect.sync(() => {
+                            ctx.set.status = 201;
+                        })
+                    )
+                )
+            ),
+        {
+            body: t.Object({
+                testRef: t.String({ maxLength: 500 }),
+                status: t.Union([t.Literal("pass"), t.Literal("fail")]),
+                detail: t.Optional(t.String({ maxLength: 2000 }))
+            })
+        }
+    )
+    .get("/matrices/:id/cells/:cellId/test-results", ctx =>
+        Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(() => matrixService.getTestResultsForCell(ctx.params.cellId))))
+    )
+    // --- Reverse lookup: which behaviors govern a file path ---
+    .get(
+        "/matrices/behaviors-for-file",
+        ctx =>
+            Effect.runPromise(
+                requireSession(ctx).pipe(Effect.flatMap(session => matrixService.getBehaviorsForCodePath(session.user.id, ctx.query.path)))
+            ),
+        {
+            query: t.Object({
+                path: t.String()
+            })
+        }
     );

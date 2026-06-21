@@ -30,6 +30,7 @@ interface UseGraphNodesParams {
     filterTypes: Set<string>;
     filterRelations: Set<string>;
     heatmapMode: boolean;
+    showBehaviorNodes: boolean;
 }
 
 export function useGraphNodes({
@@ -47,8 +48,38 @@ export function useGraphNodes({
     chunkTags,
     filterTypes,
     filterRelations,
-    heatmapMode: _heatmapMode
+    heatmapMode: _heatmapMode,
+    showBehaviorNodes
 }: UseGraphNodesParams): { layoutNodes: Node[]; layoutEdges: Edge[] } {
+    // Behavior rule overlay nodes + governs edges (rule -> code file/symbol).
+    const behaviorOverlay = useMemo(() => {
+        if (!showBehaviorNodes || !data) return { nodes: [] as Node[], edges: [] as Edge[] };
+        const rules = data.behaviorRules ?? [];
+        const governs = data.governsEdges ?? [];
+        if (rules.length === 0) return { nodes: [] as Node[], edges: [] as Edge[] };
+
+        const nodes: Node[] = rules.map((rule, i) => ({
+            id: `behavior-${rule.id}`,
+            type: "behaviorNode",
+            position: { x: -600, y: i * 90 },
+            data: { title: rule.title, layer: rule.layer, category: rule.category }
+        }));
+
+        const ruleIds = new Set(rules.map(r => r.id));
+        const edges: Edge[] = governs
+            .filter(g => ruleIds.has(g.sourceId))
+            .map((g, i) => ({
+                id: `governs-${g.sourceId}-${g.targetId}-${i}`,
+                source: `behavior-${g.sourceId}`,
+                target: g.targetId,
+                type: "typed",
+                data: { relation: "governs" },
+                style: { stroke: "#f59e0b", strokeWidth: 2, strokeDasharray: "4 2" }
+            }));
+
+        return { nodes, edges };
+    }, [showBehaviorNodes, data]);
+
     // Overview: island nodes + bridge edges
     const overviewResult = useMemo(() => {
         if (zoomLevel !== "overview") return null;
@@ -167,12 +198,17 @@ export function useGraphNodes({
         return { layoutNodes: nodes, layoutEdges: edges };
     }, [zoomLevel, neighborhood, focusChunkId, data, chunkSummaries, chunkHealthScores, chunkTags, filterTypes, filterRelations]);
 
-    if (zoomLevel === "overview" && overviewResult) {
-        return overviewResult;
-    }
-    if (neighborhoodResult) {
-        return neighborhoodResult;
-    }
+    const base =
+        zoomLevel === "overview" && overviewResult
+            ? overviewResult
+            : neighborhoodResult
+              ? neighborhoodResult
+              : { layoutNodes: [] as Node[], layoutEdges: [] as Edge[] };
 
-    return { layoutNodes: [], layoutEdges: [] };
+    if (behaviorOverlay.nodes.length === 0) return base;
+
+    return {
+        layoutNodes: [...base.layoutNodes, ...behaviorOverlay.nodes],
+        layoutEdges: [...base.layoutEdges, ...behaviorOverlay.edges]
+    };
 }

@@ -1,10 +1,13 @@
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { Check, ChevronDown, ChevronRight, Code2 } from "lucide-react";
 import { useState } from "react";
 
 export interface ViewCell {
     id: string;
-    status: "specified" | "unspecified" | "violated";
+    status: "specified" | "unspecified" | "violated" | "verified";
     requirementCount: number;
+    codeCount?: number;
+    passingTestCount?: number;
+    failingTestCount?: number;
 }
 
 export interface Dimension {
@@ -32,6 +35,7 @@ interface MatrixGridProps {
 
 const STATUS_COLORS: Record<string, string> = {
     specified: "bg-emerald-500/20 hover:bg-emerald-500/30 border-emerald-500/40 text-emerald-700 dark:text-emerald-300",
+    verified: "bg-green-600/30 hover:bg-green-600/40 border-green-600/60 text-green-800 dark:text-green-200",
     unspecified: "bg-amber-500/20 hover:bg-amber-500/30 border-amber-500/40 text-amber-700 dark:text-amber-300",
     violated: "bg-red-500/20 hover:bg-red-500/30 border-red-500/40 text-red-700 dark:text-red-300"
 };
@@ -198,6 +202,9 @@ function CellButton({ cell, ruleId, dimensionId, onCellClick, onToggleCell }: Ce
         );
     }
 
+    const codeCount = cell.codeCount ?? 0;
+    const hasCode = codeCount > 0;
+
     return (
         <button
             type="button"
@@ -206,11 +213,31 @@ function CellButton({ cell, ruleId, dimensionId, onCellClick, onToggleCell }: Ce
                 e.preventDefault();
                 onToggleCell(ruleId, dimensionId);
             }}
-            className={`inline-flex size-8 items-center justify-center rounded border text-xs font-bold tabular-nums transition-colors ${STATUS_COLORS[cell.status]}`}
-            title={`${cell.status}${cell.requirementCount > 0 ? ` (${cell.requirementCount} req)` : ""} - Right-click to remove`}
-            aria-label={`${cell.status}, ${cell.requirementCount} requirements`}
+            className={`relative inline-flex size-8 items-center justify-center rounded border text-xs font-bold tabular-nums transition-colors ${STATUS_COLORS[cell.status]}`}
+            title={`${cell.status}${cell.requirementCount > 0 ? ` (${cell.requirementCount} req)` : ""}${
+                hasCode ? ` · ${codeCount} code link${codeCount === 1 ? "" : "s"}` : ""
+            } - Right-click to remove`}
+            aria-label={`${cell.status}, ${cell.requirementCount} requirements${hasCode ? `, ${codeCount} code links` : ""}`}
         >
-            {cell.requirementCount > 0 ? cell.requirementCount : ""}
+            {cell.status === "verified" ? (
+                cell.requirementCount > 0 ? (
+                    cell.requirementCount
+                ) : (
+                    <Check className="size-3.5" />
+                )
+            ) : cell.requirementCount > 0 ? (
+                cell.requirementCount
+            ) : (
+                ""
+            )}
+            {hasCode && (
+                <span
+                    className="absolute -right-0.5 -bottom-0.5 inline-flex size-3 items-center justify-center rounded-full bg-sky-600 text-white"
+                    aria-hidden="true"
+                >
+                    <Code2 className="size-2" />
+                </span>
+            )}
         </button>
     );
 }
