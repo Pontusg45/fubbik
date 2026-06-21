@@ -62,6 +62,14 @@ apps/cli/src/**/*.js
 apps/cli/src/**/*.js.map
 apps/cli/src/**/*.d.ts
 apps/cli/src/**/*.d.ts.map
+# MCP runs .ts directly via tsx — .js here are stale build output
+packages/mcp/src/**/*.js
+packages/mcp/src/**/*.js.map
+packages/mcp/src/**/*.d.ts
+packages/mcp/src/**/*.d.ts.map
+
+# Local dev graph screenshots
+/graph-*.png
 
 # Local-only custom SSR server entry
 apps/web/node-server.js
