@@ -240,6 +240,50 @@ CLI commands land with their domain where practical; this phase sweeps up the re
 | Domain porting drifts from Node behavior | Differential harness from Phase 1 onward |
 | Cross-compilation for three platforms | Deferred to Phase 6; not on the critical path |
 
+### AGE spike outcome (Task 3, Phase 1)
+
+The `agtype` parsing risk above was spiked against a live AGE 1.7.0 instance
+(`fubbik-rs-db`, Docker, Postgres 18) via `crates/fubbik-db/src/age.rs` and
+`crates/fubbik-db/tests/age.rs`. The round-trip test (`cypher_round_trips_a_real_vertex`)
+ran against real agtype output — AGE was available in the `#[sqlx::test]`-provisioned
+database, so the skip branch was not exercised. All four points below were confirmed
+directly, not assumed:
+
+- **Confirmed.** `v::text` is unusable: `SELECT v::text ...` raises
+  `agtype_value_to_text: unsupported argument agtype 6` for vertex, edge, and path
+  values (reproduced against a `CREATE (n:chunk {...}) RETURN n` result).
+- **Confirmed.** `agtype_out(v)` returns pseudo-type `cstring`; this cannot be
+  selected into a result column at all (Postgres cannot materialise `cstring` into
+  a table), so sqlx never even gets a chance to fail decoding it — the query itself
+  is rejected.
+- **Confirmed.** `v::varchar` is the working extraction, verified across both a
+  real vertex (`cypher_round_trips_a_real_vertex`) and a bare scalar
+  (`cypher_returns_scalars`, `RETURN 42`).
+- **Confirmed.** Suffix stripping is bounded to a trailing `::identifier` (all
+  lowercase ASCII after the last `::`, non-empty). `preserves_property_values_containing_double_colons`
+  proves a property value of `"a::b"` survives both the AGE round-trip and the
+  parser unchanged.
+
+**One shape the brief's code did not anticipate, discovered during the spike:**
+AGE's `cypher()` function is unresolvable on a connection that has not run
+`LOAD 'age'` in that session — this is true even when the call is fully
+schema-qualified as `ag_catalog.cypher(...)`, which still fails with
+`unhandled cypher(cstring) function call`. `fubbik_db::connect()`'s
+`after_connect` hook does run `LOAD 'age'` and set `search_path`, but
+`#[sqlx::test]`-provisioned pools (used by this spike's own integration tests,
+and by all future `fubbik-db` tests) bypass `connect()` entirely and get bare
+pooled connections. `age::cypher()` was therefore changed from the brief's
+`pool.fetch_all(...)` to acquire a single connection, run `LOAD 'age';` and
+`SET search_path = ag_catalog, "$user", public;` on it, and run the query on
+that same connection — making `cypher()` self-sufficient regardless of how
+the pool was constructed, rather than relying on every caller to have gone
+through `connect()` first. Phase 4 should keep this connection-priming inside
+`age::cypher()` rather than pushing the requirement onto callers.
+
+No agtype shape encountered during the spike defeated the parser — scalars,
+strings, and vertices (including one with a `::`-bearing property value) all
+round-tripped correctly.
+
 ## Explicitly rejected
 
 - **Strangler-fig proxy migration** — requires a throwaway dual-auth bridge for no benefit given local-only data.
