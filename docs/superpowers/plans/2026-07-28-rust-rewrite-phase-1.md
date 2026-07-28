@@ -17,7 +17,16 @@
 - **The `.sqlx` offline cache is committed.** Regenerate with `cargo sqlx prepare --workspace` whenever a query changes. CI builds must not require a live database.
 - **`openapi.json` is committed** at repo root as `openapi.json`. CI fails if regeneration produces a diff.
 - **The Rust server listens on port 3100.** Node server stays on 3000, web on 3001. Never reuse 3000 in this phase.
-- **The Rust database is `fubbik_rs`.** Never point the Rust binary at the Node database.
+- **The Rust database is `fubbik_rs`,** running in Docker with Apache AGE available:
+  `DATABASE_URL=postgres://postgres:password@localhost:5434/fubbik_rs`.
+  The container is already built and running as `fubbik-rs-db` from the repo's own
+  `fubbik-postgres:pg18-vector-age` image (AGE 1.7.0, pgvector 0.8.2, pg_trgm 1.6).
+  Never point the Rust binary at the Node database (`postgresql://pontus@localhost:5432/fubbik`),
+  which is Homebrew Postgres and has **no AGE**.
+- **Extracting `agtype` from AGE uses `::varchar`, never `::text`.** Verified against
+  AGE 1.7.0: `v::text` raises `agtype_value_to_text: unsupported argument agtype 6`
+  for vertex, edge, and path values, and `agtype_out(v)` returns pseudo-type `cstring`,
+  which sqlx cannot decode and Postgres cannot materialise.
 - **The CLI is an HTTP client.** `fubbik-cli` must not depend on `fubbik-db`. Only `init`, `hooks`, and `doctor` may work offline.
 - **No better-auth compatibility.** Sessions and password hashes are new. Do not attempt to read existing `account` rows.
 - **Every task ends on a green `cargo test` and a commit.**
@@ -254,16 +263,39 @@ git commit -m "feat(rust): cargo workspace and fubbik binary skeleton"
 
 - [ ] **Step 1: Generate the base schema from the running Node database**
 
+The `fubbik_rs` database already exists in the running `fubbik-rs-db` container. Dump the schema from the **Node** database, which is the reference:
+
 ```bash
-createdb fubbik_rs
-pg_dump --schema-only --no-owner --no-privileges "$DATABASE_URL" > crates/fubbik-db/migrations/0001_init.sql
+pg_dump --schema-only --no-owner --no-privileges \
+  "postgresql://pontus@localhost:5432/fubbik" \
+  > crates/fubbik-db/migrations/0001_init.sql
 ```
 
 Then hand-edit `0001_init.sql`:
 - Delete the `account` and `verification` table definitions and their indexes. Auth is a clean slate.
 - Add `password_hash text` to the `user` table.
-- Remove `CREATE EXTENSION` lines for `age`, replacing them with `CREATE EXTENSION IF NOT EXISTS vector;` and `CREATE EXTENSION IF NOT EXISTS pg_trgm;`. AGE setup is separate because it requires superuser and may be absent.
 - Remove any `SET` statements referencing `pg_dump` internals (`SET idle_in_transaction_session_timeout`, `SET default_table_access_method`, etc.).
+- Replace any `CREATE EXTENSION` lines with the block below, placed at the very top of the file.
+
+Extensions must be created **by the migration**, not by hand: `#[sqlx::test]` provisions a brand-new database per test, and those databases inherit nothing. `vector` and `pg_trgm` are hard requirements. AGE is soft — the graph layer is designed to degrade when it is absent, and a plain Postgres without AGE must still run every non-graph endpoint.
+
+```sql
+CREATE EXTENSION IF NOT EXISTS vector;
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
+-- AGE is optional. Swallow the failure so a Postgres without the extension
+-- still migrates cleanly; fubbik_db::age degrades to empty results.
+DO $$
+BEGIN
+    CREATE EXTENSION IF NOT EXISTS age;
+    LOAD 'age';
+    PERFORM ag_catalog.create_graph('knowledge');
+EXCEPTION
+    WHEN duplicate_schema THEN NULL;  -- graph already exists
+    WHEN OTHERS THEN
+        RAISE NOTICE 'AGE unavailable, graph features disabled: %', SQLERRM;
+END $$;
+```
 
 The full schema ships in migration 0001 even though Phase 1 only implements chunks. Deferring tables would force schema churn in later phases.
 
@@ -354,7 +386,7 @@ Create `crates/fubbik-db/src/age.rs` and `crates/fubbik-db/src/repo/mod.rs` as e
 
 - [ ] **Step 5: Run the test to verify it passes**
 
-Run: `DATABASE_URL=postgres://localhost/fubbik_rs cargo test -p fubbik-db`
+Run: `DATABASE_URL=postgres://postgres:password@localhost:5434/fubbik_rs cargo test -p fubbik-db`
 Expected: PASS
 
 - [ ] **Step 6: Commit**
@@ -435,8 +467,14 @@ pub async fn cypher(pool: &PgPool, query: &str) -> Result<Vec<serde_json::Value>
         return Ok(Vec::new());
     }
 
+    // `::varchar`, NOT `::text`. Verified against AGE 1.7.0: the explicit
+    // text cast routes through agtype_value_to_text, which rejects vertex,
+    // edge, and path values with "unsupported argument agtype 6". The
+    // varchar coercion uses the type's output representation and handles
+    // every shape. `agtype_out(v)` also produces the right string but
+    // returns pseudo-type cstring, which sqlx cannot decode.
     let sql = format!(
-        "SELECT v::text AS v FROM cypher('knowledge', $$ {query} $$) AS (v agtype)"
+        "SELECT v::varchar AS v FROM cypher('knowledge', $$ {query} $$) AS (v agtype)"
     );
 
     let rows = sqlx::query(&sql).fetch_all(pool).await?;
@@ -452,15 +490,23 @@ pub async fn cypher(pool: &PgPool, query: &str) -> Result<Vec<serde_json::Value>
 
 /// Parses an agtype text representation into JSON.
 ///
-/// agtype is JSON with optional type suffixes on scalars, e.g. `1.5::numeric`
-/// or `{"id": 844424930131969}::vertex`. Stripping the suffix yields valid
-/// JSON for every shape fubbik queries.
+/// Verified shapes from AGE 1.7.0:
+///   vertex: {"id": 1125899906842625, "label": "chunk", "properties": {...}}::vertex
+///   scalars: 42 | 1.5 | "plain string"   (no suffix)
+///
+/// Only a trailing `::identifier` is stripped. Matching the suffix by its
+/// shape rather than by the last `::` in the string keeps property values
+/// that themselves contain `::` (e.g. {"code": "a::b"}) from being mangled.
 fn parse_agtype(raw: &str) -> Option<serde_json::Value> {
     let trimmed = raw.trim();
+
     let body = match trimmed.rfind("::") {
-        Some(idx) if !trimmed[idx + 2..].contains(['{', '}', '"']) => &trimmed[..idx],
+        Some(idx) if trimmed[idx + 2..].chars().all(|c| c.is_ascii_lowercase()) && idx + 2 < trimmed.len() => {
+            &trimmed[..idx]
+        }
         _ => trimmed,
     };
+
     serde_json::from_str(body).ok()
 }
 
@@ -470,19 +516,26 @@ mod tests {
 
     #[test]
     fn strips_vertex_suffix() {
-        let v = parse_agtype(r#"{"id": 1, "label": "chunk"}::vertex"#).unwrap();
+        // Exact output captured from AGE 1.7.0.
+        let raw = r#"{"id": 1125899906842625, "label": "chunk", "properties": {"url": "https://x.test", "title": "hello"}}::vertex"#;
+        let v = parse_agtype(raw).unwrap();
         assert_eq!(v["label"], "chunk");
+        assert_eq!(v["properties"]["title"], "hello");
+        assert_eq!(v["properties"]["url"], "https://x.test");
     }
 
     #[test]
-    fn parses_plain_json() {
-        assert_eq!(parse_agtype(r#""hello""#).unwrap(), "hello");
+    fn parses_bare_scalars() {
+        assert_eq!(parse_agtype("42").unwrap(), 42);
+        assert_eq!(parse_agtype("1.5").unwrap(), 1.5);
+        assert_eq!(parse_agtype(r#""plain string""#).unwrap(), "plain string");
     }
 
     #[test]
-    fn leaves_strings_containing_colons_intact() {
-        let v = parse_agtype(r#"{"url": "https://x.test"}"#).unwrap();
-        assert_eq!(v["url"], "https://x.test");
+    fn preserves_property_values_containing_double_colons() {
+        let raw = r#"{"id": 1407374883553281, "label": "probe", "properties": {"code": "a::b"}}::vertex"#;
+        let v = parse_agtype(raw).unwrap();
+        assert_eq!(v["properties"]["code"], "a::b");
     }
 }
 ```
@@ -498,11 +551,41 @@ Append to `crates/fubbik-db/tests/age.rs`:
 
 ```rust
 #[sqlx::test]
-async fn cypher_degrades_gracefully_without_age(pool: sqlx::PgPool) {
-    // A freshly migrated test database has no AGE graph, so this must
-    // return empty rather than erroring.
-    let rows = age::cypher(&pool, "MATCH (n) RETURN n").await.unwrap();
-    assert!(rows.is_empty());
+async fn cypher_round_trips_a_real_vertex(pool: sqlx::PgPool) {
+    // Migration 0001 installs AGE and creates the 'knowledge' graph, so this
+    // exercises real agtype output rather than the degradation path.
+    if !age::is_available(&pool).await {
+        eprintln!("AGE unavailable in this database — skipping round-trip");
+        return;
+    }
+
+    let created = age::cypher(
+        &pool,
+        "CREATE (n:chunk {title: 'from rust', code: 'a::b'}) RETURN n",
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(created.len(), 1);
+    let v = &created[0];
+    assert_eq!(v["label"], "chunk");
+    assert_eq!(v["properties"]["title"], "from rust");
+    assert_eq!(
+        v["properties"]["code"], "a::b",
+        "property values containing :: must survive suffix stripping"
+    );
+
+    let matched = age::cypher(&pool, "MATCH (n:chunk) RETURN n").await.unwrap();
+    assert_eq!(matched.len(), 1);
+}
+
+#[sqlx::test]
+async fn cypher_returns_scalars(pool: sqlx::PgPool) {
+    if !age::is_available(&pool).await {
+        return;
+    }
+    let rows = age::cypher(&pool, "RETURN 42").await.unwrap();
+    assert_eq!(rows[0], 42);
 }
 ```
 
@@ -513,7 +596,14 @@ Expected: PASS
 
 - [ ] **Step 7: Record the spike outcome**
 
-Append a short section to the spec at `docs/superpowers/specs/2026-07-28-rust-backend-cli-rewrite-design.md` under Risks, stating whether `agtype` parsing worked as designed and noting any shapes the parser cannot handle. If the suffix-stripping approach proved insufficient, say so explicitly — Phase 4 depends on this conclusion.
+Append a short section to the spec at `docs/superpowers/specs/2026-07-28-rust-backend-cli-rewrite-design.md` under Risks, recording what the spike established:
+
+- `v::text` is unusable — AGE raises `agtype_value_to_text: unsupported argument agtype 6` for vertex, edge, and path values.
+- `agtype_out(v)` returns pseudo-type `cstring`; sqlx cannot decode it and Postgres cannot materialise it into a table.
+- `v::varchar` is the working extraction, verified across vertices and scalars.
+- Suffix stripping is bounded to a trailing `::identifier`, so property values containing `::` survive.
+
+State plainly whether your tests confirmed all four points, and note any agtype shape you encountered that the parser mishandles. Phase 4 builds the whole graph layer on this conclusion.
 
 - [ ] **Step 8: Commit**
 
@@ -2747,6 +2837,8 @@ jobs:
 
 The stale-document check runs as part of `cargo test`, via `committed_openapi_json_is_current`.
 
+Note: the CI service image `pgvector/pgvector:pg18` has no AGE, so migration 0001's `DO` block logs its notice and the AGE round-trip tests take their skip branch. That is expected — AGE coverage comes from the local `fubbik-rs-db` container. Do not "fix" CI by deleting those tests.
+
 - [ ] **Step 8: Commit**
 
 ```bash
@@ -2895,7 +2987,7 @@ Add `fubbik-db`, `tower-http`, and `axum` to the binary's dependencies.
 - [ ] **Step 6: Verify manually**
 
 ```bash
-DATABASE_URL=postgres://localhost/fubbik_rs FUBBIK_IMPLICIT_DEV_SESSION=true cargo run -- serve
+DATABASE_URL=postgres://postgres:password@localhost:5434/fubbik_rs FUBBIK_IMPLICIT_DEV_SESSION=true cargo run -- serve
 curl -s localhost:3100/api/chunks
 ```
 
@@ -3286,7 +3378,7 @@ Expected: `dist/index.html` exists. If the build emits a server bundle, SSR is s
 - [ ] **Step 8: Verify end to end against the Rust server**
 
 ```bash
-DATABASE_URL=postgres://localhost/fubbik_rs cargo run -- serve
+DATABASE_URL=postgres://postgres:password@localhost:5434/fubbik_rs cargo run -- serve
 ```
 
 Open `http://localhost:3100`, sign up, create a chunk, reload the page, confirm it persists.
@@ -3804,10 +3896,10 @@ set -euo pipefail
 
 echo "==> Seeding fubbik_rs from the Node database"
 pg_dump --data-only --no-owner "${DATABASE_URL}" \
-  | psql "postgres://localhost/fubbik_rs" >/dev/null
+  | psql "postgres://postgres:password@localhost:5434/fubbik_rs" >/dev/null
 
 echo "==> Starting the Rust server"
-DATABASE_URL="postgres://localhost/fubbik_rs" \
+DATABASE_URL="postgres://postgres:password@localhost:5434/fubbik_rs" \
   FUBBIK_IMPLICIT_DEV_SESSION=true \
   cargo run --quiet -- serve &
 RUST_PID=$!
