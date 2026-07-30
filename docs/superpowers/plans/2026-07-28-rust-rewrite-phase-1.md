@@ -494,20 +494,63 @@ pub async fn cypher(pool: &PgPool, query: &str) -> Result<Vec<serde_json::Value>
 ///   vertex: {"id": 1125899906842625, "label": "chunk", "properties": {...}}::vertex
 ///   scalars: 42 | 1.5 | "plain string"   (no suffix)
 ///
-/// Only a trailing `::identifier` is stripped. Matching the suffix by its
-/// shape rather than by the last `::` in the string keeps property values
-/// that themselves contain `::` (e.g. {"code": "a::b"}) from being mangled.
+/// Composite results nest their suffixes, so stripping only a trailing one is
+/// not enough. A path comes back as:
+///   [{...}::vertex, {...}::edge, {...}::vertex]::path
+/// Removing just the outer `::path` leaves inner suffixes that are not valid
+/// JSON, and the row is then silently dropped.
+///
+/// Every `::identifier` outside a JSON string literal is stripped. Tracking
+/// string state is what keeps property values containing `::`
+/// (e.g. {"code": "a::b"}) intact.
 fn parse_agtype(raw: &str) -> Option<serde_json::Value> {
-    let trimmed = raw.trim();
+    let mut out = String::with_capacity(raw.len());
+    let bytes = raw.as_bytes();
+    let mut i = 0;
+    let mut in_string = false;
 
-    let body = match trimmed.rfind("::") {
-        Some(idx) if trimmed[idx + 2..].chars().all(|c| c.is_ascii_lowercase()) && idx + 2 < trimmed.len() => {
-            &trimmed[..idx]
+    while i < bytes.len() {
+        let c = bytes[i];
+
+        if in_string {
+            // Copy escape pairs wholesale so a escaped quote cannot end the string.
+            if c == b'\\' && i + 1 < bytes.len() {
+                out.push_str(&raw[i..i + 2]);
+                i += 2;
+                continue;
+            }
+            if c == b'"' {
+                in_string = false;
+            }
+            out.push(c as char);
+            i += 1;
+            continue;
         }
-        _ => trimmed,
-    };
 
-    serde_json::from_str(body).ok()
+        if c == b'"' {
+            in_string = true;
+            out.push('"');
+            i += 1;
+            continue;
+        }
+
+        // Outside a string: `::ident` is a type tag, never data.
+        if c == b':' && i + 1 < bytes.len() && bytes[i + 1] == b':' {
+            let mut j = i + 2;
+            while j < bytes.len() && bytes[j].is_ascii_lowercase() {
+                j += 1;
+            }
+            if j > i + 2 {
+                i = j;
+                continue;
+            }
+        }
+
+        out.push(c as char);
+        i += 1;
+    }
+
+    serde_json::from_str(out.trim()).ok()
 }
 
 #[cfg(test)]
@@ -675,7 +718,7 @@ pub type AppResult<T> = Result<T, AppError>;
 #[derive(Debug, thiserror::Error)]
 pub enum AppError {
     #[error("database error: {0}")]
-    Database(#[from] sqlx::Error),
+    Database(sqlx::Error),
 
     #[error("{0} not found")]
     NotFound(String),
@@ -691,6 +734,22 @@ pub enum AppError {
 
     #[error("external service error: {0}")]
     External(String),
+}
+
+/// Hand-written rather than `#[from]`, so a missing row becomes a 404 instead
+/// of a 500. `fetch_one()` on an absent row yields `RowNotFound`; the derived
+/// conversion would fold that into `Database` and report a server error for
+/// what is really a client-visible absence. Phase 2 adds 48 route domains
+/// where that mistake would otherwise be easy to make repeatedly.
+impl From<sqlx::Error> for AppError {
+    fn from(err: sqlx::Error) -> Self {
+        match err {
+            // The conversion cannot know the entity type, hence the generic name.
+            // Repositories that can name it should map absence explicitly instead.
+            sqlx::Error::RowNotFound => AppError::NotFound("resource".into()),
+            other => AppError::Database(other),
+        }
+    }
 }
 
 impl IntoResponse for AppError {
