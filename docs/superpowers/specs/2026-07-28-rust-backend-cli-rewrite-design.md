@@ -280,9 +280,60 @@ the pool was constructed, rather than relying on every caller to have gone
 through `connect()` first. Phase 4 should keep this connection-priming inside
 `age::cypher()` rather than pushing the requirement onto callers.
 
-No agtype shape encountered during the spike defeated the parser — scalars,
-strings, and vertices (including one with a `::`-bearing property value) all
-round-tripped correctly.
+**Correction (post-review): nested composites DID defeat the original parser.**
+The first pass of this spike only tested vertices and bare scalars, and
+concluded — wrongly — that no agtype shape defeated the parser. It never
+tried an edge or a real path query. A real path result from AGE 1.7.0 looks
+like:
+
+```
+[{"id":...,"label":"probe_rev",...}::vertex, {"id":...,"label":"REL_REV",...}::edge, {"id":...,"label":"probe_rev",...}::vertex]::path
+```
+
+Every vertex/edge nested inside the array carries its OWN `::vertex`/`::edge`
+suffix in addition to the outer `::path` suffix. The original `parse_agtype`
+only stripped a single *trailing* `::identifier`, so it left the inner
+`::vertex`/`::edge` markers embedded in what it then tried to hand to
+`serde_json::from_str`. That is not valid JSON, parsing failed,
+`parse_agtype` returned `None`, and `cypher()`'s `filter_map` silently
+dropped the row — no error, no log, nothing to indicate a path query had
+effectively returned zero results. Phase 4's graph path-finding work depends
+on exactly this shape, so this was a real, load-bearing gap, not a
+theoretical one.
+
+The fix (`crates/fubbik-db/src/age.rs`) replaces trailing-suffix stripping
+with `strip_type_suffixes`, a small scanner that walks the whole agtype
+string, tracks whether it's inside a double-quoted JSON string (respecting
+backslash escapes so an escaped quote can't wrongly end a string early), and
+removes every `::` followed by one or more ASCII lowercase letters that
+occurs *outside* a string — regardless of nesting depth or how many such
+suffixes appear. This uniformly handles vertices, edges, paths of arbitrary
+nesting, and scalar suffixes (e.g. `1.5::numeric`), while still leaving `::`
+sequences inside JSON string values (e.g. `{"code": "a::b"}`) untouched.
+
+Coverage added for this fix:
+- Unit tests in `age.rs`: `strips_edge_suffix`, `strips_all_nested_suffixes_in_a_path`
+  (a hand-built 3-element vertex+edge+vertex path literal), `strips_numeric_scalar_suffix`,
+  plus the pre-existing vertex/scalar/`::`-in-string-property cases, all still passing.
+- Integration tests in `tests/age.rs` run against real AGE 1.7.0, not just hardcoded
+  literals: `cypher_round_trips_a_real_edge` (creates and matches a real edge, asserts
+  a `::`-bearing edge property survives) and `cypher_round_trips_a_real_path` (creates
+  a real `(a)-[r]->(b)` pattern, runs `MATCH p = (a)-[r]->(b) RETURN p`, and asserts the
+  row is not dropped and unmarshals into a 3-element `[vertex, edge, vertex]` array with
+  the expected labels).
+
+`cypher()` also now emits `tracing::warn!` (including the raw offending string)
+whenever `parse_agtype` returns `None`, so a future parser gap fails loudly via
+logs instead of silently vanishing the way this one did.
+
+Also newly documented: `cypher(pool, query)` interpolates the caller-supplied
+`query` directly into a `$$`-dollar-quoted SQL statement. `esc_cypher` only
+escapes `\` and `'` for Cypher string-literal safety — it does not protect
+the `$$` SQL delimiter, so a value containing the literal substring `$$`
+could terminate the dollar-quoting early and inject SQL. This is inherited
+unchanged from the TypeScript original (`packages/db/src/age/client.ts`), not
+newly introduced here, and is called out as a `# Safety` doc comment on
+`cypher()` rather than re-architected in this fix.
 
 ## Explicitly rejected
 
