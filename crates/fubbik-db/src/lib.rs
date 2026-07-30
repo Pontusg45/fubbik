@@ -31,3 +31,14 @@ pub async fn connect(database_url: &str) -> Result<PgPool, sqlx::Error> {
     sqlx::migrate!("./migrations").run(&pool).await?;
     Ok(pool)
 }
+
+/// Generates a 24-character lowercase alphanumeric ID, matching the format
+/// the TS implementation stores in `text` primary keys.
+pub fn new_id() -> String {
+    use rand::Rng;
+    const ALPHABET: &[u8] = b"abcdefghijklmnopqrstuvwxyz0123456789";
+    let mut rng = rand::thread_rng();
+    (0..24)
+        .map(|_| ALPHABET[rng.gen_range(0..ALPHABET.len())] as char)
+        .collect()
+}
