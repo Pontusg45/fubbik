@@ -282,6 +282,39 @@ Then hand-edit `0001_init.sql`:
 - Remove any `SET` statements referencing `pg_dump` internals (`SET idle_in_transaction_session_timeout`, `SET default_table_access_method`, etc.).
 - Replace any `CREATE EXTENSION` lines with the block below, placed at the very top of the file.
 
+### Reference data is NOT in the schema dump
+
+`pg_dump --schema-only` carries table definitions but no rows, and three tables in this
+schema are enum-like reference tables that FK constraints point at. Without their rows,
+inserting a chunk fails on `chunk_type_id_fk`, a connection fails on
+`connection_relation_id_fk`, and a space fails on `space_kind_id_fk`.
+
+Add `crates/fubbik-db/migrations/0002_seed_reference_data.sql` with the values below,
+captured from the live Node database. They are reference data, not user data — unlike
+`tag_type`, which the user manages and must NOT be seeded here.
+
+```sql
+INSERT INTO chunk_type (id) VALUES
+    ('checklist'), ('convention'), ('document'), ('guide'),
+    ('note'), ('reference'), ('schema')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO connection_relation (id) VALUES
+    ('alternative_to'), ('contains'), ('contradicts'), ('depends_on'),
+    ('extended_by'), ('extends'), ('part_of'), ('referenced_by'),
+    ('references'), ('related_to'), ('required_by'), ('supported_by'),
+    ('supports')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO space_kind (id) VALUES
+    ('code'), ('notes'), ('research'), ('wiki')
+ON CONFLICT (id) DO NOTHING;
+```
+
+`ON CONFLICT DO NOTHING` keeps the migration idempotent and safe to re-run. Note these
+tables may carry additional columns (labels, ordering) — check the dumped definitions and
+include any NOT NULL columns rather than assuming `id` is the only one.
+
 Extensions must be created **by the migration**, not by hand: `#[sqlx::test]` provisions a brand-new database per test, and those databases inherit nothing. `vector` and `pg_trgm` are hard requirements. AGE is soft — the graph layer is designed to degrade when it is absent, and a plain Postgres without AGE must still run every non-graph endpoint.
 
 ```sql
