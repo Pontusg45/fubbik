@@ -1324,11 +1324,18 @@ impl From<user::User> for UserResponse {
     }
 }
 
+/// One source of truth for the session lifetime. The cookie's max-age and the
+/// database row's `expires_at` must agree: without a max-age the cookie dies on
+/// browser close while the server still considers the session live for 30 days,
+/// silently logging the user out.
+const SESSION_TTL_DAYS: i64 = 30;
+
 fn session_cookie(token: String) -> Cookie<'static> {
     Cookie::build((COOKIE_NAME, token))
         .path("/")
         .http_only(true)
         .same_site(SameSite::Lax)
+        .max_age(time::Duration::days(SESSION_TTL_DAYS))
         .build()
 }
 
@@ -1345,8 +1352,18 @@ async fn sign_up(
     }
 
     let hash = hash_password(&body.password)?;
-    let u = user::create(&state.pool, &body.email, &body.name, Some(&hash)).await?;
-    let token = session::create(&state.pool, &u.id, Duration::days(30)).await?;
+
+    // The pre-check above handles the common case with a clear message, but it
+    // is a TOCTOU against the UNIQUE constraint. Catch the violation too, so a
+    // concurrent duplicate signup still yields 409 rather than a 500.
+    let u = match user::create(&state.pool, &body.email, &body.name, Some(&hash)).await {
+        Err(AppError::Database(sqlx::Error::Database(e))) if e.is_unique_violation() => {
+            return Err(AppError::Conflict("email already registered".into()));
+        }
+        other => other?,
+    };
+
+    let token = session::create(&state.pool, &u.id, Duration::days(SESSION_TTL_DAYS)).await?;
 
     Ok((jar.add(session_cookie(token)), Json(u.into())))
 }
@@ -1365,7 +1382,7 @@ async fn sign_in(
         return Err(AppError::Auth);
     }
 
-    let token = session::create(&state.pool, &u.id, Duration::days(30)).await?;
+    let token = session::create(&state.pool, &u.id, Duration::days(SESSION_TTL_DAYS)).await?;
     Ok((jar.add(session_cookie(token)), Json(u.into())))
 }
 
