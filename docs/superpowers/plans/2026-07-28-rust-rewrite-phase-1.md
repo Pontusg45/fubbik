@@ -29,6 +29,11 @@
   which sqlx cannot decode and Postgres cannot materialise.
 - **The CLI is an HTTP client.** `fubbik-cli` must not depend on `fubbik-db`. Only `init`, `hooks`, and `doctor` may work offline.
 - **No better-auth compatibility.** Sessions and password hashes are new. Do not attempt to read existing `account` rows.
+- **`#[sqlx::test]` inside `fubbik-api` must point at the db crate's migrations:**
+  `#[sqlx::test(migrations = "../fubbik-db/migrations")]`. The macro looks for a
+  `migrations/` directory local to the crate, and `fubbik-api` has none — without the
+  attribute the test database is provisioned empty and every request fails with a 500
+  that looks like a routing bug. Applies to Tasks 10, 11, 12 and 14 as well as Task 7.
 - **Every task ends on a green `cargo test` and a commit.**
 
 ## File Structure
