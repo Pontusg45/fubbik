@@ -34,6 +34,12 @@
   `migrations/` directory local to the crate, and `fubbik-api` has none — without the
   attribute the test database is provisioned empty and every request fails with a 500
   that looks like a routing bug. Applies to Tasks 10, 11, 12 and 14 as well as Task 7.
+- **Stale `_sqlx_test_*` databases cause phantom failures.** `#[sqlx::test]` reuses test
+  databases keyed by test path and does not re-diff migrator state, so after adding or
+  editing a migration you can get FK violations and missing-table errors that look like
+  migration bugs but are just stale templates. Drop them and re-run before debugging
+  anything else:
+  `docker exec fubbik-rs-db psql -U postgres -d postgres -Atc "SELECT 'DROP DATABASE IF EXISTS \"'||datname||'\";' FROM pg_database WHERE datname LIKE '\_sqlx\_test%'" | docker exec -i fubbik-rs-db psql -U postgres -d postgres`
 - **Every task ends on a green `cargo test` and a commit.**
 
 ## File Structure
