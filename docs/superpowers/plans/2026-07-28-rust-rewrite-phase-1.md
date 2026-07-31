@@ -289,31 +289,24 @@ schema are enum-like reference tables that FK constraints point at. Without thei
 inserting a chunk fails on `chunk_type_id_fk`, a connection fails on
 `connection_relation_id_fk`, and a space fails on `space_kind_id_fk`.
 
-Add `crates/fubbik-db/migrations/0002_seed_reference_data.sql` with the values below,
-captured from the live Node database. They are reference data, not user data — unlike
-`tag_type`, which the user manages and must NOT be seeded here.
+Add `crates/fubbik-db/migrations/0002_seed_reference_data.sql`. Do **not** hand-write the
+values — the TypeScript app already has canonical seed migrations for exactly this, and
+copying them keeps both stacks on identical vocabulary:
 
-```sql
-INSERT INTO chunk_type (id) VALUES
-    ('checklist'), ('convention'), ('document'), ('guide'),
-    ('note'), ('reference'), ('schema')
-ON CONFLICT (id) DO NOTHING;
+- `packages/db/src/migrations/0001_seed_builtin_catalogs.sql` — `chunk_type` (7 rows) and
+  `connection_relation` (13 rows), including the trailing `UPDATE` statements that wire
+  `connection_relation.inverse_of_id`. Those updates must run *after* the INSERT because
+  the column is a self-referential FK.
+- `packages/db/src/migrations/0004_codebase_to_space.sql` — the `INSERT INTO space_kind`
+  block (4 rows).
 
-INSERT INTO connection_relation (id) VALUES
-    ('alternative_to'), ('contains'), ('contradicts'), ('depends_on'),
-    ('extended_by'), ('extends'), ('part_of'), ('referenced_by'),
-    ('references'), ('related_to'), ('required_by'), ('supported_by'),
-    ('supports')
-ON CONFLICT (id) DO NOTHING;
+These tables are NOT id-only. Each carries NOT NULL columns (`label` at minimum, plus
+`color`, `examples`, `display_order`, `built_in`, and for `connection_relation` also
+`arrow_style` and `direction`). An id-only INSERT fails on `label`. Copy the full column
+lists from the source migrations.
 
-INSERT INTO space_kind (id) VALUES
-    ('code'), ('notes'), ('research'), ('wiki')
-ON CONFLICT (id) DO NOTHING;
-```
-
-`ON CONFLICT DO NOTHING` keeps the migration idempotent and safe to re-run. Note these
-tables may carry additional columns (labels, ordering) — check the dumped definitions and
-include any NOT NULL columns rather than assuming `id` is the only one.
+`tag_type` is user-managed data, not reference data — it has rows in the live database but
+must NOT be seeded here.
 
 Extensions must be created **by the migration**, not by hand: `#[sqlx::test]` provisions a brand-new database per test, and those databases inherit nothing. `vector` and `pg_trgm` are hard requirements. AGE is soft — the graph layer is designed to degrade when it is absent, and a plain Postgres without AGE must still run every non-graph endpoint.
 
