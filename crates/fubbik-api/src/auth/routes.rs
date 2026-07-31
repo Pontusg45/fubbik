@@ -11,6 +11,12 @@ use super::password::{hash_password, verify_password};
 use super::session::COOKIE_NAME;
 use crate::AppState;
 
+/// How long a session (and the cookie carrying its token) stays valid.
+/// Named once so the DB-side session TTL and the cookie's `Max-Age` can
+/// never drift apart — see `session_cookie` and both `session::create`
+/// call sites below.
+const SESSION_TTL_DAYS: i64 = 30;
+
 #[derive(serde::Deserialize)]
 pub struct SignUpBody {
     pub email: String,
@@ -42,6 +48,7 @@ fn session_cookie(token: String) -> Cookie<'static> {
         .path("/")
         .http_only(true)
         .same_site(SameSite::Lax)
+        .max_age(time::Duration::days(SESSION_TTL_DAYS))
         .build()
 }
 
@@ -58,8 +65,19 @@ async fn sign_up(
     }
 
     let hash = hash_password(&body.password)?;
-    let u = user::create(&state.pool, &body.email, &body.name, Some(&hash)).await?;
-    let token = session::create(&state.pool, &u.id, Duration::days(30)).await?;
+    // The check above handles the common case, but it's a TOCTOU against
+    // `user_email_unique`: two concurrent sign-ups for the same email can
+    // both pass the check and race into the INSERT. Map that specific
+    // failure back to the same clean 409 instead of letting it surface as
+    // a generic 500.
+    let u = match user::create(&state.pool, &body.email, &body.name, Some(&hash)).await {
+        Ok(u) => u,
+        Err(AppError::Database(sqlx::Error::Database(db_err))) if db_err.is_unique_violation() => {
+            return Err(AppError::Conflict("email already registered".into()));
+        }
+        Err(e) => return Err(e),
+    };
+    let token = session::create(&state.pool, &u.id, Duration::days(SESSION_TTL_DAYS)).await?;
 
     Ok((jar.add(session_cookie(token)), Json(u.into())))
 }
@@ -78,7 +96,7 @@ async fn sign_in(
         return Err(AppError::Auth);
     }
 
-    let token = session::create(&state.pool, &u.id, Duration::days(30)).await?;
+    let token = session::create(&state.pool, &u.id, Duration::days(SESSION_TTL_DAYS)).await?;
     Ok((jar.add(session_cookie(token)), Json(u.into())))
 }
 
@@ -86,7 +104,11 @@ async fn sign_out(State(state): State<AppState>, jar: CookieJar) -> AppResult<Co
     if let Some(c) = jar.get(COOKIE_NAME) {
         session::delete(&state.pool, c.value()).await?;
     }
-    Ok(jar.remove(Cookie::from(COOKIE_NAME)))
+    // The removal cookie's path must match the one the cookie was set with
+    // (`/`, from `session_cookie`) or the browser will scope the deletion
+    // to the request path instead and the original cookie will survive.
+    let removal = Cookie::build(COOKIE_NAME).path("/").build();
+    Ok(jar.remove(removal))
 }
 
 async fn get_session(current: super::CurrentUser) -> Json<UserResponse> {
