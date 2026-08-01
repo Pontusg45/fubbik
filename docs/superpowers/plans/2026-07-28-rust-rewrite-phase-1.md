@@ -2356,8 +2356,14 @@ pub struct ChunkVersion {
 /// Appends the chunk's current state to its history. Call before applying
 /// an update so the snapshot captures the pre-edit version.
 ///
-/// The version number is derived inside the INSERT rather than by a prior
-/// SELECT, so two concurrent snapshots cannot both compute the same value.
+/// Computing the version inside the INSERT closes the client-side gap of a
+/// read-then-write, but it is NOT atomic against a concurrent transaction:
+/// at READ COMMITTED two simultaneous snapshots for the same chunk can both
+/// read the same MAX and both insert it. The `UNIQUE (chunk_id, version)`
+/// constraint is what actually prevents duplicates — the loser fails rather
+/// than silently corrupting history. Retry-on-conflict is deliberately not
+/// implemented in Phase 1.
+///
 /// The aggregate over an empty set yields NULL, which COALESCE turns into
 /// the first version, 1.
 pub async fn snapshot(pool: &PgPool, current: &Chunk) -> AppResult<()> {
