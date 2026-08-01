@@ -4101,6 +4101,43 @@ Consequence for **Task 14**: `fubbik serve` still embeds and serves whatever is 
 `apps/web/dist/`, and the history fallback is still correct and tested. It simply has no
 SPA bundled yet. That is expected, not a defect.
 
+## LIVE PARITY RESULT — the chunks domain is NOT yet at parity
+
+The differential harness was run for real against the Node stack (Node on :3000 with the
+live database, Rust on :3100 against a throwaway `fubbik_diff` seeded from a read-only
+`pg_dump` of the Node data — 65 chunks, 1 user). **It failed, correctly**, and found four
+concrete gaps. This is the harness working as designed, not a defect in it.
+
+**1. Response envelope differs — the biggest one.**
+```
+Node:  {"chunks": [...], "total": N, "limit": N, "offset": N}
+Rust:  [...]
+```
+The web app reads `.chunks` and `.total`. A bare array breaks every list call site and
+removes pagination metadata entirely. Rust's `list_chunks` must return the envelope.
+
+**2. Eleven fields are missing from Rust's `Chunk`.**
+`aliases`, `alternatives`, `documentId`, `documentOrder`, `embedding`,
+`embeddingUpdatedAt`, `isEntryPoint`, `notAbout`, `reviewedAt`, `reviewedBy`, `scope`.
+Phase 1 deliberately selected a subset of columns, but the API contract is what the web
+app consumes — these have to come back before any client can switch over.
+
+**3. Timestamp serialisation differs, and this one is a silent correctness bug.**
+```
+Node:  "2026-06-21T11:40:08.252Z"       (UTC, ISO 8601 with Z)
+Rust:  "2026-06-21T11:40:08.252381"     (no timezone, microseconds)
+```
+JavaScript's `new Date()` parses an ISO string without a timezone as **local time**, so
+every timestamp would silently shift by the user's UTC offset. `NaiveDateTime` is the
+cause; the columns should serialise as UTC with a `Z`.
+
+**4. The implicit dev-session user differs.**
+Node uses `dev@localhost`; Rust's `DEV_EMAIL` is `dev@fubbik.local`. Against real Node
+data the Rust server 401s, because it looks for a user that does not exist.
+
+None of these are hard to fix, and finding them cost one harness run rather than a
+debugging session after cutover. They belong to the phase that makes the web app work.
+
 ## Phase 1 Exit Criteria (revised)
 
 Verify all of these before starting Phase 2:
@@ -4108,7 +4145,16 @@ Verify all of these before starting Phase 2:
 - [ ] `cargo test --workspace` passes.
 - [ ] `cargo clippy --workspace --all-targets -- -D warnings` is clean.
 - [ ] `cargo fmt --check` is clean.
-- [ ] `./scripts/differential.sh` reports no mismatches for the chunk endpoints.
+- [x] The differential harness runs against both stacks and **detects real differences**
+      (proven: it failed on four genuine gaps, listed above). Note the harness itself is
+      the deliverable here — "no mismatches" is explicitly NOT met and is carried forward.
+- [ ] ~~`./scripts/differential.sh` reports no mismatches~~ — **NOT MET, carried forward.**
+      Fixing the four gaps above belongs to the next phase, alongside the remaining domains.
+      Note `scripts/differential.sh` as written also needs work: a full `--data-only` load
+      into a database that already has migration 0002's reference rows collides on primary
+      keys. The working recipe is a fresh database, migrations, then
+      `pg_dump --data-only --column-inserts --on-conflict-do-nothing`
+      excluding `account` and `verification` (tables the Rust schema drops).
 - [ ] `cargo run -- serve` starts, serves the chunk and auth APIs, and 404s unmatched
       `/api/*` paths rather than returning the SPA fallback.
 - [ ] `cargo run -- add/get/list/search/health` all work against the running server.
