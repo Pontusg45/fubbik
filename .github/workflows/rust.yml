@@ -9,6 +9,12 @@ jobs:
         image: pgvector/pgvector:pg18
         env:
           POSTGRES_PASSWORD: postgres
+          # Required: the postgres image only auto-creates a database matching
+          # POSTGRES_DB (defaults to "postgres"). sqlx's test harness connects
+          # directly to the database named in DATABASE_URL with no admin-db
+          # fallback, so without this every #[sqlx::test] fails with
+          # "database fubbik_rs does not exist" on a fresh CI run.
+          POSTGRES_DB: fubbik_rs
         options: >-
           --health-cmd pg_isready --health-interval 10s
           --health-timeout 5s --health-retries 5
