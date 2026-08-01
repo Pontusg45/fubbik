@@ -4064,14 +4064,49 @@ git commit -m "test(rust): differential harness comparing node and rust response
 
 ---
 
-## Phase 1 Exit Criteria
+## REVISED: Tasks 15 and 16 are deferred out of Phase 1
+
+**Discovered during Task 15, after the backend was built.** The web app calls **27 API
+domains** — activity, ai, chunks, collections, connections, context, density, documents,
+favorites, features, graph, health, matrices, notifications, plans, proposals,
+requirements, search, settings, spaces, stats, tags, templates, timeline, vocabulary,
+workspaces. Phase 1 implements **one** of them (chunks).
+
+So "the web app runs against Rust" was never achievable in Phase 1, by any client design:
+
+- The **Proxy client** (option b) fails type-checking — this repo sets
+  `noUncheckedIndexedAccess: true`, so dot-access through an index signature yields
+  `| undefined` and `api.api.chunks` is "possibly undefined". 1016 errors across 102 files.
+  Not fixable without `any` or editing call sites, which defeats the point of the approach.
+- The **`openapi-fetch` rewrite** (option a) fails harder — 26 of the 27 domains have no
+  generated types at all, because they are absent from `openapi.json`.
+
+The Proxy client is nevertheless **proven at runtime** (7/7 tests, and the `Sort` union
+survives into the generated TypeScript). It is parked, unwired, for the phase that ports
+the remaining domains. Nothing about it needs redoing — it simply has nothing to talk to yet.
+
+Task 16 (auth client swap, SSR removal, static SPA build) is deferred with it: rebuilding
+the SPA to point at a backend that serves one twenty-seventh of its API would produce a
+broken application.
+
+Consequence for **Task 14**: `fubbik serve` still embeds and serves whatever is in
+`apps/web/dist/`, and the history fallback is still correct and tested. It simply has no
+SPA bundled yet. That is expected, not a defect.
+
+## Phase 1 Exit Criteria (revised)
 
 Verify all of these before starting Phase 2:
 
 - [ ] `cargo test --workspace` passes.
-- [ ] `cargo clippy --all-targets -- -D warnings` is clean.
+- [ ] `cargo clippy --workspace --all-targets -- -D warnings` is clean.
+- [ ] `cargo fmt --check` is clean.
 - [ ] `./scripts/differential.sh` reports no mismatches for the chunk endpoints.
-- [ ] `cargo run -- serve` serves the web UI at `http://localhost:3100` with working sign-up, sign-in, chunk create, chunk edit, and chunk delete.
+- [ ] `cargo run -- serve` starts, serves the chunk and auth APIs, and 404s unmatched
+      `/api/*` paths rather than returning the SPA fallback.
 - [ ] `cargo run -- add/get/list/search/health` all work against the running server.
-- [ ] `openapi.json` is committed and current.
+- [ ] `openapi.json` is committed and current, and the staleness guard fails when it drifts.
+- [ ] `apps/web` still type-checks at zero errors against its existing Eden client.
 - [ ] The spec's Risks section records the AGE spike outcome.
+
+**Explicitly NOT a Phase 1 exit criterion any more:** the web UI running against Rust.
+That moves to the phase where the domain coverage exists to support it.
