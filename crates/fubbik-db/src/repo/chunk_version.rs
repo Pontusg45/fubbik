@@ -23,9 +23,16 @@ pub struct ChunkVersion {
 /// an update so the snapshot captures the pre-edit version.
 ///
 /// The version number is derived inside the INSERT rather than by a prior
-/// SELECT, so two concurrent snapshots cannot both compute the same value.
-/// The aggregate over an empty set yields NULL, which COALESCE turns into
-/// the first version, 1.
+/// SELECT, avoiding a client-side read-then-write gap. That alone is NOT
+/// atomic against a second concurrent transaction: under READ COMMITTED
+/// (the default, and there is no explicit transaction here), two
+/// overlapping `snapshot()` calls for the same chunk can each see the same
+/// prior `MAX(version)` and attempt to insert the same value. The
+/// `UNIQUE (chunk_id, version)` constraint (migration 0003) is what
+/// actually prevents the duplicate: the second insert fails with a unique
+/// violation rather than silently corrupting history. Retrying on that
+/// conflict is deferred to a later phase. The aggregate over an empty set
+/// yields NULL, which COALESCE turns into the first version, 1.
 ///
 /// `tags` is written as an empty array because the tag domain does not
 /// exist in Phase 1. Phase 2 must revisit this when tags land, or version
