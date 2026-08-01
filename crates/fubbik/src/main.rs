@@ -18,6 +18,8 @@ enum Commands {
     Mcp,
     /// Print the OpenAPI document to stdout
     Openapi,
+    #[command(flatten)]
+    Cli(fubbik_cli::Command),
 }
 
 #[tokio::main]
@@ -68,6 +70,11 @@ async fn main() -> anyhow::Result<()> {
             let doc = fubbik_api::openapi::ApiDoc::openapi();
             println!("{}", serde_json::to_string_pretty(&doc)?);
             Ok(())
+        }
+        Commands::Cli(cmd) => {
+            let base =
+                std::env::var("FUBBIK_URL").unwrap_or_else(|_| "http://localhost:3100".into());
+            fubbik_cli::run(cmd, &base).await
         }
     }
 }
