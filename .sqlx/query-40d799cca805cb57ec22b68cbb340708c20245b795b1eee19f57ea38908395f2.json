@@ -1,0 +1,34 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, chunk_id, pattern FROM chunk_applies_to WHERE chunk_id = $1 ORDER BY pattern",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "chunk_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "pattern",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "40d799cca805cb57ec22b68cbb340708c20245b795b1eee19f57ea38908395f2"
+}

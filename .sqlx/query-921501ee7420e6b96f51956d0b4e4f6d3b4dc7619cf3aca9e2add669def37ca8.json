@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM chunk_file_ref WHERE chunk_id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "921501ee7420e6b96f51956d0b4e4f6d3b4dc7619cf3aca9e2add669def37ca8"
+}

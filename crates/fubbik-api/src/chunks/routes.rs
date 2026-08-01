@@ -3,6 +3,7 @@ use axum::routing::get;
 use axum::{Json, Router};
 use fubbik_core::error::AppResult;
 use fubbik_db::repo::chunk::Chunk;
+use fubbik_db::repo::chunk_meta::{self, AppliesTo, FileRef};
 
 use super::dto::{CreateChunkBody, ListChunksQuery, UpdateChunkBody};
 use super::service;
@@ -73,6 +74,64 @@ async fn chunk_history(
     Ok(Json(service::history(&state.pool, &user.id, &id).await?))
 }
 
+#[derive(serde::Deserialize, utoipa::ToSchema)]
+pub struct PatternsBody {
+    pub patterns: Vec<String>,
+}
+
+#[derive(serde::Deserialize, utoipa::ToSchema)]
+pub struct PathsBody {
+    pub paths: Vec<String>,
+}
+
+#[utoipa::path(get, path = "/api/chunks/{id}/applies-to", params(("id" = String, Path,)),
+    responses((status = 200, body = Vec<AppliesTo>)))]
+async fn get_applies_to(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path(id): Path<String>,
+) -> AppResult<Json<Vec<AppliesTo>>> {
+    service::get(&state.pool, &user.id, &id).await?;
+    Ok(Json(chunk_meta::get_applies_to(&state.pool, &id).await?))
+}
+
+#[utoipa::path(put, path = "/api/chunks/{id}/applies-to", request_body = PatternsBody,
+    params(("id" = String, Path,)), responses((status = 200, body = Vec<AppliesTo>)))]
+async fn put_applies_to(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path(id): Path<String>,
+    Json(body): Json<PatternsBody>,
+) -> AppResult<Json<Vec<AppliesTo>>> {
+    service::get(&state.pool, &user.id, &id).await?;
+    chunk_meta::replace_applies_to(&state.pool, &id, &body.patterns).await?;
+    Ok(Json(chunk_meta::get_applies_to(&state.pool, &id).await?))
+}
+
+#[utoipa::path(get, path = "/api/chunks/{id}/file-refs", params(("id" = String, Path,)),
+    responses((status = 200, body = Vec<FileRef>)))]
+async fn get_file_refs(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path(id): Path<String>,
+) -> AppResult<Json<Vec<FileRef>>> {
+    service::get(&state.pool, &user.id, &id).await?;
+    Ok(Json(chunk_meta::get_file_refs(&state.pool, &id).await?))
+}
+
+#[utoipa::path(put, path = "/api/chunks/{id}/file-refs", request_body = PathsBody,
+    params(("id" = String, Path,)), responses((status = 200, body = Vec<FileRef>)))]
+async fn put_file_refs(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path(id): Path<String>,
+    Json(body): Json<PathsBody>,
+) -> AppResult<Json<Vec<FileRef>>> {
+    service::get(&state.pool, &user.id, &id).await?;
+    chunk_meta::replace_file_refs(&state.pool, &id, &body.paths).await?;
+    Ok(Json(chunk_meta::get_file_refs(&state.pool, &id).await?))
+}
+
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/api/chunks", get(list_chunks).post(create_chunk))
@@ -81,4 +140,6 @@ pub fn router() -> Router<AppState> {
             get(get_chunk).patch(update_chunk).delete(delete_chunk),
         )
         .route("/api/chunks/{id}/history", get(chunk_history))
+        .route("/api/chunks/{id}/applies-to", get(get_applies_to).put(put_applies_to))
+        .route("/api/chunks/{id}/file-refs", get(get_file_refs).put(put_file_refs))
 }
