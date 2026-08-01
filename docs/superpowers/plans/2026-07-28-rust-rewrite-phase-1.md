@@ -2940,6 +2940,11 @@ jobs:
         image: pgvector/pgvector:pg18
         env:
           POSTGRES_PASSWORD: postgres
+          # Required. sqlx's test harness connects DIRECTLY to the database named
+          # in DATABASE_URL with no admin fallback, so without this the service
+          # only creates `postgres` and every #[sqlx::test] fails with
+          # "database `fubbik_rs` does not exist".
+          POSTGRES_DB: fubbik_rs
         options: >-
           --health-cmd pg_isready --health-interval 10s
           --health-timeout 5s --health-retries 5
