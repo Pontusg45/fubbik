@@ -114,3 +114,83 @@ pub async fn delete(pool: &PgPool, user_id: &str, id: &str) -> AppResult<bool> {
         .await?;
     Ok(res.rows_affected() > 0)
 }
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, serde::Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Sort {
+    #[default]
+    Newest,
+    Oldest,
+    Alpha,
+    Updated,
+}
+
+pub struct ListParams {
+    pub chunk_type: Option<String>,
+    pub search: Option<String>,
+    pub origin: Option<String>,
+    pub review_status: Option<String>,
+    pub sort: Sort,
+    pub limit: i64,
+    pub offset: i64,
+}
+
+impl Default for ListParams {
+    fn default() -> Self {
+        Self {
+            chunk_type: None,
+            search: None,
+            origin: None,
+            review_status: None,
+            sort: Sort::Newest,
+            limit: 50,
+            offset: 0,
+        }
+    }
+}
+
+/// Lists a user's non-archived chunks.
+///
+/// Uses QueryBuilder rather than `query_as!` because the filter set is
+/// dynamic. Every user value is pushed as a bind parameter, never
+/// formatted into the SQL string.
+pub async fn list(pool: &PgPool, user_id: &str, params: ListParams) -> AppResult<Vec<Chunk>> {
+    let mut qb = sqlx::QueryBuilder::new(
+        "SELECT id, title, content, type AS chunk_type, user_id, summary, \
+         rationale, consequences, origin, review_status, \
+         created_at, updated_at, archived_at \
+         FROM chunk WHERE archived_at IS NULL AND user_id = ",
+    );
+    qb.push_bind(user_id);
+
+    if let Some(t) = &params.chunk_type {
+        qb.push(" AND type = ").push_bind(t);
+    }
+    if let Some(o) = &params.origin {
+        qb.push(" AND origin = ").push_bind(o);
+    }
+    if let Some(r) = &params.review_status {
+        qb.push(" AND review_status = ").push_bind(r);
+    }
+    if let Some(s) = &params.search {
+        // ILIKE with escaped wildcards: a user searching for "100%" must not
+        // match everything.
+        let pattern = format!("%{}%", s.replace('\\', r"\\").replace('%', r"\%").replace('_', r"\_"));
+        qb.push(" AND (title ILIKE ").push_bind(pattern.clone());
+        qb.push(" OR content ILIKE ").push_bind(pattern);
+        qb.push(")");
+    }
+
+    qb.push(match params.sort {
+        Sort::Newest => " ORDER BY created_at DESC",
+        Sort::Oldest => " ORDER BY created_at ASC",
+        Sort::Alpha => " ORDER BY title ASC",
+        Sort::Updated => " ORDER BY updated_at DESC",
+    });
+
+    qb.push(" LIMIT ").push_bind(params.limit.clamp(1, 500));
+    qb.push(" OFFSET ").push_bind(params.offset.max(0));
+
+    let rows = qb.build_query_as::<Chunk>().fetch_all(pool).await?;
+    Ok(rows)
+}

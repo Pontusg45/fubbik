@@ -52,3 +52,90 @@ async fn other_users_chunks_are_invisible(pool: sqlx::PgPool) {
     assert!(chunk::find_by_id(&pool, &intruder, &c.id).await.unwrap().is_none());
     assert!(!chunk::delete(&pool, &intruder, &c.id).await.unwrap());
 }
+
+#[sqlx::test]
+async fn list_filters_sorts_and_paginates(pool: sqlx::PgPool) {
+    let uid = seed_user(&pool).await;
+
+    for (title, ty) in [("Alpha", "note"), ("Beta", "document"), ("Gamma", "note")] {
+        chunk::create(
+            &pool,
+            &uid,
+            chunk::NewChunk {
+                title: title.into(),
+                content: format!("{title} body"),
+                chunk_type: ty.into(),
+                rationale: None,
+            },
+        )
+        .await
+        .unwrap();
+    }
+
+    let notes = chunk::list(
+        &pool,
+        &uid,
+        chunk::ListParams { chunk_type: Some("note".into()), ..Default::default() },
+    )
+    .await
+    .unwrap();
+    assert_eq!(notes.len(), 2);
+
+    let searched = chunk::list(
+        &pool,
+        &uid,
+        chunk::ListParams { search: Some("Beta".into()), ..Default::default() },
+    )
+    .await
+    .unwrap();
+    assert_eq!(searched.len(), 1);
+    assert_eq!(searched[0].title, "Beta");
+
+    let alpha = chunk::list(
+        &pool,
+        &uid,
+        chunk::ListParams { sort: chunk::Sort::Alpha, ..Default::default() },
+    )
+    .await
+    .unwrap();
+    assert_eq!(
+        alpha.iter().map(|c| c.title.as_str()).collect::<Vec<_>>(),
+        ["Alpha", "Beta", "Gamma"]
+    );
+
+    let page = chunk::list(
+        &pool,
+        &uid,
+        chunk::ListParams { limit: 2, offset: 1, sort: chunk::Sort::Alpha, ..Default::default() },
+    )
+    .await
+    .unwrap();
+    assert_eq!(page.len(), 2);
+    assert_eq!(page[0].title, "Beta");
+}
+
+#[sqlx::test]
+async fn search_is_case_insensitive_and_covers_content(pool: sqlx::PgPool) {
+    let uid = seed_user(&pool).await;
+    chunk::create(
+        &pool,
+        &uid,
+        chunk::NewChunk {
+            title: "Title".into(),
+            content: "UNIQUEBODY".into(),
+            chunk_type: "note".into(),
+            rationale: None,
+        },
+    )
+    .await
+    .unwrap();
+
+    let found = chunk::list(
+        &pool,
+        &uid,
+        chunk::ListParams { search: Some("uniquebody".into()), ..Default::default() },
+    )
+    .await
+    .unwrap();
+    assert_eq!(found.len(), 1);
+}
