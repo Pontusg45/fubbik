@@ -37,6 +37,9 @@ pub async fn get(pool: &PgPool, user_id: &str, id: &str) -> AppResult<Chunk> {
 }
 
 pub async fn update(pool: &PgPool, user_id: &str, id: &str, body: UpdateChunkBody) -> AppResult<Chunk> {
+    let current = get(pool, user_id, id).await?;
+    fubbik_db::repo::chunk_version::snapshot(pool, &current).await?;
+
     chunk::update(
         pool,
         user_id,
@@ -51,6 +54,12 @@ pub async fn update(pool: &PgPool, user_id: &str, id: &str, body: UpdateChunkBod
     )
     .await?
     .ok_or_else(|| AppError::NotFound("chunk".into()))
+}
+
+pub async fn history(pool: &PgPool, user_id: &str, id: &str) -> AppResult<Vec<fubbik_db::repo::chunk_version::ChunkVersion>> {
+    // Fetch the chunk first so another user's history cannot be read.
+    get(pool, user_id, id).await?;
+    fubbik_db::repo::chunk_version::list_for_chunk(pool, id).await
 }
 
 pub async fn delete(pool: &PgPool, user_id: &str, id: &str) -> AppResult<()> {

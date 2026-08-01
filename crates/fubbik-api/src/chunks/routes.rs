@@ -63,6 +63,16 @@ async fn delete_chunk(
     Ok(Json(serde_json::json!({ "success": true })))
 }
 
+#[utoipa::path(get, path = "/api/chunks/{id}/history", params(("id" = String, Path,)),
+    responses((status = 200, body = Vec<fubbik_db::repo::chunk_version::ChunkVersion>)))]
+async fn chunk_history(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path(id): Path<String>,
+) -> AppResult<Json<Vec<fubbik_db::repo::chunk_version::ChunkVersion>>> {
+    Ok(Json(service::history(&state.pool, &user.id, &id).await?))
+}
+
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/api/chunks", get(list_chunks).post(create_chunk))
@@ -70,4 +80,5 @@ pub fn router() -> Router<AppState> {
             "/api/chunks/{id}",
             get(get_chunk).patch(update_chunk).delete(delete_chunk),
         )
+        .route("/api/chunks/{id}/history", get(chunk_history))
 }

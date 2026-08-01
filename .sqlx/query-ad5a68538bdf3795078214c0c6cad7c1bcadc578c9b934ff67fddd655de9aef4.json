@@ -1,0 +1,70 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, chunk_id, version, title, content, type AS chunk_type,\n                  rationale, consequences, created_at\n           FROM chunk_version WHERE chunk_id = $1 ORDER BY version DESC",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "chunk_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "version",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 3,
+        "name": "title",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "content",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "chunk_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "rationale",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "consequences",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "created_at",
+        "type_info": "Timestamp"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "ad5a68538bdf3795078214c0c6cad7c1bcadc578c9b934ff67fddd655de9aef4"
+}

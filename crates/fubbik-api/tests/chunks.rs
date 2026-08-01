@@ -81,3 +81,48 @@ async fn blank_title_is_400(pool: sqlx::PgPool) {
         .unwrap();
     assert_eq!(res.status(), StatusCode::BAD_REQUEST);
 }
+
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn update_records_history(pool: sqlx::PgPool) {
+    seed_dev_user(&pool).await;
+    let app = fubbik_api::router(dev_state(pool));
+
+    let res = app
+        .clone()
+        .oneshot(
+            Request::post("/api/chunks")
+                .header("content-type", "application/json")
+                .body(Body::from(r#"{"title":"V1","content":"first"}"#))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let body = res.into_body().collect().await.unwrap().to_bytes();
+    let id = serde_json::from_slice::<serde_json::Value>(&body).unwrap()["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+
+    app.clone()
+        .oneshot(
+            Request::patch(format!("/api/chunks/{id}"))
+                .header("content-type", "application/json")
+                .body(Body::from(r#"{"title":"V2"}"#))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    let res = app
+        .oneshot(
+            Request::get(format!("/api/chunks/{id}/history"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let body = res.into_body().collect().await.unwrap().to_bytes();
+    let history: serde_json::Value = serde_json::from_slice(&body).unwrap();
+    assert_eq!(history.as_array().unwrap().len(), 1);
+    assert_eq!(history[0]["title"], "V1", "history stores the pre-edit title");
+}
