@@ -1,5 +1,6 @@
 pub mod auth;
 pub mod chunks;
+pub mod openapi;
 
 use axum::Router;
 use sqlx::PgPool;

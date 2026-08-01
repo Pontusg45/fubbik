@@ -16,6 +16,8 @@ enum Commands {
     },
     /// Run the MCP server over stdio
     Mcp,
+    /// Print the OpenAPI document to stdout
+    Openapi,
 }
 
 #[tokio::main]
@@ -31,6 +33,12 @@ async fn main() -> anyhow::Result<()> {
         }
         Commands::Mcp => {
             println!("mcp — not yet implemented");
+            Ok(())
+        }
+        Commands::Openapi => {
+            use utoipa::OpenApi;
+            let doc = fubbik_api::openapi::ApiDoc::openapi();
+            println!("{}", serde_json::to_string_pretty(&doc)?);
             Ok(())
         }
     }

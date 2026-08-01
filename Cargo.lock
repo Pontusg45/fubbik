@@ -537,9 +537,12 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "clap",
+ "fubbik-api",
  "fubbik-core",
+ "serde_json",
  "tokio",
  "tracing-subscriber",
+ "utoipa",
 ]
 
 [[package]]

@@ -14,7 +14,7 @@ use crate::auth::CurrentUser;
     get, path = "/api/chunks", params(ListChunksQuery),
     responses((status = 200, body = Vec<Chunk>))
 )]
-async fn list_chunks(
+pub async fn list_chunks(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
     Query(query): Query<ListChunksQuery>,
@@ -24,7 +24,7 @@ async fn list_chunks(
 
 #[utoipa::path(post, path = "/api/chunks", request_body = CreateChunkBody,
     responses((status = 200, body = Chunk)))]
-async fn create_chunk(
+pub async fn create_chunk(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
     Json(body): Json<CreateChunkBody>,
@@ -34,7 +34,7 @@ async fn create_chunk(
 
 #[utoipa::path(get, path = "/api/chunks/{id}", params(("id" = String, Path,)),
     responses((status = 200, body = Chunk), (status = 404)))]
-async fn get_chunk(
+pub async fn get_chunk(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
     Path(id): Path<String>,
@@ -44,7 +44,7 @@ async fn get_chunk(
 
 #[utoipa::path(patch, path = "/api/chunks/{id}", request_body = UpdateChunkBody,
     params(("id" = String, Path,)), responses((status = 200, body = Chunk), (status = 404)))]
-async fn update_chunk(
+pub async fn update_chunk(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
     Path(id): Path<String>,
@@ -55,7 +55,7 @@ async fn update_chunk(
 
 #[utoipa::path(delete, path = "/api/chunks/{id}", params(("id" = String, Path,)),
     responses((status = 200), (status = 404)))]
-async fn delete_chunk(
+pub async fn delete_chunk(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
     Path(id): Path<String>,
@@ -66,7 +66,7 @@ async fn delete_chunk(
 
 #[utoipa::path(get, path = "/api/chunks/{id}/history", params(("id" = String, Path,)),
     responses((status = 200, body = Vec<fubbik_db::repo::chunk_version::ChunkVersion>)))]
-async fn chunk_history(
+pub async fn chunk_history(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
     Path(id): Path<String>,
@@ -86,7 +86,7 @@ pub struct PathsBody {
 
 #[utoipa::path(get, path = "/api/chunks/{id}/applies-to", params(("id" = String, Path,)),
     responses((status = 200, body = Vec<AppliesTo>)))]
-async fn get_applies_to(
+pub async fn get_applies_to(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
     Path(id): Path<String>,
@@ -97,7 +97,7 @@ async fn get_applies_to(
 
 #[utoipa::path(put, path = "/api/chunks/{id}/applies-to", request_body = PatternsBody,
     params(("id" = String, Path,)), responses((status = 200, body = Vec<AppliesTo>)))]
-async fn put_applies_to(
+pub async fn put_applies_to(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
     Path(id): Path<String>,
@@ -110,7 +110,7 @@ async fn put_applies_to(
 
 #[utoipa::path(get, path = "/api/chunks/{id}/file-refs", params(("id" = String, Path,)),
     responses((status = 200, body = Vec<FileRef>)))]
-async fn get_file_refs(
+pub async fn get_file_refs(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
     Path(id): Path<String>,
@@ -121,7 +121,7 @@ async fn get_file_refs(
 
 #[utoipa::path(put, path = "/api/chunks/{id}/file-refs", request_body = PathsBody,
     params(("id" = String, Path,)), responses((status = 200, body = Vec<FileRef>)))]
-async fn put_file_refs(
+pub async fn put_file_refs(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
     Path(id): Path<String>,
