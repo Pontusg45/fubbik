@@ -8,7 +8,9 @@ argon2 = "0.5"
 axum = { workspace = true, features = ["macros"] }
 axum-extra = { version = "0.10", features = ["cookie"] }
 chrono = { version = "0.4", features = ["serde"] }
+mime_guess = "2"
 rand = "0.8"
+rust-embed = { version = "8", features = ["interpolate-folder-path"] }
 serde.workspace = true
 serde_json.workspace = true
 sqlx.workspace = true

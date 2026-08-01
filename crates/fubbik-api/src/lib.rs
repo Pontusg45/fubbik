@@ -1,3 +1,4 @@
+pub mod assets;
 pub mod auth;
 pub mod chunks;
 pub mod openapi;
@@ -16,4 +17,5 @@ pub fn router(state: AppState) -> Router {
         .merge(auth::routes::router())
         .merge(chunks::routes::router())
         .with_state(state)
+        .fallback(assets::serve)
 }
