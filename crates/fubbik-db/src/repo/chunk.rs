@@ -40,8 +40,6 @@ pub struct ChunkPatch {
     pub consequences: Option<String>,
 }
 
-const COLUMNS: &str = r#"id, title, content, type AS chunk_type, user_id, summary,
-    rationale, consequences, origin, review_status, created_at, updated_at, archived_at"#;
 
 pub async fn create(pool: &PgPool, user_id: &str, new: NewChunk) -> AppResult<Chunk> {
     let id = crate::new_id();
