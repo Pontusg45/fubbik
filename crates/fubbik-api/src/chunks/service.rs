@@ -14,7 +14,9 @@ pub async fn create(pool: &PgPool, user_id: &str, body: CreateChunkBody) -> AppR
         return Err(AppError::Validation("title is required".into()));
     }
     if title.chars().count() > 200 {
-        return Err(AppError::Validation("title must be at most 200 characters".into()));
+        return Err(AppError::Validation(
+            "title must be at most 200 characters".into(),
+        ));
     }
 
     chunk::create(
@@ -36,7 +38,12 @@ pub async fn get(pool: &PgPool, user_id: &str, id: &str) -> AppResult<Chunk> {
         .ok_or_else(|| AppError::NotFound("chunk".into()))
 }
 
-pub async fn update(pool: &PgPool, user_id: &str, id: &str, body: UpdateChunkBody) -> AppResult<Chunk> {
+pub async fn update(
+    pool: &PgPool,
+    user_id: &str,
+    id: &str,
+    body: UpdateChunkBody,
+) -> AppResult<Chunk> {
     let current = get(pool, user_id, id).await?;
     fubbik_db::repo::chunk_version::snapshot(pool, &current).await?;
 
@@ -56,7 +63,11 @@ pub async fn update(pool: &PgPool, user_id: &str, id: &str, body: UpdateChunkBod
     .ok_or_else(|| AppError::NotFound("chunk".into()))
 }
 
-pub async fn history(pool: &PgPool, user_id: &str, id: &str) -> AppResult<Vec<fubbik_db::repo::chunk_version::ChunkVersion>> {
+pub async fn history(
+    pool: &PgPool,
+    user_id: &str,
+    id: &str,
+) -> AppResult<Vec<fubbik_db::repo::chunk_version::ChunkVersion>> {
     // Fetch the chunk first so another user's history cannot be read.
     get(pool, user_id, id).await?;
     fubbik_db::repo::chunk_version::list_for_chunk(pool, id).await

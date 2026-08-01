@@ -30,7 +30,11 @@ pub async fn get_applies_to(pool: &PgPool, chunk_id: &str) -> AppResult<Vec<Appl
 
 /// Replaces the whole pattern set in one transaction, so a failure part-way
 /// through cannot leave the chunk with a truncated set.
-pub async fn replace_applies_to(pool: &PgPool, chunk_id: &str, patterns: &[String]) -> AppResult<()> {
+pub async fn replace_applies_to(
+    pool: &PgPool,
+    chunk_id: &str,
+    patterns: &[String],
+) -> AppResult<()> {
     let mut tx = pool.begin().await?;
 
     sqlx::query!("DELETE FROM chunk_applies_to WHERE chunk_id = $1", chunk_id)

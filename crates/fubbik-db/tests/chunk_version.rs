@@ -2,7 +2,10 @@ use fubbik_db::repo::{chunk, chunk_version, user};
 
 #[sqlx::test]
 async fn snapshot_records_pre_edit_state(pool: sqlx::PgPool) {
-    let uid = user::create(&pool, "a@b.test", "Alice", None).await.unwrap().id;
+    let uid = user::create(&pool, "a@b.test", "Alice", None)
+        .await
+        .unwrap()
+        .id;
     let c = chunk::create(
         &pool,
         &uid,
@@ -27,7 +30,10 @@ async fn snapshot_records_pre_edit_state(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn version_numbers_increment_per_chunk(pool: sqlx::PgPool) {
-    let uid = user::create(&pool, "a@b.test", "Alice", None).await.unwrap().id;
+    let uid = user::create(&pool, "a@b.test", "Alice", None)
+        .await
+        .unwrap()
+        .id;
     let c = chunk::create(
         &pool,
         &uid,
@@ -58,7 +64,10 @@ async fn version_numbers_increment_per_chunk(pool: sqlx::PgPool) {
 /// violation, not silently coexist.
 #[sqlx::test]
 async fn duplicate_chunk_id_version_is_rejected(pool: sqlx::PgPool) {
-    let uid = user::create(&pool, "a@b.test", "Alice", None).await.unwrap().id;
+    let uid = user::create(&pool, "a@b.test", "Alice", None)
+        .await
+        .unwrap()
+        .id;
     let c = chunk::create(
         &pool,
         &uid,

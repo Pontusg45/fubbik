@@ -1,7 +1,10 @@
 use fubbik_db::repo::{chunk, user};
 
 async fn seed_user(pool: &sqlx::PgPool) -> String {
-    user::create(pool, "a@b.test", "Alice", None).await.unwrap().id
+    user::create(pool, "a@b.test", "Alice", None)
+        .await
+        .unwrap()
+        .id
 }
 
 #[sqlx::test]
@@ -22,19 +25,36 @@ async fn create_read_update_delete(pool: sqlx::PgPool) {
     .unwrap();
     assert_eq!(created.title, "Naming conventions");
 
-    let patch = chunk::ChunkPatch { title: Some("Renamed".into()), ..Default::default() };
-    let updated = chunk::update(&pool, &uid, &created.id, patch).await.unwrap().unwrap();
+    let patch = chunk::ChunkPatch {
+        title: Some("Renamed".into()),
+        ..Default::default()
+    };
+    let updated = chunk::update(&pool, &uid, &created.id, patch)
+        .await
+        .unwrap()
+        .unwrap();
     assert_eq!(updated.title, "Renamed");
-    assert_eq!(updated.content, "Use kebab-case.", "unset patch fields must not clear columns");
+    assert_eq!(
+        updated.content, "Use kebab-case.",
+        "unset patch fields must not clear columns"
+    );
 
     assert!(chunk::delete(&pool, &uid, &created.id).await.unwrap());
-    assert!(chunk::find_by_id(&pool, &uid, &created.id).await.unwrap().is_none());
+    assert!(
+        chunk::find_by_id(&pool, &uid, &created.id)
+            .await
+            .unwrap()
+            .is_none()
+    );
 }
 
 #[sqlx::test]
 async fn other_users_chunks_are_invisible(pool: sqlx::PgPool) {
     let owner = seed_user(&pool).await;
-    let intruder = user::create(&pool, "c@d.test", "Bob", None).await.unwrap().id;
+    let intruder = user::create(&pool, "c@d.test", "Bob", None)
+        .await
+        .unwrap()
+        .id;
 
     let c = chunk::create(
         &pool,
@@ -49,7 +69,12 @@ async fn other_users_chunks_are_invisible(pool: sqlx::PgPool) {
     .await
     .unwrap();
 
-    assert!(chunk::find_by_id(&pool, &intruder, &c.id).await.unwrap().is_none());
+    assert!(
+        chunk::find_by_id(&pool, &intruder, &c.id)
+            .await
+            .unwrap()
+            .is_none()
+    );
     assert!(!chunk::delete(&pool, &intruder, &c.id).await.unwrap());
 }
 
@@ -75,7 +100,10 @@ async fn list_filters_sorts_and_paginates(pool: sqlx::PgPool) {
     let notes = chunk::list(
         &pool,
         &uid,
-        chunk::ListParams { chunk_type: Some("note".into()), ..Default::default() },
+        chunk::ListParams {
+            chunk_type: Some("note".into()),
+            ..Default::default()
+        },
     )
     .await
     .unwrap();
@@ -84,7 +112,10 @@ async fn list_filters_sorts_and_paginates(pool: sqlx::PgPool) {
     let searched = chunk::list(
         &pool,
         &uid,
-        chunk::ListParams { search: Some("Beta".into()), ..Default::default() },
+        chunk::ListParams {
+            search: Some("Beta".into()),
+            ..Default::default()
+        },
     )
     .await
     .unwrap();
@@ -94,7 +125,10 @@ async fn list_filters_sorts_and_paginates(pool: sqlx::PgPool) {
     let alpha = chunk::list(
         &pool,
         &uid,
-        chunk::ListParams { sort: chunk::Sort::Alpha, ..Default::default() },
+        chunk::ListParams {
+            sort: chunk::Sort::Alpha,
+            ..Default::default()
+        },
     )
     .await
     .unwrap();
@@ -106,7 +140,12 @@ async fn list_filters_sorts_and_paginates(pool: sqlx::PgPool) {
     let page = chunk::list(
         &pool,
         &uid,
-        chunk::ListParams { limit: 2, offset: 1, sort: chunk::Sort::Alpha, ..Default::default() },
+        chunk::ListParams {
+            limit: 2,
+            offset: 1,
+            sort: chunk::Sort::Alpha,
+            ..Default::default()
+        },
     )
     .await
     .unwrap();
@@ -133,7 +172,10 @@ async fn search_is_case_insensitive_and_covers_content(pool: sqlx::PgPool) {
     let found = chunk::list(
         &pool,
         &uid,
-        chunk::ListParams { search: Some("uniquebody".into()), ..Default::default() },
+        chunk::ListParams {
+            search: Some("uniquebody".into()),
+            ..Default::default()
+        },
     )
     .await
     .unwrap();

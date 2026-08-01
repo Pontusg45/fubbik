@@ -19,7 +19,9 @@ pub async fn list_chunks(
     CurrentUser(user): CurrentUser,
     Query(query): Query<ListChunksQuery>,
 ) -> AppResult<Json<Vec<Chunk>>> {
-    Ok(Json(service::list(&state.pool, &user.id, query.into_params()).await?))
+    Ok(Json(
+        service::list(&state.pool, &user.id, query.into_params()).await?,
+    ))
 }
 
 #[utoipa::path(post, path = "/api/chunks", request_body = CreateChunkBody,
@@ -50,7 +52,9 @@ pub async fn update_chunk(
     Path(id): Path<String>,
     Json(body): Json<UpdateChunkBody>,
 ) -> AppResult<Json<Chunk>> {
-    Ok(Json(service::update(&state.pool, &user.id, &id, body).await?))
+    Ok(Json(
+        service::update(&state.pool, &user.id, &id, body).await?,
+    ))
 }
 
 #[utoipa::path(delete, path = "/api/chunks/{id}", params(("id" = String, Path,)),
@@ -140,6 +144,12 @@ pub fn router() -> Router<AppState> {
             get(get_chunk).patch(update_chunk).delete(delete_chunk),
         )
         .route("/api/chunks/{id}/history", get(chunk_history))
-        .route("/api/chunks/{id}/applies-to", get(get_applies_to).put(put_applies_to))
-        .route("/api/chunks/{id}/file-refs", get(get_file_refs).put(put_file_refs))
+        .route(
+            "/api/chunks/{id}/applies-to",
+            get(get_applies_to).put(put_applies_to),
+        )
+        .route(
+            "/api/chunks/{id}/file-refs",
+            get(get_file_refs).put(put_file_refs),
+        )
 }

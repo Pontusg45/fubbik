@@ -39,7 +39,11 @@ pub struct UserResponse {
 
 impl From<user::User> for UserResponse {
     fn from(u: user::User) -> Self {
-        Self { id: u.id, email: u.email, name: u.name }
+        Self {
+            id: u.id,
+            email: u.email,
+            name: u.name,
+        }
     }
 }
 
@@ -58,9 +62,14 @@ async fn sign_up(
     Json(body): Json<SignUpBody>,
 ) -> AppResult<(CookieJar, Json<UserResponse>)> {
     if body.password.len() < 8 {
-        return Err(AppError::Validation("password must be at least 8 characters".into()));
+        return Err(AppError::Validation(
+            "password must be at least 8 characters".into(),
+        ));
     }
-    if user::find_by_email(&state.pool, &body.email).await?.is_some() {
+    if user::find_by_email(&state.pool, &body.email)
+        .await?
+        .is_some()
+    {
         return Err(AppError::Conflict("email already registered".into()));
     }
 

@@ -4,7 +4,10 @@ use http_body_util::BodyExt;
 use tower::ServiceExt;
 
 fn dev_state(pool: sqlx::PgPool) -> fubbik_api::AppState {
-    fubbik_api::AppState { pool, implicit_dev_session: true }
+    fubbik_api::AppState {
+        pool,
+        implicit_dev_session: true,
+    }
 }
 
 async fn seed_dev_user(pool: &sqlx::PgPool) {
@@ -36,7 +39,11 @@ async fn create_then_fetch_chunk(pool: sqlx::PgPool) {
     assert_eq!(created["type"], "note", "type must default to note");
 
     let res = app
-        .oneshot(Request::get(format!("/api/chunks/{id}")).body(Body::empty()).unwrap())
+        .oneshot(
+            Request::get(format!("/api/chunks/{id}"))
+                .body(Body::empty())
+                .unwrap(),
+        )
         .await
         .unwrap();
     assert_eq!(res.status(), StatusCode::OK);
@@ -48,7 +55,11 @@ async fn missing_chunk_is_404(pool: sqlx::PgPool) {
     let app = fubbik_api::router(dev_state(pool));
 
     let res = app
-        .oneshot(Request::get("/api/chunks/nonexistent").body(Body::empty()).unwrap())
+        .oneshot(
+            Request::get("/api/chunks/nonexistent")
+                .body(Body::empty())
+                .unwrap(),
+        )
         .await
         .unwrap();
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
@@ -56,7 +67,10 @@ async fn missing_chunk_is_404(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn unauthenticated_request_is_401(pool: sqlx::PgPool) {
-    let app = fubbik_api::router(fubbik_api::AppState { pool, implicit_dev_session: false });
+    let app = fubbik_api::router(fubbik_api::AppState {
+        pool,
+        implicit_dev_session: false,
+    });
 
     let res = app
         .oneshot(Request::get("/api/chunks").body(Body::empty()).unwrap())
@@ -124,5 +138,8 @@ async fn update_records_history(pool: sqlx::PgPool) {
     let body = res.into_body().collect().await.unwrap().to_bytes();
     let history: serde_json::Value = serde_json::from_slice(&body).unwrap();
     assert_eq!(history.as_array().unwrap().len(), 1);
-    assert_eq!(history[0]["title"], "V1", "history stores the pre-edit title");
+    assert_eq!(
+        history[0]["title"], "V1",
+        "history stores the pre-edit title"
+    );
 }

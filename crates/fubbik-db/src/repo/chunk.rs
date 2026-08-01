@@ -40,7 +40,6 @@ pub struct ChunkPatch {
     pub consequences: Option<String>,
 }
 
-
 pub async fn create(pool: &PgPool, user_id: &str, new: NewChunk) -> AppResult<Chunk> {
     let id = crate::new_id();
     let c = sqlx::query_as!(
@@ -79,7 +78,12 @@ pub async fn find_by_id(pool: &PgPool, user_id: &str, id: &str) -> AppResult<Opt
 
 /// Applies only the fields present in the patch. COALESCE keeps unset
 /// columns untouched, so a partial PATCH cannot silently clear data.
-pub async fn update(pool: &PgPool, user_id: &str, id: &str, patch: ChunkPatch) -> AppResult<Option<Chunk>> {
+pub async fn update(
+    pool: &PgPool,
+    user_id: &str,
+    id: &str,
+    patch: ChunkPatch,
+) -> AppResult<Option<Chunk>> {
     let c = sqlx::query_as!(
         Chunk,
         r#"UPDATE chunk SET
@@ -107,9 +111,13 @@ pub async fn update(pool: &PgPool, user_id: &str, id: &str, patch: ChunkPatch) -
 }
 
 pub async fn delete(pool: &PgPool, user_id: &str, id: &str) -> AppResult<bool> {
-    let res = sqlx::query!("DELETE FROM chunk WHERE id = $1 AND user_id = $2", id, user_id)
-        .execute(pool)
-        .await?;
+    let res = sqlx::query!(
+        "DELETE FROM chunk WHERE id = $1 AND user_id = $2",
+        id,
+        user_id
+    )
+    .execute(pool)
+    .await?;
     Ok(res.rows_affected() > 0)
 }
 
@@ -173,7 +181,12 @@ pub async fn list(pool: &PgPool, user_id: &str, params: ListParams) -> AppResult
     if let Some(s) = &params.search {
         // ILIKE with escaped wildcards: a user searching for "100%" must not
         // match everything.
-        let pattern = format!("%{}%", s.replace('\\', r"\\").replace('%', r"\%").replace('_', r"\_"));
+        let pattern = format!(
+            "%{}%",
+            s.replace('\\', r"\\")
+                .replace('%', r"\%")
+                .replace('_', r"\_")
+        );
         qb.push(" AND (title ILIKE ").push_bind(pattern.clone());
         qb.push(" OR content ILIKE ").push_bind(pattern);
         qb.push(")");

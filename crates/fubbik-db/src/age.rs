@@ -180,7 +180,8 @@ mod tests {
 
     #[test]
     fn preserves_property_values_containing_double_colons() {
-        let raw = r#"{"id": 1407374883553281, "label": "probe", "properties": {"code": "a::b"}}::vertex"#;
+        let raw =
+            r#"{"id": 1407374883553281, "label": "probe", "properties": {"code": "a::b"}}::vertex"#;
         let v = parse_agtype(raw).unwrap();
         assert_eq!(v["properties"]["code"], "a::b");
     }

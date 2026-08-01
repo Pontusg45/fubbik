@@ -7,6 +7,9 @@ fn help_lists_serve_and_mcp() {
         .output()
         .expect("binary runs");
     let stdout = String::from_utf8_lossy(&out.stdout);
-    assert!(stdout.contains("serve"), "missing serve subcommand:\n{stdout}");
+    assert!(
+        stdout.contains("serve"),
+        "missing serve subcommand:\n{stdout}"
+    );
     assert!(stdout.contains("mcp"), "missing mcp subcommand:\n{stdout}");
 }

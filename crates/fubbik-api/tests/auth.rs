@@ -6,11 +6,17 @@ use http_body_util::BodyExt;
 use tower::ServiceExt;
 
 fn state(pool: sqlx::PgPool) -> fubbik_api::AppState {
-    fubbik_api::AppState { pool, implicit_dev_session: false }
+    fubbik_api::AppState {
+        pool,
+        implicit_dev_session: false,
+    }
 }
 
 fn state_dev(pool: sqlx::PgPool) -> fubbik_api::AppState {
-    fubbik_api::AppState { pool, implicit_dev_session: true }
+    fubbik_api::AppState {
+        pool,
+        implicit_dev_session: true,
+    }
 }
 
 /// Extracts just the `name=value` pair from a response's `set-cookie`
@@ -98,9 +104,7 @@ async fn wrong_password_is_unauthorized(pool: sqlx::PgPool) {
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn duplicate_signup_is_conflict(pool: sqlx::PgPool) {
     let app = fubbik_api::router(state(pool));
-    let body = || {
-        Body::from(r#"{"email":"dup@b.test","password":"hunter22","name":"Dup"}"#)
-    };
+    let body = || Body::from(r#"{"email":"dup@b.test","password":"hunter22","name":"Dup"}"#);
 
     let first = app
         .clone()
@@ -134,9 +138,7 @@ async fn duplicate_signup_is_conflict(pool: sqlx::PgPool) {
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn concurrent_duplicate_signup_yields_conflict_not_500(pool: sqlx::PgPool) {
     let app = fubbik_api::router(state(pool));
-    let body = || {
-        Body::from(r#"{"email":"race@b.test","password":"hunter22","name":"Racer"}"#)
-    };
+    let body = || Body::from(r#"{"email":"race@b.test","password":"hunter22","name":"Racer"}"#);
 
     let app1 = app.clone();
     let app2 = app.clone();
@@ -293,7 +295,9 @@ async fn signed_out_session_cookie_is_not_replayable(pool: sqlx::PgPool) {
         .oneshot(
             Request::post("/api/auth/sign-in/email")
                 .header("content-type", "application/json")
-                .body(Body::from(r#"{"email":"logout@b.test","password":"hunter22"}"#))
+                .body(Body::from(
+                    r#"{"email":"logout@b.test","password":"hunter22"}"#,
+                ))
                 .unwrap(),
         )
         .await

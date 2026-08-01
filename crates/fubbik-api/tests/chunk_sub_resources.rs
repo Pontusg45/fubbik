@@ -13,7 +13,10 @@ use http_body_util::BodyExt;
 use tower::ServiceExt;
 
 fn state(pool: sqlx::PgPool) -> fubbik_api::AppState {
-    fubbik_api::AppState { pool, implicit_dev_session: false }
+    fubbik_api::AppState {
+        pool,
+        implicit_dev_session: false,
+    }
 }
 
 /// Signs up a fresh user and returns the `name=value` session cookie pair
@@ -63,7 +66,12 @@ async fn create_chunk(app: axum::Router, cookie: &str, title: &str) -> String {
         .to_string()
 }
 
-async fn put_applies_to(app: axum::Router, cookie: &str, id: &str, patterns: &[&str]) -> axum::response::Response {
+async fn put_applies_to(
+    app: axum::Router,
+    cookie: &str,
+    id: &str,
+    patterns: &[&str],
+) -> axum::response::Response {
     let body = serde_json::json!({ "patterns": patterns }).to_string();
     app.oneshot(
         Request::put(format!("/api/chunks/{id}/applies-to"))
@@ -87,7 +95,12 @@ async fn get_applies_to(app: axum::Router, cookie: &str, id: &str) -> axum::resp
     .unwrap()
 }
 
-async fn put_file_refs(app: axum::Router, cookie: &str, id: &str, paths: &[&str]) -> axum::response::Response {
+async fn put_file_refs(
+    app: axum::Router,
+    cookie: &str,
+    id: &str,
+    paths: &[&str],
+) -> axum::response::Response {
     let body = serde_json::json!({ "paths": paths }).to_string();
     app.oneshot(
         Request::put(format!("/api/chunks/{id}/file-refs"))
@@ -159,7 +172,11 @@ async fn cross_user_put_applies_to_is_404_and_leaves_patterns_unchanged(pool: sq
         .iter()
         .map(|p| p["pattern"].as_str().unwrap())
         .collect();
-    assert_eq!(patterns, vec!["src/**/*.ts"], "Alice's patterns must survive Bob's rejected PUT");
+    assert_eq!(
+        patterns,
+        vec!["src/**/*.ts"],
+        "Alice's patterns must survive Bob's rejected PUT"
+    );
 }
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
@@ -205,5 +222,9 @@ async fn cross_user_put_file_refs_is_404_and_leaves_refs_unchanged(pool: sqlx::P
         .iter()
         .map(|p| p["path"].as_str().unwrap())
         .collect();
-    assert_eq!(paths, vec!["src/index.ts"], "Alice's file refs must survive Bob's rejected PUT");
+    assert_eq!(
+        paths,
+        vec!["src/index.ts"],
+        "Alice's file refs must survive Bob's rejected PUT"
+    );
 }

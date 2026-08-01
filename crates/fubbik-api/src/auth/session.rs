@@ -14,7 +14,10 @@ pub struct CurrentUser(pub user::User);
 impl FromRequestParts<AppState> for CurrentUser {
     type Rejection = AppError;
 
-    async fn from_request_parts(parts: &mut Parts, state: &AppState) -> Result<Self, Self::Rejection> {
+    async fn from_request_parts(
+        parts: &mut Parts,
+        state: &AppState,
+    ) -> Result<Self, Self::Rejection> {
         let jar = CookieJar::from_headers(&parts.headers);
 
         if let Some(cookie) = jar.get(COOKIE_NAME)

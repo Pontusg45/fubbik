@@ -33,7 +33,9 @@ async fn cypher_round_trips_a_real_vertex(pool: sqlx::PgPool) {
         "property values containing :: must survive suffix stripping"
     );
 
-    let matched = age::cypher(&pool, "MATCH (n:chunk) RETURN n").await.unwrap();
+    let matched = age::cypher(&pool, "MATCH (n:chunk) RETURN n")
+        .await
+        .unwrap();
     assert_eq!(matched.len(), 1);
 }
 

@@ -16,5 +16,10 @@ async fn session_round_trips_and_expires(pool: sqlx::PgPool) {
     let expired = session::create(&pool, &u.id, chrono::Duration::seconds(-1))
         .await
         .unwrap();
-    assert!(session::find_valid(&pool, &expired).await.unwrap().is_none());
+    assert!(
+        session::find_valid(&pool, &expired)
+            .await
+            .unwrap()
+            .is_none()
+    );
 }
