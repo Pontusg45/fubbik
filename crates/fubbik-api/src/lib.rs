@@ -1,4 +1,5 @@
 pub mod auth;
+pub mod chunks;
 
 use axum::Router;
 use sqlx::PgPool;
@@ -12,5 +13,6 @@ pub struct AppState {
 pub fn router(state: AppState) -> Router {
     Router::new()
         .merge(auth::routes::router())
+        .merge(chunks::routes::router())
         .with_state(state)
 }
