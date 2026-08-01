@@ -113,7 +113,7 @@ pub async fn delete(pool: &PgPool, user_id: &str, id: &str) -> AppResult<bool> {
     Ok(res.rows_affected() > 0)
 }
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, serde::Deserialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, serde::Deserialize, utoipa::ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum Sort {
     #[default]

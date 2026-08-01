@@ -30,10 +30,6 @@ pub struct ListChunksQuery {
     pub search: Option<String>,
     pub origin: Option<String>,
     pub review_status: Option<String>,
-    /// `Sort` doesn't derive `utoipa::ToSchema` (it lives in fubbik-db and is
-    /// out of scope for this task), so the OpenAPI schema is overridden to
-    /// `String` here rather than reaching into that crate.
-    #[param(value_type = Option<String>)]
     pub sort: Option<Sort>,
     pub limit: Option<String>,
     pub offset: Option<String>,
