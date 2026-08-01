@@ -402,12 +402,16 @@ pub async fn connect(database_url: &str) -> Result<PgPool, sqlx::Error> {
                 // AGE is optional. A database without it must still serve
                 // every non-graph endpoint, so failures here are logged
                 // and swallowed rather than failing the connection.
+                //
+                // Deliberately does NOT set search_path here. Doing so
+                // globally puts ag_catalog ahead of public on every pooled
+                // connection, which breaks `sqlx::migrate!`'s resolution of
+                // its own bookkeeping table once AGE has been installed —
+                // the server then fails on restart. `age::cypher()` primes
+                // LOAD + search_path on its own connection per query instead.
                 if let Err(e) = conn.execute("LOAD 'age';").await {
                     tracing::debug!("AGE not available: {e}");
-                    return Ok(());
                 }
-                conn.execute(r#"SET search_path = ag_catalog, "$user", public;"#)
-                    .await?;
                 Ok(())
             })
         })
@@ -3088,6 +3092,10 @@ Replace the `Serve` arm in `crates/fubbik/src/main.rs`:
             let pool = fubbik_db::connect(&database_url).await?;
             let state = fubbik_api::AppState { pool, implicit_dev_session };
 
+            // `Any` for methods/headers PANICS at runtime when combined with
+            // allow_credentials(true) — tower-http rejects the wildcard-plus-
+            // credentials combination the CORS spec forbids. Mirror the
+            // request instead, which is the credentialed-CORS equivalent.
             let cors = tower_http::cors::CorsLayer::new()
                 .allow_origin(
                     std::env::var("CORS_ORIGIN")
@@ -3095,8 +3103,8 @@ Replace the `Serve` arm in `crates/fubbik/src/main.rs`:
                         .parse::<axum::http::HeaderValue>()?,
                 )
                 .allow_credentials(true)
-                .allow_methods(tower_http::cors::Any)
-                .allow_headers(tower_http::cors::Any);
+                .allow_methods(tower_http::cors::AllowMethods::mirror_request())
+                .allow_headers(tower_http::cors::AllowHeaders::mirror_request());
 
             let app = fubbik_api::router(state).layer(cors);
             let listener = tokio::net::TcpListener::bind(("0.0.0.0", port)).await?;
