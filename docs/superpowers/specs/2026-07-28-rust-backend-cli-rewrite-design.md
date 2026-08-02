@@ -335,6 +335,62 @@ unchanged from the TypeScript original (`packages/db/src/age/client.ts`), not
 newly introduced here, and is called out as a `# Safety` doc comment on
 `cypher()` rather than re-architected in this fix.
 
+## Phase 1 outcome and carry-forward
+
+Phase 1 shipped: cargo workspace (5 crates), auth (argon2id + server-side sessions), the
+chunks domain (CRUD, listing, version history, applies-to, file-refs), OpenAPI generation
+with a staleness guard, `fubbik serve`, five CLI commands, and a differential harness.
+75 tests, clippy clean at `-D warnings`, fmt clean.
+
+**The AGE spike paid for itself.** Front-loading it disproved the plan's `::text` cast
+(`agtype_value_to_text` rejects vertex/edge/path) and the `agtype_out` fallback (returns
+pseudo-type `cstring`). `::varchar` is the working extraction. It also exposed that nested
+composites — a path containing vertices and edges — need every `::identifier` stripped
+outside string literals, not just a trailing one.
+
+**Phase 1's plan defects, all found by spike or review, none shipped:** the `::text` cast;
+a `DO` block whose exception handler silently rolled back `CREATE EXTENSION age`; reference
+data absent from a `--schema-only` dump (three FK-target catalogs); `#[sqlx::test]` needing
+an explicit `migrations` path in `fubbik-api`; a CI workflow whose database was never
+provisioned; `CorsLayer` `Any` + credentials panicking at construction; a global
+`search_path` that broke `sqlx::migrate!`'s bookkeeping and failed every server restart;
+and a docstring claiming race-freedom the code did not have.
+
+### Must be resolved in Phase 2
+
+1. **The four live parity gaps** the differential harness found against the Node stack:
+   response envelope (`{chunks,total,limit,offset}` vs bare array), 11 missing `Chunk`
+   fields, timestamps serialised without a timezone (JS parses those as local time — a
+   silent correctness bug), and a differing implicit-dev-session email.
+2. **The web migration**, deferred out of Phase 1: the web app calls 27 API domains and
+   Phase 1 implements one. The Proxy API client is parked, proven at runtime, at
+   `apps/web/src/utils/api-proxy.future.ts`. Its blocker is call-site typing under
+   `noUncheckedIndexedAccess`, not the client's own type — the implementation itself is
+   clean under the strict config.
+3. **What the embedded SPA actually is.** `assets.rs` embeds `apps/web/dist/` and falls
+   back to `dist/index.html`, but TanStack Start's SSR build emits `dist/client/` (no
+   `index.html`) and `dist/server/`. The mechanism is sound and tested; it points at an
+   artifact that is never produced. Either switch the web build to SPA/prerender mode and
+   repoint the folder, or drop `assets.rs` until it is needed.
+4. **CLI authentication.** The CLI never signs in, so it only works against a server run
+   with `FUBBIK_IMPLICIT_DEV_SESSION=true`. Node enables its equivalent whenever
+   `NODE_ENV !== "production"`, so this is a narrowing.
+5. **`scripts/differential.sh`'s seeding step** collides with migration 0002's reference
+   rows. Working recipe: fresh database, migrate, then
+   `pg_dump --data-only --column-inserts --on-conflict-do-nothing` excluding `account`
+   and `verification`.
+
+### Worth doing before the codebase grows
+
+- `update` applies no title validation while `create` rejects blank and over-long titles.
+  Asymmetric validation on one field is a pattern 26 more domains would copy.
+- `tests/pool.rs` never calls `fubbik_db::connect()`, so the `after_connect` hook is
+  untested — and that hook is exactly where the restart-breaking defect lived.
+- `fubbik-core` depends on `axum` and `sqlx`, so it is an HTTP-error crate rather than a
+  domain core. Rename or split before Phase 2 grows it.
+- Retry-on-conflict for concurrent same-chunk version snapshots (currently a loud 409).
+- No cleanup of expired session rows.
+
 ## Explicitly rejected
 
 - **Strangler-fig proxy migration** — requires a throwaway dual-auth bridge for no benefit given local-only data.
