@@ -29,6 +29,12 @@ enum Commands {
     Cli(fubbik_cli::Command),
 }
 
+/// The only `NODE_ENV` values Node itself accepts: `packages/env/src/server.ts`
+/// validates it through an arktype-checked `@t3-oss/env-core` schema whose
+/// default `onValidationError` throws, crashing the Node process at boot on
+/// anything else (wrong case, stray whitespace, `"prod"`, ...).
+const VALID_NODE_ENVS: [&str; 3] = ["development", "production", "test"];
+
 /// Resolves whether relaxed (implicit-dev-session) HTTP auth applies: any
 /// request — including one with a garbage or missing session cookie — is
 /// served as the dev user rather than rejected with 401.
@@ -46,8 +52,30 @@ enum Commands {
 /// production just because this binary looked at a different name. Do not
 /// rename this to `FUBBIK_ENV` or similar without also updating every
 /// deployment config that currently sets `NODE_ENV=production`.
-fn resolve_implicit_dev_session(node_env: Option<&str>, explicit_flag: bool) -> bool {
-    explicit_flag || node_env != Some("production")
+///
+/// Unlike `fubbik_db::warn_if_not_icu_collation`, which only warns — a wrong
+/// sort order must never take the server down — a malformed `NODE_ENV` fails
+/// closed here (`Err`, refuse to start) rather than falling back to
+/// "relaxed": Node crashes at boot on the same malformed input, and a typo
+/// that silently disables authentication is a security defect, not a
+/// cosmetic one. An *unset* `NODE_ENV` is not malformed — it is Node's own
+/// signal for "no environment configured", and local dev depends on it
+/// staying relaxed.
+fn resolve_implicit_dev_session(
+    node_env: Option<&str>,
+    explicit_flag: bool,
+) -> Result<bool, String> {
+    let is_production = match node_env {
+        None => false,
+        Some(value) if VALID_NODE_ENVS.contains(&value) => value == "production",
+        Some(value) => {
+            return Err(format!(
+                "NODE_ENV={value:?} is not a recognized value; expected one of \
+                 {VALID_NODE_ENVS:?}, or unset"
+            ));
+        }
+    };
+    Ok(explicit_flag || !is_production)
 }
 
 #[tokio::main]
@@ -64,7 +92,8 @@ async fn main() -> anyhow::Result<()> {
             let explicit_flag =
                 std::env::var("FUBBIK_IMPLICIT_DEV_SESSION").as_deref() == Ok("true");
             let implicit_dev_session =
-                resolve_implicit_dev_session(node_env.as_deref(), explicit_flag);
+                resolve_implicit_dev_session(node_env.as_deref(), explicit_flag)
+                    .map_err(|e| anyhow::anyhow!(e))?;
             if implicit_dev_session {
                 let reason = if explicit_flag {
                     "FUBBIK_IMPLICIT_DEV_SESSION=true is set"
@@ -140,21 +169,63 @@ mod tests {
 
     #[test]
     fn unset_environment_is_relaxed() {
-        assert!(resolve_implicit_dev_session(None, false));
+        assert_eq!(resolve_implicit_dev_session(None, false), Ok(true));
     }
 
     #[test]
     fn production_is_not_relaxed() {
-        assert!(!resolve_implicit_dev_session(Some("production"), false));
+        assert_eq!(
+            resolve_implicit_dev_session(Some("production"), false),
+            Ok(false)
+        );
     }
 
     #[test]
     fn explicit_flag_wins_even_under_production() {
-        assert!(resolve_implicit_dev_session(Some("production"), true));
+        assert_eq!(
+            resolve_implicit_dev_session(Some("production"), true),
+            Ok(true)
+        );
     }
 
     #[test]
     fn development_is_relaxed() {
-        assert!(resolve_implicit_dev_session(Some("development"), false));
+        assert_eq!(
+            resolve_implicit_dev_session(Some("development"), false),
+            Ok(true)
+        );
+    }
+
+    #[test]
+    fn test_env_is_relaxed() {
+        assert_eq!(resolve_implicit_dev_session(Some("test"), false), Ok(true));
+    }
+
+    #[test]
+    fn wrong_case_is_rejected() {
+        assert!(resolve_implicit_dev_session(Some("Production"), false).is_err());
+    }
+
+    #[test]
+    fn abbreviated_value_is_rejected() {
+        assert!(resolve_implicit_dev_session(Some("prod"), false).is_err());
+    }
+
+    #[test]
+    fn whitespace_is_rejected() {
+        assert!(resolve_implicit_dev_session(Some(" production"), false).is_err());
+    }
+
+    #[test]
+    fn empty_string_is_rejected() {
+        assert!(resolve_implicit_dev_session(Some(""), false).is_err());
+    }
+
+    #[test]
+    fn rejection_still_happens_even_with_the_explicit_flag_set() {
+        // Node validates NODE_ENV unconditionally at import time, before any
+        // flag logic runs, so a malformed value must fail closed regardless
+        // of FUBBIK_IMPLICIT_DEV_SESSION.
+        assert!(resolve_implicit_dev_session(Some("Production"), true).is_err());
     }
 }
