@@ -4,7 +4,7 @@ pub mod repo;
 pub mod timestamp;
 
 use sqlx::postgres::{PgConnectOptions, PgPoolOptions};
-use sqlx::{Executor, PgPool};
+use sqlx::{Executor, PgPool, Row};
 use std::str::FromStr;
 
 /// Connects, installs the AGE per-connection setup, and runs migrations.
@@ -43,6 +43,58 @@ pub async fn connect(database_url: &str) -> Result<PgPool, sqlx::Error> {
 
     sqlx::migrate!("./migrations").run(&pool).await?;
     Ok(pool)
+}
+
+/// Checks the connected database's locale provider and, if it is not ICU
+/// (`i`), emits a loud `tracing::warn!` naming the mismatch and the fix.
+///
+/// The reference implementation (the Node backend, on Homebrew Postgres)
+/// runs on ICU, which ignores punctuation at the primary comparison level.
+/// A database created with the libc provider instead compares raw bytes, so
+/// e.g. `"Catalog tables:"` and `"Catalog-driven"` sort in opposite order
+/// between the two — silently, with no error, on every `ORDER BY` over
+/// text. This check does not fail startup: a wrong sort order must not take
+/// the server down, but it must be impossible to miss in the logs.
+///
+/// Query failures (e.g. insufficient privilege on `pg_database`, though the
+/// default `postgres` role can always read it) are logged at `debug` and
+/// otherwise ignored — this is a diagnostic, not a required capability.
+pub async fn warn_if_not_icu_collation(pool: &PgPool) {
+    let row = match sqlx::query(
+        "SELECT datlocprovider::text AS provider, datcollate, datlocale \
+         FROM pg_database WHERE datname = current_database()",
+    )
+    .fetch_optional(pool)
+    .await
+    {
+        Ok(Some(row)) => row,
+        Ok(None) => return,
+        Err(e) => {
+            tracing::debug!("collation provider check failed: {e}");
+            return;
+        }
+    };
+
+    let provider: String = row.try_get("provider").unwrap_or_default();
+    if provider != "i" {
+        let collate: String = row.try_get("datcollate").unwrap_or_default();
+        let locale: Option<String> = row.try_get("datlocale").unwrap_or(None);
+        tracing::warn!(
+            provider = %provider,
+            collate = %collate,
+            locale = ?locale,
+            "DATABASE COLLATION MISMATCH: this database's locale provider is '{provider}' \
+             (collate '{collate}', locale {locale:?}), not ICU ('i'). Text ordering (e.g. \
+             `ORDER BY title`) will differ from the reference Node backend, which runs on \
+             ICU — ICU ignores punctuation at the primary comparison level, while the libc \
+             provider compares raw bytes, so \"Catalog tables:\" and \"Catalog-driven\" sort \
+             in opposite order between the two. Fix: recreate this database with the ICU \
+             locale provider, e.g. `CREATE DATABASE ... LOCALE_PROVIDER icu ICU_LOCALE \
+             'en-US' TEMPLATE template0`, or set `POSTGRES_INITDB_ARGS=\"--locale-provider=icu \
+             --icu-locale=en-US\"` before the Postgres cluster is first initialized. See \
+             README.md's Database Setup section."
+        );
+    }
 }
 
 /// Generates a 24-character lowercase alphanumeric ID, matching the format

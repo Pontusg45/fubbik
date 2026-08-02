@@ -43,6 +43,7 @@ async fn main() -> anyhow::Result<()> {
                 std::env::var("FUBBIK_IMPLICIT_DEV_SESSION").as_deref() == Ok("true");
 
             let pool = fubbik_db::connect(&database_url).await?;
+            fubbik_db::warn_if_not_icu_collation(&pool).await;
             let state = fubbik_api::AppState {
                 pool,
                 implicit_dev_session,
