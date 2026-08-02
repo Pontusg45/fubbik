@@ -1,6 +1,7 @@
-use chrono::NaiveDateTime;
 use fubbik_core::error::AppResult;
 use sqlx::PgPool;
+
+use crate::timestamp::UtcTimestamp;
 
 /// `camelCase` serialisation is mandatory, not cosmetic: the 106 web files
 /// that consume this API were written against Drizzle's camelCase output.
@@ -19,9 +20,12 @@ pub struct Chunk {
     pub consequences: Option<String>,
     pub origin: String,
     pub review_status: String,
-    pub created_at: NaiveDateTime,
-    pub updated_at: NaiveDateTime,
-    pub archived_at: Option<NaiveDateTime>,
+    #[schema(value_type = chrono::NaiveDateTime)]
+    pub created_at: UtcTimestamp,
+    #[schema(value_type = chrono::NaiveDateTime)]
+    pub updated_at: UtcTimestamp,
+    #[schema(value_type = Option<chrono::NaiveDateTime>)]
+    pub archived_at: Option<UtcTimestamp>,
 }
 
 pub struct NewChunk {
@@ -48,7 +52,9 @@ pub async fn create(pool: &PgPool, user_id: &str, new: NewChunk) -> AppResult<Ch
            VALUES ($1, $2, $3, $4, $5, $6)
            RETURNING id, title, content, type AS chunk_type, user_id, summary,
                      rationale, consequences, origin, review_status,
-                     created_at, updated_at, archived_at"#,
+                     created_at AS "created_at: UtcTimestamp",
+                     updated_at AS "updated_at: UtcTimestamp",
+                     archived_at AS "archived_at: UtcTimestamp""#,
         id,
         new.title,
         new.content,
@@ -66,7 +72,9 @@ pub async fn find_by_id(pool: &PgPool, user_id: &str, id: &str) -> AppResult<Opt
         Chunk,
         r#"SELECT id, title, content, type AS chunk_type, user_id, summary,
                   rationale, consequences, origin, review_status,
-                  created_at, updated_at, archived_at
+                  created_at AS "created_at: UtcTimestamp",
+                  updated_at AS "updated_at: UtcTimestamp",
+                  archived_at AS "archived_at: UtcTimestamp"
            FROM chunk WHERE id = $1 AND user_id = $2"#,
         id,
         user_id
@@ -96,7 +104,9 @@ pub async fn update(
            WHERE id = $1 AND user_id = $2
            RETURNING id, title, content, type AS chunk_type, user_id, summary,
                      rationale, consequences, origin, review_status,
-                     created_at, updated_at, archived_at"#,
+                     created_at AS "created_at: UtcTimestamp",
+                     updated_at AS "updated_at: UtcTimestamp",
+                     archived_at AS "archived_at: UtcTimestamp""#,
         id,
         user_id,
         patch.title,

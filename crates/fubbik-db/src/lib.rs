@@ -1,5 +1,6 @@
 pub mod age;
 pub mod repo;
+pub mod timestamp;
 
 use sqlx::postgres::{PgConnectOptions, PgPoolOptions};
 use sqlx::{Executor, PgPool};

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "UPDATE chunk SET\n             title = COALESCE($3, title),\n             content = COALESCE($4, content),\n             type = COALESCE($5, type),\n             rationale = COALESCE($6, rationale),\n             consequences = COALESCE($7, consequences),\n             updated_at = now()\n           WHERE id = $1 AND user_id = $2\n           RETURNING id, title, content, type AS chunk_type, user_id, summary,\n                     rationale, consequences, origin, review_status,\n                     created_at, updated_at, archived_at",
+  "query": "UPDATE chunk SET\n             title = COALESCE($3, title),\n             content = COALESCE($4, content),\n             type = COALESCE($5, type),\n             rationale = COALESCE($6, rationale),\n             consequences = COALESCE($7, consequences),\n             updated_at = now()\n           WHERE id = $1 AND user_id = $2\n           RETURNING id, title, content, type AS chunk_type, user_id, summary,\n                     rationale, consequences, origin, review_status,\n                     created_at AS \"created_at: UtcTimestamp\",\n                     updated_at AS \"updated_at: UtcTimestamp\",\n                     archived_at AS \"archived_at: UtcTimestamp\"",
   "describe": {
     "columns": [
       {
@@ -55,17 +55,17 @@
       },
       {
         "ordinal": 10,
-        "name": "created_at",
+        "name": "created_at: UtcTimestamp",
         "type_info": "Timestamp"
       },
       {
         "ordinal": 11,
-        "name": "updated_at",
+        "name": "updated_at: UtcTimestamp",
         "type_info": "Timestamp"
       },
       {
         "ordinal": 12,
-        "name": "archived_at",
+        "name": "archived_at: UtcTimestamp",
         "type_info": "Timestamp"
       }
     ],
@@ -96,5 +96,5 @@
       true
     ]
   },
-  "hash": "55f27003f78164a30a1bc0378434ee1fa42cee2a2f3fd10ab0ba99740ee8ba34"
+  "hash": "b8803c997599599c929d820d7a32b0018551b15e8c77e95da253a7834fbf6830"
 }

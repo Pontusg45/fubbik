@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "INSERT INTO chunk (id, title, content, type, user_id, rationale)\n           VALUES ($1, $2, $3, $4, $5, $6)\n           RETURNING id, title, content, type AS chunk_type, user_id, summary,\n                     rationale, consequences, origin, review_status,\n                     created_at, updated_at, archived_at",
+  "query": "INSERT INTO chunk (id, title, content, type, user_id, rationale)\n           VALUES ($1, $2, $3, $4, $5, $6)\n           RETURNING id, title, content, type AS chunk_type, user_id, summary,\n                     rationale, consequences, origin, review_status,\n                     created_at AS \"created_at: UtcTimestamp\",\n                     updated_at AS \"updated_at: UtcTimestamp\",\n                     archived_at AS \"archived_at: UtcTimestamp\"",
   "describe": {
     "columns": [
       {
@@ -55,17 +55,17 @@
       },
       {
         "ordinal": 10,
-        "name": "created_at",
+        "name": "created_at: UtcTimestamp",
         "type_info": "Timestamp"
       },
       {
         "ordinal": 11,
-        "name": "updated_at",
+        "name": "updated_at: UtcTimestamp",
         "type_info": "Timestamp"
       },
       {
         "ordinal": 12,
-        "name": "archived_at",
+        "name": "archived_at: UtcTimestamp",
         "type_info": "Timestamp"
       }
     ],
@@ -95,5 +95,5 @@
       true
     ]
   },
-  "hash": "27df0fde9f1b6e9f074dde27bfdfcc288863177c138f980897e6eea909ace227"
+  "hash": "bd415779bd6ecb63678b51efc125dd991effaeb12c39c2748a27c51af75a477a"
 }
