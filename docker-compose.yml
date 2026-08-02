@@ -71,6 +71,11 @@ services:
             POSTGRES_DB: ${POSTGRES_DB:-fubbik}
             POSTGRES_USER: ${POSTGRES_USER:-postgres}
             POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+            # ICU locale provider so ORDER BY title matches the reference
+            # (Homebrew Postgres, which defaults to ICU) instead of libc byte
+            # ordering. Only takes effect on first init of an empty data dir —
+            # see README "Database collation" for recreating an existing one.
+            POSTGRES_INITDB_ARGS: "--locale-provider=icu --icu-locale=en-US"
         # Uncomment to expose Postgres to host for debugging
         # ports:
         #   - "5432:5432"
