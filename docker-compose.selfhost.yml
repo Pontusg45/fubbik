@@ -26,6 +26,10 @@ services:
             POSTGRES_DB: fubbik
             POSTGRES_USER: fubbik
             POSTGRES_PASSWORD: fubbik
+            # ICU locale provider so ORDER BY title matches the reference
+            # ordering instead of libc byte ordering. Only takes effect on
+            # first init of an empty data dir.
+            POSTGRES_INITDB_ARGS: "--locale-provider=icu --icu-locale=en-US"
         entrypoint:
             - sh
             - -c
