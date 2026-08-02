@@ -440,9 +440,20 @@ ordering matches the reference without touching query text. Concretely:
    `index.html`) and `dist/server/`. The mechanism is sound and tested; it points at an
    artifact that is never produced. Either switch the web build to SPA/prerender mode and
    repoint the folder, or drop `assets.rs` until it is needed.
-4. **CLI authentication.** The CLI never signs in, so it only works against a server run
-   with `FUBBIK_IMPLICIT_DEV_SESSION=true`. Node enables its equivalent whenever
-   `NODE_ENV !== "production"`, so this is a narrowing.
+4. **CLI authentication — RESOLVED.** This was raised because the CLI never signs in, so
+   it only worked against a server run with `FUBBIK_IMPLICIT_DEV_SESSION=true` set by
+   hand, whereas Node enables its equivalent whenever `NODE_ENV !== "production"` — a
+   narrowing versus the reference behavior. Fixed by making
+   `fubbik serve` resolve relaxed auth the same way Node's
+   `packages/auth/src/index.ts` does: relaxed unless `NODE_ENV=production`, with
+   `FUBBIK_IMPLICIT_DEV_SESSION=true` still winning even under production (see
+   `resolve_implicit_dev_session` in `crates/fubbik/src/main.rs`). A server started with
+   no environment variables set now serves the CLI out of the box, matching local Node
+   dev exactly. Because relaxed auth means any request — including one with a garbage
+   session cookie — is served as the dev user, `fubbik serve` now emits a prominent
+   `tracing::warn!` at startup whenever it is active, naming which condition triggered it
+   and how to turn it off, so it can never be silently true in a deployment believed to
+   be secured.
 5. **`scripts/differential.sh`'s seeding step** collides with migration 0002's reference
    rows. Working recipe: fresh database, migrate, then
    `pg_dump --data-only --column-inserts --on-conflict-do-nothing` excluding `account`
