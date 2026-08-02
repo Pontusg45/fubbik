@@ -8,7 +8,8 @@
         "dev": "vite dev",
         "check-types": "tsgo -b",
         "lint": "oxlint src",
-        "test": "vitest run --passWithNoTests"
+        "test": "vitest run --passWithNoTests",
+        "gen:api": "openapi-typescript ../../openapi.json -o src/utils/api-types.ts"
     },
     "dependencies": {
         "@base-ui/react": "^1.2.0",
@@ -63,6 +64,7 @@
         "@vitejs/plugin-react": "^5.0.4",
         "@vitest/ui": "catalog:",
         "jsdom": "catalog:",
+        "openapi-typescript": "^7.13.0",
         "typescript": "catalog:",
         "vite": "^7.0.2",
         "vitest": "catalog:"

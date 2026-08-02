@@ -1,0 +1,14 @@
+[package]
+name = "fubbik-core"
+edition.workspace = true
+version.workspace = true
+
+[dependencies]
+thiserror.workspace = true
+axum = { workspace = true }
+serde_json.workspace = true
+sqlx.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+tokio.workspace = true

@@ -1,0 +1,17 @@
+[package]
+name = "fubbik-db"
+edition.workspace = true
+version.workspace = true
+
+[dependencies]
+chrono = { version = "0.4", features = ["serde"] }
+rand = "0.8"
+serde.workspace = true
+serde_json.workspace = true
+sqlx.workspace = true
+tracing.workspace = true
+utoipa = { version = "5", features = ["axum_extras", "chrono"] }
+fubbik-core = { path = "../fubbik-core" }
+
+[dev-dependencies]
+tokio.workspace = true
