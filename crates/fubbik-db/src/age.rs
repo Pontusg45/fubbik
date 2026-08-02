@@ -1,4 +1,4 @@
-use sqlx::{Executor, PgPool, Row};
+use sqlx::{Acquire, Executor, PgPool, Row};
 
 /// Escapes a value for use inside a Cypher single-quoted literal.
 /// Backslashes must be escaped before quotes or the quote's escape
@@ -59,10 +59,26 @@ pub async fn cypher(pool: &PgPool, query: &str) -> Result<Vec<serde_json::Value>
     // regardless of how the pool was built.
     let mut conn = pool.acquire().await?;
     conn.execute("LOAD 'age';").await?;
-    conn.execute(r#"SET search_path = ag_catalog, "$user", public;"#)
+
+    // `SET search_path` (session-scoped) would persist on this connection
+    // after it is returned to the pool — sqlx runs no `DISCARD ALL` on
+    // release. That is exactly the mechanism that once broke
+    // `sqlx::migrate!`'s bookkeeping-table resolution (see the comment on
+    // `connect`'s `after_connect` hook in `lib.rs`), just one step removed:
+    // instead of every connection starting with the mutation, a single
+    // connection returns to the pool carrying it, and whichever caller
+    // acquires that connection next inherits it silently. `SET LOCAL`
+    // inside a transaction is scoped to that transaction only — it reverts
+    // automatically on COMMIT or ROLLBACK, including on the error path via
+    // `?`, so the connection can never leave this function with a mutated
+    // search_path.
+    let mut tx = conn.begin().await?;
+    sqlx::query(r#"SET LOCAL search_path = ag_catalog, "$user", public;"#)
+        .execute(&mut *tx)
         .await?;
 
-    let rows = sqlx::query(&sql).fetch_all(&mut *conn).await?;
+    let rows = sqlx::query(&sql).fetch_all(&mut *tx).await?;
+    tx.commit().await?;
 
     Ok(rows
         .into_iter()

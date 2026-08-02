@@ -1,4 +1,5 @@
 use fubbik_db::age;
+use sqlx::postgres::PgPoolOptions;
 
 #[test]
 fn esc_cypher_escapes_backslashes_before_quotes() {
@@ -113,4 +114,52 @@ async fn cypher_round_trips_a_real_path(pool: sqlx::PgPool) {
     assert_eq!(path[0]["label"], "probe_rev");
     assert_eq!(path[1]["label"], "REL_REV");
     assert_eq!(path[2]["label"], "probe_rev");
+}
+
+/// `cypher()` used to `SET search_path` (session-scoped) on a pooled
+/// connection and return it to the pool without resetting — the mutation
+/// then persisted for whoever acquired that connection next. Pins a pool
+/// to `max_connections(1)` so every acquisition in this test is guaranteed
+/// to be the exact same physical connection, then proves `SHOW
+/// search_path` is back to the un-mutated default immediately after a
+/// `cypher()` call returns.
+#[sqlx::test]
+async fn cypher_does_not_leak_search_path_onto_the_pooled_connection(pool: sqlx::PgPool) {
+    let opts = (*pool.connect_options()).clone();
+    let single = PgPoolOptions::new()
+        .max_connections(1)
+        .connect_with(opts)
+        .await
+        .expect("connect single-connection pool to the same test database");
+
+    if !age::is_available(&single).await {
+        eprintln!("AGE unavailable in this database — skipping search_path leak check");
+        return;
+    }
+
+    let baseline: String = sqlx::query_scalar("SHOW search_path")
+        .fetch_one(&single)
+        .await
+        .unwrap();
+    assert!(
+        !baseline.contains("ag_catalog"),
+        "test setup invariant: search_path must not already contain ag_catalog, got: {baseline}"
+    );
+
+    age::cypher(&single, "RETURN 1").await.unwrap();
+
+    // max_connections(1) guarantees this reuses the very connection
+    // `cypher()` just acquired and released.
+    let after: String = sqlx::query_scalar("SHOW search_path")
+        .fetch_one(&single)
+        .await
+        .unwrap();
+    assert!(
+        !after.contains("ag_catalog"),
+        "search_path leaked out of cypher()'s transaction onto the pooled connection: {after}"
+    );
+    assert_eq!(
+        after, baseline,
+        "search_path after cypher() must match the pre-call baseline exactly"
+    );
 }
