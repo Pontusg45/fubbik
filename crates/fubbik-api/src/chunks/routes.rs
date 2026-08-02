@@ -96,7 +96,9 @@ pub async fn get_applies_to(
     Path(id): Path<String>,
 ) -> AppResult<Json<Vec<AppliesTo>>> {
     service::get(&state.pool, &user.id, &id).await?;
-    Ok(Json(chunk_meta::get_applies_to(&state.pool, &id).await?))
+    Ok(Json(
+        chunk_meta::get_applies_to(&state.pool, &id, &user.id).await?,
+    ))
 }
 
 #[utoipa::path(put, path = "/api/chunks/{id}/applies-to", request_body = PatternsBody,
@@ -108,8 +110,10 @@ pub async fn put_applies_to(
     Json(body): Json<PatternsBody>,
 ) -> AppResult<Json<Vec<AppliesTo>>> {
     service::get(&state.pool, &user.id, &id).await?;
-    chunk_meta::replace_applies_to(&state.pool, &id, &body.patterns).await?;
-    Ok(Json(chunk_meta::get_applies_to(&state.pool, &id).await?))
+    chunk_meta::replace_applies_to(&state.pool, &id, &user.id, &body.patterns).await?;
+    Ok(Json(
+        chunk_meta::get_applies_to(&state.pool, &id, &user.id).await?,
+    ))
 }
 
 #[utoipa::path(get, path = "/api/chunks/{id}/file-refs", params(("id" = String, Path,)),
@@ -120,7 +124,9 @@ pub async fn get_file_refs(
     Path(id): Path<String>,
 ) -> AppResult<Json<Vec<FileRef>>> {
     service::get(&state.pool, &user.id, &id).await?;
-    Ok(Json(chunk_meta::get_file_refs(&state.pool, &id).await?))
+    Ok(Json(
+        chunk_meta::get_file_refs(&state.pool, &id, &user.id).await?,
+    ))
 }
 
 #[utoipa::path(put, path = "/api/chunks/{id}/file-refs", request_body = PathsBody,
@@ -132,8 +138,10 @@ pub async fn put_file_refs(
     Json(body): Json<PathsBody>,
 ) -> AppResult<Json<Vec<FileRef>>> {
     service::get(&state.pool, &user.id, &id).await?;
-    chunk_meta::replace_file_refs(&state.pool, &id, &body.paths).await?;
-    Ok(Json(chunk_meta::get_file_refs(&state.pool, &id).await?))
+    chunk_meta::replace_file_refs(&state.pool, &id, &user.id, &body.paths).await?;
+    Ok(Json(
+        chunk_meta::get_file_refs(&state.pool, &id, &user.id).await?,
+    ))
 }
 
 pub fn router() -> Router<AppState> {

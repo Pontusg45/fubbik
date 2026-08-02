@@ -70,7 +70,7 @@ pub async fn history(
 ) -> AppResult<Vec<fubbik_db::repo::chunk_version::ChunkVersion>> {
     // Fetch the chunk first so another user's history cannot be read.
     get(pool, user_id, id).await?;
-    fubbik_db::repo::chunk_version::list_for_chunk(pool, id).await
+    fubbik_db::repo::chunk_version::list_for_chunk(pool, id, user_id).await
 }
 
 pub async fn delete(pool: &PgPool, user_id: &str, id: &str) -> AppResult<()> {

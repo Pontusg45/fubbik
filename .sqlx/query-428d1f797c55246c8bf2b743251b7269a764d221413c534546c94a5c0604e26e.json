@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, chunk_id, path FROM chunk_file_ref WHERE chunk_id = $1 ORDER BY path",
+  "query": "SELECT id, chunk_id, path FROM chunk_file_ref WHERE chunk_id = $1 AND EXISTS (SELECT 1 FROM chunk c WHERE c.id = $1 AND c.user_id = $2) ORDER BY path",
   "describe": {
     "columns": [
       {
@@ -21,6 +21,7 @@
     ],
     "parameters": {
       "Left": [
+        "Text",
         "Text"
       ]
     },
@@ -30,5 +31,5 @@
       false
     ]
   },
-  "hash": "b6bae3d79aa5f88aa1965039da1684ddcfaf11dfcec502c55dee154443808475"
+  "hash": "428d1f797c55246c8bf2b743251b7269a764d221413c534546c94a5c0604e26e"
 }

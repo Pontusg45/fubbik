@@ -59,13 +59,25 @@ pub async fn snapshot(pool: &PgPool, current: &Chunk) -> AppResult<()> {
     Ok(())
 }
 
-pub async fn list_for_chunk(pool: &PgPool, chunk_id: &str) -> AppResult<Vec<ChunkVersion>> {
+/// Scoped by `user_id` in the SQL itself (via the parent `chunk` row), not
+/// just by the caller having already checked ownership via `service::get`.
+/// A `chunk_id`/`user_id` pair that does not correspond to an owned chunk
+/// yields an empty history, never another user's rows.
+pub async fn list_for_chunk(
+    pool: &PgPool,
+    chunk_id: &str,
+    user_id: &str,
+) -> AppResult<Vec<ChunkVersion>> {
     let rows = sqlx::query_as!(
         ChunkVersion,
         r#"SELECT id, chunk_id, version, title, content, type AS chunk_type,
                   rationale, consequences, created_at
-           FROM chunk_version WHERE chunk_id = $1 ORDER BY version DESC"#,
-        chunk_id
+           FROM chunk_version
+           WHERE chunk_id = $1
+             AND EXISTS (SELECT 1 FROM chunk c WHERE c.id = $1 AND c.user_id = $2)
+           ORDER BY version DESC"#,
+        chunk_id,
+        user_id
     )
     .fetch_all(pool)
     .await?;
