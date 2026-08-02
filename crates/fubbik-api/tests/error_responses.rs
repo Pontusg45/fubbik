@@ -18,7 +18,7 @@ fn dev_state(pool: sqlx::PgPool) -> fubbik_api::AppState {
 }
 
 async fn seed_dev_user(pool: &sqlx::PgPool) {
-    fubbik_db::repo::user::create(pool, "dev@fubbik.local", "Dev", None)
+    fubbik_db::repo::user::create(pool, "dev@localhost", "Dev", None)
         .await
         .unwrap();
 }
