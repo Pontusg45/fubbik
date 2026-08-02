@@ -1,6 +1,9 @@
-use chrono::NaiveDateTime;
 use fubbik_core::error::AppResult;
 use sqlx::PgPool;
+use sqlx::types::Json;
+
+use crate::embedding::EmbeddingVec;
+use crate::timestamp::UtcTimestamp;
 
 /// `camelCase` serialisation is mandatory, not cosmetic: the 106 web files
 /// that consume this API were written against Drizzle's camelCase output.
@@ -15,13 +18,40 @@ pub struct Chunk {
     pub chunk_type: String,
     pub user_id: String,
     pub summary: Option<String>,
+    #[schema(value_type = Vec<String>)]
+    pub aliases: Json<Vec<String>>,
+    #[schema(value_type = Vec<String>)]
+    pub not_about: Json<Vec<String>>,
+    #[schema(value_type = std::collections::HashMap<String, String>)]
+    pub scope: Json<serde_json::Value>,
     pub rationale: Option<String>,
+    // `alternatives` is nullable (unlike `aliases`/`not_about`/`scope`,
+    // which are `NOT NULL DEFAULT`) — Node emits `null`, not `[]`, when
+    // unset, so this stays `Option<Json<..>>` rather than defaulting to an
+    // empty vec.
+    #[schema(value_type = Option<Vec<String>>)]
+    pub alternatives: Option<Json<Vec<String>>>,
     pub consequences: Option<String>,
+    // See `fubbik_db::embedding` for why this is parsed text rather than
+    // the `pgvector` crate.
+    #[schema(value_type = Option<Vec<f32>>)]
+    pub embedding: Option<EmbeddingVec>,
+    #[schema(value_type = Option<chrono::NaiveDateTime>)]
+    pub embedding_updated_at: Option<UtcTimestamp>,
     pub origin: String,
     pub review_status: String,
-    pub created_at: NaiveDateTime,
-    pub updated_at: NaiveDateTime,
-    pub archived_at: Option<NaiveDateTime>,
+    pub reviewed_by: Option<String>,
+    #[schema(value_type = Option<chrono::NaiveDateTime>)]
+    pub reviewed_at: Option<UtcTimestamp>,
+    #[schema(value_type = chrono::NaiveDateTime)]
+    pub created_at: UtcTimestamp,
+    #[schema(value_type = chrono::NaiveDateTime)]
+    pub updated_at: UtcTimestamp,
+    #[schema(value_type = Option<chrono::NaiveDateTime>)]
+    pub archived_at: Option<UtcTimestamp>,
+    pub document_id: Option<String>,
+    pub document_order: Option<i32>,
+    pub is_entry_point: bool,
 }
 
 pub struct NewChunk {
@@ -47,8 +77,20 @@ pub async fn create(pool: &PgPool, user_id: &str, new: NewChunk) -> AppResult<Ch
         r#"INSERT INTO chunk (id, title, content, type, user_id, rationale)
            VALUES ($1, $2, $3, $4, $5, $6)
            RETURNING id, title, content, type AS chunk_type, user_id, summary,
-                     rationale, consequences, origin, review_status,
-                     created_at, updated_at, archived_at"#,
+                     aliases AS "aliases: Json<Vec<String>>",
+                     not_about AS "not_about: Json<Vec<String>>",
+                     scope AS "scope: Json<serde_json::Value>",
+                     rationale,
+                     alternatives AS "alternatives: Json<Vec<String>>",
+                     consequences,
+                     embedding::text AS "embedding: EmbeddingVec",
+                     embedding_updated_at AS "embedding_updated_at: UtcTimestamp",
+                     origin, review_status, reviewed_by,
+                     reviewed_at AS "reviewed_at: UtcTimestamp",
+                     created_at AS "created_at: UtcTimestamp",
+                     updated_at AS "updated_at: UtcTimestamp",
+                     archived_at AS "archived_at: UtcTimestamp",
+                     document_id, document_order, is_entry_point"#,
         id,
         new.title,
         new.content,
@@ -65,8 +107,20 @@ pub async fn find_by_id(pool: &PgPool, user_id: &str, id: &str) -> AppResult<Opt
     let c = sqlx::query_as!(
         Chunk,
         r#"SELECT id, title, content, type AS chunk_type, user_id, summary,
-                  rationale, consequences, origin, review_status,
-                  created_at, updated_at, archived_at
+                  aliases AS "aliases: Json<Vec<String>>",
+                  not_about AS "not_about: Json<Vec<String>>",
+                  scope AS "scope: Json<serde_json::Value>",
+                  rationale,
+                  alternatives AS "alternatives: Json<Vec<String>>",
+                  consequences,
+                  embedding::text AS "embedding: EmbeddingVec",
+                  embedding_updated_at AS "embedding_updated_at: UtcTimestamp",
+                  origin, review_status, reviewed_by,
+                  reviewed_at AS "reviewed_at: UtcTimestamp",
+                  created_at AS "created_at: UtcTimestamp",
+                  updated_at AS "updated_at: UtcTimestamp",
+                  archived_at AS "archived_at: UtcTimestamp",
+                  document_id, document_order, is_entry_point
            FROM chunk WHERE id = $1 AND user_id = $2"#,
         id,
         user_id
@@ -95,8 +149,20 @@ pub async fn update(
              updated_at = now()
            WHERE id = $1 AND user_id = $2
            RETURNING id, title, content, type AS chunk_type, user_id, summary,
-                     rationale, consequences, origin, review_status,
-                     created_at, updated_at, archived_at"#,
+                     aliases AS "aliases: Json<Vec<String>>",
+                     not_about AS "not_about: Json<Vec<String>>",
+                     scope AS "scope: Json<serde_json::Value>",
+                     rationale,
+                     alternatives AS "alternatives: Json<Vec<String>>",
+                     consequences,
+                     embedding::text AS "embedding: EmbeddingVec",
+                     embedding_updated_at AS "embedding_updated_at: UtcTimestamp",
+                     origin, review_status, reviewed_by,
+                     reviewed_at AS "reviewed_at: UtcTimestamp",
+                     created_at AS "created_at: UtcTimestamp",
+                     updated_at AS "updated_at: UtcTimestamp",
+                     archived_at AS "archived_at: UtcTimestamp",
+                     document_id, document_order, is_entry_point"#,
         id,
         user_id,
         patch.title,
@@ -155,18 +221,19 @@ impl Default for ListParams {
     }
 }
 
-/// Lists a user's non-archived chunks.
-///
-/// Uses QueryBuilder rather than `query_as!` because the filter set is
-/// dynamic. Every user value is pushed as a bind parameter, never
-/// formatted into the SQL string.
-pub async fn list(pool: &PgPool, user_id: &str, params: ListParams) -> AppResult<Vec<Chunk>> {
-    let mut qb = sqlx::QueryBuilder::new(
-        "SELECT id, title, content, type AS chunk_type, user_id, summary, \
-         rationale, consequences, origin, review_status, \
-         created_at, updated_at, archived_at \
-         FROM chunk WHERE archived_at IS NULL AND user_id = ",
-    );
+/// Appends the `WHERE` clause shared by [`list`] and [`count`]: the fixed
+/// `archived_at IS NULL AND user_id = ..` constraint plus every optional
+/// filter. Both functions call this *same* function rather than each
+/// hand-rolling their own copy of the filter conditions, so `total` from
+/// `count` can never silently drift from what `list` actually returns —
+/// every value is still pushed as a bind parameter, never formatted into
+/// the SQL string.
+fn push_filters<'a>(
+    qb: &mut sqlx::QueryBuilder<'a, sqlx::Postgres>,
+    user_id: &'a str,
+    params: &'a ListParams,
+) {
+    qb.push(" WHERE archived_at IS NULL AND user_id = ");
     qb.push_bind(user_id);
 
     if let Some(t) = &params.chunk_type {
@@ -191,6 +258,23 @@ pub async fn list(pool: &PgPool, user_id: &str, params: ListParams) -> AppResult
         qb.push(" OR content ILIKE ").push_bind(pattern);
         qb.push(")");
     }
+}
+
+/// Lists a user's non-archived chunks.
+///
+/// Uses QueryBuilder rather than `query_as!` because the filter set is
+/// dynamic.
+pub async fn list(pool: &PgPool, user_id: &str, params: &ListParams) -> AppResult<Vec<Chunk>> {
+    let mut qb = sqlx::QueryBuilder::new(
+        "SELECT id, title, content, type AS chunk_type, user_id, summary, \
+         aliases, not_about, scope, rationale, alternatives, consequences, \
+         embedding::text AS embedding, embedding_updated_at, \
+         origin, review_status, reviewed_by, reviewed_at, \
+         created_at, updated_at, archived_at, \
+         document_id, document_order, is_entry_point \
+         FROM chunk",
+    );
+    push_filters(&mut qb, user_id, params);
 
     qb.push(match params.sort {
         Sort::Newest => " ORDER BY created_at DESC",
@@ -204,4 +288,17 @@ pub async fn list(pool: &PgPool, user_id: &str, params: ListParams) -> AppResult
 
     let rows = qb.build_query_as::<Chunk>().fetch_all(pool).await?;
     Ok(rows)
+}
+
+/// Counts the rows [`list`] would return for the same filters, WITHOUT
+/// `LIMIT`/`OFFSET` applied — that is what makes pagination on the client
+/// work (`total` must reflect the whole matching set, not just the current
+/// page). Shares `push_filters` with `list` so the two can never disagree
+/// about which rows match.
+pub async fn count(pool: &PgPool, user_id: &str, params: &ListParams) -> AppResult<i64> {
+    let mut qb = sqlx::QueryBuilder::new("SELECT COUNT(*) FROM chunk");
+    push_filters(&mut qb, user_id, params);
+
+    let total: i64 = qb.build_query_scalar().fetch_one(pool).await?;
+    Ok(total)
 }

@@ -23,6 +23,7 @@ use utoipa::OpenApi;
         fubbik_db::repo::chunk_meta::FileRef,
         crate::chunks::dto::CreateChunkBody,
         crate::chunks::dto::UpdateChunkBody,
+        crate::chunks::dto::ChunkListResponse,
         crate::chunks::routes::PatternsBody,
         crate::chunks::routes::PathsBody,
     ))

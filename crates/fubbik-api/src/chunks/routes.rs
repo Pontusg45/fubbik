@@ -5,7 +5,7 @@ use fubbik_core::error::AppResult;
 use fubbik_db::repo::chunk::Chunk;
 use fubbik_db::repo::chunk_meta::{self, AppliesTo, FileRef};
 
-use super::dto::{CreateChunkBody, ListChunksQuery, UpdateChunkBody};
+use super::dto::{ChunkListResponse, CreateChunkBody, ListChunksQuery, UpdateChunkBody};
 use super::service;
 use crate::AppState;
 use crate::auth::CurrentUser;
@@ -18,13 +18,13 @@ use crate::extract::Query;
 
 #[utoipa::path(
     get, path = "/api/chunks", params(ListChunksQuery),
-    responses((status = 200, body = Vec<Chunk>))
+    responses((status = 200, body = ChunkListResponse))
 )]
 pub async fn list_chunks(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
     Query(query): Query<ListChunksQuery>,
-) -> AppResult<Json<Vec<Chunk>>> {
+) -> AppResult<Json<ChunkListResponse>> {
     Ok(Json(
         service::list(&state.pool, &user.id, query.into_params()).await?,
     ))

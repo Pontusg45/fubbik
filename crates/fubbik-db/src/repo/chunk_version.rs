@@ -1,8 +1,8 @@
-use chrono::NaiveDateTime;
 use fubbik_core::error::AppResult;
 use sqlx::PgPool;
 
 use super::chunk::Chunk;
+use crate::timestamp::UtcTimestamp;
 
 #[derive(Debug, Clone, serde::Serialize, sqlx::FromRow, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
@@ -16,7 +16,8 @@ pub struct ChunkVersion {
     pub chunk_type: String,
     pub rationale: Option<String>,
     pub consequences: Option<String>,
-    pub created_at: NaiveDateTime,
+    #[schema(value_type = chrono::NaiveDateTime)]
+    pub created_at: UtcTimestamp,
 }
 
 /// Appends the chunk's current state to its history. Call before applying
@@ -71,7 +72,7 @@ pub async fn list_for_chunk(
     let rows = sqlx::query_as!(
         ChunkVersion,
         r#"SELECT id, chunk_id, version, title, content, type AS chunk_type,
-                  rationale, consequences, created_at
+                  rationale, consequences, created_at AS "created_at: UtcTimestamp"
            FROM chunk_version
            WHERE chunk_id = $1
              AND EXISTS (SELECT 1 FROM chunk c WHERE c.id = $1 AND c.user_id = $2)

@@ -100,7 +100,7 @@ async fn list_filters_sorts_and_paginates(pool: sqlx::PgPool) {
     let notes = chunk::list(
         &pool,
         &uid,
-        chunk::ListParams {
+        &chunk::ListParams {
             chunk_type: Some("note".into()),
             ..Default::default()
         },
@@ -112,7 +112,7 @@ async fn list_filters_sorts_and_paginates(pool: sqlx::PgPool) {
     let searched = chunk::list(
         &pool,
         &uid,
-        chunk::ListParams {
+        &chunk::ListParams {
             search: Some("Beta".into()),
             ..Default::default()
         },
@@ -125,7 +125,7 @@ async fn list_filters_sorts_and_paginates(pool: sqlx::PgPool) {
     let alpha = chunk::list(
         &pool,
         &uid,
-        chunk::ListParams {
+        &chunk::ListParams {
             sort: chunk::Sort::Alpha,
             ..Default::default()
         },
@@ -140,7 +140,7 @@ async fn list_filters_sorts_and_paginates(pool: sqlx::PgPool) {
     let page = chunk::list(
         &pool,
         &uid,
-        chunk::ListParams {
+        &chunk::ListParams {
             limit: 2,
             offset: 1,
             sort: chunk::Sort::Alpha,
@@ -172,7 +172,7 @@ async fn search_is_case_insensitive_and_covers_content(pool: sqlx::PgPool) {
     let found = chunk::list(
         &pool,
         &uid,
-        chunk::ListParams {
+        &chunk::ListParams {
             search: Some("uniquebody".into()),
             ..Default::default()
         },

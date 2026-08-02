@@ -38,4 +38,4 @@ impl FromRequestParts<AppState> for CurrentUser {
     }
 }
 
-pub const DEV_EMAIL: &str = "dev@fubbik.local";
+pub const DEV_EMAIL: &str = "dev@localhost";
