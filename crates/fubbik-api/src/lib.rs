@@ -1,6 +1,7 @@
 pub mod assets;
 pub mod auth;
 pub mod chunks;
+pub mod extract;
 pub mod openapi;
 
 use axum::extract::State;

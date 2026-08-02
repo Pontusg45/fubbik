@@ -18,6 +18,9 @@ pub enum AppError {
     #[error("validation failed: {0}")]
     Validation(String),
 
+    #[error("unsupported media type: {0}")]
+    UnsupportedMediaType(String),
+
     #[error("conflict: {0}")]
     Conflict(String),
 
@@ -49,6 +52,7 @@ impl IntoResponse for AppError {
             AppError::NotFound(_) => StatusCode::NOT_FOUND,
             AppError::Auth => StatusCode::UNAUTHORIZED,
             AppError::Validation(_) => StatusCode::BAD_REQUEST,
+            AppError::UnsupportedMediaType(_) => StatusCode::UNSUPPORTED_MEDIA_TYPE,
             AppError::Conflict(_) => StatusCode::CONFLICT,
             AppError::External(_) => StatusCode::BAD_GATEWAY,
         };
@@ -91,6 +95,15 @@ mod tests {
     fn external_maps_to_bad_gateway() {
         let err = AppError::External("upstream down".into());
         assert_eq!(err.into_response().status(), StatusCode::BAD_GATEWAY);
+    }
+
+    #[test]
+    fn unsupported_media_type_maps_to_415() {
+        let err = AppError::UnsupportedMediaType("expected application/json".into());
+        assert_eq!(
+            err.into_response().status(),
+            StatusCode::UNSUPPORTED_MEDIA_TYPE
+        );
     }
 
     #[tokio::test]

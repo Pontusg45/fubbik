@@ -10,6 +10,7 @@ use fubbik_db::repo::{session, user};
 use super::password::{hash_password, verify_password};
 use super::session::COOKIE_NAME;
 use crate::AppState;
+use crate::extract::Json as ReqJson;
 
 /// How long a session (and the cookie carrying its token) stays valid.
 /// Named once so the DB-side session TTL and the cookie's `Max-Age` can
@@ -59,7 +60,7 @@ fn session_cookie(token: String) -> Cookie<'static> {
 async fn sign_up(
     State(state): State<AppState>,
     jar: CookieJar,
-    Json(body): Json<SignUpBody>,
+    ReqJson(body): ReqJson<SignUpBody>,
 ) -> AppResult<(CookieJar, Json<UserResponse>)> {
     if body.password.len() < 8 {
         return Err(AppError::Validation(
@@ -94,7 +95,7 @@ async fn sign_up(
 async fn sign_in(
     State(state): State<AppState>,
     jar: CookieJar,
-    Json(body): Json<SignInBody>,
+    ReqJson(body): ReqJson<SignInBody>,
 ) -> AppResult<(CookieJar, Json<UserResponse>)> {
     let u = user::find_by_email(&state.pool, &body.email)
         .await?

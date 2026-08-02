@@ -1,4 +1,4 @@
-use axum::extract::{Path, Query, State};
+use axum::extract::{Path, State};
 use axum::routing::get;
 use axum::{Json, Router};
 use fubbik_core::error::AppResult;
@@ -9,6 +9,12 @@ use super::dto::{CreateChunkBody, ListChunksQuery, UpdateChunkBody};
 use super::service;
 use crate::AppState;
 use crate::auth::CurrentUser;
+// Imported under its plain name (not e.g. `ReqQuery`) because utoipa's
+// `axum_extras` feature infers a handler param's `parameter_in` (path vs
+// query) by pattern-matching the literal `Query<T>` identifier used in the
+// function signature below — see the comment on `ListChunksQuery`.
+use crate::extract::Json as ReqJson;
+use crate::extract::Query;
 
 #[utoipa::path(
     get, path = "/api/chunks", params(ListChunksQuery),
@@ -29,7 +35,7 @@ pub async fn list_chunks(
 pub async fn create_chunk(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
-    Json(body): Json<CreateChunkBody>,
+    ReqJson(body): ReqJson<CreateChunkBody>,
 ) -> AppResult<Json<Chunk>> {
     Ok(Json(service::create(&state.pool, &user.id, body).await?))
 }
@@ -50,7 +56,7 @@ pub async fn update_chunk(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
     Path(id): Path<String>,
-    Json(body): Json<UpdateChunkBody>,
+    ReqJson(body): ReqJson<UpdateChunkBody>,
 ) -> AppResult<Json<Chunk>> {
     Ok(Json(
         service::update(&state.pool, &user.id, &id, body).await?,
@@ -107,7 +113,7 @@ pub async fn put_applies_to(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
     Path(id): Path<String>,
-    Json(body): Json<PatternsBody>,
+    ReqJson(body): ReqJson<PatternsBody>,
 ) -> AppResult<Json<Vec<AppliesTo>>> {
     service::get(&state.pool, &user.id, &id).await?;
     chunk_meta::replace_applies_to(&state.pool, &id, &user.id, &body.patterns).await?;
@@ -135,7 +141,7 @@ pub async fn put_file_refs(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
     Path(id): Path<String>,
-    Json(body): Json<PathsBody>,
+    ReqJson(body): ReqJson<PathsBody>,
 ) -> AppResult<Json<Vec<FileRef>>> {
     service::get(&state.pool, &user.id, &id).await?;
     chunk_meta::replace_file_refs(&state.pool, &id, &user.id, &body.paths).await?;

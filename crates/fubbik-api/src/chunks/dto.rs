@@ -22,6 +22,13 @@ pub struct UpdateChunkBody {
 
 /// Query params arrive as strings from the web client, matching the Elysia
 /// route's `t.Optional(t.String())` shape, so numeric fields parse leniently.
+///
+/// utoipa's `axum_extras` feature infers a handler param's location
+/// (path vs query) by pattern-matching the literal identifier `Query<T>` /
+/// `Path<T>` used for its extractor in the function signature. `list_chunks`
+/// keeps its extractor imported under the name `Query` (it resolves to
+/// `crate::extract::Query`, not `axum::extract::Query`) specifically so that
+/// detection keeps working — see the comment there.
 #[derive(serde::Deserialize, utoipa::IntoParams)]
 #[serde(rename_all = "camelCase")]
 pub struct ListChunksQuery {
