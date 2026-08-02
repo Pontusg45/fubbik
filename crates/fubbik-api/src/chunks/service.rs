@@ -55,6 +55,26 @@ pub async fn update(
     id: &str,
     body: UpdateChunkBody,
 ) -> AppResult<Chunk> {
+    // Mirrors `create`'s title validation (trim, reject blank, cap at 200
+    // chars) so a PATCH cannot put a chunk in a state POST would refuse to
+    // create in the first place. `None` means "leave title unchanged" and
+    // is left untouched.
+    let title = body
+        .title
+        .map(|title| {
+            let trimmed = title.trim();
+            if trimmed.is_empty() {
+                return Err(AppError::Validation("title is required".into()));
+            }
+            if trimmed.chars().count() > 200 {
+                return Err(AppError::Validation(
+                    "title must be at most 200 characters".into(),
+                ));
+            }
+            Ok(trimmed.to_string())
+        })
+        .transpose()?;
+
     let current = get(pool, user_id, id).await?;
     fubbik_db::repo::chunk_version::snapshot(pool, &current).await?;
 
@@ -63,7 +83,7 @@ pub async fn update(
         user_id,
         id,
         ChunkPatch {
-            title: body.title,
+            title,
             content: body.content,
             chunk_type: body.chunk_type,
             rationale: body.rationale,
