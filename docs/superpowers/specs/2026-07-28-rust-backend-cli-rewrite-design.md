@@ -373,7 +373,7 @@ are not interchangeable. Decimal and scientific-notation values match byte-for-b
 (verified against a live run of Node's own implementation), because Postgres's `vector`
 text output is already float4 precision, so `f32` and `f64` round-trip alike.
 
-### DATABASE COLLATION MUST MATCH — found by the harness, affects cutover
+### DATABASE COLLATION MUST MATCH — found by the harness, RESOLVED
 
 The harness then caught a subtler divergence: `?sort=alpha` ordered differently between
 stacks. **Neither implementation is wrong** — both issue `ORDER BY title ASC`. The
@@ -393,14 +393,41 @@ This matters at cutover far more than during development. If the production Rust
 is created with a different collation provider than the current one, **every text ordering
 in the application silently changes** — no error, no test failure, just different results.
 
-Two ways to address it, and the choice should be deliberate:
-- Create the Rust database with the ICU provider so it matches
-  (`CREATE DATABASE … LOCALE_PROVIDER icu ICU_LOCALE 'en-US' TEMPLATE template0`), or
-- Pin an explicit `COLLATE` in the ORDER BY so sort order stops depending on how the
-  database happened to be created.
+Two ways to address it: create the Rust database with the ICU provider so it matches, or
+pin an explicit `COLLATE` in every `ORDER BY` so sort order stops depending on how the
+database happened to be created. The second is more robust in principle but hardcodes a
+locale into query text — worse, it *errors* outright on a Postgres build without ICU
+(`ERROR: collation "en-US-x-icu" for encoding "UTF8" does not exist`), which is a worse
+failure mode than "sorts differently."
 
-The second is more robust but hardcodes a locale. Until one is chosen, the differential
-harness will keep reporting a sort mismatch that is environmental rather than a defect.
+**Decision: require ICU.** The database is created with the ICU locale provider so its
+ordering matches the reference without touching query text. Concretely:
+
+- The `fubbik-postgres:pg18-vector-age` image already ships ICU (807 rows in
+  `pg_collation` where `collprovider = 'i'`) — only the *database itself* needs to be
+  created with it. `docker-compose.yml` and `docker-compose.selfhost.yml`'s `db` services
+  set `POSTGRES_INITDB_ARGS: "--locale-provider=icu --icu-locale=en-US"`, which the
+  postgres entrypoint passes to `initdb` the first time it initializes an empty data
+  directory. This does **not** retroactively change an already-initialized cluster —
+  recreating one means wiping its data directory (or dropping and recreating the
+  individual database off `template0`, since `template0` itself must also be
+  ICU-provider for a plain `CREATE DATABASE fubbik_rs` to default to it).
+- Anyone creating a `fubbik_rs` database by hand (cluster already initialized, e.g. off
+  `template0`) should run:
+  ```sql
+  CREATE DATABASE fubbik_rs LOCALE_PROVIDER icu ICU_LOCALE 'en-US' TEMPLATE template0;
+  ```
+- `fubbik serve` checks `pg_database.datlocprovider` for the connected database right
+  after connecting and, if it is not `'i'`, emits a prominent `tracing::warn!` naming the
+  detected provider/collate/locale and the fix. It does **not** refuse to start — a wrong
+  sort order must not take the server down — but the mismatch is impossible to miss in
+  the logs. See `fubbik_db::warn_if_not_icu_collation`.
+- `#[sqlx::test]`-provisioned databases inherit the cluster's locale provider (verified:
+  `crates/fubbik-db/tests/collation.rs` asserts `datlocprovider = 'i'` from inside a
+  `#[sqlx::test]` pool, and asserts the exact ordering divergence — `"Catalog tables: x"`
+  before `"Catalog-driven y"`, `"Chunk scope"` before `"Chunks as"` — matching the live
+  Node reference verbatim), so test and production behavior agree once the cluster itself
+  is ICU.
 
 ### Must be resolved in Phase 2
 2. **The web migration**, deferred out of Phase 1: the web app calls 27 API domains and

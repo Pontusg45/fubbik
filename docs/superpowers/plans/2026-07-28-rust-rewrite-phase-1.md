@@ -23,6 +23,12 @@
   `fubbik-postgres:pg18-vector-age` image (AGE 1.7.0, pgvector 0.8.2, pg_trgm 1.6).
   Never point the Rust binary at the Node database (`postgresql://pontus@localhost:5432/fubbik`),
   which is Homebrew Postgres and has **no AGE**.
+- **The database must use the ICU locale provider,** not libc, to match the reference
+  Node backend's text ordering. See "DATABASE COLLATION MUST MATCH" in the design spec
+  for the full story; `fubbik serve` warns loudly at startup if it detects a mismatch.
+  The container is provisioned via `POSTGRES_INITDB_ARGS="--locale-provider=icu
+  --icu-locale=en-US"`; a hand-created database needs
+  `CREATE DATABASE ... LOCALE_PROVIDER icu ICU_LOCALE 'en-US' TEMPLATE template0`.
 - **Extracting `agtype` from AGE uses `::varchar`, never `::text`.** Verified against
   AGE 1.7.0: `v::text` raises `agtype_value_to_text: unsupported argument agtype 6`
   for vertex, edge, and path values, and `agtype_out(v)` returns pseudo-type `cstring`,
