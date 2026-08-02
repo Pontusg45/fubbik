@@ -65,6 +65,24 @@ async fn main() -> anyhow::Result<()> {
                 std::env::var("FUBBIK_IMPLICIT_DEV_SESSION").as_deref() == Ok("true");
             let implicit_dev_session =
                 resolve_implicit_dev_session(node_env.as_deref(), explicit_flag);
+            if implicit_dev_session {
+                let reason = if explicit_flag {
+                    "FUBBIK_IMPLICIT_DEV_SESSION=true is set"
+                } else {
+                    "NODE_ENV is not \"production\""
+                };
+                tracing::warn!(
+                    reason,
+                    "AUTHENTICATION IS NOT ENFORCED: every request to this server — \
+                     including one with a missing, expired, or outright garbage session \
+                     cookie — is served as the dev user ({dev_email}), because {reason}. \
+                     This is expected and required for local development and the CLI, but \
+                     it must never be silently true in a deployment you believe is secured. \
+                     To require real sessions, ensure NODE_ENV=production and do not set \
+                     FUBBIK_IMPLICIT_DEV_SESSION=true.",
+                    dev_email = fubbik_api::auth::session::DEV_EMAIL,
+                );
+            }
 
             let pool = fubbik_db::connect(&database_url).await?;
             fubbik_db::warn_if_not_icu_collation(&pool).await;
