@@ -1,5 +1,13 @@
 name: rust
-on: [push, pull_request]
+on:
+  push:
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
+  pull_request:
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
 
 jobs:
   test:
@@ -23,7 +31,14 @@ jobs:
       DATABASE_URL: postgres://postgres:postgres@localhost:5432/fubbik_rs
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      # No explicit toolchain-install action: ubuntu-latest runners ship
+      # rustup preinstalled, and rustup auto-installs the exact toolchain
+      # (and its rustfmt/clippy components) pinned in rust-toolchain.toml
+      # the first time cargo/rustup is invoked in this directory.
+      # `dtolnay/rust-toolchain@stable` installed whatever "stable" happened
+      # to be that day instead, silently downloading a second toolchain
+      # alongside the pinned one.
+      - run: rustup show
       - run: cargo fmt --check
       - run: cargo clippy --all-targets -- -D warnings
       - run: cargo test --workspace
