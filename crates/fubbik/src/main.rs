@@ -13,6 +13,13 @@ enum Commands {
     Serve {
         #[arg(long, env = "PORT", default_value = "3100")]
         port: u16,
+        /// Address to bind to. Defaults to loopback-only: combined with
+        /// FUBBIK_IMPLICIT_DEV_SESSION=true (under which any invalid
+        /// cookie yields the dev user), binding wider than 127.0.0.1
+        /// exposes full access to anyone who can reach that address, so
+        /// it must be opted into deliberately.
+        #[arg(long, env = "HOST", default_value = "127.0.0.1")]
+        host: std::net::IpAddr,
     },
     /// Run the MCP server over stdio
     Mcp,
@@ -29,7 +36,7 @@ async fn main() -> anyhow::Result<()> {
         .init();
 
     match Cli::parse().command {
-        Commands::Serve { port } => {
+        Commands::Serve { port, host } => {
             let database_url = std::env::var("DATABASE_URL")
                 .map_err(|_| anyhow::anyhow!("DATABASE_URL is required"))?;
             let implicit_dev_session =
@@ -56,8 +63,8 @@ async fn main() -> anyhow::Result<()> {
                 .allow_headers(tower_http::cors::AllowHeaders::mirror_request());
 
             let app = fubbik_api::router(state).layer(cors);
-            let listener = tokio::net::TcpListener::bind(("0.0.0.0", port)).await?;
-            tracing::info!("fubbik listening on http://localhost:{port}");
+            let listener = tokio::net::TcpListener::bind((host, port)).await?;
+            tracing::info!("fubbik listening on http://{host}:{port}");
             axum::serve(listener, app).await?;
             Ok(())
         }
