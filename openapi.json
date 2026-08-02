@@ -104,10 +104,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/Chunk"
-                  }
+                  "$ref": "#/components/schemas/ChunkListResponse"
                 }
               }
             }
@@ -453,12 +450,31 @@
           "content",
           "type",
           "userId",
+          "aliases",
+          "notAbout",
+          "scope",
           "origin",
           "reviewStatus",
           "createdAt",
-          "updatedAt"
+          "updatedAt",
+          "isEntryPoint"
         ],
         "properties": {
+          "aliases": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "alternatives": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
           "archivedAt": {
             "type": [
               "string",
@@ -479,8 +495,47 @@
             "type": "string",
             "format": "date-time"
           },
+          "documentId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "documentOrder": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "embedding": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "number",
+              "format": "float"
+            }
+          },
+          "embeddingUpdatedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
           "id": {
             "type": "string"
+          },
+          "isEntryPoint": {
+            "type": "boolean"
+          },
+          "notAbout": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           },
           "origin": {
             "type": "string"
@@ -493,6 +548,28 @@
           },
           "reviewStatus": {
             "type": "string"
+          },
+          "reviewedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "reviewedBy": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "scope": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "propertyNames": {
+              "type": "string"
+            }
           },
           "summary": {
             "type": [
@@ -512,6 +589,36 @@
           },
           "userId": {
             "type": "string"
+          }
+        }
+      },
+      "ChunkListResponse": {
+        "type": "object",
+        "description": "Response envelope for `GET /api/chunks`, matching the Node/Elysia\nbackend's `{ chunks, total, limit, offset }` shape (the web app reads\n`.chunks` and `.total` directly). `total` is the count of rows matching\nthe same filters as `chunks` but WITHOUT `limit`/`offset` applied — see\n`fubbik_db::repo::chunk::count`, which shares its filter-building logic\nwith `list` so the two can never disagree.",
+        "required": [
+          "chunks",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "properties": {
+          "chunks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Chunk"
+            }
+          },
+          "limit": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "offset": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "total": {
+            "type": "integer",
+            "format": "int64"
           }
         }
       },
