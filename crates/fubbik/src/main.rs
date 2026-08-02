@@ -29,6 +29,27 @@ enum Commands {
     Cli(fubbik_cli::Command),
 }
 
+/// Resolves whether relaxed (implicit-dev-session) HTTP auth applies: any
+/// request — including one with a garbage or missing session cookie — is
+/// served as the dev user rather than rejected with 401.
+///
+/// Mirrors the TS server's rule verbatim (`packages/auth/src/index.ts`):
+/// `NODE_ENV !== "production" || FUBBIK_IMPLICIT_DEV_SESSION === "true"`.
+/// The explicit flag always wins, even under `NODE_ENV=production`.
+///
+/// Reads `NODE_ENV` deliberately, not a Rust-native name: this backend
+/// replaces the Node server, and existing deployment configs
+/// (`docker-compose.yml`, and `docker-compose.selfhost.yml` via
+/// `docker/build/server.Dockerfile`'s `ENV NODE_ENV=production`) already set
+/// it for production. Reading the same variable means those deployments
+/// keep working unchanged, and do not silently end up with auth relaxed in
+/// production just because this binary looked at a different name. Do not
+/// rename this to `FUBBIK_ENV` or similar without also updating every
+/// deployment config that currently sets `NODE_ENV=production`.
+fn resolve_implicit_dev_session(node_env: Option<&str>, explicit_flag: bool) -> bool {
+    explicit_flag || node_env != Some("production")
+}
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt()
@@ -39,8 +60,11 @@ async fn main() -> anyhow::Result<()> {
         Commands::Serve { port, host } => {
             let database_url = std::env::var("DATABASE_URL")
                 .map_err(|_| anyhow::anyhow!("DATABASE_URL is required"))?;
-            let implicit_dev_session =
+            let node_env = std::env::var("NODE_ENV").ok();
+            let explicit_flag =
                 std::env::var("FUBBIK_IMPLICIT_DEV_SESSION").as_deref() == Ok("true");
+            let implicit_dev_session =
+                resolve_implicit_dev_session(node_env.as_deref(), explicit_flag);
 
             let pool = fubbik_db::connect(&database_url).await?;
             fubbik_db::warn_if_not_icu_collation(&pool).await;
@@ -84,5 +108,35 @@ async fn main() -> anyhow::Result<()> {
                 std::env::var("FUBBIK_URL").unwrap_or_else(|_| "http://localhost:3100".into());
             fubbik_cli::run(cmd, &base).await
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::resolve_implicit_dev_session;
+
+    // Pure-function tests only: `NODE_ENV`/`FUBBIK_IMPLICIT_DEV_SESSION` are
+    // process-global and tests run in parallel, so the resolution logic is
+    // exercised via explicit parameters rather than by mutating the real
+    // environment.
+
+    #[test]
+    fn unset_environment_is_relaxed() {
+        assert!(resolve_implicit_dev_session(None, false));
+    }
+
+    #[test]
+    fn production_is_not_relaxed() {
+        assert!(!resolve_implicit_dev_session(Some("production"), false));
+    }
+
+    #[test]
+    fn explicit_flag_wins_even_under_production() {
+        assert!(resolve_implicit_dev_session(Some("production"), true));
+    }
+
+    #[test]
+    fn development_is_relaxed() {
+        assert!(resolve_implicit_dev_session(Some("development"), false));
     }
 }
