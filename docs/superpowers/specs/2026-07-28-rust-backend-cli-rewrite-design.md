@@ -365,8 +365,13 @@ timestamps serialise as UTC ISO 8601 with a trailing `Z` at millisecond precisio
 (byte-identical to Node), and the implicit-dev-session email is `dev@localhost`.
 
 `embedding` is handled without the `pgvector` crate: the column is cast to text and parsed
-the same way Node's own `fromDriver` does, giving exact wire parity for both null and
-populated vectors.
+the way Node's `fromDriver` does. Parity is **numerically** exact, not byte-exact — Rust
+emits `0.0`/`5.0` for whole-number components where `JSON.stringify` emits `0`/`5`, and
+preserves `-0.0` where JavaScript collapses it to `0`. `JSON.parse` yields identical
+numbers either way, so no consumer is affected, but the difference is real and the strings
+are not interchangeable. Decimal and scientific-notation values match byte-for-byte
+(verified against a live run of Node's own implementation), because Postgres's `vector`
+text output is already float4 precision, so `f32` and `f64` round-trip alike.
 
 ### DATABASE COLLATION MUST MATCH — found by the harness, affects cutover
 
