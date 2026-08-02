@@ -2,10 +2,21 @@ use fubbik_core::error::{AppError, AppResult};
 use fubbik_db::repo::chunk::{self, Chunk, ChunkPatch, ListParams, NewChunk};
 use sqlx::PgPool;
 
-use super::dto::{CreateChunkBody, UpdateChunkBody};
+use super::dto::{ChunkListResponse, CreateChunkBody, UpdateChunkBody};
 
-pub async fn list(pool: &PgPool, user_id: &str, params: ListParams) -> AppResult<Vec<Chunk>> {
-    chunk::list(pool, user_id, params).await
+pub async fn list(
+    pool: &PgPool,
+    user_id: &str,
+    params: ListParams,
+) -> AppResult<ChunkListResponse> {
+    let chunks = chunk::list(pool, user_id, &params).await?;
+    let total = chunk::count(pool, user_id, &params).await?;
+    Ok(ChunkListResponse {
+        chunks,
+        total,
+        limit: params.limit,
+        offset: params.offset,
+    })
 }
 
 pub async fn create(pool: &PgPool, user_id: &str, body: CreateChunkBody) -> AppResult<Chunk> {

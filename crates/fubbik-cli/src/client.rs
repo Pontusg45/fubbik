@@ -14,6 +14,14 @@ pub struct Chunk {
     pub updated_at: String,
 }
 
+/// `GET /api/chunks` returns `{ chunks, total, limit, offset }`, not a bare
+/// array — the CLI only needs the rows, so the other fields are dropped
+/// here rather than threaded through every caller.
+#[derive(Debug, serde::Deserialize)]
+struct ChunkListResponse {
+    chunks: Vec<Chunk>,
+}
+
 pub struct Client {
     base: String,
     http: reqwest::Client,
@@ -62,7 +70,8 @@ impl Client {
         if let Some(s) = search {
             query.push(("search", s.to_string()));
         }
-        self.get_json("/api/chunks", &query).await
+        let res: ChunkListResponse = self.get_json("/api/chunks", &query).await?;
+        Ok(res.chunks)
     }
 
     pub async fn get_chunk(&self, id: &str) -> Result<Chunk> {

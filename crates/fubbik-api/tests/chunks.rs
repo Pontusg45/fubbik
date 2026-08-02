@@ -144,6 +144,80 @@ async fn update_records_history(pool: sqlx::PgPool) {
     );
 }
 
+/// `GET /api/chunks` must return `{ chunks, total, limit, offset }`, matching
+/// the Node/Elysia backend — the web app reads `.chunks` and `.total`
+/// directly, and `total` must reflect every matching row, not just the
+/// current page.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn list_returns_envelope_with_uncapped_total(pool: sqlx::PgPool) {
+    seed_dev_user(&pool).await;
+    let app = fubbik_api::router(dev_state(pool));
+
+    for i in 0..3 {
+        app.clone()
+            .oneshot(
+                Request::post("/api/chunks")
+                    .header("content-type", "application/json")
+                    .body(Body::from(format!(r#"{{"title":"T{i}","content":""}}"#)))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+    }
+
+    let res = app
+        .oneshot(
+            Request::get("/api/chunks?limit=2&offset=0")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+
+    let body = res.into_body().collect().await.unwrap().to_bytes();
+    let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+    assert_eq!(
+        json["chunks"].as_array().unwrap().len(),
+        2,
+        "page respects limit"
+    );
+    assert_eq!(
+        json["total"], 3,
+        "total must count every matching row, not just the current page"
+    );
+    assert_eq!(json["limit"], 2);
+    assert_eq!(json["offset"], 0);
+}
+
+/// Out-of-range `limit`/`offset` values are clamped for the actual query;
+/// the envelope must echo those clamped values, not the raw request input,
+/// or a client reading `limit`/`offset` back would compute the wrong next
+/// page.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn list_envelope_echoes_clamped_limit(pool: sqlx::PgPool) {
+    seed_dev_user(&pool).await;
+    let app = fubbik_api::router(dev_state(pool));
+
+    let res = app
+        .oneshot(
+            Request::get("/api/chunks?limit=999999&offset=-5")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+
+    let body = res.into_body().collect().await.unwrap().to_bytes();
+    let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+    assert_eq!(
+        json["limit"], 500,
+        "limit must be clamped to the max of 500"
+    );
+    assert_eq!(json["offset"], 0, "offset must not go negative");
+}
+
 /// A freshly created chunk must expose every field Node returns, with
 /// Node's null/default semantics preserved: `aliases`/`notAbout` default to
 /// `[]` (NOT NULL columns), `alternatives`/`embedding` are `null` when

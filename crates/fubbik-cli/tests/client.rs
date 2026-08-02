@@ -8,7 +8,14 @@ async fn list_builds_the_expected_query_string() {
         .and(wiremock::matchers::path("/api/chunks"))
         .and(wiremock::matchers::query_param("type", "note"))
         .and(wiremock::matchers::query_param("limit", "10"))
-        .respond_with(wiremock::ResponseTemplate::new(200).set_body_json(serde_json::json!([])))
+        .respond_with(
+            wiremock::ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "chunks": [],
+                "total": 0,
+                "limit": 10,
+                "offset": 0
+            })),
+        )
         .mount(&server)
         .await;
 

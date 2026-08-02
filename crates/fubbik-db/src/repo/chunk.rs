@@ -221,21 +221,19 @@ impl Default for ListParams {
     }
 }
 
-/// Lists a user's non-archived chunks.
-///
-/// Uses QueryBuilder rather than `query_as!` because the filter set is
-/// dynamic. Every user value is pushed as a bind parameter, never
-/// formatted into the SQL string.
-pub async fn list(pool: &PgPool, user_id: &str, params: ListParams) -> AppResult<Vec<Chunk>> {
-    let mut qb = sqlx::QueryBuilder::new(
-        "SELECT id, title, content, type AS chunk_type, user_id, summary, \
-         aliases, not_about, scope, rationale, alternatives, consequences, \
-         embedding::text AS embedding, embedding_updated_at, \
-         origin, review_status, reviewed_by, reviewed_at, \
-         created_at, updated_at, archived_at, \
-         document_id, document_order, is_entry_point \
-         FROM chunk WHERE archived_at IS NULL AND user_id = ",
-    );
+/// Appends the `WHERE` clause shared by [`list`] and [`count`]: the fixed
+/// `archived_at IS NULL AND user_id = ..` constraint plus every optional
+/// filter. Both functions call this *same* function rather than each
+/// hand-rolling their own copy of the filter conditions, so `total` from
+/// `count` can never silently drift from what `list` actually returns —
+/// every value is still pushed as a bind parameter, never formatted into
+/// the SQL string.
+fn push_filters<'a>(
+    qb: &mut sqlx::QueryBuilder<'a, sqlx::Postgres>,
+    user_id: &'a str,
+    params: &'a ListParams,
+) {
+    qb.push(" WHERE archived_at IS NULL AND user_id = ");
     qb.push_bind(user_id);
 
     if let Some(t) = &params.chunk_type {
@@ -260,6 +258,23 @@ pub async fn list(pool: &PgPool, user_id: &str, params: ListParams) -> AppResult
         qb.push(" OR content ILIKE ").push_bind(pattern);
         qb.push(")");
     }
+}
+
+/// Lists a user's non-archived chunks.
+///
+/// Uses QueryBuilder rather than `query_as!` because the filter set is
+/// dynamic.
+pub async fn list(pool: &PgPool, user_id: &str, params: &ListParams) -> AppResult<Vec<Chunk>> {
+    let mut qb = sqlx::QueryBuilder::new(
+        "SELECT id, title, content, type AS chunk_type, user_id, summary, \
+         aliases, not_about, scope, rationale, alternatives, consequences, \
+         embedding::text AS embedding, embedding_updated_at, \
+         origin, review_status, reviewed_by, reviewed_at, \
+         created_at, updated_at, archived_at, \
+         document_id, document_order, is_entry_point \
+         FROM chunk",
+    );
+    push_filters(&mut qb, user_id, params);
 
     qb.push(match params.sort {
         Sort::Newest => " ORDER BY created_at DESC",
@@ -273,4 +288,17 @@ pub async fn list(pool: &PgPool, user_id: &str, params: ListParams) -> AppResult
 
     let rows = qb.build_query_as::<Chunk>().fetch_all(pool).await?;
     Ok(rows)
+}
+
+/// Counts the rows [`list`] would return for the same filters, WITHOUT
+/// `LIMIT`/`OFFSET` applied — that is what makes pagination on the client
+/// work (`total` must reflect the whole matching set, not just the current
+/// page). Shares `push_filters` with `list` so the two can never disagree
+/// about which rows match.
+pub async fn count(pool: &PgPool, user_id: &str, params: &ListParams) -> AppResult<i64> {
+    let mut qb = sqlx::QueryBuilder::new("SELECT COUNT(*) FROM chunk");
+    push_filters(&mut qb, user_id, params);
+
+    let total: i64 = qb.build_query_scalar().fetch_one(pool).await?;
+    Ok(total)
 }
