@@ -1,4 +1,5 @@
 pub mod age;
+pub mod embedding;
 pub mod repo;
 pub mod timestamp;
 

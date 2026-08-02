@@ -143,3 +143,98 @@ async fn update_records_history(pool: sqlx::PgPool) {
         "history stores the pre-edit title"
     );
 }
+
+/// A freshly created chunk must expose every field Node returns, with
+/// Node's null/default semantics preserved: `aliases`/`notAbout` default to
+/// `[]` (NOT NULL columns), `alternatives`/`embedding` are `null` when
+/// unset (nullable columns), and `scope` defaults to `{}`.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn created_chunk_exposes_all_fields_with_nodes_null_semantics(pool: sqlx::PgPool) {
+    seed_dev_user(&pool).await;
+    let app = fubbik_api::router(dev_state(pool));
+
+    let res = app
+        .oneshot(
+            Request::post("/api/chunks")
+                .header("content-type", "application/json")
+                .body(Body::from(r#"{"title":"Full shape","content":"body"}"#))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+
+    let body = res.into_body().collect().await.unwrap().to_bytes();
+    let chunk: serde_json::Value = serde_json::from_slice(&body).unwrap();
+
+    assert_eq!(chunk["aliases"], serde_json::json!([]));
+    assert_eq!(chunk["notAbout"], serde_json::json!([]));
+    assert_eq!(chunk["scope"], serde_json::json!({}));
+    assert_eq!(chunk["alternatives"], serde_json::Value::Null);
+    assert_eq!(chunk["embedding"], serde_json::Value::Null);
+    assert_eq!(chunk["embeddingUpdatedAt"], serde_json::Value::Null);
+    assert_eq!(chunk["isEntryPoint"], false);
+    assert_eq!(chunk["reviewedAt"], serde_json::Value::Null);
+    assert_eq!(chunk["reviewedBy"], serde_json::Value::Null);
+    assert_eq!(chunk["documentId"], serde_json::Value::Null);
+    assert_eq!(chunk["documentOrder"], serde_json::Value::Null);
+}
+
+/// A populated `embedding` column must round-trip as a plain JSON array of
+/// numbers on the wire — the same shape Node's `vector` custom type
+/// produces — not as a string or the raw pgvector text form.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn populated_embedding_round_trips_as_a_json_number_array(pool: sqlx::PgPool) {
+    seed_dev_user(&pool).await;
+    let app = fubbik_api::router(dev_state(pool.clone()));
+
+    let res = app
+        .clone()
+        .oneshot(
+            Request::post("/api/chunks")
+                .header("content-type", "application/json")
+                .body(Body::from(r#"{"title":"Embedded","content":"body"}"#))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let body = res.into_body().collect().await.unwrap().to_bytes();
+    let id = serde_json::from_slice::<serde_json::Value>(&body).unwrap()["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+
+    // The repository doesn't yet expose a write path for `embedding`
+    // (enrichment lands in a later phase) — set it directly to prove the
+    // read path decodes a populated vector correctly.
+    let vector_literal = format!(
+        "[{}]",
+        (0..768)
+            .map(|i| format!("{:.4}", i as f32 / 1000.0))
+            .collect::<Vec<_>>()
+            .join(",")
+    );
+    sqlx::query("UPDATE chunk SET embedding = $1::vector WHERE id = $2")
+        .bind(&vector_literal)
+        .bind(&id)
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    let res = app
+        .oneshot(
+            Request::get(format!("/api/chunks/{id}"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let body = res.into_body().collect().await.unwrap().to_bytes();
+    let chunk: serde_json::Value = serde_json::from_slice(&body).unwrap();
+
+    let embedding = chunk["embedding"]
+        .as_array()
+        .expect("embedding must serialise as a JSON array, not a string or null");
+    assert_eq!(embedding.len(), 768);
+    assert!((embedding[1].as_f64().unwrap() - 0.001).abs() < 1e-6);
+}
