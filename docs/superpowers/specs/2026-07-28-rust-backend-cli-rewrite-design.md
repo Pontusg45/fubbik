@@ -356,12 +356,48 @@ provisioned; `CorsLayer` `Any` + credentials panicking at construction; a global
 `search_path` that broke `sqlx::migrate!`'s bookkeeping and failed every server restart;
 and a docstring claiming race-freedom the code did not have.
 
-### Must be resolved in Phase 2
+### CLOSED — the four parity gaps
 
-1. **The four live parity gaps** the differential harness found against the Node stack:
-   response envelope (`{chunks,total,limit,offset}` vs bare array), 11 missing `Chunk`
-   fields, timestamps serialised without a timezone (JS parses those as local time — a
-   silent correctness bug), and a differing implicit-dev-session email.
+All four are fixed and verified live against the Node stack: the response envelope now
+matches (`chunks`/`total`/`limit`/`offset`, with `total` reflecting the filters and
+`limit`/`offset` echoing post-clamp values), all 11 missing `Chunk` fields are exposed,
+timestamps serialise as UTC ISO 8601 with a trailing `Z` at millisecond precision
+(byte-identical to Node), and the implicit-dev-session email is `dev@localhost`.
+
+`embedding` is handled without the `pgvector` crate: the column is cast to text and parsed
+the same way Node's own `fromDriver` does, giving exact wire parity for both null and
+populated vectors.
+
+### DATABASE COLLATION MUST MATCH — found by the harness, affects cutover
+
+The harness then caught a subtler divergence: `?sort=alpha` ordered differently between
+stacks. **Neither implementation is wrong** — both issue `ORDER BY title ASC`. The
+databases disagree:
+
+| | collation provider |
+| --- | --- |
+| The live Node database (Homebrew Postgres) | `i` — **ICU** |
+| The Rust container database | `c` — **libc** |
+
+ICU ignores punctuation at the primary level, so `"Catalog tables:"` sorts before
+`"Catalog-driven"`; libc compares bytes, where space (`0x20`) precedes hyphen (`0x2D`),
+reversing them. Proven directly: forcing `ORDER BY title COLLATE "en-US-x-icu"` on the
+container database reproduces Node's order exactly.
+
+This matters at cutover far more than during development. If the production Rust database
+is created with a different collation provider than the current one, **every text ordering
+in the application silently changes** — no error, no test failure, just different results.
+
+Two ways to address it, and the choice should be deliberate:
+- Create the Rust database with the ICU provider so it matches
+  (`CREATE DATABASE … LOCALE_PROVIDER icu ICU_LOCALE 'en-US' TEMPLATE template0`), or
+- Pin an explicit `COLLATE` in the ORDER BY so sort order stops depending on how the
+  database happened to be created.
+
+The second is more robust but hardcodes a locale. Until one is chosen, the differential
+harness will keep reporting a sort mismatch that is environmental rather than a defect.
+
+### Must be resolved in Phase 2
 2. **The web migration**, deferred out of Phase 1: the web app calls 27 API domains and
    Phase 1 implements one. The Proxy API client is parked, proven at runtime, at
    `apps/web/src/utils/api-proxy.future.ts`. Its blocker is call-site typing under
