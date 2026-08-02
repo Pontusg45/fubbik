@@ -750,7 +750,6 @@ dependencies = [
  "clap",
  "fubbik-api",
  "fubbik-cli",
- "fubbik-core",
  "fubbik-db",
  "serde_json",
  "tokio",
@@ -772,7 +771,6 @@ dependencies = [
  "fubbik-db",
  "http-body-util",
  "mime_guess",
- "rand",
  "reqwest",
  "rust-embed",
  "serde",
@@ -782,7 +780,6 @@ dependencies = [
  "time",
  "tokio",
  "tower",
- "tower-http",
  "tracing",
  "utoipa",
 ]
@@ -824,7 +821,6 @@ dependencies = [
  "serde",
  "serde_json",
  "sqlx",
- "thiserror",
  "tokio",
  "tracing",
  "utoipa",
@@ -2778,7 +2774,6 @@ dependencies = [
  "tower",
  "tower-layer",
  "tower-service",
- "tracing",
  "url",
 ]
 
