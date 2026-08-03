@@ -1,7 +1,6 @@
 use axum::extract::{Path, State};
 use axum::routing::get;
 use axum::{Json, Router};
-use fubbik_core::error::AppResult;
 use fubbik_db::repo::chunk::Chunk;
 use fubbik_db::repo::chunk_meta::{self, AppliesTo, FileRef};
 
@@ -9,6 +8,7 @@ use super::dto::{ChunkListResponse, CreateChunkBody, ListChunksQuery, UpdateChun
 use super::service;
 use crate::AppState;
 use crate::auth::CurrentUser;
+use crate::error::ApiResult;
 // Imported under its plain name (not e.g. `ReqQuery`) because utoipa's
 // `axum_extras` feature infers a handler param's `parameter_in` (path vs
 // query) by pattern-matching the literal `Query<T>` identifier used in the
@@ -24,7 +24,7 @@ pub async fn list_chunks(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
     Query(query): Query<ListChunksQuery>,
-) -> AppResult<Json<ChunkListResponse>> {
+) -> ApiResult<Json<ChunkListResponse>> {
     Ok(Json(
         service::list(&state.pool, &user.id, query.into_params()).await?,
     ))
@@ -36,7 +36,7 @@ pub async fn create_chunk(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
     ReqJson(body): ReqJson<CreateChunkBody>,
-) -> AppResult<Json<Chunk>> {
+) -> ApiResult<Json<Chunk>> {
     Ok(Json(service::create(&state.pool, &user.id, body).await?))
 }
 
@@ -46,7 +46,7 @@ pub async fn get_chunk(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
     Path(id): Path<String>,
-) -> AppResult<Json<Chunk>> {
+) -> ApiResult<Json<Chunk>> {
     Ok(Json(service::get(&state.pool, &user.id, &id).await?))
 }
 
@@ -57,7 +57,7 @@ pub async fn update_chunk(
     CurrentUser(user): CurrentUser,
     Path(id): Path<String>,
     ReqJson(body): ReqJson<UpdateChunkBody>,
-) -> AppResult<Json<Chunk>> {
+) -> ApiResult<Json<Chunk>> {
     Ok(Json(
         service::update(&state.pool, &user.id, &id, body).await?,
     ))
@@ -69,7 +69,7 @@ pub async fn delete_chunk(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
     Path(id): Path<String>,
-) -> AppResult<Json<serde_json::Value>> {
+) -> ApiResult<Json<serde_json::Value>> {
     service::delete(&state.pool, &user.id, &id).await?;
     Ok(Json(serde_json::json!({ "success": true })))
 }
@@ -80,7 +80,7 @@ pub async fn chunk_history(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
     Path(id): Path<String>,
-) -> AppResult<Json<Vec<fubbik_db::repo::chunk_version::ChunkVersion>>> {
+) -> ApiResult<Json<Vec<fubbik_db::repo::chunk_version::ChunkVersion>>> {
     Ok(Json(service::history(&state.pool, &user.id, &id).await?))
 }
 
@@ -100,7 +100,7 @@ pub async fn get_applies_to(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
     Path(id): Path<String>,
-) -> AppResult<Json<Vec<AppliesTo>>> {
+) -> ApiResult<Json<Vec<AppliesTo>>> {
     service::get(&state.pool, &user.id, &id).await?;
     Ok(Json(
         chunk_meta::get_applies_to(&state.pool, &id, &user.id).await?,
@@ -114,7 +114,7 @@ pub async fn put_applies_to(
     CurrentUser(user): CurrentUser,
     Path(id): Path<String>,
     ReqJson(body): ReqJson<PatternsBody>,
-) -> AppResult<Json<Vec<AppliesTo>>> {
+) -> ApiResult<Json<Vec<AppliesTo>>> {
     service::get(&state.pool, &user.id, &id).await?;
     chunk_meta::replace_applies_to(&state.pool, &id, &user.id, &body.patterns).await?;
     Ok(Json(
@@ -128,7 +128,7 @@ pub async fn get_file_refs(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
     Path(id): Path<String>,
-) -> AppResult<Json<Vec<FileRef>>> {
+) -> ApiResult<Json<Vec<FileRef>>> {
     service::get(&state.pool, &user.id, &id).await?;
     Ok(Json(
         chunk_meta::get_file_refs(&state.pool, &id, &user.id).await?,
@@ -142,7 +142,7 @@ pub async fn put_file_refs(
     CurrentUser(user): CurrentUser,
     Path(id): Path<String>,
     ReqJson(body): ReqJson<PathsBody>,
-) -> AppResult<Json<Vec<FileRef>>> {
+) -> ApiResult<Json<Vec<FileRef>>> {
     service::get(&state.pool, &user.id, &id).await?;
     chunk_meta::replace_file_refs(&state.pool, &id, &user.id, &body.paths).await?;
     Ok(Json(

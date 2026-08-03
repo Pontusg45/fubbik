@@ -24,8 +24,10 @@ use axum::http::request::Parts;
 use fubbik_core::error::AppError;
 use serde::de::DeserializeOwned;
 
+use crate::error::ApiError;
+
 /// Drop-in replacement for `axum::extract::Json` whose rejection is
-/// `AppError` instead of axum's `JsonRejection`.
+/// `ApiError` instead of axum's `JsonRejection`.
 pub struct Json<T>(pub T);
 
 impl<T, S> FromRequest<S> for Json<T>
@@ -33,7 +35,7 @@ where
     T: DeserializeOwned,
     S: Send + Sync,
 {
-    type Rejection = AppError;
+    type Rejection = ApiError;
 
     async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
         match axum::Json::<T>::from_request(req, state).await {
@@ -48,14 +50,15 @@ where
                         AppError::UnsupportedMediaType(message)
                     }
                     _ => AppError::Validation(message),
-                })
+                }
+                .into())
             }
         }
     }
 }
 
 /// Drop-in replacement for `axum::extract::Query` whose rejection is
-/// `AppError` instead of axum's `QueryRejection`.
+/// `ApiError` instead of axum's `QueryRejection`.
 pub struct Query<T>(pub T);
 
 impl<T, S> FromRequestParts<S> for Query<T>
@@ -63,12 +66,12 @@ where
     T: DeserializeOwned,
     S: Send + Sync,
 {
-    type Rejection = AppError;
+    type Rejection = ApiError;
 
     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
         match axum::extract::Query::<T>::from_request_parts(parts, state).await {
             Ok(axum::extract::Query(value)) => Ok(Query(value)),
-            Err(rejection) => Err(AppError::Validation(rejection.to_string())),
+            Err(rejection) => Err(AppError::Validation(rejection.to_string()).into()),
         }
     }
 }

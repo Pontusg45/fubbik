@@ -4,12 +4,13 @@ use axum::{Json, Router};
 use axum_extra::extract::CookieJar;
 use axum_extra::extract::cookie::{Cookie, SameSite};
 use chrono::Duration;
-use fubbik_core::error::{AppError, AppResult};
+use fubbik_core::error::AppError;
 use fubbik_db::repo::{session, user};
 
 use super::password::{hash_password, verify_password};
 use super::session::COOKIE_NAME;
 use crate::AppState;
+use crate::error::ApiResult;
 use crate::extract::Json as ReqJson;
 
 /// How long a session (and the cookie carrying its token) stays valid.
@@ -61,17 +62,15 @@ async fn sign_up(
     State(state): State<AppState>,
     jar: CookieJar,
     ReqJson(body): ReqJson<SignUpBody>,
-) -> AppResult<(CookieJar, Json<UserResponse>)> {
+) -> ApiResult<(CookieJar, Json<UserResponse>)> {
     if body.password.len() < 8 {
-        return Err(AppError::Validation(
-            "password must be at least 8 characters".into(),
-        ));
+        return Err(AppError::Validation("password must be at least 8 characters".into()).into());
     }
     if user::find_by_email(&state.pool, &body.email)
         .await?
         .is_some()
     {
-        return Err(AppError::Conflict("email already registered".into()));
+        return Err(AppError::Conflict("email already registered".into()).into());
     }
 
     let hash = hash_password(&body.password)?;
@@ -83,9 +82,9 @@ async fn sign_up(
     let u = match user::create(&state.pool, &body.email, &body.name, Some(&hash)).await {
         Ok(u) => u,
         Err(AppError::Database(sqlx::Error::Database(db_err))) if db_err.is_unique_violation() => {
-            return Err(AppError::Conflict("email already registered".into()));
+            return Err(AppError::Conflict("email already registered".into()).into());
         }
-        Err(e) => return Err(e),
+        Err(e) => return Err(e.into()),
     };
     let token = session::create(&state.pool, &u.id, Duration::days(SESSION_TTL_DAYS)).await?;
 
@@ -96,21 +95,21 @@ async fn sign_in(
     State(state): State<AppState>,
     jar: CookieJar,
     ReqJson(body): ReqJson<SignInBody>,
-) -> AppResult<(CookieJar, Json<UserResponse>)> {
+) -> ApiResult<(CookieJar, Json<UserResponse>)> {
     let u = user::find_by_email(&state.pool, &body.email)
         .await?
         .ok_or(AppError::Auth)?;
 
     let stored = u.password_hash.as_deref().ok_or(AppError::Auth)?;
     if !verify_password(&body.password, stored) {
-        return Err(AppError::Auth);
+        return Err(AppError::Auth.into());
     }
 
     let token = session::create(&state.pool, &u.id, Duration::days(SESSION_TTL_DAYS)).await?;
     Ok((jar.add(session_cookie(token)), Json(u.into())))
 }
 
-async fn sign_out(State(state): State<AppState>, jar: CookieJar) -> AppResult<CookieJar> {
+async fn sign_out(State(state): State<AppState>, jar: CookieJar) -> ApiResult<CookieJar> {
     if let Some(c) = jar.get(COOKIE_NAME) {
         session::delete(&state.pool, c.value()).await?;
     }
