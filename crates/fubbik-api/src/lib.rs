@@ -1,14 +1,16 @@
 pub mod assets;
 pub mod auth;
 pub mod chunks;
+pub mod error;
 pub mod extract;
 pub mod openapi;
 
 use axum::extract::State;
 use axum::routing::get;
 use axum::{Json, Router};
-use fubbik_core::error::AppResult;
 use sqlx::PgPool;
+
+use crate::error::ApiResult;
 
 #[derive(Clone)]
 pub struct AppState {
@@ -18,7 +20,7 @@ pub struct AppState {
 
 /// Deliberately unauthenticated and not utoipa-annotated — it's an
 /// operational probe, not part of the public API surface.
-async fn health(State(state): State<AppState>) -> AppResult<Json<serde_json::Value>> {
+async fn health(State(state): State<AppState>) -> ApiResult<Json<serde_json::Value>> {
     let db_ok = sqlx::query("SELECT 1").execute(&state.pool).await.is_ok();
     Ok(Json(serde_json::json!({
         "status": if db_ok { "ok" } else { "degraded" },

@@ -5,6 +5,7 @@ use fubbik_core::error::AppError;
 use fubbik_db::repo::{session, user};
 
 use crate::AppState;
+use crate::error::ApiError;
 
 pub const COOKIE_NAME: &str = "fubbik_session";
 
@@ -12,7 +13,7 @@ pub const COOKIE_NAME: &str = "fubbik_session";
 pub struct CurrentUser(pub user::User);
 
 impl FromRequestParts<AppState> for CurrentUser {
-    type Rejection = AppError;
+    type Rejection = ApiError;
 
     async fn from_request_parts(
         parts: &mut Parts,
@@ -34,7 +35,7 @@ impl FromRequestParts<AppState> for CurrentUser {
             return Ok(CurrentUser(u));
         }
 
-        Err(AppError::Auth)
+        Err(AppError::Auth.into())
     }
 }
 
