@@ -1,0 +1,20 @@
+[
+  {
+    "id": "seed-codebase-fubbik",
+    "name": "fubbik",
+    "kind": "code",
+    "description": null,
+    "userId": "dev-user",
+    "createdAt": "2026-06-02T23:39:08.719Z",
+    "updatedAt": "2026-06-02T23:39:08.719Z"
+  },
+  {
+    "id": "cc3a9b9d-e74f-474a-afdf-818b9efb229b",
+    "name": "fubbik-docs",
+    "kind": "code",
+    "description": null,
+    "userId": "dev-user",
+    "createdAt": "2026-06-02T23:39:08.721Z",
+    "updatedAt": "2026-06-02T23:39:08.721Z"
+  }
+]
