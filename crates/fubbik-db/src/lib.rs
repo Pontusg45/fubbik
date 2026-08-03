@@ -3,13 +3,38 @@ pub mod embedding;
 pub mod repo;
 pub mod timestamp;
 
-use sqlx::postgres::{PgConnectOptions, PgPoolOptions};
-use sqlx::{Executor, PgPool, Row};
+use sqlx::postgres::{PgConnectOptions, PgConnection, PgPoolOptions};
+use sqlx::{Connection, Executor, PgPool, Row};
 use std::str::FromStr;
 
-/// Connects, installs the AGE per-connection setup, and runs migrations.
+/// Connects, runs migrations, and installs the AGE per-connection setup.
 pub async fn connect(database_url: &str) -> Result<PgPool, sqlx::Error> {
     let opts = PgConnectOptions::from_str(database_url)?;
+
+    // Migrations run on their own dedicated connection, opened here and
+    // closed immediately after, which never joins the pool built below.
+    //
+    // This is deliberate, not ceremony: `sqlx::migrate!` runs on whatever
+    // connection it is handed and does not reset that connection's
+    // session state afterward. A migration that changes session state —
+    // a plain (non-LOCAL) `SET`, for instance — would otherwise persist
+    // on that connection for the rest of its life. If that connection
+    // then came from (or returned to) the app's pool, every later request
+    // served by it would silently inherit the mutation. That is exactly
+    // the restart-breaking defect this crate has already hit twice: once
+    // as a `SET search_path` in this function's own `after_connect` hook
+    // (removed below), and once inside migration 0001's AGE setup DO
+    // block (see the history of `0001_init.sql`, reverted rather than
+    // fixed in place because an applied migration's content is immutable
+    // — its checksum is compared against what already ran). Running
+    // migrations on a connection that is discarded right after makes
+    // `connect()` immune to this entire class of bug, for any migration,
+    // present or future — not just the ones already found.
+    let mut migrate_conn = PgConnection::connect_with(&opts).await?;
+    sqlx::migrate!("./migrations")
+        .run(&mut migrate_conn)
+        .await?;
+    migrate_conn.close().await?;
 
     let pool = PgPoolOptions::new()
         .max_connections(10)
@@ -20,18 +45,13 @@ pub async fn connect(database_url: &str) -> Result<PgPool, sqlx::Error> {
                 // and swallowed rather than failing the connection.
                 //
                 // Deliberately does NOT also `SET search_path` here (as an
-                // earlier version did): that mutates search_path for the
-                // rest of the connection's session, including the
-                // connection `sqlx::migrate!` below pulls from this same
-                // pool. Once AGE is installed, every subsequent process
-                // start would see `ag_catalog` ahead of `public` in the
-                // search path before migrations run, causing sqlx's
-                // unqualified `_sqlx_migrations` bookkeeping table to
-                // resolve under `ag_catalog` instead of `public` — sqlx
-                // then thinks no migrations have run and reapplies them,
-                // colliding with tables migration 0001 already created.
-                // `age::cypher` sets search_path itself, per call, on its
-                // own acquired connection, so nothing here needs it.
+                // earlier version did): every connection this hook fires
+                // on goes straight into the pool that serves requests, so
+                // any session-state mutation here would be permanent for
+                // that connection's lifetime. `age::cypher` sets
+                // search_path itself, scoped to its own transaction via
+                // `SET LOCAL`, on its own acquired connection, so nothing
+                // here needs it.
                 if let Err(e) = conn.execute("LOAD 'age';").await {
                     tracing::debug!("AGE not available: {e}");
                 }
@@ -41,7 +61,6 @@ pub async fn connect(database_url: &str) -> Result<PgPool, sqlx::Error> {
         .connect_with(opts)
         .await?;
 
-    sqlx::migrate!("./migrations").run(&pool).await?;
     Ok(pool)
 }
 
