@@ -454,17 +454,33 @@ ordering matches the reference without touching query text. Concretely:
    `tracing::warn!` at startup whenever it is active, naming which condition triggered it
    and how to turn it off, so it can never be silently true in a deployment believed to
    be secured.
-5. **`scripts/differential.sh`'s seeding step** collides with migration 0002's reference
-   rows. Working recipe: fresh database, migrate, then
-   `pg_dump --data-only --column-inserts --on-conflict-do-nothing` excluding `account`
-   and `verification`.
+5. ~~**`scripts/differential.sh`'s seeding step** collides with migration 0002's reference
+   rows.~~ **RESOLVED.** The script now provisions a dedicated `fubbik_diff` database
+   (ICU provider, so ordering is comparable), migrates it, truncates the reference tables
+   migration 0002 seeds, then loads a COPY-format `pg_dump --data-only` excluding
+   `account` and `verification` — the two tables the Rust schema drops. It refuses to run
+   without `DATABASE_URL` and fails loudly if the Node server is unreachable, rather than
+   "passing" a comparison where both sides returned nothing. Note `--column-inserts`
+   is the obvious way to tolerate conflicts but is far too slow for this data volume
+   (timed out at 7 minutes); the truncate-then-COPY approach replaces it.
 
 ### Worth doing before the codebase grows
 
-- `update` applies no title validation while `create` rejects blank and over-long titles.
-  Asymmetric validation on one field is a pattern 26 more domains would copy.
-- `tests/pool.rs` never calls `fubbik_db::connect()`, so the `after_connect` hook is
-  untested — and that hook is exactly where the restart-breaking defect lived.
+- ~~`update` applies no title validation while `create` rejects blank and over-long
+  titles.~~ **RESOLVED** — `update` now trims, rejects blank, and enforces the 200-char
+  cap, symmetric with `create`.
+  **Note a divergence discovered while fixing it:** Node trims titles on both create and
+  update but rejects blank on *neither*. So Rust's `create` blank-rejection was already a
+  divergence from Node, not an alignment with it, and `update` now matches `create` rather
+  than matching Node. This is deliberate — a blank title is not a useful state, and there
+  is no migration risk because a content-only PATCH leaves `title` untouched — but it is a
+  place where Rust is intentionally stricter than the reference implementation.
+- ~~`tests/pool.rs` never calls `fubbik_db::connect()`, so the `after_connect` hook is
+  untested.~~ **RESOLVED** — a test now calls `connect()` for real and asserts the pool is
+  usable, migrations applied, no mutated `search_path` left on a pooled connection, and
+  that calling it twice succeeds (the restart scenario the original defect broke).
+  `#[sqlx::test]` provisions its own pool and bypasses `connect()` entirely, which is
+  exactly why this gap survived eighteen tasks.
 - `fubbik-core` depends on `axum` and `sqlx`, so it is an HTTP-error crate rather than a
   domain core. Rename or split before Phase 2 grows it.
 - Retry-on-conflict for concurrent same-chunk version snapshots (currently a loud 409).

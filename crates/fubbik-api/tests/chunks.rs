@@ -96,6 +96,86 @@ async fn blank_title_is_400(pool: sqlx::PgPool) {
     assert_eq!(res.status(), StatusCode::BAD_REQUEST);
 }
 
+/// Creates a chunk and returns its id, for tests that need an existing
+/// chunk to PATCH.
+async fn create_chunk(app: &axum::Router, title: &str) -> String {
+    let res = app
+        .clone()
+        .oneshot(
+            Request::post("/api/chunks")
+                .header("content-type", "application/json")
+                .body(Body::from(
+                    serde_json::json!({ "title": title, "content": "body" }).to_string(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = res.into_body().collect().await.unwrap().to_bytes();
+    serde_json::from_slice::<serde_json::Value>(&body).unwrap()["id"]
+        .as_str()
+        .unwrap()
+        .to_string()
+}
+
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn blank_title_on_update_is_400(pool: sqlx::PgPool) {
+    seed_dev_user(&pool).await;
+    let app = fubbik_api::router(dev_state(pool));
+    let id = create_chunk(&app, "Original").await;
+
+    let res = app
+        .oneshot(
+            Request::patch(format!("/api/chunks/{id}"))
+                .header("content-type", "application/json")
+                .body(Body::from(r#"{"title":""}"#))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+}
+
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn whitespace_only_title_on_update_is_400(pool: sqlx::PgPool) {
+    seed_dev_user(&pool).await;
+    let app = fubbik_api::router(dev_state(pool));
+    let id = create_chunk(&app, "Original").await;
+
+    let res = app
+        .oneshot(
+            Request::patch(format!("/api/chunks/{id}"))
+                .header("content-type", "application/json")
+                .body(Body::from(r#"{"title":"   "}"#))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+}
+
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn over_length_title_on_update_is_400(pool: sqlx::PgPool) {
+    seed_dev_user(&pool).await;
+    let app = fubbik_api::router(dev_state(pool));
+    let id = create_chunk(&app, "Original").await;
+
+    let too_long = "x".repeat(201);
+    let res = app
+        .oneshot(
+            Request::patch(format!("/api/chunks/{id}"))
+                .header("content-type", "application/json")
+                .body(Body::from(
+                    serde_json::json!({ "title": too_long }).to_string(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+}
+
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn update_records_history(pool: sqlx::PgPool) {
     seed_dev_user(&pool).await;
