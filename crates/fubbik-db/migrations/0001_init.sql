@@ -3,22 +3,11 @@ CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
 -- AGE is optional. Swallow the failure so a Postgres without the extension
 -- still migrates cleanly; fubbik_db::age degrades to empty results.
---
--- `SET LOCAL`, not `SET`: sqlx runs this whole migration file inside one
--- transaction, so `SET LOCAL` is scoped to it and reverts automatically at
--- COMMIT. A plain `SET` here would persist on whichever physical
--- connection sqlx used to run this migration for the rest of that
--- connection's session — including after it is returned to the pool
--- `fubbik_db::connect()` hands back to the caller — silently mutating
--- `search_path` for every later request that happens to be served by that
--- same pooled connection. See the identical rationale on `age::cypher`'s
--- own `SET LOCAL` in `age.rs`, and the `after_connect` hook comment in
--- `lib.rs` for the restart-breaking version of this same mistake.
 DO $$
 BEGIN
     CREATE EXTENSION IF NOT EXISTS age;
     LOAD 'age';
-    SET LOCAL search_path = ag_catalog, "$user", public;
+    SET search_path = ag_catalog, "$user", public;
     PERFORM ag_catalog.create_graph('knowledge');
 EXCEPTION
     WHEN duplicate_schema THEN NULL;  -- graph already exists
