@@ -77,18 +77,16 @@ async fn check_connect_against(scratch_url: &str) -> Result<(), String> {
     }
 
     // The regression that mattered: `after_connect` must not leave a
-    // mutated `search_path` on a connection handed back to the pool. Pin
-    // `max_connections(1)` on a second pool to the same database so every
-    // acquisition is guaranteed to reuse the exact physical connection
-    // `connect()`'s own `after_connect` hook (and the migration run)
-    // touched.
-    let single = PgPoolOptions::new()
-        .max_connections(1)
-        .connect(scratch_url)
-        .await
-        .map_err(|e| format!("single-connection pool to the scratch database failed: {e}"))?;
+    // mutated `search_path` on a connection handed back to the pool.
+    // Queried on `pool` itself — the actual pool `connect()` returned,
+    // with its own `after_connect` hook installed — not a freshly built
+    // sibling pool. A sibling pool never runs `connect()`'s hook at all,
+    // so it would report a clean `search_path` regardless of what the
+    // hook does; that check would pass even with the historical bug
+    // reintroduced; only a connection that actually came out of this pool
+    // can prove anything about this hook.
     let search_path: String = sqlx::query("SHOW search_path")
-        .fetch_one(&single)
+        .fetch_one(&pool)
         .await
         .map_err(|e| format!("SHOW search_path failed: {e}"))?
         .try_get(0)
@@ -99,7 +97,6 @@ async fn check_connect_against(scratch_url: &str) -> Result<(), String> {
              search_path, got: {search_path}"
         ));
     }
-    single.close().await;
     pool.close().await;
 
     // Restart scenario: `fubbik serve` calls `connect()` exactly once per
