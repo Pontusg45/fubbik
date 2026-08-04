@@ -4,6 +4,7 @@ pub mod chunks;
 pub mod error;
 pub mod extract;
 pub mod openapi;
+pub mod tag_types;
 
 use axum::extract::State;
 use axum::routing::get;
@@ -33,6 +34,7 @@ pub fn router(state: AppState) -> Router {
     Router::new()
         .merge(auth::routes::router())
         .merge(chunks::routes::router())
+        .merge(tag_types::routes::router())
         .route("/api/health", get(health))
         .with_state(state)
         .fallback(assets::serve)
