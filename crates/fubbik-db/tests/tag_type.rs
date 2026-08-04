@@ -11,7 +11,7 @@ async fn crud_round_trips_and_is_user_scoped(pool: sqlx::PgPool) {
         .unwrap()
         .id;
 
-    let t = tag_type::create(&pool, &alice, "Topic", "#ff0000", None)
+    let t = tag_type::create(&pool, &alice, "Topic", Some("#ff0000"), None)
         .await
         .unwrap();
     assert_eq!(t.name, "Topic");

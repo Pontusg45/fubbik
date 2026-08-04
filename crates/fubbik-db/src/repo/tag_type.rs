@@ -22,15 +22,15 @@ pub struct TagType {
 /// the `INSERT` entirely so Postgres applies its own default, rather than
 /// this function re-stating the hex literal (the schema stays the single
 /// source of truth for it).
-pub async fn create<'a>(
+pub async fn create(
     pool: &PgPool,
     user_id: &str,
     name: &str,
-    color: impl Into<Option<&'a str>>,
+    color: Option<&str>,
     icon: Option<&str>,
 ) -> AppResult<TagType> {
     let id = crate::new_id();
-    let t = match color.into() {
+    let t = match color {
         Some(color) => {
             sqlx::query_as!(
                 TagType,
