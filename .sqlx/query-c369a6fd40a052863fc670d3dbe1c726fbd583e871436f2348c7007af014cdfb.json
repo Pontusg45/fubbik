@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO space_code_metadata (space_id, user_id, remote_url, local_paths)\n               SELECT $1, $2, $3, $4\n               WHERE EXISTS (SELECT 1 FROM space s WHERE s.id = $1 AND s.user_id = $2)\n               ON CONFLICT (space_id) DO UPDATE\n                 SET remote_url = EXCLUDED.remote_url, local_paths = EXCLUDED.local_paths",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Jsonb"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "c369a6fd40a052863fc670d3dbe1c726fbd583e871436f2348c7007af014cdfb"
+}

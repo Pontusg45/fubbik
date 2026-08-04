@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO document (id, title, source_path, content_hash, space_id, user_id) VALUES ($1, 'Doc', '/doc.md', 'hash', $2, $3)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "d3cbaec0146086fa08f1bc50be30d5ea5f24fc3645df17a9da8e8d32a5a41e1b"
+}

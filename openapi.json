@@ -419,6 +419,235 @@
         }
       }
     },
+    "/api/spaces": {
+      "get": {
+        "tags": [
+          "crate::spaces::routes"
+        ],
+        "operationId": "list_spaces",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Space"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "crate::spaces::routes"
+        ],
+        "operationId": "create_space",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSpaceBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Space"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/spaces/detect": {
+      "get": {
+        "tags": [
+          "crate::spaces::routes"
+        ],
+        "operationId": "detect_space",
+        "parameters": [
+          {
+            "name": "remoteUrl",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "localPath",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "no match: empty body"
+          }
+        }
+      }
+    },
+    "/api/spaces/{id}": {
+      "get": {
+        "tags": [
+          "crate::spaces::routes"
+        ],
+        "operationId": "get_space",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SpaceDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "crate::spaces::routes"
+        ],
+        "operationId": "delete_space",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "crate::spaces::routes"
+        ],
+        "operationId": "update_space",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSpaceBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Space"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/spaces/{id}/reset": {
+      "post": {
+        "tags": [
+          "crate::spaces::routes"
+        ],
+        "operationId": "reset_space",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResetResult"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
     "/api/tag-types": {
       "get": {
         "tags": [
@@ -986,6 +1215,44 @@
           }
         }
       },
+      "CreateSpaceBody": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "kind": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "localPaths": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "name": {
+            "type": "string"
+          },
+          "remoteUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
       "CreateTagBody": {
         "type": "object",
         "required": [
@@ -1117,6 +1384,34 @@
           }
         }
       },
+      "ResetResult": {
+        "type": "object",
+        "description": "Return value of [`reset`], matching Node's `resetSpaceData` return shape\n(`packages/db/src/repository/space.ts:144-184`).",
+        "required": [
+          "chunksDeleted",
+          "docsDeleted",
+          "plansDeleted",
+          "requirementsDeleted"
+        ],
+        "properties": {
+          "chunksDeleted": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "docsDeleted": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "plansDeleted": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "requirementsDeleted": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
       "Sort": {
         "type": "string",
         "enum": [
@@ -1125,6 +1420,97 @@
           "alpha",
           "updated"
         ]
+      },
+      "Space": {
+        "type": "object",
+        "description": "Bare `space` row shape — what `GET /api/spaces` (list), `POST /api/spaces`\n(create), `PATCH /api/spaces/{id}` (update), and `GET /api/spaces/detect`\non a match all return. **Not** the shape of `GET /api/spaces/{id}`\n(detail) — that one nests this struct inside [`SpaceDetail`] alongside\n`space_code_metadata`. Three different endpoints, three different \"space\"\nshapes: reusing this struct for all of them would silently flatten or\ndrop the `code` metadata on the detail route. See `_questions.md` in\n`tests/fixtures/node-contract/` (\"space detail vs list: nested `code`\nmetadata, not flattened\").",
+        "required": [
+          "id",
+          "name",
+          "kind",
+          "userId",
+          "createdAt",
+          "updatedAt"
+        ],
+        "properties": {
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "userId": {
+            "type": "string"
+          }
+        }
+      },
+      "SpaceCodeMetadata": {
+        "type": "object",
+        "description": "`space_code_metadata` side-table row, holding the extra fields that only\napply to `kind = 'code'` spaces. Only ever surfaced nested inside\n[`SpaceDetail`] — never flattened into `Space` itself.",
+        "required": [
+          "spaceId",
+          "userId",
+          "localPaths"
+        ],
+        "properties": {
+          "localPaths": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "remoteUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "spaceId": {
+            "type": "string"
+          },
+          "userId": {
+            "type": "string"
+          }
+        }
+      },
+      "SpaceDetail": {
+        "type": "object",
+        "description": "Shape of `GET /api/spaces/{id}` — `{ space, code }`, matching Node's\n`getSpaceWithCodeMetadata` (`packages/db/src/repository/space.ts:58-72`),\nwhich `leftJoin`s `space_code_metadata` and returns the two halves as\nsibling keys, un-flattened. `code` is `null` for a non-`code`-kind space\n(no side-table row ever exists for it).",
+        "required": [
+          "space"
+        ],
+        "properties": {
+          "code": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/SpaceCodeMetadata"
+              }
+            ]
+          },
+          "space": {
+            "$ref": "#/components/schemas/Space"
+          }
+        }
       },
       "Tag": {
         "type": "object",
@@ -1286,6 +1672,39 @@
             ]
           },
           "type": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "UpdateSpaceBody": {
+        "type": "object",
+        "description": "`description` and `remote_url` are tri-state, matching Node's\n`t.Optional(t.Union([t.String(), t.Null()]))` for both: omitted leaves\nthe field untouched (or, for `remoteUrl` on a code-kind space, falls\nthrough to Node's `?? null` — see `service::update`), explicit `null`\nclears it, a string sets it. Same `deserialize_some` trick as\n`tags::dto::UpdateTagBody::tag_type_id` — plain `Option<Option<T>>`\ncollapses \"omitted\" and \"explicit null\" to the same `None` without it.\n\n`local_paths` is NOT tri-state at the schema level (`t.Optional(t.Array(...))`,\nno `t.Null()` union) — a plain `Option<Vec<String>>` is correct here.",
+        "properties": {
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "localPaths": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "remoteUrl": {
             "type": [
               "string",
               "null"

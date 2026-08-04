@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT space_id, user_id, remote_url,\n                  local_paths AS \"local_paths: Json<Vec<String>>\"\n           FROM space_code_metadata WHERE space_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "space_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "user_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "remote_url",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "local_paths: Json<Vec<String>>",
+        "type_info": "Jsonb"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "3bef008fed86632feec76034486984eff82403730a33c3dfc1c86d32a1a1797a"
+}
