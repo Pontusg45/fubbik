@@ -108,8 +108,18 @@ and attaching another user's tag to your own chunk, are distinct holes. Both nee
 Phase 1 seeded `chunk_type`, `connection_relation` and `space_kind` as reference data but
 deliberately excluded `tag_type`, which the live database shows as user-managed (8 rows).
 So `tag-types` is real CRUD, not a fixed catalog, and `tag.tag_type` is an FK to a table
-users can add to and delete from. Deletion needs a decision: restrict while tags reference
-it, or cascade. **Match Node** — check before choosing.
+users can add to and delete from.
+
+**Deletion semantics — answered by the Task 1 capture, and the answer was neither option
+this document originally anticipated.** It is not restrict and not cascade: deleting a tag
+type **nulls out `tag.tag_type_id`**, entirely via a database-level `ON DELETE SET NULL`
+foreign key (`packages/db/src/schema/tag.ts:27`). No application code participates.
+
+Two consequences: `tag.tag_type_id` being nullable is load-bearing rather than incidental,
+and the Rust port inherits the behaviour from the schema for free — the migration already
+declares the same constraint (`crates/fubbik-db/migrations/0001_init.sql:2742`,
+independently verified). The port must therefore **not** add app-level restrict or conflict
+logic, which is what a reasonable implementer would otherwise have written.
 
 ## Testing
 
