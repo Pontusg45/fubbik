@@ -1,0 +1,58 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT t.id, t.name, t.tag_type_id,\n                  tt.name AS \"tag_type_name?\",\n                  tt.color AS \"tag_type_color?\",\n                  tt.icon AS \"tag_type_icon?\",\n                  COUNT(ct.chunk_id) AS \"chunk_count!\"\n           FROM tag t\n           LEFT JOIN tag_type tt ON tt.id = t.tag_type_id\n           LEFT JOIN chunk_tag ct ON ct.tag_id = t.id\n           WHERE t.user_id = $1\n           GROUP BY t.id, tt.id\n           ORDER BY t.created_at ASC",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "tag_type_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "tag_type_name?",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "tag_type_color?",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "tag_type_icon?",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "chunk_count!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      false,
+      true,
+      null
+    ]
+  },
+  "hash": "8fd9711f6ad4b96dfb9137009568e4b68ecf7717ccf6066ccf7d2db0a05ace73"
+}

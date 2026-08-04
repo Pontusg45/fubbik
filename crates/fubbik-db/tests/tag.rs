@@ -1,0 +1,244 @@
+//! `chunk_tag` is a composite-key join with no `user_id` of its own —
+//! ownership derives entirely from the two parent rows (`chunk`, `tag`).
+//! That creates two independent holes; a fix for one does not fix the
+//! other, so each direction gets its own test (`Step 1` of the task brief).
+
+use fubbik_db::repo::{chunk, tag, user};
+
+async fn seed(pool: &sqlx::PgPool, email: &str) -> String {
+    user::create(pool, email, "U", None).await.unwrap().id
+}
+
+async fn a_chunk(pool: &sqlx::PgPool, uid: &str, title: &str) -> String {
+    chunk::create(
+        pool,
+        uid,
+        chunk::NewChunk {
+            title: title.into(),
+            content: String::new(),
+            chunk_type: "note".into(),
+            rationale: None,
+        },
+    )
+    .await
+    .unwrap()
+    .id
+}
+
+#[sqlx::test]
+async fn cannot_tag_another_users_chunk(pool: sqlx::PgPool) {
+    let alice = seed(&pool, "a@b.test").await;
+    let bob = seed(&pool, "c@d.test").await;
+    let alices_chunk = a_chunk(&pool, &alice, "Alice's").await;
+    let bobs_tag = tag::create(&pool, &bob, "bobs-tag", None).await.unwrap();
+
+    // Bob attaches his own tag to Alice's chunk — must be rejected.
+    let n = tag::set_chunk_tags(
+        &pool,
+        &bob,
+        &alices_chunk,
+        std::slice::from_ref(&bobs_tag.id),
+    )
+    .await
+    .unwrap();
+    assert_eq!(n, 0, "must not tag another user's chunk");
+    assert!(
+        tag::tags_for_chunk(&pool, &alice, &alices_chunk)
+            .await
+            .unwrap()
+            .is_empty()
+    );
+}
+
+#[sqlx::test]
+async fn cannot_attach_another_users_tag(pool: sqlx::PgPool) {
+    let alice = seed(&pool, "a@b.test").await;
+    let bob = seed(&pool, "c@d.test").await;
+    let alices_chunk = a_chunk(&pool, &alice, "Alice's").await;
+    let bobs_tag = tag::create(&pool, &bob, "bobs-tag", None).await.unwrap();
+
+    // Alice attaches Bob's tag to her own chunk — must be rejected.
+    let n = tag::set_chunk_tags(
+        &pool,
+        &alice,
+        &alices_chunk,
+        std::slice::from_ref(&bobs_tag.id),
+    )
+    .await
+    .unwrap();
+    assert_eq!(n, 0, "must not attach another user's tag");
+    assert!(
+        tag::tags_for_chunk(&pool, &alice, &alices_chunk)
+            .await
+            .unwrap()
+            .is_empty()
+    );
+}
+
+#[sqlx::test]
+async fn own_chunk_and_own_tag_succeeds(pool: sqlx::PgPool) {
+    let alice = seed(&pool, "a@b.test").await;
+    let alices_chunk = a_chunk(&pool, &alice, "Alice's").await;
+    let alices_tag = tag::create(&pool, &alice, "alices-tag", None)
+        .await
+        .unwrap();
+
+    let n = tag::set_chunk_tags(
+        &pool,
+        &alice,
+        &alices_chunk,
+        std::slice::from_ref(&alices_tag.id),
+    )
+    .await
+    .unwrap();
+    assert_eq!(n, 1);
+    let tags = tag::tags_for_chunk(&pool, &alice, &alices_chunk)
+        .await
+        .unwrap();
+    assert_eq!(tags.len(), 1);
+    assert_eq!(tags[0].id, alices_tag.id);
+}
+
+#[sqlx::test]
+async fn set_chunk_tags_replaces_the_whole_set(pool: sqlx::PgPool) {
+    let alice = seed(&pool, "a@b.test").await;
+    let alices_chunk = a_chunk(&pool, &alice, "Alice's").await;
+    let tag_one = tag::create(&pool, &alice, "one", None).await.unwrap();
+    let tag_two = tag::create(&pool, &alice, "two", None).await.unwrap();
+
+    tag::set_chunk_tags(
+        &pool,
+        &alice,
+        &alices_chunk,
+        std::slice::from_ref(&tag_one.id),
+    )
+    .await
+    .unwrap();
+    let n = tag::set_chunk_tags(
+        &pool,
+        &alice,
+        &alices_chunk,
+        std::slice::from_ref(&tag_two.id),
+    )
+    .await
+    .unwrap();
+    assert_eq!(n, 1);
+
+    let tags = tag::tags_for_chunk(&pool, &alice, &alices_chunk)
+        .await
+        .unwrap();
+    assert_eq!(tags.len(), 1, "old tag must be replaced, not accumulated");
+    assert_eq!(tags[0].id, tag_two.id);
+}
+
+#[sqlx::test]
+async fn merge_moves_chunk_tags_from_source_to_target(pool: sqlx::PgPool) {
+    let alice = seed(&pool, "a@b.test").await;
+    let alices_chunk = a_chunk(&pool, &alice, "Alice's").await;
+    let source = tag::create(&pool, &alice, "source", None).await.unwrap();
+    let target = tag::create(&pool, &alice, "target", None).await.unwrap();
+
+    tag::set_chunk_tags(
+        &pool,
+        &alice,
+        &alices_chunk,
+        std::slice::from_ref(&source.id),
+    )
+    .await
+    .unwrap();
+
+    let result = tag::merge(&pool, &alice, &source.id, &target.id)
+        .await
+        .unwrap();
+    assert_eq!(result.target_id, target.id);
+    assert_eq!(result.chunk_count, 1);
+
+    let tags = tag::tags_for_chunk(&pool, &alice, &alices_chunk)
+        .await
+        .unwrap();
+    assert_eq!(tags.len(), 1);
+    assert_eq!(tags[0].id, target.id);
+}
+
+/// The case `ON CONFLICT DO NOTHING` exists for: a chunk already carrying
+/// BOTH tags before the merge must end with exactly one `chunk_tag` row
+/// afterwards, not a primary-key violation from a naive `UPDATE`.
+#[sqlx::test]
+async fn merge_when_chunk_already_has_both_tags_ends_with_one_row(pool: sqlx::PgPool) {
+    let alice = seed(&pool, "a@b.test").await;
+    let alices_chunk = a_chunk(&pool, &alice, "Alice's").await;
+    let source = tag::create(&pool, &alice, "source", None).await.unwrap();
+    let target = tag::create(&pool, &alice, "target", None).await.unwrap();
+
+    tag::set_chunk_tags(
+        &pool,
+        &alice,
+        &alices_chunk,
+        &[source.id.clone(), target.id.clone()],
+    )
+    .await
+    .unwrap();
+
+    let result = tag::merge(&pool, &alice, &source.id, &target.id)
+        .await
+        .unwrap();
+    assert_eq!(result.chunk_count, 1);
+
+    let tags = tag::tags_for_chunk(&pool, &alice, &alices_chunk)
+        .await
+        .unwrap();
+    assert_eq!(
+        tags.len(),
+        1,
+        "the chunk must end with exactly one chunk_tag row, not two and not zero"
+    );
+    assert_eq!(tags[0].id, target.id);
+}
+
+#[sqlx::test]
+async fn merge_deletes_the_source_tag(pool: sqlx::PgPool) {
+    let alice = seed(&pool, "a@b.test").await;
+    let source = tag::create(&pool, &alice, "source", None).await.unwrap();
+    let target = tag::create(&pool, &alice, "target", None).await.unwrap();
+
+    tag::merge(&pool, &alice, &source.id, &target.id)
+        .await
+        .unwrap();
+
+    let remaining = tag::list(&pool, &alice).await.unwrap();
+    let names: Vec<&str> = remaining.iter().map(|t| t.name.as_str()).collect();
+    assert_eq!(names, vec!["target"]);
+}
+
+#[sqlx::test]
+async fn merge_of_unknown_tag_id_is_not_found(pool: sqlx::PgPool) {
+    let alice = seed(&pool, "a@b.test").await;
+    let target = tag::create(&pool, &alice, "target", None).await.unwrap();
+
+    let err = tag::merge(&pool, &alice, "does-not-exist", &target.id)
+        .await
+        .unwrap_err();
+    assert!(matches!(err, fubbik_core::error::AppError::NotFound(_)));
+}
+
+#[sqlx::test]
+async fn merge_of_another_users_tag_is_not_found(pool: sqlx::PgPool) {
+    let alice = seed(&pool, "a@b.test").await;
+    let bob = seed(&pool, "c@d.test").await;
+    let alices_tag = tag::create(&pool, &alice, "alices-tag", None)
+        .await
+        .unwrap();
+    let bobs_tag = tag::create(&pool, &bob, "bobs-tag", None).await.unwrap();
+
+    // Alice tries to merge Bob's tag into her own — must be rejected, not
+    // silently merged across users.
+    let err = tag::merge(&pool, &alice, &bobs_tag.id, &alices_tag.id)
+        .await
+        .unwrap_err();
+    assert!(matches!(err, fubbik_core::error::AppError::NotFound(_)));
+
+    // Bob's tag must survive untouched.
+    let bobs_tags = tag::list(&pool, &bob).await.unwrap();
+    assert_eq!(bobs_tags.len(), 1);
+    assert_eq!(bobs_tags[0].id, bobs_tag.id);
+}

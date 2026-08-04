@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO chunk_tag (chunk_id, tag_id)\n           SELECT chunk_id, $1 FROM chunk_tag WHERE tag_id = $2\n           ON CONFLICT (chunk_id, tag_id) DO NOTHING",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "1cc41c9d29478070645a70436a039b12d1233b0cdbc67a50d0c0efd71f61dd80"
+}

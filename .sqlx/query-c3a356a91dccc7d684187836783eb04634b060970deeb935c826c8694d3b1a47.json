@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO chunk_tag (chunk_id, tag_id)\n               SELECT c.id, t.id\n               FROM chunk c\n               JOIN tag t ON t.id = ANY($3)\n               WHERE c.id = $2\n                 AND c.user_id = $1\n                 AND t.user_id = $1\n               ON CONFLICT (chunk_id, tag_id) DO NOTHING",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "TextArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "c3a356a91dccc7d684187836783eb04634b060970deeb935c826c8694d3b1a47"
+}

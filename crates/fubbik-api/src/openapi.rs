@@ -18,6 +18,11 @@ use utoipa::OpenApi;
         crate::tag_types::routes::create_tag_type,
         crate::tag_types::routes::update_tag_type,
         crate::tag_types::routes::delete_tag_type,
+        crate::tags::routes::list_tags,
+        crate::tags::routes::create_tag,
+        crate::tags::routes::update_tag,
+        crate::tags::routes::delete_tag,
+        crate::tags::routes::merge_tags,
     ),
     components(schemas(
         fubbik_db::repo::chunk::Chunk,
@@ -34,6 +39,13 @@ use utoipa::OpenApi;
         crate::tag_types::dto::CreateTagTypeBody,
         crate::tag_types::dto::UpdateTagTypeBody,
         crate::tag_types::dto::MessageResponse,
+        fubbik_db::repo::tag::Tag,
+        fubbik_db::repo::tag::TagListItem,
+        fubbik_db::repo::tag::MergeResult,
+        crate::tags::dto::CreateTagBody,
+        crate::tags::dto::UpdateTagBody,
+        crate::tags::dto::MergeBody,
+        crate::tags::dto::MessageResponse,
     ))
 )]
 pub struct ApiDoc;

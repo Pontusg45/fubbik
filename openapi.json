@@ -543,6 +543,170 @@
           }
         }
       }
+    },
+    "/api/tags": {
+      "get": {
+        "tags": [
+          "crate::tags::routes"
+        ],
+        "operationId": "list_tags",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TagListItem"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "crate::tags::routes"
+        ],
+        "operationId": "create_tag",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTagBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Tag"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tags/merge": {
+      "post": {
+        "tags": [
+          "crate::tags::routes"
+        ],
+        "operationId": "merge_tags",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MergeBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MergeResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/tags/{id}": {
+      "delete": {
+        "tags": [
+          "crate::tags::routes"
+        ],
+        "operationId": "delete_tag",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "crate::tags::routes"
+        ],
+        "operationId": "update_tag",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTagBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Tag"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
     }
   },
   "components": {
@@ -822,6 +986,23 @@
           }
         }
       },
+      "CreateTagBody": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "tagTypeId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
       "CreateTagTypeBody": {
         "type": "object",
         "required": [
@@ -860,6 +1041,38 @@
             "type": "string"
           },
           "path": {
+            "type": "string"
+          }
+        }
+      },
+      "MergeBody": {
+        "type": "object",
+        "required": [
+          "sourceId",
+          "targetId"
+        ],
+        "properties": {
+          "sourceId": {
+            "type": "string"
+          },
+          "targetId": {
+            "type": "string"
+          }
+        }
+      },
+      "MergeResult": {
+        "type": "object",
+        "description": "Return value of [`merge`], matching Node's `mergeTags` return shape\n(`packages/db/src/repository/tag-new.ts:105-107`).",
+        "required": [
+          "targetId",
+          "chunkCount"
+        ],
+        "properties": {
+          "chunkCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "targetId": {
             "type": "string"
           }
         }
@@ -912,6 +1125,103 @@
           "alpha",
           "updated"
         ]
+      },
+      "Tag": {
+        "type": "object",
+        "description": "`camelCase` serialisation matches every other wire type in this crate —\nsee the note on `chunk::Chunk` for why that's mandatory, not cosmetic.\n\nThis is the *bare* row shape — what `POST /api/tags` and\n`PATCH /api/tags/{id}` return. `GET /api/tags` returns a different,\njoined shape ([`TagListItem`]); Node's `service-new.ts` explicitly notes\ncreate/update responses carry no `tagTypeName`/`tagTypeColor`/\n`chunkCount` fields, unlike the list endpoint.",
+        "required": [
+          "id",
+          "name",
+          "userId",
+          "createdAt",
+          "origin",
+          "reviewStatus"
+        ],
+        "properties": {
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "origin": {
+            "type": "string"
+          },
+          "reviewStatus": {
+            "type": "string"
+          },
+          "reviewedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "reviewedBy": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "tagTypeId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "userId": {
+            "type": "string"
+          }
+        }
+      },
+      "TagListItem": {
+        "type": "object",
+        "description": "Shape of `GET /api/tags` list items — joined with `tag_type` and a\n`chunk_tag` count, matching Node's `getTagsForUser`\n(`packages/db/src/repository/tag-new.ts:23-38`).",
+        "required": [
+          "id",
+          "name",
+          "chunkCount"
+        ],
+        "properties": {
+          "chunkCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "tagTypeColor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "tagTypeIcon": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "tagTypeId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "tagTypeName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
       },
       "TagType": {
         "type": "object",
@@ -976,6 +1286,30 @@
             ]
           },
           "type": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "UpdateTagBody": {
+        "type": "object",
+        "description": "`tag_type_id` is deliberately `Option<Option<String>>`, not\n`Option<String>`: it mirrors Node's `t.Optional(t.Union([t.String(),\nt.Null()]))` body schema, which is three-state — omitted (leave\nuntouched), explicit `null` (clear), or a string (set).\n\nPlain `#[derive(Deserialize)]` on a bare `Option<Option<String>>` field\ndoes NOT give tri-state semantics: `Option<T>`'s own `Deserialize` impl\nmaps a JSON `null` straight to `None` regardless of nesting depth, so an\nexplicit `\"tagTypeId\": null` would be indistinguishable from the key\nbeing absent entirely — both would collapse to the outer `None`. The\n`#[serde(default, deserialize_with = \"deserialize_some\")]` pair below is\nthe standard fix: `default` makes a missing key `None`, while\n`deserialize_some` runs only when the key IS present and always wraps\nits result (even `Option::None` from a `null`) in an extra `Some`.",
+        "properties": {
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reviewStatus": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "tagTypeId": {
             "type": [
               "string",
               "null"
