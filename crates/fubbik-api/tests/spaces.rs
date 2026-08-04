@@ -438,13 +438,15 @@ async fn update_description_explicit_null_clears_it(pool: sqlx::PgPool) {
     );
 }
 
-/// The surprising Node behavior called out in `service::update`'s doc
-/// comment: on a `code`-kind space, ANY PATCH — even one that only touches
-/// `name` — unconditionally overwrites `remoteUrl`/`localPaths`, clearing
-/// them if the body didn't mention them. Replicated verbatim as a parity
-/// port, not "fixed".
+/// DELIBERATE DIVERGENCE FROM NODE (#3 in this slice — see
+/// `service::update`'s doc comment for the full justification): Node
+/// unconditionally overwrites `remoteUrl`/`localPaths` to `null`/`[]` on
+/// ANY PATCH to a code-kind space that doesn't mention them, even one that
+/// only touches `name`. This port does the opposite on purpose — omitted
+/// fields must be left untouched, matching PATCH semantics everywhere else
+/// in this codebase. Do not "fix" this back to Node's behavior.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
-async fn patching_name_only_on_a_code_space_clears_its_remote_url_and_local_paths(
+async fn patching_name_only_on_a_code_space_preserves_remote_url_and_local_paths(
     pool: sqlx::PgPool,
 ) {
     let app = fubbik_api::router(state(pool));
@@ -477,14 +479,102 @@ async fn patching_name_only_on_a_code_space_clears_its_remote_url_and_local_path
     let detail = json_body(get_space(app.clone(), &cookie, &id).await).await;
     assert_eq!(detail["space"]["name"], "renamed");
     assert_eq!(
-        detail["code"]["remoteUrl"],
-        serde_json::Value::Null,
-        "a PATCH not mentioning remoteUrl clears it on a code-kind space, matching Node"
+        detail["code"]["remoteUrl"], "github.com/acme/fubbik",
+        "a PATCH not mentioning remoteUrl must leave it untouched"
     );
     assert_eq!(
         detail["code"]["localPaths"],
-        serde_json::json!([]),
-        "a PATCH not mentioning localPaths clears it on a code-kind space, matching Node"
+        serde_json::json!(["/Users/alice/fubbik"]),
+        "a PATCH not mentioning localPaths must leave it untouched"
+    );
+}
+
+/// The real-world path where Node's bug would actually bite: a user
+/// renaming a code-kind space several times over (e.g. via a UI form that
+/// only ever sends `{name}`) must never erode its git remote metadata.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn several_name_only_patches_do_not_erode_code_metadata(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool));
+    let cookie = signup(app.clone(), "alice-repeatedpatch@b.test", "Alice").await;
+
+    let created = json_body(
+        create_space(
+            app.clone(),
+            &cookie,
+            serde_json::json!({
+                "name": "fubbik",
+                "kind": "code",
+                "remoteUrl": "github.com/acme/fubbik",
+                "localPaths": ["/Users/alice/fubbik"]
+            }),
+        )
+        .await,
+    )
+    .await;
+    let id = created["id"].as_str().unwrap().to_string();
+
+    for name in ["renamed-once", "renamed-twice", "renamed-thrice"] {
+        let res = patch_space(
+            app.clone(),
+            &cookie,
+            &id,
+            serde_json::json!({ "name": name }),
+        )
+        .await;
+        assert_eq!(res.status(), StatusCode::OK);
+    }
+
+    let detail = json_body(get_space(app.clone(), &cookie, &id).await).await;
+    assert_eq!(detail["space"]["name"], "renamed-thrice");
+    assert_eq!(
+        detail["code"]["remoteUrl"], "github.com/acme/fubbik",
+        "remoteUrl must survive repeated name-only PATCHes"
+    );
+    assert_eq!(
+        detail["code"]["localPaths"],
+        serde_json::json!(["/Users/alice/fubbik"]),
+        "localPaths must survive repeated name-only PATCHes"
+    );
+}
+
+/// Omission is the only thing exempted from clearing — an explicit `null`
+/// still clears `remoteUrl`, since Node's body schema (`t.Optional(t.Union([
+/// t.String(...), t.Null()]))`) permits it.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn explicit_null_still_clears_remote_url_on_a_code_space(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool));
+    let cookie = signup(app.clone(), "alice-explicitclear@b.test", "Alice").await;
+
+    let created = json_body(
+        create_space(
+            app.clone(),
+            &cookie,
+            serde_json::json!({
+                "name": "fubbik",
+                "kind": "code",
+                "remoteUrl": "github.com/acme/fubbik",
+                "localPaths": ["/Users/alice/fubbik"]
+            }),
+        )
+        .await,
+    )
+    .await;
+    let id = created["id"].as_str().unwrap().to_string();
+
+    patch_space(
+        app.clone(),
+        &cookie,
+        &id,
+        serde_json::json!({ "remoteUrl": null }),
+    )
+    .await;
+
+    let detail = json_body(get_space(app.clone(), &cookie, &id).await).await;
+    assert_eq!(detail["code"]["remoteUrl"], serde_json::Value::Null);
+    assert_eq!(
+        detail["code"]["localPaths"],
+        serde_json::json!(["/Users/alice/fubbik"]),
+        "localPaths must survive since this PATCH did not mention it"
     );
 }
 

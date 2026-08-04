@@ -241,15 +241,30 @@ pub struct SpacePatch {
     pub description: Option<Option<String>>,
 }
 
-/// Input for [`update`]'s `space_code_metadata` upsert. Passed whenever the
-/// found space's `kind == "code"`, matching Node's
-/// `code: found.kind === "code" ? { remoteUrl: remoteUrl ?? null, localPaths:
-/// body.localPaths ?? [] } : undefined` (`packages/api/src/spaces/service.ts:76`)
-/// — for a non-`code`-kind space, `remoteUrl`/`localPaths` in the request
-/// body are silently ignored (this is never even constructed by the caller).
+/// Input for [`update`]'s `space_code_metadata` upsert.
+///
+/// **Deliberate divergence from Node (#3 in this slice — see
+/// `spaces::service::update`'s doc comment for the full justification):**
+/// Node's `code` param is `{ remoteUrl: remoteUrl ?? null, localPaths:
+/// body.localPaths ?? [] }` — constructed, and applied, *unconditionally*
+/// whenever the existing space is `kind == "code"`, regardless of whether
+/// the request body mentioned either field. That means an ordinary `PATCH
+/// {"name": "..."}` against a code-kind space silently clears its
+/// `remoteUrl` to `null` and `localPaths` to `[]` in Node. This port does
+/// NOT replicate that: both fields here are independently tri/two-state —
+/// `None` means "leave this column exactly as it is", matching how every
+/// other PATCH in this codebase treats an omitted field (`chunk::update`'s
+/// `COALESCE($n, column)`, `tag::update`'s tri-state `CASE`). Do not
+/// "fix" this back to Node's unconditional-overwrite behavior — that
+/// behavior is the bug, not this.
 pub struct CodeUpdate {
-    pub remote_url: Option<String>,
-    pub local_paths: Vec<String>,
+    /// Tri-state: `None` = don't touch, `Some(None)` = clear to `NULL`,
+    /// `Some(Some(url))` = set.
+    pub remote_url: Option<Option<String>>,
+    /// Two-state: `None` = don't touch, `Some(paths)` = set (Node's schema
+    /// has no `t.Null()` union for `localPaths`, so there is no "clear"
+    /// state to represent here).
+    pub local_paths: Option<Vec<String>>,
 }
 
 /// Updates a space's `name`/`description` and, independently, its
@@ -325,16 +340,38 @@ pub async fn update(
     };
 
     if let Some(code) = code {
+        // On a fresh INSERT (no existing `space_code_metadata` row — should
+        // not happen for a `code`-kind space post-`create`, but handled
+        // defensively) an untouched field has no prior value to preserve,
+        // so it falls back to `NULL`/`[]`. On the `ON CONFLICT` branch, the
+        // `*_set` flags gate whether `EXCLUDED.*` (the proposed value above)
+        // or the table's own current column value wins — see the doc
+        // comment on `CodeUpdate` for why "not set" must mean "untouched",
+        // not "cleared".
+        let (remote_url_set, remote_url_val) = match code.remote_url {
+            Some(v) => (true, v),
+            None => (false, None),
+        };
+        let (local_paths_set, local_paths_val) = match code.local_paths {
+            Some(v) => (true, v),
+            None => (false, Vec::new()),
+        };
+
         sqlx::query!(
             r#"INSERT INTO space_code_metadata (space_id, user_id, remote_url, local_paths)
                SELECT $1, $2, $3, $4
                WHERE EXISTS (SELECT 1 FROM space s WHERE s.id = $1 AND s.user_id = $2)
                ON CONFLICT (space_id) DO UPDATE
-                 SET remote_url = EXCLUDED.remote_url, local_paths = EXCLUDED.local_paths"#,
+                 SET remote_url = CASE WHEN $5::bool THEN EXCLUDED.remote_url
+                                        ELSE space_code_metadata.remote_url END,
+                     local_paths = CASE WHEN $6::bool THEN EXCLUDED.local_paths
+                                         ELSE space_code_metadata.local_paths END"#,
             id,
             user_id,
-            code.remote_url,
-            Json(code.local_paths) as _
+            remote_url_val,
+            Json(local_paths_val) as _,
+            remote_url_set,
+            local_paths_set,
         )
         .execute(&mut *tx)
         .await?;

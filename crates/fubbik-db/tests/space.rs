@@ -325,8 +325,8 @@ async fn update_upserts_code_metadata_for_code_kind_space(pool: sqlx::PgPool) {
         &created.id,
         SpacePatch::default(),
         Some(CodeUpdate {
-            remote_url: Some("github.com/acme/renamed".into()),
-            local_paths: vec!["/Users/alice/renamed".into()],
+            remote_url: Some(Some("github.com/acme/renamed".into())),
+            local_paths: Some(vec!["/Users/alice/renamed".into()]),
         }),
     )
     .await
@@ -339,6 +339,159 @@ async fn update_upserts_code_metadata_for_code_kind_space(pool: sqlx::PgPool) {
     let code = detail.code.unwrap();
     assert_eq!(code.remote_url.as_deref(), Some("github.com/acme/renamed"));
     assert_eq!(code.local_paths.0, vec!["/Users/alice/renamed".to_string()]);
+}
+
+/// DELIBERATE DIVERGENCE FROM NODE (#3 in this slice): `code: None` at the
+/// repo layer must leave `space_code_metadata` completely untouched — no
+/// upsert at all — not clear it to `null`/`[]`. This is the repo-level half
+/// of the fix; `spaces::service::update` is the other half, deciding when
+/// to pass `None` vs. `Some(CodeUpdate{..})`.
+#[sqlx::test]
+async fn update_with_no_code_param_leaves_code_metadata_untouched(pool: sqlx::PgPool) {
+    let alice = seed(&pool, "a@b.test").await;
+    let created = space::create(
+        &pool,
+        &alice,
+        new_code_space("fubbik"),
+        Some(CodeInput {
+            remote_url: Some("github.com/acme/fubbik".into()),
+            local_paths: vec!["/Users/alice/fubbik".into()],
+        }),
+    )
+    .await
+    .unwrap();
+
+    space::update(
+        &pool,
+        &alice,
+        &created.id,
+        SpacePatch {
+            name: Some("renamed".into()),
+            description: None,
+        },
+        None,
+    )
+    .await
+    .unwrap();
+
+    let detail = space::find_by_id(&pool, &alice, &created.id)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(detail.space.name, "renamed");
+    let code = detail.code.unwrap();
+    assert_eq!(code.remote_url.as_deref(), Some("github.com/acme/fubbik"));
+    assert_eq!(code.local_paths.0, vec!["/Users/alice/fubbik".to_string()]);
+}
+
+/// Each of `remote_url`/`local_paths` is independently settable — providing
+/// one must not clobber the other back to `null`/`[]`.
+#[sqlx::test]
+async fn update_code_metadata_fields_are_independently_settable(pool: sqlx::PgPool) {
+    let alice = seed(&pool, "a@b.test").await;
+    let created = space::create(
+        &pool,
+        &alice,
+        new_code_space("fubbik"),
+        Some(CodeInput {
+            remote_url: Some("github.com/acme/fubbik".into()),
+            local_paths: vec!["/Users/alice/fubbik".into()],
+        }),
+    )
+    .await
+    .unwrap();
+
+    // Only remote_url given: local_paths must survive untouched.
+    space::update(
+        &pool,
+        &alice,
+        &created.id,
+        SpacePatch::default(),
+        Some(CodeUpdate {
+            remote_url: Some(Some("github.com/acme/renamed".into())),
+            local_paths: None,
+        }),
+    )
+    .await
+    .unwrap();
+
+    let detail = space::find_by_id(&pool, &alice, &created.id)
+        .await
+        .unwrap()
+        .unwrap();
+    let code = detail.code.unwrap();
+    assert_eq!(code.remote_url.as_deref(), Some("github.com/acme/renamed"));
+    assert_eq!(code.local_paths.0, vec!["/Users/alice/fubbik".to_string()]);
+
+    // Only local_paths given: remote_url must survive untouched.
+    space::update(
+        &pool,
+        &alice,
+        &created.id,
+        SpacePatch::default(),
+        Some(CodeUpdate {
+            remote_url: None,
+            local_paths: Some(vec!["/Users/alice/renamed".into()]),
+        }),
+    )
+    .await
+    .unwrap();
+
+    let detail = space::find_by_id(&pool, &alice, &created.id)
+        .await
+        .unwrap()
+        .unwrap();
+    let code = detail.code.unwrap();
+    assert_eq!(
+        code.remote_url.as_deref(),
+        Some("github.com/acme/renamed"),
+        "remote_url must survive an update that only touches local_paths"
+    );
+    assert_eq!(code.local_paths.0, vec!["/Users/alice/renamed".to_string()]);
+}
+
+/// Explicit `null` still clears `remote_url` — the tri-state's `Some(None)`
+/// case. Only *omission* is exempted by the fix; an explicit clear request
+/// still works.
+#[sqlx::test]
+async fn update_code_metadata_remote_url_explicit_none_clears_it(pool: sqlx::PgPool) {
+    let alice = seed(&pool, "a@b.test").await;
+    let created = space::create(
+        &pool,
+        &alice,
+        new_code_space("fubbik"),
+        Some(CodeInput {
+            remote_url: Some("github.com/acme/fubbik".into()),
+            local_paths: vec!["/Users/alice/fubbik".into()],
+        }),
+    )
+    .await
+    .unwrap();
+
+    space::update(
+        &pool,
+        &alice,
+        &created.id,
+        SpacePatch::default(),
+        Some(CodeUpdate {
+            remote_url: Some(None),
+            local_paths: None,
+        }),
+    )
+    .await
+    .unwrap();
+
+    let detail = space::find_by_id(&pool, &alice, &created.id)
+        .await
+        .unwrap()
+        .unwrap();
+    let code = detail.code.unwrap();
+    assert_eq!(code.remote_url, None);
+    assert_eq!(
+        code.local_paths.0,
+        vec!["/Users/alice/fubbik".to_string()],
+        "local_paths must survive since it was not part of this update"
+    );
 }
 
 #[sqlx::test]

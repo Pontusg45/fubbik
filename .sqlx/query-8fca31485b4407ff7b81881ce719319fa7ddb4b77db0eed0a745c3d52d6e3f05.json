@@ -1,0 +1,19 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO space_code_metadata (space_id, user_id, remote_url, local_paths)\n               SELECT $1, $2, $3, $4\n               WHERE EXISTS (SELECT 1 FROM space s WHERE s.id = $1 AND s.user_id = $2)\n               ON CONFLICT (space_id) DO UPDATE\n                 SET remote_url = CASE WHEN $5::bool THEN EXCLUDED.remote_url\n                                        ELSE space_code_metadata.remote_url END,\n                     local_paths = CASE WHEN $6::bool THEN EXCLUDED.local_paths\n                                         ELSE space_code_metadata.local_paths END",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Jsonb",
+        "Bool",
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "8fca31485b4407ff7b81881ce719319fa7ddb4b77db0eed0a745c3d52d6e3f05"
+}

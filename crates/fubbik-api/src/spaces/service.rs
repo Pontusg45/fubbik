@@ -61,15 +61,29 @@ pub async fn create(pool: &PgPool, user_id: &str, body: CreateSpaceBody) -> AppR
     .await
 }
 
-/// **Note the surprising Node behavior replicated here**: `code` is
-/// constructed unconditionally whenever the *existing* space is
-/// `kind == "code"` — regardless of whether the request body mentioned
-/// `remoteUrl`/`localPaths` at all (`packages/api/src/spaces/service.ts:76`,
-/// `packages/db/src/repository/space.ts:123`'s `if (params.code)` is always
-/// truthy in that case). So a `PATCH` that only sends `{"name": "..."}`
-/// against a code-kind space silently clears its `remoteUrl` to `null` and
-/// `localPaths` to `[]`. This is replicated verbatim as a parity port, not
-/// treated as a bug to fix — see `tests/spaces.rs::patching_name_only_on_a_code_space_clears_its_remote_url_and_local_paths`.
+/// **DELIBERATE DIVERGENCE FROM NODE (#3 in this slice).** Node's `code`
+/// param (`packages/api/src/spaces/service.ts:76`) is `{ remoteUrl:
+/// remoteUrl ?? null, localPaths: body.localPaths ?? [] }`, constructed and
+/// applied *unconditionally* whenever the existing space is `kind ==
+/// "code"` — `packages/db/src/repository/space.ts:123`'s `if (params.code)`
+/// is always truthy in that case, regardless of whether the request body
+/// mentioned `remoteUrl`/`localPaths` at all. So in Node, a `PATCH` that
+/// only sends `{"name": "..."}` against a code-kind space silently clears
+/// its `remoteUrl` to `null` and `localPaths` to `[]` — renaming a space
+/// destroys its git remote.
+///
+/// This is NOT replicated. Omitted fields are left untouched, matching how
+/// PATCH behaves everywhere else in this codebase (`chunk::update`'s
+/// `COALESCE`, `tag::update`'s tri-state `CASE`, `SpacePatch::description`
+/// right above). `code` is only constructed at all when the body actually
+/// mentioned `remoteUrl` and/or `localPaths`; when it is, each field is
+/// still independently tri/two-state inside `CodeUpdate` (see its doc
+/// comment), so providing one never clobbers the other. Explicitly clearing
+/// `remoteUrl` still works via `{"remoteUrl": null}` — Node's body schema
+/// permits that null; only *omission* is exempted from clearing. Do not
+/// revert this to match Node's unconditional overwrite — see
+/// `tests/spaces.rs::patching_name_only_on_a_code_space_preserves_remote_url_and_local_paths`
+/// and `tests/spaces.rs::several_name_only_patches_do_not_erode_code_metadata`.
 pub async fn update(
     pool: &PgPool,
     user_id: &str,
@@ -87,10 +101,11 @@ pub async fn update(
         other => other,
     };
 
-    let code = (found.space.kind == "code").then(|| CodeUpdate {
-        remote_url: remote_url.flatten(),
-        local_paths: body.local_paths.unwrap_or_default(),
-    });
+    let code = (found.space.kind == "code" && (remote_url.is_some() || body.local_paths.is_some()))
+        .then_some(CodeUpdate {
+            remote_url,
+            local_paths: body.local_paths,
+        });
 
     space::update(
         pool,
