@@ -419,6 +419,78 @@
         }
       }
     },
+    "/api/connections": {
+      "post": {
+        "tags": [
+          "crate::connections::routes"
+        ],
+        "operationId": "create_connection",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateConnectionBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Connection"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          },
+          "409": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/connections/{id}": {
+      "delete": {
+        "tags": [
+          "crate::connections::routes"
+        ],
+        "operationId": "delete_connection",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
     "/api/spaces": {
       "get": {
         "tags": [
@@ -1189,6 +1261,61 @@
           }
         }
       },
+      "Connection": {
+        "type": "object",
+        "description": "`chunk_connection` row shape, matching Node's bare-row response for both\n`POST /api/connections` (create) and the implicit shape returned by\n`getConnectionById`/`deleteConnection` in\n`packages/db/src/repository/connection.ts`.",
+        "required": [
+          "id",
+          "sourceId",
+          "targetId",
+          "relation",
+          "createdAt",
+          "origin",
+          "reviewStatus",
+          "weight"
+        ],
+        "properties": {
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string"
+          },
+          "origin": {
+            "type": "string"
+          },
+          "relation": {
+            "type": "string"
+          },
+          "reviewStatus": {
+            "type": "string"
+          },
+          "reviewedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "reviewedBy": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sourceId": {
+            "type": "string"
+          },
+          "targetId": {
+            "type": "string"
+          },
+          "weight": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
       "CreateChunkBody": {
         "type": "object",
         "required": [
@@ -1212,6 +1339,36 @@
               "string",
               "null"
             ]
+          }
+        }
+      },
+      "CreateConnectionBody": {
+        "type": "object",
+        "description": "Matches Node's body schema exactly (`packages/api/src/connections/routes.ts:22-27`):\n`sourceId`/`targetId`/`relation` required, `origin` optional and\nconstrained to the two literals Node accepts (`t.Union([t.Literal(\"human\"),\nt.Literal(\"ai\")])`) — anything else fails validation before reaching the\nservice layer, matching Node's Elysia schema rejecting the request\noutright rather than letting an arbitrary `origin` string through.",
+        "required": [
+          "sourceId",
+          "targetId",
+          "relation"
+        ],
+        "properties": {
+          "origin": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Origin"
+              }
+            ]
+          },
+          "relation": {
+            "type": "string"
+          },
+          "sourceId": {
+            "type": "string"
+          },
+          "targetId": {
+            "type": "string"
           }
         }
       },
@@ -1355,6 +1512,13 @@
             "type": "string"
           }
         }
+      },
+      "Origin": {
+        "type": "string",
+        "enum": [
+          "human",
+          "ai"
+        ]
       },
       "PathsBody": {
         "type": "object",
