@@ -720,6 +720,27 @@
         }
       }
     },
+    "/api/stats": {
+      "get": {
+        "tags": [
+          "crate::stats::routes"
+        ],
+        "summary": "`GET /api/stats` returns a **bare object** — not an array, and not the\n`{chunks,total,limit,offset}` envelope `GET /api/chunks` uses. Matches\nNode's `statsRoutes` (`packages/api/src/stats/routes.ts`), which returns\n`statsService.getUserStats(session.user.id)` directly as the response\nbody.",
+        "operationId": "get_stats",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Stats"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/tag-types": {
       "get": {
         "tags": [
@@ -1673,6 +1694,29 @@
           },
           "space": {
             "$ref": "#/components/schemas/Space"
+          }
+        }
+      },
+      "Stats": {
+        "type": "object",
+        "description": "Aggregate per-user counts backing `GET /api/stats`. Bare-object shape,\nnot an array and not the `{chunks,total,limit,offset}` envelope the\nchunks *list* endpoint uses — matches Node's `getUserStats`\n(`packages/api/src/stats/service.ts`) field-for-field. No fields beyond\nwhat Node returns: this is a parity port, not a place to add \"useful\"\ncounts.",
+        "required": [
+          "chunks",
+          "connections",
+          "tags"
+        ],
+        "properties": {
+          "chunks": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "connections": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "tags": {
+            "type": "integer",
+            "format": "int64"
           }
         }
       },
