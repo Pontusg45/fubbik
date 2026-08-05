@@ -242,3 +242,74 @@ async fn merge_of_another_users_tag_is_not_found(pool: sqlx::PgPool) {
     assert_eq!(bobs_tags.len(), 1);
     assert_eq!(bobs_tags[0].id, bobs_tag.id);
 }
+
+/// Same bug class as `chunk::list` (see the equivalent test in
+/// `tests/chunk.rs`), forced by the same live-run finding on `/api/tags`.
+/// Every tag here shares the exact same `created_at`, so `ORDER BY
+/// created_at ASC` alone cannot determine order — only the `id ASC`
+/// tiebreaker can. A test with distinct `created_at` values would pass
+/// without the fix and prove nothing.
+///
+/// Uses 20 tied tags plus an explicit `ANALYZE`, not 5: `tag::list`'s query
+/// GROUPs BY `t.id, tt.id` (for the live chunk-count aggregate). At small
+/// row counts, or before statistics exist, Postgres' planner satisfies
+/// that GROUP BY with a Sort-based GroupAggregate whose input happens to
+/// already be sorted by `t.id` — so the *final* sort on the (tied)
+/// `created_at` column can incidentally come out in id order even WITHOUT
+/// the explicit tiebreaker, which would make this test pass for the wrong
+/// reason. Confirmed empirically with `EXPLAIN`: 20 rows plus `ANALYZE`
+/// reliably makes the planner switch to a HashAggregate instead, whose
+/// output order has no relationship to `id` at all — that's what actually
+/// exercises whether the tiebreaker is present.
+#[sqlx::test]
+async fn list_breaks_created_at_ties_by_id(pool: sqlx::PgPool) {
+    let alice = seed(&pool, "a@b.test").await;
+
+    for i in 0..20 {
+        tag::create(&pool, &alice, &format!("tag-{i}"), None)
+            .await
+            .unwrap();
+    }
+
+    // A single UPDATE statement's `now()` is fixed for the whole statement,
+    // so this produces a genuine tie across all twenty rows, not twenty
+    // close-but-distinct timestamps.
+    sqlx::query!(
+        "UPDATE tag SET created_at = now() WHERE user_id = $1",
+        alice
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+    // See the doc comment above: without this, the planner's row-count
+    // estimate for a freshly-populated table can be stale enough to pick
+    // the Sort-based plan that masks the missing tiebreaker.
+    sqlx::query!("ANALYZE tag").execute(&pool).await.unwrap();
+
+    // Ground truth from Postgres directly, so this test does not depend on
+    // Rust's default string ordering happening to agree with the
+    // database's collation.
+    let expected_id_order: Vec<String> = sqlx::query_scalar!(
+        "SELECT id FROM tag WHERE user_id = $1 ORDER BY id ASC",
+        alice
+    )
+    .fetch_all(&pool)
+    .await
+    .unwrap();
+    assert_eq!(expected_id_order.len(), 20);
+
+    let first = tag::list(&pool, &alice).await.unwrap();
+    let second = tag::list(&pool, &alice).await.unwrap();
+
+    let first_ids: Vec<String> = first.iter().map(|t| t.id.clone()).collect();
+    let second_ids: Vec<String> = second.iter().map(|t| t.id.clone()).collect();
+
+    assert_eq!(
+        first_ids, second_ids,
+        "repeated calls over tied rows must return byte-identical order"
+    );
+    assert_eq!(
+        first_ids, expected_id_order,
+        "ties must be broken by ascending id, not left to query-plan chance"
+    );
+}

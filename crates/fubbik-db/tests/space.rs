@@ -872,3 +872,50 @@ async fn reset_of_another_users_space_is_a_no_op(pool: sqlx::PgPool) {
         "chunk_space association must survive Bob's reset attempt"
     );
 }
+
+/// Same bug class as `chunk::list` and `tag::list` (see their equivalent
+/// tests): `ORDER BY created_at ASC` alone over tied rows is a query-plan
+/// artifact. Every space here shares the exact same `created_at`, so only
+/// the `id ASC` tiebreaker can determine order.
+#[sqlx::test]
+async fn list_breaks_created_at_ties_by_id(pool: sqlx::PgPool) {
+    let alice = seed(&pool, "a@b.test").await;
+
+    for name in ["one", "two", "three", "four", "five"] {
+        space::create(&pool, &alice, new_wiki_space(name), None)
+            .await
+            .unwrap();
+    }
+
+    sqlx::query!(
+        "UPDATE space SET created_at = now() WHERE user_id = $1",
+        alice
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    let expected_id_order: Vec<String> = sqlx::query_scalar!(
+        "SELECT id FROM space WHERE user_id = $1 ORDER BY id ASC",
+        alice
+    )
+    .fetch_all(&pool)
+    .await
+    .unwrap();
+    assert_eq!(expected_id_order.len(), 5);
+
+    let first = space::list(&pool, &alice).await.unwrap();
+    let second = space::list(&pool, &alice).await.unwrap();
+
+    let first_ids: Vec<String> = first.iter().map(|s| s.id.clone()).collect();
+    let second_ids: Vec<String> = second.iter().map(|s| s.id.clone()).collect();
+
+    assert_eq!(
+        first_ids, second_ids,
+        "repeated calls over tied rows must return byte-identical order"
+    );
+    assert_eq!(
+        first_ids, expected_id_order,
+        "ties must be broken by ascending id, not left to query-plan chance"
+    );
+}

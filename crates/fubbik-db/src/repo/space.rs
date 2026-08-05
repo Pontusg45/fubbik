@@ -165,13 +165,17 @@ pub async fn find_by_id(pool: &PgPool, user_id: &str, id: &str) -> AppResult<Opt
 /// plain `select().from(space)`. A `code`-kind space's `remoteUrl`/
 /// `localPaths` are simply absent here; only the detail endpoint reveals
 /// them.
+///
+/// `, id ASC` is a tiebreaker over `created_at`, which is not unique — see
+/// `chunk::list`'s equivalent comment for why an untied `ORDER BY` over
+/// tied rows is a query-plan artifact rather than a stable order.
 pub async fn list(pool: &PgPool, user_id: &str) -> AppResult<Vec<Space>> {
     let rows = sqlx::query_as!(
         Space,
         r#"SELECT id, name, kind, description, user_id,
                   created_at AS "created_at: UtcTimestamp",
                   updated_at AS "updated_at: UtcTimestamp"
-           FROM space WHERE user_id = $1 ORDER BY created_at ASC"#,
+           FROM space WHERE user_id = $1 ORDER BY created_at ASC, id ASC"#,
         user_id
     )
     .fetch_all(pool)
@@ -600,7 +604,7 @@ pub async fn spaces_for_chunk(
            JOIN space s ON s.id = cs.space_id
            WHERE cs.chunk_id = $1
              AND EXISTS (SELECT 1 FROM chunk c WHERE c.id = $1 AND c.user_id = $2)
-           ORDER BY s.name"#,
+           ORDER BY s.name, s.id ASC"#,
         chunk_id,
         user_id
     )

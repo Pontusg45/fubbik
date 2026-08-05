@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, name, kind, description, user_id,\n                  created_at AS \"created_at: UtcTimestamp\",\n                  updated_at AS \"updated_at: UtcTimestamp\"\n           FROM space WHERE user_id = $1 ORDER BY created_at ASC",
+  "query": "SELECT id, name, kind, description, user_id,\n                  created_at AS \"created_at: UtcTimestamp\",\n                  updated_at AS \"updated_at: UtcTimestamp\"\n           FROM space WHERE user_id = $1 ORDER BY created_at ASC, id ASC",
   "describe": {
     "columns": [
       {
@@ -54,5 +54,5 @@
       false
     ]
   },
-  "hash": "81039dd78da60f635e427f3f1399741f9e63c31a7b038da59414a7c13513312c"
+  "hash": "c7a6ffc92c607c0996a3cf2e12f91af749e65eeae331a93abc4d174d7bc807fe"
 }

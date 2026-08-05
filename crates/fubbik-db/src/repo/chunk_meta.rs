@@ -21,6 +21,11 @@ pub struct FileRef {
 /// just by the caller having already checked ownership. This is the repo's
 /// own guarantee: a Phase 2 caller that forgets to call `service::get`
 /// first still cannot read another user's applies-to patterns.
+///
+/// `, id` breaks ties on `pattern`: nothing stops a caller from submitting
+/// the same glob twice via `replace_applies_to`, and an untied `ORDER BY`
+/// over duplicate patterns is a query-plan artifact — see `chunk::list`'s
+/// equivalent comment.
 pub async fn get_applies_to(
     pool: &PgPool,
     chunk_id: &str,
@@ -31,7 +36,7 @@ pub async fn get_applies_to(
         "SELECT id, chunk_id, pattern FROM chunk_applies_to \
          WHERE chunk_id = $1 \
            AND EXISTS (SELECT 1 FROM chunk c WHERE c.id = $1 AND c.user_id = $2) \
-         ORDER BY pattern",
+         ORDER BY pattern, id",
         chunk_id,
         user_id
     )
@@ -83,7 +88,9 @@ pub async fn replace_applies_to(
     Ok(())
 }
 
-/// Scoped by `user_id` in the SQL itself; see `get_applies_to`.
+/// Scoped by `user_id` in the SQL itself; see `get_applies_to`. Same
+/// duplicate-tiebreaker rationale as `get_applies_to`: `, id` breaks ties
+/// on `path`.
 pub async fn get_file_refs(
     pool: &PgPool,
     chunk_id: &str,
@@ -94,7 +101,7 @@ pub async fn get_file_refs(
         "SELECT id, chunk_id, path FROM chunk_file_ref \
          WHERE chunk_id = $1 \
            AND EXISTS (SELECT 1 FROM chunk c WHERE c.id = $1 AND c.user_id = $2) \
-         ORDER BY path",
+         ORDER BY path, id",
         chunk_id,
         user_id
     )

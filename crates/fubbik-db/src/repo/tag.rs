@@ -82,6 +82,13 @@ pub async fn create(
 /// Lists a user's tags, joined with their tag type and a live count of
 /// attached chunks. `LEFT JOIN`s throughout: a tag with no type, or no
 /// chunks, must still appear.
+///
+/// `, t.id ASC` is a tiebreaker: tags created in the same batch (seed data,
+/// a bulk import) can share `created_at` exactly, and `ORDER BY
+/// created_at` alone over tied rows is a query-plan artifact — see
+/// `chunk::list`'s equivalent comment. Note this makes Rust's ordering
+/// stricter than Node's `getTagsForUser`, which has no `ORDER BY` at all;
+/// see the module doc on `differential.rs` for that divergence.
 pub async fn list(pool: &PgPool, user_id: &str) -> AppResult<Vec<TagListItem>> {
     let rows = sqlx::query_as!(
         TagListItem,
@@ -95,7 +102,7 @@ pub async fn list(pool: &PgPool, user_id: &str) -> AppResult<Vec<TagListItem>> {
            LEFT JOIN chunk_tag ct ON ct.tag_id = t.id
            WHERE t.user_id = $1
            GROUP BY t.id, tt.id
-           ORDER BY t.created_at ASC"#,
+           ORDER BY t.created_at ASC, t.id ASC"#,
         user_id
     )
     .fetch_all(pool)
@@ -339,7 +346,7 @@ pub async fn tags_for_chunk(pool: &PgPool, user_id: &str, chunk_id: &str) -> App
            JOIN tag t ON t.id = ct.tag_id
            WHERE ct.chunk_id = $1
              AND EXISTS (SELECT 1 FROM chunk c WHERE c.id = $1 AND c.user_id = $2)
-           ORDER BY t.name"#,
+           ORDER BY t.name, t.id ASC"#,
         chunk_id,
         user_id
     )

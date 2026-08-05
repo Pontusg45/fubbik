@@ -276,11 +276,19 @@ pub async fn list(pool: &PgPool, user_id: &str, params: &ListParams) -> AppResul
     );
     push_filters(&mut qb, user_id, params);
 
+    // Every branch appends `, id ASC` as a tiebreaker. `created_at`/
+    // `updated_at`/`title` are NOT unique — seed data (or any batch
+    // insert) routinely produces ties, and `ORDER BY` over tied rows with
+    // no deterministic tiebreaker is a query-plan artifact: it can differ
+    // between two calls, or between the query serving page 1 and the one
+    // serving page 2 of the same `LIMIT`/`OFFSET` walk, silently skipping
+    // or duplicating rows across pages. `id` is the primary key, so it is
+    // always unique and always present, making the final order total.
     qb.push(match params.sort {
-        Sort::Newest => " ORDER BY created_at DESC",
-        Sort::Oldest => " ORDER BY created_at ASC",
-        Sort::Alpha => " ORDER BY title ASC",
-        Sort::Updated => " ORDER BY updated_at DESC",
+        Sort::Newest => " ORDER BY created_at DESC, id ASC",
+        Sort::Oldest => " ORDER BY created_at ASC, id ASC",
+        Sort::Alpha => " ORDER BY title ASC, id ASC",
+        Sort::Updated => " ORDER BY updated_at DESC, id ASC",
     });
 
     qb.push(" LIMIT ").push_bind(params.limit.clamp(1, 500));

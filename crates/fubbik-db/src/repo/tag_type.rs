@@ -68,12 +68,15 @@ pub async fn create(
 
 /// Lists a user's tag types. Every query in this module filters `user_id`
 /// in SQL so cross-user access is impossible by construction.
+///
+/// `, id ASC` is a tiebreaker over `created_at`, which is not unique — see
+/// `chunk::list`'s equivalent comment.
 pub async fn list(pool: &PgPool, user_id: &str) -> AppResult<Vec<TagType>> {
     let rows = sqlx::query_as!(
         TagType,
         r#"SELECT id, name, color, icon, user_id,
                   created_at AS "created_at: UtcTimestamp"
-           FROM tag_type WHERE user_id = $1 ORDER BY created_at ASC"#,
+           FROM tag_type WHERE user_id = $1 ORDER BY created_at ASC, id ASC"#,
         user_id
     )
     .fetch_all(pool)
