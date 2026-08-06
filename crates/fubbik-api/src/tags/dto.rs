@@ -25,7 +25,34 @@ pub struct UpdateTagBody {
     pub name: Option<String>,
     #[serde(default, deserialize_with = "deserialize_some")]
     pub tag_type_id: Option<Option<String>>,
-    pub review_status: Option<String>,
+    pub review_status: Option<ReviewStatus>,
+}
+
+/// Matches Node's body schema exactly (`packages/api/src/tags/routes.ts:39`):
+/// `t.Optional(t.Union([t.Literal("draft"), t.Literal("reviewed"),
+/// t.Literal("approved")]))`. Modelled the same way as
+/// `connections::dto::Origin` — a proper enum, not `Option<String>` — so an
+/// invalid value (e.g. `"totally-bogus"`) is rejected by serde at
+/// deserialisation, before it ever reaches the service or database layer.
+/// There is no database check constraint backstopping this column
+/// (`review_status text NOT NULL DEFAULT 'approved'`), so this enum is the
+/// only thing standing between an arbitrary client string and storage.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize, utoipa::ToSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum ReviewStatus {
+    Draft,
+    Reviewed,
+    Approved,
+}
+
+impl ReviewStatus {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            ReviewStatus::Draft => "draft",
+            ReviewStatus::Reviewed => "reviewed",
+            ReviewStatus::Approved => "approved",
+        }
+    }
 }
 
 fn deserialize_some<'de, D, T>(deserializer: D) -> Result<Option<T>, D::Error>

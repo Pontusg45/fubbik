@@ -431,6 +431,90 @@ async fn update_review_status_sets_reviewed_by_and_at(pool: sqlx::PgPool) {
     assert!(updated["reviewedAt"].is_string());
 }
 
+/// `reviewStatus` is a proper enum (`tags::dto::ReviewStatus`), matching
+/// Node's `t.Union([t.Literal("draft"), t.Literal("reviewed"),
+/// t.Literal("approved")])` — every one of those three literals must be
+/// accepted.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn update_review_status_accepts_every_valid_value(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool));
+    let cookie = signup(app.clone(), "alice-review-valid@b.test", "Alice").await;
+
+    let created = json_body(create_tag(app.clone(), &cookie, "rust", None).await).await;
+    let id = created["id"].as_str().unwrap().to_string();
+
+    for value in ["draft", "reviewed", "approved"] {
+        let res = patch_tag(
+            app.clone(),
+            &cookie,
+            &id,
+            serde_json::json!({ "reviewStatus": value }),
+        )
+        .await;
+        assert_eq!(
+            res.status(),
+            StatusCode::OK,
+            "{value} must be accepted as a valid reviewStatus"
+        );
+        let body = json_body(res).await;
+        assert_eq!(body["reviewStatus"], value);
+    }
+}
+
+/// Verified live against the pre-fix Rust server: `{"reviewStatus":
+/// "totally-bogus"}` returned 200, persisted the garbage value, and set
+/// `reviewedBy`/`reviewedAt` alongside it — `review_status` was a plain
+/// `Option<String>`, and there is no database check constraint
+/// backstopping the column. This proves the enum rejects it before it
+/// reaches the database, by reading `review_status`/`reviewed_by`/
+/// `reviewed_at`/`name` back from the row directly rather than trusting
+/// just the response status code.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn update_review_status_invalid_value_is_rejected_and_leaves_row_unchanged(
+    pool: sqlx::PgPool,
+) {
+    let app = fubbik_api::router(state(pool.clone()));
+    let cookie = signup(app.clone(), "alice-review-invalid@b.test", "Alice").await;
+
+    let created = json_body(create_tag(app.clone(), &cookie, "rust", None).await).await;
+    let id = created["id"].as_str().unwrap().to_string();
+    assert_eq!(created["reviewStatus"], "approved");
+
+    let res = patch_tag(
+        app.clone(),
+        &cookie,
+        &id,
+        serde_json::json!({ "reviewStatus": "totally-bogus" }),
+    )
+    .await;
+    assert_eq!(
+        res.status(),
+        StatusCode::BAD_REQUEST,
+        "an invalid reviewStatus literal must be rejected at deserialisation"
+    );
+
+    let row = sqlx::query!(
+        r#"SELECT name, review_status, reviewed_by, reviewed_at FROM tag WHERE id = $1"#,
+        id
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(row.name, "rust", "rejected PATCH must not touch name");
+    assert_eq!(
+        row.review_status, "approved",
+        "rejected PATCH must not touch review_status"
+    );
+    assert_eq!(
+        row.reviewed_by, None,
+        "rejected PATCH must not set reviewed_by"
+    );
+    assert_eq!(
+        row.reviewed_at, None,
+        "rejected PATCH must not set reviewed_at"
+    );
+}
+
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn merge_moves_chunk_count_and_deletes_source(pool: sqlx::PgPool) {
     let app = fubbik_api::router(state(pool));

@@ -42,7 +42,7 @@ pub async fn update(pool: &PgPool, user_id: &str, id: &str, body: UpdateTagBody)
         TagPatch {
             name: body.name,
             tag_type_id: body.tag_type_id,
-            review_status: body.review_status,
+            review_status: body.review_status.map(|s| s.as_str().to_string()),
             reviewed_by,
             reviewed_at,
         },

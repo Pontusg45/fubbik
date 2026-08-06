@@ -1597,6 +1597,15 @@
           }
         }
       },
+      "ReviewStatus": {
+        "type": "string",
+        "description": "Matches Node's body schema exactly (`packages/api/src/tags/routes.ts:39`):\n`t.Optional(t.Union([t.Literal(\"draft\"), t.Literal(\"reviewed\"),\nt.Literal(\"approved\")]))`. Modelled the same way as\n`connections::dto::Origin` — a proper enum, not `Option<String>` — so an\ninvalid value (e.g. `\"totally-bogus\"`) is rejected by serde at\ndeserialisation, before it ever reaches the service or database layer.\nThere is no database check constraint backstopping this column\n(`review_status text NOT NULL DEFAULT 'approved'`), so this enum is the\nonly thing standing between an arbitrary client string and storage.",
+        "enum": [
+          "draft",
+          "reviewed",
+          "approved"
+        ]
+      },
       "Sort": {
         "type": "string",
         "enum": [
@@ -1931,9 +1940,13 @@
             ]
           },
           "reviewStatus": {
-            "type": [
-              "string",
-              "null"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ReviewStatus"
+              }
             ]
           },
           "tagTypeId": {
