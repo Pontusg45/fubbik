@@ -86,20 +86,36 @@ pub async fn list(pool: &PgPool, user_id: &str) -> AppResult<Vec<TagType>> {
 
 /// Applies only the fields present in the patch. `COALESCE` keeps unset
 /// columns untouched, matching `chunk::update`.
+///
+/// `icon` is tri-state: `None` (key absent from the request) leaves the
+/// column untouched, `Some(None)` (explicit JSON `null`) clears it to
+/// `NULL`, `Some(Some(v))` sets it. Plain `COALESCE($n, icon)` cannot express
+/// this — both "absent" and "explicit null" would flatten to a bound SQL
+/// `NULL`, and `COALESCE` treats any `NULL` parameter as "leave unchanged",
+/// silently no-opping an explicit clear. Instead this uses the same
+/// `CASE WHEN $set::bool THEN $val::text ELSE icon END` idiom as
+/// `tag::update`'s handling of `tag_type_id` and `space::update`'s handling
+/// of `description`/`remote_url`: a side-channel boolean parameter carries
+/// "was this key present at all", decoupled from whether its value is
+/// `NULL`.
 pub async fn update(
     pool: &PgPool,
     user_id: &str,
     id: &str,
     name: Option<&str>,
     color: Option<&str>,
-    icon: Option<&str>,
+    icon: Option<Option<&str>>,
 ) -> AppResult<Option<TagType>> {
+    let (icon_set, icon_val) = match icon {
+        Some(v) => (true, v),
+        None => (false, None),
+    };
     let t = sqlx::query_as!(
         TagType,
         r#"UPDATE tag_type SET
              name = COALESCE($3, name),
              color = COALESCE($4, color),
-             icon = COALESCE($5, icon)
+             icon = CASE WHEN $5::bool THEN $6::text ELSE icon END
            WHERE id = $1 AND user_id = $2
            RETURNING id, name, color, icon, user_id,
                      created_at AS "created_at: UtcTimestamp""#,
@@ -107,7 +123,8 @@ pub async fn update(
         user_id,
         name,
         color,
-        icon
+        icon_set,
+        icon_val
     )
     .fetch_optional(pool)
     .await?;

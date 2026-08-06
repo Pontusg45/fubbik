@@ -31,7 +31,7 @@ pub async fn update(
         id,
         body.name.as_deref(),
         body.color.as_deref(),
-        body.icon.as_deref(),
+        body.icon.as_ref().map(|v| v.as_deref()),
     )
     .await?
     .ok_or_else(|| AppError::NotFound("tag type".into()))

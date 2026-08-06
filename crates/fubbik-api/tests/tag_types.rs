@@ -91,12 +91,20 @@ async fn patch_tag_type(
     id: &str,
     name: &str,
 ) -> axum::response::Response {
-    let body = serde_json::json!({ "name": name }).to_string();
+    patch_tag_type_body(app, cookie, id, serde_json::json!({ "name": name })).await
+}
+
+async fn patch_tag_type_body(
+    app: axum::Router,
+    cookie: &str,
+    id: &str,
+    body: serde_json::Value,
+) -> axum::response::Response {
     app.oneshot(
         Request::patch(format!("/api/tag-types/{id}"))
             .header("content-type", "application/json")
             .header("cookie", cookie)
-            .body(Body::from(body))
+            .body(Body::from(body.to_string()))
             .unwrap(),
     )
     .await
@@ -286,4 +294,83 @@ async fn delete_with_referencing_tags_nulls_tag_type_id_via_db_fk(pool: sqlx::Pg
     .await
     .unwrap();
     assert_eq!(tag_type_gone, 0);
+}
+
+/// `icon` is tri-state, matching Node's `t.Optional(t.Union([t.String(),
+/// t.Null()]))`. This exercises all three states in one flow — omitted
+/// leaves it unchanged, explicit `null` clears it, a string sets it — and
+/// reads the `icon` column back from the database directly rather than
+/// trusting the response body, since the underlying bug this guards against
+/// (`COALESCE($n, icon)` silently no-opping an explicit `null`) still
+/// returned 200 with a response body that looked plausible.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn update_icon_tri_state(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool.clone()));
+    let cookie = signup(app.clone(), "alice-icon@b.test", "Alice").await;
+
+    let created = json_body(create_tag_type(app.clone(), &cookie, "Topic", None).await).await;
+    let id = created["id"].as_str().unwrap().to_string();
+    assert_eq!(created["icon"], serde_json::Value::Null);
+
+    async fn read_icon(pool: &sqlx::PgPool, id: &str) -> Option<String> {
+        sqlx::query_scalar!(r#"SELECT icon FROM tag_type WHERE id = $1"#, id)
+            .fetch_one(pool)
+            .await
+            .unwrap()
+    }
+
+    // Set: a string value sets the column.
+    let set = json_body(
+        patch_tag_type_body(
+            app.clone(),
+            &cookie,
+            &id,
+            serde_json::json!({ "icon": "star" }),
+        )
+        .await,
+    )
+    .await;
+    assert_eq!(set["icon"], "star");
+    assert_eq!(read_icon(&pool, &id).await, Some("star".to_string()));
+
+    // Absent: a patch that doesn't mention `icon` at all must leave it untouched.
+    let untouched = json_body(
+        patch_tag_type_body(
+            app.clone(),
+            &cookie,
+            &id,
+            serde_json::json!({ "name": "Topic2" }),
+        )
+        .await,
+    )
+    .await;
+    assert_eq!(
+        untouched["icon"], "star",
+        "omitted icon key must leave the column untouched"
+    );
+    assert_eq!(read_icon(&pool, &id).await, Some("star".to_string()));
+
+    // Clear: explicit `null` must clear the column to NULL — read the
+    // column back from the database, not just the response body, since a
+    // silent no-op would also return 200 with a plausible-looking body.
+    let cleared = json_body(
+        patch_tag_type_body(
+            app.clone(),
+            &cookie,
+            &id,
+            serde_json::json!({ "icon": null }),
+        )
+        .await,
+    )
+    .await;
+    assert_eq!(cleared["icon"], serde_json::Value::Null);
+    assert_eq!(
+        read_icon(&pool, &id).await,
+        None,
+        "explicit null must clear icon to NULL in the database"
+    );
+    assert_eq!(
+        cleared["name"], "Topic2",
+        "clearing icon must not touch the name set by the previous PATCH"
+    );
 }

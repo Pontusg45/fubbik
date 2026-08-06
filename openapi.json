@@ -1946,6 +1946,7 @@
       },
       "UpdateTagTypeBody": {
         "type": "object",
+        "description": "`icon` is deliberately `Option<Option<String>>`, not `Option<String>`: it\nmirrors Node's `t.Optional(t.Union([t.String(), t.Null()]))` body schema\nfor `icon`, which is three-state — omitted (leave untouched), explicit\n`null` (clear), or a string (set). `color` stays plain `Option<String>`\nbecause Node's schema for it has no `t.Null()` union\n(`t.Optional(t.String({ maxLength: 7 }))`) — it is not clearable via this\nendpoint.\n\nPlain `#[derive(Deserialize)]` on a bare `Option<Option<String>>` field\ndoes NOT give tri-state semantics: `Option<T>`'s own `Deserialize` impl\nmaps a JSON `null` straight to `None` regardless of nesting depth, so an\nexplicit `\"icon\": null` would be indistinguishable from the key being\nabsent entirely — both would collapse to the outer `None`. The\n`#[serde(default, deserialize_with = \"deserialize_some\")]` pair below is\nthe same fix used by `tags::dto::UpdateTagBody::tag_type_id` and\n`spaces::dto::UpdateSpaceBody::{description, remote_url}`: `default`\nmakes a missing key `None`, while `deserialize_some` runs only when the\nkey IS present and always wraps its result (even `Option::None` from a\n`null`) in an extra `Some`.",
         "properties": {
           "color": {
             "type": [
