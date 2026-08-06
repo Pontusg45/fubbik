@@ -313,3 +313,75 @@ async fn list_breaks_created_at_ties_by_id(pool: sqlx::PgPool) {
         "ties must be broken by ascending id, not left to query-plan chance"
     );
 }
+
+/// Same bug class as `list_breaks_created_at_ties_by_id` above, for
+/// `tags_for_chunk`'s `ORDER BY t.name, t.id ASC`.
+///
+/// `tag.name` is unique per user (`tag_user_name_idx`), so two tags owned
+/// by the *same* user can never tie on `name` — a name tie can only be
+/// constructed across several distinct users' tags that happen to share
+/// text. `tags_for_chunk`'s query (see its doc comment) does not filter on
+/// `t.user_id` at all; it trusts that `chunk_tag` never links a chunk to a
+/// tag outside the chunk owner's tags, a guarantee enforced by
+/// `set_chunk_tags` at write time (see `cannot_attach_another_users_tag`
+/// above), not by this SELECT. This test deliberately bypasses that guard
+/// with a direct `INSERT INTO chunk_tag`, the same way
+/// `get_applies_to_scoped_to_owner_at_repo_layer`-style tests poke at the
+/// repo layer directly elsewhere in this suite, purely to construct a
+/// genuine tie for the ordering guarantee under test — it is not claiming
+/// this cross-user state is reachable through the guarded API.
+#[sqlx::test]
+async fn tags_for_chunk_breaks_name_ties_by_id(pool: sqlx::PgPool) {
+    let alice = seed(&pool, "a@b.test").await;
+    let alices_chunk = a_chunk(&pool, &alice, "Alice's").await;
+
+    for i in 0..5 {
+        let owner = seed(&pool, &format!("owner{i}@b.test")).await;
+        let t = tag::create(&pool, &owner, "shared-name", None)
+            .await
+            .unwrap();
+        sqlx::query!(
+            "INSERT INTO chunk_tag (chunk_id, tag_id) VALUES ($1, $2)",
+            alices_chunk,
+            t.id
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+    }
+
+    // Ground truth from Postgres directly, so this test does not depend on
+    // Rust's default string ordering happening to agree with the
+    // database's collation.
+    let expected_id_order: Vec<String> = sqlx::query_scalar!(
+        "SELECT tag_id FROM chunk_tag WHERE chunk_id = $1 ORDER BY tag_id ASC",
+        alices_chunk
+    )
+    .fetch_all(&pool)
+    .await
+    .unwrap();
+    assert_eq!(expected_id_order.len(), 5);
+
+    let first = tag::tags_for_chunk(&pool, &alice, &alices_chunk)
+        .await
+        .unwrap();
+    let second = tag::tags_for_chunk(&pool, &alice, &alices_chunk)
+        .await
+        .unwrap();
+    assert!(
+        first.iter().all(|t| t.name == "shared-name"),
+        "sanity check: the tie must be genuine, not five distinct names"
+    );
+
+    let first_ids: Vec<String> = first.iter().map(|t| t.id.clone()).collect();
+    let second_ids: Vec<String> = second.iter().map(|t| t.id.clone()).collect();
+
+    assert_eq!(
+        first_ids, second_ids,
+        "repeated calls over tied rows must return byte-identical order"
+    );
+    assert_eq!(
+        first_ids, expected_id_order,
+        "ties must be broken by ascending id, not left to query-plan chance"
+    );
+}

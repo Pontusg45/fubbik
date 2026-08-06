@@ -919,3 +919,74 @@ async fn list_breaks_created_at_ties_by_id(pool: sqlx::PgPool) {
         "ties must be broken by ascending id, not left to query-plan chance"
     );
 }
+
+/// Same bug class as `list_breaks_created_at_ties_by_id` above, for
+/// `spaces_for_chunk`'s `ORDER BY s.name, s.id ASC`.
+///
+/// `space.name` is unique per user (`space_user_name_idx`), so two spaces
+/// owned by the *same* user can never tie on `name` — a name tie can only
+/// be constructed across several distinct users' spaces that happen to
+/// share text. `spaces_for_chunk`'s query does not filter on `s.user_id`
+/// at all; it trusts that `chunk_space` never links a chunk to a space
+/// outside the chunk owner's spaces, a guarantee enforced by
+/// `set_chunk_spaces` at write time, not by this SELECT. This test
+/// deliberately bypasses that guard with a direct `INSERT INTO
+/// chunk_space`, the same technique `tags_for_chunk_breaks_name_ties_by_id`
+/// (`tests/tag.rs`) uses for the equivalent join, purely to construct a
+/// genuine tie for the ordering guarantee under test — it is not claiming
+/// this cross-user state is reachable through the guarded API.
+#[sqlx::test]
+async fn spaces_for_chunk_breaks_name_ties_by_id(pool: sqlx::PgPool) {
+    let alice = seed(&pool, "a@b.test").await;
+    let alices_chunk = a_chunk(&pool, &alice, "Alice's").await;
+
+    for i in 0..5 {
+        let owner = seed(&pool, &format!("owner{i}@b.test")).await;
+        let s = space::create(&pool, &owner, new_wiki_space("shared-name"), None)
+            .await
+            .unwrap();
+        sqlx::query!(
+            "INSERT INTO chunk_space (chunk_id, space_id) VALUES ($1, $2)",
+            alices_chunk,
+            s.id
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+    }
+
+    // Ground truth from Postgres directly, so this test does not depend on
+    // Rust's default string ordering happening to agree with the
+    // database's collation.
+    let expected_id_order: Vec<String> = sqlx::query_scalar!(
+        "SELECT space_id FROM chunk_space WHERE chunk_id = $1 ORDER BY space_id ASC",
+        alices_chunk
+    )
+    .fetch_all(&pool)
+    .await
+    .unwrap();
+    assert_eq!(expected_id_order.len(), 5);
+
+    let first = space::spaces_for_chunk(&pool, &alice, &alices_chunk)
+        .await
+        .unwrap();
+    let second = space::spaces_for_chunk(&pool, &alice, &alices_chunk)
+        .await
+        .unwrap();
+    assert!(
+        first.iter().all(|s| s.name == "shared-name"),
+        "sanity check: the tie must be genuine, not five distinct names"
+    );
+
+    let first_ids: Vec<String> = first.iter().map(|s| s.id.clone()).collect();
+    let second_ids: Vec<String> = second.iter().map(|s| s.id.clone()).collect();
+
+    assert_eq!(
+        first_ids, second_ids,
+        "repeated calls over tied rows must return byte-identical order"
+    );
+    assert_eq!(
+        first_ids, expected_id_order,
+        "ties must be broken by ascending id, not left to query-plan chance"
+    );
+}
