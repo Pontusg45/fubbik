@@ -491,6 +491,159 @@
         }
       }
     },
+    "/api/notifications": {
+      "get": {
+        "tags": [
+          "crate::notifications::routes"
+        ],
+        "operationId": "list_notifications",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "unreadOnly",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Notification"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/notifications/count": {
+      "get": {
+        "tags": [
+          "crate::notifications::routes"
+        ],
+        "operationId": "unread_count",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CountResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/notifications/read-all": {
+      "post": {
+        "tags": [
+          "crate::notifications::routes"
+        ],
+        "operationId": "mark_all_read",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/notifications/{id}": {
+      "delete": {
+        "tags": [
+          "crate::notifications::routes"
+        ],
+        "operationId": "delete_notification",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/notifications/{id}/read": {
+      "patch": {
+        "tags": [
+          "crate::notifications::routes"
+        ],
+        "operationId": "mark_notification_read",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Notification"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
     "/api/spaces": {
       "get": {
         "tags": [
@@ -1337,6 +1490,19 @@
           }
         }
       },
+      "CountResponse": {
+        "type": "object",
+        "description": "Shape of `GET /api/notifications/count`\n(`tests/fixtures/node-contract-2b/notifications-count.json`): a bare\n`{ \"count\": N }` object, not the chunks-style envelope.",
+        "required": [
+          "count"
+        ],
+        "properties": {
+          "count": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
       "CreateChunkBody": {
         "type": "object",
         "required": [
@@ -1530,6 +1696,49 @@
         ],
         "properties": {
           "message": {
+            "type": "string"
+          }
+        }
+      },
+      "Notification": {
+        "type": "object",
+        "description": "`notification.type` is `text NOT NULL` with no check constraint and no\nenum anywhere in the Node source (`packages/db/src/schema/notification.ts`\njust leaves a comment listing example values). The Phase 2b plan's\ngeneral instruction to model constrained value sets as enum-typed DTO\nfields (like `connections::dto::Origin`) does NOT apply here — the\ncaptured contract found no constraint to enforce, so this stays a plain\n`String` end to end. Adding validation Node doesn't have would be a\nsilent, undocumented divergence.\n\n`camelCase` serialisation matches every other wire type in this crate —\nsee the note on `chunk::Chunk` for why that's mandatory, not cosmetic.\n`notification_type` is renamed to the reserved SQL/JSON word `type` for\nthe same reason `chunk::Chunk::chunk_type` is.",
+        "required": [
+          "id",
+          "userId",
+          "type",
+          "title",
+          "message",
+          "read",
+          "createdAt"
+        ],
+        "properties": {
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string"
+          },
+          "linkTo": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "message": {
+            "type": "string"
+          },
+          "read": {
+            "type": "boolean"
+          },
+          "title": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "userId": {
             "type": "string"
           }
         }

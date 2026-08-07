@@ -4,6 +4,7 @@ pub mod chunks;
 pub mod connections;
 pub mod error;
 pub mod extract;
+pub mod notifications;
 pub mod openapi;
 pub mod spaces;
 pub mod stats;
@@ -39,6 +40,7 @@ pub fn router(state: AppState) -> Router {
         .merge(auth::routes::router())
         .merge(chunks::routes::router())
         .merge(connections::routes::router())
+        .merge(notifications::routes::router())
         .merge(spaces::routes::router())
         .merge(stats::routes::router())
         .merge(tag_types::routes::router())

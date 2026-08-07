@@ -2,6 +2,7 @@ pub mod chunk;
 pub mod chunk_meta;
 pub mod chunk_version;
 pub mod connection;
+pub mod notification;
 pub mod session;
 pub mod space;
 pub mod stats;
