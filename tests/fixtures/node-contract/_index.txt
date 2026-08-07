@@ -1,0 +1,7 @@
+spaces-list                  200 application/json;charset=utf-8
+spaces-detail                200 application/json;charset=utf-8
+spaces-detect-nomatch        200 <none>
+spaces-detect-match          200 application/json;charset=utf-8
+tags-list                    200 application/json;charset=utf-8
+tag-types-list               200 application/json;charset=utf-8
+stats                        200 application/json;charset=utf-8

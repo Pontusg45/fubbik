@@ -418,6 +418,617 @@
           }
         }
       }
+    },
+    "/api/connections": {
+      "post": {
+        "tags": [
+          "crate::connections::routes"
+        ],
+        "operationId": "create_connection",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateConnectionBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Connection"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          },
+          "409": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/connections/{id}": {
+      "delete": {
+        "tags": [
+          "crate::connections::routes"
+        ],
+        "operationId": "delete_connection",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/spaces": {
+      "get": {
+        "tags": [
+          "crate::spaces::routes"
+        ],
+        "operationId": "list_spaces",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Space"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "crate::spaces::routes"
+        ],
+        "operationId": "create_space",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSpaceBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Space"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/spaces/detect": {
+      "get": {
+        "tags": [
+          "crate::spaces::routes"
+        ],
+        "operationId": "detect_space",
+        "parameters": [
+          {
+            "name": "remoteUrl",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "localPath",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "no match: empty body"
+          }
+        }
+      }
+    },
+    "/api/spaces/{id}": {
+      "get": {
+        "tags": [
+          "crate::spaces::routes"
+        ],
+        "operationId": "get_space",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SpaceDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "crate::spaces::routes"
+        ],
+        "operationId": "delete_space",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "crate::spaces::routes"
+        ],
+        "operationId": "update_space",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSpaceBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Space"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/spaces/{id}/reset": {
+      "post": {
+        "tags": [
+          "crate::spaces::routes"
+        ],
+        "operationId": "reset_space",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResetResult"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/stats": {
+      "get": {
+        "tags": [
+          "crate::stats::routes"
+        ],
+        "summary": "`GET /api/stats` returns a **bare object** — not an array, and not the\n`{chunks,total,limit,offset}` envelope `GET /api/chunks` uses. Matches\nNode's `statsRoutes` (`packages/api/src/stats/routes.ts`), which returns\n`statsService.getUserStats(session.user.id)` directly as the response\nbody.",
+        "operationId": "get_stats",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Stats"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tag-types": {
+      "get": {
+        "tags": [
+          "crate::tag_types::routes"
+        ],
+        "operationId": "list_tag_types",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TagType"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "crate::tag_types::routes"
+        ],
+        "operationId": "create_tag_type",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTagTypeBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TagType"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tag-types/{id}": {
+      "delete": {
+        "tags": [
+          "crate::tag_types::routes"
+        ],
+        "operationId": "delete_tag_type",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "crate::tag_types::routes"
+        ],
+        "operationId": "update_tag_type",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTagTypeBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TagType"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/tags": {
+      "get": {
+        "tags": [
+          "crate::tags::routes"
+        ],
+        "operationId": "list_tags",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TagListItem"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "crate::tags::routes"
+        ],
+        "operationId": "create_tag",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTagBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Tag"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tags/merge": {
+      "post": {
+        "tags": [
+          "crate::tags::routes"
+        ],
+        "operationId": "merge_tags",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MergeBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MergeResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/tags/{id}": {
+      "delete": {
+        "tags": [
+          "crate::tags::routes"
+        ],
+        "operationId": "delete_tag",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "crate::tags::routes"
+        ],
+        "operationId": "update_tag",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTagBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Tag"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
     }
   },
   "components": {
@@ -671,6 +1282,61 @@
           }
         }
       },
+      "Connection": {
+        "type": "object",
+        "description": "`chunk_connection` row shape, matching Node's bare-row response for both\n`POST /api/connections` (create) and the implicit shape returned by\n`getConnectionById`/`deleteConnection` in\n`packages/db/src/repository/connection.ts`.",
+        "required": [
+          "id",
+          "sourceId",
+          "targetId",
+          "relation",
+          "createdAt",
+          "origin",
+          "reviewStatus",
+          "weight"
+        ],
+        "properties": {
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string"
+          },
+          "origin": {
+            "type": "string"
+          },
+          "relation": {
+            "type": "string"
+          },
+          "reviewStatus": {
+            "type": "string"
+          },
+          "reviewedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "reviewedBy": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sourceId": {
+            "type": "string"
+          },
+          "targetId": {
+            "type": "string"
+          },
+          "weight": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
       "CreateChunkBody": {
         "type": "object",
         "required": [
@@ -697,6 +1363,114 @@
           }
         }
       },
+      "CreateConnectionBody": {
+        "type": "object",
+        "description": "Matches Node's body schema exactly (`packages/api/src/connections/routes.ts:22-27`):\n`sourceId`/`targetId`/`relation` required, `origin` optional and\nconstrained to the two literals Node accepts (`t.Union([t.Literal(\"human\"),\nt.Literal(\"ai\")])`) — anything else fails validation before reaching the\nservice layer, matching Node's Elysia schema rejecting the request\noutright rather than letting an arbitrary `origin` string through.",
+        "required": [
+          "sourceId",
+          "targetId",
+          "relation"
+        ],
+        "properties": {
+          "origin": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Origin"
+              }
+            ]
+          },
+          "relation": {
+            "type": "string"
+          },
+          "sourceId": {
+            "type": "string"
+          },
+          "targetId": {
+            "type": "string"
+          }
+        }
+      },
+      "CreateSpaceBody": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "kind": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "localPaths": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "name": {
+            "type": "string"
+          },
+          "remoteUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "CreateTagBody": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "tagTypeId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "CreateTagTypeBody": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "color": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "icon": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
       "FileRef": {
         "type": "object",
         "required": [
@@ -715,6 +1489,57 @@
             "type": "string"
           }
         }
+      },
+      "MergeBody": {
+        "type": "object",
+        "required": [
+          "sourceId",
+          "targetId"
+        ],
+        "properties": {
+          "sourceId": {
+            "type": "string"
+          },
+          "targetId": {
+            "type": "string"
+          }
+        }
+      },
+      "MergeResult": {
+        "type": "object",
+        "description": "Return value of [`merge`], matching Node's `mergeTags` return shape\n(`packages/db/src/repository/tag-new.ts:105-107`).",
+        "required": [
+          "targetId",
+          "chunkCount"
+        ],
+        "properties": {
+          "chunkCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "targetId": {
+            "type": "string"
+          }
+        }
+      },
+      "MessageResponse": {
+        "type": "object",
+        "description": "Shape of every `{ message: \"Deleted\" }` delete response in this domain,\nmatching Node's convention (`_mutating.md`): deletes return 200, not\n204, with this body.",
+        "required": [
+          "message"
+        ],
+        "properties": {
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "Origin": {
+        "type": "string",
+        "enum": [
+          "human",
+          "ai"
+        ]
       },
       "PathsBody": {
         "type": "object",
@@ -744,6 +1569,43 @@
           }
         }
       },
+      "ResetResult": {
+        "type": "object",
+        "description": "Return value of [`reset`], matching Node's `resetSpaceData` return shape\n(`packages/db/src/repository/space.ts:144-184`).",
+        "required": [
+          "chunksDeleted",
+          "docsDeleted",
+          "plansDeleted",
+          "requirementsDeleted"
+        ],
+        "properties": {
+          "chunksDeleted": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "docsDeleted": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "plansDeleted": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "requirementsDeleted": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "ReviewStatus": {
+        "type": "string",
+        "description": "Matches Node's body schema exactly (`packages/api/src/tags/routes.ts:39`):\n`t.Optional(t.Union([t.Literal(\"draft\"), t.Literal(\"reviewed\"),\nt.Literal(\"approved\")]))`. Modelled the same way as\n`connections::dto::Origin` — a proper enum, not `Option<String>` — so an\ninvalid value (e.g. `\"totally-bogus\"`) is rejected by serde at\ndeserialisation, before it ever reaches the service or database layer.\nThere is no database check constraint backstopping this column\n(`review_status text NOT NULL DEFAULT 'approved'`), so this enum is the\nonly thing standing between an arbitrary client string and storage.",
+        "enum": [
+          "draft",
+          "reviewed",
+          "approved"
+        ]
+      },
       "Sort": {
         "type": "string",
         "enum": [
@@ -752,6 +1614,252 @@
           "alpha",
           "updated"
         ]
+      },
+      "Space": {
+        "type": "object",
+        "description": "Bare `space` row shape — what `GET /api/spaces` (list), `POST /api/spaces`\n(create), `PATCH /api/spaces/{id}` (update), and `GET /api/spaces/detect`\non a match all return. **Not** the shape of `GET /api/spaces/{id}`\n(detail) — that one nests this struct inside [`SpaceDetail`] alongside\n`space_code_metadata`. Three different endpoints, three different \"space\"\nshapes: reusing this struct for all of them would silently flatten or\ndrop the `code` metadata on the detail route. See `_questions.md` in\n`tests/fixtures/node-contract/` (\"space detail vs list: nested `code`\nmetadata, not flattened\").",
+        "required": [
+          "id",
+          "name",
+          "kind",
+          "userId",
+          "createdAt",
+          "updatedAt"
+        ],
+        "properties": {
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "userId": {
+            "type": "string"
+          }
+        }
+      },
+      "SpaceCodeMetadata": {
+        "type": "object",
+        "description": "`space_code_metadata` side-table row, holding the extra fields that only\napply to `kind = 'code'` spaces. Only ever surfaced nested inside\n[`SpaceDetail`] — never flattened into `Space` itself.",
+        "required": [
+          "spaceId",
+          "userId",
+          "localPaths"
+        ],
+        "properties": {
+          "localPaths": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "remoteUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "spaceId": {
+            "type": "string"
+          },
+          "userId": {
+            "type": "string"
+          }
+        }
+      },
+      "SpaceDetail": {
+        "type": "object",
+        "description": "Shape of `GET /api/spaces/{id}` — `{ space, code }`, matching Node's\n`getSpaceWithCodeMetadata` (`packages/db/src/repository/space.ts:58-72`),\nwhich `leftJoin`s `space_code_metadata` and returns the two halves as\nsibling keys, un-flattened. `code` is `null` for a non-`code`-kind space\n(no side-table row ever exists for it).",
+        "required": [
+          "space"
+        ],
+        "properties": {
+          "code": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/SpaceCodeMetadata"
+              }
+            ]
+          },
+          "space": {
+            "$ref": "#/components/schemas/Space"
+          }
+        }
+      },
+      "Stats": {
+        "type": "object",
+        "description": "Aggregate per-user counts backing `GET /api/stats`. Bare-object shape,\nnot an array and not the `{chunks,total,limit,offset}` envelope the\nchunks *list* endpoint uses — matches Node's `getUserStats`\n(`packages/api/src/stats/service.ts`) field-for-field. No fields beyond\nwhat Node returns: this is a parity port, not a place to add \"useful\"\ncounts.",
+        "required": [
+          "chunks",
+          "connections",
+          "tags"
+        ],
+        "properties": {
+          "chunks": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "connections": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "tags": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "Tag": {
+        "type": "object",
+        "description": "`camelCase` serialisation matches every other wire type in this crate —\nsee the note on `chunk::Chunk` for why that's mandatory, not cosmetic.\n\nThis is the *bare* row shape — what `POST /api/tags` and\n`PATCH /api/tags/{id}` return. `GET /api/tags` returns a different,\njoined shape ([`TagListItem`]); Node's `service-new.ts` explicitly notes\ncreate/update responses carry no `tagTypeName`/`tagTypeColor`/\n`chunkCount` fields, unlike the list endpoint.",
+        "required": [
+          "id",
+          "name",
+          "userId",
+          "createdAt",
+          "origin",
+          "reviewStatus"
+        ],
+        "properties": {
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "origin": {
+            "type": "string"
+          },
+          "reviewStatus": {
+            "type": "string"
+          },
+          "reviewedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "reviewedBy": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "tagTypeId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "userId": {
+            "type": "string"
+          }
+        }
+      },
+      "TagListItem": {
+        "type": "object",
+        "description": "Shape of `GET /api/tags` list items — joined with `tag_type` and a\n`chunk_tag` count, matching Node's `getTagsForUser`\n(`packages/db/src/repository/tag-new.ts:23-38`).",
+        "required": [
+          "id",
+          "name",
+          "chunkCount"
+        ],
+        "properties": {
+          "chunkCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "tagTypeColor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "tagTypeIcon": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "tagTypeId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "tagTypeName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "TagType": {
+        "type": "object",
+        "description": "`camelCase` serialisation matches every other wire type in this crate —\nsee the note on `chunk::Chunk` for why that's mandatory, not cosmetic.",
+        "required": [
+          "id",
+          "name",
+          "color",
+          "userId",
+          "createdAt"
+        ],
+        "properties": {
+          "color": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "icon": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "userId": {
+            "type": "string"
+          }
+        }
       },
       "UpdateChunkBody": {
         "type": "object",
@@ -781,6 +1889,91 @@
             ]
           },
           "type": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "UpdateSpaceBody": {
+        "type": "object",
+        "description": "`description` and `remote_url` are tri-state, matching Node's\n`t.Optional(t.Union([t.String(), t.Null()]))` for both: omitted leaves\nthe field untouched (or, for `remoteUrl` on a code-kind space, falls\nthrough to Node's `?? null` — see `service::update`), explicit `null`\nclears it, a string sets it. Same `deserialize_some` trick as\n`tags::dto::UpdateTagBody::tag_type_id` — plain `Option<Option<T>>`\ncollapses \"omitted\" and \"explicit null\" to the same `None` without it.\n\n`local_paths` is NOT tri-state at the schema level (`t.Optional(t.Array(...))`,\nno `t.Null()` union) — a plain `Option<Vec<String>>` is correct here.",
+        "properties": {
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "localPaths": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "remoteUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "UpdateTagBody": {
+        "type": "object",
+        "description": "`tag_type_id` is deliberately `Option<Option<String>>`, not\n`Option<String>`: it mirrors Node's `t.Optional(t.Union([t.String(),\nt.Null()]))` body schema, which is three-state — omitted (leave\nuntouched), explicit `null` (clear), or a string (set).\n\nPlain `#[derive(Deserialize)]` on a bare `Option<Option<String>>` field\ndoes NOT give tri-state semantics: `Option<T>`'s own `Deserialize` impl\nmaps a JSON `null` straight to `None` regardless of nesting depth, so an\nexplicit `\"tagTypeId\": null` would be indistinguishable from the key\nbeing absent entirely — both would collapse to the outer `None`. The\n`#[serde(default, deserialize_with = \"deserialize_some\")]` pair below is\nthe standard fix: `default` makes a missing key `None`, while\n`deserialize_some` runs only when the key IS present and always wraps\nits result (even `Option::None` from a `null`) in an extra `Some`.",
+        "properties": {
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reviewStatus": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ReviewStatus"
+              }
+            ]
+          },
+          "tagTypeId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "UpdateTagTypeBody": {
+        "type": "object",
+        "description": "`icon` is deliberately `Option<Option<String>>`, not `Option<String>`: it\nmirrors Node's `t.Optional(t.Union([t.String(), t.Null()]))` body schema\nfor `icon`, which is three-state — omitted (leave untouched), explicit\n`null` (clear), or a string (set). `color` stays plain `Option<String>`\nbecause Node's schema for it has no `t.Null()` union\n(`t.Optional(t.String({ maxLength: 7 }))`) — it is not clearable via this\nendpoint.\n\nPlain `#[derive(Deserialize)]` on a bare `Option<Option<String>>` field\ndoes NOT give tri-state semantics: `Option<T>`'s own `Deserialize` impl\nmaps a JSON `null` straight to `None` regardless of nesting depth, so an\nexplicit `\"icon\": null` would be indistinguishable from the key being\nabsent entirely — both would collapse to the outer `None`. The\n`#[serde(default, deserialize_with = \"deserialize_some\")]` pair below is\nthe same fix used by `tags::dto::UpdateTagBody::tag_type_id` and\n`spaces::dto::UpdateSpaceBody::{description, remote_url}`: `default`\nmakes a missing key `None`, while `deserialize_some` runs only when the\nkey IS present and always wraps its result (even `Option::None` from a\n`null`) in an extra `Some`.",
+        "properties": {
+          "color": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "icon": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
             "type": [
               "string",
               "null"

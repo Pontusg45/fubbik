@@ -1,0 +1,82 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO chunk_connection (id, source_id, target_id, relation, origin, review_status)\n           SELECT $1, s.id, t.id, $4, $6, $7\n           FROM chunk s, chunk t\n           WHERE s.id = $2 AND t.id = $3 AND s.user_id = $5 AND t.user_id = $5\n           RETURNING id, source_id, target_id, relation,\n                     created_at AS \"created_at: UtcTimestamp\",\n                     origin, review_status, reviewed_by,\n                     reviewed_at AS \"reviewed_at: UtcTimestamp\",\n                     weight",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "source_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "target_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "relation",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "created_at: UtcTimestamp",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 5,
+        "name": "origin",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "review_status",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "reviewed_by",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "reviewed_at: UtcTimestamp",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 9,
+        "name": "weight",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "a4a62af3281784712d8d37a6c5f6cc7f402adf2fd401b666982e5e4fed2d91a4"
+}

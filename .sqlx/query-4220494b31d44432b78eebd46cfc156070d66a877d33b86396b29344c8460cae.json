@@ -1,0 +1,77 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE tag SET\n             name = COALESCE($3, name),\n             tag_type_id = CASE WHEN $4::bool THEN $5::text ELSE tag_type_id END,\n             review_status = COALESCE($6, review_status),\n             reviewed_by = COALESCE($7, reviewed_by),\n             reviewed_at = COALESCE($8, reviewed_at)\n           WHERE id = $1 AND user_id = $2\n           RETURNING id, name, tag_type_id, user_id,\n                     created_at AS \"created_at: UtcTimestamp\",\n                     origin, review_status, reviewed_by,\n                     reviewed_at AS \"reviewed_at: UtcTimestamp\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "tag_type_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "user_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "created_at: UtcTimestamp",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 5,
+        "name": "origin",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "review_status",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "reviewed_by",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "reviewed_at: UtcTimestamp",
+        "type_info": "Timestamp"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Bool",
+        "Text",
+        "Text",
+        "Text",
+        "Timestamp"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "4220494b31d44432b78eebd46cfc156070d66a877d33b86396b29344c8460cae"
+}

@@ -1,5 +1,10 @@
 pub mod chunk;
 pub mod chunk_meta;
 pub mod chunk_version;
+pub mod connection;
 pub mod session;
+pub mod space;
+pub mod stats;
+pub mod tag;
+pub mod tag_type;
 pub mod user;

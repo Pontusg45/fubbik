@@ -347,3 +347,118 @@ async fn replace_file_refs_with_wrong_user_is_noop_at_repo_layer(pool: sqlx::PgP
     );
     assert_eq!(refs[0].path, "src/index.ts");
 }
+
+/// Same bug class as `chunk::list` (see its equivalent test in
+/// `tests/chunk.rs`): `ORDER BY pattern, id` breaks a tie on `pattern` only
+/// via the `id` tiebreaker. This is a reachable case, not a contrived one —
+/// nothing stops `replace_applies_to` from being called with the same glob
+/// twice (see `PUTting the same set twice must not duplicate rows` above),
+/// so duplicate `pattern` values across rows for one chunk are normal. A
+/// test using distinct patterns would pass even without the tiebreaker and
+/// prove nothing.
+#[sqlx::test]
+async fn get_applies_to_breaks_pattern_ties_by_id(pool: sqlx::PgPool) {
+    let uid = user::create(&pool, "a@b.test", "Alice", None)
+        .await
+        .unwrap()
+        .id;
+    let c = chunk::create(
+        &pool,
+        &uid,
+        chunk::NewChunk {
+            title: "T".into(),
+            content: String::new(),
+            chunk_type: "note".into(),
+            rationale: None,
+        },
+    )
+    .await
+    .unwrap();
+
+    let patterns = vec!["src/**/*.ts".to_string(); 5];
+    chunk_meta::replace_applies_to(&pool, &c.id, &uid, &patterns)
+        .await
+        .unwrap();
+
+    // Ground truth from Postgres directly, so this test does not depend on
+    // Rust's default string ordering happening to agree with the
+    // database's collation.
+    let expected_id_order: Vec<String> = sqlx::query_scalar!(
+        "SELECT id FROM chunk_applies_to WHERE chunk_id = $1 ORDER BY id ASC",
+        c.id
+    )
+    .fetch_all(&pool)
+    .await
+    .unwrap();
+    assert_eq!(expected_id_order.len(), 5);
+
+    let first = chunk_meta::get_applies_to(&pool, &c.id, &uid)
+        .await
+        .unwrap();
+    let second = chunk_meta::get_applies_to(&pool, &c.id, &uid)
+        .await
+        .unwrap();
+
+    let first_ids: Vec<String> = first.iter().map(|p| p.id.clone()).collect();
+    let second_ids: Vec<String> = second.iter().map(|p| p.id.clone()).collect();
+
+    assert_eq!(
+        first_ids, second_ids,
+        "repeated calls over tied rows must return byte-identical order"
+    );
+    assert_eq!(
+        first_ids, expected_id_order,
+        "ties must be broken by ascending id, not left to query-plan chance"
+    );
+}
+
+/// Same bug class as above, for `get_file_refs` — `ORDER BY path, id` ties
+/// on `path`, which `replace_file_refs` does not enforce as unique either.
+#[sqlx::test]
+async fn get_file_refs_breaks_path_ties_by_id(pool: sqlx::PgPool) {
+    let uid = user::create(&pool, "a@b.test", "Alice", None)
+        .await
+        .unwrap()
+        .id;
+    let c = chunk::create(
+        &pool,
+        &uid,
+        chunk::NewChunk {
+            title: "T".into(),
+            content: String::new(),
+            chunk_type: "note".into(),
+            rationale: None,
+        },
+    )
+    .await
+    .unwrap();
+
+    let paths = vec!["src/index.ts".to_string(); 5];
+    chunk_meta::replace_file_refs(&pool, &c.id, &uid, &paths)
+        .await
+        .unwrap();
+
+    let expected_id_order: Vec<String> = sqlx::query_scalar!(
+        "SELECT id FROM chunk_file_ref WHERE chunk_id = $1 ORDER BY id ASC",
+        c.id
+    )
+    .fetch_all(&pool)
+    .await
+    .unwrap();
+    assert_eq!(expected_id_order.len(), 5);
+
+    let first = chunk_meta::get_file_refs(&pool, &c.id, &uid).await.unwrap();
+    let second = chunk_meta::get_file_refs(&pool, &c.id, &uid).await.unwrap();
+
+    let first_ids: Vec<String> = first.iter().map(|r| r.id.clone()).collect();
+    let second_ids: Vec<String> = second.iter().map(|r| r.id.clone()).collect();
+
+    assert_eq!(
+        first_ids, second_ids,
+        "repeated calls over tied rows must return byte-identical order"
+    );
+    assert_eq!(
+        first_ids, expected_id_order,
+        "ties must be broken by ascending id, not left to query-plan chance"
+    );
+}

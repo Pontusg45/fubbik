@@ -1,0 +1,171 @@
+use fubbik_core::error::{AppError, AppResult};
+use fubbik_db::repo::space::{
+    self, CodeInput, CodeUpdate, NewSpace, ResetResult, Space, SpaceDetail, SpacePatch,
+};
+use sqlx::PgPool;
+
+use super::dto::{CreateSpaceBody, DetectQuery, UpdateSpaceBody};
+use super::normalize_url::normalize_git_url;
+
+pub async fn list(pool: &PgPool, user_id: &str) -> AppResult<Vec<Space>> {
+    space::list(pool, user_id).await
+}
+
+/// `{ space, code }` — the nested detail shape. See the doc comment on
+/// `fubbik_db::repo::space::SpaceDetail`.
+pub async fn get(pool: &PgPool, user_id: &str, id: &str) -> AppResult<SpaceDetail> {
+    space::find_by_id(pool, user_id, id)
+        .await?
+        .ok_or_else(|| AppError::NotFound("Space".into()))
+}
+
+pub async fn create(pool: &PgPool, user_id: &str, body: CreateSpaceBody) -> AppResult<Space> {
+    let kind = body.kind.unwrap_or_else(|| "code".to_string());
+    // `body.remoteUrl ? normalizeGitUrl(body.remoteUrl) : undefined` — only
+    // a truthy (non-empty) string gets normalized; an absent one stays
+    // `None`, never an empty string.
+    let remote_url = body
+        .remote_url
+        .filter(|s| !s.is_empty())
+        .map(|s| normalize_git_url(&s));
+
+    if kind == "code"
+        && let Some(remote_url) = &remote_url
+        && space::find_by_remote_url(pool, user_id, remote_url)
+            .await?
+            .is_some()
+    {
+        return Err(AppError::Validation(
+            "A space with this remote URL already exists".into(),
+        ));
+    }
+
+    // Node keys `code` off `kind` alone (`kind === "code" ? {...} :
+    // undefined`) — a code-kind space always gets a `space_code_metadata`
+    // row, even with neither `remoteUrl` nor `localPaths` given.
+    let code = (kind == "code").then(|| CodeInput {
+        remote_url: remote_url.clone(),
+        local_paths: body.local_paths.unwrap_or_default(),
+    });
+
+    space::create(
+        pool,
+        user_id,
+        NewSpace {
+            name: body.name,
+            kind,
+            description: body.description,
+        },
+        code,
+    )
+    .await
+}
+
+/// **DELIBERATE DIVERGENCE FROM NODE (#3 in this slice).** Node's `code`
+/// param (`packages/api/src/spaces/service.ts:76`) is `{ remoteUrl:
+/// remoteUrl ?? null, localPaths: body.localPaths ?? [] }`, constructed and
+/// applied *unconditionally* whenever the existing space is `kind ==
+/// "code"` — `packages/db/src/repository/space.ts:123`'s `if (params.code)`
+/// is always truthy in that case, regardless of whether the request body
+/// mentioned `remoteUrl`/`localPaths` at all. So in Node, a `PATCH` that
+/// only sends `{"name": "..."}` against a code-kind space silently clears
+/// its `remoteUrl` to `null` and `localPaths` to `[]` — renaming a space
+/// destroys its git remote.
+///
+/// This is NOT replicated. Omitted fields are left untouched, matching how
+/// PATCH behaves everywhere else in this codebase (`chunk::update`'s
+/// `COALESCE`, `tag::update`'s tri-state `CASE`, `SpacePatch::description`
+/// right above). `code` is only constructed at all when the body actually
+/// mentioned `remoteUrl` and/or `localPaths`; when it is, each field is
+/// still independently tri/two-state inside `CodeUpdate` (see its doc
+/// comment), so providing one never clobbers the other. Explicitly clearing
+/// `remoteUrl` still works via `{"remoteUrl": null}` — Node's body schema
+/// permits that null; only *omission* is exempted from clearing. Do not
+/// revert this to match Node's unconditional overwrite — see
+/// `tests/spaces.rs::patching_name_only_on_a_code_space_preserves_remote_url_and_local_paths`
+/// and `tests/spaces.rs::several_name_only_patches_do_not_erode_code_metadata`.
+pub async fn update(
+    pool: &PgPool,
+    user_id: &str,
+    id: &str,
+    body: UpdateSpaceBody,
+) -> AppResult<Space> {
+    let found = space::find_by_id(pool, user_id, id)
+        .await?
+        .ok_or_else(|| AppError::NotFound("Space".into()))?;
+
+    // `body.remoteUrl ? normalizeGitUrl(body.remoteUrl) : body.remoteUrl` —
+    // a truthy string gets normalized; undefined/null/"" pass through as-is.
+    let remote_url: Option<Option<String>> = match body.remote_url {
+        Some(Some(url)) if !url.is_empty() => Some(Some(normalize_git_url(&url))),
+        other => other,
+    };
+
+    let code = (found.space.kind == "code" && (remote_url.is_some() || body.local_paths.is_some()))
+        .then_some(CodeUpdate {
+            remote_url,
+            local_paths: body.local_paths,
+        });
+
+    space::update(
+        pool,
+        user_id,
+        id,
+        SpacePatch {
+            name: body.name,
+            description: body.description,
+        },
+        code,
+    )
+    .await?
+    .ok_or_else(|| AppError::NotFound("Space".into()))
+}
+
+/// `resetSpace` (`packages/api/src/spaces/service.ts:82-87`): 404 if not
+/// found/not owned, otherwise wipe the space's content. See
+/// `fubbik_db::repo::space::reset` for exactly what "content" means.
+pub async fn reset(pool: &PgPool, user_id: &str, id: &str) -> AppResult<ResetResult> {
+    space::find_by_id(pool, user_id, id)
+        .await?
+        .ok_or_else(|| AppError::NotFound("Space".into()))?;
+    space::reset(pool, user_id, id).await
+}
+
+/// `deleteSpace` (`packages/api/src/spaces/service.ts:89-95`): 404 if not
+/// found/not owned, otherwise wipe the content (same as `reset`) and then
+/// delete the `space` row itself.
+pub async fn delete(pool: &PgPool, user_id: &str, id: &str) -> AppResult<()> {
+    space::find_by_id(pool, user_id, id)
+        .await?
+        .ok_or_else(|| AppError::NotFound("Space".into()))?;
+    space::reset(pool, user_id, id).await?;
+    if space::delete(pool, user_id, id).await? {
+        Ok(())
+    } else {
+        Err(AppError::NotFound("Space".into()))
+    }
+}
+
+/// `detectSpace` (`packages/api/src/spaces/service.ts:97-102`): `remoteUrl`
+/// takes priority over `localPath` when both are given; a truthy
+/// `remoteUrl` that normalizes to an empty string falls through to
+/// `localPath` (JS-truthiness edge case, replicated via the `filter`
+/// chain). Neither given, or neither matches: `None`, which the route
+/// layer turns into an empty 200 body, not `null`/`{}`/404.
+pub async fn detect(pool: &PgPool, user_id: &str, query: DetectQuery) -> AppResult<Option<Space>> {
+    let normalized_url = query
+        .remote_url
+        .filter(|s| !s.is_empty())
+        .map(|s| normalize_git_url(&s))
+        .filter(|s| !s.is_empty());
+
+    if let Some(url) = normalized_url {
+        return space::find_by_remote_url(pool, user_id, &url).await;
+    }
+
+    if let Some(path) = query.local_path.filter(|s| !s.is_empty()) {
+        return space::find_by_local_path(pool, user_id, &path).await;
+    }
+
+    Ok(None)
+}

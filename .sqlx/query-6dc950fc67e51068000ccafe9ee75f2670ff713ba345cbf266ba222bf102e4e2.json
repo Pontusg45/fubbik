@@ -1,0 +1,57 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE tag_type SET\n             name = COALESCE($3, name),\n             color = COALESCE($4, color),\n             icon = CASE WHEN $5::bool THEN $6::text ELSE icon END\n           WHERE id = $1 AND user_id = $2\n           RETURNING id, name, color, icon, user_id,\n                     created_at AS \"created_at: UtcTimestamp\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "color",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "icon",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "user_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "created_at: UtcTimestamp",
+        "type_info": "Timestamp"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Bool",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "6dc950fc67e51068000ccafe9ee75f2670ff713ba345cbf266ba222bf102e4e2"
+}

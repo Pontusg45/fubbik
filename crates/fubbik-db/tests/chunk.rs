@@ -181,3 +181,87 @@ async fn search_is_case_insensitive_and_covers_content(pool: sqlx::PgPool) {
     .unwrap();
     assert_eq!(found.len(), 1);
 }
+
+/// The live differential run against Node found a real, non-cosmetic
+/// mismatch on `/api/chunks?search=convention`: same row set, different
+/// order, because seed data ties `created_at` across several rows and
+/// neither stack had a deterministic tiebreaker. `ORDER BY` over tied rows
+/// with no tiebreaker is a query-plan artifact — it can differ between two
+/// calls to the *same* stack, and (worse) between the query serving page 1
+/// and the one serving page 2 of a `LIMIT`/`OFFSET` walk, silently
+/// skipping or duplicating rows across pages.
+///
+/// This test forces `title`, `created_at`, AND `updated_at` to be
+/// identical across every row, so for every `Sort` branch the primary sort
+/// key cannot break the tie — only `id ASC` can. A test using distinct
+/// timestamps would pass even without the tiebreaker fix and prove
+/// nothing.
+#[sqlx::test]
+async fn list_breaks_ties_by_id_for_every_sort(pool: sqlx::PgPool) {
+    let uid = seed_user(&pool).await;
+
+    for _ in 0..5 {
+        chunk::create(
+            &pool,
+            &uid,
+            chunk::NewChunk {
+                title: "Same title".into(),
+                content: String::new(),
+                chunk_type: "note".into(),
+                rationale: None,
+            },
+        )
+        .await
+        .unwrap();
+    }
+
+    // A single UPDATE statement's `now()` is fixed for the whole statement,
+    // so this produces a genuine tie across all five rows on both columns,
+    // not five close-but-distinct timestamps.
+    sqlx::query!(
+        "UPDATE chunk SET created_at = now(), updated_at = now() WHERE user_id = $1",
+        uid
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    // Ground truth: ask Postgres directly for ascending id order, rather
+    // than sorting the ids in Rust — Rust's default string ordering could
+    // in principle disagree with the database's collation, and this test
+    // must not depend on the two happening to agree.
+    let expected_id_order: Vec<String> = sqlx::query_scalar!(
+        "SELECT id FROM chunk WHERE user_id = $1 ORDER BY id ASC",
+        uid
+    )
+    .fetch_all(&pool)
+    .await
+    .unwrap();
+    assert_eq!(expected_id_order.len(), 5);
+
+    for sort in [
+        chunk::Sort::Newest,
+        chunk::Sort::Oldest,
+        chunk::Sort::Alpha,
+        chunk::Sort::Updated,
+    ] {
+        let params = chunk::ListParams {
+            sort,
+            ..Default::default()
+        };
+        let first = chunk::list(&pool, &uid, &params).await.unwrap();
+        let second = chunk::list(&pool, &uid, &params).await.unwrap();
+
+        let first_ids: Vec<String> = first.iter().map(|c| c.id.clone()).collect();
+        let second_ids: Vec<String> = second.iter().map(|c| c.id.clone()).collect();
+
+        assert_eq!(
+            first_ids, second_ids,
+            "{sort:?}: repeated calls over fully-tied rows must return byte-identical order"
+        );
+        assert_eq!(
+            first_ids, expected_id_order,
+            "{sort:?}: ties must be broken by ascending id, not left to query-plan chance"
+        );
+    }
+}

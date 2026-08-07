@@ -1,0 +1,578 @@
+[
+  {
+    "id": "seed-tag-performance",
+    "name": "performance",
+    "tagTypeId": "seed-tt-system",
+    "tagTypeName": "system",
+    "tagTypeColor": "#64748b",
+    "tagTypeIcon": null,
+    "chunkCount": 3
+  },
+  {
+    "id": "seed-tag-caddy",
+    "name": "caddy",
+    "tagTypeId": "seed-tt-infrastructure",
+    "tagTypeName": "infrastructure",
+    "tagTypeColor": "#f59e0b",
+    "tagTypeIcon": null,
+    "chunkCount": 0
+  },
+  {
+    "id": "seed-tag-templates",
+    "name": "templates",
+    "tagTypeId": "seed-tt-feature",
+    "tagTypeName": "feature",
+    "tagTypeColor": "#3b82f6",
+    "tagTypeIcon": null,
+    "chunkCount": 0
+  },
+  {
+    "id": "seed-tag-catalog-driven",
+    "name": "catalog-driven",
+    "tagTypeId": "seed-tt-pattern",
+    "tagTypeName": "pattern",
+    "tagTypeColor": "#8b5cf6",
+    "tagTypeIcon": null,
+    "chunkCount": 2
+  },
+  {
+    "id": "seed-tag-eden-treaty",
+    "name": "eden-treaty",
+    "tagTypeId": "seed-tt-techstack",
+    "tagTypeName": "techstack",
+    "tagTypeColor": "#10b981",
+    "tagTypeIcon": null,
+    "chunkCount": 1
+  },
+  {
+    "id": "seed-tag-authentication",
+    "name": "authentication",
+    "tagTypeId": "seed-tt-feature",
+    "tagTypeName": "feature",
+    "tagTypeColor": "#3b82f6",
+    "tagTypeIcon": null,
+    "chunkCount": 0
+  },
+  {
+    "id": "seed-tag-staleness",
+    "name": "staleness",
+    "tagTypeId": "seed-tt-feature",
+    "tagTypeName": "feature",
+    "tagTypeColor": "#3b82f6",
+    "tagTypeIcon": null,
+    "chunkCount": 1
+  },
+  {
+    "id": "seed-tag-ollama",
+    "name": "ollama",
+    "tagTypeId": "seed-tt-ai",
+    "tagTypeName": "ai",
+    "tagTypeColor": "#ec4899",
+    "tagTypeIcon": null,
+    "chunkCount": 2
+  },
+  {
+    "id": "seed-tag-codebases",
+    "name": "codebases",
+    "tagTypeId": "seed-tt-feature",
+    "tagTypeName": "feature",
+    "tagTypeColor": "#3b82f6",
+    "tagTypeIcon": null,
+    "chunkCount": 0
+  },
+  {
+    "id": "seed-tag-health",
+    "name": "health",
+    "tagTypeId": "seed-tt-feature",
+    "tagTypeName": "feature",
+    "tagTypeColor": "#3b82f6",
+    "tagTypeIcon": null,
+    "chunkCount": 2
+  },
+  {
+    "id": "seed-tag-render-prop",
+    "name": "render-prop",
+    "tagTypeId": "seed-tt-pattern",
+    "tagTypeName": "pattern",
+    "tagTypeColor": "#8b5cf6",
+    "tagTypeIcon": null,
+    "chunkCount": 1
+  },
+  {
+    "id": "seed-tag-mcp",
+    "name": "mcp",
+    "tagTypeId": "seed-tt-integration",
+    "tagTypeName": "integration",
+    "tagTypeColor": "#14b8a6",
+    "tagTypeIcon": null,
+    "chunkCount": 1
+  },
+  {
+    "id": "seed-tag-workspaces",
+    "name": "workspaces",
+    "tagTypeId": "seed-tt-feature",
+    "tagTypeName": "feature",
+    "tagTypeColor": "#3b82f6",
+    "tagTypeIcon": null,
+    "chunkCount": 0
+  },
+  {
+    "id": "seed-tag-architecture",
+    "name": "architecture",
+    "tagTypeId": "seed-tt-documentation",
+    "tagTypeName": "documentation",
+    "tagTypeColor": "#ef4444",
+    "tagTypeIcon": null,
+    "chunkCount": 4
+  },
+  {
+    "id": "seed-tag-turborepo",
+    "name": "turborepo",
+    "tagTypeId": "seed-tt-infrastructure",
+    "tagTypeName": "infrastructure",
+    "tagTypeColor": "#f59e0b",
+    "tagTypeIcon": null,
+    "chunkCount": 0
+  },
+  {
+    "id": "seed-tag-react-flow",
+    "name": "react-flow",
+    "tagTypeId": "seed-tt-techstack",
+    "tagTypeName": "techstack",
+    "tagTypeColor": "#10b981",
+    "tagTypeIcon": null,
+    "chunkCount": 2
+  },
+  {
+    "id": "seed-tag-chunks",
+    "name": "chunks",
+    "tagTypeId": "seed-tt-feature",
+    "tagTypeName": "feature",
+    "tagTypeColor": "#3b82f6",
+    "tagTypeIcon": null,
+    "chunkCount": 10
+  },
+  {
+    "id": "seed-tag-search",
+    "name": "search",
+    "tagTypeId": "seed-tt-feature",
+    "tagTypeName": "feature",
+    "tagTypeColor": "#3b82f6",
+    "tagTypeIcon": null,
+    "chunkCount": 1
+  },
+  {
+    "id": "seed-tag-semantic-search",
+    "name": "semantic-search",
+    "tagTypeId": "seed-tt-ai",
+    "tagTypeName": "ai",
+    "tagTypeColor": "#ec4899",
+    "tagTypeIcon": null,
+    "chunkCount": 7
+  },
+  {
+    "id": "seed-tag-enrichment",
+    "name": "enrichment",
+    "tagTypeId": "seed-tt-feature",
+    "tagTypeName": "feature",
+    "tagTypeColor": "#3b82f6",
+    "tagTypeIcon": null,
+    "chunkCount": 0
+  },
+  {
+    "id": "seed-tag-fixture-dsl",
+    "name": "fixture-dsl",
+    "tagTypeId": "seed-tt-pattern",
+    "tagTypeName": "pattern",
+    "tagTypeColor": "#8b5cf6",
+    "tagTypeIcon": null,
+    "chunkCount": 1
+  },
+  {
+    "id": "seed-tag-duplicate-detection",
+    "name": "duplicate-detection",
+    "tagTypeId": "seed-tt-ai",
+    "tagTypeName": "ai",
+    "tagTypeColor": "#ec4899",
+    "tagTypeIcon": null,
+    "chunkCount": 0
+  },
+  {
+    "id": "seed-tag-tanstack",
+    "name": "tanstack",
+    "tagTypeId": "seed-tt-techstack",
+    "tagTypeName": "techstack",
+    "tagTypeColor": "#10b981",
+    "tagTypeIcon": null,
+    "chunkCount": 2
+  },
+  {
+    "id": "seed-tag-typescript",
+    "name": "typescript",
+    "tagTypeId": "seed-tt-techstack",
+    "tagTypeName": "techstack",
+    "tagTypeColor": "#10b981",
+    "tagTypeIcon": null,
+    "chunkCount": 5
+  },
+  {
+    "id": "seed-tag-density",
+    "name": "density",
+    "tagTypeId": "seed-tt-feature",
+    "tagTypeName": "feature",
+    "tagTypeColor": "#3b82f6",
+    "tagTypeIcon": null,
+    "chunkCount": 0
+  },
+  {
+    "id": "seed-tag-onboarding",
+    "name": "onboarding",
+    "tagTypeId": "seed-tt-documentation",
+    "tagTypeName": "documentation",
+    "tagTypeColor": "#ef4444",
+    "tagTypeIcon": null,
+    "chunkCount": 4
+  },
+  {
+    "id": "seed-tag-pgvector",
+    "name": "pgvector",
+    "tagTypeId": "seed-tt-techstack",
+    "tagTypeName": "techstack",
+    "tagTypeColor": "#10b981",
+    "tagTypeIcon": null,
+    "chunkCount": 2
+  },
+  {
+    "id": "seed-tag-first-wins",
+    "name": "first-wins",
+    "tagTypeId": "seed-tt-pattern",
+    "tagTypeName": "pattern",
+    "tagTypeColor": "#8b5cf6",
+    "tagTypeIcon": null,
+    "chunkCount": 0
+  },
+  {
+    "id": "seed-tag-better-auth",
+    "name": "better-auth",
+    "tagTypeId": "seed-tt-techstack",
+    "tagTypeName": "techstack",
+    "tagTypeColor": "#10b981",
+    "tagTypeIcon": null,
+    "chunkCount": 0
+  },
+  {
+    "id": "seed-tag-claude-md",
+    "name": "claude-md",
+    "tagTypeId": "seed-tt-integration",
+    "tagTypeName": "integration",
+    "tagTypeColor": "#14b8a6",
+    "tagTypeIcon": null,
+    "chunkCount": 2
+  },
+  {
+    "id": "seed-tag-vocabulary",
+    "name": "vocabulary",
+    "tagTypeId": "seed-tt-feature",
+    "tagTypeName": "feature",
+    "tagTypeColor": "#3b82f6",
+    "tagTypeIcon": null,
+    "chunkCount": 2
+  },
+  {
+    "id": "seed-tag-vscode",
+    "name": "vscode",
+    "tagTypeId": "seed-tt-integration",
+    "tagTypeName": "integration",
+    "tagTypeColor": "#14b8a6",
+    "tagTypeIcon": null,
+    "chunkCount": 1
+  },
+  {
+    "id": "seed-tag-effect",
+    "name": "effect",
+    "tagTypeId": "seed-tt-techstack",
+    "tagTypeName": "techstack",
+    "tagTypeColor": "#10b981",
+    "tagTypeIcon": null,
+    "chunkCount": 2
+  },
+  {
+    "id": "seed-tag-base-ui",
+    "name": "base-ui",
+    "tagTypeId": "seed-tt-techstack",
+    "tagTypeName": "techstack",
+    "tagTypeColor": "#10b981",
+    "tagTypeIcon": null,
+    "chunkCount": 1
+  },
+  {
+    "id": "seed-tag-context-export",
+    "name": "context-export",
+    "tagTypeId": "seed-tt-ai",
+    "tagTypeName": "ai",
+    "tagTypeColor": "#ec4899",
+    "tagTypeIcon": null,
+    "chunkCount": 1
+  },
+  {
+    "id": "seed-tag-embeddings",
+    "name": "embeddings",
+    "tagTypeId": "seed-tt-ai",
+    "tagTypeName": "ai",
+    "tagTypeColor": "#ec4899",
+    "tagTypeIcon": null,
+    "chunkCount": 1
+  },
+  {
+    "id": "seed-tag-mermaid-export",
+    "name": "mermaid-export",
+    "tagTypeId": "seed-tt-feature",
+    "tagTypeName": "feature",
+    "tagTypeColor": "#3b82f6",
+    "tagTypeIcon": null,
+    "chunkCount": 1
+  },
+  {
+    "id": "seed-tag-postgres",
+    "name": "postgres",
+    "tagTypeId": "seed-tt-infrastructure",
+    "tagTypeName": "infrastructure",
+    "tagTypeColor": "#f59e0b",
+    "tagTypeIcon": null,
+    "chunkCount": 2
+  },
+  {
+    "id": "seed-tag-error-handling",
+    "name": "error-handling",
+    "tagTypeId": "seed-tt-pattern",
+    "tagTypeName": "pattern",
+    "tagTypeColor": "#8b5cf6",
+    "tagTypeIcon": null,
+    "chunkCount": 1
+  },
+  {
+    "id": "seed-tag-timeline",
+    "name": "timeline",
+    "tagTypeId": "seed-tt-feature",
+    "tagTypeName": "feature",
+    "tagTypeColor": "#3b82f6",
+    "tagTypeIcon": null,
+    "chunkCount": 0
+  },
+  {
+    "id": "seed-tag-ci",
+    "name": "ci",
+    "tagTypeId": "seed-tt-infrastructure",
+    "tagTypeName": "infrastructure",
+    "tagTypeColor": "#f59e0b",
+    "tagTypeIcon": null,
+    "chunkCount": 0
+  },
+  {
+    "id": "seed-tag-enrichment-ai",
+    "name": "enrichment-ai",
+    "tagTypeId": "seed-tt-ai",
+    "tagTypeName": "ai",
+    "tagTypeColor": "#ec4899",
+    "tagTypeIcon": null,
+    "chunkCount": 1
+  },
+  {
+    "id": "seed-tag-bun",
+    "name": "bun",
+    "tagTypeId": "seed-tt-techstack",
+    "tagTypeName": "techstack",
+    "tagTypeColor": "#10b981",
+    "tagTypeIcon": null,
+    "chunkCount": 0
+  },
+  {
+    "id": "seed-tag-cli",
+    "name": "cli",
+    "tagTypeId": "seed-tt-integration",
+    "tagTypeName": "integration",
+    "tagTypeColor": "#14b8a6",
+    "tagTypeIcon": null,
+    "chunkCount": 4
+  },
+  {
+    "id": "seed-tag-service-layer",
+    "name": "service-layer",
+    "tagTypeId": "seed-tt-pattern",
+    "tagTypeName": "pattern",
+    "tagTypeColor": "#8b5cf6",
+    "tagTypeIcon": null,
+    "chunkCount": 1
+  },
+  {
+    "id": "seed-tag-neighbors",
+    "name": "neighbors",
+    "tagTypeId": "seed-tt-feature",
+    "tagTypeName": "feature",
+    "tagTypeColor": "#3b82f6",
+    "tagTypeIcon": null,
+    "chunkCount": 1
+  },
+  {
+    "id": "seed-tag-migration",
+    "name": "migration",
+    "tagTypeId": "seed-tt-system",
+    "tagTypeName": "system",
+    "tagTypeColor": "#64748b",
+    "tagTypeIcon": null,
+    "chunkCount": 2
+  },
+  {
+    "id": "seed-tag-docker",
+    "name": "docker",
+    "tagTypeId": "seed-tt-infrastructure",
+    "tagTypeName": "infrastructure",
+    "tagTypeColor": "#f59e0b",
+    "tagTypeIcon": null,
+    "chunkCount": 0
+  },
+  {
+    "id": "seed-tag-repository-pattern",
+    "name": "repository-pattern",
+    "tagTypeId": "seed-tt-pattern",
+    "tagTypeName": "pattern",
+    "tagTypeColor": "#8b5cf6",
+    "tagTypeIcon": null,
+    "chunkCount": 1
+  },
+  {
+    "id": "seed-tag-git-hooks",
+    "name": "git-hooks",
+    "tagTypeId": "seed-tt-integration",
+    "tagTypeName": "integration",
+    "tagTypeColor": "#14b8a6",
+    "tagTypeIcon": null,
+    "chunkCount": 1
+  },
+  {
+    "id": "seed-tag-self-documenting",
+    "name": "self-documenting",
+    "tagTypeId": "seed-tt-system",
+    "tagTypeName": "system",
+    "tagTypeColor": "#64748b",
+    "tagTypeIcon": null,
+    "chunkCount": 7
+  },
+  {
+    "id": "seed-tag-seed-system",
+    "name": "seed-system",
+    "tagTypeId": "seed-tt-system",
+    "tagTypeName": "system",
+    "tagTypeColor": "#64748b",
+    "tagTypeIcon": null,
+    "chunkCount": 7
+  },
+  {
+    "id": "seed-tag-connections",
+    "name": "connections",
+    "tagTypeId": "seed-tt-feature",
+    "tagTypeName": "feature",
+    "tagTypeColor": "#3b82f6",
+    "tagTypeIcon": null,
+    "chunkCount": 2
+  },
+  {
+    "id": "seed-tag-typed-errors",
+    "name": "typed-errors",
+    "tagTypeId": "seed-tt-pattern",
+    "tagTypeName": "pattern",
+    "tagTypeColor": "#8b5cf6",
+    "tagTypeIcon": null,
+    "chunkCount": 1
+  },
+  {
+    "id": "seed-tag-activity",
+    "name": "activity",
+    "tagTypeId": "seed-tt-feature",
+    "tagTypeName": "feature",
+    "tagTypeColor": "#3b82f6",
+    "tagTypeIcon": null,
+    "chunkCount": 1
+  },
+  {
+    "id": "seed-tag-convention",
+    "name": "convention",
+    "tagTypeId": "seed-tt-documentation",
+    "tagTypeName": "documentation",
+    "tagTypeColor": "#ef4444",
+    "tagTypeIcon": null,
+    "chunkCount": 11
+  },
+  {
+    "id": "seed-tag-use-cases",
+    "name": "use-cases",
+    "tagTypeId": "seed-tt-feature",
+    "tagTypeName": "feature",
+    "tagTypeColor": "#3b82f6",
+    "tagTypeIcon": null,
+    "chunkCount": 0
+  },
+  {
+    "id": "seed-tag-plans",
+    "name": "plans",
+    "tagTypeId": "seed-tt-feature",
+    "tagTypeName": "feature",
+    "tagTypeColor": "#3b82f6",
+    "tagTypeIcon": null,
+    "chunkCount": 7
+  },
+  {
+    "id": "seed-tag-drizzle",
+    "name": "drizzle",
+    "tagTypeId": "seed-tt-techstack",
+    "tagTypeName": "techstack",
+    "tagTypeColor": "#10b981",
+    "tagTypeIcon": null,
+    "chunkCount": 3
+  },
+  {
+    "id": "seed-tag-tailwind",
+    "name": "tailwind",
+    "tagTypeId": "seed-tt-techstack",
+    "tagTypeName": "techstack",
+    "tagTypeColor": "#10b981",
+    "tagTypeIcon": null,
+    "chunkCount": 0
+  },
+  {
+    "id": "seed-tag-elysia",
+    "name": "elysia",
+    "tagTypeId": "seed-tt-techstack",
+    "tagTypeName": "techstack",
+    "tagTypeColor": "#10b981",
+    "tagTypeIcon": null,
+    "chunkCount": 3
+  },
+  {
+    "id": "seed-tag-graph",
+    "name": "graph",
+    "tagTypeId": "seed-tt-feature",
+    "tagTypeName": "feature",
+    "tagTypeColor": "#3b82f6",
+    "tagTypeIcon": null,
+    "chunkCount": 5
+  },
+  {
+    "id": "seed-tag-requirements",
+    "name": "requirements",
+    "tagTypeId": "seed-tt-feature",
+    "tagTypeName": "feature",
+    "tagTypeColor": "#3b82f6",
+    "tagTypeIcon": null,
+    "chunkCount": 1
+  },
+  {
+    "id": "seed-tag-reference",
+    "name": "reference",
+    "tagTypeId": "seed-tt-documentation",
+    "tagTypeName": "documentation",
+    "tagTypeColor": "#ef4444",
+    "tagTypeIcon": null,
+    "chunkCount": 20
+  }
+]

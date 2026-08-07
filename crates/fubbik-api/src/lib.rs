@@ -1,9 +1,14 @@
 pub mod assets;
 pub mod auth;
 pub mod chunks;
+pub mod connections;
 pub mod error;
 pub mod extract;
 pub mod openapi;
+pub mod spaces;
+pub mod stats;
+pub mod tag_types;
+pub mod tags;
 
 use axum::extract::State;
 use axum::routing::get;
@@ -33,6 +38,11 @@ pub fn router(state: AppState) -> Router {
     Router::new()
         .merge(auth::routes::router())
         .merge(chunks::routes::router())
+        .merge(connections::routes::router())
+        .merge(spaces::routes::router())
+        .merge(stats::routes::router())
+        .merge(tag_types::routes::router())
+        .merge(tags::routes::router())
         .route("/api/health", get(health))
         .with_state(state)
         .fallback(assets::serve)

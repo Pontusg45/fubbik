@@ -1,0 +1,66 @@
+[
+  {
+    "id": "seed-tt-feature",
+    "name": "feature",
+    "color": "#3b82f6",
+    "icon": null,
+    "userId": "dev-user",
+    "createdAt": "2026-06-02T23:39:08.722Z"
+  },
+  {
+    "id": "seed-tt-techstack",
+    "name": "techstack",
+    "color": "#10b981",
+    "icon": null,
+    "userId": "dev-user",
+    "createdAt": "2026-06-02T23:39:08.722Z"
+  },
+  {
+    "id": "seed-tt-infrastructure",
+    "name": "infrastructure",
+    "color": "#f59e0b",
+    "icon": null,
+    "userId": "dev-user",
+    "createdAt": "2026-06-02T23:39:08.723Z"
+  },
+  {
+    "id": "seed-tt-pattern",
+    "name": "pattern",
+    "color": "#8b5cf6",
+    "icon": null,
+    "userId": "dev-user",
+    "createdAt": "2026-06-02T23:39:08.723Z"
+  },
+  {
+    "id": "seed-tt-documentation",
+    "name": "documentation",
+    "color": "#ef4444",
+    "icon": null,
+    "userId": "dev-user",
+    "createdAt": "2026-06-02T23:39:08.723Z"
+  },
+  {
+    "id": "seed-tt-system",
+    "name": "system",
+    "color": "#64748b",
+    "icon": null,
+    "userId": "dev-user",
+    "createdAt": "2026-06-02T23:39:08.723Z"
+  },
+  {
+    "id": "seed-tt-ai",
+    "name": "ai",
+    "color": "#ec4899",
+    "icon": null,
+    "userId": "dev-user",
+    "createdAt": "2026-06-02T23:39:08.724Z"
+  },
+  {
+    "id": "seed-tt-integration",
+    "name": "integration",
+    "color": "#14b8a6",
+    "icon": null,
+    "userId": "dev-user",
+    "createdAt": "2026-06-02T23:39:08.724Z"
+  }
+]

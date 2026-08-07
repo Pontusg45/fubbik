@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO chunk_space (chunk_id, space_id)\n               SELECT c.id, s.id\n               FROM chunk c\n               JOIN space s ON s.id = ANY($3)\n               WHERE c.id = $2\n                 AND c.user_id = $1\n                 AND s.user_id = $1\n               ON CONFLICT (chunk_id, space_id) DO NOTHING",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "TextArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "30393d4b514dfe52999824fcb022653359c4d052c6419731dc97ae8225f8f6f5"
+}

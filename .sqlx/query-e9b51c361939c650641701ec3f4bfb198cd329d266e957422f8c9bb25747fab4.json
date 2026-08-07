@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO tag_type (id, name, color, user_id) VALUES ($1, 'topic', '#ff0000', $2)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "e9b51c361939c650641701ec3f4bfb198cd329d266e957422f8c9bb25747fab4"
+}
