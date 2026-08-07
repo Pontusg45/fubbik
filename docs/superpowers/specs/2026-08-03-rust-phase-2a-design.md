@@ -141,6 +141,66 @@ logic, which is what a reasonable implementer would otherwise have written.
 | `tags.merge` has non-obvious semantics | Read Node's implementation before specifying it |
 | Stale `_sqlx_test_*` databases produce phantom FK failures | Documented; drop before debugging |
 
+## Outcome
+
+Delivered: all five domains, 19 endpoints, **208 tests** (from a baseline of 100), clippy
+clean at `-D warnings`, fmt clean, offline check clean, `apps/web` untouched at zero type
+errors.
+
+**The contract-capture-first change worked.** Task 1 recorded Node's real responses before
+any Rust was written, and its very first finding — that all three list endpoints return
+**bare arrays**, not the `{chunks,total,limit,offset}` envelope the chunks domain uses —
+would otherwise have been guessed wrong five times and discovered only at the end. It also
+answered, with evidence, three questions that would each have been a late fix cycle:
+tag-type deletion is a database-level `ON DELETE SET NULL` (neither restrict nor cascade),
+`reset` keeps the space row, and `GET /api/spaces/detect` with no match returns a
+completely empty body rather than `null` or a 404.
+
+**The join-table pattern is established and proven.** Three guards, each demonstrated
+load-bearing by deleting it and watching a named test fail: parent-A ownership on INSERT,
+parent-B ownership on INSERT, and parent ownership on the DELETE half of any replace-set
+operation. That third one is the silent-data-loss case — a correctly-rejected call that
+still wipes the victim's rows before returning. `chunk_feature_delta`, `plan_task_chunk`,
+`requirement_chunk` and `behavior_cell_code` should copy it.
+
+**The differential harness found a real bug in both stacks.** `ORDER BY created_at DESC`
+over rows with tied timestamps has no total ordering, so paginated results can skip or
+duplicate rows. Seed data is written in batches, making ties the norm. Fixed in Rust with an
+`id` tiebreaker; Node still has it.
+
+### Deliberate divergences from Node
+
+1. chunk `create`/`update` reject a blank title *(carried from Phase 1)*
+2. `POST /api/tags/merge` returns 404 for an unknown or non-owned id; Node returns 500
+3. `PATCH /api/spaces/{id}` leaves omitted fields untouched; Node clears
+   `remoteUrl`/`localPaths` whenever the body omits them — so renaming a space destroyed
+   its git remote
+4. `POST /api/spaces/{id}/reset` has an ownership guard Node lacks
+5. `POST /api/connections` returns 400 for an invalid `relation`; Node surfaces a raw 500
+6. List queries carry an `id` tiebreaker, so ordering is total. Node's ordering is
+   *undefined* rather than different — three of its list endpoints have no `ORDER BY` at all
+7. `POST /api/connections` returns 409 on a duplicate, detected via `is_unique_violation()`
+
+The differential harness only diffs GET endpoints, so divergences 2–5 and 7 are **not**
+caught by it. A clean harness run does not mean full parity.
+
+### Must be addressed when the graph domain lands
+
+**Connections no longer project into the AGE graph.** Node's
+`packages/db/src/repository/connection.ts:18-26,44` calls `ensureVertex` twice plus
+`createEdge("connects", …)` on create, and `deleteEdge` on delete. The Rust port has no AGE
+references at all, though `fubbik-db/src/age.rs` is live with passing tests. Invisible today
+because `/api/graph` is not ported — but the `connects` edge set silently stops tracking
+`chunk_connection`, and would drift immediately if both stacks ever ran against one database
+during migration.
+
+### Minor, carried
+
+404 resource-name casing (`tag not found` vs Node's `Tag not found`); empty `PATCH {}`
+returns 200 with the unchanged row where Node 500s; wrong-method on static sibling routes
+returns 405 where Elysia falls through to 404; the spaces create duplicate-check runs on a
+`remoteUrl` that normalises to `""` where Node re-tests truthiness after normalising.
+
 ## What this slice does NOT deliver
 
 The web app still will not run on Rust. It calls **26 domains** (measured, excluding a grep
