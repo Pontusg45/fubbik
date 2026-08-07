@@ -141,11 +141,34 @@ used by `GET /api/chunks`.
 
 ---
 
+## Q2 CORRECTION — TWO routes are unauthenticated, not one
+
+The original answer below claimed `/settings/features` was "the only route in this
+slice callable with no session". **That is wrong**, and it was caught in review.
+
+Verified against `packages/api/src/settings/routes.ts`:
+
+| Route | Line | Session required? |
+| --- | --- | --- |
+| `GET /settings/features` | 8 | **NO** |
+| `GET /settings/instance` | 55 | **NO** |
+| `PATCH /settings/instance` | 56-60 | yes |
+| `GET /settings/user`, `PATCH /settings/user` | 9, 12 | yes |
+| `GET /settings/codebase`, `PATCH /settings/codebase` | 28, 38 | yes |
+
+There is no global auth middleware in `packages/api/src/index.ts` — no `beforeHandle`,
+`guard` or `derive`. Each route gates itself, and these two do not.
+
+So `GET /settings/instance` returns the **raw instance-settings map** to any caller with
+no session at all. `instance_settings` currently has **0 rows**, so nothing is exposed
+today, but any future setting stored there becomes readable without authentication.
+
+Task 5 implementers: build what the table above says, not the prose below.
+
 ## Q2: What is `/settings/features`?
 
 It is a **computed view over `instance_settings`**, not a fourth settings
-table. `GET /settings/features` has no `requireSession` guard (only route in
-this slice callable with no session) and calls
+table. `GET /settings/features` has no `requireSession` guard and calls
 `settingsService.getFeatureFlags()` (`packages/api/src/settings/service.ts:59-75`):
 
 ```ts
