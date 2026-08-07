@@ -1,0 +1,7 @@
+{
+  "aiEnabled": true,
+  "enrichmentEnabled": true,
+  "semanticSearchEnabled": true,
+  "aiSuggestionsEnabled": true,
+  "vocabularySuggestEnabled": true
+}

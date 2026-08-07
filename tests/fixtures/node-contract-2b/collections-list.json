@@ -1,0 +1,26 @@
+[
+  {
+    "id": "71627275-2653-4430-85b6-f058fb2bef18",
+    "name": "Conventions",
+    "description": "Pinned conventions — always include in AI context",
+    "filter": {
+      "type": "convention"
+    },
+    "userId": "dev-user",
+    "spaceId": "seed-codebase-fubbik",
+    "createdAt": "2026-06-02T23:39:08.786Z",
+    "updatedAt": "2026-06-02T23:39:08.786Z"
+  },
+  {
+    "id": "d28efcbf-8b9c-4193-a36d-f4154399fb93",
+    "name": "Self-documenting",
+    "description": "Chunks that describe fubbik itself",
+    "filter": {
+      "tags": "self-documenting"
+    },
+    "userId": "dev-user",
+    "spaceId": "seed-codebase-fubbik",
+    "createdAt": "2026-06-02T23:39:08.786Z",
+    "updatedAt": "2026-06-02T23:39:08.786Z"
+  }
+]

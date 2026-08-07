@@ -1,0 +1,14 @@
+notifications-list           200 application/json;charset=utf-8
+notifications-list-unread-only 200 application/json;charset=utf-8
+notifications-count          200 application/json;charset=utf-8
+settings-features            200 application/json;charset=utf-8
+settings-user                200 application/json;charset=utf-8
+settings-instance            200 application/json;charset=utf-8
+settings-codebase            200 application/json;charset=utf-8
+workspaces-list              200 application/json;charset=utf-8
+workspaces-detail            200 application/json;charset=utf-8
+favorites-list               200 application/json;charset=utf-8
+collections-list             200 application/json;charset=utf-8
+collections-chunks-filter-type 200 application/json;charset=utf-8
+collections-chunks-filter-tags 200 application/json;charset=utf-8
+activity-list                200 application/json;charset=utf-8
