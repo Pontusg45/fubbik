@@ -158,6 +158,13 @@ async fn remove_on_nonexistent_favorite_does_not_error(pool: sqlx::PgPool) {
     favorite::remove(&pool, &alice, "no-such-chunk-id")
         .await
         .unwrap();
+
+    // The unconditional "success" must not have side effects either — the
+    // call above must not have created or removed anything.
+    assert!(
+        favorite::list(&pool, &alice).await.unwrap().is_empty(),
+        "a no-op remove must leave the caller's favorites list empty"
+    );
 }
 
 #[sqlx::test]

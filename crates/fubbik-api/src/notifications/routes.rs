@@ -1,5 +1,5 @@
 use axum::extract::{Path, State};
-use axum::routing::{delete, get, patch, post};
+use axum::routing::{get, post};
 use axum::{Json, Router};
 use fubbik_db::repo::notification::Notification;
 
@@ -81,7 +81,10 @@ pub fn router() -> Router<AppState> {
         .route("/api/notifications/read-all", post(mark_all_read))
         .route(
             "/api/notifications/{id}/read",
-            patch(mark_notification_read),
+            axum::routing::patch(mark_notification_read),
         )
-        .route("/api/notifications/{id}", delete(delete_notification))
+        .route(
+            "/api/notifications/{id}",
+            axum::routing::delete(delete_notification),
+        )
 }

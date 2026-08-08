@@ -218,6 +218,28 @@ async fn list_is_user_scoped(pool: sqlx::PgPool) {
         .map(|c| c["name"].as_str().unwrap())
         .collect();
     assert_eq!(names, vec!["Alice's"]);
+
+    // Bob's own collection must also still be intact and visible from his
+    // own view — a single-side check would pass even if Alice's list
+    // handler had somehow mutated or dropped Bob's row.
+    let res = app
+        .oneshot(
+            Request::get("/api/collections")
+                .header("cookie", &bob_cookie)
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = json_body(res).await;
+    let names: Vec<&str> = body
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|c| c["name"].as_str().unwrap())
+        .collect();
+    assert_eq!(names, vec!["Bob's"]);
 }
 
 /// Node has no ownership check on `spaceId` at create time at all — this

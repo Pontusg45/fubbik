@@ -297,6 +297,28 @@ async fn cross_user_mark_read_is_404_and_leaves_victim_unread(pool: sqlx::PgPool
     assert_eq!(body.as_array().unwrap().len(), 1);
 }
 
+/// Pins the exact wire message of a 404 in this domain to TitleCase,
+/// matching Node's `"Notification not found"`
+/// (`packages/api/src/notifications/service.ts:23,40`) and the house style
+/// every other sibling domain in this slice uses. Covers both the
+/// `mark_read` and `delete` 404 paths so a regression on either one goes
+/// red, not just a status-code check.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn not_found_message_is_titlecase(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool.clone()));
+    let cookie = signup(app.clone(), "alice-404msg@b.test", "Alice").await;
+
+    let res = mark_read(app.clone(), &cookie, "no-such-id").await;
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let body = json_body(res).await;
+    assert_eq!(body["message"], "Notification not found");
+
+    let res = delete_notification(app.clone(), &cookie, "no-such-id").await;
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let body = json_body(res).await;
+    assert_eq!(body["message"], "Notification not found");
+}
+
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn mark_all_read_marks_only_the_callers_notifications(pool: sqlx::PgPool) {
     let app = fubbik_api::router(state(pool.clone()));

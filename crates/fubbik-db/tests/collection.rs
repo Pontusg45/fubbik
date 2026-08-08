@@ -162,6 +162,37 @@ async fn create_rejects_another_users_space_and_creates_nothing(pool: sqlx::PgPo
     assert!(alices_collections.is_empty(), "Alice gained nothing either");
 }
 
+/// `find_by_id`'s own `WHERE id = $1 AND user_id = $2` guard, tested
+/// directly. Every other test that exercises cross-user access here goes
+/// through `update`/`delete`, each of which has its own independent
+/// ownership guard — none of them prove `find_by_id`'s guard specifically.
+#[sqlx::test]
+async fn find_by_id_is_user_scoped(pool: sqlx::PgPool) {
+    let alice = seed_user(&pool, "alice@b.test").await;
+    let bob = seed_user(&pool, "bob@b.test").await;
+    let created = collection::create(
+        &pool,
+        &alice,
+        NewCollection {
+            name: "Alice's".into(),
+            description: None,
+            filter: CollectionFilter::default(),
+            space_id: None,
+        },
+    )
+    .await
+    .unwrap()
+    .unwrap();
+
+    assert!(
+        collection::find_by_id(&pool, &bob, &created.id)
+            .await
+            .unwrap()
+            .is_none(),
+        "Bob must not be able to look up Alice's collection by id"
+    );
+}
+
 #[sqlx::test]
 async fn list_is_scoped_to_caller(pool: sqlx::PgPool) {
     let alice = seed_user(&pool, "alice@b.test").await;

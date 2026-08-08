@@ -1,5 +1,9 @@
 /// Body of `POST /api/favorites` (`packages/api/src/favorites/routes.ts:12-14`):
-/// `chunkId` only, capped at 100 chars matching Node's `t.String({ maxLength: 100 })`.
+/// `chunkId` only, a plain `String` with no length cap. Node's schema
+/// declares `t.String({ maxLength: 100 })`, but this port does not enforce
+/// that bound — an accepted, deliberate divergence (a `chunkId` over 100
+/// chars simply fails the downstream chunk-ownership lookup instead of
+/// being rejected up front), not something silently missing.
 #[derive(serde::Deserialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateFavoriteBody {

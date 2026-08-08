@@ -227,8 +227,47 @@ async fn limit_and_offset_query_params_paginate(pool: sqlx::PgPool) {
         seed_activity(&pool, &user_id, "chunk", "c", Some(title), "created", None).await;
     }
 
+    // Determined independently of the HTTP layer, in the same order the
+    // service's own `ORDER BY created_at DESC, id ASC` produces — see
+    // `fubbik_db::repo::activity::list`'s doc comment. Asserting against
+    // this rather than a bare length means `limit`/`offset` being unwired
+    // entirely (e.g. always returning the full unpaginated list) would fail
+    // this test, not just happen to return the right count.
+    let expected_order: Vec<String> = sqlx::query_scalar!(
+        r#"SELECT entity_title AS "entity_title!" FROM activity_log
+           WHERE user_id = $1 ORDER BY created_at DESC, id ASC"#,
+        user_id
+    )
+    .fetch_all(&pool)
+    .await
+    .unwrap();
+    assert_eq!(expected_order.len(), 3);
+
     let body = json_body(list_activity(app.clone(), &cookie, "?limit=1").await).await;
-    assert_eq!(body.as_array().unwrap().len(), 1);
+    let titles: Vec<&str> = body
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|a| a["entityTitle"].as_str().unwrap())
+        .collect();
+    assert_eq!(
+        titles,
+        vec![expected_order[0].as_str()],
+        "limit=1 must return exactly the single most-recent row, not just any one row"
+    );
+
+    let body = json_body(list_activity(app.clone(), &cookie, "?limit=1&offset=1").await).await;
+    let titles: Vec<&str> = body
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|a| a["entityTitle"].as_str().unwrap())
+        .collect();
+    assert_eq!(
+        titles,
+        vec![expected_order[1].as_str()],
+        "offset=1 must skip exactly the first row, not merely shrink the result count"
+    );
 
     let body = json_body(list_activity(app, &cookie, "?limit=50&offset=3").await).await;
     assert_eq!(body.as_array().unwrap().len(), 0);

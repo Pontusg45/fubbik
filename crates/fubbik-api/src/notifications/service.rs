@@ -18,7 +18,7 @@ pub async fn count_unread(pool: &PgPool, user_id: &str) -> AppResult<i64> {
 pub async fn mark_read(pool: &PgPool, user_id: &str, id: &str) -> AppResult<Notification> {
     notification::mark_read(pool, user_id, id)
         .await?
-        .ok_or_else(|| AppError::NotFound("notification".into()))
+        .ok_or_else(|| AppError::NotFound("Notification".into()))
 }
 
 pub async fn mark_all_read(pool: &PgPool, user_id: &str) -> AppResult<()> {
@@ -32,6 +32,6 @@ pub async fn delete(pool: &PgPool, user_id: &str, id: &str) -> AppResult<()> {
     if notification::delete(pool, user_id, id).await? {
         Ok(())
     } else {
-        Err(AppError::NotFound("notification".into()))
+        Err(AppError::NotFound("Notification".into()))
     }
 }

@@ -122,11 +122,29 @@
 
 use serde_json::{Value, json};
 
-fn urls() -> Option<(String, String)> {
-    Some((
-        std::env::var("FUBBIK_NODE_URL").ok()?,
-        std::env::var("FUBBIK_RUST_URL").ok()?,
-    ))
+/// Reads both live-stack base URLs, or panics.
+///
+/// These six `#[ignore]`d tests never execute their bodies under a plain
+/// `cargo test --workspace` — Rust's default test harness skips `#[ignore]`d
+/// tests entirely, so `urls()` panicking here has no effect on that path
+/// (they still report as "ignored", not "failed"). It only runs when someone
+/// explicitly requests `--ignored` (or `--include-ignored`), at which point
+/// silently skipping with an `eprintln!` produced six meaningless passes —
+/// a harness that reports success while doing nothing, which reads as
+/// coverage it doesn't have. See the module doc's run instructions at the
+/// top of this file for the two env vars this requires.
+fn urls() -> (String, String) {
+    let node = std::env::var("FUBBIK_NODE_URL").unwrap_or_else(|_| {
+        panic!(
+            "FUBBIK_NODE_URL not set: the live differential tests cannot run without both stacks"
+        )
+    });
+    let rust = std::env::var("FUBBIK_RUST_URL").unwrap_or_else(|_| {
+        panic!(
+            "FUBBIK_RUST_URL not set: the live differential tests cannot run without both stacks"
+        )
+    });
+    (node, rust)
 }
 
 /// Removes values that legitimately differ between stacks: generated IDs and
@@ -201,10 +219,7 @@ fn sort_nested_array(value: &mut Value, field: &str) {
 /// the assertion, while every other field (including ones Node DOES order)
 /// stays an exact match.
 async fn assert_same_with_unordered_field(path: &str, field: &str) {
-    let Some((node, rust)) = urls() else {
-        eprintln!("skipping {path}: FUBBIK_NODE_URL / FUBBIK_RUST_URL not set");
-        return;
-    };
+    let (node, rust) = urls();
 
     let (node_status, mut node_body) = fetch(&node, path).await;
     let (rust_status, mut rust_body) = fetch(&rust, path).await;
@@ -272,10 +287,7 @@ fn assert_same_as_multiset(node_body: &Value, rust_body: &Value, path: &str) {
 }
 
 async fn assert_same(path: &str) {
-    let Some((node, rust)) = urls() else {
-        eprintln!("skipping {path}: FUBBIK_NODE_URL / FUBBIK_RUST_URL not set");
-        return;
-    };
+    let (node, rust) = urls();
 
     let (node_status, mut node_body) = fetch(&node, path).await;
     let (rust_status, mut rust_body) = fetch(&rust, path).await;
@@ -368,10 +380,7 @@ async fn notifications_favorites_settings_activity_match() {
 async fn workspaces_list_and_detail_match() {
     assert_same("/api/workspaces").await;
 
-    let Some((_, rust)) = urls() else {
-        eprintln!("skipping /api/workspaces/{{id}}: FUBBIK_NODE_URL / FUBBIK_RUST_URL not set");
-        return;
-    };
+    let (_, rust) = urls();
     let Some(id) = first_id(&rust, "/api/workspaces").await else {
         eprintln!("skipping /api/workspaces/{{id}}: no workspaces in the diff database");
         return;
@@ -390,12 +399,7 @@ async fn workspaces_list_and_detail_match() {
 async fn collections_list_and_chunks_match() {
     assert_same("/api/collections").await;
 
-    let Some((_, rust)) = urls() else {
-        eprintln!(
-            "skipping /api/collections/{{id}}/chunks: FUBBIK_NODE_URL / FUBBIK_RUST_URL not set"
-        );
-        return;
-    };
+    let (_, rust) = urls();
     let Some(id) = first_id(&rust, "/api/collections").await else {
         eprintln!("skipping /api/collections/{{id}}/chunks: no collections in the diff database");
         return;
@@ -412,10 +416,7 @@ async fn collections_list_and_chunks_match() {
 #[tokio::test]
 #[ignore = "requires both stacks running"]
 async fn settings_codebase_matches() {
-    let Some((_, rust)) = urls() else {
-        eprintln!("skipping /api/settings/codebase: FUBBIK_NODE_URL / FUBBIK_RUST_URL not set");
-        return;
-    };
+    let (_, rust) = urls();
     let Some(space_id) = first_id(&rust, "/api/spaces").await else {
         eprintln!("skipping /api/settings/codebase: no spaces in the diff database");
         return;

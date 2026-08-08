@@ -166,6 +166,18 @@ async fn list_returns_bare_array_and_is_user_scoped(pool: sqlx::PgPool) {
         .map(|f| f["chunkId"].as_str().unwrap())
         .collect();
     assert_eq!(chunk_ids, vec![alices_chunk.as_str()]);
+
+    // Bob's own favorite must also still be intact and visible from his own
+    // view — a status-only/single-side check would pass even if Alice's
+    // list handler had somehow mutated or dropped Bob's row.
+    let body = json_body(list_favorites(app, &bob_cookie).await).await;
+    let chunk_ids: Vec<&str> = body
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|f| f["chunkId"].as_str().unwrap())
+        .collect();
+    assert_eq!(chunk_ids, vec![bobs_chunk.as_str()]);
 }
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]

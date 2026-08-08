@@ -114,6 +114,34 @@ async fn update_with_no_fields_is_a_reselect_and_does_not_bump_updated_at(pool: 
     assert_eq!(updated.updated_at, before.updated_at);
 }
 
+/// The no-op reselect branch (`WorkspacePatch::default()`, no `name`/
+/// `description` present) carries its own `WHERE id = $1 AND user_id = $2`
+/// guard, entirely separate from the `UPDATE` branch's — see
+/// `workspace::update`'s doc comment. `update_is_user_scoped` below only
+/// exercises the `UPDATE` branch (its patch sets `name`), so it cannot prove
+/// this one holds; this test sends an empty patch specifically to route
+/// through the `SELECT`-only branch instead.
+#[sqlx::test]
+async fn update_with_no_fields_is_user_scoped(pool: sqlx::PgPool) {
+    let alice = seed(&pool, "a@b.test").await;
+    let bob = seed(&pool, "c@d.test").await;
+    let alices_ws = a_workspace(&pool, &alice, "alices").await;
+
+    let result = workspace::update(&pool, &bob, &alices_ws, WorkspacePatch::default())
+        .await
+        .unwrap();
+    assert!(
+        result.is_none(),
+        "Bob's no-op patch must not find Alice's workspace"
+    );
+
+    let still = workspace::find_by_id(&pool, &alice, &alices_ws)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(still.name, "alices", "Alice's workspace must be untouched");
+}
+
 #[sqlx::test]
 async fn update_description_null_clears_it(pool: sqlx::PgPool) {
     let alice = seed(&pool, "a@b.test").await;
@@ -357,6 +385,46 @@ async fn remove_space_removes_the_callers_own_association(pool: sqlx::PgPool) {
             .unwrap()
             .is_empty()
     );
+}
+
+/// `spaces_for_workspace`'s own `EXISTS (... w.user_id = $2)` guard, tested
+/// directly rather than only through the attach-side tests above (which all
+/// call it merely to confirm an attach was rejected, always as the SAME
+/// user who owns the workspace). Without this test, deleting that `EXISTS`
+/// clause entirely leaves every existing repo/API test green: the API-level
+/// service pre-check (`workspaces::service::get_detail`'s
+/// `workspace::find_by_id` call) 404s before `spaces_for_workspace` is even
+/// reached, masking a removed SQL guard. This test calls the repo function
+/// directly, bypassing that service-layer pre-check, so it is the only
+/// thing standing between this guard and a silent regression.
+#[sqlx::test]
+async fn spaces_for_workspace_is_user_scoped(pool: sqlx::PgPool) {
+    let alice = seed(&pool, "a@b.test").await;
+    let bob = seed(&pool, "c@d.test").await;
+    let alices_ws = a_workspace(&pool, &alice, "alices-ws").await;
+    let alices_space = a_space(&pool, &alice, "alices-space").await;
+    workspace::add_space(&pool, &alice, &alices_ws, &alices_space)
+        .await
+        .unwrap()
+        .expect("Alice's own attach must succeed");
+
+    // Bob, naming Alice's workspace id directly, must see nothing — even
+    // though the workspace genuinely has a space attached.
+    let bobs_view = workspace::spaces_for_workspace(&pool, &bob, &alices_ws)
+        .await
+        .unwrap();
+    assert!(
+        bobs_view.is_empty(),
+        "Bob must not be able to enumerate another user's workspace membership \
+         by naming its id directly"
+    );
+
+    // Sanity check: Alice's own view still sees it — proves the assertion
+    // above is about ownership, not an accidentally-empty workspace.
+    let alices_view = workspace::spaces_for_workspace(&pool, &alice, &alices_ws)
+        .await
+        .unwrap();
+    assert_eq!(alices_view.len(), 1);
 }
 
 #[sqlx::test]

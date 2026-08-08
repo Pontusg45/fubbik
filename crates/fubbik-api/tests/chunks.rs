@@ -504,33 +504,38 @@ async fn list_accepts_space_id_query_param(pool: sqlx::PgPool) {
     assert_eq!(chunks[0]["id"], in_space);
 }
 
-/// `tags`/`enrichment`/`minConnections`/`after` reach `ListParams` from the
-/// query string. `enrichment` only exercises the strict-enum path
-/// (`?enrichment=bogus` -> 400, same already-accepted divergence as
-/// `?sort=bogus` — see `ListChunksQuery`); `tags` proves the OR-semantics
-/// comma-split reaches the repository end to end.
+/// `tags`/`after`/`minConnections` reach `ListParams` from the query
+/// string. Each filter gets its own row that MUST be excluded — the
+/// original version of this test seeded exactly one chunk and applied all
+/// three filters to it at once, which would still have passed with any (or
+/// all) of the three params entirely unwired. Follows the same
+/// one-row-must-be-excluded shape as `list_accepts_space_id_query_param`
+/// above.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn list_accepts_the_new_query_params(pool: sqlx::PgPool) {
     seed_dev_user(&pool).await;
     let app = fubbik_api::router(dev_state(pool.clone()));
-
-    let id = create_chunk(&app, "Tagged").await;
     let dev_id: String =
         sqlx::query_scalar!(r#"SELECT id FROM "user" WHERE email = $1"#, "dev@localhost")
             .fetch_one(&pool)
             .await
             .unwrap();
+
+    // `tags`: OR-semantics comma-split must exclude a chunk with no
+    // matching tag at all.
+    let tagged = create_chunk(&app, "Tagged").await;
+    let _untagged = create_chunk(&app, "Untagged").await;
     let tag = fubbik_db::repo::tag::create(&pool, &dev_id, "important", None)
         .await
         .unwrap();
-    fubbik_db::repo::tag::set_chunk_tags(&pool, &dev_id, &id, &[tag.id])
+    fubbik_db::repo::tag::set_chunk_tags(&pool, &dev_id, &tagged, &[tag.id])
         .await
         .unwrap();
 
     let res = app
         .clone()
         .oneshot(
-            Request::get("/api/chunks?tags=important&after=30&minConnections=0")
+            Request::get("/api/chunks?tags=important")
                 .body(Body::empty())
                 .unwrap(),
         )
@@ -540,8 +545,96 @@ async fn list_accepts_the_new_query_params(pool: sqlx::PgPool) {
     let body = res.into_body().collect().await.unwrap().to_bytes();
     let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
     let chunks = json["chunks"].as_array().unwrap();
-    assert_eq!(chunks.len(), 1);
-    assert_eq!(chunks[0]["id"], id);
+    assert_eq!(chunks.len(), 1, "tags must exclude the untagged chunk");
+    assert_eq!(chunks[0]["id"], tagged);
+
+    // `after`: a days-ago cutoff must exclude a chunk updated outside the
+    // window.
+    let recent = create_chunk(&app, "Recent").await;
+    let stale = create_chunk(&app, "Stale").await;
+    sqlx::query!(
+        "UPDATE chunk SET updated_at = now() - interval '90 days' WHERE id = $1",
+        stale
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    let res = app
+        .clone()
+        .oneshot(
+            Request::get("/api/chunks?after=30")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = res.into_body().collect().await.unwrap().to_bytes();
+    let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+    let ids: Vec<&str> = json["chunks"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|c| c["id"].as_str().unwrap())
+        .collect();
+    assert!(
+        ids.contains(&recent.as_str()),
+        "after must keep a chunk updated inside the window"
+    );
+    assert!(
+        !ids.contains(&stale.as_str()),
+        "after must exclude a chunk updated outside the window"
+    );
+
+    // `minConnections`: must exclude a chunk with fewer connections than
+    // the threshold. `?minConnections=0` (the original test's value) is not
+    // a real test of this filter at all — the repository skips the
+    // connection-count subquery entirely when the threshold is 0 (see
+    // `chunk::push_filters`), so it can never exclude anything.
+    let connected = create_chunk(&app, "Connected").await;
+    let lonely = create_chunk(&app, "Lonely").await;
+    let other = create_chunk(&app, "Other").await;
+    fubbik_db::repo::connection::create(
+        &pool,
+        &fubbik_db::new_id(),
+        &dev_id,
+        &connected,
+        &other,
+        "related_to",
+        "human",
+        "approved",
+    )
+    .await
+    .unwrap()
+    .expect("own chunks must be linkable");
+
+    let res = app
+        .clone()
+        .oneshot(
+            Request::get("/api/chunks?minConnections=1")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = res.into_body().collect().await.unwrap().to_bytes();
+    let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+    let ids: Vec<&str> = json["chunks"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|c| c["id"].as_str().unwrap())
+        .collect();
+    assert!(
+        ids.contains(&connected.as_str()),
+        "minConnections must keep a chunk meeting the threshold"
+    );
+    assert!(
+        !ids.contains(&lonely.as_str()),
+        "minConnections must exclude a chunk below the threshold"
+    );
 
     let res = app
         .oneshot(

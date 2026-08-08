@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE chunk SET updated_at = now() - interval '90 days' WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "be14c893f369e779b05aadfe1c45c7318afeb79325f75d0157da336f83dc08cb"
+}

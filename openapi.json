@@ -2608,7 +2608,7 @@
       },
       "CreateFavoriteBody": {
         "type": "object",
-        "description": "Body of `POST /api/favorites` (`packages/api/src/favorites/routes.ts:12-14`):\n`chunkId` only, capped at 100 chars matching Node's `t.String({ maxLength: 100 })`.",
+        "description": "Body of `POST /api/favorites` (`packages/api/src/favorites/routes.ts:12-14`):\n`chunkId` only, a plain `String` with no length cap. Node's schema\ndeclares `t.String({ maxLength: 100 })`, but this port does not enforce\nthat bound — an accepted, deliberate divergence (a `chunkId` over 100\nchars simply fails the downstream chunk-ownership lookup instead of\nbeing rejected up front), not something silently missing.",
         "required": [
           "chunkId"
         ],

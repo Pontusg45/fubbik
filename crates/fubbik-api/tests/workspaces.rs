@@ -234,6 +234,28 @@ async fn list_is_user_scoped(pool: sqlx::PgPool) {
         .map(|w| w["name"].as_str().unwrap())
         .collect();
     assert_eq!(names, vec!["alices"]);
+
+    // Bob's own workspace must also still be intact and visible from his
+    // own view — a single-side check would pass even if Alice's list
+    // handler had somehow mutated or dropped Bob's row.
+    let res = app
+        .oneshot(
+            Request::get("/api/workspaces")
+                .header("cookie", &bob_cookie)
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = json_body(res).await;
+    let names: Vec<&str> = body
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|w| w["name"].as_str().unwrap())
+        .collect();
+    assert_eq!(names, vec!["bobs"]);
 }
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
