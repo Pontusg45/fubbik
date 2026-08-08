@@ -266,6 +266,16 @@ pub struct ListParams {
     /// && params.minConnections > 0)`, where `0` is falsy in JS and so is
     /// treated identically to "no filter", not "at least zero connections".
     pub min_connections: Option<i64>,
+    /// `None` means no space filter at all — every chunk the caller owns,
+    /// in any space or none. `Some(id)` matches chunks in *that* space
+    /// **or** chunks with no space assignment at all (global chunks),
+    /// matching Node's `listChunks`
+    /// (`packages/db/src/repository/chunk.ts:108-111`):
+    /// `or(chunk.id IN inSpace, chunk.id NOT IN inAnySpace)`. This is NOT
+    /// "chunks in this space only" — a caller wanting that narrower
+    /// behaviour would need a filter this port does not expose, same as
+    /// Node.
+    pub space_id: Option<String>,
     pub limit: i64,
     pub offset: i64,
 }
@@ -282,6 +292,7 @@ impl Default for ListParams {
             after: None,
             enrichment: None,
             min_connections: None,
+            space_id: None,
             limit: 50,
             offset: 0,
         }
@@ -366,6 +377,23 @@ fn push_filters<'a>(
             qb.push(" AND summary IS NOT NULL AND embedding IS NOT NULL");
         }
         None => {}
+    }
+    if let Some(space_id) = &params.space_id {
+        // Matches Node's `listChunks` spaceId branch
+        // (`packages/db/src/repository/chunk.ts:108-111`) exactly: a chunk
+        // in the named space, OR a chunk with no space assignment at all
+        // (global chunks always pass through every space filter). This is
+        // deliberately not "chunks in this space only" — that would be a
+        // narrower filter Node itself does not implement here. Not scoped
+        // by a `space.user_id` ownership check in this predicate itself;
+        // callers are expected to have already verified the space belongs
+        // to `user_id` (or accepted returning nothing for a foreign/bogus
+        // id) the same way Node does no such check in `listChunks` either
+        // — the mandatory `chunk.user_id = ..` predicate above is what
+        // keeps this from ever returning another user's chunk regardless.
+        qb.push(" AND (id IN (SELECT chunk_id FROM chunk_space WHERE space_id = ");
+        qb.push_bind(space_id);
+        qb.push(") OR id NOT IN (SELECT chunk_id FROM chunk_space))");
     }
 }
 

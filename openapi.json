@@ -199,6 +199,18 @@
             }
           },
           {
+            "name": "spaceId",
+            "in": "query",
+            "description": "`None` = no space filter (every space, plus global chunks) —\nmatches Node's `listChunks` `spaceId` branch exactly, including its\n\"or has no space at all\" half. See `chunk::ListParams::space_id`'s\ndoc comment. Added as a side effect of threading `collection.spaceId`\nthrough `GET /collections/{id}/chunks` — a second Phase-1 parity\nimprovement arriving alongside `tags`/`after`/`enrichment`/\n`minConnections`, not something this task set out to add on its own.",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
             "name": "limit",
             "in": "query",
             "required": false,

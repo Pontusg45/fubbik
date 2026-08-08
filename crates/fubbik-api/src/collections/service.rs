@@ -99,16 +99,9 @@ pub async fn delete(pool: &PgPool, user_id: &str, id: &str) -> AppResult<()> {
 /// (`packages/db/src/repository/chunk.ts:120-141`) — this filter was never
 /// validated beyond "is a string" at write time.
 ///
-/// `spaceId` is deliberately NOT threaded through here even though Node's
-/// `getCollectionChunks` passes `col.spaceId` into `listChunks`
-/// (`packages/api/src/collections/service.ts:74`): `chunk::ListParams` has
-/// no `space_id` filter at all in this port — `GET /api/chunks` never
-/// gained one either, a pre-existing Phase 1 gap this task was not asked to
-/// close (see task-7-report.md). This can only narrow the endpoint's result
-/// versus Node when a collection has a `spaceId` set (chunks outside the
-/// pinned space that Node would exclude are included here instead); it
-/// cannot widen it, since every chunk returned is still hard-scoped to the
-/// caller's own `user_id` regardless.
+/// `spaceId` is NOT one of these nine keys — it's a separate column on the
+/// `collection` row itself (`col.spaceId`), threaded through by `get_chunks`
+/// after this function returns. See that function's doc comment.
 fn filter_to_list_params(filter: &CollectionFilter) -> ListParams {
     ListParams {
         chunk_type: filter.filter_type.clone(),
@@ -123,6 +116,7 @@ fn filter_to_list_params(filter: &CollectionFilter) -> ListParams {
             .min_connections
             .as_deref()
             .and_then(|s| s.parse().ok()),
+        space_id: None,
         // `GET /collections/{id}/chunks` takes no query params of its own in
         // Node (`packages/api/src/collections/routes.ts:69-73` reads only
         // `ctx.params.id`) — the inline `listChunks(...)` call omits
@@ -142,11 +136,20 @@ fn filter_to_list_params(filter: &CollectionFilter) -> ListParams {
 /// envelope, not a bare array, even though every other list endpoint in
 /// this slice is bare. See
 /// `tests/fixtures/node-contract-2b/collections-chunks-filter-{type,tags}.json`.
+///
+/// `col.spaceId` (a separate column, not one of `CollectionFilter`'s nine
+/// keys) is threaded through as `ListParams::space_id` here, matching
+/// Node's `spaceId: col.spaceId ?? undefined`
+/// (`packages/api/src/collections/service.ts:74`) exactly — including its
+/// "chunk in that space OR chunk in no space at all" semantics, see
+/// `chunk::ListParams::space_id`'s doc comment. A collection with no
+/// `spaceId` set applies no space filter, same as Node.
 pub async fn get_chunks(pool: &PgPool, user_id: &str, id: &str) -> AppResult<ChunkListResponse> {
     let found = collection::find_by_id(pool, user_id, id)
         .await?
         .ok_or_else(|| AppError::NotFound("Collection".into()))?;
 
-    let params = filter_to_list_params(&found.filter.0);
+    let mut params = filter_to_list_params(&found.filter.0);
+    params.space_id = found.space_id;
     chunk_service::list(pool, user_id, params).await
 }

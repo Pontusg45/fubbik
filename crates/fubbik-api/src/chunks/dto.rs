@@ -50,6 +50,14 @@ pub struct ListChunksQuery {
     pub after: Option<String>,
     pub enrichment: Option<Enrichment>,
     pub min_connections: Option<String>,
+    /// `None` = no space filter (every space, plus global chunks) —
+    /// matches Node's `listChunks` `spaceId` branch exactly, including its
+    /// "or has no space at all" half. See `chunk::ListParams::space_id`'s
+    /// doc comment. Added as a side effect of threading `collection.spaceId`
+    /// through `GET /collections/{id}/chunks` — a second Phase-1 parity
+    /// improvement arriving alongside `tags`/`after`/`enrichment`/
+    /// `minConnections`, not something this task set out to add on its own.
+    pub space_id: Option<String>,
     pub limit: Option<String>,
     pub offset: Option<String>,
 }
@@ -105,6 +113,7 @@ impl ListChunksQuery {
             after,
             enrichment: self.enrichment,
             min_connections,
+            space_id: self.space_id,
             limit: self
                 .limit
                 .and_then(|s| s.parse().ok())

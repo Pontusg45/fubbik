@@ -1,4 +1,4 @@
-use fubbik_db::repo::{chunk, connection, tag, user};
+use fubbik_db::repo::{chunk, connection, space, tag, user};
 
 async fn seed_user(pool: &sqlx::PgPool) -> String {
     user::create(pool, "a@b.test", "Alice", None)
@@ -517,5 +517,82 @@ async fn min_connections_filters_by_total_connection_count_and_zero_means_unfilt
         zero.len(),
         4,
         "min_connections: Some(0) must not filter anything"
+    );
+}
+
+/// `space_id: Some(..)` matches chunks IN that space **or** chunks with no
+/// space assignment at all — matching Node's `listChunks`
+/// (`packages/db/src/repository/chunk.ts:108-111`) exactly. It is NOT
+/// "chunks in this space only": a chunk in a *different* space must be
+/// excluded, but a chunk in no space must still appear. `space_id: None`
+/// applies no filter at all — every chunk regardless of space.
+#[sqlx::test]
+async fn space_id_filters_to_the_space_or_global_chunks_and_excludes_other_spaces(
+    pool: sqlx::PgPool,
+) {
+    let uid = seed_user(&pool).await;
+    let space_a = space::create(
+        &pool,
+        &uid,
+        space::NewSpace {
+            name: "space-a".into(),
+            kind: "wiki".into(),
+            description: None,
+        },
+        None,
+    )
+    .await
+    .unwrap()
+    .id;
+    let space_b = space::create(
+        &pool,
+        &uid,
+        space::NewSpace {
+            name: "space-b".into(),
+            kind: "wiki".into(),
+            description: None,
+        },
+        None,
+    )
+    .await
+    .unwrap()
+    .id;
+
+    let in_a = a_chunk(&pool, &uid, "In A").await;
+    let in_b = a_chunk(&pool, &uid, "In B").await;
+    let global = a_chunk(&pool, &uid, "Global").await;
+    space::set_chunk_spaces(&pool, &uid, &in_a.id, std::slice::from_ref(&space_a))
+        .await
+        .unwrap();
+    space::set_chunk_spaces(&pool, &uid, &in_b.id, std::slice::from_ref(&space_b))
+        .await
+        .unwrap();
+
+    let scoped = chunk::list(
+        &pool,
+        &uid,
+        &chunk::ListParams {
+            space_id: Some(space_a.clone()),
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
+    let mut ids: Vec<&str> = scoped.iter().map(|c| c.id.as_str()).collect();
+    ids.sort();
+    let mut expected = vec![in_a.id.as_str(), global.id.as_str()];
+    expected.sort();
+    assert_eq!(
+        ids, expected,
+        "must include the space's own chunk and global chunks, exclude space-b's"
+    );
+
+    let unscoped = chunk::list(&pool, &uid, &chunk::ListParams::default())
+        .await
+        .unwrap();
+    assert_eq!(
+        unscoped.len(),
+        3,
+        "space_id: None must apply no space filter at all"
     );
 }

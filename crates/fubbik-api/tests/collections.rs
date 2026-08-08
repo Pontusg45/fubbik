@@ -547,6 +547,89 @@ async fn get_chunks_filters_by_stored_type(pool: sqlx::PgPool) {
     assert_eq!(chunks[0]["title"], "A convention");
 }
 
+/// The bug this test exists to catch: Node's `getCollectionChunks` threads
+/// `col.spaceId` into `listChunks` (`packages/api/src/collections/
+/// service.ts:74`) — a collection pinned to a space must only surface that
+/// space's chunks (plus global chunks with no space at all), never a
+/// same-user chunk sitting in a *different* space. `total` must reflect the
+/// narrowed count too, not the caller's whole chunk count.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn get_chunks_is_narrowed_to_the_collections_pinned_space(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool.clone()));
+    let cookie = signup(app.clone(), "alice-space-scope@b.test", "Alice").await;
+    let user_id = user_id_for_email(&pool, "alice-space-scope@b.test").await;
+
+    let pinned_space = seed_space(&pool, &user_id, "pinned").await;
+    let other_space = seed_space(&pool, &user_id, "other").await;
+
+    let in_space = fubbik_db::repo::chunk::create(
+        &pool,
+        &user_id,
+        fubbik_db::repo::chunk::NewChunk {
+            title: "In pinned space".into(),
+            content: String::new(),
+            chunk_type: "note".into(),
+            rationale: None,
+        },
+    )
+    .await
+    .unwrap();
+    let in_other_space = fubbik_db::repo::chunk::create(
+        &pool,
+        &user_id,
+        fubbik_db::repo::chunk::NewChunk {
+            title: "In other space".into(),
+            content: String::new(),
+            chunk_type: "note".into(),
+            rationale: None,
+        },
+    )
+    .await
+    .unwrap();
+    fubbik_db::repo::space::set_chunk_spaces(
+        &pool,
+        &user_id,
+        &in_space.id,
+        std::slice::from_ref(&pinned_space),
+    )
+    .await
+    .unwrap();
+    fubbik_db::repo::space::set_chunk_spaces(
+        &pool,
+        &user_id,
+        &in_other_space.id,
+        std::slice::from_ref(&other_space),
+    )
+    .await
+    .unwrap();
+
+    let created = json_body(
+        create_collection(
+            app.clone(),
+            &cookie,
+            serde_json::json!({ "name": "Pinned", "filter": {}, "spaceId": pinned_space }),
+        )
+        .await,
+    )
+    .await;
+    let id = created["id"].as_str().unwrap();
+
+    let res = get_chunks(app.clone(), &cookie, id).await;
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = json_body(res).await;
+    let chunks = body["chunks"].as_array().unwrap();
+    assert_eq!(
+        chunks.len(),
+        1,
+        "must exclude the same-user chunk pinned to a different space"
+    );
+    assert_eq!(chunks[0]["title"], "In pinned space");
+    assert_eq!(
+        body["total"], 1,
+        "total must reflect the space-narrowed count, not the caller's whole chunk count"
+    );
+}
+
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn unauthenticated_requests_are_401(pool: sqlx::PgPool) {
     let app = fubbik_api::router(state(pool));

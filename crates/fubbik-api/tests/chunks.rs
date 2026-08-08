@@ -393,11 +393,13 @@ async fn populated_embedding_round_trips_as_a_json_number_array(pool: sqlx::PgPo
     assert!((embedding[1].as_f64().unwrap() - 0.001).abs() < 1e-6);
 }
 
-/// Task 7 added `tags`/`after`/`enrichment`/`minConnections` query params to
-/// `GET /api/chunks` as a side effect of building `ListParams` for the
-/// `collections` domain. This is the regression guard: with none of the
-/// four present, behaviour must be byte-identical to before — same rows,
-/// same envelope shape.
+/// Task 7 added `tags`/`after`/`enrichment`/`minConnections`/`spaceId` query
+/// params to `GET /api/chunks` as a side effect of building `ListParams` for
+/// the `collections` domain (`spaceId` arrived slightly later than the other
+/// four, once `collections::service::get_chunks` needed to thread
+/// `collection.spaceId` through — see `task-7-report.md`). This is the
+/// regression guard: with none of the five present, behaviour must be
+/// byte-identical to before — same rows, same envelope shape.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn list_is_unchanged_when_the_new_filter_params_are_absent(pool: sqlx::PgPool) {
     seed_dev_user(&pool).await;
@@ -418,6 +420,88 @@ async fn list_is_unchanged_when_the_new_filter_params_are_absent(pool: sqlx::PgP
     assert_eq!(json["total"], 3);
     assert_eq!(json["limit"], 50);
     assert_eq!(json["offset"], 0);
+}
+
+/// `spaceId` reaches `ListParams` from the query string and narrows results
+/// to the named space plus global (no-space) chunks — see
+/// `chunk::ListParams::space_id`'s doc comment for the exact "or has no
+/// space at all" semantics this mirrors from Node.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn list_accepts_space_id_query_param(pool: sqlx::PgPool) {
+    seed_dev_user(&pool).await;
+    let app = fubbik_api::router(dev_state(pool.clone()));
+    let dev_id: String =
+        sqlx::query_scalar!(r#"SELECT id FROM "user" WHERE email = $1"#, "dev@localhost")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+
+    let in_space = create_chunk(&app, "In space").await;
+    let elsewhere = create_chunk(&app, "Elsewhere").await;
+    let space_id = fubbik_db::repo::space::create(
+        &pool,
+        &dev_id,
+        fubbik_db::repo::space::NewSpace {
+            name: "a-space".into(),
+            kind: "wiki".into(),
+            description: None,
+        },
+        None,
+    )
+    .await
+    .unwrap()
+    .id;
+    let other_space_id = fubbik_db::repo::space::create(
+        &pool,
+        &dev_id,
+        fubbik_db::repo::space::NewSpace {
+            name: "other-space".into(),
+            kind: "wiki".into(),
+            description: None,
+        },
+        None,
+    )
+    .await
+    .unwrap()
+    .id;
+    fubbik_db::repo::space::set_chunk_spaces(
+        &pool,
+        &dev_id,
+        &in_space,
+        std::slice::from_ref(&space_id),
+    )
+    .await
+    .unwrap();
+    // Assigned to a DIFFERENT space, not left global — Node's `spaceId`
+    // filter also matches chunks with no space at all, so leaving this one
+    // unassigned would prove nothing about exclusion.
+    fubbik_db::repo::space::set_chunk_spaces(
+        &pool,
+        &dev_id,
+        &elsewhere,
+        std::slice::from_ref(&other_space_id),
+    )
+    .await
+    .unwrap();
+
+    let res = app
+        .oneshot(
+            Request::get(format!("/api/chunks?spaceId={space_id}"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = res.into_body().collect().await.unwrap().to_bytes();
+    let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+    let chunks = json["chunks"].as_array().unwrap();
+    assert_eq!(
+        chunks.len(),
+        1,
+        "must exclude the chunk in a different space"
+    );
+    assert_eq!(chunks[0]["id"], in_space);
 }
 
 /// `tags`/`enrichment`/`minConnections`/`after` reach `ListParams` from the
