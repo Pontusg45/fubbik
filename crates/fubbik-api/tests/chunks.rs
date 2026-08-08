@@ -392,3 +392,261 @@ async fn populated_embedding_round_trips_as_a_json_number_array(pool: sqlx::PgPo
     assert_eq!(embedding.len(), 768);
     assert!((embedding[1].as_f64().unwrap() - 0.001).abs() < 1e-6);
 }
+
+/// Task 7 added `tags`/`after`/`enrichment`/`minConnections`/`spaceId` query
+/// params to `GET /api/chunks` as a side effect of building `ListParams` for
+/// the `collections` domain (`spaceId` arrived slightly later than the other
+/// four, once `collections::service::get_chunks` needed to thread
+/// `collection.spaceId` through — see `task-7-report.md`). This is the
+/// regression guard: with none of the five present, behaviour must be
+/// byte-identical to before — same rows, same envelope shape.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn list_is_unchanged_when_the_new_filter_params_are_absent(pool: sqlx::PgPool) {
+    seed_dev_user(&pool).await;
+    let app = fubbik_api::router(dev_state(pool));
+
+    for i in 0..3 {
+        create_chunk(&app, &format!("T{i}")).await;
+    }
+
+    let res = app
+        .oneshot(Request::get("/api/chunks").body(Body::empty()).unwrap())
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = res.into_body().collect().await.unwrap().to_bytes();
+    let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+    assert_eq!(json["chunks"].as_array().unwrap().len(), 3);
+    assert_eq!(json["total"], 3);
+    assert_eq!(json["limit"], 50);
+    assert_eq!(json["offset"], 0);
+}
+
+/// `spaceId` reaches `ListParams` from the query string and narrows results
+/// to the named space plus global (no-space) chunks — see
+/// `chunk::ListParams::space_id`'s doc comment for the exact "or has no
+/// space at all" semantics this mirrors from Node.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn list_accepts_space_id_query_param(pool: sqlx::PgPool) {
+    seed_dev_user(&pool).await;
+    let app = fubbik_api::router(dev_state(pool.clone()));
+    let dev_id: String =
+        sqlx::query_scalar!(r#"SELECT id FROM "user" WHERE email = $1"#, "dev@localhost")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+
+    let in_space = create_chunk(&app, "In space").await;
+    let elsewhere = create_chunk(&app, "Elsewhere").await;
+    let space_id = fubbik_db::repo::space::create(
+        &pool,
+        &dev_id,
+        fubbik_db::repo::space::NewSpace {
+            name: "a-space".into(),
+            kind: "wiki".into(),
+            description: None,
+        },
+        None,
+    )
+    .await
+    .unwrap()
+    .id;
+    let other_space_id = fubbik_db::repo::space::create(
+        &pool,
+        &dev_id,
+        fubbik_db::repo::space::NewSpace {
+            name: "other-space".into(),
+            kind: "wiki".into(),
+            description: None,
+        },
+        None,
+    )
+    .await
+    .unwrap()
+    .id;
+    fubbik_db::repo::space::set_chunk_spaces(
+        &pool,
+        &dev_id,
+        &in_space,
+        std::slice::from_ref(&space_id),
+    )
+    .await
+    .unwrap();
+    // Assigned to a DIFFERENT space, not left global — Node's `spaceId`
+    // filter also matches chunks with no space at all, so leaving this one
+    // unassigned would prove nothing about exclusion.
+    fubbik_db::repo::space::set_chunk_spaces(
+        &pool,
+        &dev_id,
+        &elsewhere,
+        std::slice::from_ref(&other_space_id),
+    )
+    .await
+    .unwrap();
+
+    let res = app
+        .oneshot(
+            Request::get(format!("/api/chunks?spaceId={space_id}"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = res.into_body().collect().await.unwrap().to_bytes();
+    let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+    let chunks = json["chunks"].as_array().unwrap();
+    assert_eq!(
+        chunks.len(),
+        1,
+        "must exclude the chunk in a different space"
+    );
+    assert_eq!(chunks[0]["id"], in_space);
+}
+
+/// `tags`/`after`/`minConnections` reach `ListParams` from the query
+/// string. Each filter gets its own row that MUST be excluded — the
+/// original version of this test seeded exactly one chunk and applied all
+/// three filters to it at once, which would still have passed with any (or
+/// all) of the three params entirely unwired. Follows the same
+/// one-row-must-be-excluded shape as `list_accepts_space_id_query_param`
+/// above.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn list_accepts_the_new_query_params(pool: sqlx::PgPool) {
+    seed_dev_user(&pool).await;
+    let app = fubbik_api::router(dev_state(pool.clone()));
+    let dev_id: String =
+        sqlx::query_scalar!(r#"SELECT id FROM "user" WHERE email = $1"#, "dev@localhost")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+
+    // `tags`: OR-semantics comma-split must exclude a chunk with no
+    // matching tag at all.
+    let tagged = create_chunk(&app, "Tagged").await;
+    let _untagged = create_chunk(&app, "Untagged").await;
+    let tag = fubbik_db::repo::tag::create(&pool, &dev_id, "important", None)
+        .await
+        .unwrap();
+    fubbik_db::repo::tag::set_chunk_tags(&pool, &dev_id, &tagged, &[tag.id])
+        .await
+        .unwrap();
+
+    let res = app
+        .clone()
+        .oneshot(
+            Request::get("/api/chunks?tags=important")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = res.into_body().collect().await.unwrap().to_bytes();
+    let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+    let chunks = json["chunks"].as_array().unwrap();
+    assert_eq!(chunks.len(), 1, "tags must exclude the untagged chunk");
+    assert_eq!(chunks[0]["id"], tagged);
+
+    // `after`: a days-ago cutoff must exclude a chunk updated outside the
+    // window.
+    let recent = create_chunk(&app, "Recent").await;
+    let stale = create_chunk(&app, "Stale").await;
+    sqlx::query!(
+        "UPDATE chunk SET updated_at = now() - interval '90 days' WHERE id = $1",
+        stale
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    let res = app
+        .clone()
+        .oneshot(
+            Request::get("/api/chunks?after=30")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = res.into_body().collect().await.unwrap().to_bytes();
+    let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+    let ids: Vec<&str> = json["chunks"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|c| c["id"].as_str().unwrap())
+        .collect();
+    assert!(
+        ids.contains(&recent.as_str()),
+        "after must keep a chunk updated inside the window"
+    );
+    assert!(
+        !ids.contains(&stale.as_str()),
+        "after must exclude a chunk updated outside the window"
+    );
+
+    // `minConnections`: must exclude a chunk with fewer connections than
+    // the threshold. `?minConnections=0` (the original test's value) is not
+    // a real test of this filter at all — the repository skips the
+    // connection-count subquery entirely when the threshold is 0 (see
+    // `chunk::push_filters`), so it can never exclude anything.
+    let connected = create_chunk(&app, "Connected").await;
+    let lonely = create_chunk(&app, "Lonely").await;
+    let other = create_chunk(&app, "Other").await;
+    fubbik_db::repo::connection::create(
+        &pool,
+        &fubbik_db::new_id(),
+        &dev_id,
+        &connected,
+        &other,
+        "related_to",
+        "human",
+        "approved",
+    )
+    .await
+    .unwrap()
+    .expect("own chunks must be linkable");
+
+    let res = app
+        .clone()
+        .oneshot(
+            Request::get("/api/chunks?minConnections=1")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = res.into_body().collect().await.unwrap().to_bytes();
+    let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+    let ids: Vec<&str> = json["chunks"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|c| c["id"].as_str().unwrap())
+        .collect();
+    assert!(
+        ids.contains(&connected.as_str()),
+        "minConnections must keep a chunk meeting the threshold"
+    );
+    assert!(
+        !ids.contains(&lonely.as_str()),
+        "minConnections must exclude a chunk below the threshold"
+    );
+
+    let res = app
+        .oneshot(
+            Request::get("/api/chunks?enrichment=bogus")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(
+        res.status(),
+        StatusCode::BAD_REQUEST,
+        "an unrecognised enrichment value is a 400, same divergence as `sort`"
+    );
+}

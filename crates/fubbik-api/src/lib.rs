@@ -1,14 +1,20 @@
+pub mod activity;
 pub mod assets;
 pub mod auth;
 pub mod chunks;
+pub mod collections;
 pub mod connections;
 pub mod error;
 pub mod extract;
+pub mod favorites;
+pub mod notifications;
 pub mod openapi;
+pub mod settings;
 pub mod spaces;
 pub mod stats;
 pub mod tag_types;
 pub mod tags;
+pub mod workspaces;
 
 use axum::extract::State;
 use axum::routing::get;
@@ -36,13 +42,19 @@ async fn health(State(state): State<AppState>) -> ApiResult<Json<serde_json::Val
 
 pub fn router(state: AppState) -> Router {
     Router::new()
+        .merge(activity::routes::router())
         .merge(auth::routes::router())
         .merge(chunks::routes::router())
+        .merge(collections::routes::router())
         .merge(connections::routes::router())
+        .merge(favorites::routes::router())
+        .merge(notifications::routes::router())
+        .merge(settings::routes::router())
         .merge(spaces::routes::router())
         .merge(stats::routes::router())
         .merge(tag_types::routes::router())
         .merge(tags::routes::router())
+        .merge(workspaces::routes::router())
         .route("/api/health", get(health))
         .with_state(state)
         .fallback(assets::serve)

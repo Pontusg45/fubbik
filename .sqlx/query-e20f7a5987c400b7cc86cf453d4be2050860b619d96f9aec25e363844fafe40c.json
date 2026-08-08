@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT entity_title AS \"entity_title!\" FROM activity_log\n           WHERE user_id = $1 ORDER BY created_at DESC, id ASC",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "entity_title!",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "e20f7a5987c400b7cc86cf453d4be2050860b619d96f9aec25e363844fafe40c"
+}

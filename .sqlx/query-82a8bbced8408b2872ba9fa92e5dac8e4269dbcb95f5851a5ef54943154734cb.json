@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT space_id FROM workspace_space WHERE workspace_id = $1 ORDER BY space_id ASC",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "space_id",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "82a8bbced8408b2872ba9fa92e5dac8e4269dbcb95f5851a5ef54943154734cb"
+}

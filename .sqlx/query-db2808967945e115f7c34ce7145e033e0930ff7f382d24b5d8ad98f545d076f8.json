@@ -1,0 +1,69 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO collection (id, name, description, filter, user_id, space_id)\n                   SELECT $1, $2, $3, $4, $5, $6\n                   WHERE EXISTS (SELECT 1 FROM space s WHERE s.id = $6 AND s.user_id = $5)\n                   RETURNING id, name, description,\n                             filter AS \"filter: Json<CollectionFilter>\",\n                             user_id, space_id,\n                             created_at AS \"created_at: UtcTimestamp\",\n                             updated_at AS \"updated_at: UtcTimestamp\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "filter: Json<CollectionFilter>",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 4,
+        "name": "user_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "space_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "created_at: UtcTimestamp",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 7,
+        "name": "updated_at: UtcTimestamp",
+        "type_info": "Timestamp"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Jsonb",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "db2808967945e115f7c34ce7145e033e0930ff7f382d24b5d8ad98f545d076f8"
+}

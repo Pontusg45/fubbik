@@ -9,6 +9,79 @@
     "version": "0.1.0"
   },
   "paths": {
+    "/api/activity": {
+      "get": {
+        "tags": [
+          "crate::activity::routes"
+        ],
+        "summary": "Bare array, no `total` field — Node's `listActivityRepo` applies\n`LIMIT`/`OFFSET` in the query itself but never returns a count\n(`_questions.md` Q3), unlike `chunks`' `{chunks, total, limit, offset}`\nenvelope. A foreign `spaceId` 404s — see `service::list`'s doc comment\nfor why that's a deliberate divergence from Node's 200-with-`[]`.",
+        "operationId": "list_activity",
+        "parameters": [
+          {
+            "name": "spaceId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "entityType",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Activity"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
     "/api/chunks": {
       "get": {
         "tags": [
@@ -72,6 +145,68 @@
                 {
                   "$ref": "#/components/schemas/Sort"
                 }
+              ]
+            }
+          },
+          {
+            "name": "tags",
+            "in": "query",
+            "description": "Comma-separated tag names, OR semantics — matches the `tags` key of\n`CollectionFilterSchema` and Node's own `?tags=` query param\n(`packages/api/src/chunks/service.ts:61-65`). Parsed with\n[`parse_tags`].",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "after",
+            "in": "query",
+            "description": "Days-ago offset (e.g. `?after=7` = \"updated in the last 7 days\"), not\na timestamp — matches Node's `new Date(Date.now() - Number(after) *\n86400000)` (`packages/api/src/chunks/service.ts:66`). Parsed with\n[`parse_after`].",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "enrichment",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "$ref": "#/components/schemas/Enrichment"
+                }
+              ]
+            }
+          },
+          {
+            "name": "minConnections",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "spaceId",
+            "in": "query",
+            "description": "`None` = no space filter (every space, plus global chunks) —\nmatches Node's `listChunks` `spaceId` branch exactly, including its\n\"or has no space at all\" half. See `chunk::ListParams::space_id`'s\ndoc comment. Added as a side effect of threading `collection.spaceId`\nthrough `GET /collections/{id}/chunks` — a second Phase-1 parity\nimprovement arriving alongside `tags`/`after`/`enrichment`/\n`minConnections`, not something this task set out to add on its own.",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
               ]
             }
           },
@@ -419,6 +554,168 @@
         }
       }
     },
+    "/api/collections": {
+      "get": {
+        "tags": [
+          "crate::collections::routes"
+        ],
+        "operationId": "list_collections",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Collection"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "crate::collections::routes"
+        ],
+        "operationId": "create_collection",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCollectionBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Collection"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/collections/{id}": {
+      "delete": {
+        "tags": [
+          "crate::collections::routes"
+        ],
+        "operationId": "delete_collection",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "crate::collections::routes"
+        ],
+        "operationId": "update_collection",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCollectionBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Collection"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/collections/{id}/chunks": {
+      "get": {
+        "tags": [
+          "crate::collections::routes"
+        ],
+        "summary": "Returns the chunks `{chunks, total, limit, offset}` envelope, NOT a bare\narray — the one endpoint in this slice that inherits the chunks\nenvelope by delegating to the same `chunks::service::list` that backs\n`GET /api/chunks`. See `service::get_chunks`'s doc comment.",
+        "operationId": "get_collection_chunks",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChunkListResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
     "/api/connections": {
       "post": {
         "tags": [
@@ -487,6 +784,463 @@
           },
           "404": {
             "description": ""
+          }
+        }
+      }
+    },
+    "/api/favorites": {
+      "get": {
+        "tags": [
+          "crate::favorites::routes"
+        ],
+        "operationId": "list_favorites",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Favorite"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "crate::favorites::routes"
+        ],
+        "summary": "Status is set to 201 unconditionally, even when the chunk was already\nfavorited and the body is `null` — matching Node's `Effect.tap` block,\nwhich sets `ctx.set.status = 201` before ever inspecting the result\n(`packages/api/src/favorites/routes.ts:11-29`, `_mutating.md`). This is\na deliberately preserved quirk, not a bug: do not \"improve\" it to\n200/409/an idempotent echo of the existing row.",
+        "operationId": "add_favorite",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateFavoriteBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "null"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Favorite"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/favorites/reorder": {
+      "put": {
+        "tags": [
+          "crate::favorites::routes"
+        ],
+        "operationId": "reorder_favorites",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ReorderEntry"
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/favorites/{chunkId}": {
+      "delete": {
+        "tags": [
+          "crate::favorites::routes"
+        ],
+        "summary": "Always 200 with `{\"message\":\"Deleted\"}`, even if the chunk was never\nfavorited by this caller — Node's `removeFavorite` has no 404 path at\nall (`_mutating.md`: \"no way to distinguish 'deleted something' from\n'there was nothing to delete'\"). Reproduced faithfully, not \"fixed\".",
+        "operationId": "remove_favorite",
+        "parameters": [
+          {
+            "name": "chunkId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/notifications": {
+      "get": {
+        "tags": [
+          "crate::notifications::routes"
+        ],
+        "operationId": "list_notifications",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "unreadOnly",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Notification"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/notifications/count": {
+      "get": {
+        "tags": [
+          "crate::notifications::routes"
+        ],
+        "operationId": "unread_count",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CountResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/notifications/read-all": {
+      "post": {
+        "tags": [
+          "crate::notifications::routes"
+        ],
+        "operationId": "mark_all_read",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/notifications/{id}": {
+      "delete": {
+        "tags": [
+          "crate::notifications::routes"
+        ],
+        "operationId": "delete_notification",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/notifications/{id}/read": {
+      "patch": {
+        "tags": [
+          "crate::notifications::routes"
+        ],
+        "operationId": "mark_notification_read",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Notification"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/settings/codebase": {
+      "get": {
+        "tags": [
+          "crate::settings::routes"
+        ],
+        "operationId": "get_codebase_settings",
+        "parameters": [
+          {
+            "name": "codebaseId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "crate::settings::routes"
+        ],
+        "operationId": "set_codebase_setting",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetCodebaseSettingBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/settings/features": {
+      "get": {
+        "tags": [
+          "crate::settings::routes"
+        ],
+        "summary": "Unauthenticated, matching Node exactly\n(`packages/api/src/settings/routes.ts:8` — `GET /settings/features` has\nno `requireSession`). See `get_instance_settings` for the full note on\nwhy this crate has two deliberately open `GET`s in this domain.",
+        "operationId": "get_feature_flags",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeatureFlags"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/settings/instance": {
+      "get": {
+        "tags": [
+          "crate::settings::routes"
+        ],
+        "summary": "**Deliberately unauthenticated** — matches Node exactly\n(`packages/api/src/settings/routes.ts:55`: `GET /settings/instance` has\nno `requireSession`, and there is no global auth middleware in\n`packages/api/src/index.ts` to backstop it). This was escalated to and\ndecided by the human partner explicitly (captured, then corrected on\nreview, in `tests/fixtures/node-contract-2b/_questions.md` Q2): faithful\nport, `GET` open, `PATCH` session-gated (see `set_instance_setting`\nbelow), exactly as Node. `instance_settings` holds zero rows today, the\nserver binds `127.0.0.1` by default, and the web app may legitimately\nneed to read feature flags before login — do NOT add a session guard\nhere believing it an oversight; that would silently diverge from an\nalready-made decision and could break pre-login flag reads.",
+        "description": "The real property this leaves: any caller reachable on localhost can\nread the raw instance-settings map with no session at all.",
+        "operationId": "get_instance_settings",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "crate::settings::routes"
+        ],
+        "summary": "Session-gated (unlike its `GET` sibling above), but with **no\nrole/admin check** — any authenticated user can flip instance-wide\nflags like `aiEnabled`, matching Node's `requireSession`-only guard\n(`packages/api/src/settings/routes.ts:56-60`). This is also a faithful\nport, not an oversight.",
+        "operationId": "set_instance_setting",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetSettingBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/settings/user": {
+      "get": {
+        "tags": [
+          "crate::settings::routes"
+        ],
+        "operationId": "get_user_settings",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "crate::settings::routes"
+        ],
+        "operationId": "set_user_setting",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetSettingBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -1029,10 +1783,313 @@
           }
         }
       }
+    },
+    "/api/workspaces": {
+      "get": {
+        "tags": [
+          "crate::workspaces::routes"
+        ],
+        "operationId": "list_workspaces",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Workspace"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "crate::workspaces::routes"
+        ],
+        "operationId": "create_workspace",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateWorkspaceBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Workspace"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/workspaces/{id}": {
+      "get": {
+        "tags": [
+          "crate::workspaces::routes"
+        ],
+        "operationId": "get_workspace",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "crate::workspaces::routes"
+        ],
+        "operationId": "delete_workspace",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "crate::workspaces::routes"
+        ],
+        "operationId": "update_workspace",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateWorkspaceBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Workspace"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/workspaces/{id}/spaces": {
+      "post": {
+        "tags": [
+          "crate::workspaces::routes"
+        ],
+        "operationId": "add_workspace_space",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddSpaceBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceSpaceLink"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/workspaces/{id}/spaces/{spaceId}": {
+      "delete": {
+        "tags": [
+          "crate::workspaces::routes"
+        ],
+        "operationId": "remove_workspace_space",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "spaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
+      "Activity": {
+        "type": "object",
+        "description": "`camelCase` serialisation matches every other wire type in this crate.",
+        "required": [
+          "id",
+          "userId",
+          "entityType",
+          "entityId",
+          "action",
+          "createdAt"
+        ],
+        "properties": {
+          "action": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "entityId": {
+            "type": "string"
+          },
+          "entityTitle": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "entityType": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "spaceId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "userId": {
+            "type": "string"
+          }
+        }
+      },
+      "AddSpaceBody": {
+        "type": "object",
+        "description": "Body of `POST /api/workspaces/{id}/spaces` (`packages/api/src/workspaces/routes.ts:60-78`).",
+        "required": [
+          "spaceId"
+        ],
+        "properties": {
+          "spaceId": {
+            "type": "string"
+          }
+        }
+      },
       "AppliesTo": {
         "type": "object",
         "required": [
@@ -1282,6 +2339,121 @@
           }
         }
       },
+      "Collection": {
+        "type": "object",
+        "description": "`camelCase` serialisation matches every other wire type in this crate.",
+        "required": [
+          "id",
+          "name",
+          "filter",
+          "userId",
+          "createdAt",
+          "updatedAt"
+        ],
+        "properties": {
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "filter": {
+            "$ref": "#/components/schemas/CollectionFilter"
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "spaceId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "userId": {
+            "type": "string"
+          }
+        }
+      },
+      "CollectionFilter": {
+        "type": "object",
+        "description": "The nine keys `CollectionFilterSchema` accepts, all optional strings,\nstored and echoed back exactly as received —\n`#[serde(skip_serializing_if = \"Option::is_none\")]` on every field keeps\na partial filter (e.g. seed data's `{\"type\": \"convention\"}`) from\ngrowing eight extra `null` keys on the way back out. See\n`tests/fixtures/node-contract-2b/collections-list.json`.",
+        "properties": {
+          "after": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "default": null
+          },
+          "enrichment": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "default": null
+          },
+          "minConnections": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "default": null
+          },
+          "origin": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "default": null
+          },
+          "reviewStatus": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "default": null
+          },
+          "search": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "default": null
+          },
+          "sort": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "default": null
+          },
+          "tags": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "default": null
+          },
+          "type": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "default": null
+          }
+        }
+      },
       "Connection": {
         "type": "object",
         "description": "`chunk_connection` row shape, matching Node's bare-row response for both\n`POST /api/connections` (create) and the implicit shape returned by\n`getConnectionById`/`deleteConnection` in\n`packages/db/src/repository/connection.ts`.",
@@ -1337,6 +2509,19 @@
           }
         }
       },
+      "CountResponse": {
+        "type": "object",
+        "description": "Shape of `GET /api/notifications/count`\n(`tests/fixtures/node-contract-2b/notifications-count.json`): a bare\n`{ \"count\": N }` object, not the chunks-style envelope.",
+        "required": [
+          "count"
+        ],
+        "properties": {
+          "count": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
       "CreateChunkBody": {
         "type": "object",
         "required": [
@@ -1356,6 +2541,34 @@
             "type": "string"
           },
           "type": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "CreateCollectionBody": {
+        "type": "object",
+        "description": "Body of `POST /api/collections`\n(`packages/api/src/collections/routes.ts:23-44`). `filter` is required\nas a whole object but every one of its nine keys is itself optional —\nsee `CollectionFilter`'s doc comment.",
+        "required": [
+          "name",
+          "filter"
+        ],
+        "properties": {
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "filter": {
+            "$ref": "#/components/schemas/CollectionFilter"
+          },
+          "name": {
+            "type": "string"
+          },
+          "spaceId": {
             "type": [
               "string",
               "null"
@@ -1389,6 +2602,18 @@
             "type": "string"
           },
           "targetId": {
+            "type": "string"
+          }
+        }
+      },
+      "CreateFavoriteBody": {
+        "type": "object",
+        "description": "Body of `POST /api/favorites` (`packages/api/src/favorites/routes.ts:12-14`):\n`chunkId` only, a plain `String` with no length cap. Node's schema\ndeclares `t.String({ maxLength: 100 })`, but this port does not enforce\nthat bound — an accepted, deliberate divergence (a `chunkId` over 100\nchars simply fails the downstream chunk-ownership lookup instead of\nbeing rejected up front), not something silently missing.",
+        "required": [
+          "chunkId"
+        ],
+        "properties": {
+          "chunkId": {
             "type": "string"
           }
         }
@@ -1471,6 +2696,90 @@
           }
         }
       },
+      "CreateWorkspaceBody": {
+        "type": "object",
+        "description": "Body of `POST /api/workspaces` (`packages/api/src/workspaces/routes.ts:11-30`):\n`name` (required, trimmed and validated non-blank at the service layer —\nsee `service::create`) and `description` (optional, passed through\nas-is).",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "Enrichment": {
+        "type": "string",
+        "description": "Mirrors Node's `enrichment: \"missing\" | \"complete\"` filter\n(`packages/db/src/repository/chunk.ts:123-127`). Used both as a strict\n`GET /api/chunks?enrichment=` query-string enum (an unrecognised value is\na 400, same divergence as `Sort`) and, via `from_loose_str`, as a lenient\ninterpreter of a collection's stored `filter.enrichment` string.",
+        "enum": [
+          "missing",
+          "complete"
+        ]
+      },
+      "Favorite": {
+        "type": "object",
+        "description": "`user_favorite` row shape. `order` is `\"order\"` in every SQL statement\nin this module — it is a SQL reserved word, quoted exactly the way\n`\"user\"` is quoted everywhere else in this codebase. Unlike the\ncomposite join tables (`chunk_tag`, `chunk_space`), this table carries\nits own `id` and `user_id`, so listing/removing don't need to go\nthrough the parent `chunk` row — but the row it references still\nbelongs to someone, so `add` below does scope through `chunk` in SQL.\n\n`camelCase` serialisation matches every other wire type in this crate —\nsee the note on `chunk::Chunk` for why that's mandatory, not cosmetic.",
+        "required": [
+          "id",
+          "userId",
+          "chunkId",
+          "order",
+          "createdAt"
+        ],
+        "properties": {
+          "chunkId": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string"
+          },
+          "order": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "userId": {
+            "type": "string"
+          }
+        }
+      },
+      "FeatureFlags": {
+        "type": "object",
+        "description": "`GET /api/settings/features` — a **computed 5-key projection** over\n`instance_settings`, not a stored table\n(`tests/fixtures/node-contract-2b/_questions.md` Q2). Every field\nindependently defaults to `true` when its key is absent from\n`instance_settings`, matching Node's `(map.x as boolean) ?? true`\nfallback (`packages/api/src/settings/service.ts:59-75`) for the\ndocumented case — a key that is simply absent. Confirmed live against\nthe empty-table fixture: `settings-features.json` returns all five\n`true` even though `instance_settings` has zero rows.\n\nNode's `?? true` only falls back on `null`/`undefined`, and its `as\nboolean` cast is a compile-time-only no-op — so a value present but not\nactually boolean (e.g. a stored string) would pass through unchanged at\nruntime, breaking `InstanceSettingsMap`'s own typing. Rust's `bool`\nfields can't reproduce that untyped leak; `service::get_feature_flags`\ntreats \"present but not a JSON boolean\" the same as \"absent\" (defaults\n`true`), which is a consequence of Rust's stricter typing, not an\nuntested behavioural choice — the only case the fixtures actually\nexercise is \"absent\", and that path matches Node exactly.",
+        "required": [
+          "aiEnabled",
+          "enrichmentEnabled",
+          "semanticSearchEnabled",
+          "aiSuggestionsEnabled",
+          "vocabularySuggestEnabled"
+        ],
+        "properties": {
+          "aiEnabled": {
+            "type": "boolean"
+          },
+          "aiSuggestionsEnabled": {
+            "type": "boolean"
+          },
+          "enrichmentEnabled": {
+            "type": "boolean"
+          },
+          "semanticSearchEnabled": {
+            "type": "boolean"
+          },
+          "vocabularySuggestEnabled": {
+            "type": "boolean"
+          }
+        }
+      },
       "FileRef": {
         "type": "object",
         "required": [
@@ -1524,12 +2833,55 @@
       },
       "MessageResponse": {
         "type": "object",
-        "description": "Shape of every `{ message: \"Deleted\" }` delete response in this domain,\nmatching Node's convention (`_mutating.md`): deletes return 200, not\n204, with this body.",
+        "description": "Shape of every `{ message: \"Deleted\" }` response in this domain,\nmatching Node's convention (`_mutating.md`).",
         "required": [
           "message"
         ],
         "properties": {
           "message": {
+            "type": "string"
+          }
+        }
+      },
+      "Notification": {
+        "type": "object",
+        "description": "`notification.type` is `text NOT NULL` with no check constraint and no\nenum anywhere in the Node source (`packages/db/src/schema/notification.ts`\njust leaves a comment listing example values). The Phase 2b plan's\ngeneral instruction to model constrained value sets as enum-typed DTO\nfields (like `connections::dto::Origin`) does NOT apply here — the\ncaptured contract found no constraint to enforce, so this stays a plain\n`String` end to end. Adding validation Node doesn't have would be a\nsilent, undocumented divergence.\n\n`camelCase` serialisation matches every other wire type in this crate —\nsee the note on `chunk::Chunk` for why that's mandatory, not cosmetic.\n`notification_type` is renamed to the reserved SQL/JSON word `type` for\nthe same reason `chunk::Chunk::chunk_type` is.",
+        "required": [
+          "id",
+          "userId",
+          "type",
+          "title",
+          "message",
+          "read",
+          "createdAt"
+        ],
+        "properties": {
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string"
+          },
+          "linkTo": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "message": {
+            "type": "string"
+          },
+          "read": {
+            "type": "boolean"
+          },
+          "title": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "userId": {
             "type": "string"
           }
         }
@@ -1569,6 +2921,23 @@
           }
         }
       },
+      "ReorderEntry": {
+        "type": "object",
+        "description": "One entry of `PUT /api/favorites/reorder`'s bare-array body\n(`packages/api/src/favorites/routes.ts:39-44`). The body is a plain\n`t.Array(...)`, not wrapped in an object — see `ReorderBody` below.",
+        "required": [
+          "chunkId",
+          "order"
+        ],
+        "properties": {
+          "chunkId": {
+            "type": "string"
+          },
+          "order": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
       "ResetResult": {
         "type": "object",
         "description": "Return value of [`reset`], matching Node's `resetSpaceData` return shape\n(`packages/db/src/repository/space.ts:144-184`).",
@@ -1605,6 +2974,38 @@
           "reviewed",
           "approved"
         ]
+      },
+      "SetCodebaseSettingBody": {
+        "type": "object",
+        "description": "Body of `PATCH /api/settings/codebase`\n(`packages/api/src/settings/routes.ts:38-54`). `codebaseId` here is a\n`spaceId` — the field name is a legacy holdover predating the\ncodebase->space rename elsewhere in the codebase (see the top-level\nCLAUDE.md's \"Spaces & Workspaces\" section and `codebase_settings`'s\nown doc comment in `fubbik_db::repo::settings`).",
+        "required": [
+          "codebaseId",
+          "key",
+          "value"
+        ],
+        "properties": {
+          "codebaseId": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "value": {}
+        }
+      },
+      "SetSettingBody": {
+        "type": "object",
+        "description": "Body of `PATCH /api/settings/user` and `PATCH /api/settings/instance`\n(`packages/api/src/settings/routes.ts`): both share the identical\n`{ key, value }` shape. `value` is a bare `serde_json::Value`, not a\ntyped union — Node's schema is `value: t.Unknown()`, i.e. **no\nvalidation at all** on the value's shape, despite the typed\n`UserSettingsMap` / `InstanceSettingsMap` interfaces in\n`packages/db/src/schema/settings.ts:54-80` existing purely as TS-side\ndocumentation, never enforced at the API boundary. A client can PATCH\n`theme` to `42` and this stores it as-is, matching Node exactly.",
+        "required": [
+          "key",
+          "value"
+        ],
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "value": {}
+        }
       },
       "Sort": {
         "type": "string",
@@ -1896,6 +3297,34 @@
           }
         }
       },
+      "UpdateCollectionBody": {
+        "type": "object",
+        "description": "Body of `PATCH /api/collections/{id}`\n(`packages/api/src/collections/routes.ts:45-60`). All three fields are\nplain two-state `Option<T>` (omitted = untouched, present = set) — this\nschema has no `t.Null()` variant on any field, unlike\n`workspaces::dto::UpdateWorkspaceBody::description`, so there is no way\nto explicitly clear `description` through this endpoint. `filter`, when\nprovided, **replaces** the stored filter wholesale rather than merging\nit — see `fubbik_db::repo::collection::CollectionPatch`'s doc comment.\n`spaceId` is deliberately absent from this body: Node's schema doesn't\ndeclare it either, so a collection's space is immutable after creation.",
+        "properties": {
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "filter": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/CollectionFilter"
+              }
+            ]
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
       "UpdateSpaceBody": {
         "type": "object",
         "description": "`description` and `remote_url` are tri-state, matching Node's\n`t.Optional(t.Union([t.String(), t.Null()]))` for both: omitted leaves\nthe field untouched (or, for `remoteUrl` on a code-kind space, falls\nthrough to Node's `?? null` — see `service::update`), explicit `null`\nclears it, a string sets it. Same `deserialize_some` trick as\n`tags::dto::UpdateTagBody::tag_type_id` — plain `Option<Option<T>>`\ncollapses \"omitted\" and \"explicit null\" to the same `None` without it.\n\n`local_paths` is NOT tri-state at the schema level (`t.Optional(t.Array(...))`,\nno `t.Null()` union) — a plain `Option<Vec<String>>` is correct here.",
@@ -1978,6 +3407,139 @@
               "string",
               "null"
             ]
+          }
+        }
+      },
+      "UpdateWorkspaceBody": {
+        "type": "object",
+        "description": "Body of `PATCH /api/workspaces/{id}` (`packages/api/src/workspaces/routes.ts:36-50`).\n\n`description` is tri-state, matching Node's `t.Optional(t.Union([t.String(),\nt.Null()]))`: omitted (`None`) leaves it untouched, explicit `null`\n(`Some(None)`) clears it, a string (`Some(Some(..))`) sets it — same\n`deserialize_some` trick as `spaces::dto::UpdateSpaceBody::description`,\nneeded because a plain `Option<Option<T>>` collapses \"omitted\" and\n\"explicit null\" to the same `None` without it.",
+        "properties": {
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "Workspace": {
+        "type": "object",
+        "description": "`camelCase` serialisation matches every other wire type in this crate —\nsee the note on `chunk::Chunk` for why that's mandatory, not cosmetic.",
+        "required": [
+          "id",
+          "name",
+          "userId",
+          "createdAt",
+          "updatedAt"
+        ],
+        "properties": {
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "userId": {
+            "type": "string"
+          }
+        }
+      },
+      "WorkspaceDetail": {
+        "type": "object",
+        "description": "Response shape of `GET /api/workspaces/{id}`, matching Node's spread\n`{ ...found, spaces }` (`packages/api/src/workspaces/service.ts:19-28`)\n— the workspace row's own fields at the top level, plus a `spaces`\narray, NOT nested under a `workspace` key (contrast\n`fubbik_db::repo::space::SpaceDetail`, which nests `{ space, code }`).\nSee `tests/fixtures/node-contract-2b/workspaces-detail.json`.",
+        "required": [
+          "id",
+          "name",
+          "userId",
+          "createdAt",
+          "updatedAt",
+          "spaces"
+        ],
+        "properties": {
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "spaces": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WorkspaceSpaceSummary"
+            }
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "userId": {
+            "type": "string"
+          }
+        }
+      },
+      "WorkspaceSpaceLink": {
+        "type": "object",
+        "description": "`workspace_space` has only these two columns (no `id`, no timestamps) —\nthis is both the row shape and the response shape of\n`POST /api/workspaces/{id}/spaces`, matching Node's\n`addSpaceToWorkspace` return value: either the row just inserted, or,\non an `onConflictDoNothing` no-op, a literal `{ workspaceId, spaceId }`\nfallback (`packages/db/src/repository/workspace.ts:94-99`) —\nstructurally identical either way.",
+        "required": [
+          "workspaceId",
+          "spaceId"
+        ],
+        "properties": {
+          "spaceId": {
+            "type": "string"
+          },
+          "workspaceId": {
+            "type": "string"
+          }
+        }
+      },
+      "WorkspaceSpaceSummary": {
+        "type": "object",
+        "description": "Bare summary of a space attached to a workspace — `{id, name, kind}`\nonly, matching Node's `getSpacesForWorkspace`\n(`packages/db/src/repository/workspace.ts:80-92`), which selects just\nthese three columns, not a full `Space` row (no `description`,\n`userId`, timestamps). See\n`tests/fixtures/node-contract-2b/workspaces-detail.json`.",
+        "required": [
+          "id",
+          "name",
+          "kind"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
           }
         }
       }

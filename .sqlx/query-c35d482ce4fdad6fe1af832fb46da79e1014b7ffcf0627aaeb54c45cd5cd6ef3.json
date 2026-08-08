@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ANALYZE workspace",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "c35d482ce4fdad6fe1af832fb46da79e1014b7ffcf0627aaeb54c45cd5cd6ef3"
+}

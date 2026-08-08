@@ -1,0 +1,20 @@
+{
+  "id": "a148e3ba-040f-460c-a699-1198d47c110d",
+  "name": "fubbik-platform",
+  "description": "Main fubbik product — code + docs grouped together",
+  "userId": "dev-user",
+  "createdAt": "2026-06-02T23:39:08.785Z",
+  "updatedAt": "2026-06-02T23:39:08.785Z",
+  "spaces": [
+    {
+      "id": "seed-codebase-fubbik",
+      "name": "fubbik",
+      "kind": "code"
+    },
+    {
+      "id": "cc3a9b9d-e74f-474a-afdf-818b9efb229b",
+      "name": "fubbik-docs",
+      "kind": "code"
+    }
+  ]
+}

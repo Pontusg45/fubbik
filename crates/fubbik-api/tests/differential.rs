@@ -46,6 +46,59 @@
 //! not evidence that these mutating-endpoint behaviours match Node (they
 //! deliberately don't, per above).
 //!
+//! ## Phase 2b coverage (notifications/favorites/workspaces/settings/
+//! ## collections/activity)
+//!
+//! Every `GET` these six domains' routers actually expose (read straight
+//! from `crates/fubbik-api/src/{notifications,favorites,workspaces,settings,
+//! collections,activity}/routes.rs`, not assumed) is now diffed:
+//! `/api/notifications`, `/api/notifications/count`, `/api/favorites`,
+//! `/api/workspaces`, `/api/workspaces/{id}`, `/api/settings/user`,
+//! `/api/settings/codebase`, `/api/settings/instance`,
+//! `/api/settings/features`, `/api/collections`,
+//! `/api/collections/{id}/chunks`, `/api/activity`. There is **no**
+//! `GET /api/collections/{id}` in either stack — only `PATCH`/`DELETE` take
+//! a bare `{id}`, confirmed against `packages/api/src/collections/routes.ts`
+//! — so it is not tested as a `GET`.
+//!
+//! `/api/settings/instance` and `/api/settings/features` are compared with
+//! **no session cookie**, matching their deliberately unauthenticated status
+//! in both stacks (`settings::routes::get_instance_settings` /
+//! `get_feature_flags` doc comments) — every other new endpoint here is
+//! session-scoped and compared with one.
+//!
+//! `/api/workspaces` joins the unordered set below (Node's `listWorkspaces`
+//! has no `.orderBy`). `/api/workspaces/{id}` is a top-level *object*, so it
+//! isn't eligible for the top-level-array multiset comparison at all — but
+//! its nested `spaces` field has the exact same problem one level down:
+//! Node's `getSpacesForWorkspace` (`packages/db/src/repository/
+//! workspace.ts:80-91`) also has no `.orderBy`. `assert_same_with_unordered_field`
+//! below handles that by sorting just that one nested array on both sides
+//! before comparing, leaving the rest of the object (including its
+//! top-level field order, which `serde_json::Value` equality already
+//! ignores) compared exactly.
+//!
+//! `/api/notifications` (Node: `notification.ts:16`,
+//! `.orderBy(desc(notification.createdAt))`), `/api/favorites` (Node:
+//! `favorite.ts:7`, `.orderBy(asc(userFavorite.order))`), `/api/collections`
+//! (Node: `collection.ts:9`, `.orderBy(asc(collection.name))`),
+//! `/api/collections/{id}/chunks` (delegates to the same ordered chunk-list
+//! query `/api/chunks` already uses), and `/api/activity` (Node:
+//! `activity.ts:25`, `.orderBy(desc(activityLog.createdAt))`) all have an
+//! explicit Node `ORDER BY` and stay sequence-compared. None of these are a
+//! *total* order (no `id` tiebreaker on the Node side), so — per the
+//! `/api/chunks?search=convention` precedent above — a live run tying on the
+//! sort column can legitimately fail here; that is signal to report, not a
+//! reason to move any of them into the unordered set.
+//!
+//! `/api/notifications/count`, `/api/settings/user`, `/api/settings/
+//! codebase`, `/api/settings/instance`, and `/api/settings/features` are all
+//! bare objects (a count, or a `{key: value}` settings map/computed flags
+//! struct), not lists — "order" doesn't apply, and object key order is
+//! already ignored by `serde_json::Value` equality (this crate does not
+//! enable `preserve_order`), so they stay on the default sequence-compare
+//! path with no special handling needed.
+//!
 //! ## A real bug the harness found, and how it was fixed
 //!
 //! A live run against Node found that `/api/tags` and
@@ -69,11 +122,29 @@
 
 use serde_json::{Value, json};
 
-fn urls() -> Option<(String, String)> {
-    Some((
-        std::env::var("FUBBIK_NODE_URL").ok()?,
-        std::env::var("FUBBIK_RUST_URL").ok()?,
-    ))
+/// Reads both live-stack base URLs, or panics.
+///
+/// These six `#[ignore]`d tests never execute their bodies under a plain
+/// `cargo test --workspace` — Rust's default test harness skips `#[ignore]`d
+/// tests entirely, so `urls()` panicking here has no effect on that path
+/// (they still report as "ignored", not "failed"). It only runs when someone
+/// explicitly requests `--ignored` (or `--include-ignored`), at which point
+/// silently skipping with an `eprintln!` produced six meaningless passes —
+/// a harness that reports success while doing nothing, which reads as
+/// coverage it doesn't have. See the module doc's run instructions at the
+/// top of this file for the two env vars this requires.
+fn urls() -> (String, String) {
+    let node = std::env::var("FUBBIK_NODE_URL").unwrap_or_else(|_| {
+        panic!(
+            "FUBBIK_NODE_URL not set: the live differential tests cannot run without both stacks"
+        )
+    });
+    let rust = std::env::var("FUBBIK_RUST_URL").unwrap_or_else(|_| {
+        panic!(
+            "FUBBIK_RUST_URL not set: the live differential tests cannot run without both stacks"
+        )
+    });
+    (node, rust)
 }
 
 /// Removes values that legitimately differ between stacks: generated IDs and
@@ -108,17 +179,81 @@ async fn fetch(base: &str, path: &str) -> (u16, Value) {
 /// undefined in Node, not merely unspecified-but-stable, so this harness
 /// compares them as an unordered set rather than a sequence.
 ///
-/// Every OTHER list endpoint this harness diffs (`/api/chunks*`) DOES have
-/// an explicit `ORDER BY` in Node — for those, sequence comparison stays
-/// in effect, because an ordering regression there is real signal, not
-/// noise. Matched on the path with any query string stripped, so e.g.
-/// `/api/tags?search=x` (should such a variant ever be added here) would
-/// still be treated as unordered.
+/// `/api/workspaces` joins this set in Phase 2b: Node's `listWorkspaces`
+/// (`packages/db/src/repository/workspace.ts:37`) has no `.orderBy` either
+/// — see the module doc's "Phase 2b coverage" section.
+///
+/// Every OTHER list endpoint this harness diffs (`/api/chunks*`,
+/// `/api/notifications`, `/api/favorites`, `/api/collections`,
+/// `/api/collections/{id}/chunks`, `/api/activity`) DOES have an explicit
+/// `ORDER BY` in Node — for those, sequence comparison stays in effect,
+/// because an ordering regression there is real signal, not noise. Matched
+/// on the path with any query string stripped, so e.g. `/api/tags?search=x`
+/// (should such a variant ever be added here) would still be treated as
+/// unordered.
 fn is_order_undefined_in_node(path: &str) -> bool {
     matches!(
         path.split('?').next().unwrap_or(path),
-        "/api/spaces" | "/api/tags" | "/api/tag-types"
+        "/api/spaces" | "/api/tags" | "/api/tag-types" | "/api/workspaces"
     )
+}
+
+/// Sorts an unordered nested array field, in place, by each element's
+/// canonical JSON string. Used only on `/api/workspaces/{id}`'s `spaces`
+/// field (see the module doc's "Phase 2b coverage" section for why that
+/// one nested array — unlike the rest of the object — has no defined Node
+/// order). Not a general-purpose tool: it only looks one level deep, at a
+/// named field directly on a top-level object, which is all this endpoint
+/// needs.
+fn sort_nested_array(value: &mut Value, field: &str) {
+    if let Value::Object(map) = value
+        && let Some(Value::Array(items)) = map.get_mut(field)
+    {
+        items.sort_by_key(canonical);
+    }
+}
+
+/// Like `assert_same`, but for a top-level *object* response with exactly
+/// one nested array field whose order is undefined in Node — sorts that
+/// field on both sides before comparing so element order alone can't fail
+/// the assertion, while every other field (including ones Node DOES order)
+/// stays an exact match.
+async fn assert_same_with_unordered_field(path: &str, field: &str) {
+    let (node, rust) = urls();
+
+    let (node_status, mut node_body) = fetch(&node, path).await;
+    let (rust_status, mut rust_body) = fetch(&rust, path).await;
+
+    assert_eq!(node_status, rust_status, "status mismatch for {path}");
+
+    normalise(&mut node_body);
+    normalise(&mut rust_body);
+    sort_nested_array(&mut node_body, field);
+    sort_nested_array(&mut rust_body, field);
+
+    assert_eq!(
+        node_body, rust_body,
+        "body mismatch for {path} (after sorting the unordered `{field}` field)"
+    );
+}
+
+/// Fetches a bare top-level array from `base`+`list_path` and returns the
+/// first element's `id`, or `None` if the list is empty or not an array of
+/// objects with a string `id`. Used to make path-parameterised endpoints
+/// (`/api/workspaces/{id}`, `/api/collections/{id}/chunks`,
+/// `/api/settings/codebase?codebaseId=`) meaningful against whatever data
+/// happens to be loaded into the diff database — this harness has no fixed
+/// seed of its own, it runs against a dump of the Node database (see
+/// `scripts/differential.sh`). Fetching the id from `rust`'s own list
+/// response (rather than a hardcoded literal) also means the id is
+/// guaranteed to round-trip through Rust's own list endpoint first.
+async fn first_id(base: &str, list_path: &str) -> Option<String> {
+    let (_, body) = fetch(base, list_path).await;
+    body.as_array()?
+        .first()?
+        .get("id")?
+        .as_str()
+        .map(String::from)
 }
 
 /// Canonicalises a JSON value into a string for multiset comparison.
@@ -152,10 +287,7 @@ fn assert_same_as_multiset(node_body: &Value, rust_body: &Value, path: &str) {
 }
 
 async fn assert_same(path: &str) {
-    let Some((node, rust)) = urls() else {
-        eprintln!("skipping {path}: FUBBIK_NODE_URL / FUBBIK_RUST_URL not set");
-        return;
-    };
+    let (node, rust) = urls();
 
     let (node_status, mut node_body) = fetch(&node, path).await;
     let (rust_status, mut rust_body) = fetch(&rust, path).await;
@@ -203,6 +335,93 @@ async fn spaces_tags_tag_types_stats_match() {
     for path in ["/api/spaces", "/api/tags", "/api/tag-types", "/api/stats"] {
         assert_same(path).await;
     }
+}
+
+/// The Phase 2b `GET` endpoints that need no path/query param to be
+/// meaningful — plain lists, a count, and the settings/feature-flag
+/// objects. See the module doc's "Phase 2b coverage" section for the
+/// per-path ordering citations; every one of these stays sequence-compared
+/// (`assert_same` only takes the unordered branch for paths named in
+/// `is_order_undefined_in_node`, and none of these are).
+///
+/// `/api/settings/instance` and `/api/settings/features` are deliberately
+/// unauthenticated in both stacks — `fetch`/`assert_same` send no session
+/// cookie at all (matching every other path in this file, which relies on
+/// `FUBBIK_IMPLICIT_DEV_SESSION` on both servers rather than a real cookie),
+/// so this is already the correct "no session" comparison for those two,
+/// not a special case that needs different plumbing.
+#[tokio::test]
+#[ignore = "requires both stacks running"]
+async fn notifications_favorites_settings_activity_match() {
+    for path in [
+        "/api/notifications",
+        "/api/notifications/count",
+        "/api/favorites",
+        "/api/settings/user",
+        "/api/settings/instance",
+        "/api/settings/features",
+        "/api/activity",
+    ] {
+        assert_same(path).await;
+    }
+}
+
+/// `/api/workspaces` (unordered — Node's `listWorkspaces` has no
+/// `.orderBy`, joining `/api/spaces`/`/api/tags`/`/api/tag-types` in
+/// `is_order_undefined_in_node`) plus `/api/workspaces/{id}`, whose id is
+/// fetched from the diff database's own `/api/workspaces` list rather than
+/// hardcoded — there is no fixed seed this harness controls (see
+/// `first_id`'s doc comment). The detail endpoint's nested `spaces` field
+/// is unordered for the same reason the list is (`getSpacesForWorkspace`
+/// has no `.orderBy` either); the rest of the object stays exact via
+/// `assert_same_with_unordered_field`.
+#[tokio::test]
+#[ignore = "requires both stacks running"]
+async fn workspaces_list_and_detail_match() {
+    assert_same("/api/workspaces").await;
+
+    let (_, rust) = urls();
+    let Some(id) = first_id(&rust, "/api/workspaces").await else {
+        eprintln!("skipping /api/workspaces/{{id}}: no workspaces in the diff database");
+        return;
+    };
+    assert_same_with_unordered_field(&format!("/api/workspaces/{id}"), "spaces").await;
+}
+
+/// `/api/collections` (Node orders by `name`, sequence-compared) plus
+/// `/api/collections/{id}/chunks`, whose id is likewise fetched live rather
+/// than hardcoded. The chunks endpoint delegates to the same ordered
+/// chunk-list query `/api/chunks` already uses (see the module doc), so it
+/// is compared exactly like the `chunk_endpoints_match` paths above, not
+/// through any unordered path.
+#[tokio::test]
+#[ignore = "requires both stacks running"]
+async fn collections_list_and_chunks_match() {
+    assert_same("/api/collections").await;
+
+    let (_, rust) = urls();
+    let Some(id) = first_id(&rust, "/api/collections").await else {
+        eprintln!("skipping /api/collections/{{id}}/chunks: no collections in the diff database");
+        return;
+    };
+    assert_same(&format!("/api/collections/{id}/chunks")).await;
+}
+
+/// `/api/settings/codebase?codebaseId=` needs an existing space id to be
+/// meaningful (an unknown one 404s on both stacks per `settings::service`'s
+/// doc comments) — fetched live from `/api/spaces`, same reasoning as the
+/// workspace/collection ids above. A bare `{key: value}` object, so it
+/// stays on the default sequence-compare path (object key order is not
+/// significant either way — see the module doc).
+#[tokio::test]
+#[ignore = "requires both stacks running"]
+async fn settings_codebase_matches() {
+    let (_, rust) = urls();
+    let Some(space_id) = first_id(&rust, "/api/spaces").await else {
+        eprintln!("skipping /api/settings/codebase: no spaces in the diff database");
+        return;
+    };
+    assert_same(&format!("/api/settings/codebase?codebaseId={space_id}")).await;
 }
 
 /// `normalise` must strip exactly the four volatile keys (at any nesting
@@ -355,13 +574,20 @@ fn normalise_does_not_mask_a_stats_count_difference() {
     );
 }
 
-/// Exactly the three endpoints named in "deliberate divergences" #6 must
-/// be treated as unordered — not the chunk endpoints, which DO have a
-/// Node `ORDER BY` and must stay sequence-compared, and not `/api/stats`,
-/// which is a single object rather than a list at all.
+/// Exactly the four endpoints named in "deliberate divergences" #6 plus
+/// Phase 2b's `/api/workspaces` must be treated as unordered — not the
+/// chunk/notifications/favorites/collections/activity endpoints, which DO
+/// have a Node `ORDER BY` and must stay sequence-compared, and not
+/// `/api/stats` or `/api/notifications/count`, which are single objects
+/// rather than lists at all.
 #[test]
-fn is_order_undefined_in_node_covers_exactly_spaces_tags_and_tag_types() {
-    for path in ["/api/spaces", "/api/tags", "/api/tag-types"] {
+fn is_order_undefined_in_node_covers_exactly_the_four_unordered_lists() {
+    for path in [
+        "/api/spaces",
+        "/api/tags",
+        "/api/tag-types",
+        "/api/workspaces",
+    ] {
         assert!(
             is_order_undefined_in_node(path),
             "{path} must be compared unordered: Node has no ORDER BY for it"
@@ -375,13 +601,70 @@ fn is_order_undefined_in_node_covers_exactly_spaces_tags_and_tag_types() {
         "/api/chunks?sort=alpha",
         "/api/chunks?search=convention",
         "/api/stats",
+        "/api/notifications",
+        "/api/notifications/count",
+        "/api/favorites",
+        "/api/collections",
+        "/api/activity",
+        "/api/settings/user",
+        "/api/settings/instance",
+        "/api/settings/features",
     ] {
         assert!(
             !is_order_undefined_in_node(path),
             "{path} must stay sequence-compared: it either has a Node ORDER BY \
-             (chunks) or is not a list at all (stats)"
+             or is not a list at all"
         );
     }
+}
+
+/// `sort_nested_array` must reorder only the named field's array elements,
+/// leaving the rest of the object (and non-matching fields) untouched — the
+/// property `assert_same_with_unordered_field` relies on to compare
+/// `/api/workspaces/{id}`'s `spaces` field as an unordered set while every
+/// other field stays an exact match.
+#[test]
+fn sort_nested_array_reorders_only_the_named_field() {
+    let mut value = json!({
+        "id": "w1",
+        "name": "Frontend + backend",
+        "spaces": [
+            { "name": "gamma", "kind": "code" },
+            { "name": "alpha", "kind": "code" }
+        ]
+    });
+
+    sort_nested_array(&mut value, "spaces");
+
+    assert_eq!(
+        value,
+        json!({
+            "id": "w1",
+            "name": "Frontend + backend",
+            "spaces": [
+                { "name": "alpha", "kind": "code" },
+                { "name": "gamma", "kind": "code" }
+            ]
+        })
+    );
+}
+
+/// A genuinely different `spaces` set (not just reordered) must still fail
+/// after sorting — pins down that `assert_same_with_unordered_field`
+/// doesn't accidentally become a rubber stamp for the one field it treats
+/// specially.
+#[test]
+fn sort_nested_array_does_not_mask_a_real_difference() {
+    let mut node = json!({ "spaces": [{ "name": "alpha" }, { "name": "beta" }] });
+    let mut rust = json!({ "spaces": [{ "name": "alpha" }, { "name": "delta" }] });
+
+    sort_nested_array(&mut node, "spaces");
+    sort_nested_array(&mut rust, "spaces");
+
+    assert_ne!(
+        node, rust,
+        "a genuinely different spaces set must survive sorting and still compare unequal"
+    );
 }
 
 /// The core property `assert_same_as_multiset` exists for: the live run
