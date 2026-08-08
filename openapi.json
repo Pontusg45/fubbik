@@ -770,6 +770,184 @@
         }
       }
     },
+    "/api/settings/codebase": {
+      "get": {
+        "tags": [
+          "crate::settings::routes"
+        ],
+        "operationId": "get_codebase_settings",
+        "parameters": [
+          {
+            "name": "codebaseId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "crate::settings::routes"
+        ],
+        "operationId": "set_codebase_setting",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetCodebaseSettingBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/settings/features": {
+      "get": {
+        "tags": [
+          "crate::settings::routes"
+        ],
+        "summary": "Unauthenticated, matching Node exactly\n(`packages/api/src/settings/routes.ts:8` — `GET /settings/features` has\nno `requireSession`). See `get_instance_settings` for the full note on\nwhy this crate has two deliberately open `GET`s in this domain.",
+        "operationId": "get_feature_flags",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeatureFlags"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/settings/instance": {
+      "get": {
+        "tags": [
+          "crate::settings::routes"
+        ],
+        "summary": "**Deliberately unauthenticated** — matches Node exactly\n(`packages/api/src/settings/routes.ts:55`: `GET /settings/instance` has\nno `requireSession`, and there is no global auth middleware in\n`packages/api/src/index.ts` to backstop it). This was escalated to and\ndecided by the human partner explicitly (captured, then corrected on\nreview, in `tests/fixtures/node-contract-2b/_questions.md` Q2): faithful\nport, `GET` open, `PATCH` session-gated (see `set_instance_setting`\nbelow), exactly as Node. `instance_settings` holds zero rows today, the\nserver binds `127.0.0.1` by default, and the web app may legitimately\nneed to read feature flags before login — do NOT add a session guard\nhere believing it an oversight; that would silently diverge from an\nalready-made decision and could break pre-login flag reads.",
+        "description": "The real property this leaves: any caller reachable on localhost can\nread the raw instance-settings map with no session at all.",
+        "operationId": "get_instance_settings",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "crate::settings::routes"
+        ],
+        "summary": "Session-gated (unlike its `GET` sibling above), but with **no\nrole/admin check** — any authenticated user can flip instance-wide\nflags like `aiEnabled`, matching Node's `requireSession`-only guard\n(`packages/api/src/settings/routes.ts:56-60`). This is also a faithful\nport, not an oversight.",
+        "operationId": "set_instance_setting",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetSettingBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/settings/user": {
+      "get": {
+        "tags": [
+          "crate::settings::routes"
+        ],
+        "operationId": "get_user_settings",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "crate::settings::routes"
+        ],
+        "operationId": "set_user_setting",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetSettingBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/spaces": {
       "get": {
         "tags": [
@@ -2081,6 +2259,34 @@
           }
         }
       },
+      "FeatureFlags": {
+        "type": "object",
+        "description": "`GET /api/settings/features` — a **computed 5-key projection** over\n`instance_settings`, not a stored table\n(`tests/fixtures/node-contract-2b/_questions.md` Q2). Every field\nindependently defaults to `true` when its key is absent from\n`instance_settings`, matching Node's `(map.x as boolean) ?? true`\nfallback (`packages/api/src/settings/service.ts:59-75`) for the\ndocumented case — a key that is simply absent. Confirmed live against\nthe empty-table fixture: `settings-features.json` returns all five\n`true` even though `instance_settings` has zero rows.\n\nNode's `?? true` only falls back on `null`/`undefined`, and its `as\nboolean` cast is a compile-time-only no-op — so a value present but not\nactually boolean (e.g. a stored string) would pass through unchanged at\nruntime, breaking `InstanceSettingsMap`'s own typing. Rust's `bool`\nfields can't reproduce that untyped leak; `service::get_feature_flags`\ntreats \"present but not a JSON boolean\" the same as \"absent\" (defaults\n`true`), which is a consequence of Rust's stricter typing, not an\nuntested behavioural choice — the only case the fixtures actually\nexercise is \"absent\", and that path matches Node exactly.",
+        "required": [
+          "aiEnabled",
+          "enrichmentEnabled",
+          "semanticSearchEnabled",
+          "aiSuggestionsEnabled",
+          "vocabularySuggestEnabled"
+        ],
+        "properties": {
+          "aiEnabled": {
+            "type": "boolean"
+          },
+          "aiSuggestionsEnabled": {
+            "type": "boolean"
+          },
+          "enrichmentEnabled": {
+            "type": "boolean"
+          },
+          "semanticSearchEnabled": {
+            "type": "boolean"
+          },
+          "vocabularySuggestEnabled": {
+            "type": "boolean"
+          }
+        }
+      },
       "FileRef": {
         "type": "object",
         "required": [
@@ -2275,6 +2481,38 @@
           "reviewed",
           "approved"
         ]
+      },
+      "SetCodebaseSettingBody": {
+        "type": "object",
+        "description": "Body of `PATCH /api/settings/codebase`\n(`packages/api/src/settings/routes.ts:38-54`). `codebaseId` here is a\n`spaceId` — the field name is a legacy holdover predating the\ncodebase->space rename elsewhere in the codebase (see the top-level\nCLAUDE.md's \"Spaces & Workspaces\" section and `codebase_settings`'s\nown doc comment in `fubbik_db::repo::settings`).",
+        "required": [
+          "codebaseId",
+          "key",
+          "value"
+        ],
+        "properties": {
+          "codebaseId": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "value": {}
+        }
+      },
+      "SetSettingBody": {
+        "type": "object",
+        "description": "Body of `PATCH /api/settings/user` and `PATCH /api/settings/instance`\n(`packages/api/src/settings/routes.ts`): both share the identical\n`{ key, value }` shape. `value` is a bare `serde_json::Value`, not a\ntyped union — Node's schema is `value: t.Unknown()`, i.e. **no\nvalidation at all** on the value's shape, despite the typed\n`UserSettingsMap` / `InstanceSettingsMap` interfaces in\n`packages/db/src/schema/settings.ts:54-80` existing purely as TS-side\ndocumentation, never enforced at the API boundary. A client can PATCH\n`theme` to `42` and this stores it as-is, matching Node exactly.",
+        "required": [
+          "key",
+          "value"
+        ],
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "value": {}
+        }
       },
       "Sort": {
         "type": "string",

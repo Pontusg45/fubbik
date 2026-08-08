@@ -7,6 +7,7 @@ pub mod extract;
 pub mod favorites;
 pub mod notifications;
 pub mod openapi;
+pub mod settings;
 pub mod spaces;
 pub mod stats;
 pub mod tag_types;
@@ -44,6 +45,7 @@ pub fn router(state: AppState) -> Router {
         .merge(connections::routes::router())
         .merge(favorites::routes::router())
         .merge(notifications::routes::router())
+        .merge(settings::routes::router())
         .merge(spaces::routes::router())
         .merge(stats::routes::router())
         .merge(tag_types::routes::router())

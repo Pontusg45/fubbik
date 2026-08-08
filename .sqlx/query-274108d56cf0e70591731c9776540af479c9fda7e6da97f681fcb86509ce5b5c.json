@@ -1,0 +1,50 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO codebase_settings (id, space_id, key, value)\n           SELECT $1, $2, $3, $4\n           WHERE EXISTS (SELECT 1 FROM space s WHERE s.id = $2 AND s.user_id = $5)\n           ON CONFLICT (space_id, key) DO UPDATE\n             SET value = EXCLUDED.value, updated_at = now()\n           RETURNING id, space_id, key, value AS \"value: Json<serde_json::Value>\",\n                     updated_at AS \"updated_at: UtcTimestamp\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "space_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "key",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "value: Json<serde_json::Value>",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 4,
+        "name": "updated_at: UtcTimestamp",
+        "type_info": "Timestamp"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Jsonb",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "274108d56cf0e70591731c9776540af479c9fda7e6da97f681fcb86509ce5b5c"
+}
