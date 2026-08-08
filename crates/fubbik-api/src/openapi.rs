@@ -4,6 +4,7 @@ use utoipa::OpenApi;
 #[openapi(
     info(title = "Fubbik API", version = "0.1.0"),
     paths(
+        crate::activity::routes::list_activity,
         crate::chunks::routes::list_chunks,
         crate::chunks::routes::create_chunk,
         crate::chunks::routes::get_chunk,
@@ -58,6 +59,7 @@ use utoipa::OpenApi;
         crate::workspaces::routes::remove_workspace_space,
     ),
     components(schemas(
+        fubbik_db::repo::activity::Activity,
         fubbik_db::repo::chunk::Chunk,
         fubbik_db::repo::chunk::Sort,
         fubbik_db::repo::chunk_version::ChunkVersion,

@@ -1,3 +1,4 @@
+pub mod activity;
 pub mod chunk;
 pub mod chunk_meta;
 pub mod chunk_version;

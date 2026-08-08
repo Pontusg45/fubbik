@@ -1,3 +1,4 @@
+pub mod activity;
 pub mod assets;
 pub mod auth;
 pub mod chunks;
@@ -40,6 +41,7 @@ async fn health(State(state): State<AppState>) -> ApiResult<Json<serde_json::Val
 
 pub fn router(state: AppState) -> Router {
     Router::new()
+        .merge(activity::routes::router())
         .merge(auth::routes::router())
         .merge(chunks::routes::router())
         .merge(connections::routes::router())

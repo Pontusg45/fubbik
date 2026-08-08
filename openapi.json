@@ -9,6 +9,79 @@
     "version": "0.1.0"
   },
   "paths": {
+    "/api/activity": {
+      "get": {
+        "tags": [
+          "crate::activity::routes"
+        ],
+        "summary": "Bare array, no `total` field — Node's `listActivityRepo` applies\n`LIMIT`/`OFFSET` in the query itself but never returns a count\n(`_questions.md` Q3), unlike `chunks`' `{chunks, total, limit, offset}`\nenvelope. A foreign `spaceId` 404s — see `service::list`'s doc comment\nfor why that's a deliberate divergence from Node's 200-with-`[]`.",
+        "operationId": "list_activity",
+        "parameters": [
+          {
+            "name": "spaceId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "entityType",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Activity"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
     "/api/chunks": {
       "get": {
         "tags": [
@@ -1736,6 +1809,51 @@
   },
   "components": {
     "schemas": {
+      "Activity": {
+        "type": "object",
+        "description": "`camelCase` serialisation matches every other wire type in this crate.",
+        "required": [
+          "id",
+          "userId",
+          "entityType",
+          "entityId",
+          "action",
+          "createdAt"
+        ],
+        "properties": {
+          "action": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "entityId": {
+            "type": "string"
+          },
+          "entityTitle": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "entityType": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "spaceId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "userId": {
+            "type": "string"
+          }
+        }
+      },
       "AddSpaceBody": {
         "type": "object",
         "description": "Body of `POST /api/workspaces/{id}/spaces` (`packages/api/src/workspaces/routes.ts:60-78`).",
