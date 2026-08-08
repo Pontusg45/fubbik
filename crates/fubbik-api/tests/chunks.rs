@@ -392,3 +392,84 @@ async fn populated_embedding_round_trips_as_a_json_number_array(pool: sqlx::PgPo
     assert_eq!(embedding.len(), 768);
     assert!((embedding[1].as_f64().unwrap() - 0.001).abs() < 1e-6);
 }
+
+/// Task 7 added `tags`/`after`/`enrichment`/`minConnections` query params to
+/// `GET /api/chunks` as a side effect of building `ListParams` for the
+/// `collections` domain. This is the regression guard: with none of the
+/// four present, behaviour must be byte-identical to before — same rows,
+/// same envelope shape.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn list_is_unchanged_when_the_new_filter_params_are_absent(pool: sqlx::PgPool) {
+    seed_dev_user(&pool).await;
+    let app = fubbik_api::router(dev_state(pool));
+
+    for i in 0..3 {
+        create_chunk(&app, &format!("T{i}")).await;
+    }
+
+    let res = app
+        .oneshot(Request::get("/api/chunks").body(Body::empty()).unwrap())
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = res.into_body().collect().await.unwrap().to_bytes();
+    let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+    assert_eq!(json["chunks"].as_array().unwrap().len(), 3);
+    assert_eq!(json["total"], 3);
+    assert_eq!(json["limit"], 50);
+    assert_eq!(json["offset"], 0);
+}
+
+/// `tags`/`enrichment`/`minConnections`/`after` reach `ListParams` from the
+/// query string. `enrichment` only exercises the strict-enum path
+/// (`?enrichment=bogus` -> 400, same already-accepted divergence as
+/// `?sort=bogus` — see `ListChunksQuery`); `tags` proves the OR-semantics
+/// comma-split reaches the repository end to end.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn list_accepts_the_new_query_params(pool: sqlx::PgPool) {
+    seed_dev_user(&pool).await;
+    let app = fubbik_api::router(dev_state(pool.clone()));
+
+    let id = create_chunk(&app, "Tagged").await;
+    let dev_id: String =
+        sqlx::query_scalar!(r#"SELECT id FROM "user" WHERE email = $1"#, "dev@localhost")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    let tag = fubbik_db::repo::tag::create(&pool, &dev_id, "important", None)
+        .await
+        .unwrap();
+    fubbik_db::repo::tag::set_chunk_tags(&pool, &dev_id, &id, &[tag.id])
+        .await
+        .unwrap();
+
+    let res = app
+        .clone()
+        .oneshot(
+            Request::get("/api/chunks?tags=important&after=30&minConnections=0")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = res.into_body().collect().await.unwrap().to_bytes();
+    let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+    let chunks = json["chunks"].as_array().unwrap();
+    assert_eq!(chunks.len(), 1);
+    assert_eq!(chunks[0]["id"], id);
+
+    let res = app
+        .oneshot(
+            Request::get("/api/chunks?enrichment=bogus")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(
+        res.status(),
+        StatusCode::BAD_REQUEST,
+        "an unrecognised enrichment value is a 400, same divergence as `sort`"
+    );
+}

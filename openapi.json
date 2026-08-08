@@ -149,6 +149,56 @@
             }
           },
           {
+            "name": "tags",
+            "in": "query",
+            "description": "Comma-separated tag names, OR semantics — matches the `tags` key of\n`CollectionFilterSchema` and Node's own `?tags=` query param\n(`packages/api/src/chunks/service.ts:61-65`). Parsed with\n[`parse_tags`].",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "after",
+            "in": "query",
+            "description": "Days-ago offset (e.g. `?after=7` = \"updated in the last 7 days\"), not\na timestamp — matches Node's `new Date(Date.now() - Number(after) *\n86400000)` (`packages/api/src/chunks/service.ts:66`). Parsed with\n[`parse_after`].",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "enrichment",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "$ref": "#/components/schemas/Enrichment"
+                }
+              ]
+            }
+          },
+          {
+            "name": "minConnections",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
             "name": "limit",
             "in": "query",
             "required": false,
@@ -488,6 +538,168 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/api/collections": {
+      "get": {
+        "tags": [
+          "crate::collections::routes"
+        ],
+        "operationId": "list_collections",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Collection"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "crate::collections::routes"
+        ],
+        "operationId": "create_collection",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCollectionBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Collection"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/collections/{id}": {
+      "delete": {
+        "tags": [
+          "crate::collections::routes"
+        ],
+        "operationId": "delete_collection",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "crate::collections::routes"
+        ],
+        "operationId": "update_collection",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCollectionBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Collection"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/collections/{id}/chunks": {
+      "get": {
+        "tags": [
+          "crate::collections::routes"
+        ],
+        "summary": "Returns the chunks `{chunks, total, limit, offset}` envelope, NOT a bare\narray — the one endpoint in this slice that inherits the chunks\nenvelope by delegating to the same `chunks::service::list` that backs\n`GET /api/chunks`. See `service::get_chunks`'s doc comment.",
+        "operationId": "get_collection_chunks",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChunkListResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
           }
         }
       }
@@ -2115,6 +2327,121 @@
           }
         }
       },
+      "Collection": {
+        "type": "object",
+        "description": "`camelCase` serialisation matches every other wire type in this crate.",
+        "required": [
+          "id",
+          "name",
+          "filter",
+          "userId",
+          "createdAt",
+          "updatedAt"
+        ],
+        "properties": {
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "filter": {
+            "$ref": "#/components/schemas/CollectionFilter"
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "spaceId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "userId": {
+            "type": "string"
+          }
+        }
+      },
+      "CollectionFilter": {
+        "type": "object",
+        "description": "The nine keys `CollectionFilterSchema` accepts, all optional strings,\nstored and echoed back exactly as received —\n`#[serde(skip_serializing_if = \"Option::is_none\")]` on every field keeps\na partial filter (e.g. seed data's `{\"type\": \"convention\"}`) from\ngrowing eight extra `null` keys on the way back out. See\n`tests/fixtures/node-contract-2b/collections-list.json`.",
+        "properties": {
+          "after": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "default": null
+          },
+          "enrichment": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "default": null
+          },
+          "minConnections": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "default": null
+          },
+          "origin": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "default": null
+          },
+          "reviewStatus": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "default": null
+          },
+          "search": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "default": null
+          },
+          "sort": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "default": null
+          },
+          "tags": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "default": null
+          },
+          "type": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "default": null
+          }
+        }
+      },
       "Connection": {
         "type": "object",
         "description": "`chunk_connection` row shape, matching Node's bare-row response for both\n`POST /api/connections` (create) and the implicit shape returned by\n`getConnectionById`/`deleteConnection` in\n`packages/db/src/repository/connection.ts`.",
@@ -2202,6 +2529,34 @@
             "type": "string"
           },
           "type": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "CreateCollectionBody": {
+        "type": "object",
+        "description": "Body of `POST /api/collections`\n(`packages/api/src/collections/routes.ts:23-44`). `filter` is required\nas a whole object but every one of its nine keys is itself optional —\nsee `CollectionFilter`'s doc comment.",
+        "required": [
+          "name",
+          "filter"
+        ],
+        "properties": {
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "filter": {
+            "$ref": "#/components/schemas/CollectionFilter"
+          },
+          "name": {
+            "type": "string"
+          },
+          "spaceId": {
             "type": [
               "string",
               "null"
@@ -2346,6 +2701,14 @@
             "type": "string"
           }
         }
+      },
+      "Enrichment": {
+        "type": "string",
+        "description": "Mirrors Node's `enrichment: \"missing\" | \"complete\"` filter\n(`packages/db/src/repository/chunk.ts:123-127`). Used both as a strict\n`GET /api/chunks?enrichment=` query-string enum (an unrecognised value is\na 400, same divergence as `Sort`) and, via `from_loose_str`, as a lenient\ninterpreter of a collection's stored `filter.enrichment` string.",
+        "enum": [
+          "missing",
+          "complete"
+        ]
       },
       "Favorite": {
         "type": "object",
@@ -2915,6 +3278,34 @@
             ]
           },
           "type": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "UpdateCollectionBody": {
+        "type": "object",
+        "description": "Body of `PATCH /api/collections/{id}`\n(`packages/api/src/collections/routes.ts:45-60`). All three fields are\nplain two-state `Option<T>` (omitted = untouched, present = set) — this\nschema has no `t.Null()` variant on any field, unlike\n`workspaces::dto::UpdateWorkspaceBody::description`, so there is no way\nto explicitly clear `description` through this endpoint. `filter`, when\nprovided, **replaces** the stored filter wholesale rather than merging\nit — see `fubbik_db::repo::collection::CollectionPatch`'s doc comment.\n`spaceId` is deliberately absent from this body: Node's schema doesn't\ndeclare it either, so a collection's space is immutable after creation.",
+        "properties": {
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "filter": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/CollectionFilter"
+              }
+            ]
+          },
+          "name": {
             "type": [
               "string",
               "null"

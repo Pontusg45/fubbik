@@ -197,12 +197,75 @@ pub enum Sort {
     Updated,
 }
 
+impl Sort {
+    /// Lenient string -> `Sort` mapping mirroring Node's `switch (params.sort)`
+    /// (`packages/db/src/repository/chunk.ts:128-141`): any unrecognised
+    /// value (including `None`) silently falls through to `Newest`, the
+    /// `default:` arm — it is never a parse error. Used when interpreting a
+    /// collection's stored `filter.sort` string, which was never validated
+    /// beyond "is a string" at write time (`CollectionFilterSchema`). This is
+    /// deliberately looser than `Sort`'s own `Deserialize` impl, which the
+    /// `GET /api/chunks` query-string path uses and which *does* reject an
+    /// unrecognised value with 400 — see `ListChunksQuery` for that
+    /// already-accepted divergence from Node.
+    pub fn from_loose_str(s: Option<&str>) -> Self {
+        match s {
+            Some("oldest") => Sort::Oldest,
+            Some("alpha") => Sort::Alpha,
+            Some("updated") => Sort::Updated,
+            _ => Sort::Newest,
+        }
+    }
+}
+
+/// Mirrors Node's `enrichment: "missing" | "complete"` filter
+/// (`packages/db/src/repository/chunk.ts:123-127`). Used both as a strict
+/// `GET /api/chunks?enrichment=` query-string enum (an unrecognised value is
+/// a 400, same divergence as `Sort`) and, via `from_loose_str`, as a lenient
+/// interpreter of a collection's stored `filter.enrichment` string.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize, utoipa::ToSchema)]
+#[serde(rename_all = "lowercase")]
+pub enum Enrichment {
+    Missing,
+    Complete,
+}
+
+impl Enrichment {
+    /// Any value other than exactly `"missing"`/`"complete"` (including
+    /// `None`) means "no enrichment filter" — matching Node's `if
+    /// (params.enrichment === "missing") {...} else if (... === "complete")
+    /// {...}` (no `else` branch, so any other string is silently a no-op).
+    pub fn from_loose_str(s: Option<&str>) -> Option<Self> {
+        match s {
+            Some("missing") => Some(Enrichment::Missing),
+            Some("complete") => Some(Enrichment::Complete),
+            _ => None,
+        }
+    }
+}
+
 pub struct ListParams {
     pub chunk_type: Option<String>,
     pub search: Option<String>,
     pub origin: Option<String>,
     pub review_status: Option<String>,
     pub sort: Sort,
+    /// OR semantics only (chunk has at least one of these tag names) —
+    /// Node's `tagMode: "all"` AND-mode is not reproduced here: it is not
+    /// one of `CollectionFilterSchema`'s nine keys, and isn't part of this
+    /// port's scope (see `fubbik-api/src/chunks/dto.rs::ListChunksQuery`).
+    pub tags: Option<Vec<String>>,
+    /// Chunks whose `updated_at` is on or after this instant. Callers
+    /// compute this from a "days ago" offset the same way Node's
+    /// `listChunks` service does (`packages/api/src/chunks/service.ts:66`)
+    /// — see `ListChunksQuery::into_params` and
+    /// `collections::service::filter_to_list_params`.
+    pub after: Option<chrono::NaiveDateTime>,
+    pub enrichment: Option<Enrichment>,
+    /// Only applied when `> 0` — matching Node's `if (params.minConnections
+    /// && params.minConnections > 0)`, where `0` is falsy in JS and so is
+    /// treated identically to "no filter", not "at least zero connections".
+    pub min_connections: Option<i64>,
     pub limit: i64,
     pub offset: i64,
 }
@@ -215,6 +278,10 @@ impl Default for ListParams {
             origin: None,
             review_status: None,
             sort: Sort::Newest,
+            tags: None,
+            after: None,
+            enrichment: None,
+            min_connections: None,
             limit: 50,
             offset: 0,
         }
@@ -257,6 +324,48 @@ fn push_filters<'a>(
         qb.push(" AND (title ILIKE ").push_bind(pattern.clone());
         qb.push(" OR content ILIKE ").push_bind(pattern);
         qb.push(")");
+    }
+    if let Some(tags) = &params.tags {
+        // OR semantics: the chunk must carry at least one of the named
+        // tags. Deliberately NOT scoped by `tag.user_id` here, matching
+        // Node's `inArray(tag.name, params.tags)`
+        // (`packages/db/src/repository/chunk.ts:77-81`), which matches tag
+        // *names* globally with no owner check on the `tag` row itself.
+        // This can never leak another user's chunk: the join only proves a
+        // `chunk_tag` row exists for a *specific* `chunk.id`, and every row
+        // this query can return already satisfies the mandatory `user_id =
+        // ..` predicate above — the tag-name lookup can narrow the result
+        // set, never widen it past that boundary. See
+        // `tests/chunk.rs::tags_filter_cannot_leak_another_users_chunk_via_a_same_named_tag`.
+        qb.push(
+            " AND id IN (SELECT chunk_tag.chunk_id FROM chunk_tag \
+              JOIN tag ON tag.id = chunk_tag.tag_id WHERE tag.name = ANY(",
+        );
+        qb.push_bind(tags);
+        qb.push("))");
+    }
+    if let Some(after) = &params.after {
+        qb.push(" AND updated_at >= ").push_bind(*after);
+    }
+    if let Some(min_connections) = params.min_connections
+        && min_connections > 0
+    {
+        qb.push(
+            " AND (SELECT COUNT(*) FROM chunk_connection cc \
+              WHERE cc.source_id = chunk.id OR cc.target_id = chunk.id) >= ",
+        );
+        qb.push_bind(min_connections);
+    }
+    match params.enrichment {
+        Some(Enrichment::Missing) => {
+            qb.push(
+                " AND (summary IS NULL OR embedding IS NULL OR jsonb_array_length(aliases) = 0)",
+            );
+        }
+        Some(Enrichment::Complete) => {
+            qb.push(" AND summary IS NOT NULL AND embedding IS NOT NULL");
+        }
+        None => {}
     }
 }
 

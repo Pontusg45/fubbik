@@ -1,10 +1,25 @@
-use fubbik_db::repo::{chunk, user};
+use fubbik_db::repo::{chunk, connection, tag, user};
 
 async fn seed_user(pool: &sqlx::PgPool) -> String {
     user::create(pool, "a@b.test", "Alice", None)
         .await
         .unwrap()
         .id
+}
+
+async fn a_chunk(pool: &sqlx::PgPool, uid: &str, title: &str) -> chunk::Chunk {
+    chunk::create(
+        pool,
+        uid,
+        chunk::NewChunk {
+            title: title.into(),
+            content: String::new(),
+            chunk_type: "note".into(),
+            rationale: None,
+        },
+    )
+    .await
+    .unwrap()
 }
 
 #[sqlx::test]
@@ -264,4 +279,243 @@ async fn list_breaks_ties_by_id_for_every_sort(pool: sqlx::PgPool) {
             "{sort:?}: ties must be broken by ascending id, not left to query-plan chance"
         );
     }
+}
+
+// ── Task 7: `tags`/`after`/`enrichment`/`minConnections` (`ListParams`) ──
+
+#[sqlx::test]
+async fn tags_filter_is_or_semantics(pool: sqlx::PgPool) {
+    let uid = seed_user(&pool).await;
+    let tagged_a = a_chunk(&pool, &uid, "Tagged A").await;
+    let tagged_b = a_chunk(&pool, &uid, "Tagged B").await;
+    let untagged = a_chunk(&pool, &uid, "Untagged").await;
+
+    let tag_a = tag::create(&pool, &uid, "alpha", None).await.unwrap();
+    let tag_b = tag::create(&pool, &uid, "beta", None).await.unwrap();
+    tag::set_chunk_tags(&pool, &uid, &tagged_a.id, std::slice::from_ref(&tag_a.id))
+        .await
+        .unwrap();
+    tag::set_chunk_tags(&pool, &uid, &tagged_b.id, std::slice::from_ref(&tag_b.id))
+        .await
+        .unwrap();
+    let _ = untagged;
+
+    let found = chunk::list(
+        &pool,
+        &uid,
+        &chunk::ListParams {
+            tags: Some(vec!["alpha".into(), "beta".into()]),
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
+    let mut ids: Vec<&str> = found.iter().map(|c| c.id.as_str()).collect();
+    ids.sort();
+    let mut expected = vec![tagged_a.id.as_str(), tagged_b.id.as_str()];
+    expected.sort();
+    assert_eq!(
+        ids, expected,
+        "tags filter must be OR semantics: either tag name matches"
+    );
+}
+
+/// The single most security-relevant case in this filter set: the tag
+/// *name* "shared" collides across two independent users, each with their
+/// own `tag` row and their own chunk tagged with it. Alice's `tags:
+/// ["shared"]` filter must resolve only through the mandatory `user_id =
+/// ..` predicate on `chunk`, never through the tag-name match alone —
+/// otherwise a caller could enumerate another user's chunks just by
+/// guessing tag names they also happen to use.
+#[sqlx::test]
+async fn tags_filter_cannot_leak_another_users_chunk_via_a_same_named_tag(pool: sqlx::PgPool) {
+    let alice = user::create(&pool, "alice@b.test", "Alice", None)
+        .await
+        .unwrap()
+        .id;
+    let bob = user::create(&pool, "bob@b.test", "Bob", None)
+        .await
+        .unwrap()
+        .id;
+
+    let alices_chunk = a_chunk(&pool, &alice, "Alice's").await;
+    let bobs_chunk = a_chunk(&pool, &bob, "Bob's").await;
+    let alices_tag = tag::create(&pool, &alice, "shared", None).await.unwrap();
+    let bobs_tag = tag::create(&pool, &bob, "shared", None).await.unwrap();
+    tag::set_chunk_tags(&pool, &alice, &alices_chunk.id, &[alices_tag.id])
+        .await
+        .unwrap();
+    tag::set_chunk_tags(&pool, &bob, &bobs_chunk.id, &[bobs_tag.id])
+        .await
+        .unwrap();
+
+    let found = chunk::list(
+        &pool,
+        &alice,
+        &chunk::ListParams {
+            tags: Some(vec!["shared".into()]),
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
+    let ids: Vec<&str> = found.iter().map(|c| c.id.as_str()).collect();
+    assert_eq!(
+        ids,
+        vec![alices_chunk.id.as_str()],
+        "a same-named tag owned by another user must not surface their chunk"
+    );
+}
+
+#[sqlx::test]
+async fn after_filters_by_updated_at_cutoff(pool: sqlx::PgPool) {
+    let uid = seed_user(&pool).await;
+    let recent = a_chunk(&pool, &uid, "Recent").await;
+    let stale = a_chunk(&pool, &uid, "Stale").await;
+
+    sqlx::query!(
+        "UPDATE chunk SET updated_at = now() - interval '30 days' WHERE id = $1",
+        stale.id
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    let found = chunk::list(
+        &pool,
+        &uid,
+        &chunk::ListParams {
+            after: Some(chrono::Utc::now().naive_utc() - chrono::Duration::days(7)),
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
+    assert_eq!(
+        found.iter().map(|c| c.id.as_str()).collect::<Vec<_>>(),
+        vec![recent.id.as_str()],
+        "after must exclude chunks updated before the cutoff"
+    );
+}
+
+#[sqlx::test]
+async fn enrichment_filters_missing_and_complete(pool: sqlx::PgPool) {
+    let uid = seed_user(&pool).await;
+    let bare = a_chunk(&pool, &uid, "Bare").await;
+    let enriched = a_chunk(&pool, &uid, "Enriched").await;
+
+    let vector_literal = format!("[{}]", vec!["0"; 768].join(","));
+    sqlx::query(
+        "UPDATE chunk SET summary = 'a summary', aliases = '[\"x\"]'::jsonb, \
+         embedding = $1::vector WHERE id = $2",
+    )
+    .bind(&vector_literal)
+    .bind(&enriched.id)
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    let missing = chunk::list(
+        &pool,
+        &uid,
+        &chunk::ListParams {
+            enrichment: Some(chunk::Enrichment::Missing),
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
+    assert_eq!(
+        missing.iter().map(|c| c.id.as_str()).collect::<Vec<_>>(),
+        vec![bare.id.as_str()]
+    );
+
+    let complete = chunk::list(
+        &pool,
+        &uid,
+        &chunk::ListParams {
+            enrichment: Some(chunk::Enrichment::Complete),
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
+    assert_eq!(
+        complete.iter().map(|c| c.id.as_str()).collect::<Vec<_>>(),
+        vec![enriched.id.as_str()]
+    );
+}
+
+#[sqlx::test]
+async fn min_connections_filters_by_total_connection_count_and_zero_means_unfiltered(
+    pool: sqlx::PgPool,
+) {
+    let uid = seed_user(&pool).await;
+    let hub = a_chunk(&pool, &uid, "Hub").await;
+    let leaf1 = a_chunk(&pool, &uid, "Leaf1").await;
+    let leaf2 = a_chunk(&pool, &uid, "Leaf2").await;
+    let isolated = a_chunk(&pool, &uid, "Isolated").await;
+
+    connection::create(
+        &pool,
+        &fubbik_db::new_id(),
+        &uid,
+        &hub.id,
+        &leaf1.id,
+        "related_to",
+        "human",
+        "approved",
+    )
+    .await
+    .unwrap();
+    connection::create(
+        &pool,
+        &fubbik_db::new_id(),
+        &uid,
+        &hub.id,
+        &leaf2.id,
+        "related_to",
+        "human",
+        "approved",
+    )
+    .await
+    .unwrap();
+    let _ = isolated;
+
+    let at_least_two = chunk::list(
+        &pool,
+        &uid,
+        &chunk::ListParams {
+            min_connections: Some(2),
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
+    assert_eq!(
+        at_least_two
+            .iter()
+            .map(|c| c.id.as_str())
+            .collect::<Vec<_>>(),
+        vec![hub.id.as_str()],
+        "only the chunk with >= 2 connections (as source or target) matches"
+    );
+
+    // Node's `if (params.minConnections && params.minConnections > 0)` treats
+    // `0` as falsy — same as "no filter", not "at least zero connections".
+    let zero = chunk::list(
+        &pool,
+        &uid,
+        &chunk::ListParams {
+            min_connections: Some(0),
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
+    assert_eq!(
+        zero.len(),
+        4,
+        "min_connections: Some(0) must not filter anything"
+    );
 }

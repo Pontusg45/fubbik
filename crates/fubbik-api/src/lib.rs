@@ -2,6 +2,7 @@ pub mod activity;
 pub mod assets;
 pub mod auth;
 pub mod chunks;
+pub mod collections;
 pub mod connections;
 pub mod error;
 pub mod extract;
@@ -44,6 +45,7 @@ pub fn router(state: AppState) -> Router {
         .merge(activity::routes::router())
         .merge(auth::routes::router())
         .merge(chunks::routes::router())
+        .merge(collections::routes::router())
         .merge(connections::routes::router())
         .merge(favorites::routes::router())
         .merge(notifications::routes::router())
