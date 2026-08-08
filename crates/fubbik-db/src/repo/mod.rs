@@ -10,3 +10,4 @@ pub mod stats;
 pub mod tag;
 pub mod tag_type;
 pub mod user;
+pub mod workspace;

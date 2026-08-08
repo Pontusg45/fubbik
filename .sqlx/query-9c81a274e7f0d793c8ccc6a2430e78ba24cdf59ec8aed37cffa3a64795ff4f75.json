@@ -1,0 +1,30 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO workspace_space (workspace_id, space_id)\n           SELECT w.id, s.id\n           FROM workspace w\n           JOIN space s ON s.id = $3\n           WHERE w.id = $2 AND w.user_id = $1 AND s.user_id = $1\n           ON CONFLICT (workspace_id, space_id) DO NOTHING\n           RETURNING workspace_id, space_id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "workspace_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "space_id",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "9c81a274e7f0d793c8ccc6a2430e78ba24cdf59ec8aed37cffa3a64795ff4f75"
+}

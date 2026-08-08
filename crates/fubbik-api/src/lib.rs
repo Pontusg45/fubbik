@@ -11,6 +11,7 @@ pub mod spaces;
 pub mod stats;
 pub mod tag_types;
 pub mod tags;
+pub mod workspaces;
 
 use axum::extract::State;
 use axum::routing::get;
@@ -47,6 +48,7 @@ pub fn router(state: AppState) -> Router {
         .merge(stats::routes::router())
         .merge(tag_types::routes::router())
         .merge(tags::routes::router())
+        .merge(workspaces::routes::router())
         .route("/api/health", get(health))
         .with_state(state)
         .fallback(assets::serve)

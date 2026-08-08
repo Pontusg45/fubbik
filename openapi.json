@@ -1308,10 +1308,268 @@
           }
         }
       }
+    },
+    "/api/workspaces": {
+      "get": {
+        "tags": [
+          "crate::workspaces::routes"
+        ],
+        "operationId": "list_workspaces",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Workspace"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "crate::workspaces::routes"
+        ],
+        "operationId": "create_workspace",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateWorkspaceBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Workspace"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/workspaces/{id}": {
+      "get": {
+        "tags": [
+          "crate::workspaces::routes"
+        ],
+        "operationId": "get_workspace",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "crate::workspaces::routes"
+        ],
+        "operationId": "delete_workspace",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "crate::workspaces::routes"
+        ],
+        "operationId": "update_workspace",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateWorkspaceBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Workspace"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/workspaces/{id}/spaces": {
+      "post": {
+        "tags": [
+          "crate::workspaces::routes"
+        ],
+        "operationId": "add_workspace_space",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddSpaceBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceSpaceLink"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/workspaces/{id}/spaces/{spaceId}": {
+      "delete": {
+        "tags": [
+          "crate::workspaces::routes"
+        ],
+        "operationId": "remove_workspace_space",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "spaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
+      "AddSpaceBody": {
+        "type": "object",
+        "description": "Body of `POST /api/workspaces/{id}/spaces` (`packages/api/src/workspaces/routes.ts:60-78`).",
+        "required": [
+          "spaceId"
+        ],
+        "properties": {
+          "spaceId": {
+            "type": "string"
+          }
+        }
+      },
       "AppliesTo": {
         "type": "object",
         "required": [
@@ -1775,6 +2033,24 @@
           }
         }
       },
+      "CreateWorkspaceBody": {
+        "type": "object",
+        "description": "Body of `POST /api/workspaces` (`packages/api/src/workspaces/routes.ts:11-30`):\n`name` (required, trimmed and validated non-blank at the service layer —\nsee `service::create`) and `description` (optional, passed through\nas-is).",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
       "Favorite": {
         "type": "object",
         "description": "`user_favorite` row shape. `order` is `\"order\"` in every SQL statement\nin this module — it is a SQL reserved word, quoted exactly the way\n`\"user\"` is quoted everywhere else in this codebase. Unlike the\ncomposite join tables (`chunk_tag`, `chunk_space`), this table carries\nits own `id` and `user_id`, so listing/removing don't need to go\nthrough the parent `chunk` row — but the row it references still\nbelongs to someone, so `add` below does scope through `chunk` in SQL.\n\n`camelCase` serialisation matches every other wire type in this crate —\nsee the note on `chunk::Chunk` for why that's mandatory, not cosmetic.",
@@ -1858,7 +2134,7 @@
       },
       "MessageResponse": {
         "type": "object",
-        "description": "Shape of every `{ message: \"Deleted\" }` delete response in this domain,\nmatching Node's convention (`_mutating.md`): deletes return 200, not\n204, with this body.",
+        "description": "Shape of every `{ message: \"Deleted\" }` response in this domain,\nmatching Node's convention (`_mutating.md`).",
         "required": [
           "message"
         ],
@@ -2372,6 +2648,139 @@
               "string",
               "null"
             ]
+          }
+        }
+      },
+      "UpdateWorkspaceBody": {
+        "type": "object",
+        "description": "Body of `PATCH /api/workspaces/{id}` (`packages/api/src/workspaces/routes.ts:36-50`).\n\n`description` is tri-state, matching Node's `t.Optional(t.Union([t.String(),\nt.Null()]))`: omitted (`None`) leaves it untouched, explicit `null`\n(`Some(None)`) clears it, a string (`Some(Some(..))`) sets it — same\n`deserialize_some` trick as `spaces::dto::UpdateSpaceBody::description`,\nneeded because a plain `Option<Option<T>>` collapses \"omitted\" and\n\"explicit null\" to the same `None` without it.",
+        "properties": {
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "Workspace": {
+        "type": "object",
+        "description": "`camelCase` serialisation matches every other wire type in this crate —\nsee the note on `chunk::Chunk` for why that's mandatory, not cosmetic.",
+        "required": [
+          "id",
+          "name",
+          "userId",
+          "createdAt",
+          "updatedAt"
+        ],
+        "properties": {
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "userId": {
+            "type": "string"
+          }
+        }
+      },
+      "WorkspaceDetail": {
+        "type": "object",
+        "description": "Response shape of `GET /api/workspaces/{id}`, matching Node's spread\n`{ ...found, spaces }` (`packages/api/src/workspaces/service.ts:19-28`)\n— the workspace row's own fields at the top level, plus a `spaces`\narray, NOT nested under a `workspace` key (contrast\n`fubbik_db::repo::space::SpaceDetail`, which nests `{ space, code }`).\nSee `tests/fixtures/node-contract-2b/workspaces-detail.json`.",
+        "required": [
+          "id",
+          "name",
+          "userId",
+          "createdAt",
+          "updatedAt",
+          "spaces"
+        ],
+        "properties": {
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "spaces": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WorkspaceSpaceSummary"
+            }
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "userId": {
+            "type": "string"
+          }
+        }
+      },
+      "WorkspaceSpaceLink": {
+        "type": "object",
+        "description": "`workspace_space` has only these two columns (no `id`, no timestamps) —\nthis is both the row shape and the response shape of\n`POST /api/workspaces/{id}/spaces`, matching Node's\n`addSpaceToWorkspace` return value: either the row just inserted, or,\non an `onConflictDoNothing` no-op, a literal `{ workspaceId, spaceId }`\nfallback (`packages/db/src/repository/workspace.ts:94-99`) —\nstructurally identical either way.",
+        "required": [
+          "workspaceId",
+          "spaceId"
+        ],
+        "properties": {
+          "spaceId": {
+            "type": "string"
+          },
+          "workspaceId": {
+            "type": "string"
+          }
+        }
+      },
+      "WorkspaceSpaceSummary": {
+        "type": "object",
+        "description": "Bare summary of a space attached to a workspace — `{id, name, kind}`\nonly, matching Node's `getSpacesForWorkspace`\n(`packages/db/src/repository/workspace.ts:80-92`), which selects just\nthese three columns, not a full `Space` row (no `description`,\n`userId`, timestamps). See\n`tests/fixtures/node-contract-2b/workspaces-detail.json`.",
+        "required": [
+          "id",
+          "name",
+          "kind"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
           }
         }
       }

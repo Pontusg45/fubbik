@@ -1,0 +1,56 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE workspace SET\n                 name = COALESCE($3, name),\n                 description = CASE WHEN $4::bool THEN $5::text ELSE description END,\n                 updated_at = now()\n               WHERE id = $1 AND user_id = $2\n               RETURNING id, name, description, user_id,\n                         created_at AS \"created_at: UtcTimestamp\",\n                         updated_at AS \"updated_at: UtcTimestamp\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "user_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "created_at: UtcTimestamp",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 5,
+        "name": "updated_at: UtcTimestamp",
+        "type_info": "Timestamp"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Bool",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "c405a243db6b0661fb206cf86eb41ef253cc8ef56eae8be0bdc60af57750b2dc"
+}

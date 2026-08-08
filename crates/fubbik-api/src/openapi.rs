@@ -42,6 +42,13 @@ use utoipa::OpenApi;
         crate::tags::routes::update_tag,
         crate::tags::routes::delete_tag,
         crate::tags::routes::merge_tags,
+        crate::workspaces::routes::list_workspaces,
+        crate::workspaces::routes::create_workspace,
+        crate::workspaces::routes::get_workspace,
+        crate::workspaces::routes::update_workspace,
+        crate::workspaces::routes::delete_workspace,
+        crate::workspaces::routes::add_workspace_space,
+        crate::workspaces::routes::remove_workspace_space,
     ),
     components(schemas(
         fubbik_db::repo::chunk::Chunk,
@@ -84,6 +91,14 @@ use utoipa::OpenApi;
         crate::tags::dto::UpdateTagBody,
         crate::tags::dto::MergeBody,
         crate::tags::dto::MessageResponse,
+        fubbik_db::repo::workspace::Workspace,
+        fubbik_db::repo::workspace::WorkspaceSpaceSummary,
+        fubbik_db::repo::workspace::WorkspaceSpaceLink,
+        crate::workspaces::dto::CreateWorkspaceBody,
+        crate::workspaces::dto::UpdateWorkspaceBody,
+        crate::workspaces::dto::AddSpaceBody,
+        crate::workspaces::dto::WorkspaceDetail,
+        crate::workspaces::dto::MessageResponse,
     ))
 )]
 pub struct ApiDoc;
