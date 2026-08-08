@@ -1,0 +1,46 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, user_id, chunk_id, \"order\", created_at AS \"created_at: UtcTimestamp\"\n           FROM user_favorite\n           WHERE user_id = $1\n           ORDER BY \"order\" ASC, id ASC",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "user_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "chunk_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "order",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 4,
+        "name": "created_at: UtcTimestamp",
+        "type_info": "Timestamp"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "8162d13e32186916ab2c53c9d670beac1faa97358fa8ded0c7098ea30feb7bfe"
+}

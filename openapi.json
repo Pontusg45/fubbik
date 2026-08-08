@@ -491,6 +491,132 @@
         }
       }
     },
+    "/api/favorites": {
+      "get": {
+        "tags": [
+          "crate::favorites::routes"
+        ],
+        "operationId": "list_favorites",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Favorite"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "crate::favorites::routes"
+        ],
+        "summary": "Status is set to 201 unconditionally, even when the chunk was already\nfavorited and the body is `null` — matching Node's `Effect.tap` block,\nwhich sets `ctx.set.status = 201` before ever inspecting the result\n(`packages/api/src/favorites/routes.ts:11-29`, `_mutating.md`). This is\na deliberately preserved quirk, not a bug: do not \"improve\" it to\n200/409/an idempotent echo of the existing row.",
+        "operationId": "add_favorite",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateFavoriteBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "null"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Favorite"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/favorites/reorder": {
+      "put": {
+        "tags": [
+          "crate::favorites::routes"
+        ],
+        "operationId": "reorder_favorites",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ReorderEntry"
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/favorites/{chunkId}": {
+      "delete": {
+        "tags": [
+          "crate::favorites::routes"
+        ],
+        "summary": "Always 200 with `{\"message\":\"Deleted\"}`, even if the chunk was never\nfavorited by this caller — Node's `removeFavorite` has no 404 path at\nall (`_mutating.md`: \"no way to distinguish 'deleted something' from\n'there was nothing to delete'\"). Reproduced faithfully, not \"fixed\".",
+        "operationId": "remove_favorite",
+        "parameters": [
+          {
+            "name": "chunkId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/notifications": {
       "get": {
         "tags": [
@@ -1559,6 +1685,18 @@
           }
         }
       },
+      "CreateFavoriteBody": {
+        "type": "object",
+        "description": "Body of `POST /api/favorites` (`packages/api/src/favorites/routes.ts:12-14`):\n`chunkId` only, capped at 100 chars matching Node's `t.String({ maxLength: 100 })`.",
+        "required": [
+          "chunkId"
+        ],
+        "properties": {
+          "chunkId": {
+            "type": "string"
+          }
+        }
+      },
       "CreateSpaceBody": {
         "type": "object",
         "required": [
@@ -1633,6 +1771,36 @@
             ]
           },
           "name": {
+            "type": "string"
+          }
+        }
+      },
+      "Favorite": {
+        "type": "object",
+        "description": "`user_favorite` row shape. `order` is `\"order\"` in every SQL statement\nin this module — it is a SQL reserved word, quoted exactly the way\n`\"user\"` is quoted everywhere else in this codebase. Unlike the\ncomposite join tables (`chunk_tag`, `chunk_space`), this table carries\nits own `id` and `user_id`, so listing/removing don't need to go\nthrough the parent `chunk` row — but the row it references still\nbelongs to someone, so `add` below does scope through `chunk` in SQL.\n\n`camelCase` serialisation matches every other wire type in this crate —\nsee the note on `chunk::Chunk` for why that's mandatory, not cosmetic.",
+        "required": [
+          "id",
+          "userId",
+          "chunkId",
+          "order",
+          "createdAt"
+        ],
+        "properties": {
+          "chunkId": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string"
+          },
+          "order": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "userId": {
             "type": "string"
           }
         }
@@ -1775,6 +1943,23 @@
             "items": {
               "type": "string"
             }
+          }
+        }
+      },
+      "ReorderEntry": {
+        "type": "object",
+        "description": "One entry of `PUT /api/favorites/reorder`'s bare-array body\n(`packages/api/src/favorites/routes.ts:39-44`). The body is a plain\n`t.Array(...)`, not wrapped in an object — see `ReorderBody` below.",
+        "required": [
+          "chunkId",
+          "order"
+        ],
+        "properties": {
+          "chunkId": {
+            "type": "string"
+          },
+          "order": {
+            "type": "integer",
+            "format": "int32"
           }
         }
       },
