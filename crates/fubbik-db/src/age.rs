@@ -621,8 +621,12 @@ pub async fn get_chunks_affected_by_requirement_in_graph(
             "MATCH (r:requirement {{id: '{escaped}'}})-[:covers]->(c:chunk)-[:connects*1..{hops}]-(related:chunk) \
              RETURN DISTINCT related.id AS id"
         );
-        if let Ok(rows) = cypher_in_graph(pool, graph, &related_query).await {
-            ids.extend(rows.iter().filter_map(|v| as_string(Some(v))));
+        match cypher_in_graph(pool, graph, &related_query).await {
+            Ok(rows) => ids.extend(rows.iter().filter_map(|v| as_string(Some(v)))),
+            Err(err) => tracing::warn!(
+                error = %err,
+                "get_chunks_affected_by_requirement: hop-traversal query failed, keeping only the covered chunks already found"
+            ),
         }
     }
 

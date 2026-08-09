@@ -426,7 +426,10 @@ pub async fn execute_search(pool: &PgPool, user_id: &str, query: &SearchQueryBod
 
     let tag_rows = tag::tags_for_chunks(pool, user_id, &chunk_ids)
         .await
-        .unwrap_or_default();
+        .unwrap_or_else(|err| {
+            tracing::error!(error = %err, "tag::tags_for_chunks failed, degrading to no tags");
+            Vec::new()
+        });
     let mut tags_by_chunk: std::collections::HashMap<String, Vec<String>> =
         std::collections::HashMap::new();
     for row in tag_rows {
@@ -438,7 +441,13 @@ pub async fn execute_search(pool: &PgPool, user_id: &str, query: &SearchQueryBod
 
     let conn_rows = connection::count_for_chunks(pool, &chunk_ids)
         .await
-        .unwrap_or_default();
+        .unwrap_or_else(|err| {
+            tracing::error!(
+                error = %err,
+                "connection::count_for_chunks failed, degrading to no connection counts"
+            );
+            Vec::new()
+        });
     let conn_by_chunk: std::collections::HashMap<String, i64> = conn_rows
         .into_iter()
         .map(|r| (r.chunk_id, r.count))
