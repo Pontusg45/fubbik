@@ -276,6 +276,18 @@ pub struct ListParams {
     /// behaviour would need a filter this port does not expose, same as
     /// Node.
     pub space_id: Option<String>,
+    /// Restricts the result to exactly these ids (still ANDed with the
+    /// mandatory `user_id = ..` predicate below, and with every other
+    /// filter). Added for Task 9's graph-clause search wiring
+    /// (`near`/`path`/`affected-by`): Apache AGE resolves matching chunk
+    /// ids from outside this crate's user-scoped SQL entirely, so a graph
+    /// edge can point at another user's chunk. Applying those ids as an
+    /// ordinary filter *on top of* this function's own `user_id` predicate
+    /// — rather than fetching by id first and trusting the result — is
+    /// what keeps a resolved graph id from ever being able to bypass
+    /// ownership scoping. See
+    /// `crates/fubbik-api/tests/search.rs`'s cross-user graph-edge test.
+    pub ids: Option<Vec<String>>,
     pub limit: i64,
     pub offset: i64,
 }
@@ -293,6 +305,7 @@ impl Default for ListParams {
             enrichment: None,
             min_connections: None,
             space_id: None,
+            ids: None,
             limit: 50,
             offset: 0,
         }
@@ -357,6 +370,9 @@ fn push_filters<'a>(
     }
     if let Some(after) = &params.after {
         qb.push(" AND updated_at >= ").push_bind(*after);
+    }
+    if let Some(ids) = &params.ids {
+        qb.push(" AND id = ANY(").push_bind(ids).push(")");
     }
     if let Some(min_connections) = params.min_connections
         && min_connections > 0

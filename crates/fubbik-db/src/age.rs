@@ -1,3 +1,6 @@
+use std::collections::HashMap;
+
+use fubbik_core::error::AppResult;
 use sqlx::{Acquire, Executor, PgPool, Row};
 
 /// Escapes a value for use inside a Cypher single-quoted literal.
@@ -19,8 +22,22 @@ pub async fn is_available(pool: &PgPool) -> bool {
 /// as JSON. Returns an empty vec when AGE is unavailable, matching the TS
 /// behaviour of degrading rather than failing.
 ///
-/// The `::text` cast is essential: sqlx has no decoder for `agtype`, so the
-/// value must be stringified by Postgres before it crosses the wire.
+/// Thin wrapper over [`cypher_in_graph`] fixed to the `"knowledge"` graph —
+/// every caller in this module before Task 9 only ever needed that one
+/// graph, so this signature is left untouched (two args, not three) rather
+/// than threading a graph parameter through every existing call site in
+/// `tests/age.rs`. [`get_neighborhood_in_graph`] is the one place that
+/// genuinely needs a variable graph name (so its own degradation test can
+/// point at a nonexistent graph), and it calls [`cypher_in_graph`] directly.
+pub async fn cypher(pool: &PgPool, query: &str) -> Result<Vec<serde_json::Value>, sqlx::Error> {
+    cypher_in_graph(pool, "knowledge", query).await
+}
+
+/// The `graph`-parameterized core of [`cypher`]. Returns a single scalar
+/// column (aliased `v`) per row, parsed via [`parse_agtype`].
+///
+/// The `::varchar` cast is essential: sqlx has no decoder for `agtype`, so
+/// the value must be stringified by Postgres before it crosses the wire.
 ///
 /// # Safety
 ///
@@ -34,7 +51,11 @@ pub async fn is_available(pool: &PgPool) -> bool {
 /// escaping `$$`). This flaw is inherited unchanged from the TypeScript
 /// original (`packages/db/src/age/client.ts`) and is not addressed by this
 /// helper.
-pub async fn cypher(pool: &PgPool, query: &str) -> Result<Vec<serde_json::Value>, sqlx::Error> {
+async fn cypher_in_graph(
+    pool: &PgPool,
+    graph: &str,
+    query: &str,
+) -> Result<Vec<serde_json::Value>, sqlx::Error> {
     if !is_available(pool).await {
         return Ok(Vec::new());
     }
@@ -45,40 +66,9 @@ pub async fn cypher(pool: &PgPool, query: &str) -> Result<Vec<serde_json::Value>
     // varchar coercion uses the type's output representation and handles
     // every shape. `agtype_out(v)` also produces the right string but
     // returns pseudo-type cstring, which sqlx cannot decode.
-    let sql =
-        format!("SELECT v::varchar AS v FROM cypher('knowledge', $$ {query} $$) AS (v agtype)");
+    let sql = format!("SELECT v::varchar AS v FROM cypher('{graph}', $$ {query} $$) AS (v agtype)");
 
-    // A pooled connection is not guaranteed to have gone through
-    // `connect()`'s `after_connect` hook — `#[sqlx::test]`-provisioned pools
-    // bypass it entirely. AGE's `cypher()` function is unresolvable without
-    // a session that has run `LOAD 'age'` (schema-qualifying the call is not
-    // enough: `ag_catalog.cypher(...)` still fails with "unhandled
-    // cypher(cstring) function call" if the library was never loaded).
-    // Acquiring a single connection and priming it here, then running the
-    // query on that same connection, makes `cypher()` self-sufficient
-    // regardless of how the pool was built.
-    let mut conn = pool.acquire().await?;
-    conn.execute("LOAD 'age';").await?;
-
-    // `SET search_path` (session-scoped) would persist on this connection
-    // after it is returned to the pool — sqlx runs no `DISCARD ALL` on
-    // release. That is exactly the mechanism that once broke
-    // `sqlx::migrate!`'s bookkeeping-table resolution (see the comment on
-    // `connect`'s `after_connect` hook in `lib.rs`), just one step removed:
-    // instead of every connection starting with the mutation, a single
-    // connection returns to the pool carrying it, and whichever caller
-    // acquires that connection next inherits it silently. `SET LOCAL`
-    // inside a transaction is scoped to that transaction only — it reverts
-    // automatically on COMMIT or ROLLBACK, including on the error path via
-    // `?`, so the connection can never leave this function with a mutated
-    // search_path.
-    let mut tx = conn.begin().await?;
-    sqlx::query(r#"SET LOCAL search_path = ag_catalog, "$user", public;"#)
-        .execute(&mut *tx)
-        .await?;
-
-    let rows = sqlx::query(&sql).fetch_all(&mut *tx).await?;
-    tx.commit().await?;
+    let rows = run_primed(pool, &sql).await?;
 
     Ok(rows
         .into_iter()
@@ -91,6 +81,94 @@ pub async fn cypher(pool: &PgPool, query: &str) -> Result<Vec<serde_json::Value>
             parsed
         })
         .collect())
+}
+
+/// Multi-column sibling of [`cypher_in_graph`], for queries that `RETURN`
+/// more than one value per row (e.g. `source`/`target`/`relation` triples).
+/// Every named column is cast `::varchar` (same rationale as
+/// [`cypher_in_graph`]) and parsed via [`parse_agtype`]; a row is returned
+/// as a `column name -> parsed value` map so callers can pull out whichever
+/// columns they asked for by name.
+async fn cypher_multi(
+    pool: &PgPool,
+    graph: &str,
+    query: &str,
+    columns: &[&str],
+) -> Result<Vec<HashMap<String, serde_json::Value>>, sqlx::Error> {
+    if !is_available(pool).await {
+        return Ok(Vec::new());
+    }
+
+    let select_list = columns
+        .iter()
+        .map(|c| format!("{c}::varchar AS {c}"))
+        .collect::<Vec<_>>()
+        .join(", ");
+    let column_defs = columns
+        .iter()
+        .map(|c| format!("{c} agtype"))
+        .collect::<Vec<_>>()
+        .join(", ");
+    let sql =
+        format!("SELECT {select_list} FROM cypher('{graph}', $$ {query} $$) AS ({column_defs})");
+
+    let rows = run_primed(pool, &sql).await?;
+
+    Ok(rows
+        .into_iter()
+        .map(|row| {
+            columns
+                .iter()
+                .filter_map(|c| {
+                    let raw: String = row.try_get(*c).ok()?;
+                    let parsed = parse_agtype(&raw)?;
+                    Some((c.to_string(), parsed))
+                })
+                .collect()
+        })
+        .collect())
+}
+
+/// Shared connection-priming plumbing for both [`cypher_in_graph`] and
+/// [`cypher_multi`]: acquires a single pooled connection, primes it with
+/// `LOAD 'age'`, runs `sql` inside a transaction with `search_path` scoped
+/// via `SET LOCAL`, and returns the raw rows.
+///
+/// A pooled connection is not guaranteed to have gone through `connect()`'s
+/// `after_connect` hook — `#[sqlx::test]`-provisioned pools bypass it
+/// entirely. AGE's `cypher()` function is unresolvable without a session
+/// that has run `LOAD 'age'` (schema-qualifying the call is not enough:
+/// `ag_catalog.cypher(...)` still fails with "unhandled cypher(cstring)
+/// function call" if the library was never loaded). Acquiring a single
+/// connection and priming it here, then running the query on that same
+/// connection, makes `cypher()` self-sufficient regardless of how the pool
+/// was built.
+///
+/// `SET search_path` (session-scoped) would persist on this connection
+/// after it is returned to the pool — sqlx runs no `DISCARD ALL` on
+/// release. That is exactly the mechanism that once broke
+/// `sqlx::migrate!`'s bookkeeping-table resolution (see the comment on
+/// `connect`'s `after_connect` hook in `lib.rs`), just one step removed:
+/// instead of every connection starting with the mutation, a single
+/// connection returns to the pool carrying it, and whichever caller
+/// acquires that connection next inherits it silently. `SET LOCAL` inside a
+/// transaction is scoped to that transaction only — it reverts
+/// automatically on COMMIT or ROLLBACK, including on the error path via
+/// `?`, so the connection can never leave this function with a mutated
+/// search_path.
+async fn run_primed(pool: &PgPool, sql: &str) -> Result<Vec<sqlx::postgres::PgRow>, sqlx::Error> {
+    let mut conn = pool.acquire().await?;
+    conn.execute("LOAD 'age';").await?;
+
+    let mut tx = conn.begin().await?;
+    sqlx::query(r#"SET LOCAL search_path = ag_catalog, "$user", public;"#)
+        .execute(&mut *tx)
+        .await?;
+
+    let rows = sqlx::query(sql).fetch_all(&mut *tx).await?;
+    tx.commit().await?;
+
+    Ok(rows)
 }
 
 /// Parses an agtype text representation into JSON.
@@ -171,6 +249,350 @@ fn strip_type_suffixes(raw: &str) -> String {
     }
 
     out
+}
+
+// ---------------------------------------------------------------------------
+// Seed helpers (test-only in practice, but not `#[cfg(test)]`-gated: the
+// integration tests in `tests/age_queries.rs` need them as ordinary crate
+// items, the same way `tests/age.rs` calls `age::cypher` directly).
+// ---------------------------------------------------------------------------
+
+/// `MERGE (:chunk {id: '...'})` — idempotent vertex creation for a `chunk`
+/// vertex. Matches Node's `ensureVertex("chunk", id)`
+/// (`packages/db/src/repository/chunk.ts:306`), hardcoded to the `chunk`
+/// label since that is the only vertex kind this port's query helpers (and
+/// their tests) need to seed.
+pub async fn ensure_vertex(pool: &PgPool, chunk_id: &str) -> AppResult<()> {
+    cypher(
+        pool,
+        &format!("MERGE (:chunk {{id: '{}'}})", esc_cypher(chunk_id)),
+    )
+    .await?;
+    Ok(())
+}
+
+/// Creates a `:connects` edge between two `chunk` vertices, carrying
+/// `relation` as an edge property — the real shape Node's connections
+/// repository writes (`packages/db/src/repository/connection.ts:22`:
+/// `createEdge("connects", "chunk", sourceId, "chunk", targetId, { id,
+/// relation })`, minus the `id` property, which nothing in this module's
+/// query helpers reads).
+pub async fn create_edge(
+    pool: &PgPool,
+    relation: &str,
+    from_id: &str,
+    to_id: &str,
+) -> AppResult<()> {
+    let query = format!(
+        "MATCH (a:chunk {{id: '{}'}}), (b:chunk {{id: '{}'}}) CREATE (a)-[:connects {{relation: '{}'}}]->(b)",
+        esc_cypher(from_id),
+        esc_cypher(to_id),
+        esc_cypher(relation)
+    );
+    cypher(pool, &query).await?;
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Query helpers wired into search (Task 9) and staleness's scan-impact.
+// ---------------------------------------------------------------------------
+
+/// Extracts a JSON string value out of an already-parsed agtype row.
+fn as_string(v: Option<&serde_json::Value>) -> Option<String> {
+    v.and_then(|v| v.as_str()).map(str::to_string)
+}
+
+/// The `graph`-parameterized core query behind [`get_neighborhood`]. The
+/// `graph` parameter exists purely so the degradation test can point at a
+/// nonexistent graph, simulating AGE being unavailable — every real caller
+/// goes through [`get_neighborhood`], which always passes `"knowledge"`.
+///
+/// Degrades to `Ok(vec![])` on any query failure (nonexistent graph,
+/// nonexistent chunk vertex, AGE extension missing, etc.), never
+/// propagating an error — Node wraps every graph clause in
+/// `Effect.orElse(() => Effect.succeed([]))`
+/// (`packages/api/src/search/service.ts:92`), and an unavailable graph must
+/// degrade the same way here.
+pub async fn get_neighborhood_in_graph(
+    pool: &PgPool,
+    graph: &str,
+    chunk_id: &str,
+    hops: i32,
+) -> AppResult<Vec<String>> {
+    let query = format!(
+        "MATCH (a:chunk {{id: '{}'}})-[*1..{}]-(b:chunk) RETURN DISTINCT b.id",
+        esc_cypher(chunk_id),
+        hops
+    );
+    match cypher_in_graph(pool, graph, &query).await {
+        Ok(rows) => Ok(rows.iter().filter_map(|v| as_string(Some(v))).collect()),
+        Err(_) => Ok(vec![]),
+    }
+}
+
+/// Port of Node's `getNeighborhood` (`packages/db/src/age/query.ts:37-43`):
+/// every `chunk` reachable from `chunk_id` within `hops` hops, in either
+/// direction, against the real `"knowledge"` graph.
+pub async fn get_neighborhood(pool: &PgPool, chunk_id: &str, hops: i32) -> AppResult<Vec<String>> {
+    get_neighborhood_in_graph(pool, "knowledge", chunk_id, hops).await
+}
+
+/// One edge on a resolved path, matching Node's `PathEdge`
+/// (`packages/db/src/age/query.ts:322-326`).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PathEdgeInfo {
+    pub source: String,
+    pub target: String,
+    pub relation: String,
+}
+
+/// The result of [`find_shortest_path_with_details`]: the chain of chunk
+/// ids from source to target (inclusive of both endpoints) plus the edges
+/// connecting each consecutive pair.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct PathDetails {
+    pub chunk_ids: Vec<String>,
+    pub edges: Vec<PathEdgeInfo>,
+}
+
+/// Port of Node's `findShortestPathWithDetails`
+/// (`packages/db/src/age/query.ts:334-411`). Two queries, not one: AGE 1.x
+/// has no `shortestPath()`/list-comprehension support strong enough to do
+/// this in a single Cypher statement (see Node's own comment on
+/// `findShortestPath`), so Node — and this port — first checks reachability
+/// with a bounded variable-length traversal, then fetches every `:connects`
+/// edge in the whole graph and runs a plain BFS in application code to
+/// reconstruct the actual path and its edges.
+///
+/// Degrades to `Ok(None)` on any query failure, matching Node's
+/// `Effect.catchAll(() => Effect.succeed(null))`
+/// (`packages/db/src/age/query.ts:409`) — the same "no path" result a
+/// caller gets when one genuinely doesn't exist, which is what lets the
+/// search service's `Effect.orElse` wrapper at the call site
+/// (`service.ts:99`) be redundant-but-harmless rather than load-bearing.
+pub async fn find_shortest_path_with_details(
+    pool: &PgPool,
+    from: &str,
+    to: &str,
+) -> AppResult<Option<PathDetails>> {
+    let check_query = format!(
+        "MATCH (a:chunk {{id: '{}'}})-[*1..10]-(b:chunk {{id: '{}'}}) RETURN b.id AS found LIMIT 1",
+        esc_cypher(from),
+        esc_cypher(to)
+    );
+    let reachable = match cypher(pool, &check_query).await {
+        Ok(rows) => !rows.is_empty(),
+        Err(_) => return Ok(None),
+    };
+    if !reachable {
+        return Ok(None);
+    }
+
+    let edges_query = "MATCH (x:chunk)-[e:connects]->(y:chunk) RETURN x.id AS source, y.id AS target, e.relation AS relation";
+    let rows = match cypher_multi(
+        pool,
+        "knowledge",
+        edges_query,
+        &["source", "target", "relation"],
+    )
+    .await
+    {
+        Ok(rows) => rows,
+        Err(_) => return Ok(None),
+    };
+
+    // Undirected adjacency: a `:connects` edge is matched in either
+    // direction by the reachability check above, so the BFS must be able
+    // to traverse it both ways too.
+    let mut adjacency: HashMap<String, Vec<(String, String)>> = HashMap::new();
+    for row in &rows {
+        let source = as_string(row.get("source"));
+        let target = as_string(row.get("target"));
+        let relation = as_string(row.get("relation"));
+        let (Some(s), Some(t), Some(r)) = (source, target, relation) else {
+            continue;
+        };
+        adjacency
+            .entry(s.clone())
+            .or_default()
+            .push((t.clone(), r.clone()));
+        adjacency.entry(t).or_default().push((s, r));
+    }
+
+    let mut visited: std::collections::HashSet<String> = std::collections::HashSet::new();
+    let mut parent: HashMap<String, Option<(String, String)>> = HashMap::new();
+    let mut queue: std::collections::VecDeque<String> = std::collections::VecDeque::new();
+    visited.insert(from.to_string());
+    parent.insert(from.to_string(), None);
+    queue.push_back(from.to_string());
+
+    while let Some(current) = queue.pop_front() {
+        if current == to {
+            break;
+        }
+        if let Some(neighbors) = adjacency.get(&current) {
+            for (neighbor, relation) in neighbors {
+                if !visited.contains(neighbor) {
+                    visited.insert(neighbor.clone());
+                    parent.insert(neighbor.clone(), Some((current.clone(), relation.clone())));
+                    queue.push_back(neighbor.clone());
+                }
+            }
+        }
+    }
+
+    if !parent.contains_key(to) {
+        return Ok(None);
+    }
+
+    let mut chunk_ids = Vec::new();
+    let mut edges = Vec::new();
+    let mut cursor = Some(to.to_string());
+    while let Some(c) = cursor {
+        chunk_ids.push(c.clone());
+        match parent.get(&c).cloned().flatten() {
+            Some((from_node, relation)) => {
+                edges.push(PathEdgeInfo {
+                    source: from_node.clone(),
+                    target: c,
+                    relation,
+                });
+                cursor = Some(from_node);
+            }
+            None => cursor = None,
+        }
+    }
+    chunk_ids.reverse();
+    edges.reverse();
+
+    Ok(Some(PathDetails { chunk_ids, edges }))
+}
+
+/// Port of Node's `getChunksAffectedByRequirement`
+/// (`packages/db/src/age/query.ts:90-96`): every chunk within `hops` hops
+/// of any chunk a requirement `:covers`, including the covered chunks
+/// themselves (`*0..hops`). Degrades to `Ok(vec![])` on any query failure.
+pub async fn get_chunks_affected_by_requirement(
+    pool: &PgPool,
+    requirement_id: &str,
+    hops: i32,
+) -> AppResult<Vec<String>> {
+    let query = format!(
+        "MATCH (r:requirement {{id: '{}'}})-[:covers]->(c:chunk)-[:connects*0..{}]-(related:chunk) \
+         RETURN DISTINCT related.id AS id",
+        esc_cypher(requirement_id),
+        hops
+    );
+    match cypher(pool, &query).await {
+        Ok(rows) => Ok(rows.iter().filter_map(|v| as_string(Some(v))).collect()),
+        Err(_) => Ok(vec![]),
+    }
+}
+
+/// Relation-type weights from Node's `RELATION_WEIGHT`
+/// (`packages/db/src/age/impact.ts:9-15`) — a relation not in this table
+/// (including AGE's own `"connects"` edge label, if a caller ever seeds an
+/// edge with no `relation` property set) falls back to the same `0.2`
+/// Node's own object-index-miss (`RELATION_WEIGHT[rel] ?? 0.2`) produces.
+fn relation_weight(relation: &str) -> f64 {
+    match relation {
+        "depends_on" => 1.0,
+        "extends" => 0.8,
+        "part_of" => 0.7,
+        "references" => 0.3,
+        "related_to" => 0.2,
+        _ => 0.2,
+    }
+}
+
+/// Distance-decay weights from Node's `DISTANCE_DECAY`
+/// (`packages/db/src/age/impact.ts:7`) — any hop count outside `{1,2,3}`
+/// (impossible given the query's own `*1..3` bound, but mirrored for
+/// parity) falls back to `0.1`, matching `DISTANCE_DECAY[hops] ?? 0.1`.
+fn distance_decay(hops: i64) -> f64 {
+    match hops {
+        1 => 0.9,
+        2 => 0.5,
+        3 => 0.2,
+        _ => 0.1,
+    }
+}
+
+/// Port of Node's `computeImpactRipple`
+/// (`packages/db/src/age/impact.ts:24-58`): every chunk downstream of
+/// `chunk_id` within 3 hops along `:connects` edges, weighted by hop
+/// distance and the *weakest* relation type on the path, keeping only the
+/// best (highest-degree) score per downstream chunk and dropping any chunk
+/// whose best degree doesn't clear `0.1`.
+///
+/// Returns only the surviving chunk ids — not Node's richer
+/// `{chunkId, degree, hops, path}[]` — because nothing in this port reads
+/// the degree/hops/path breakdown outside the (also simplified) staleness
+/// detail message `staleness::flag_impact_ripple` writes; see that
+/// function's doc comment.
+///
+/// **Does not port Node's exact Cypher.** Node's query
+/// (`impact.ts:26-30`) does `RETURN ..., length(r) AS hops, [rel IN r |
+/// rel.relation] AS path` — both `length()` over a variable-length
+/// relationship list and the `[rel IN r | rel.relation]` list
+/// comprehension fail against this workspace's AGE 1.7.0 with `length()
+/// argument must resolve to a scalar` / `could not find properties for
+/// rel` respectively (verified directly against `fubbik-rs-db`, not a
+/// guess). This port instead returns the raw relationship list `r` and
+/// derives `hops` (`.len()`) and each edge's `relation` property in Rust
+/// after parsing — same inputs, same weighting formula below, no AGE
+/// version-specific Cypher feature required.
+pub async fn compute_impact_ripple(pool: &PgPool, chunk_id: &str) -> AppResult<Vec<String>> {
+    let escaped = esc_cypher(chunk_id);
+    let query = format!(
+        "MATCH (source:chunk {{id: '{escaped}'}})-[r:connects*1..3]->(downstream:chunk) \
+         WHERE downstream.id <> '{escaped}' \
+         RETURN downstream.id AS did, r AS path"
+    );
+    let rows = match cypher_multi(pool, "knowledge", &query, &["did", "path"]).await {
+        Ok(rows) => rows,
+        Err(_) => return Ok(vec![]),
+    };
+
+    let mut best: HashMap<String, f64> = HashMap::new();
+    for row in &rows {
+        let Some(did) = as_string(row.get("did")) else {
+            continue;
+        };
+        let edges = row.get("path").and_then(|v| v.as_array());
+        let Some(edges) = edges else {
+            continue;
+        };
+        let hops = edges.len() as i64;
+        let relations: Vec<String> = edges
+            .iter()
+            .filter_map(|e| e.get("properties")?.get("relation")?.as_str())
+            .map(str::to_string)
+            .collect();
+
+        let distance_factor = distance_decay(hops);
+        let relation_factor = relations
+            .iter()
+            .map(|r| relation_weight(r))
+            .fold(1.0_f64, f64::min);
+        let degree = distance_factor * relation_factor;
+
+        if degree <= 0.1 {
+            continue;
+        }
+
+        best.entry(did)
+            .and_modify(|d| {
+                if degree > *d {
+                    *d = degree;
+                }
+            })
+            .or_insert(degree);
+    }
+
+    let mut ids: Vec<String> = best.into_keys().collect();
+    ids.sort();
+    Ok(ids)
 }
 
 #[cfg(test)]

@@ -114,6 +114,7 @@ impl ListChunksQuery {
             enrichment: self.enrichment,
             min_connections,
             space_id: self.space_id,
+            ids: None,
             limit: self
                 .limit
                 .and_then(|s| s.parse().ok())
