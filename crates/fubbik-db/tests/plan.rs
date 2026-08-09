@@ -1282,6 +1282,38 @@ async fn cannot_remove_another_users_task_dependency(pool: PgPool) {
 // ── Task external links ──────────────────────────────────────────────
 
 #[sqlx::test]
+async fn list_task_links_is_user_scoped(pool: PgPool) {
+    let alice = seed_user(&pool, "alice").await;
+    let bob = seed_user(&pool, "bob").await;
+    let p = plan::create(&pool, &alice, "p", None, None).await.unwrap();
+    let t = seed_task(&pool, &alice, &p.id, "a").await;
+    plan::add_task_link(
+        &pool,
+        &alice,
+        &p.id,
+        &t.id,
+        "url",
+        "https://alice.example",
+        None,
+    )
+    .await
+    .unwrap();
+
+    let bobs_view = plan::list_task_links(&pool, &bob, &p.id, &t.id)
+        .await
+        .unwrap();
+    assert!(
+        bobs_view.is_empty(),
+        "bob must not read alice's task links, even by a correct task id"
+    );
+
+    let alices_view = plan::list_task_links(&pool, &alice, &p.id, &t.id)
+        .await
+        .unwrap();
+    assert_eq!(alices_view.len(), 1);
+}
+
+#[sqlx::test]
 async fn cannot_add_a_link_to_another_users_task(pool: PgPool) {
     let alice = seed_user(&pool, "alice").await;
     let bob = seed_user(&pool, "bob").await;
