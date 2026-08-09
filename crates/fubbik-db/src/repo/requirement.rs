@@ -1,0 +1,41 @@
+//! Deliberately minimal: the `requirement` table has no CRUD surface in
+//! this port yet (no route domain, no service layer) — the only reason
+//! this module exists is to back `GET /api/search/autocomplete?field=requirement`,
+//! the one place Node's search domain reaches into `requirement` at all
+//! (`packages/api/src/search/service.ts:274-279`). Do not add more to this
+//! module speculatively; a real `requirement` domain port belongs in its
+//! own task.
+
+use fubbik_core::error::AppResult;
+use sqlx::PgPool;
+
+/// One `(id, title)` match from [`search_titles`].
+#[derive(Debug, Clone)]
+pub struct RequirementTitleMatch {
+    pub id: String,
+    pub title: String,
+}
+
+/// Direct port of Node's `searchRequirementTitles`
+/// (`packages/db/src/repository/requirement.ts:292-299`) — same shape as
+/// `chunk::search_titles`, and the same three things that look like bugs
+/// but are the ported behaviour: not scoped by `user_id`, `ILIKE
+/// '%prefix%'` with the pattern unescaped, and no `ORDER BY`. See
+/// `chunk::search_titles`'s doc comment for the full rationale; it applies
+/// here identically.
+pub async fn search_titles(
+    pool: &PgPool,
+    prefix: &str,
+    limit: i64,
+) -> AppResult<Vec<RequirementTitleMatch>> {
+    let pattern = format!("%{prefix}%");
+    let rows = sqlx::query_as!(
+        RequirementTitleMatch,
+        r#"SELECT id, title FROM requirement WHERE title ILIKE $1 LIMIT $2"#,
+        pattern,
+        limit
+    )
+    .fetch_all(pool)
+    .await?;
+    Ok(rows)
+}

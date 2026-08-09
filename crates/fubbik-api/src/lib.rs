@@ -53,6 +53,7 @@ pub fn router(state: AppState) -> Router {
         .merge(favorites::routes::router())
         .merge(notifications::routes::router())
         .merge(plans::routes::router())
+        .merge(search::routes::router())
         .merge(settings::routes::router())
         .merge(spaces::routes::router())
         .merge(staleness::routes::router())

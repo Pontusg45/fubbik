@@ -7,6 +7,7 @@ pub mod connection;
 pub mod favorite;
 pub mod notification;
 pub mod plan;
+pub mod requirement;
 pub mod saved_query;
 pub mod session;
 pub mod settings;

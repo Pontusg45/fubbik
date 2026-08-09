@@ -1,0 +1,766 @@
+//! HTTP-level tests for the `search` domain: 6 endpoints under
+//! `/api/search`. See `crates/fubbik-api/src/search/service.rs`'s module
+//! doc for the two headline behaviours this file exists to pin: `POST
+//! /api/search/query` always answers 200 (database failures degrade to
+//! `{chunks: [], total: 0}`), and `DELETE /api/search/saved/{id}` never
+//! 404s.
+
+use axum::body::Body;
+use axum::http::{Request, StatusCode};
+use fubbik_api::search::dto::SearchQueryBody;
+use fubbik_api::search::parser::QueryClause;
+use fubbik_db::repo::{chunk, connection, saved_query, tag, user};
+use http_body_util::BodyExt;
+use tower::ServiceExt;
+
+fn state(pool: sqlx::PgPool) -> fubbik_api::AppState {
+    fubbik_api::AppState {
+        pool,
+        implicit_dev_session: false,
+    }
+}
+
+/// Signs up a fresh user and returns the `name=value` session cookie pair,
+/// matching the pattern in `tests/favorites.rs::signup`.
+async fn signup(app: axum::Router, email: &str, name: &str) -> String {
+    let res = app
+        .oneshot(
+            Request::post("/api/auth/sign-up/email")
+                .header("content-type", "application/json")
+                .body(Body::from(format!(
+                    r#"{{"email":"{email}","password":"hunter22","name":"{name}"}}"#
+                )))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK, "signup must succeed");
+    res.headers()
+        .get("set-cookie")
+        .expect("signup should set a session cookie")
+        .to_str()
+        .unwrap()
+        .split(';')
+        .next()
+        .unwrap()
+        .to_string()
+}
+
+async fn json_body(response: axum::response::Response) -> serde_json::Value {
+    let body = response.into_body().collect().await.unwrap().to_bytes();
+    if body.is_empty() {
+        return serde_json::Value::Null;
+    }
+    serde_json::from_slice(&body).unwrap()
+}
+
+async fn user_id_for_email(pool: &sqlx::PgPool, email: &str) -> String {
+    sqlx::query_scalar!(r#"SELECT id FROM "user" WHERE email = $1"#, email)
+        .fetch_one(pool)
+        .await
+        .unwrap()
+}
+
+async fn seed_chunk(pool: &sqlx::PgPool, user_id: &str, title: &str, content: &str) -> String {
+    chunk::create(
+        pool,
+        user_id,
+        chunk::NewChunk {
+            title: title.into(),
+            content: content.into(),
+            chunk_type: "note".into(),
+            rationale: None,
+        },
+    )
+    .await
+    .unwrap()
+    .id
+}
+
+async fn get(app: axum::Router, path: &str, cookie: &str) -> axum::response::Response {
+    app.oneshot(
+        Request::get(path)
+            .header("cookie", cookie)
+            .body(Body::empty())
+            .unwrap(),
+    )
+    .await
+    .unwrap()
+}
+
+async fn post(
+    app: axum::Router,
+    path: &str,
+    cookie: &str,
+    body: serde_json::Value,
+) -> axum::response::Response {
+    app.oneshot(
+        Request::post(path)
+            .header("cookie", cookie)
+            .header("content-type", "application/json")
+            .body(Body::from(body.to_string()))
+            .unwrap(),
+    )
+    .await
+    .unwrap()
+}
+
+async fn delete_at(app: axum::Router, path: &str, cookie: &str) -> axum::response::Response {
+    app.oneshot(
+        Request::delete(path)
+            .header("cookie", cookie)
+            .body(Body::empty())
+            .unwrap(),
+    )
+    .await
+    .unwrap()
+}
+
+// ── GET /api/search/parse ──────────────────────────────────────────────
+
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn parse_returns_the_raw_clause_array(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool.clone()));
+    let cookie = signup(app.clone(), "parse@b.test", "P").await;
+
+    let res = get(app, "/api/search/parse?q=type%3Areference", &cookie).await;
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = json_body(res).await;
+    assert_eq!(
+        body,
+        serde_json::json!({
+            "clauses": [
+                {"field": "type", "operator": "is", "value": "reference"}
+            ]
+        }),
+        "must be {{clauses: [...]}}, not a normalised string or a verdict"
+    );
+}
+
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn parse_requires_a_session(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool));
+    let res = app
+        .oneshot(
+            Request::get("/api/search/parse?q=type:note")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+// ── POST /api/search/query ─────────────────────────────────────────────
+
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn query_filters_by_type_tag_and_text(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool.clone()));
+    let cookie = signup(app.clone(), "query-filters@b.test", "Q").await;
+    let uid = user_id_for_email(&pool, "query-filters@b.test").await;
+
+    let matching = seed_chunk(&pool, &uid, "Auth Flow", "about authentication flows").await;
+    let t = tag::create(&pool, &uid, "auth", None).await.unwrap();
+    tag::set_chunk_tags(&pool, &uid, &matching, std::slice::from_ref(&t.id))
+        .await
+        .unwrap();
+    seed_chunk(&pool, &uid, "Unrelated", "something else entirely").await;
+
+    let res = post(
+        app,
+        "/api/search/query",
+        &cookie,
+        serde_json::json!({"clauses": [
+            {"field": "type", "operator": "is", "value": "note"},
+            {"field": "tag", "operator": "is", "value": "auth"},
+            {"field": "text", "operator": "contains", "value": "authentication"}
+        ]}),
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = json_body(res).await;
+    let chunks = body["chunks"].as_array().unwrap();
+    assert_eq!(chunks.len(), 1);
+    assert_eq!(chunks[0]["id"], matching);
+    assert_eq!(body["total"], 1);
+    assert!(
+        body.get("graphMeta").is_none() || body["graphMeta"].is_null(),
+        "graphMeta must be absent when no graph clause is present"
+    );
+}
+
+/// `POST /api/search/query` is scoped through `chunk::list`/`chunk::count`,
+/// which are user-scoped in SQL (proven load-bearing in the `chunks`
+/// domain's own test suite) — this is the search domain's own end-to-end
+/// proof that a caller's search never surfaces another user's chunks, even
+/// with an unfiltered query.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn query_never_returns_another_users_chunks(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool.clone()));
+    let alice_cookie = signup(app.clone(), "query-cross-alice@b.test", "Alice").await;
+    let alice_id = user_id_for_email(&pool, "query-cross-alice@b.test").await;
+    let bob_id = {
+        signup(app.clone(), "query-cross-bob@b.test", "Bob").await;
+        user_id_for_email(&pool, "query-cross-bob@b.test").await
+    };
+    seed_chunk(&pool, &alice_id, "Alice's chunk", "alice content").await;
+    seed_chunk(&pool, &bob_id, "Bob's chunk", "bob content").await;
+
+    let res = post(
+        app,
+        "/api/search/query",
+        &alice_cookie,
+        serde_json::json!({"clauses": []}),
+    )
+    .await;
+    let body = json_body(res).await;
+    let titles: Vec<&str> = body["chunks"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|c| c["title"].as_str().unwrap())
+        .collect();
+    assert_eq!(titles, vec!["Alice's chunk"]);
+}
+
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn query_connections_gte_filters_by_connection_count(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool.clone()));
+    let cookie = signup(app.clone(), "query-conn@b.test", "Q").await;
+    let uid = user_id_for_email(&pool, "query-conn@b.test").await;
+
+    let connected = seed_chunk(&pool, &uid, "Connected", "has a connection").await;
+    let other = seed_chunk(&pool, &uid, "Other", "the other end").await;
+    let lonely = seed_chunk(&pool, &uid, "Lonely", "no connections at all").await;
+    connection::create(
+        &pool,
+        &fubbik_db::new_id(),
+        &uid,
+        &connected,
+        &other,
+        "related_to",
+        "human",
+        "approved",
+    )
+    .await
+    .unwrap();
+
+    let res = post(
+        app,
+        "/api/search/query",
+        &cookie,
+        serde_json::json!({"clauses": [
+            {"field": "connections", "operator": "gte", "value": "1"}
+        ]}),
+    )
+    .await;
+    let body = json_body(res).await;
+    let ids: Vec<&str> = body["chunks"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|c| c["id"].as_str().unwrap())
+        .collect();
+    assert!(ids.contains(&connected.as_str()));
+    assert!(ids.contains(&other.as_str()));
+    assert!(
+        !ids.contains(&lonely.as_str()),
+        "the lonely chunk has 0 connections and must be filtered out"
+    );
+}
+
+/// `connections:abc+` yields a non-numeric value. Node's `Number("abc")` is
+/// `NaN`, and `listChunks`'s `if (params.minConnections && params.minConnections
+/// > 0)` guard is falsy for `NaN` — the filter is never applied, not
+/// "matches nothing". This proves the port's choice: a lonely chunk (0
+/// connections) still comes back.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn query_connections_with_a_non_numeric_value_applies_no_filter(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool.clone()));
+    let cookie = signup(app.clone(), "query-conn-nan@b.test", "Q").await;
+    let uid = user_id_for_email(&pool, "query-conn-nan@b.test").await;
+    let lonely = seed_chunk(&pool, &uid, "Lonely", "no connections at all").await;
+
+    let res = post(
+        app,
+        "/api/search/query",
+        &cookie,
+        serde_json::json!({"clauses": [
+            {"field": "connections", "operator": "gte", "value": "abc"}
+        ]}),
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = json_body(res).await;
+    let ids: Vec<&str> = body["chunks"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|c| c["id"].as_str().unwrap())
+        .collect();
+    assert!(
+        ids.contains(&lonely.as_str()),
+        "a non-numeric connections value must apply no filter at all, not exclude everything"
+    );
+}
+
+/// `join` is dead in Node: accepted by both route schemas, never read by
+/// `executeSearch`. `and` and `or` must produce byte-identical results.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn join_or_is_accepted_and_produces_identical_results_to_and(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool.clone()));
+    let cookie = signup(app.clone(), "query-join@b.test", "Q").await;
+    let uid = user_id_for_email(&pool, "query-join@b.test").await;
+    seed_chunk(&pool, &uid, "One", "content one").await;
+    seed_chunk(&pool, &uid, "Two", "content two").await;
+
+    let and_res = post(
+        app.clone(),
+        "/api/search/query",
+        &cookie,
+        serde_json::json!({"clauses": [], "join": "and"}),
+    )
+    .await;
+    let or_res = post(
+        app,
+        "/api/search/query",
+        &cookie,
+        serde_json::json!({"clauses": [], "join": "or"}),
+    )
+    .await;
+    assert_eq!(and_res.status(), StatusCode::OK);
+    assert_eq!(or_res.status(), StatusCode::OK);
+    assert_eq!(
+        json_body(and_res).await,
+        json_body(or_res).await,
+        "`join` is dead in Node — accepted by the schema, never read"
+    );
+}
+
+/// The Task 9 seam: a graph clause (`near`/`path`/`affected-by`/
+/// `similar-to`) makes the whole query degrade to an empty result, exactly
+/// like Node does when its graph resolver returns zero ids — not an error,
+/// not a clause silently dropped and the rest of the query still run.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn query_with_a_graph_clause_returns_empty_until_task_9(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool.clone()));
+    let cookie = signup(app.clone(), "query-graph@b.test", "Q").await;
+    let uid = user_id_for_email(&pool, "query-graph@b.test").await;
+    seed_chunk(&pool, &uid, "Some chunk", "content").await;
+
+    let res = post(
+        app,
+        "/api/search/query",
+        &cookie,
+        serde_json::json!({"clauses": [
+            {"field": "near", "operator": "is", "value": "some-id", "params": {"hops": "2"}}
+        ]}),
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = json_body(res).await;
+    assert_eq!(body["chunks"], serde_json::json!([]));
+    assert_eq!(body["total"], 0);
+}
+
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn query_requires_a_session(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool));
+    let res = app
+        .oneshot(
+            Request::post("/api/search/query")
+                .header("content-type", "application/json")
+                .body(Body::from(r#"{"clauses":[]}"#))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+/// The headline behaviour: `POST /api/search/query` always answers 200,
+/// even when the underlying database call fails outright. Tested directly
+/// at the service layer (not over HTTP) with a closed pool, which makes
+/// every `sqlx` call on it fail deterministically and immediately — an
+/// HTTP-level equivalent would also break session lookup (which needs the
+/// same pool), conflating "the query failed" with "auth failed".
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn a_failing_query_degrades_to_empty_results_not_a_500(pool: sqlx::PgPool) {
+    let uid = user::create(&pool, "degrade@b.test", "D", None)
+        .await
+        .unwrap()
+        .id;
+    pool.close().await;
+
+    let result = fubbik_api::search::service::execute_search(
+        &pool,
+        &uid,
+        &SearchQueryBody {
+            clauses: vec![QueryClause {
+                field: "type".into(),
+                operator: "is".into(),
+                value: "note".into(),
+                params: None,
+                negate: None,
+            }],
+            join: None,
+            sort: None,
+            limit: None,
+            offset: None,
+            space_id: None,
+        },
+    )
+    .await;
+
+    assert_eq!(result.chunks, vec![]);
+    assert_eq!(result.total, 0);
+}
+
+// ── GET /api/search/autocomplete ───────────────────────────────────────
+
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn autocomplete_tag_is_case_insensitive_prefix_and_capped_at_10(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool.clone()));
+    let cookie = signup(app.clone(), "autotag@b.test", "A").await;
+    let uid = user_id_for_email(&pool, "autotag@b.test").await;
+
+    for name in [
+        "Authentication",
+        "architecture",
+        "activity",
+        "auth-flow",
+        "auth-guard",
+        "auth-token",
+        "auth-scope",
+        "auth-session",
+        "auth-role",
+        "auth-policy",
+        "auth-realm",
+        "unrelated",
+    ] {
+        tag::create(&pool, &uid, name, None).await.unwrap();
+    }
+
+    let res = get(
+        app,
+        "/api/search/autocomplete?field=tag&prefix=aut",
+        &cookie,
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = json_body(res).await;
+    let names: Vec<&str> = body
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|v| v.as_str().unwrap())
+        .collect();
+    assert!(body.is_array(), "must be a bare string[]");
+    assert!(names.len() <= 10, "must be capped at 10");
+    assert!(
+        names.iter().all(|n| n.to_lowercase().starts_with("aut")),
+        "must be a case-insensitive prefix match: {names:?}"
+    );
+    assert!(
+        !names.contains(&"architecture"),
+        "'architecture' does not start with 'aut'"
+    );
+    assert!(!names.contains(&"unrelated"));
+}
+
+/// Unlike `chunk`/`requirement` autocomplete (deliberately unscoped, see
+/// `chunk::search_titles`'s doc comment), `tag` autocomplete goes through
+/// `tag::list(user_id)`, which *is* user-scoped in SQL — proven load-bearing
+/// in `tests/tag.rs` already, but this is the search domain's own
+/// end-to-end proof that a caller's tag autocomplete never surfaces
+/// another user's tags.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn autocomplete_tag_never_returns_another_users_tags(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool.clone()));
+    let alice_cookie = signup(app.clone(), "autotag-cross-alice@b.test", "Alice").await;
+    let alice_id = user_id_for_email(&pool, "autotag-cross-alice@b.test").await;
+    let bob_id = {
+        signup(app.clone(), "autotag-cross-bob@b.test", "Bob").await;
+        user_id_for_email(&pool, "autotag-cross-bob@b.test").await
+    };
+    tag::create(&pool, &alice_id, "auth-alice", None)
+        .await
+        .unwrap();
+    tag::create(&pool, &bob_id, "auth-bob", None).await.unwrap();
+
+    let res = get(
+        app,
+        "/api/search/autocomplete?field=tag&prefix=auth",
+        &alice_cookie,
+    )
+    .await;
+    let body = json_body(res).await;
+    let names: Vec<&str> = body
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|v| v.as_str().unwrap())
+        .collect();
+    assert_eq!(names, vec!["auth-alice"]);
+}
+
+/// `chunk`/`requirement` autocomplete is `ILIKE '%prefix%'` — contains, not
+/// a prefix match, matching Node's `searchChunkTitles`.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn autocomplete_chunk_matches_contains_not_prefix(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool.clone()));
+    let cookie = signup(app.clone(), "autochunk@b.test", "A").await;
+    let uid = user_id_for_email(&pool, "autochunk@b.test").await;
+    seed_chunk(&pool, &uid, "The Great Authentication Flow", "content").await;
+    seed_chunk(&pool, &uid, "Unrelated Title", "content").await;
+
+    let res = get(
+        app,
+        "/api/search/autocomplete?field=chunk&prefix=Authentication",
+        &cookie,
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = json_body(res).await;
+    let titles: Vec<&str> = body
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|v| v.as_str().unwrap())
+        .collect();
+    assert_eq!(
+        titles,
+        vec!["The Great Authentication Flow"],
+        "the prefix appears mid-title, so only a contains match finds it"
+    );
+}
+
+/// `requirement` autocomplete queries a table with no CRUD API in this
+/// port yet, so it's always empty — matching Node against an empty table.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn autocomplete_requirement_is_empty(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool.clone()));
+    let cookie = signup(app.clone(), "autoreq@b.test", "A").await;
+
+    let res = get(
+        app,
+        "/api/search/autocomplete?field=requirement&prefix=any",
+        &cookie,
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(json_body(res).await, serde_json::json!([]));
+}
+
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn autocomplete_of_an_unknown_field_is_empty(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool.clone()));
+    let cookie = signup(app.clone(), "autounknown@b.test", "A").await;
+
+    let res = get(
+        app,
+        "/api/search/autocomplete?field=bogus&prefix=x",
+        &cookie,
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(json_body(res).await, serde_json::json!([]));
+}
+
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn autocomplete_requires_a_session(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool));
+    let res = app
+        .oneshot(
+            Request::get("/api/search/autocomplete?field=tag&prefix=a")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+// ── GET/POST/DELETE /api/search/saved ──────────────────────────────────
+
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn create_then_list_saved_query_round_trips(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool.clone()));
+    let cookie = signup(app.clone(), "saved-crud@b.test", "S").await;
+
+    let res = post(
+        app.clone(),
+        "/api/search/saved",
+        &cookie,
+        serde_json::json!({
+            "name": "my saved query",
+            "query": {"clauses": [{"field": "type", "operator": "is", "value": "note"}]}
+        }),
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::OK);
+    let created = json_body(res).await;
+    assert!(created.is_object(), "POST must return a bare object");
+    assert_eq!(created["name"], "my saved query");
+
+    let res = get(app, "/api/search/saved", &cookie).await;
+    assert_eq!(res.status(), StatusCode::OK);
+    let list = json_body(res).await;
+    assert!(list.is_array(), "GET must return a bare array");
+    assert_eq!(list.as_array().unwrap().len(), 1);
+    assert_eq!(list[0]["id"], created["id"]);
+}
+
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn duplicate_saved_query_names_are_allowed_over_http(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool.clone()));
+    let cookie = signup(app.clone(), "saved-dup@b.test", "S").await;
+    let body = serde_json::json!({"name": "same", "query": {"clauses": []}});
+
+    let first = post(app.clone(), "/api/search/saved", &cookie, body.clone()).await;
+    assert_eq!(first.status(), StatusCode::OK);
+    let second = post(app.clone(), "/api/search/saved", &cookie, body).await;
+    assert_eq!(
+        second.status(),
+        StatusCode::OK,
+        "there is no unique constraint on (user_id, name)"
+    );
+
+    let list = json_body(get(app, "/api/search/saved", &cookie).await).await;
+    assert_eq!(list.as_array().unwrap().len(), 2);
+}
+
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn list_saved_queries_is_user_scoped(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool.clone()));
+    let alice_cookie = signup(app.clone(), "saved-alice@b.test", "Alice").await;
+    let bob_cookie = signup(app.clone(), "saved-bob@b.test", "Bob").await;
+
+    post(
+        app.clone(),
+        "/api/search/saved",
+        &alice_cookie,
+        serde_json::json!({"name": "alice's", "query": {"clauses": []}}),
+    )
+    .await;
+    post(
+        app.clone(),
+        "/api/search/saved",
+        &bob_cookie,
+        serde_json::json!({"name": "bob's", "query": {"clauses": []}}),
+    )
+    .await;
+
+    let alice_list = json_body(get(app.clone(), "/api/search/saved", &alice_cookie).await).await;
+    assert_eq!(alice_list.as_array().unwrap().len(), 1);
+    assert_eq!(alice_list[0]["name"], "alice's");
+
+    let bob_list = json_body(get(app, "/api/search/saved", &bob_cookie).await).await;
+    assert_eq!(bob_list.as_array().unwrap().len(), 1);
+    assert_eq!(bob_list[0]["name"], "bob's");
+}
+
+/// Node ignores the delete result and always answers `{"message":"Deleted"}`.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn deleting_a_nonexistent_saved_query_still_returns_200_deleted(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool.clone()));
+    let cookie = signup(app.clone(), "saved-del-none@b.test", "S").await;
+
+    let res = delete_at(app, "/api/search/saved/does-not-exist", &cookie).await;
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(
+        json_body(res).await,
+        serde_json::json!({"message": "Deleted"}),
+        "Node ignores the delete result and never 404s here"
+    );
+}
+
+/// The delete is user-scoped in SQL even though the response can never
+/// reveal it — this is the only test that can prove it, via a
+/// surviving-row assertion rather than a status code.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn deleting_another_users_saved_query_returns_200_but_deletes_nothing(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool.clone()));
+    let alice_cookie = signup(app.clone(), "saved-del-alice@b.test", "Alice").await;
+    let bob_cookie = signup(app.clone(), "saved-del-bob@b.test", "Bob").await;
+    let alice_id = user_id_for_email(&pool, "saved-del-alice@b.test").await;
+    let alices = saved_query::create(&pool, &alice_id, "mine", serde_json::json!({}), None)
+        .await
+        .unwrap();
+
+    let res = delete_at(
+        app,
+        &format!("/api/search/saved/{}", alices.id),
+        &bob_cookie,
+    )
+    .await;
+    assert_eq!(
+        res.status(),
+        StatusCode::OK,
+        "the response is indistinguishable — that is Node's behaviour"
+    );
+    assert_eq!(
+        json_body(res).await,
+        serde_json::json!({"message": "Deleted"})
+    );
+
+    let mine = saved_query::list(&pool, &alice_id, None).await.unwrap();
+    assert_eq!(
+        mine.len(),
+        1,
+        "but the row must survive: the DELETE is user-scoped in SQL"
+    );
+
+    // Sanity: alice can still delete it herself.
+    let res = delete_at(
+        fubbik_api::router(state(pool.clone())),
+        &format!("/api/search/saved/{}", alices.id),
+        &alice_cookie,
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::OK);
+    assert!(
+        saved_query::list(&pool, &alice_id, None)
+            .await
+            .unwrap()
+            .is_empty()
+    );
+}
+
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn saved_requires_a_session(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool));
+
+    let res = app
+        .clone()
+        .oneshot(
+            Request::get("/api/search/saved")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+
+    let res = app
+        .clone()
+        .oneshot(
+            Request::post("/api/search/saved")
+                .header("content-type", "application/json")
+                .body(Body::from(r#"{"name":"x","query":{"clauses":[]}}"#))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+
+    let res = app
+        .oneshot(
+            Request::delete("/api/search/saved/some-id")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}

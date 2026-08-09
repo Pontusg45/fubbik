@@ -2533,6 +2533,207 @@
         }
       }
     },
+    "/api/search/autocomplete": {
+      "get": {
+        "tags": [
+          "crate::search::routes"
+        ],
+        "summary": "`GET /api/search/autocomplete` — bare `string[]`. No error path beyond\nthe session guard; see `search::service::autocomplete`'s doc comment.",
+        "operationId": "autocomplete",
+        "parameters": [
+          {
+            "name": "field",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "prefix",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/search/parse": {
+      "get": {
+        "tags": [
+          "crate::search::routes"
+        ],
+        "summary": "`GET /api/search/parse` — `{clauses: parse_query_string(q)}`. No error\npath beyond the session guard: `parse_query_string` never fails\n(`search::parser`'s module doc), so the only non-200 this route can\nproduce is a 401.",
+        "operationId": "parse",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParseResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/search/query": {
+      "post": {
+        "tags": [
+          "crate::search::routes"
+        ],
+        "summary": "`POST /api/search/query` — always 200, even on a database error; see\n`search::service`'s module doc. `body.join` is accepted and ignored —\nsee `SearchQueryBody`'s doc comment.",
+        "operationId": "query",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SearchQueryBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/search/saved": {
+      "get": {
+        "tags": [
+          "crate::search::routes"
+        ],
+        "summary": "`GET /api/search/saved` — bare array, user-scoped, optionally narrowed\nto one space.",
+        "operationId": "list_saved",
+        "parameters": [
+          {
+            "name": "spaceId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SavedQuery"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "crate::search::routes"
+        ],
+        "summary": "`POST /api/search/saved` — bare object, the created row.",
+        "operationId": "create_saved",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSavedQueryBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SavedQuery"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/search/saved/{id}": {
+      "delete": {
+        "tags": [
+          "crate::search::routes"
+        ],
+        "summary": "`DELETE /api/search/saved/{id}` — **never 404s**, even cross-user or for\na nonexistent id. The delete is still user-scoped in SQL\n(`fubbik_db::repo::saved_query::delete`'s doc comment); the response\nalone can never reveal that, only a surviving-row assertion can — see\n`tests/search.rs`.",
+        "operationId": "delete_saved",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/settings/codebase": {
       "get": {
         "tags": [
@@ -4304,6 +4505,29 @@
           }
         }
       },
+      "CreateSavedQueryBody": {
+        "type": "object",
+        "description": "Body of `POST /api/search/saved`\n(`packages/api/src/search/routes.ts:93-103`).",
+        "required": [
+          "name",
+          "query"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "query": {
+            "$ref": "#/components/schemas/SavedQueryPayload"
+          },
+          "spaceId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
       "CreateSpaceBody": {
         "type": "object",
         "required": [
@@ -4473,6 +4697,26 @@
           }
         }
       },
+      "DuplicateHint": {
+        "type": "object",
+        "required": [
+          "chunkIdA",
+          "chunkIdB",
+          "similarity"
+        ],
+        "properties": {
+          "chunkIdA": {
+            "type": "string"
+          },
+          "chunkIdB": {
+            "type": "string"
+          },
+          "similarity": {
+            "type": "number",
+            "format": "double"
+          }
+        }
+      },
       "Enrichment": {
         "type": "string",
         "description": "Mirrors Node's `enrichment: \"missing\" | \"complete\"` filter\n(`packages/db/src/repository/chunk.ts:123-127`). Used both as a strict\n`GET /api/chunks?enrichment=` query-string enum (an unrecognised value is\na 400, same divergence as `Sort`) and, via `from_loose_str`, as a lenient\ninterpreter of a collection's stored `filter.enrichment` string.",
@@ -4554,6 +4798,74 @@
             "type": "string"
           },
           "path": {
+            "type": "string"
+          }
+        }
+      },
+      "GraphContext": {
+        "type": "object",
+        "properties": {
+          "hopDistance": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "matchedRequirement": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "pathPosition": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          }
+        }
+      },
+      "GraphMeta": {
+        "type": "object",
+        "description": "See module doc — never populated by this task's implementation, present\nfor shape parity and Task 9 to fill in.",
+        "required": [
+          "type"
+        ],
+        "properties": {
+          "hops": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "pathChunks": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "pathEdges": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/PathEdgeInfo"
+            }
+          },
+          "referenceChunk": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "type": {
             "type": "string"
           }
         }
@@ -4663,6 +4975,40 @@
           "human",
           "ai"
         ]
+      },
+      "ParseResponse": {
+        "type": "object",
+        "description": "`GET /api/search/parse` response: `{clauses: [...]}` — the raw clause\narray, not a normalised query string or a validation verdict.",
+        "required": [
+          "clauses"
+        ],
+        "properties": {
+          "clauses": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QueryClause"
+            }
+          }
+        }
+      },
+      "PathEdgeInfo": {
+        "type": "object",
+        "required": [
+          "source",
+          "target",
+          "relation"
+        ],
+        "properties": {
+          "relation": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "target": {
+            "type": "string"
+          }
+        }
       },
       "PathsBody": {
         "type": "object",
@@ -5202,6 +5548,43 @@
           }
         }
       },
+      "QueryClause": {
+        "type": "object",
+        "required": [
+          "field",
+          "operator",
+          "value"
+        ],
+        "properties": {
+          "field": {
+            "type": "string"
+          },
+          "negate": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "operator": {
+            "type": "string"
+          },
+          "params": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "additionalProperties": {
+              "type": "string"
+            },
+            "propertyNames": {
+              "type": "string"
+            }
+          },
+          "value": {
+            "type": "string"
+          }
+        }
+      },
       "RawUpdateResult": {
         "type": "object",
         "description": "The visible surface of a raw `pg` driver `QueryResult`, which is exactly\nwhat Node's `dismissStaleFlag`/`suppressDuplicatePair` leak to the HTTP\nresponse: neither calls `.returning()`, so drizzle's node-postgres\nsession (`node_modules/drizzle-orm/node-postgres/session.js`, the\n`!fields && !customResultMapper` branch) resolves the query builder's\npromise with `client.query(...)`'s return value unmodified — the raw\n`pg.Result` instance — and Elysia serialises whatever that Effect\nresolves to.\n\nVerified against a disposable database (not the real `pg`/`pg-types`\nversion pinned in `packages/db`, but the same `pg@8.20.0` this\nworkspace's `pnpm-lock.yaml` resolves, run directly against\n`fubbik-rs-db`): `JSON.stringify(result)` for an `UPDATE ... ` with no\nmatching `RETURNING` includes `command`, `rowCount`, `oid`, `rows`,\n`fields` — the five fields `pg`'s README documents as the `Result`\nAPI — plus `_types`, `RowCtor`, `rowAsArray`, `_prebuiltEmptyResultObject`\n(`_parsers` is present as an own property but serialises to nothing:\nits value is `undefined`). Those four extra keys are underscore- or\notherwise internal-prefixed implementation details of the installed\n`pg`/`pg-types` version — `_types` in particular embeds that version's\nentire OID-to-typename registry (60+ entries) as a live object\nreference, not stable response data. Hardcoding that blob here would\ngive zero behavioural value and would silently drift out of sync with\nwhatever `pg` version Node is actually running. This port reproduces\nonly the five documented, stable fields and omits the rest — a\ndeliberate divergence from a byte-for-byte leak, not a guess.",
@@ -5339,6 +5722,72 @@
           "approved"
         ]
       },
+      "SavedQuery": {
+        "type": "object",
+        "description": "`camelCase` serialisation matches every other wire type in this crate —\nsee the note on `chunk::Chunk` for why that's mandatory, not cosmetic.",
+        "required": [
+          "id",
+          "name",
+          "query",
+          "userId",
+          "createdAt"
+        ],
+        "properties": {
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "query": {},
+          "spaceId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "userId": {
+            "type": "string"
+          }
+        }
+      },
+      "SavedQueryPayload": {
+        "type": "object",
+        "description": "The `query` object nested in `POST /api/search/saved`'s body, matching\nNode's schema exactly (`packages/api/src/search/routes.ts:93-101`):\n`clauses`, `join`, `sort`, `spaceId`, all validated at write time. Once\nstored, `saved_query.query` is opaque JSONB never re-validated on read\n(see `fubbik_db::repo::saved_query`'s module doc) — this type exists\nonly to validate the shape going *in*.",
+        "required": [
+          "clauses"
+        ],
+        "properties": {
+          "clauses": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QueryClause"
+            }
+          },
+          "join": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sort": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "spaceId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
       "ScanAgeBody": {
         "type": "object",
         "description": "Body of `POST /api/chunks/stale/scan-age`\n(`packages/api/src/staleness/routes.ts:87-90`). Both fields optional:\nan absent `thresholdDays` lets `detect_age_stale_chunks` fall back to\nits own default (90); `detect_uncovered_chunks`'s threshold (30) is\nnever overridable from this body at all — see the doc comment on\n`service::scan_age`.",
@@ -5368,6 +5817,149 @@
           "flagged": {
             "type": "integer",
             "format": "int64"
+          }
+        }
+      },
+      "SearchQueryBody": {
+        "type": "object",
+        "description": "Body of `POST /api/search/query`\n(`packages/api/src/search/routes.ts:34-43`). `join` is accepted and\n**completely ignored** — see `search::service`'s module doc for why:\nNode's schema declares it (`t.Optional(t.Union([t.Literal(\"and\"), t.Literal(\"or\")]))`)\nbut `service.ts`'s `executeSearch` never reads `searchQuery.join`\nanywhere; every clause is AND-combined by `listChunks`'s SQL\nregardless. Kept as a loose `Option<String>` rather than a `Literal`\nenum precisely because nothing ever inspects its value.",
+        "required": [
+          "clauses"
+        ],
+        "properties": {
+          "clauses": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QueryClause"
+            }
+          },
+          "join": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "limit": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "offset": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "sort": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "spaceId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "SearchResult": {
+        "type": "object",
+        "description": "`POST /api/search/query`'s response envelope, matching Node's\n`SearchResult` (`packages/api/src/search/types.ts:48-59`).",
+        "required": [
+          "chunks",
+          "total"
+        ],
+        "properties": {
+          "chunks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SearchResultChunk"
+            }
+          },
+          "duplicateHints": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/DuplicateHint"
+            }
+          },
+          "graphMeta": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/GraphMeta"
+              }
+            ]
+          },
+          "total": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "SearchResultChunk": {
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "type",
+          "tags",
+          "connectionCount",
+          "updatedAt",
+          "healthScore"
+        ],
+        "properties": {
+          "connectionCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "graphContext": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/GraphContext"
+              }
+            ]
+          },
+          "healthScore": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "id": {
+            "type": "string"
+          },
+          "summary": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "title": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
           }
         }
       },

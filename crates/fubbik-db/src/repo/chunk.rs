@@ -447,3 +447,45 @@ pub async fn count(pool: &PgPool, user_id: &str, params: &ListParams) -> AppResu
     let total: i64 = qb.build_query_scalar().fetch_one(pool).await?;
     Ok(total)
 }
+
+/// One `(id, title)` match from [`search_titles`].
+#[derive(Debug, Clone)]
+pub struct ChunkTitleMatch {
+    pub id: String,
+    pub title: String,
+}
+
+/// Backs `GET /api/search/autocomplete?field=chunk`. Direct port of
+/// Node's `searchChunkTitles` (`packages/db/src/repository/chunk.ts:586-594`),
+/// including two things that look like they should be different but
+/// aren't:
+///
+/// - **Not scoped by `user_id`.** Every other chunk query in this crate is
+///   scoped; this one genuinely isn't in Node either — `searchChunkTitles`
+///   has no `eq(chunk.userId, ..)` anywhere. Autocomplete surfaces titles
+///   across every user's chunks.
+/// - **Not filtered by `archived_at IS NULL`.** Archived chunks' titles
+///   are still suggested.
+/// - **`ILIKE '%prefix%'` — contains, not a prefix match** — and the
+///   pattern is **not escaped** (`%`/`_` in `prefix` act as wildcards),
+///   unlike `push_filters`'s `search` branch, which does escape them. Two
+///   different call sites, two different (both faithfully ported)
+///   behaviours.
+/// - **No `ORDER BY`.** Result order is whatever Postgres's query plan
+///   happens to produce.
+pub async fn search_titles(
+    pool: &PgPool,
+    prefix: &str,
+    limit: i64,
+) -> AppResult<Vec<ChunkTitleMatch>> {
+    let pattern = format!("%{prefix}%");
+    let rows = sqlx::query_as!(
+        ChunkTitleMatch,
+        r#"SELECT id, title FROM chunk WHERE title ILIKE $1 LIMIT $2"#,
+        pattern,
+        limit
+    )
+    .fetch_all(pool)
+    .await?;
+    Ok(rows)
+}
