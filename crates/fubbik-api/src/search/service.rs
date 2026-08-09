@@ -30,13 +30,20 @@
 //! (non-graph) filters with whatever ids came back, exactly like Node's
 //! `graphIds ? graphIds.filter(...) : ids` loop (`service.ts:88-127`).
 //!
-//! Every graph-clause resolver call is wrapped in `.unwrap_or_default()`/
-//! `.unwrap_or(None)` here, matching Node's `Effect.orElse(() =>
-//! Effect.succeed([]))` on each clause (`service.ts:92,99,111-113,120`) —
-//! and the underlying `fubbik_db::age` functions *themselves* already
-//! degrade to `Ok(vec![])`/`Ok(None)` rather than erroring, so this is
-//! belt-and-braces, not the only thing standing between a bad query and a
-//! 500.
+//! The underlying `fubbik_db::age` functions (`get_neighborhood`,
+//! `find_shortest_path_with_details`, `get_chunks_affected_by_requirement`)
+//! *themselves* already degrade every AGE failure to `Ok(vec![])`/`Ok(None)`
+//! rather than erroring — matching Node's `Effect.orElse(() =>
+//! Effect.succeed([]))` on each clause (`service.ts:92,99,111-113,120`) — so
+//! none of them can return `Err` under their current implementation. Each
+//! call site here still handles the `Err` arm explicitly rather than
+//! `.unwrap_or_default()`/`.unwrap_or(None)`-ing it away: it logs via
+//! `tracing::error!` and substitutes the same fallback Node's `Effect.orElse`
+//! would, so a future regression in `age.rs`'s own degrade branch (see that
+//! module's `Err(_) => Ok(...)` arms) surfaces in logs instead of vanishing
+//! silently a second time. Behaviour is unchanged either way — a graph
+//! clause degrades to empty results, never a 500 — only observability of an
+//! (currently unreachable) unexpected error improves.
 //!
 //! `graphMeta.type` carries a fourth value Node's own `types.ts:51-53`
 //! declares only three literals for (`"neighborhood" | "path" |
@@ -225,7 +232,13 @@ async fn resolve_graph_clauses(pool: &PgPool, clauses: &[QueryClause]) -> GraphR
                     .unwrap_or(1);
                 let resolved = age::get_neighborhood(pool, &clause.value, hops)
                     .await
-                    .unwrap_or_default();
+                    .unwrap_or_else(|err| {
+                        tracing::error!(
+                            error = %err,
+                            "age::get_neighborhood returned Err instead of degrading internally to Ok(vec![]) — this is a bug in age.rs, not expected at this call site"
+                        );
+                        Vec::new()
+                    });
                 out.ids = Some(intersect_ids(out.ids, resolved));
                 out.meta = Some(GraphMeta {
                     meta_type: "neighborhood".to_string(),
@@ -263,7 +276,13 @@ async fn resolve_graph_clauses(pool: &PgPool, clauses: &[QueryClause]) -> GraphR
                 if let (Some(from), Some(to)) = (from, to) {
                     let detail = age::find_shortest_path_with_details(pool, from, to)
                         .await
-                        .unwrap_or(None);
+                        .unwrap_or_else(|err| {
+                            tracing::error!(
+                                error = %err,
+                                "age::find_shortest_path_with_details returned Err instead of degrading internally to Ok(None) — this is a bug in age.rs, not expected at this call site"
+                            );
+                            None
+                        });
                     let resolved = detail
                         .as_ref()
                         .map(|d| d.chunk_ids.clone())
@@ -303,7 +322,13 @@ async fn resolve_graph_clauses(pool: &PgPool, clauses: &[QueryClause]) -> GraphR
                     .unwrap_or(2);
                 let resolved = age::get_chunks_affected_by_requirement(pool, &clause.value, hops)
                     .await
-                    .unwrap_or_default();
+                    .unwrap_or_else(|err| {
+                        tracing::error!(
+                            error = %err,
+                            "age::get_chunks_affected_by_requirement returned Err instead of degrading internally to Ok(vec![]) — this is a bug in age.rs, not expected at this call site"
+                        );
+                        Vec::new()
+                    });
                 out.ids = Some(intersect_ids(out.ids, resolved));
                 out.meta = Some(GraphMeta {
                     meta_type: "requirement-reach".to_string(),

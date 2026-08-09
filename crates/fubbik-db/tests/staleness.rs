@@ -362,11 +362,13 @@ async fn scan_age_is_idempotent(pool: sqlx::PgPool) {
         .unwrap();
     assert_eq!(flags.len(), 1);
     assert_eq!(flags[0].reason, "age");
-    assert!(flags[0]
-        .detail
-        .as_deref()
-        .unwrap()
-        .starts_with("Last updated "));
+    assert!(
+        flags[0]
+            .detail
+            .as_deref()
+            .unwrap()
+            .starts_with("Last updated ")
+    );
 }
 
 #[sqlx::test]
