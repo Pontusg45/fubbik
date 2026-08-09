@@ -238,6 +238,43 @@ async fn affected_by_requirement_reaches_connected_chunks_via_the_covered_chunk(
     );
 }
 
+/// Pins the bug the split-query implementation exists to work around: in a
+/// fresh graph where no `:connects` edge has *ever* been created (exactly
+/// what every `#[sqlx::test]` pool starts as), AGE 1.7.0's `*0..hops`
+/// variable-length pattern fails to match even the zero-hop case, so a
+/// covered chunk with no connections of its own would silently vanish from
+/// the result — verified directly against this workspace's `fubbik-rs-db`
+/// before this port's `get_chunks_affected_by_requirement` was changed to
+/// query the covered chunks unconditionally instead of folding them into
+/// the `*0..hops` pattern.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn affected_by_requirement_includes_the_covered_chunk_even_with_zero_connects_edges_ever_created(
+    pool: sqlx::PgPool,
+) {
+    if !age::is_available(&pool).await {
+        eprintln!("AGE unavailable — skipping");
+        return;
+    }
+    let alice = seed_user(&pool, "alice-affected-lonely@b.test").await;
+    let covered = seed_chunk(&pool, &alice).await;
+    age::ensure_vertex(&pool, &covered).await.unwrap();
+    // Deliberately no `create_edge` call anywhere in this test — the
+    // `:connects` relationship label has never been used in this graph.
+
+    let requirement_id = fubbik_db::new_id();
+    seed_requirement_vertex(&pool, &requirement_id).await;
+    seed_covers_edge(&pool, &requirement_id, &covered).await;
+
+    let ids = age::get_chunks_affected_by_requirement(&pool, &requirement_id, 2)
+        .await
+        .unwrap();
+    assert_eq!(
+        ids,
+        vec![covered],
+        "the covered chunk must be included even though :connects has never been used in this graph"
+    );
+}
+
 // ── compute_impact_ripple ───────────────────────────────────────────────
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]

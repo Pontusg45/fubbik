@@ -471,22 +471,50 @@ pub async fn find_shortest_path_with_details(
 /// Port of Node's `getChunksAffectedByRequirement`
 /// (`packages/db/src/age/query.ts:90-96`): every chunk within `hops` hops
 /// of any chunk a requirement `:covers`, including the covered chunks
-/// themselves (`*0..hops`). Degrades to `Ok(vec![])` on any query failure.
+/// themselves. Degrades to `Ok(vec![])` if even the (always-required)
+/// covered-chunks query fails; the hop-traversal half degrades silently on
+/// its own failure, keeping whatever covered-chunk ids were already found.
+///
+/// **Does not port Node's single `*0..hops` pattern**
+/// (`MATCH (r)-[:covers]->(c)-[:connects*0..hops]-(related) RETURN
+/// related.id`). Verified directly against this workspace's AGE 1.7.0: a
+/// variable-length pattern with a **zero** lower bound on a relationship
+/// label that has never been used anywhere in the graph yet fails to match
+/// even the zero-hop case (the anchor node itself) — a `#[sqlx::test]`
+/// pool is a fresh database with a fresh `"knowledge"` graph, so a chunk
+/// with no existing `:connects` edges reproduces this every time. Splitting
+/// the "covered chunks" (`*0`, unconditional, no `:connects` pattern
+/// involved at all) from the "hop traversal" (`*1..hops`, only run when
+/// `hops > 0`) sidesteps the bug instead of relying on the broken
+/// zero-bound form.
 pub async fn get_chunks_affected_by_requirement(
     pool: &PgPool,
     requirement_id: &str,
     hops: i32,
 ) -> AppResult<Vec<String>> {
-    let query = format!(
-        "MATCH (r:requirement {{id: '{}'}})-[:covers]->(c:chunk)-[:connects*0..{}]-(related:chunk) \
-         RETURN DISTINCT related.id AS id",
-        esc_cypher(requirement_id),
-        hops
+    let escaped = esc_cypher(requirement_id);
+
+    let covers_query = format!(
+        "MATCH (r:requirement {{id: '{escaped}'}})-[:covers]->(c:chunk) RETURN DISTINCT c.id AS id"
     );
-    match cypher(pool, &query).await {
-        Ok(rows) => Ok(rows.iter().filter_map(|v| as_string(Some(v))).collect()),
-        Err(_) => Ok(vec![]),
+    let mut ids: std::collections::HashSet<String> = match cypher(pool, &covers_query).await {
+        Ok(rows) => rows.iter().filter_map(|v| as_string(Some(v))).collect(),
+        Err(_) => return Ok(vec![]),
+    };
+
+    if hops > 0 {
+        let related_query = format!(
+            "MATCH (r:requirement {{id: '{escaped}'}})-[:covers]->(c:chunk)-[:connects*1..{hops}]-(related:chunk) \
+             RETURN DISTINCT related.id AS id"
+        );
+        if let Ok(rows) = cypher(pool, &related_query).await {
+            ids.extend(rows.iter().filter_map(|v| as_string(Some(v))));
+        }
     }
+
+    let mut result: Vec<String> = ids.into_iter().collect();
+    result.sort();
+    Ok(result)
 }
 
 /// Relation-type weights from Node's `RELATION_WEIGHT`
