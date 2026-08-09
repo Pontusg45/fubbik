@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, plan_id, title, description,\n                  acceptance_criteria AS \"acceptance_criteria: Json<serde_json::Value>\",\n                  status, \"order\",\n                  created_at AS \"created_at: UtcTimestamp\",\n                  updated_at AS \"updated_at: UtcTimestamp\",\n                  metadata AS \"metadata: Json<serde_json::Value>\"\n           FROM plan_task\n           WHERE plan_id = $1\n             AND EXISTS (SELECT 1 FROM plan p WHERE p.id = $1 AND p.user_id = $2)\n           ORDER BY \"order\" ASC",
+  "query": "SELECT id, plan_id, title, description,\n                  acceptance_criteria AS \"acceptance_criteria: Json<serde_json::Value>\",\n                  status, \"order\",\n                  created_at AS \"created_at: UtcTimestamp\",\n                  updated_at AS \"updated_at: UtcTimestamp\",\n                  metadata AS \"metadata: Json<serde_json::Value>\"\n           FROM plan_task\n           WHERE id = $1 AND plan_id = $2\n             AND EXISTS (SELECT 1 FROM plan p WHERE p.id = $2 AND p.user_id = $3)",
   "describe": {
     "columns": [
       {
@@ -57,6 +57,7 @@
     "parameters": {
       "Left": [
         "Text",
+        "Text",
         "Text"
       ]
     },
@@ -73,5 +74,5 @@
       false
     ]
   },
-  "hash": "a79bf87b9c5e03634f2a877a62f6681e99a983bb9033c217c64627991e574f5c"
+  "hash": "8d058579ca000e07138873885661c04f64050469dc69fcf19e11204e0ca4231a"
 }

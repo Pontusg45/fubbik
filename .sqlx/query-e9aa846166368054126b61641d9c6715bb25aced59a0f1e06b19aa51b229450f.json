@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM plan_task_external_link\n           WHERE id = $1 AND task_id = $2\n             AND EXISTS (SELECT 1 FROM plan_task pt WHERE pt.id = $2 AND pt.plan_id = $3\n                         AND EXISTS (SELECT 1 FROM plan p WHERE p.id = $3 AND p.user_id = $4))",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "e9aa846166368054126b61641d9c6715bb25aced59a0f1e06b19aa51b229450f"
+}

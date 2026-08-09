@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT ptc.id, ptc.task_id, ptc.chunk_id, ptc.relation,\n                  ptc.created_at AS \"created_at: UtcTimestamp\",\n                  c.title AS \"chunk_title?\", c.type AS \"chunk_type?\"\n           FROM plan_task_chunk ptc\n           LEFT JOIN chunk c ON c.id = ptc.chunk_id\n           WHERE ptc.task_id = $1",
+  "query": "INSERT INTO plan_task_chunk (id, task_id, chunk_id, relation)\n           SELECT $1, pt.id, $4, $5\n           FROM plan_task pt\n           WHERE pt.id = $2 AND pt.plan_id = $3\n             AND EXISTS (SELECT 1 FROM plan p WHERE p.id = $3 AND p.user_id = $6)\n           RETURNING id, task_id, chunk_id, relation, created_at AS \"created_at: UtcTimestamp\"",
   "describe": {
     "columns": [
       {
@@ -27,20 +27,15 @@
         "ordinal": 4,
         "name": "created_at: UtcTimestamp",
         "type_info": "Timestamp"
-      },
-      {
-        "ordinal": 5,
-        "name": "chunk_title?",
-        "type_info": "Text"
-      },
-      {
-        "ordinal": 6,
-        "name": "chunk_type?",
-        "type_info": "Text"
       }
     ],
     "parameters": {
       "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
         "Text"
       ]
     },
@@ -49,10 +44,8 @@
       false,
       false,
       false,
-      false,
-      false,
       false
     ]
   },
-  "hash": "4b8a9f78c221cfa2d31d1fe274b0ab4af3b2741fa7854ed9ac014fd2e8826004"
+  "hash": "2ca0361e91709b0e7737e6a412fbb0efd87ef645a93b7b230ab7a9b98b7094ad"
 }
