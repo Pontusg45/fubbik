@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE plan_analyze_item SET \"order\" = $4\n               WHERE id = $1 AND plan_id = $2 AND kind = $3\n                 AND EXISTS (SELECT 1 FROM plan p WHERE p.id = $2 AND p.user_id = $5)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Int4",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "2545a1ce31f57a489fc2f808b957d3abecc850b36f65cc0297f305b4f6d42fc7"
+}

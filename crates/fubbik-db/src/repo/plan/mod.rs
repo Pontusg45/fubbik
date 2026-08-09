@@ -29,9 +29,14 @@ mod link;
 mod requirement;
 mod task;
 
-pub use analyze::{PlanAnalyzeItem, list_analyze_items};
+pub use analyze::{
+    PlanAnalyzeItem, create_analyze_item, delete_analyze_item, list_analyze_items,
+    reorder_analyze_items, update_analyze_item,
+};
 pub use link::{PlanExternalLink, add_link, list_links, remove_link};
-pub use requirement::{PlanRequirement, add_requirement, list_requirements};
+pub use requirement::{
+    PlanRequirement, add_requirement, list_requirements, remove_requirement, reorder_requirements,
+};
 pub use task::{
     PlanTask, PlanTaskChunkWithTitle, PlanTaskDependency, create_task,
     list_task_chunks_with_titles, list_task_dependencies, list_tasks,

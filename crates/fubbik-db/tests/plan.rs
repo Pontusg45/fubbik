@@ -30,6 +30,19 @@ async fn seed_space(pool: &PgPool, user_id: &str, name: &str) -> String {
     .id
 }
 
+async fn seed_requirement(pool: &PgPool, user_id: &str) -> String {
+    let id = fubbik_db::new_id();
+    sqlx::query!(
+        r#"INSERT INTO requirement (id, title, steps, user_id) VALUES ($1, 'req', '[]'::jsonb, $2)"#,
+        id,
+        user_id
+    )
+    .execute(pool)
+    .await
+    .unwrap();
+    id
+}
+
 async fn seed_chunk(pool: &PgPool, user_id: &str, title: &str) -> String {
     chunk::create(
         pool,
@@ -510,5 +523,374 @@ async fn duplicate_copies_children_and_resets_task_status(pool: PgPool) {
         source_tasks.len(),
         1,
         "source task status must be untouched"
+    );
+}
+
+// ── Requirement links + analyze items (Task 5) ──────────────────────────
+
+// ── Given tests (verbatim from the task brief) ───────────────────────
+
+#[sqlx::test]
+async fn reorder_leaves_unmentioned_rows_untouched(pool: PgPool) {
+    let alice = seed_user(&pool, "alice").await;
+    let p = plan::create(&pool, &alice, "p", None, None).await.unwrap();
+    let a = plan::create_analyze_item(&pool, &alice, &p.id, "risk", None, None, Some("a"), None)
+        .await
+        .unwrap();
+    let b = plan::create_analyze_item(&pool, &alice, &p.id, "risk", None, None, Some("b"), None)
+        .await
+        .unwrap();
+    let c = plan::create_analyze_item(&pool, &alice, &p.id, "risk", None, None, Some("c"), None)
+        .await
+        .unwrap();
+    let c_order_before = c.order;
+
+    // mention only a and b, swapped
+    plan::reorder_analyze_items(&pool, &alice, &p.id, "risk", &[b.id.clone(), a.id.clone()])
+        .await
+        .unwrap();
+
+    let items = plan::list_analyze_items(&pool, &alice, &p.id)
+        .await
+        .unwrap();
+    let c_after = items.iter().find(|i| i.id == c.id).unwrap();
+    assert_eq!(
+        c_after.order, c_order_before,
+        "a row absent from the reorder request must keep its original order, not be renumbered"
+    );
+}
+
+#[sqlx::test]
+async fn analyze_kind_accepts_only_the_five_known_kinds(pool: PgPool) {
+    // Validation lives in the SERVICE layer, matching Node. The DB column is free text.
+    let alice = seed_user(&pool, "alice").await;
+    let p = plan::create(&pool, &alice, "p", None, None).await.unwrap();
+    let raw =
+        sqlx::query("INSERT INTO plan_analyze_item (id, plan_id, kind) VALUES ($1,$2,'nonsense')")
+            .bind("x")
+            .bind(&p.id)
+            .execute(&pool)
+            .await;
+    assert!(
+        raw.is_ok(),
+        "the DB must NOT constrain kind — Node has no CHECK and no enum here"
+    );
+}
+
+#[sqlx::test]
+async fn cannot_add_a_requirement_to_another_users_plan(pool: PgPool) {
+    let alice = seed_user(&pool, "alice").await;
+    let bob = seed_user(&pool, "bob").await;
+    let p = plan::create(&pool, &alice, "p", None, None).await.unwrap();
+    let r = seed_requirement(&pool, &alice).await;
+
+    let res = plan::add_requirement(&pool, &bob, &p.id, &r).await.unwrap();
+    assert!(
+        res.is_none(),
+        "ownership derives from plan.user_id, guarded in SQL"
+    );
+
+    let links = plan::list_requirements(&pool, &alice, &p.id).await.unwrap();
+    assert!(
+        links.is_empty(),
+        "the victim's plan must have gained no requirement link"
+    );
+}
+
+// ── Additional coverage ──────────────────────────────────────────────
+
+#[sqlx::test]
+async fn cannot_create_an_analyze_item_for_another_users_plan(pool: PgPool) {
+    let alice = seed_user(&pool, "alice").await;
+    let bob = seed_user(&pool, "bob").await;
+    let p = plan::create(&pool, &alice, "p", None, None).await.unwrap();
+
+    let res =
+        plan::create_analyze_item(&pool, &bob, &p.id, "risk", None, None, Some("evil"), None).await;
+    assert!(
+        res.is_err(),
+        "ownership derives from plan.user_id, guarded in SQL"
+    );
+
+    let items = plan::list_analyze_items(&pool, &alice, &p.id)
+        .await
+        .unwrap();
+    assert!(
+        items.is_empty(),
+        "the victim's plan must have gained no analyze item"
+    );
+}
+
+#[sqlx::test]
+async fn remove_requirement_returns_true_then_false(pool: PgPool) {
+    let alice = seed_user(&pool, "alice").await;
+    let p = plan::create(&pool, &alice, "p", None, None).await.unwrap();
+    let r = seed_requirement(&pool, &alice).await;
+    plan::add_requirement(&pool, &alice, &p.id, &r)
+        .await
+        .unwrap();
+
+    let first = plan::remove_requirement(&pool, &alice, &p.id, &r)
+        .await
+        .unwrap();
+    assert!(first, "the link existed and must be removed");
+
+    let second = plan::remove_requirement(&pool, &alice, &p.id, &r)
+        .await
+        .unwrap();
+    assert!(!second, "a second removal of the same link must be a no-op");
+}
+
+#[sqlx::test]
+async fn cannot_remove_another_users_requirement_link(pool: PgPool) {
+    let alice = seed_user(&pool, "alice").await;
+    let bob = seed_user(&pool, "bob").await;
+    let p = plan::create(&pool, &alice, "p", None, None).await.unwrap();
+    let r = seed_requirement(&pool, &alice).await;
+    plan::add_requirement(&pool, &alice, &p.id, &r)
+        .await
+        .unwrap();
+
+    let res = plan::remove_requirement(&pool, &bob, &p.id, &r)
+        .await
+        .unwrap();
+    assert!(!res, "bob does not own the plan; the link must survive");
+
+    let links = plan::list_requirements(&pool, &alice, &p.id).await.unwrap();
+    assert_eq!(links.len(), 1, "the victim's link must be untouched");
+}
+
+#[sqlx::test]
+async fn reorder_requirements_leaves_unmentioned_rows_untouched(pool: PgPool) {
+    let alice = seed_user(&pool, "alice").await;
+    let p = plan::create(&pool, &alice, "p", None, None).await.unwrap();
+    let ra = seed_requirement(&pool, &alice).await;
+    let rb = seed_requirement(&pool, &alice).await;
+    let rc = seed_requirement(&pool, &alice).await;
+    plan::add_requirement(&pool, &alice, &p.id, &ra)
+        .await
+        .unwrap();
+    plan::add_requirement(&pool, &alice, &p.id, &rb)
+        .await
+        .unwrap();
+    let c = plan::add_requirement(&pool, &alice, &p.id, &rc)
+        .await
+        .unwrap()
+        .unwrap();
+    let c_order_before = c.order;
+
+    plan::reorder_requirements(&pool, &alice, &p.id, &[rb.clone(), ra.clone()])
+        .await
+        .unwrap();
+
+    let links = plan::list_requirements(&pool, &alice, &p.id).await.unwrap();
+    let c_after = links.iter().find(|l| l.requirement_id == rc).unwrap();
+    assert_eq!(
+        c_after.order, c_order_before,
+        "unmentioned requirement link must keep its order"
+    );
+}
+
+#[sqlx::test]
+async fn update_analyze_item_round_trip_and_leaves_kind_unchanged(pool: PgPool) {
+    let alice = seed_user(&pool, "alice").await;
+    let p = plan::create(&pool, &alice, "p", None, None).await.unwrap();
+    let item = plan::create_analyze_item(
+        &pool,
+        &alice,
+        &p.id,
+        "risk",
+        None,
+        None,
+        Some("initial"),
+        None,
+    )
+    .await
+    .unwrap();
+
+    let updated = plan::update_analyze_item(
+        &pool,
+        &alice,
+        &p.id,
+        &item.id,
+        Some("changed"),
+        Some(serde_json::json!({"severity": "high"})),
+        None,
+        None,
+    )
+    .await
+    .unwrap()
+    .expect("owned item must update");
+
+    assert_eq!(updated.text.as_deref(), Some("changed"));
+    assert_eq!(updated.kind, "risk", "kind must never change via PATCH");
+    assert_eq!(updated.metadata.0, serde_json::json!({"severity": "high"}));
+}
+
+#[sqlx::test]
+async fn cannot_update_another_users_analyze_item(pool: PgPool) {
+    let alice = seed_user(&pool, "alice").await;
+    let bob = seed_user(&pool, "bob").await;
+    let p = plan::create(&pool, &alice, "p", None, None).await.unwrap();
+    let item =
+        plan::create_analyze_item(&pool, &alice, &p.id, "risk", None, None, Some("mine"), None)
+            .await
+            .unwrap();
+
+    let res = plan::update_analyze_item(
+        &pool,
+        &bob,
+        &p.id,
+        &item.id,
+        Some("hijacked"),
+        None,
+        None,
+        None,
+    )
+    .await
+    .unwrap();
+    assert!(res.is_none(), "bob does not own the plan");
+
+    let items = plan::list_analyze_items(&pool, &alice, &p.id)
+        .await
+        .unwrap();
+    assert_eq!(
+        items[0].text.as_deref(),
+        Some("mine"),
+        "the victim's item must be untouched"
+    );
+}
+
+#[sqlx::test]
+async fn delete_analyze_item_returns_true_then_false(pool: PgPool) {
+    let alice = seed_user(&pool, "alice").await;
+    let p = plan::create(&pool, &alice, "p", None, None).await.unwrap();
+    let item = plan::create_analyze_item(&pool, &alice, &p.id, "risk", None, None, Some("x"), None)
+        .await
+        .unwrap();
+
+    let first = plan::delete_analyze_item(&pool, &alice, &p.id, &item.id)
+        .await
+        .unwrap();
+    assert!(first);
+    let second = plan::delete_analyze_item(&pool, &alice, &p.id, &item.id)
+        .await
+        .unwrap();
+    assert!(!second);
+}
+
+#[sqlx::test]
+async fn cannot_delete_another_users_analyze_item(pool: PgPool) {
+    let alice = seed_user(&pool, "alice").await;
+    let bob = seed_user(&pool, "bob").await;
+    let p = plan::create(&pool, &alice, "p", None, None).await.unwrap();
+    let item =
+        plan::create_analyze_item(&pool, &alice, &p.id, "risk", None, None, Some("mine"), None)
+            .await
+            .unwrap();
+
+    let res = plan::delete_analyze_item(&pool, &bob, &p.id, &item.id)
+        .await
+        .unwrap();
+    assert!(!res, "bob does not own the plan");
+
+    let items = plan::list_analyze_items(&pool, &alice, &p.id)
+        .await
+        .unwrap();
+    assert_eq!(items.len(), 1, "the victim's item must survive");
+}
+
+#[sqlx::test]
+async fn create_analyze_item_order_is_scoped_per_kind(pool: PgPool) {
+    let alice = seed_user(&pool, "alice").await;
+    let p = plan::create(&pool, &alice, "p", None, None).await.unwrap();
+    let r1 = plan::create_analyze_item(&pool, &alice, &p.id, "risk", None, None, Some("r1"), None)
+        .await
+        .unwrap();
+    let f1 =
+        plan::create_analyze_item(&pool, &alice, &p.id, "file", None, Some("a.rs"), None, None)
+            .await
+            .unwrap();
+    let r2 = plan::create_analyze_item(&pool, &alice, &p.id, "risk", None, None, Some("r2"), None)
+        .await
+        .unwrap();
+
+    assert_eq!(r1.order, 0);
+    assert_eq!(
+        f1.order, 0,
+        "a different kind starts its own order sequence at 0"
+    );
+    assert_eq!(r2.order, 1);
+}
+
+// ── Ordering stability (tie-break by id) ─────────────────────────────
+
+#[sqlx::test]
+async fn list_analyze_items_breaks_order_ties_by_id(pool: PgPool) {
+    let alice = seed_user(&pool, "alice").await;
+    let p = plan::create(&pool, &alice, "p", None, None).await.unwrap();
+    for i in 0..20 {
+        plan::create_analyze_item(
+            &pool,
+            &alice,
+            &p.id,
+            "risk",
+            None,
+            None,
+            Some(&format!("r{i}")),
+            None,
+        )
+        .await
+        .unwrap();
+    }
+    sqlx::query(r#"UPDATE plan_analyze_item SET "order" = 0 WHERE plan_id = $1"#)
+        .bind(&p.id)
+        .execute(&pool)
+        .await
+        .unwrap();
+    sqlx::query("ANALYZE plan_analyze_item")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    let items = plan::list_analyze_items(&pool, &alice, &p.id)
+        .await
+        .unwrap();
+    let ids: Vec<String> = items.iter().map(|i| i.id.clone()).collect();
+    let mut expected = ids.clone();
+    expected.sort();
+    assert_eq!(
+        ids, expected,
+        "ties on kind+order must be broken by ascending id, not left to query-plan chance"
+    );
+}
+
+#[sqlx::test]
+async fn list_requirements_breaks_order_ties_by_id(pool: PgPool) {
+    let alice = seed_user(&pool, "alice").await;
+    let p = plan::create(&pool, &alice, "p", None, None).await.unwrap();
+    for _ in 0..20 {
+        let r = seed_requirement(&pool, &alice).await;
+        plan::add_requirement(&pool, &alice, &p.id, &r)
+            .await
+            .unwrap();
+    }
+    sqlx::query(r#"UPDATE plan_requirement SET "order" = 0 WHERE plan_id = $1"#)
+        .bind(&p.id)
+        .execute(&pool)
+        .await
+        .unwrap();
+    sqlx::query("ANALYZE plan_requirement")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    let links = plan::list_requirements(&pool, &alice, &p.id).await.unwrap();
+    let ids: Vec<String> = links.iter().map(|l| l.id.clone()).collect();
+    let mut expected = ids.clone();
+    expected.sort();
+    assert_eq!(
+        ids, expected,
+        "ties on order must be broken by ascending id, not left to query-plan chance"
     );
 }
