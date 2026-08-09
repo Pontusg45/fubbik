@@ -253,3 +253,66 @@ async fn delete_requires_at_least_one_endpoint_owned_by_caller(pool: sqlx::PgPoo
             .is_none()
     );
 }
+
+// ── count_for_chunks: the bulk variant `search::service` uses ─────────
+
+#[sqlx::test]
+async fn count_for_chunks_counts_both_directions_and_zero_fills_missing(pool: sqlx::PgPool) {
+    let alice = seed(&pool, "a@b.test").await;
+    let a = a_chunk(&pool, &alice, "A").await;
+    let b = a_chunk(&pool, &alice, "B").await;
+    let c = a_chunk(&pool, &alice, "C").await;
+    // a -> b, c -> a: a has 2 connections (one as source, one as target).
+    connection::create(
+        &pool,
+        &fubbik_db::new_id(),
+        &alice,
+        &a,
+        &b,
+        "related_to",
+        "human",
+        "approved",
+    )
+    .await
+    .unwrap();
+    connection::create(
+        &pool,
+        &fubbik_db::new_id(),
+        &alice,
+        &c,
+        &a,
+        "related_to",
+        "human",
+        "approved",
+    )
+    .await
+    .unwrap();
+
+    let rows = connection::count_for_chunks(&pool, &[a.clone(), b.clone(), c.clone()])
+        .await
+        .unwrap();
+    let by_id: std::collections::HashMap<String, i64> =
+        rows.into_iter().map(|r| (r.chunk_id, r.count)).collect();
+    assert_eq!(by_id[&a], 2);
+    assert_eq!(by_id[&b], 1);
+    assert_eq!(by_id[&c], 1);
+}
+
+#[sqlx::test]
+async fn count_for_chunks_of_a_chunk_with_no_connections_is_zero(pool: sqlx::PgPool) {
+    let alice = seed(&pool, "a@b.test").await;
+    let lonely = a_chunk(&pool, &alice, "Lonely").await;
+
+    let rows = connection::count_for_chunks(&pool, std::slice::from_ref(&lonely))
+        .await
+        .unwrap();
+    assert_eq!(rows.len(), 1, "the id must still appear, with count 0");
+    assert_eq!(rows[0].chunk_id, lonely);
+    assert_eq!(rows[0].count, 0);
+}
+
+#[sqlx::test]
+async fn count_for_chunks_of_empty_input_returns_empty_without_querying(pool: sqlx::PgPool) {
+    let rows = connection::count_for_chunks(&pool, &[]).await.unwrap();
+    assert!(rows.is_empty());
+}

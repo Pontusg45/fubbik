@@ -138,3 +138,44 @@ pub async fn delete(pool: &PgPool, user_id: &str, id: &str) -> AppResult<bool> {
     .await?;
     Ok(res.rows_affected() > 0)
 }
+
+/// One `(chunkId, count)` pair — the bulk shape `search::service` uses to
+/// enrich a page of search results with connection counts in one query
+/// instead of Node's `getChunkConnections(chunkId).length` called once per
+/// result row.
+#[derive(Debug, Clone)]
+pub struct ChunkConnectionCount {
+    pub chunk_id: String,
+    pub count: i64,
+}
+
+/// Counts connections touching each of `chunk_ids` (either as `source_id`
+/// or `target_id` — matching `getChunkConnections`'s `WHERE source_id = ..
+/// OR target_id = ..`, which counts a self-referencing edge, if one ever
+/// existed, once — not twice). Ids with zero connections still appear in
+/// the result with `count = 0`, via `unnest($1) LEFT JOIN`, so callers
+/// don't need to treat "missing from the result" as "zero" themselves. Not
+/// scoped by `user_id`: the caller is expected to have already proven
+/// ownership of every id in `chunk_ids` (the same trust boundary
+/// `chunk::push_filters`'s `tags` branch documents), and counting an edge
+/// touching a foreign chunk can't leak anything beyond a number.
+pub async fn count_for_chunks(
+    pool: &PgPool,
+    chunk_ids: &[String],
+) -> AppResult<Vec<ChunkConnectionCount>> {
+    if chunk_ids.is_empty() {
+        return Ok(vec![]);
+    }
+    let rows = sqlx::query_as!(
+        ChunkConnectionCount,
+        r#"SELECT c.id AS "chunk_id!", COUNT(cc.id) AS "count!"
+           FROM unnest($1::text[]) AS c(id)
+           LEFT JOIN chunk_connection cc
+             ON cc.source_id = c.id OR cc.target_id = c.id
+           GROUP BY c.id"#,
+        chunk_ids
+    )
+    .fetch_all(pool)
+    .await?;
+    Ok(rows)
+}

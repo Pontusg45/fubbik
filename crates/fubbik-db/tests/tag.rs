@@ -385,3 +385,75 @@ async fn tags_for_chunk_breaks_name_ties_by_id(pool: sqlx::PgPool) {
         "ties must be broken by ascending id, not left to query-plan chance"
     );
 }
+
+// ── tags_for_chunks: the bulk variant `search::service` uses ──────────
+
+#[sqlx::test]
+async fn tags_for_chunks_returns_names_grouped_by_chunk(pool: sqlx::PgPool) {
+    let alice = seed(&pool, "a@b.test").await;
+    let c1 = a_chunk(&pool, &alice, "One").await;
+    let c2 = a_chunk(&pool, &alice, "Two").await;
+    let t1 = tag::create(&pool, &alice, "alpha", None).await.unwrap();
+    let t2 = tag::create(&pool, &alice, "beta", None).await.unwrap();
+    tag::set_chunk_tags(&pool, &alice, &c1, &[t1.id.clone(), t2.id.clone()])
+        .await
+        .unwrap();
+    tag::set_chunk_tags(&pool, &alice, &c2, std::slice::from_ref(&t1.id))
+        .await
+        .unwrap();
+
+    let rows = tag::tags_for_chunks(&pool, &alice, &[c1.clone(), c2.clone()])
+        .await
+        .unwrap();
+    let mut c1_names: Vec<&str> = rows
+        .iter()
+        .filter(|r| r.chunk_id == c1)
+        .map(|r| r.tag_name.as_str())
+        .collect();
+    c1_names.sort_unstable();
+    assert_eq!(c1_names, vec!["alpha", "beta"]);
+
+    let c2_names: Vec<&str> = rows
+        .iter()
+        .filter(|r| r.chunk_id == c2)
+        .map(|r| r.tag_name.as_str())
+        .collect();
+    assert_eq!(c2_names, vec!["alpha"]);
+}
+
+#[sqlx::test]
+async fn tags_for_chunks_of_empty_input_returns_empty_without_querying(pool: sqlx::PgPool) {
+    let alice = seed(&pool, "a@b.test").await;
+    let rows = tag::tags_for_chunks(&pool, &alice, &[]).await.unwrap();
+    assert!(rows.is_empty());
+}
+
+/// Scoped the same way as `tags_for_chunk`: a chunk id owned by another
+/// user contributes no rows, even when it's tagged.
+#[sqlx::test]
+async fn tags_for_chunks_excludes_another_users_chunk(pool: sqlx::PgPool) {
+    let alice = seed(&pool, "a@b.test").await;
+    let bob = seed(&pool, "c@d.test").await;
+    let alices_chunk = a_chunk(&pool, &alice, "Alice's").await;
+    let bobs_chunk = a_chunk(&pool, &bob, "Bob's").await;
+    let alices_tag = tag::create(&pool, &alice, "mine", None).await.unwrap();
+    let bobs_tag = tag::create(&pool, &bob, "his", None).await.unwrap();
+    tag::set_chunk_tags(
+        &pool,
+        &alice,
+        &alices_chunk,
+        std::slice::from_ref(&alices_tag.id),
+    )
+    .await
+    .unwrap();
+    tag::set_chunk_tags(&pool, &bob, &bobs_chunk, std::slice::from_ref(&bobs_tag.id))
+        .await
+        .unwrap();
+
+    let rows = tag::tags_for_chunks(&pool, &alice, &[alices_chunk.clone(), bobs_chunk.clone()])
+        .await
+        .unwrap();
+    assert_eq!(rows.len(), 1);
+    assert_eq!(rows[0].chunk_id, alices_chunk);
+    assert_eq!(rows[0].tag_name, "mine");
+}
