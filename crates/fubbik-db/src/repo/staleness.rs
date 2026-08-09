@@ -373,17 +373,27 @@ pub async fn detect_uncovered_chunks(
 /// (and write flags) against any chunk. The service layer maps `None` to
 /// 404.
 ///
-/// **Idempotency is a pre-filter scoped to `user_id`, matching Node's own
-/// scoping exactly (bug-for-bug, not just in spirit).** Node's
+/// **Divergence #19: ripple targets are scoped to the caller.** Graph edges
+/// cross ownership — `age::compute_impact_ripple` walks `:connects` edges
+/// regardless of who owns each endpoint, and Node's `flagImpactRipple`
+/// (`packages/api/src/staleness/detect-impact.ts:5-32`) writes a flag onto
+/// **every** chunk it reaches this way, including chunks owned by other
+/// users. Node's own idempotency pre-filter then makes this worse: its
 /// `alreadyFlagged` check goes through `getStaleFlags(userId, {reason:
 /// "upstream_impact"})`, which joins through `chunk.user_id = userId` — the
-/// *caller's* id, not the impacted chunk's owner. A ripple target owned by
-/// a different user is therefore invisible to that pre-filter and would be
-/// re-flagged on every re-run; a ripple target owned by the caller is
-/// correctly deduplicated. This port reproduces that exact scoping rather
-/// than "fixing" it into a stronger guarantee Node doesn't have — the
-/// primary chunk ownership guard above is the divergence this task asked
-/// for, not a second one on the ripple targets themselves.
+/// *caller's* id, not the impacted chunk's owner — so a cross-user target
+/// is invisible to that pre-filter and gets re-flagged, unbounded, on every
+/// re-run.
+///
+/// **The human partner decided to scope ripple targets to the caller
+/// instead of reproducing this bug-for-bug.** The graph traversal itself is
+/// unchanged (`age::compute_impact_ripple` still walks through other
+/// users' chunks to reach further targets); only the *write* is now
+/// restricted to targets `user_id` owns. This closes the leak (no flag
+/// lands on a chunk the caller doesn't own) and, for free, fixes the
+/// duplicate-accumulation bug too: once every target is guaranteed to be
+/// the caller's own, the existing `already_flagged` pre-filter (still
+/// scoped to `user_id`, unchanged below) covers all of them.
 ///
 /// Detail text is simplified from Node's `Impacted by change to "<title>"
 /// (degree: N.NN, H hops via a → b)`: `age::compute_impact_ripple` returns
@@ -406,7 +416,25 @@ pub async fn flag_impact_ripple(
         return Ok(None);
     }
 
-    let targets = crate::age::compute_impact_ripple(pool, chunk_id).await?;
+    let ripple = crate::age::compute_impact_ripple(pool, chunk_id).await?;
+    if ripple.is_empty() {
+        return Ok(Some(0));
+    }
+
+    // Second, distinct guard from the one above: restricts WRITE targets to
+    // chunks `user_id` owns. The primary `chunk_id` ownership guard already
+    // proved the caller owns the chunk the ripple originates FROM; this
+    // proves it for every chunk the ripple would flag. Dropping this filter
+    // reopens divergence #19 — cross-user targets get flagged again, and
+    // the pre-filter below stops deduplicating them (see
+    // `tests/staleness.rs` for the load-bearing proof).
+    let targets: Vec<String> = sqlx::query_scalar!(
+        r#"SELECT id FROM chunk WHERE user_id = $1 AND id = ANY($2::text[])"#,
+        user_id,
+        &ripple
+    )
+    .fetch_all(pool)
+    .await?;
     if targets.is_empty() {
         return Ok(Some(0));
     }

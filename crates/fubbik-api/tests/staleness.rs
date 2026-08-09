@@ -523,3 +523,121 @@ async fn scan_impact_on_a_nonexistent_chunk_is_404(pool: sqlx::PgPool) {
     let res = scan_impact(app, &cookie, "no-such-chunk", serde_json::json!({})).await;
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 }
+
+/// Divergence #19 (carried fix): graph edges cross ownership — the ripple
+/// traversal itself is unchanged and still walks through Bob's chunk to
+/// reach it — but writes are now scoped to the caller. Alice's own ripple
+/// target gets flagged; Bob's chunk, reached by the same traversal, must
+/// not.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn scan_impact_ripple_targets_are_scoped_to_the_caller(pool: sqlx::PgPool) {
+    if !fubbik_db::age::is_available(&pool).await {
+        eprintln!("AGE unavailable — skipping");
+        return;
+    }
+    let app = fubbik_api::router(state(pool.clone()));
+    let alice_cookie = signup(app.clone(), "alice-ripple-scope@b.test", "Alice").await;
+    signup(app.clone(), "bob-ripple-scope@b.test", "Bob").await;
+    let alice_id = user_id_for_email(&pool, "alice-ripple-scope@b.test").await;
+    let bob_id = user_id_for_email(&pool, "bob-ripple-scope@b.test").await;
+
+    let source = seed_chunk(&pool, &alice_id, "Source").await;
+    let alices_downstream = seed_chunk(&pool, &alice_id, "Alice's downstream").await;
+    let bobs_chunk = seed_chunk(&pool, &bob_id, "Bob's chunk").await;
+
+    fubbik_db::age::ensure_vertex(&pool, &source).await.unwrap();
+    fubbik_db::age::ensure_vertex(&pool, &alices_downstream)
+        .await
+        .unwrap();
+    fubbik_db::age::ensure_vertex(&pool, &bobs_chunk)
+        .await
+        .unwrap();
+    // Alice's chunk is edge-connected to Bob's chunk (and to her own).
+    fubbik_db::age::create_edge(&pool, "depends_on", &source, &alices_downstream)
+        .await
+        .unwrap();
+    fubbik_db::age::create_edge(&pool, "depends_on", &source, &bobs_chunk)
+        .await
+        .unwrap();
+
+    let res = scan_impact(
+        app.clone(),
+        &alice_cookie,
+        &source,
+        serde_json::json!({ "title": "Source" }),
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(
+        json_body(res).await,
+        serde_json::json!({ "flagged": 1 }),
+        "only Alice's own ripple target may be flagged, not Bob's"
+    );
+
+    let flags = json_body(get_stale(app.clone(), &alice_cookie).await).await;
+    let flags = flags.as_array().unwrap();
+    assert_eq!(flags.len(), 1);
+    assert_eq!(flags[0]["chunkId"], alices_downstream);
+
+    let bob_flag_count: i64 = sqlx::query_scalar!(
+        r#"SELECT COUNT(*) AS "count!" FROM chunk_staleness WHERE chunk_id = $1"#,
+        bobs_chunk
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(
+        bob_flag_count, 0,
+        "Bob's chunk must receive no flag, even though the graph traversal reaches it"
+    );
+}
+
+/// The duplicate-accumulation half of divergence #19: before the fix, a
+/// cross-user target was invisible to the `already_flagged` pre-filter (it
+/// joins through the *caller's* `user_id`), so it was re-flagged on every
+/// run. Scoping writes to the caller means Bob's chunk never gets flagged
+/// at all — re-running must not make that grow.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn scan_impact_rerun_does_not_accumulate_flags_for_cross_user_targets(pool: sqlx::PgPool) {
+    if !fubbik_db::age::is_available(&pool).await {
+        eprintln!("AGE unavailable — skipping");
+        return;
+    }
+    let app = fubbik_api::router(state(pool.clone()));
+    let alice_cookie = signup(app.clone(), "alice-ripple-rerun@b.test", "Alice").await;
+    signup(app.clone(), "bob-ripple-rerun@b.test", "Bob").await;
+    let alice_id = user_id_for_email(&pool, "alice-ripple-rerun@b.test").await;
+    let bob_id = user_id_for_email(&pool, "bob-ripple-rerun@b.test").await;
+
+    let source = seed_chunk(&pool, &alice_id, "Source").await;
+    let bobs_chunk = seed_chunk(&pool, &bob_id, "Bob's chunk").await;
+
+    fubbik_db::age::ensure_vertex(&pool, &source).await.unwrap();
+    fubbik_db::age::ensure_vertex(&pool, &bobs_chunk)
+        .await
+        .unwrap();
+    fubbik_db::age::create_edge(&pool, "depends_on", &source, &bobs_chunk)
+        .await
+        .unwrap();
+
+    for _ in 0..3 {
+        let res = scan_impact(app.clone(), &alice_cookie, &source, serde_json::json!({})).await;
+        assert_eq!(
+            json_body(res).await,
+            serde_json::json!({ "flagged": 0 }),
+            "the only reachable target is Bob's, which is never written"
+        );
+    }
+
+    let bob_flag_count: i64 = sqlx::query_scalar!(
+        r#"SELECT COUNT(*) AS "count!" FROM chunk_staleness WHERE chunk_id = $1"#,
+        bobs_chunk
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(
+        bob_flag_count, 0,
+        "repeated runs must not accumulate flags on a cross-user target"
+    );
+}
