@@ -735,6 +735,355 @@ async fn links_on_another_users_plan_is_404_and_leaves_it_intact(pool: sqlx::PgP
     );
 }
 
+// ── requirement links ────────────────────────────────────────────────
+
+async fn seed_requirement(pool: &sqlx::PgPool, user_id: &str) -> String {
+    let id = fubbik_db::new_id();
+    sqlx::query!(
+        r#"INSERT INTO requirement (id, title, steps, user_id) VALUES ($1, 'req', '[]'::jsonb, $2)"#,
+        id,
+        user_id
+    )
+    .execute(pool)
+    .await
+    .unwrap();
+    id
+}
+
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn add_requirement_returns_bare_row(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool.clone()));
+    let cookie = signup(app.clone(), "alice-addreq@b.test", "Alice").await;
+    let user_id = user_id_for_email(&pool, "alice-addreq@b.test").await;
+    let id = create_plan(app.clone(), &cookie, "x").await;
+    let requirement_id = seed_requirement(&pool, &user_id).await;
+
+    let res = post(
+        app.clone(),
+        &cookie,
+        &format!("/api/plans/{id}/requirements"),
+        serde_json::json!({ "requirementId": requirement_id }),
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = json_body(res).await;
+    assert_eq!(body["requirementId"], requirement_id);
+    assert_eq!(body["planId"], id);
+    assert_eq!(body["order"], 0);
+}
+
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn remove_requirement_returns_ok_true_and_404_on_missing(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool.clone()));
+    let cookie = signup(app.clone(), "alice-removereq@b.test", "Alice").await;
+    let user_id = user_id_for_email(&pool, "alice-removereq@b.test").await;
+    let id = create_plan(app.clone(), &cookie, "x").await;
+    let requirement_id = seed_requirement(&pool, &user_id).await;
+    post(
+        app.clone(),
+        &cookie,
+        &format!("/api/plans/{id}/requirements"),
+        serde_json::json!({ "requirementId": requirement_id }),
+    )
+    .await;
+
+    let res = delete(
+        app.clone(),
+        &cookie,
+        &format!("/api/plans/{id}/requirements/{requirement_id}"),
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(json_body(res).await, serde_json::json!({ "ok": true }));
+
+    let res = delete(
+        app.clone(),
+        &cookie,
+        &format!("/api/plans/{id}/requirements/{requirement_id}"),
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+}
+
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn reorder_requirements_leaves_unmentioned_rows_and_returns_ok_true(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool.clone()));
+    let cookie = signup(app.clone(), "alice-reorderreq@b.test", "Alice").await;
+    let user_id = user_id_for_email(&pool, "alice-reorderreq@b.test").await;
+    let id = create_plan(app.clone(), &cookie, "x").await;
+    let ra = seed_requirement(&pool, &user_id).await;
+    let rb = seed_requirement(&pool, &user_id).await;
+    for rid in [&ra, &rb] {
+        post(
+            app.clone(),
+            &cookie,
+            &format!("/api/plans/{id}/requirements"),
+            serde_json::json!({ "requirementId": rid }),
+        )
+        .await;
+    }
+
+    let res = post(
+        app.clone(),
+        &cookie,
+        &format!("/api/plans/{id}/requirements/reorder"),
+        serde_json::json!({ "requirementIds": [rb, ra] }),
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(json_body(res).await, serde_json::json!({ "ok": true }));
+
+    let detail = json_body(get(app.clone(), &cookie, &format!("/api/plans/{id}")).await).await;
+    let reqs = detail["requirements"].as_array().unwrap();
+    assert_eq!(reqs[0]["requirementId"], rb);
+    assert_eq!(reqs[1]["requirementId"], ra);
+}
+
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn requirements_on_another_users_plan_is_404_and_leaves_it_intact(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool.clone()));
+    let alice_cookie = signup(app.clone(), "alice-cross-req@b.test", "Alice").await;
+    let bob_cookie = signup(app.clone(), "bob-cross-req@b.test", "Bob").await;
+    let bob_id = user_id_for_email(&pool, "bob-cross-req@b.test").await;
+    let id = create_plan(app.clone(), &alice_cookie, "alices").await;
+    let requirement_id = seed_requirement(&pool, &bob_id).await;
+
+    let res = post(
+        app.clone(),
+        &bob_cookie,
+        &format!("/api/plans/{id}/requirements"),
+        serde_json::json!({ "requirementId": requirement_id }),
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+
+    // No dedicated GET /requirements route in this domain — verify via the
+    // plan detail envelope instead.
+    let detail =
+        json_body(get(app.clone(), &alice_cookie, &format!("/api/plans/{id}")).await).await;
+    assert_eq!(
+        detail["requirements"].as_array().unwrap().len(),
+        0,
+        "Bob's rejected add must not have landed a requirement link on Alice's plan"
+    );
+}
+
+// ── analyze items ────────────────────────────────────────────────────
+
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn analyze_get_is_grouped_by_kind(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool.clone()));
+    let cookie = signup(app.clone(), "alice-analyzeget@b.test", "Alice").await;
+    let id = create_plan(app.clone(), &cookie, "x").await;
+
+    let res = get(app.clone(), &cookie, &format!("/api/plans/{id}/analyze")).await;
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = json_body(res).await;
+    for kind in ["chunk", "file", "risk", "assumption", "question"] {
+        assert_eq!(body[kind], serde_json::json!([]));
+    }
+}
+
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn create_analyze_item_returns_bare_object(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool.clone()));
+    let cookie = signup(app.clone(), "alice-createanalyze@b.test", "Alice").await;
+    let id = create_plan(app.clone(), &cookie, "x").await;
+
+    let res = post(
+        app.clone(),
+        &cookie,
+        &format!("/api/plans/{id}/analyze"),
+        serde_json::json!({ "kind": "risk", "text": "a risk", "metadata": {"severity": "medium"} }),
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = json_body(res).await;
+    assert_eq!(body["kind"], "risk");
+    assert_eq!(body["text"], "a risk");
+    assert_eq!(body["order"], 0);
+    assert_eq!(body["metadata"], serde_json::json!({"severity": "medium"}));
+}
+
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn create_analyze_item_rejects_an_unknown_kind(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool.clone()));
+    let cookie = signup(app.clone(), "alice-badkind@b.test", "Alice").await;
+    let id = create_plan(app.clone(), &cookie, "x").await;
+
+    let res = post(
+        app.clone(),
+        &cookie,
+        &format!("/api/plans/{id}/analyze"),
+        serde_json::json!({ "kind": "bogus" }),
+    )
+    .await;
+    assert_eq!(
+        res.status(),
+        StatusCode::BAD_REQUEST,
+        "kind is validated in the service layer, not by a DB enum"
+    );
+}
+
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn update_analyze_item_returns_the_updated_row(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool.clone()));
+    let cookie = signup(app.clone(), "alice-updateanalyze@b.test", "Alice").await;
+    let id = create_plan(app.clone(), &cookie, "x").await;
+    let created = json_body(
+        post(
+            app.clone(),
+            &cookie,
+            &format!("/api/plans/{id}/analyze"),
+            serde_json::json!({ "kind": "assumption", "text": "initial" }),
+        )
+        .await,
+    )
+    .await;
+    let item_id = created["id"].as_str().unwrap().to_string();
+
+    let res = patch(
+        app.clone(),
+        &cookie,
+        &format!("/api/plans/{id}/analyze/{item_id}"),
+        serde_json::json!({ "text": "changed" }),
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = json_body(res).await;
+    assert_eq!(body["text"], "changed");
+    assert_eq!(
+        body["kind"], "assumption",
+        "kind must never change via PATCH"
+    );
+}
+
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn delete_analyze_item_returns_ok_true_and_404_on_missing(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool.clone()));
+    let cookie = signup(app.clone(), "alice-deleteanalyze@b.test", "Alice").await;
+    let id = create_plan(app.clone(), &cookie, "x").await;
+    let created = json_body(
+        post(
+            app.clone(),
+            &cookie,
+            &format!("/api/plans/{id}/analyze"),
+            serde_json::json!({ "kind": "file", "filePath": "a.rs" }),
+        )
+        .await,
+    )
+    .await;
+    let item_id = created["id"].as_str().unwrap().to_string();
+
+    let res = delete(
+        app.clone(),
+        &cookie,
+        &format!("/api/plans/{id}/analyze/{item_id}"),
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(json_body(res).await, serde_json::json!({ "ok": true }));
+
+    let res = delete(
+        app.clone(),
+        &cookie,
+        &format!("/api/plans/{id}/analyze/{item_id}"),
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+}
+
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn reorder_analyze_items_leaves_unmentioned_rows_and_rejects_unknown_kind(
+    pool: sqlx::PgPool,
+) {
+    let app = fubbik_api::router(state(pool.clone()));
+    let cookie = signup(app.clone(), "alice-reorderanalyze@b.test", "Alice").await;
+    let id = create_plan(app.clone(), &cookie, "x").await;
+    let mut ids = vec![];
+    for text in ["a", "b", "c"] {
+        let created = json_body(
+            post(
+                app.clone(),
+                &cookie,
+                &format!("/api/plans/{id}/analyze"),
+                serde_json::json!({ "kind": "risk", "text": text }),
+            )
+            .await,
+        )
+        .await;
+        ids.push(created["id"].as_str().unwrap().to_string());
+    }
+
+    let res = post(
+        app.clone(),
+        &cookie,
+        &format!("/api/plans/{id}/analyze/reorder"),
+        serde_json::json!({ "kind": "bogus", "itemIds": [] }),
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+
+    let res = post(
+        app.clone(),
+        &cookie,
+        &format!("/api/plans/{id}/analyze/reorder"),
+        serde_json::json!({ "kind": "risk", "itemIds": [ids[1].clone(), ids[0].clone()] }),
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(json_body(res).await, serde_json::json!({ "ok": true }));
+
+    let analyze =
+        json_body(get(app.clone(), &cookie, &format!("/api/plans/{id}/analyze")).await).await;
+    let risks = analyze["risk"].as_array().unwrap();
+    let c = risks.iter().find(|r| r["id"] == ids[2]).unwrap();
+    assert_eq!(
+        c["order"], 2,
+        "the unmentioned third item must keep its original order"
+    );
+}
+
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn analyze_on_another_users_plan_is_404_and_leaves_it_intact(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool.clone()));
+    let alice_cookie = signup(app.clone(), "alice-cross-analyze@b.test", "Alice").await;
+    let bob_cookie = signup(app.clone(), "bob-cross-analyze@b.test", "Bob").await;
+    let id = create_plan(app.clone(), &alice_cookie, "alices").await;
+
+    let res = get(
+        app.clone(),
+        &bob_cookie,
+        &format!("/api/plans/{id}/analyze"),
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+
+    let res = post(
+        app.clone(),
+        &bob_cookie,
+        &format!("/api/plans/{id}/analyze"),
+        serde_json::json!({ "kind": "risk", "text": "evil" }),
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+
+    let analyze = json_body(
+        get(
+            app.clone(),
+            &alice_cookie,
+            &format!("/api/plans/{id}/analyze"),
+        )
+        .await,
+    )
+    .await;
+    assert_eq!(
+        analyze["risk"].as_array().unwrap().len(),
+        0,
+        "Bob's rejected create must not have landed an item on Alice's plan"
+    );
+}
+
 // ── auth ─────────────────────────────────────────────────────────────
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]

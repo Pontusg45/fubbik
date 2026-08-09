@@ -1319,6 +1319,220 @@
         }
       }
     },
+    "/api/plans/{id}/analyze": {
+      "get": {
+        "tags": [
+          "crate::plans::routes"
+        ],
+        "summary": "Object keyed by kind — `{chunk:[],file:[],risk:[],assumption:[],\nquestion:[]}`, all five keys always present, confirmed against\n`tests/fixtures/node-contract-2c/plans-detail-analyze.json` — the one\nlist-shaped GET in this domain that isn't a bare array.",
+        "operationId": "list_plan_analyze",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalyzeGrouped"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "crate::plans::routes"
+        ],
+        "operationId": "create_plan_analyze_item",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAnalyzeItemBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanAnalyzeItem"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/plans/{id}/analyze/reorder": {
+      "post": {
+        "tags": [
+          "crate::plans::routes"
+        ],
+        "operationId": "reorder_plan_analyze_items",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReorderAnalyzeItemsBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/plans/{id}/analyze/{itemId}": {
+      "delete": {
+        "tags": [
+          "crate::plans::routes"
+        ],
+        "operationId": "delete_plan_analyze_item",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "itemId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "crate::plans::routes"
+        ],
+        "operationId": "update_plan_analyze_item",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "itemId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateAnalyzeItemBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanAnalyzeItem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
     "/api/plans/{id}/duplicate": {
       "post": {
         "tags": [
@@ -1448,6 +1662,134 @@
           },
           {
             "name": "linkId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/plans/{id}/requirements": {
+      "post": {
+        "tags": [
+          "crate::plans::routes"
+        ],
+        "summary": "Bare created `PlanRequirement` row — not `{ok:true}`, matching Node's\n`addPlanRequirement` return shape (`_mutating.md`: \"POST /plans/:id/\nrequirements ... Response: created PlanRequirement row\").",
+        "operationId": "add_plan_requirement",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddRequirementBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanRequirement"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/plans/{id}/requirements/reorder": {
+      "post": {
+        "tags": [
+          "crate::plans::routes"
+        ],
+        "operationId": "reorder_plan_requirements",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReorderRequirementsBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/plans/{id}/requirements/{requirementId}": {
+      "delete": {
+        "tags": [
+          "crate::plans::routes"
+        ],
+        "operationId": "remove_plan_requirement",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "requirementId",
             "in": "path",
             "required": true,
             "schema": {
@@ -2499,6 +2841,18 @@
           }
         }
       },
+      "AddRequirementBody": {
+        "type": "object",
+        "description": "Body of `POST /api/plans/{id}/requirements` (`requirements.ts:9-20`).",
+        "required": [
+          "requirementId"
+        ],
+        "properties": {
+          "requirementId": {
+            "type": "string"
+          }
+        }
+      },
       "AddSpaceBody": {
         "type": "object",
         "description": "Body of `POST /api/workspaces/{id}/spaces` (`packages/api/src/workspaces/routes.ts:60-78`).",
@@ -2983,6 +3337,37 @@
           "count": {
             "type": "integer",
             "format": "int64"
+          }
+        }
+      },
+      "CreateAnalyzeItemBody": {
+        "type": "object",
+        "description": "Body of `POST /api/plans/{id}/analyze` (`analyze.ts:49-78`). `kind` is\nvalidated in the service layer, never a Rust enum — see `fubbik_db::\nrepo::plan`'s module doc for why `plan_analyze_item.kind` is\nunconstrained free text, matched only by Node's own `t.String()` +\n`Array.includes` runtime check.",
+        "required": [
+          "kind"
+        ],
+        "properties": {
+          "chunkId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "filePath": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "kind": {
+            "type": "string"
+          },
+          "metadata": {},
+          "text": {
+            "type": [
+              "string",
+              "null"
+            ]
           }
         }
       },
@@ -3932,6 +4317,25 @@
           }
         }
       },
+      "ReorderAnalyzeItemsBody": {
+        "type": "object",
+        "description": "Body of `POST /api/plans/{id}/analyze/reorder` (`analyze.ts:107-120`).",
+        "required": [
+          "kind",
+          "itemIds"
+        ],
+        "properties": {
+          "itemIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "kind": {
+            "type": "string"
+          }
+        }
+      },
       "ReorderEntry": {
         "type": "object",
         "description": "One entry of `PUT /api/favorites/reorder`'s bare-array body\n(`packages/api/src/favorites/routes.ts:39-44`). The body is a plain\n`t.Array(...)`, not wrapped in an object — see `ReorderBody` below.",
@@ -3946,6 +4350,21 @@
           "order": {
             "type": "integer",
             "format": "int32"
+          }
+        }
+      },
+      "ReorderRequirementsBody": {
+        "type": "object",
+        "description": "Body of `POST /api/plans/{id}/requirements/reorder` (`requirements.ts:30-42`).",
+        "required": [
+          "requirementIds"
+        ],
+        "properties": {
+          "requirementIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         }
       },
@@ -4337,6 +4756,31 @@
           "updatedAt": {
             "type": "string",
             "format": "date-time"
+          }
+        }
+      },
+      "UpdateAnalyzeItemBody": {
+        "type": "object",
+        "description": "Body of `PATCH /api/plans/{id}/analyze/{itemId}` (`analyze.ts:79-97`).\n`kind` is deliberately absent — Node's own body schema has no field for\nit, so an analyze item's kind can never change after creation.",
+        "properties": {
+          "chunkId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "filePath": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "metadata": {},
+          "text": {
+            "type": [
+              "string",
+              "null"
+            ]
           }
         }
       },

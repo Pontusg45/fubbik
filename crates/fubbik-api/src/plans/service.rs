@@ -3,14 +3,36 @@ use std::collections::HashSet;
 use fubbik_core::error::{AppError, AppResult};
 use fubbik_db::repo::activity::Activity;
 use fubbik_db::repo::plan::{
-    self, CompletedAtPatch, ListFilter, Plan, PlanExternalLink, PlanListRow,
+    self, CompletedAtPatch, ListFilter, Plan, PlanAnalyzeItem, PlanExternalLink, PlanListRow,
+    PlanRequirement,
 };
 use sqlx::PgPool;
 
 use super::dto::{
-    AnalyzeGrouped, CreateLinkBody, CreatePlanBody, PlanDetail, TaskDetail, UpdatePlanBody,
-    acceptance_criteria_for_write, normalize_acceptance_criteria,
+    AddRequirementBody, AnalyzeGrouped, CreateAnalyzeItemBody, CreateLinkBody, CreatePlanBody,
+    PlanDetail, ReorderAnalyzeItemsBody, ReorderRequirementsBody, TaskDetail,
+    UpdateAnalyzeItemBody, UpdatePlanBody, acceptance_criteria_for_write,
+    normalize_acceptance_criteria,
 };
+
+/// Node's `VALID_ANALYZE_KINDS` (`packages/api/src/plans/service.ts:8`).
+/// `plan_analyze_item.kind` is unconstrained free text at the DB and schema
+/// level — see `fubbik_db::repo::plan::analyze`'s module doc — so this is
+/// the *only* place a `kind` value is ever rejected. Deliberately not a
+/// Rust enum on any DTO: Node's Elysia body schema is `t.String()` and
+/// accepts any string at deserialisation, rejecting only here (mirroring
+/// `analyze.ts`'s `isAnalyzeKind` guard).
+const VALID_ANALYZE_KINDS: [&str; 5] = ["chunk", "file", "risk", "assumption", "question"];
+
+fn validate_analyze_kind(kind: &str) -> AppResult<()> {
+    if VALID_ANALYZE_KINDS.contains(&kind) {
+        Ok(())
+    } else {
+        Err(AppError::Validation(format!(
+            "Invalid analyze kind: {kind}"
+        )))
+    }
+}
 
 /// Node's `VALID_STATUSES` (`packages/api/src/plans/service.ts:7`).
 /// `plan.status` is unconstrained free text at the DB and schema level — see
@@ -299,4 +321,138 @@ pub async fn remove_link(pool: &PgPool, user_id: &str, id: &str, link_id: &str) 
     } else {
         Err(AppError::NotFound("PlanExternalLink".into()))
     }
+}
+
+// ── Requirement links ────────────────────────────────────────────────
+
+/// Mirrors Node's `POST /plans/:id/requirements` (`requirements.ts:9-20`).
+pub async fn add_requirement(
+    pool: &PgPool,
+    user_id: &str,
+    id: &str,
+    body: AddRequirementBody,
+) -> AppResult<PlanRequirement> {
+    get_plan(pool, user_id, id).await?;
+    plan::add_requirement(pool, user_id, id, &body.requirement_id)
+        .await?
+        .ok_or_else(|| AppError::NotFound("Plan".into()))
+}
+
+/// Mirrors Node's `DELETE /plans/:id/requirements/:requirementId`
+/// (`requirements.ts:21-29`). Node's own repo call is a bare `void` with no
+/// not-found signal (always `{ok:true}`); this port's plans domain already
+/// diverges from that for link deletes (`remove_link`), so this follows the
+/// same convention rather than being the one outlier — see
+/// `plan::remove_requirement`'s doc comment.
+pub async fn remove_requirement(
+    pool: &PgPool,
+    user_id: &str,
+    id: &str,
+    requirement_id: &str,
+) -> AppResult<()> {
+    get_plan(pool, user_id, id).await?;
+    if plan::remove_requirement(pool, user_id, id, requirement_id).await? {
+        Ok(())
+    } else {
+        Err(AppError::NotFound("PlanRequirement".into()))
+    }
+}
+
+/// Mirrors Node's `POST /plans/:id/requirements/reorder` (`requirements.ts:30-42`).
+pub async fn reorder_requirements(
+    pool: &PgPool,
+    user_id: &str,
+    id: &str,
+    body: ReorderRequirementsBody,
+) -> AppResult<()> {
+    get_plan(pool, user_id, id).await?;
+    plan::reorder_requirements(pool, user_id, id, &body.requirement_ids).await
+}
+
+// ── Analyze items ────────────────────────────────────────────────────
+
+/// Mirrors Node's `GET /plans/:id/analyze` (`analyze.ts:39-47`): the same
+/// group-by-kind shape as the `analyze` field of `get_detail`'s envelope.
+pub async fn list_analyze(pool: &PgPool, user_id: &str, id: &str) -> AppResult<AnalyzeGrouped> {
+    get_plan(pool, user_id, id).await?;
+    let items = plan::list_analyze_items(pool, user_id, id).await?;
+    Ok(AnalyzeGrouped::from_items(items))
+}
+
+/// Mirrors Node's `POST /plans/:id/analyze` (`analyze.ts:49-78`): validates
+/// `kind` against the five known values, then delegates to the repo
+/// function, which itself raises `NotFound` when the plan isn't the
+/// caller's (see `plan::create_analyze_item`'s doc comment).
+pub async fn create_analyze_item(
+    pool: &PgPool,
+    user_id: &str,
+    id: &str,
+    body: CreateAnalyzeItemBody,
+) -> AppResult<PlanAnalyzeItem> {
+    validate_analyze_kind(&body.kind)?;
+    get_plan(pool, user_id, id).await?;
+    plan::create_analyze_item(
+        pool,
+        user_id,
+        id,
+        &body.kind,
+        body.chunk_id.as_deref(),
+        body.file_path.as_deref(),
+        body.text.as_deref(),
+        body.metadata,
+    )
+    .await
+}
+
+/// Mirrors Node's `PATCH /plans/:id/analyze/:itemId` (`analyze.ts:79-97`).
+pub async fn update_analyze_item(
+    pool: &PgPool,
+    user_id: &str,
+    id: &str,
+    item_id: &str,
+    body: UpdateAnalyzeItemBody,
+) -> AppResult<PlanAnalyzeItem> {
+    get_plan(pool, user_id, id).await?;
+    plan::update_analyze_item(
+        pool,
+        user_id,
+        id,
+        item_id,
+        body.text.as_deref(),
+        body.metadata,
+        body.chunk_id.as_deref(),
+        body.file_path.as_deref(),
+    )
+    .await?
+    .ok_or_else(|| AppError::NotFound("PlanAnalyzeItem".into()))
+}
+
+/// Mirrors Node's `DELETE /plans/:id/analyze/:itemId` (`analyze.ts:98-106`).
+/// Same domain-wide "surface a real 404" convention as
+/// `remove_link`/`remove_requirement` — see `plan::delete_analyze_item`'s
+/// doc comment.
+pub async fn delete_analyze_item(
+    pool: &PgPool,
+    user_id: &str,
+    id: &str,
+    item_id: &str,
+) -> AppResult<()> {
+    get_plan(pool, user_id, id).await?;
+    if plan::delete_analyze_item(pool, user_id, id, item_id).await? {
+        Ok(())
+    } else {
+        Err(AppError::NotFound("PlanAnalyzeItem".into()))
+    }
+}
+
+/// Mirrors Node's `POST /plans/:id/analyze/reorder` (`analyze.ts:107-120`).
+pub async fn reorder_analyze_items(
+    pool: &PgPool,
+    user_id: &str,
+    id: &str,
+    body: ReorderAnalyzeItemsBody,
+) -> AppResult<()> {
+    validate_analyze_kind(&body.kind)?;
+    get_plan(pool, user_id, id).await?;
+    plan::reorder_analyze_items(pool, user_id, id, &body.kind, &body.item_ids).await
 }

@@ -1,11 +1,15 @@
 use axum::extract::{Path, State};
-use axum::routing::{get, post};
+use axum::routing::{get, patch, post};
 use axum::{Json, Router};
 use fubbik_db::repo::activity::Activity;
-use fubbik_db::repo::plan::{Plan, PlanExternalLink, PlanListRow};
+use fubbik_db::repo::plan::{
+    Plan, PlanAnalyzeItem, PlanExternalLink, PlanListRow, PlanRequirement,
+};
 
 use super::dto::{
-    CreateLinkBody, CreatePlanBody, ListPlansQuery, OkResponse, PlanDetail, UpdatePlanBody,
+    AddRequirementBody, AnalyzeGrouped, CreateAnalyzeItemBody, CreateLinkBody, CreatePlanBody,
+    ListPlansQuery, OkResponse, PlanDetail, ReorderAnalyzeItemsBody, ReorderRequirementsBody,
+    UpdateAnalyzeItemBody, UpdatePlanBody,
 };
 use super::service;
 use crate::AppState;
@@ -152,6 +156,122 @@ pub async fn remove_plan_link(
     Ok(Json(OkResponse::default()))
 }
 
+// ── Requirement links ────────────────────────────────────────────────
+
+/// Bare created `PlanRequirement` row — not `{ok:true}`, matching Node's
+/// `addPlanRequirement` return shape (`_mutating.md`: "POST /plans/:id/
+/// requirements ... Response: created PlanRequirement row").
+#[utoipa::path(post, path = "/api/plans/{id}/requirements", request_body = AddRequirementBody,
+    params(("id" = String, Path,)),
+    responses((status = 200, body = PlanRequirement), (status = 404)))]
+pub async fn add_plan_requirement(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path(id): Path<String>,
+    ReqJson(body): ReqJson<AddRequirementBody>,
+) -> ApiResult<Json<PlanRequirement>> {
+    Ok(Json(
+        service::add_requirement(&state.pool, &user.id, &id, body).await?,
+    ))
+}
+
+#[utoipa::path(delete, path = "/api/plans/{id}/requirements/{requirementId}",
+    params(("id" = String, Path,), ("requirementId" = String, Path,)),
+    responses((status = 200, body = OkResponse), (status = 404)))]
+pub async fn remove_plan_requirement(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path((id, requirement_id)): Path<(String, String)>,
+) -> ApiResult<Json<OkResponse>> {
+    service::remove_requirement(&state.pool, &user.id, &id, &requirement_id).await?;
+    Ok(Json(OkResponse::default()))
+}
+
+#[utoipa::path(post, path = "/api/plans/{id}/requirements/reorder",
+    request_body = ReorderRequirementsBody, params(("id" = String, Path,)),
+    responses((status = 200, body = OkResponse), (status = 404)))]
+pub async fn reorder_plan_requirements(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path(id): Path<String>,
+    ReqJson(body): ReqJson<ReorderRequirementsBody>,
+) -> ApiResult<Json<OkResponse>> {
+    service::reorder_requirements(&state.pool, &user.id, &id, body).await?;
+    Ok(Json(OkResponse::default()))
+}
+
+// ── Analyze items ────────────────────────────────────────────────────
+
+/// Object keyed by kind — `{chunk:[],file:[],risk:[],assumption:[],
+/// question:[]}`, all five keys always present, confirmed against
+/// `tests/fixtures/node-contract-2c/plans-detail-analyze.json` — the one
+/// list-shaped GET in this domain that isn't a bare array.
+#[utoipa::path(get, path = "/api/plans/{id}/analyze", params(("id" = String, Path,)),
+    responses((status = 200, body = AnalyzeGrouped), (status = 404)))]
+pub async fn list_plan_analyze(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path(id): Path<String>,
+) -> ApiResult<Json<AnalyzeGrouped>> {
+    Ok(Json(
+        service::list_analyze(&state.pool, &user.id, &id).await?,
+    ))
+}
+
+#[utoipa::path(post, path = "/api/plans/{id}/analyze", request_body = CreateAnalyzeItemBody,
+    params(("id" = String, Path,)),
+    responses((status = 200, body = PlanAnalyzeItem), (status = 400), (status = 404)))]
+pub async fn create_plan_analyze_item(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path(id): Path<String>,
+    ReqJson(body): ReqJson<CreateAnalyzeItemBody>,
+) -> ApiResult<Json<PlanAnalyzeItem>> {
+    Ok(Json(
+        service::create_analyze_item(&state.pool, &user.id, &id, body).await?,
+    ))
+}
+
+#[utoipa::path(patch, path = "/api/plans/{id}/analyze/{itemId}",
+    request_body = UpdateAnalyzeItemBody,
+    params(("id" = String, Path,), ("itemId" = String, Path,)),
+    responses((status = 200, body = PlanAnalyzeItem), (status = 404)))]
+pub async fn update_plan_analyze_item(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path((id, item_id)): Path<(String, String)>,
+    ReqJson(body): ReqJson<UpdateAnalyzeItemBody>,
+) -> ApiResult<Json<PlanAnalyzeItem>> {
+    Ok(Json(
+        service::update_analyze_item(&state.pool, &user.id, &id, &item_id, body).await?,
+    ))
+}
+
+#[utoipa::path(delete, path = "/api/plans/{id}/analyze/{itemId}",
+    params(("id" = String, Path,), ("itemId" = String, Path,)),
+    responses((status = 200, body = OkResponse), (status = 404)))]
+pub async fn delete_plan_analyze_item(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path((id, item_id)): Path<(String, String)>,
+) -> ApiResult<Json<OkResponse>> {
+    service::delete_analyze_item(&state.pool, &user.id, &id, &item_id).await?;
+    Ok(Json(OkResponse::default()))
+}
+
+#[utoipa::path(post, path = "/api/plans/{id}/analyze/reorder",
+    request_body = ReorderAnalyzeItemsBody, params(("id" = String, Path,)),
+    responses((status = 200, body = OkResponse), (status = 400), (status = 404)))]
+pub async fn reorder_plan_analyze_items(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path(id): Path<String>,
+    ReqJson(body): ReqJson<ReorderAnalyzeItemsBody>,
+) -> ApiResult<Json<OkResponse>> {
+    service::reorder_analyze_items(&state.pool, &user.id, &id, body).await?;
+    Ok(Json(OkResponse::default()))
+}
+
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/api/plans", get(list_plans).post(create_plan))
@@ -168,5 +288,26 @@ pub fn router() -> Router<AppState> {
         .route(
             "/api/plans/{id}/links/{linkId}",
             axum::routing::delete(remove_plan_link),
+        )
+        .route("/api/plans/{id}/requirements", post(add_plan_requirement))
+        .route(
+            "/api/plans/{id}/requirements/reorder",
+            post(reorder_plan_requirements),
+        )
+        .route(
+            "/api/plans/{id}/requirements/{requirementId}",
+            axum::routing::delete(remove_plan_requirement),
+        )
+        .route(
+            "/api/plans/{id}/analyze",
+            get(list_plan_analyze).post(create_plan_analyze_item),
+        )
+        .route(
+            "/api/plans/{id}/analyze/reorder",
+            post(reorder_plan_analyze_items),
+        )
+        .route(
+            "/api/plans/{id}/analyze/{itemId}",
+            patch(update_plan_analyze_item).delete(delete_plan_analyze_item),
         )
 }

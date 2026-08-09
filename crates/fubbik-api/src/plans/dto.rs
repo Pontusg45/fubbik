@@ -93,6 +93,55 @@ pub struct CreateLinkBody {
     pub label: Option<String>,
 }
 
+/// Body of `POST /api/plans/{id}/requirements` (`requirements.ts:9-20`).
+#[derive(serde::Deserialize, utoipa::ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct AddRequirementBody {
+    pub requirement_id: String,
+}
+
+/// Body of `POST /api/plans/{id}/requirements/reorder` (`requirements.ts:30-42`).
+#[derive(serde::Deserialize, utoipa::ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct ReorderRequirementsBody {
+    pub requirement_ids: Vec<String>,
+}
+
+/// Body of `POST /api/plans/{id}/analyze` (`analyze.ts:49-78`). `kind` is
+/// validated in the service layer, never a Rust enum — see `fubbik_db::
+/// repo::plan`'s module doc for why `plan_analyze_item.kind` is
+/// unconstrained free text, matched only by Node's own `t.String()` +
+/// `Array.includes` runtime check.
+#[derive(serde::Deserialize, utoipa::ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateAnalyzeItemBody {
+    pub kind: String,
+    pub chunk_id: Option<String>,
+    pub file_path: Option<String>,
+    pub text: Option<String>,
+    pub metadata: Option<serde_json::Value>,
+}
+
+/// Body of `PATCH /api/plans/{id}/analyze/{itemId}` (`analyze.ts:79-97`).
+/// `kind` is deliberately absent — Node's own body schema has no field for
+/// it, so an analyze item's kind can never change after creation.
+#[derive(serde::Deserialize, utoipa::ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateAnalyzeItemBody {
+    pub text: Option<String>,
+    pub metadata: Option<serde_json::Value>,
+    pub chunk_id: Option<String>,
+    pub file_path: Option<String>,
+}
+
+/// Body of `POST /api/plans/{id}/analyze/reorder` (`analyze.ts:107-120`).
+#[derive(serde::Deserialize, utoipa::ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct ReorderAnalyzeItemsBody {
+    pub kind: String,
+    pub item_ids: Vec<String>,
+}
+
 /// Shape of every `{ ok: true }` response in this domain — Node's plans
 /// routes discard the delete/unlink Effect's own result and return this
 /// literal instead (`_mutating.md`), unlike most other domains' `{ message:
