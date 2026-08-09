@@ -1,0 +1,1 @@
+{"clauses":[{"field":"near","operator":"is","value":"Auth","params":{"hops":"2"}},{"field":"text","operator":"contains","value":"Flow\""}]}

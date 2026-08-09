@@ -1,0 +1,30 @@
+GET /api/plans                                                             -> plans-list.json                            200 application/json;charset=utf-8  bare array
+GET /api/plans/{id}                                                        -> plans-detail.json                          200 application/json;charset=utf-8  object {plan,requirements,analyze,tasks,dependencies}
+GET /api/plans/{id}/activity                                               -> plans-detail-activity.json                 200 application/json;charset=utf-8  bare array (empty in this DB — no activity_log rows exist for any entity)
+GET /api/plans/{id}/links                                                  -> plans-detail-links.json                    200 application/json;charset=utf-8  bare array (empty — no plan_external_link rows exist)
+GET /api/plans/{id}/analyze                                                -> plans-detail-analyze.json                  200 application/json;charset=utf-8  OBJECT keyed by kind {chunk,file,risk,assumption,question} — NOT an array (see _questions.md Q1)
+GET /api/plans/{id}/tasks/{taskId}/links                                   -> plans-task-links.json                      200 application/json;charset=utf-8  bare array (empty — no plan_task_external_link rows exist)
+GET /api/chunks/stale                                                      -> chunks-stale.json                          200 application/json;charset=utf-8  bare array (empty — no undismissed flags in this DB)
+GET /api/chunks/stale/count                                                -> chunks-stale-count.json                    200 text/plain;charset=utf-8         BARE NUMBER, not JSON object — body is literally `0` (see _mutating.md note)
+GET /api/search/parse?q=connections:3                                     -> search-parse-connections-3.json            200 application/json;charset=utf-8  object {clauses:[...]}
+GET /api/search/parse?q=connections:3+                                    -> search-parse-connections-3plus.json        200 application/json;charset=utf-8  object {clauses:[...]}
+GET /api/search/parse?q=updated:30                                        -> search-parse-updated-30.json                200 application/json;charset=utf-8  object {clauses:[...]}
+GET /api/search/parse?q=updated:30d                                       -> search-parse-updated-30d.json               200 application/json;charset=utf-8  object {clauses:[...]}
+GET /api/search/parse?q=Tag:api                                           -> search-parse-Tag-api.json                   200 application/json;charset=utf-8  object {clauses:[...]}
+GET /api/search/parse?q=affected-by:x hops:3                              -> search-parse-affected-by-x-hops-3.json      200 application/json;charset=utf-8  object {clauses:[...]}
+GET /api/search/parse?q=near:"Auth Flow" hops:2                           -> search-parse-near-quoted-hops-2.json        200 application/json;charset=utf-8  object {clauses:[...]}
+GET /api/search/parse?q=path:"A"->"B"                                     -> search-parse-path-A-to-B.json               200 application/json;charset=utf-8  object {clauses:[...]}
+GET /api/search/parse?q=NOT tag:deprecated                                -> search-parse-not-tag-deprecated.json        200 application/json;charset=utf-8  object {clauses:[...]}
+GET /api/search/parse?q=tag:a,b                                           -> search-parse-tag-a-comma-b.json             200 application/json;charset=utf-8  object {clauses:[...]}
+GET /api/search/parse?q="quoted phrase"                                   -> search-parse-quoted-phrase.json             200 application/json;charset=utf-8  object {clauses:[...]}
+GET /api/search/parse?q=bare words here                                   -> search-parse-bare-words.json                200 application/json;charset=utf-8  object {clauses:[...]}
+GET /api/search/autocomplete?field=tag&prefix=a                           -> search-autocomplete-tag-a.json              200 application/json;charset=utf-8  bare array of strings
+GET /api/search/saved                                                     -> search-saved.json                          200 application/json;charset=utf-8  bare array (empty — no saved_query rows exist)
+
+Live DB reality check (all reads via GET, never mutated by this capture):
+- Exactly 1 plan exists: id eedde7c7-e9e7-4004-a79d-7af416cc2537, "Round 2: per-codebase vocabulary CRUD UI", 6 tasks (5 done, 1 in_progress),
+  1 requirement link, 1 chunk/1 risk/1 assumption analyze item (0 file, 0 question items), 0 dependencies.
+  Used as {id} and {taskId} (task ef00d24c-a418-40ae-a0ee-b8594936c3bc) for every plan sub-resource capture above.
+- 0 rows in activity_log, plan_external_link, plan_task_external_link, chunk_staleness (undismissed), saved_query. Those five endpoints
+  therefore capture a genuinely-empty bare array/count from real bytes — not a stand-in. Field shape for the empty ones is cross-checked
+  against schema/repository source in _mutating.md and this file's per-endpoint notes; nothing here is a guess dressed up as a capture.
