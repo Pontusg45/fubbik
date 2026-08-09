@@ -13,6 +13,7 @@ pub mod plans;
 pub mod search;
 pub mod settings;
 pub mod spaces;
+pub mod staleness;
 pub mod stats;
 pub mod tag_types;
 pub mod tags;
@@ -54,6 +55,7 @@ pub fn router(state: AppState) -> Router {
         .merge(plans::routes::router())
         .merge(settings::routes::router())
         .merge(spaces::routes::router())
+        .merge(staleness::routes::router())
         .merge(stats::routes::router())
         .merge(tag_types::routes::router())
         .merge(tags::routes::router())

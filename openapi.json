@@ -275,6 +275,162 @@
         }
       }
     },
+    "/api/chunks/stale": {
+      "get": {
+        "tags": [
+          "crate::staleness::routes"
+        ],
+        "operationId": "list_stale",
+        "parameters": [
+          {
+            "name": "reason",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "spaceId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/StaleFlag"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/chunks/stale/count": {
+      "get": {
+        "tags": [
+          "crate::staleness::routes"
+        ],
+        "summary": "Returns a **bare number**, not `{\"count\": N}` — Node's `getStaleCount`\nresolves the route handler to a plain `number`, and Elysia serialises a\nprimitive response as `text/plain`, not JSON\n(`tests/fixtures/node-contract-2c/chunks-stale-count.json`: literally\n`0`). `String`'s `IntoResponse` impl is what axum uses to produce a\n`text/plain; charset=utf-8` body here, matching that content type —\n`Json<i64>` would emit the right bytes but the wrong content-type.",
+        "operationId": "stale_count",
+        "parameters": [
+          {
+            "name": "spaceId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "integer",
+                  "format": "int64"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/chunks/stale/scan-age": {
+      "post": {
+        "tags": [
+          "crate::staleness::routes"
+        ],
+        "operationId": "scan_age",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScanAgeBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/chunks/suppress-duplicate": {
+      "post": {
+        "tags": [
+          "crate::staleness::routes"
+        ],
+        "operationId": "suppress_duplicate",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SuppressDuplicateBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RawUpdateResult"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
     "/api/chunks/{id}": {
       "get": {
         "tags": [
@@ -443,6 +599,39 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/api/chunks/{id}/dismiss-staleness": {
+      "post": {
+        "tags": [
+          "crate::staleness::routes"
+        ],
+        "operationId": "dismiss_staleness",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RawUpdateResult"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
           }
         }
       }
@@ -5013,6 +5202,40 @@
           }
         }
       },
+      "RawUpdateResult": {
+        "type": "object",
+        "description": "The visible surface of a raw `pg` driver `QueryResult`, which is exactly\nwhat Node's `dismissStaleFlag`/`suppressDuplicatePair` leak to the HTTP\nresponse: neither calls `.returning()`, so drizzle's node-postgres\nsession (`node_modules/drizzle-orm/node-postgres/session.js`, the\n`!fields && !customResultMapper` branch) resolves the query builder's\npromise with `client.query(...)`'s return value unmodified — the raw\n`pg.Result` instance — and Elysia serialises whatever that Effect\nresolves to.\n\nVerified against a disposable database (not the real `pg`/`pg-types`\nversion pinned in `packages/db`, but the same `pg@8.20.0` this\nworkspace's `pnpm-lock.yaml` resolves, run directly against\n`fubbik-rs-db`): `JSON.stringify(result)` for an `UPDATE ... ` with no\nmatching `RETURNING` includes `command`, `rowCount`, `oid`, `rows`,\n`fields` — the five fields `pg`'s README documents as the `Result`\nAPI — plus `_types`, `RowCtor`, `rowAsArray`, `_prebuiltEmptyResultObject`\n(`_parsers` is present as an own property but serialises to nothing:\nits value is `undefined`). Those four extra keys are underscore- or\notherwise internal-prefixed implementation details of the installed\n`pg`/`pg-types` version — `_types` in particular embeds that version's\nentire OID-to-typename registry (60+ entries) as a live object\nreference, not stable response data. Hardcoding that blob here would\ngive zero behavioural value and would silently drift out of sync with\nwhatever `pg` version Node is actually running. This port reproduces\nonly the five documented, stable fields and omits the rest — a\ndeliberate divergence from a byte-for-byte leak, not a guess.",
+        "required": [
+          "command",
+          "rowCount",
+          "rows",
+          "fields"
+        ],
+        "properties": {
+          "command": {
+            "type": "string"
+          },
+          "fields": {
+            "type": "array",
+            "items": {}
+          },
+          "oid": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "rowCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "rows": {
+            "type": "array",
+            "items": {}
+          }
+        }
+      },
       "ReorderAnalyzeItemsBody": {
         "type": "object",
         "description": "Body of `POST /api/plans/{id}/analyze/reorder` (`analyze.ts:107-120`).",
@@ -5115,6 +5338,38 @@
           "reviewed",
           "approved"
         ]
+      },
+      "ScanAgeBody": {
+        "type": "object",
+        "description": "Body of `POST /api/chunks/stale/scan-age`\n(`packages/api/src/staleness/routes.ts:87-90`). Both fields optional:\nan absent `thresholdDays` lets `detect_age_stale_chunks` fall back to\nits own default (90); `detect_uncovered_chunks`'s threshold (30) is\nnever overridable from this body at all — see the doc comment on\n`service::scan_age`.",
+        "properties": {
+          "spaceId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "thresholdDays": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          }
+        }
+      },
+      "ScanResult": {
+        "type": "object",
+        "description": "Shape of `POST /api/chunks/stale/scan-age`'s response: the *sum* of\nboth detectors' newly-flagged counts, matching Node's\n`{ flagged: ageResult.flagged + uncoveredResult.flagged }`.",
+        "required": [
+          "flagged"
+        ],
+        "properties": {
+          "flagged": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
       },
       "SetCodebaseSettingBody": {
         "type": "object",
@@ -5248,6 +5503,51 @@
           }
         }
       },
+      "StaleFlag": {
+        "type": "object",
+        "description": "One row of `GET /api/chunks/stale`\n(`packages/db/src/repository/staleness.ts::getStaleFlags`): the flag\njoined to its parent chunk's `title`/`type` for display. `camelCase`\nserialisation matches every other wire type in this crate.",
+        "required": [
+          "id",
+          "chunkId",
+          "reason",
+          "detectedAt",
+          "chunkTitle",
+          "chunkType"
+        ],
+        "properties": {
+          "chunkId": {
+            "type": "string"
+          },
+          "chunkTitle": {
+            "type": "string"
+          },
+          "chunkType": {
+            "type": "string"
+          },
+          "detail": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "detectedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "relatedChunkId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
       "Stats": {
         "type": "object",
         "description": "Aggregate per-user counts backing `GET /api/stats`. Bare-object shape,\nnot an array and not the `{chunks,total,limit,offset}` envelope the\nchunks *list* endpoint uses — matches Node's `getUserStats`\n(`packages/api/src/stats/service.ts`) field-for-field. No fields beyond\nwhat Node returns: this is a parity port, not a place to add \"useful\"\ncounts.",
@@ -5268,6 +5568,22 @@
           "tags": {
             "type": "integer",
             "format": "int64"
+          }
+        }
+      },
+      "SuppressDuplicateBody": {
+        "type": "object",
+        "description": "Body of `POST /api/chunks/suppress-duplicate`\n(`packages/api/src/staleness/routes.ts:63-66`).",
+        "required": [
+          "chunkIdA",
+          "chunkIdB"
+        ],
+        "properties": {
+          "chunkIdA": {
+            "type": "string"
+          },
+          "chunkIdB": {
+            "type": "string"
           }
         }
       },

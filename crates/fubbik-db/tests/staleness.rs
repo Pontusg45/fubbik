@@ -39,7 +39,11 @@ async fn seed_flag(pool: &sqlx::PgPool, chunk_id: &str, reason: &str) -> String 
     id
 }
 
-async fn seed_duplicate_flag(pool: &sqlx::PgPool, chunk_id: &str, related_chunk_id: &str) -> String {
+async fn seed_duplicate_flag(
+    pool: &sqlx::PgPool,
+    chunk_id: &str,
+    related_chunk_id: &str,
+) -> String {
     let id = fubbik_db::new_id();
     sqlx::query!(
         "INSERT INTO chunk_staleness (id, chunk_id, reason, related_chunk_id) \
@@ -357,7 +361,13 @@ async fn scan_age_is_idempotent(pool: sqlx::PgPool) {
         .unwrap();
     assert_eq!(flags.len(), 1);
     assert_eq!(flags[0].reason, "age");
-    assert!(flags[0].detail.as_deref().unwrap().starts_with("Last updated "));
+    assert!(
+        flags[0]
+            .detail
+            .as_deref()
+            .unwrap()
+            .starts_with("Last updated ")
+    );
 }
 
 #[sqlx::test]

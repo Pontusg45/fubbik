@@ -300,7 +300,8 @@ pub async fn detect_age_stale_chunks(
         return Ok(0);
     }
 
-    let mut insert = sqlx::QueryBuilder::new("INSERT INTO chunk_staleness (id, chunk_id, reason, detail) ");
+    let mut insert =
+        sqlx::QueryBuilder::new("INSERT INTO chunk_staleness (id, chunk_id, reason, detail) ");
     insert.push_values(rows.iter(), |mut b, (chunk_id, updated_at)| {
         b.push_bind(crate::new_id())
             .push_bind(chunk_id.clone())
@@ -346,7 +347,8 @@ pub async fn detect_uncovered_chunks(
         return Ok(0);
     }
 
-    let mut insert = sqlx::QueryBuilder::new("INSERT INTO chunk_staleness (id, chunk_id, reason, detail) ");
+    let mut insert =
+        sqlx::QueryBuilder::new("INSERT INTO chunk_staleness (id, chunk_id, reason, detail) ");
     insert.push_values(ids.iter(), |mut b, chunk_id| {
         b.push_bind(crate::new_id())
             .push_bind(chunk_id.clone())

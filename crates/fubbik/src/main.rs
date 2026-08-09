@@ -118,6 +118,7 @@ async fn main() -> anyhow::Result<()> {
 
             let pool = fubbik_db::connect(&database_url).await?;
             fubbik_db::warn_if_not_icu_collation(&pool).await;
+            fubbik_api::staleness::service::spawn_background_scan(pool.clone());
             let state = fubbik_api::AppState {
                 pool,
                 implicit_dev_session,
