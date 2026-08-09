@@ -468,12 +468,13 @@ async fn autocomplete_tag_is_case_insensitive_prefix_and_capped_at_10(pool: sqlx
     assert!(!names.contains(&"unrelated"));
 }
 
-/// Unlike `chunk`/`requirement` autocomplete (deliberately unscoped, see
-/// `chunk::search_titles`'s doc comment), `tag` autocomplete goes through
-/// `tag::list(user_id)`, which *is* user-scoped in SQL — proven load-bearing
-/// in `tests/tag.rs` already, but this is the search domain's own
-/// end-to-end proof that a caller's tag autocomplete never surfaces
-/// another user's tags.
+/// `tag` autocomplete goes through `tag::list(user_id)`, which is
+/// user-scoped in SQL — proven load-bearing in `tests/tag.rs` already, but
+/// this is the search domain's own end-to-end proof that a caller's tag
+/// autocomplete never surfaces another user's tags. See
+/// `autocomplete_chunk_never_returns_another_users_chunk_title` below for
+/// the equivalent proof on the `chunk` branch (divergence #17, Phase 2c
+/// task 8b).
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn autocomplete_tag_never_returns_another_users_tags(pool: sqlx::PgPool) {
     let app = fubbik_api::router(state(pool.clone()));
@@ -532,6 +533,34 @@ async fn autocomplete_chunk_matches_contains_not_prefix(pool: sqlx::PgPool) {
         titles,
         vec!["The Great Authentication Flow"],
         "the prefix appears mid-title, so only a contains match finds it"
+    );
+}
+
+/// Divergence #17 (Phase 2c task 8b): Node's `searchChunkTitles` has no
+/// `user_id` filter, so `GET /api/search/autocomplete?field=chunk` leaks
+/// every user's chunk titles from a keystroke in the nav search bar. This
+/// is the end-to-end proof of the fix: querying as Bob for a prefix that
+/// only matches Alice's chunk title comes back empty; querying as Alice
+/// still finds it.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn autocomplete_chunk_never_returns_another_users_chunk_title(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool.clone()));
+    signup(app.clone(), "autochunk-cross-alice@b.test", "Alice").await;
+    let alice_id = user_id_for_email(&pool, "autochunk-cross-alice@b.test").await;
+    let bob_cookie = signup(app.clone(), "autochunk-cross-bob@b.test", "Bob").await;
+    seed_chunk(&pool, &alice_id, "The Great Authentication Flow", "content").await;
+
+    let res = get(
+        app,
+        "/api/search/autocomplete?field=chunk&prefix=Authentication",
+        &bob_cookie,
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(
+        json_body(res).await,
+        serde_json::json!([]),
+        "must not surface another user's chunk title"
     );
 }
 

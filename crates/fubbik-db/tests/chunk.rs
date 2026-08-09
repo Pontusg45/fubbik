@@ -93,6 +93,42 @@ async fn other_users_chunks_are_invisible(pool: sqlx::PgPool) {
     assert!(!chunk::delete(&pool, &intruder, &c.id).await.unwrap());
 }
 
+/// Divergence #17 (Phase 2c task 8b): Node's `searchChunkTitles` has no
+/// `user_id` filter at all, leaking every user's chunk titles into the nav
+/// search bar's autocomplete. This proves the guard added in this port:
+/// Bob's query for Alice's title-matching prefix comes back empty, and
+/// Alice still sees her own row (so the guard isn't just breaking the
+/// query outright).
+#[sqlx::test]
+async fn search_titles_never_returns_another_users_chunk(pool: sqlx::PgPool) {
+    let alice = seed_user(&pool).await;
+    let bob = user::create(&pool, "bob-search-titles@b.test", "Bob", None)
+        .await
+        .unwrap()
+        .id;
+
+    a_chunk(&pool, &alice, "The Great Authentication Flow").await;
+
+    let bobs_view = chunk::search_titles(&pool, &bob, "Authentication", 10)
+        .await
+        .unwrap();
+    assert_eq!(
+        bobs_view.len(),
+        0,
+        "must not surface another user's chunk title"
+    );
+
+    let alices_view = chunk::search_titles(&pool, &alice, "Authentication", 10)
+        .await
+        .unwrap();
+    assert_eq!(
+        alices_view.len(),
+        1,
+        "the guard must not break the query for the owner"
+    );
+    assert_eq!(alices_view[0].title, "The Great Authentication Flow");
+}
+
 #[sqlx::test]
 async fn list_filters_sorts_and_paginates(pool: sqlx::PgPool) {
     let uid = seed_user(&pool).await;

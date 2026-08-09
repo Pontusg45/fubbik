@@ -256,11 +256,11 @@ pub async fn autocomplete(pool: &PgPool, user_id: &str, field: &str, prefix: &st
                 .map(|t| t.name)
                 .collect()
         }
-        "chunk" => match chunk::search_titles(pool, prefix, 10).await {
+        "chunk" => match chunk::search_titles(pool, user_id, prefix, 10).await {
             Ok(rows) => rows.into_iter().map(|r| r.title).collect(),
             Err(_) => vec![],
         },
-        "requirement" => match requirement::search_titles(pool, prefix, 10).await {
+        "requirement" => match requirement::search_titles(pool, user_id, prefix, 10).await {
             Ok(rows) => rows.into_iter().map(|r| r.title).collect(),
             Err(_) => vec![],
         },

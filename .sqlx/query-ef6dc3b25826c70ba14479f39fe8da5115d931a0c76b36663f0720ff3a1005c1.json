@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, title FROM chunk WHERE title ILIKE $1 LIMIT $2",
+  "query": "SELECT id, title FROM chunk WHERE title ILIKE $1 AND user_id = $2 LIMIT $3",
   "describe": {
     "columns": [
       {
@@ -17,6 +17,7 @@
     "parameters": {
       "Left": [
         "Text",
+        "Text",
         "Int8"
       ]
     },
@@ -25,5 +26,5 @@
       false
     ]
   },
-  "hash": "abf16bc60cfd596063be6e219aafaf9eb1eb0d7099e133ab19996610cb6c0aa8"
+  "hash": "ef6dc3b25826c70ba14479f39fe8da5115d931a0c76b36663f0720ff3a1005c1"
 }

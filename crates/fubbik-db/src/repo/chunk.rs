@@ -457,13 +457,15 @@ pub struct ChunkTitleMatch {
 
 /// Backs `GET /api/search/autocomplete?field=chunk`. Direct port of
 /// Node's `searchChunkTitles` (`packages/db/src/repository/chunk.ts:586-594`),
-/// including two things that look like they should be different but
-/// aren't:
+/// with one intentional deviation — divergence #17 (Phase 2c task 8b):
+/// Node's original has **no `user_id` filter at all**, leaking every
+/// user's chunk titles into the nav search bar's autocomplete. The human
+/// partner decided to scope it here; this port now adds `AND user_id =
+/// $2`, matching every other chunk query in this crate.
 ///
-/// - **Not scoped by `user_id`.** Every other chunk query in this crate is
-///   scoped; this one genuinely isn't in Node either — `searchChunkTitles`
-///   has no `eq(chunk.userId, ..)` anywhere. Autocomplete surfaces titles
-///   across every user's chunks.
+/// Everything else remains a faithful port, including what still looks
+/// like a bug:
+///
 /// - **Not filtered by `archived_at IS NULL`.** Archived chunks' titles
 ///   are still suggested.
 /// - **`ILIKE '%prefix%'` — contains, not a prefix match** — and the
@@ -475,14 +477,16 @@ pub struct ChunkTitleMatch {
 ///   happens to produce.
 pub async fn search_titles(
     pool: &PgPool,
+    user_id: &str,
     prefix: &str,
     limit: i64,
 ) -> AppResult<Vec<ChunkTitleMatch>> {
     let pattern = format!("%{prefix}%");
     let rows = sqlx::query_as!(
         ChunkTitleMatch,
-        r#"SELECT id, title FROM chunk WHERE title ILIKE $1 LIMIT $2"#,
+        r#"SELECT id, title FROM chunk WHERE title ILIKE $1 AND user_id = $2 LIMIT $3"#,
         pattern,
+        user_id,
         limit
     )
     .fetch_all(pool)
