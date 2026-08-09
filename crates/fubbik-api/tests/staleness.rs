@@ -404,3 +404,122 @@ async fn scan_age_threshold_days_only_overrides_the_age_detector(pool: sqlx::PgP
         "thresholdDays=200 must suppress the age flag but not the uncovered flag's fixed 30-day default"
     );
 }
+
+// ── POST /api/chunks/{id}/scan-impact ───────────────────────────────────
+
+async fn scan_impact(
+    app: axum::Router,
+    cookie: &str,
+    chunk_id: &str,
+    body: serde_json::Value,
+) -> axum::response::Response {
+    app.oneshot(
+        Request::post(format!("/api/chunks/{chunk_id}/scan-impact"))
+            .header("cookie", cookie)
+            .header("content-type", "application/json")
+            .body(Body::from(body.to_string()))
+            .unwrap(),
+    )
+    .await
+    .unwrap()
+}
+
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn scan_impact_flags_a_strongly_connected_downstream_chunk(pool: sqlx::PgPool) {
+    if !fubbik_db::age::is_available(&pool).await {
+        eprintln!("AGE unavailable — skipping");
+        return;
+    }
+    let app = fubbik_api::router(state(pool.clone()));
+    let cookie = signup(app.clone(), "alice-impact@b.test", "Alice").await;
+    let user_id = user_id_for_email(&pool, "alice-impact@b.test").await;
+    let source = seed_chunk(&pool, &user_id, "Source").await;
+    let downstream = seed_chunk(&pool, &user_id, "Downstream").await;
+    fubbik_db::age::ensure_vertex(&pool, &source).await.unwrap();
+    fubbik_db::age::ensure_vertex(&pool, &downstream)
+        .await
+        .unwrap();
+    fubbik_db::age::create_edge(&pool, "depends_on", &source, &downstream)
+        .await
+        .unwrap();
+
+    let res = scan_impact(
+        app.clone(),
+        &cookie,
+        &source,
+        serde_json::json!({ "title": "Source" }),
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = json_body(res).await;
+    assert_eq!(body, serde_json::json!({ "flagged": 1 }));
+
+    let flags = json_body(get_stale(app.clone(), &cookie).await).await;
+    let flags = flags.as_array().unwrap();
+    assert_eq!(flags.len(), 1);
+    assert_eq!(flags[0]["chunkId"], downstream);
+    assert_eq!(flags[0]["reason"], "upstream_impact");
+    assert_eq!(flags[0]["relatedChunkId"], source);
+}
+
+/// Re-running scan-impact against the same source chunk must not create a
+/// second flag for the same downstream target — the idempotency pre-filter
+/// (`chunk_staleness` has no unique constraint an `ON CONFLICT` could
+/// target, same shape as `scan_age_is_idempotent`).
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn scan_impact_is_idempotent(pool: sqlx::PgPool) {
+    if !fubbik_db::age::is_available(&pool).await {
+        eprintln!("AGE unavailable — skipping");
+        return;
+    }
+    let app = fubbik_api::router(state(pool.clone()));
+    let cookie = signup(app.clone(), "alice-impact-idem@b.test", "Alice").await;
+    let user_id = user_id_for_email(&pool, "alice-impact-idem@b.test").await;
+    let source = seed_chunk(&pool, &user_id, "Source").await;
+    let downstream = seed_chunk(&pool, &user_id, "Downstream").await;
+    fubbik_db::age::ensure_vertex(&pool, &source).await.unwrap();
+    fubbik_db::age::ensure_vertex(&pool, &downstream)
+        .await
+        .unwrap();
+    fubbik_db::age::create_edge(&pool, "depends_on", &source, &downstream)
+        .await
+        .unwrap();
+
+    let first = scan_impact(app.clone(), &cookie, &source, serde_json::json!({})).await;
+    assert_eq!(json_body(first).await, serde_json::json!({ "flagged": 1 }));
+
+    let second = scan_impact(app.clone(), &cookie, &source, serde_json::json!({})).await;
+    assert_eq!(
+        json_body(second).await,
+        serde_json::json!({ "flagged": 0 }),
+        "re-running must not create a duplicate flag"
+    );
+
+    let flags = json_body(get_stale(app.clone(), &cookie).await).await;
+    assert_eq!(flags.as_array().unwrap().len(), 1);
+}
+
+/// Node's route (`packages/api/src/staleness/routes.ts:93-105`) calls
+/// `flagImpactRipple(ctx.params.id, ...)` with no ownership check on the
+/// chunk id at all — this port adds one, the same divergence #14/#15
+/// pattern as `dismiss`/`suppress_duplicate`.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn scan_impact_on_another_users_chunk_is_404(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool.clone()));
+    signup(app.clone(), "alice-impact-cross@b.test", "Alice").await;
+    let bob_cookie = signup(app.clone(), "bob-impact-cross@b.test", "Bob").await;
+    let alice_id = user_id_for_email(&pool, "alice-impact-cross@b.test").await;
+    let alices_chunk = seed_chunk(&pool, &alice_id, "Alice's chunk").await;
+
+    let res = scan_impact(app, &bob_cookie, &alices_chunk, serde_json::json!({})).await;
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+}
+
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn scan_impact_on_a_nonexistent_chunk_is_404(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool.clone()));
+    let cookie = signup(app.clone(), "alice-impact-404@b.test", "Alice").await;
+
+    let res = scan_impact(app, &cookie, "no-such-chunk", serde_json::json!({})).await;
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+}

@@ -3,7 +3,9 @@ use axum::routing::{get, post};
 use axum::{Json, Router};
 use fubbik_db::repo::staleness::{RawUpdateResult, StaleFlag};
 
-use super::dto::{CountQuery, ListStaleQuery, ScanAgeBody, ScanResult, SuppressDuplicateBody};
+use super::dto::{
+    CountQuery, ListStaleQuery, ScanAgeBody, ScanImpactBody, ScanResult, SuppressDuplicateBody,
+};
 use super::service;
 use crate::AppState;
 use crate::auth::CurrentUser;
@@ -81,6 +83,22 @@ pub async fn scan_age(
     Ok(Json(ScanResult { flagged }))
 }
 
+/// `title` falls back to `"Unknown"` when absent — matches Node's
+/// `ctx.body.title ?? "Unknown"` (`packages/api/src/staleness/routes.ts:98`).
+#[utoipa::path(post, path = "/api/chunks/{id}/scan-impact",
+    params(("id" = String, Path,)), request_body = ScanImpactBody,
+    responses((status = 200, body = ScanResult), (status = 404)))]
+pub async fn scan_impact(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path(id): Path<String>,
+    ReqJson(body): ReqJson<ScanImpactBody>,
+) -> ApiResult<Json<ScanResult>> {
+    let title = body.title.as_deref().unwrap_or("Unknown");
+    let flagged = service::scan_impact(&state.pool, &user.id, &id, title).await?;
+    Ok(Json(ScanResult { flagged }))
+}
+
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/api/chunks/stale", get(list_stale))
@@ -91,4 +109,5 @@ pub fn router() -> Router<AppState> {
             post(dismiss_staleness),
         )
         .route("/api/chunks/suppress-duplicate", post(suppress_duplicate))
+        .route("/api/chunks/{id}/scan-impact", post(scan_impact))
 }

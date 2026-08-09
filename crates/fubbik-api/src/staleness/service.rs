@@ -57,6 +57,20 @@ pub async fn scan_age(
     Ok(aged + uncovered)
 }
 
+/// Turns the repo's `None` (caller doesn't own `chunk_id` — this port's own
+/// guard, see the doc comment on `staleness::flag_impact_ripple`) into 404,
+/// same "404 before write" shape as `dismiss`/`suppress_duplicate` above.
+pub async fn scan_impact(
+    pool: &PgPool,
+    user_id: &str,
+    chunk_id: &str,
+    title: &str,
+) -> AppResult<i64> {
+    staleness::flag_impact_ripple(pool, user_id, chunk_id, title)
+        .await?
+        .ok_or_else(|| AppError::NotFound("Chunk".into()))
+}
+
 /// Parses `STALENESS_SCAN_INTERVAL_HOURS` into a scan interval, or `None`
 /// when scanning should be disabled.
 ///

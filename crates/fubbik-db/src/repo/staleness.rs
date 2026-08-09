@@ -358,3 +358,92 @@ pub async fn detect_uncovered_chunks(
     insert.build().execute(pool).await?;
     Ok(ids.len() as i64)
 }
+
+/// Flags every chunk `age::compute_impact_ripple(chunk_id)` finds
+/// downstream of `chunk_id` with reason `"upstream_impact"`, backing `POST
+/// /api/chunks/{id}/scan-impact`. Port of Node's `flagImpactRipple`
+/// (`packages/api/src/staleness/detect-impact.ts:5-32`).
+///
+/// Returns `Ok(None)` when `chunk_id` isn't owned by `user_id` — this
+/// port's own guard, the same "ownership check this route lacks in Node"
+/// pattern as divergence #14 (`dismiss`) and #15 (`suppress_duplicate`)
+/// above: Node's route (`packages/api/src/staleness/routes.ts:93-105`)
+/// calls `flagImpactRipple(ctx.params.id, ...)` with **no ownership check
+/// at all** on the chunk id — any authenticated caller can trigger a scan
+/// (and write flags) against any chunk. The service layer maps `None` to
+/// 404.
+///
+/// **Idempotency is a pre-filter scoped to `user_id`, matching Node's own
+/// scoping exactly (bug-for-bug, not just in spirit).** Node's
+/// `alreadyFlagged` check goes through `getStaleFlags(userId, {reason:
+/// "upstream_impact"})`, which joins through `chunk.user_id = userId` — the
+/// *caller's* id, not the impacted chunk's owner. A ripple target owned by
+/// a different user is therefore invisible to that pre-filter and would be
+/// re-flagged on every re-run; a ripple target owned by the caller is
+/// correctly deduplicated. This port reproduces that exact scoping rather
+/// than "fixing" it into a stronger guarantee Node doesn't have — the
+/// primary chunk ownership guard above is the divergence this task asked
+/// for, not a second one on the ripple targets themselves.
+///
+/// Detail text is simplified from Node's `Impacted by change to "<title>"
+/// (degree: N.NN, H hops via a → b)`: `age::compute_impact_ripple` returns
+/// only the surviving chunk ids (see that function's doc comment for why),
+/// so the degree/hop/path breakdown isn't available here to format.
+pub async fn flag_impact_ripple(
+    pool: &PgPool,
+    user_id: &str,
+    chunk_id: &str,
+    chunk_title: &str,
+) -> AppResult<Option<i64>> {
+    let owns: bool = sqlx::query_scalar!(
+        r#"SELECT EXISTS(SELECT 1 FROM chunk WHERE id = $1 AND user_id = $2) AS "owns!""#,
+        chunk_id,
+        user_id
+    )
+    .fetch_one(pool)
+    .await?;
+    if !owns {
+        return Ok(None);
+    }
+
+    let targets = crate::age::compute_impact_ripple(pool, chunk_id).await?;
+    if targets.is_empty() {
+        return Ok(Some(0));
+    }
+
+    let already_flagged: std::collections::HashSet<String> = sqlx::query_scalar!(
+        r#"SELECT cs.chunk_id FROM chunk_staleness cs
+           JOIN chunk c ON c.id = cs.chunk_id
+           WHERE c.user_id = $1
+             AND cs.reason = 'upstream_impact'
+             AND cs.dismissed_at IS NULL
+             AND cs.related_chunk_id = $2"#,
+        user_id,
+        chunk_id
+    )
+    .fetch_all(pool)
+    .await?
+    .into_iter()
+    .collect();
+
+    let detail = format!("Impacted by change to \"{chunk_title}\"");
+    let mut flagged = 0i64;
+    for target in targets {
+        if already_flagged.contains(&target) {
+            continue;
+        }
+        sqlx::query!(
+            "INSERT INTO chunk_staleness (id, chunk_id, reason, detail, related_chunk_id) \
+             VALUES ($1, $2, 'upstream_impact', $3, $4)",
+            crate::new_id(),
+            target,
+            detail,
+            chunk_id
+        )
+        .execute(pool)
+        .await?;
+        flagged += 1;
+    }
+
+    Ok(Some(flagged))
+}

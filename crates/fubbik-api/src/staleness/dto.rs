@@ -56,7 +56,22 @@ pub struct ScanAgeBody {
 /// Shape of `POST /api/chunks/stale/scan-age`'s response: the *sum* of
 /// both detectors' newly-flagged counts, matching Node's
 /// `{ flagged: ageResult.flagged + uncoveredResult.flagged }`.
+///
+/// Also reused as `POST /api/chunks/{id}/scan-impact`'s response shape:
+/// Node's `flagImpactRipple` returns the same `{ flagged: n }` envelope
+/// (`packages/api/src/staleness/detect-impact.ts:8,30`).
 #[derive(serde::Serialize, utoipa::ToSchema)]
 pub struct ScanResult {
     pub flagged: i64,
+}
+
+/// Body of `POST /api/chunks/{id}/scan-impact`
+/// (`packages/api/src/staleness/routes.ts:101-104`). `title` is optional —
+/// an absent value falls back to `"Unknown"` in the detail message Node
+/// writes (`ctx.body.title ?? "Unknown"`, `routes.ts:98`), reproduced the
+/// same way at the service call site.
+#[derive(serde::Deserialize, utoipa::ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct ScanImpactBody {
+    pub title: Option<String>,
 }

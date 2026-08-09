@@ -743,6 +743,50 @@
         }
       }
     },
+    "/api/chunks/{id}/scan-impact": {
+      "post": {
+        "tags": [
+          "crate::staleness::routes"
+        ],
+        "summary": "`title` falls back to `\"Unknown\"` when absent — matches Node's\n`ctx.body.title ?? \"Unknown\"` (`packages/api/src/staleness/routes.ts:98`).",
+        "operationId": "scan_impact",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScanImpactBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanResult"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
     "/api/collections": {
       "get": {
         "tags": [
@@ -5807,9 +5851,21 @@
           }
         }
       },
+      "ScanImpactBody": {
+        "type": "object",
+        "description": "Body of `POST /api/chunks/{id}/scan-impact`\n(`packages/api/src/staleness/routes.ts:101-104`). `title` is optional —\nan absent value falls back to `\"Unknown\"` in the detail message Node\nwrites (`ctx.body.title ?? \"Unknown\"`, `routes.ts:98`), reproduced the\nsame way at the service call site.",
+        "properties": {
+          "title": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
       "ScanResult": {
         "type": "object",
-        "description": "Shape of `POST /api/chunks/stale/scan-age`'s response: the *sum* of\nboth detectors' newly-flagged counts, matching Node's\n`{ flagged: ageResult.flagged + uncoveredResult.flagged }`.",
+        "description": "Shape of `POST /api/chunks/stale/scan-age`'s response: the *sum* of\nboth detectors' newly-flagged counts, matching Node's\n`{ flagged: ageResult.flagged + uncoveredResult.flagged }`.\n\nAlso reused as `POST /api/chunks/{id}/scan-impact`'s response shape:\nNode's `flagImpactRipple` returns the same `{ flagged: n }` envelope\n(`packages/api/src/staleness/detect-impact.ts:8,30`).",
         "required": [
           "flagged"
         ],
