@@ -208,18 +208,36 @@ fn path_splits_on_arrow_into_from_to_params() {
     assert_eq!(got.len(), 1);
     assert_eq!(got[0].field, "path");
     assert_eq!(got[0].operator, "is");
-    assert_eq!(got[0].value, "from");
+    // `parser.ts:75` returns `{ operator: "is", value: from, params: { from, to } }` — `from`
+    // is the VARIABLE holding "A", not the literal string "from". Verified by executing the
+    // real parser, after an earlier draft of this plan asserted the literal and was wrong.
+    assert_eq!(got[0].value, "A");
     let p = got[0].params.as_ref().unwrap();
     assert_eq!(p.get("from").map(String::as_str), Some("A"));
     assert_eq!(p.get("to").map(String::as_str), Some("B"));
 }
 
 #[test]
-fn serialiser_round_trips_and_quotes_values_containing_spaces() {
-    let clauses = parse_query_string("near:\"Auth Flow\" hops:2");
+fn a_quote_after_a_field_prefix_does_not_group() {
+    // `tokenize` only treats `"` as opening a quoted run when it starts a FRESH token. A quote
+    // glued after `field:` is not special, so the embedded space splits the token in two.
+    // `near:"Auth Flow"` therefore does NOT yield one `near` clause with value `Auth Flow`.
+    // This looks like a tokenizer bug and is Node's actual behaviour — verified by execution.
+    let got = parse_query_string("near:\"Auth Flow\" hops:2");
+    assert!(
+        got.iter().all(|c| c.value != "Auth Flow"),
+        "a quote after `field:` must not group across the space; got {got:?}"
+    );
+}
+
+#[test]
+fn serialiser_quotes_values_containing_spaces() {
+    let clauses = vec![QueryClause {
+        field: "near".into(), operator: "is".into(), value: "Auth Flow".into(),
+        params: None, negate: None,
+    }];
     let s = clauses_to_query_string(&clauses);
     assert!(s.contains("near:\"Auth Flow\""), "values with spaces must be re-quoted, got: {s}");
-    assert_eq!(parse_query_string(&s), clauses, "round trip must be lossless");
 }
 ```
 
