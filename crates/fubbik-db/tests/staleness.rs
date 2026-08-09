@@ -2,6 +2,7 @@
 //! rows with a raw `INSERT`, same approach `notification.rs`/`activity.rs`
 //! use for tables with no create route.
 
+use fubbik_db::age;
 use fubbik_db::repo::staleness::{self, ListParams};
 use fubbik_db::repo::{chunk, user};
 
@@ -361,13 +362,11 @@ async fn scan_age_is_idempotent(pool: sqlx::PgPool) {
         .unwrap();
     assert_eq!(flags.len(), 1);
     assert_eq!(flags[0].reason, "age");
-    assert!(
-        flags[0]
-            .detail
-            .as_deref()
-            .unwrap()
-            .starts_with("Last updated ")
-    );
+    assert!(flags[0]
+        .detail
+        .as_deref()
+        .unwrap()
+        .starts_with("Last updated "));
 }
 
 #[sqlx::test]
@@ -435,4 +434,153 @@ async fn detect_uncovered_chunks_is_idempotent(pool: sqlx::PgPool) {
         .unwrap();
     assert_eq!(first, 1);
     assert_eq!(second, 0);
+}
+
+// ── flag_impact_ripple ───────────────────────────────────────────────────
+//
+// `crates/fubbik-api/tests/staleness.rs` already covers `flag_impact_ripple`
+// at the HTTP level, but an API-level test cannot detect a removed SQL
+// guard when the service's pre-check 404s first — the repo function itself
+// must be exercised directly. These three tests mirror the HTTP-level
+// scenarios (`scan_impact_ripple_targets_are_scoped_to_the_caller`,
+// `scan_impact_rerun_does_not_accumulate_flags_for_cross_user_targets`,
+// `scan_impact_on_another_users_chunk_is_404`) but call
+// `staleness::flag_impact_ripple` directly, one layer below the route.
+
+/// Divergence #19's own repo-level proof: Alice's chunk is edge-connected
+/// to Bob's chunk. Alice's ripple must flag her own downstream chunk but
+/// must NOT write a flag onto Bob's, even though the graph traversal
+/// (`age::compute_impact_ripple`) walks through it to get there.
+#[sqlx::test]
+async fn flag_impact_ripple_does_not_flag_a_cross_user_ripple_target(pool: sqlx::PgPool) {
+    if !age::is_available(&pool).await {
+        eprintln!("AGE unavailable — skipping");
+        return;
+    }
+    let alice = seed_user(&pool, "alice-ripple@b.test").await;
+    let bob = seed_user(&pool, "bob-ripple@b.test").await;
+    let source = seed_chunk(&pool, &alice).await;
+    let alices_downstream = seed_chunk(&pool, &alice).await;
+    let bobs_chunk = seed_chunk(&pool, &bob).await;
+
+    age::ensure_vertex(&pool, &source).await.unwrap();
+    age::ensure_vertex(&pool, &alices_downstream).await.unwrap();
+    age::ensure_vertex(&pool, &bobs_chunk).await.unwrap();
+    age::create_edge(&pool, "depends_on", &source, &alices_downstream)
+        .await
+        .unwrap();
+    age::create_edge(&pool, "depends_on", &source, &bobs_chunk)
+        .await
+        .unwrap();
+
+    let flagged = staleness::flag_impact_ripple(&pool, &alice, &source, "Source")
+        .await
+        .unwrap();
+    assert_eq!(
+        flagged,
+        Some(1),
+        "only Alice's own ripple target may be flagged, not Bob's"
+    );
+
+    let flags = staleness::list(&pool, &alice, ListParams::default())
+        .await
+        .unwrap();
+    assert_eq!(flags.len(), 1);
+    assert_eq!(flags[0].chunk_id, alices_downstream);
+
+    let bob_flag_count: i64 = sqlx::query_scalar!(
+        "SELECT COUNT(*) AS \"count!\" FROM chunk_staleness WHERE chunk_id = $1",
+        bobs_chunk
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(
+        bob_flag_count, 0,
+        "Bob's chunk must receive no flag, even though the graph traversal reaches it"
+    );
+}
+
+/// The duplicate-accumulation half of divergence #19: re-running must not
+/// grow the flag count for any target, including a cross-user one that's
+/// never written (and so is invisible to the `already_flagged` pre-filter).
+#[sqlx::test]
+async fn flag_impact_ripple_rerun_does_not_accumulate_duplicate_flags(pool: sqlx::PgPool) {
+    if !age::is_available(&pool).await {
+        eprintln!("AGE unavailable — skipping");
+        return;
+    }
+    let alice = seed_user(&pool, "alice-ripple-rerun@b.test").await;
+    let bob = seed_user(&pool, "bob-ripple-rerun@b.test").await;
+    let source = seed_chunk(&pool, &alice).await;
+    let alices_downstream = seed_chunk(&pool, &alice).await;
+    let bobs_chunk = seed_chunk(&pool, &bob).await;
+
+    age::ensure_vertex(&pool, &source).await.unwrap();
+    age::ensure_vertex(&pool, &alices_downstream).await.unwrap();
+    age::ensure_vertex(&pool, &bobs_chunk).await.unwrap();
+    age::create_edge(&pool, "depends_on", &source, &alices_downstream)
+        .await
+        .unwrap();
+    age::create_edge(&pool, "depends_on", &source, &bobs_chunk)
+        .await
+        .unwrap();
+
+    for i in 0..3 {
+        let flagged = staleness::flag_impact_ripple(&pool, &alice, &source, "Source")
+            .await
+            .unwrap();
+        assert_eq!(
+            flagged,
+            Some(if i == 0 { 1 } else { 0 }),
+            "only the first run may create a new flag; re-runs must not accumulate duplicates"
+        );
+    }
+
+    let flags = staleness::list(&pool, &alice, ListParams::default())
+        .await
+        .unwrap();
+    assert_eq!(
+        flags.len(),
+        1,
+        "repeated runs must not accumulate duplicate flags for any target"
+    );
+
+    let bob_flag_count: i64 = sqlx::query_scalar!(
+        "SELECT COUNT(*) AS \"count!\" FROM chunk_staleness WHERE chunk_id = $1",
+        bobs_chunk
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(
+        bob_flag_count, 0,
+        "repeated runs must not accumulate flags on a cross-user target either"
+    );
+}
+
+/// The primary `chunk_id` ownership guard: Bob calling `flag_impact_ripple`
+/// against Alice's chunk must affect nothing — not just return `None`, but
+/// leave no flags written anywhere.
+#[sqlx::test]
+async fn flag_impact_ripple_requires_ownership_of_the_source_chunk(pool: sqlx::PgPool) {
+    let alice = seed_user(&pool, "alice-ripple-owner@b.test").await;
+    let bob = seed_user(&pool, "bob-ripple-owner@b.test").await;
+    let alices_chunk = seed_chunk(&pool, &alice).await;
+
+    let result = staleness::flag_impact_ripple(&pool, &bob, &alices_chunk, "Alice's chunk")
+        .await
+        .unwrap();
+    assert!(
+        result.is_none(),
+        "bob does not own the source chunk, the ripple must not run for him"
+    );
+
+    let flags = staleness::list(&pool, &alice, ListParams::default())
+        .await
+        .unwrap();
+    assert!(
+        flags.is_empty(),
+        "no flags may be written when the caller doesn't own the source chunk"
+    );
 }
