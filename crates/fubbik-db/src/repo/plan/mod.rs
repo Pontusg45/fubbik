@@ -41,8 +41,8 @@ pub use task::{
     PlanTask, PlanTaskChunk, PlanTaskChunkWithTitle, PlanTaskDependency, PlanTaskExternalLink,
     add_task_chunk, add_task_dependency, add_task_link, create_task, delete_task, find_task_by_id,
     list_task_chunks_with_titles, list_task_dependencies, list_task_links, list_tasks,
-    mark_done_step, mark_task_done_and_unblock, remove_task_chunk, remove_task_dependency,
-    remove_task_link, reorder_tasks, unblock_step, update_task,
+    mark_task_done_and_unblock, remove_task_chunk, remove_task_dependency, remove_task_link,
+    reorder_tasks, update_task,
 };
 
 use std::collections::HashMap;

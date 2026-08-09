@@ -1376,8 +1376,13 @@ async fn cannot_remove_another_users_task_link(pool: PgPool) {
 // Given tests (verbatim semantics from the task brief, adapted to this
 // port's actual `create_task`/`add_task_dependency` signatures).
 
+/// Happy-path coverage only — no fault is injected here, so this proves
+/// the normal "mark done, unblock the dependent" sequence works, not that
+/// it's atomic under failure. See
+/// `mark_task_done_and_unblock_rolls_back_when_the_unblock_step_fails`
+/// below for the actual atomicity proof.
 #[sqlx::test]
-async fn marking_done_and_unblocking_is_atomic(pool: PgPool) {
+async fn marking_done_and_unblocking_happy_path(pool: PgPool) {
     let alice = seed_user(&pool, "alice").await;
     let p = plan::create(&pool, &alice, "p", None, None).await.unwrap();
     let a = seed_task(&pool, &alice, &p.id, "a").await;
@@ -1473,17 +1478,30 @@ async fn cannot_mark_another_users_task_done(pool: PgPool) {
 }
 
 /// Real, permanent atomicity coverage for divergence #12 — see
-/// `mark_task_done_and_unblock`'s doc comment. The original proof was a
-/// one-time manual check (a temporary `SELECT 1/0` spliced into the
-/// function body, run once, then deleted); no automated test backed it
-/// until this one. `mark_done_step` and `unblock_step` are the exact two
-/// functions `mark_task_done_and_unblock` composes inside its own
-/// transaction — this test drives them the same way, inside a transaction
-/// it owns itself, and injects a real Postgres fault (a division by zero,
-/// which aborts the transaction) between the two calls. No fault-injection
-/// code exists in the production path; the test supplies the fault.
+/// `mark_task_done_and_unblock`'s doc comment.
+///
+/// A previous version of this test drove `mark_done_step` and
+/// `unblock_step` — private pieces `mark_task_done_and_unblock` composed
+/// internally — directly inside a transaction the test owned itself. That
+/// only proved the test's *own* transaction rolled back; it never called
+/// `mark_task_done_and_unblock` at all, so it was structurally incapable
+/// of catching a regression in that function. Proof: with
+/// `mark_task_done_and_unblock` changed to commit after the first `UPDATE`
+/// and open a fresh transaction for the second (reintroducing divergence
+/// #12's original bug), that old test still passed.
+///
+/// This version calls the real, public `mark_task_done_and_unblock` and
+/// nothing else. To force its second `UPDATE` (the unblock step) to fail
+/// from outside the production code, it installs a disposable Postgres
+/// trigger — scoped to this test's own throwaway `#[sqlx::test]` database,
+/// so it can never affect any other test — that raises whenever a
+/// `plan_task` row transitions `'blocked' -> 'pending'`, which is exactly
+/// (and only) what the unblock `UPDATE` does; the first `UPDATE` (`->
+/// 'done'`) never matches that condition, so it still succeeds, giving the
+/// production function something to roll back. No fault-injection code
+/// exists anywhere in `task.rs`.
 #[sqlx::test]
-async fn injecting_a_fault_between_mark_done_and_unblock_rolls_back_the_done_flag(pool: PgPool) {
+async fn mark_task_done_and_unblock_rolls_back_when_the_unblock_step_fails(pool: PgPool) {
     let alice = seed_user(&pool, "alice").await;
     let p = plan::create(&pool, &alice, "p", None, None).await.unwrap();
     let a = seed_task(&pool, &alice, &p.id, "a").await;
@@ -1505,26 +1523,43 @@ async fn injecting_a_fault_between_mark_done_and_unblock_rolls_back_the_done_fla
     .await
     .unwrap();
 
-    let mut tx = pool.begin().await.unwrap();
+    sqlx::query(
+        r#"CREATE FUNCTION fail_on_unblock() RETURNS trigger AS $$
+           BEGIN
+               IF NEW.status = 'pending' AND OLD.status = 'blocked' THEN
+                   RAISE EXCEPTION 'injected failure on unblock';
+               END IF;
+               RETURN NEW;
+           END;
+           $$ LANGUAGE plpgsql"#,
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+    sqlx::query(
+        r#"CREATE TRIGGER fail_on_unblock_trg
+           BEFORE UPDATE ON plan_task
+           FOR EACH ROW EXECUTE FUNCTION fail_on_unblock()"#,
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
 
-    let updated = plan::mark_done_step(&mut tx, &alice, &p.id, &a.id)
-        .await
-        .unwrap();
-    assert_eq!(
-        updated,
-        Some(a.id.clone()),
-        "the first step must have matched alice's own task"
+    // The real public wrapper — not a private step.
+    let result = plan::mark_task_done_and_unblock(&pool, &alice, &p.id, &a.id).await;
+    assert!(
+        result.is_err(),
+        "the injected trigger must actually fail the unblock UPDATE"
     );
 
-    // Inject a real fault between the two steps — not fault-injection code
-    // in `mark_task_done_and_unblock` itself, just a failing statement run
-    // by the test on its own transaction handle. Postgres aborts the whole
-    // transaction on error; any statement after this, including
-    // `unblock_step`, would itself fail against the aborted transaction.
-    let fault = sqlx::query("SELECT 1/0").execute(&mut *tx).await;
-    assert!(fault.is_err(), "the injected fault must actually fail");
-
-    tx.rollback().await.unwrap();
+    sqlx::query("DROP TRIGGER fail_on_unblock_trg ON plan_task")
+        .execute(&pool)
+        .await
+        .unwrap();
+    sqlx::query("DROP FUNCTION fail_on_unblock()")
+        .execute(&pool)
+        .await
+        .unwrap();
 
     let a_after = plan::find_task_by_id(&pool, &alice, &p.id, &a.id)
         .await
@@ -1532,7 +1567,7 @@ async fn injecting_a_fault_between_mark_done_and_unblock_rolls_back_the_done_fla
         .unwrap();
     assert_eq!(
         a_after.status, "pending",
-        "a fault between mark-done and unblock must roll back the done flag too"
+        "a fault injected during the unblock step must roll back the done flag too"
     );
     let b_after = plan::find_task_by_id(&pool, &alice, &p.id, &b.id)
         .await
@@ -1540,7 +1575,7 @@ async fn injecting_a_fault_between_mark_done_and_unblock_rolls_back_the_done_fla
         .unwrap();
     assert_eq!(
         b_after.status, "blocked",
-        "the unblock step never ran, so b must still be blocked"
+        "the unblock step failed, so b must still be blocked"
     );
 }
 
