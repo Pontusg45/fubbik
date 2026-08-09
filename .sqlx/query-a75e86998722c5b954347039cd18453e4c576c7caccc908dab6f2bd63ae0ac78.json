@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT EXISTS(SELECT 1 FROM chunk WHERE id = $1 AND user_id = $3)\n             AND EXISTS(SELECT 1 FROM chunk WHERE id = $2 AND user_id = $3) AS \"owns_both!\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "owns_both!",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "a75e86998722c5b954347039cd18453e4c576c7caccc908dab6f2bd63ae0ac78"
+}

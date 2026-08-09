@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO chunk_staleness (id, chunk_id, reason, related_chunk_id) VALUES ($1, $2, 'diverged_duplicate', $3)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "6b8aff84a4863497f08c99ecb0b12f715d9ab02fde6bf466f7ac889c00376883"
+}

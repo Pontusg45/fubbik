@@ -10,6 +10,7 @@ pub mod plan;
 pub mod session;
 pub mod settings;
 pub mod space;
+pub mod staleness;
 pub mod stats;
 pub mod tag;
 pub mod tag_type;
