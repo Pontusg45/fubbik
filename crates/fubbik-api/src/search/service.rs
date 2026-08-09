@@ -17,35 +17,55 @@
 //!   *can* fail, and Node doesn't wrap them in `orElse` either
 //!   (`packages/api/src/search/routes.ts:67-112` lets them propagate).
 //!
-//! ## The Task 9 seam
+//! ## The four graph clauses (Task 9)
 //!
-//! `near`, `path`, `affected-by`, and `similar-to` clauses need Apache AGE
-//! (graph queries) or pgvector-embedding semantic search, neither of which
-//! is wired into this port yet. [`is_graph_clause`] detects them; when any
-//! are present, [`execute_search`] returns `{chunks: [], total: 0}`
-//! immediately — the same result Node produces when its graph resolver
-//! comes back with zero ids (`service.ts:130-132`: `if (graphIds !==
-//! undefined && graphIds.length === 0) return { chunks: [], total: 0,
-//! graphMeta }`). This is a deliberately honest "not implemented yet", not
-//! a pretend implementation: it does not attempt neighborhood/path/
-//! semantic resolution, does not populate `graphMeta`, and does not
-//! silently fall back to treating the clause as a standard filter. Task 9
-//! replaces this early return with real AGE-backed resolution.
+//! `near`, `path`, and `affected-by` resolve against Apache AGE
+//! (`fubbik_db::age`); `similar-to` is meant to resolve via a pgvector
+//! embedding search, but no Ollama/embedding pipeline exists anywhere in
+//! this Rust port yet (`crates/fubbik-api` never calls out to Ollama), so
+//! it always resolves to zero ids — the same degrade-to-empty result Node
+//! produces when `generateQueryEmbedding` itself fails
+//! (`service.ts:117-121`'s own `Effect.orElse`). [`resolve_graph_clauses`]
+//! does the resolving; [`execute_search`] intersects a query's standard
+//! (non-graph) filters with whatever ids came back, exactly like Node's
+//! `graphIds ? graphIds.filter(...) : ids` loop (`service.ts:88-127`).
+//!
+//! Every graph-clause resolver call is wrapped in `.unwrap_or_default()`/
+//! `.unwrap_or(None)` here, matching Node's `Effect.orElse(() =>
+//! Effect.succeed([]))` on each clause (`service.ts:92,99,111-113,120`) —
+//! and the underlying `fubbik_db::age` functions *themselves* already
+//! degrade to `Ok(vec![])`/`Ok(None)` rather than erroring, so this is
+//! belt-and-braces, not the only thing standing between a bad query and a
+//! 500.
+//!
+//! `graphMeta.type` carries a fourth value Node's own `types.ts:51-53`
+//! declares only three literals for (`"neighborhood" | "path" |
+//! "requirement-reach"`): `similar-to` sets it to the literal string
+//! `"semantic"` (`service.ts:123`'s `"semantic" as any` — a compile-time
+//! escape hatch that has zero effect on the runtime value, confirmed by
+//! `tests/fixtures/node-contract-2c/_questions.md` Q2). This port
+//! preserves that runtime value rather than "fixing" it to fit the
+//! narrower `GraphMeta` shape.
+//!
+//! Resolved graph ids are never trusted directly: they come from AGE,
+//! which knows nothing about `user_id` (a `:connects` edge can point at
+//! another user's chunk). They're applied as an ordinary `ids` filter on
+//! [`chunk::ListParams`], ANDed with `chunk::list`/`chunk::count`'s own
+//! mandatory `user_id = ..` predicate — never fetched by id in a
+//! separate, unscoped query. See `tests/search.rs`'s cross-user graph-edge
+//! test for the end-to-end proof.
 
 use fubbik_core::error::AppResult;
+use fubbik_db::age;
 use fubbik_db::repo::{chunk, connection, requirement, saved_query, tag};
 use sqlx::PgPool;
 
-use super::dto::{CreateSavedQueryBody, SearchQueryBody, SearchResult, SearchResultChunk};
+use super::dto::{
+    CreateSavedQueryBody, GraphContext, GraphMeta, PathEdgeInfo, SearchQueryBody, SearchResult,
+    SearchResultChunk,
+};
 use super::parser::QueryClause;
 use crate::chunks::health_score::{self, ChunkHealthInput};
-
-const GRAPH_FIELDS: [&str; 4] = ["near", "path", "affected-by", "similar-to"];
-
-/// See the module doc's "Task 9 seam" section.
-fn is_graph_clause(clause: &QueryClause) -> bool {
-    GRAPH_FIELDS.contains(&clause.field.as_str())
-}
 
 /// Port of `mapSortParam` (`service.ts:30-34`) fused with `listChunks`'s
 /// own `switch (params.sort)` default arm (`packages/db/src/repository/chunk.ts:128-141`):
@@ -145,20 +165,222 @@ async fn list_and_count(
     Ok((chunks, total))
 }
 
-/// Port of `executeSearch` (`service.ts:77-255`), minus the graph-clause
-/// branches — see the module doc's "Task 9 seam" section. Infallible: see
-/// the module doc for why this returns `SearchResult` directly rather than
-/// an `AppResult`.
-pub async fn execute_search(pool: &PgPool, user_id: &str, query: &SearchQueryBody) -> SearchResult {
-    if query.clauses.iter().any(is_graph_clause) {
-        return SearchResult::default();
+/// `graphIds ? graphIds.filter(id => ids.includes(id)) : ids` — Node's
+/// intersection rule (`service.ts:93`, `:101`, `:114`, `:122`), reproduced
+/// once here since all four graph-clause branches apply it identically. The
+/// first graph clause in a query seeds `graph_ids`; every subsequent one
+/// narrows it. `O(n*m)` like Node's own `.includes()` in a `.filter()` —
+/// result sets here are graph-neighborhood-sized, not full-table scans.
+fn intersect_ids(existing: Option<Vec<String>>, ids: Vec<String>) -> Vec<String> {
+    match existing {
+        Some(current) => current.into_iter().filter(|id| ids.contains(id)).collect(),
+        None => ids,
+    }
+}
+
+/// Output of [`resolve_graph_clauses`]: the intersected id set (`None` if
+/// the query had no graph clause at all — distinct from `Some(vec![])`,
+/// which means a graph clause resolved to nothing), the `graphMeta` the
+/// last-processed graph clause produced, and just enough side data to
+/// populate per-chunk `graphContext` afterwards without re-querying AGE.
+#[derive(Default)]
+struct GraphResolution {
+    ids: Option<Vec<String>>,
+    meta: Option<GraphMeta>,
+    /// `near`'s effective hop count — used as the `hopDistance` fallback
+    /// for every resolved id, matching Node's own fallback
+    /// (`hopMap.get(id) ?? neighborhoodRef.maxHops`, `service.ts:201`) in
+    /// the (here, permanent) case where hop-distance data isn't available.
+    near_hops: Option<i64>,
+    /// `path`'s full resolved chunk chain (source to target inclusive),
+    /// kept separately from `ids` because a later graph clause can narrow
+    /// `ids` further — `graphContext.pathPosition` still indexes into the
+    /// original chain, matching Node's `graphMeta.pathChunks.forEach(...)`
+    /// (`service.ts:193`), not the post-intersection set.
+    path_chunks: Option<Vec<String>>,
+    /// `similar-to`'s raw query text, for the `matchedRequirement` context
+    /// message (`service.ts:209`) — never actually reached today, since
+    /// `similar-to` always resolves to zero ids (see the module doc), but
+    /// kept for shape parity with Node's structure.
+    similar_to_query: Option<String>,
+}
+
+/// Resolves every graph clause (`near`/`path`/`affected-by`/`similar-to`)
+/// in `clauses` against Apache AGE, matching Node's sequential
+/// `for (const clause of graphClauses)` loop (`service.ts:88-127`). Clauses
+/// with any other field are ignored here (the same implicit no-op
+/// `build_list_params`'s own `_ => {}` arm gives them), so callers can pass
+/// a query's *entire* clause list rather than pre-filtering it.
+async fn resolve_graph_clauses(pool: &PgPool, clauses: &[QueryClause]) -> GraphResolution {
+    let mut out = GraphResolution::default();
+
+    for clause in clauses {
+        match clause.field.as_str() {
+            "near" => {
+                let hops = clause
+                    .params
+                    .as_ref()
+                    .and_then(|p| p.get("hops"))
+                    .and_then(|h| h.parse::<i32>().ok())
+                    .unwrap_or(1);
+                let resolved = age::get_neighborhood(pool, &clause.value, hops)
+                    .await
+                    .unwrap_or_default();
+                out.ids = Some(intersect_ids(out.ids, resolved));
+                out.meta = Some(GraphMeta {
+                    meta_type: "neighborhood".to_string(),
+                    reference_chunk: Some(clause.value.clone()),
+                    path_chunks: None,
+                    path_edges: None,
+                    hops: None,
+                });
+                out.near_hops = Some(hops as i64);
+            }
+            "path" => {
+                // Node's parser (`parser.ts:71-76`) puts the resolved
+                // endpoints in `clause.params.from`/`.to`, NOT in
+                // `clause.value` split on a comma — `clause.value` is just
+                // `from` alone (`tests/fixtures/node-contract-2c/search-parse-path-A-to-B.json`).
+                // Node's own `executeSearch` reads `clause.value.split(",")`
+                // instead (`service.ts:97`), which can never produce two
+                // elements given that shape, making the `path` clause dead
+                // code in Node today. This port reads `params.from`/`.to`
+                // directly so `path:` actually resolves, rather than
+                // reproducing what looks like an unintentional no-op bug —
+                // see the task report.
+                let from = clause
+                    .params
+                    .as_ref()
+                    .and_then(|p| p.get("from"))
+                    .map(String::as_str)
+                    .filter(|v| !v.is_empty());
+                let to = clause
+                    .params
+                    .as_ref()
+                    .and_then(|p| p.get("to"))
+                    .map(String::as_str)
+                    .filter(|v| !v.is_empty());
+                if let (Some(from), Some(to)) = (from, to) {
+                    let detail = age::find_shortest_path_with_details(pool, from, to)
+                        .await
+                        .unwrap_or(None);
+                    let resolved = detail
+                        .as_ref()
+                        .map(|d| d.chunk_ids.clone())
+                        .unwrap_or_default();
+                    let edges: Vec<PathEdgeInfo> = detail
+                        .as_ref()
+                        .map(|d| {
+                            d.edges
+                                .iter()
+                                .map(|e| PathEdgeInfo {
+                                    source: e.source.clone(),
+                                    target: e.target.clone(),
+                                    relation: e.relation.clone(),
+                                })
+                                .collect()
+                        })
+                        .unwrap_or_default();
+                    let hop_count = detail.as_ref().map(|d| d.edges.len() as i64).unwrap_or(0);
+
+                    out.ids = Some(intersect_ids(out.ids, resolved.clone()));
+                    out.meta = Some(GraphMeta {
+                        meta_type: "path".to_string(),
+                        reference_chunk: None,
+                        path_chunks: Some(resolved.clone()),
+                        path_edges: Some(edges),
+                        hops: Some(hop_count),
+                    });
+                    out.path_chunks = Some(resolved);
+                }
+            }
+            "affected-by" => {
+                let hops = clause
+                    .params
+                    .as_ref()
+                    .and_then(|p| p.get("hops"))
+                    .and_then(|h| h.parse::<i32>().ok())
+                    .unwrap_or(2);
+                let resolved = age::get_chunks_affected_by_requirement(pool, &clause.value, hops)
+                    .await
+                    .unwrap_or_default();
+                out.ids = Some(intersect_ids(out.ids, resolved));
+                out.meta = Some(GraphMeta {
+                    meta_type: "requirement-reach".to_string(),
+                    reference_chunk: None,
+                    path_chunks: None,
+                    path_edges: None,
+                    hops: None,
+                });
+            }
+            "similar-to" => {
+                // No embedding/Ollama pipeline exists anywhere in this Rust
+                // port yet, so this always resolves to zero ids — the same
+                // degrade-to-empty result Node produces when
+                // `generateQueryEmbedding` itself fails
+                // (`service.ts:117-121`'s own `Effect.orElse`). `graphMeta.type`
+                // still comes back as the literal string `"semantic"`
+                // (see the module doc) — that fidelity holds even though
+                // the id resolution isn't implemented yet.
+                let resolved: Vec<String> = Vec::new();
+                out.ids = Some(intersect_ids(out.ids, resolved));
+                out.meta = Some(GraphMeta {
+                    meta_type: "semantic".to_string(),
+                    reference_chunk: Some(clause.value.clone()),
+                    path_chunks: None,
+                    path_edges: None,
+                    hops: None,
+                });
+                out.similar_to_query = Some(clause.value.clone());
+            }
+            _ => {}
+        }
     }
 
-    let list_params = build_list_params(&query.clauses, query);
+    out
+}
 
-    let (chunks, total) = match list_and_count(pool, user_id, &list_params).await {
+/// Port of `executeSearch` (`service.ts:77-255`). Infallible: see the
+/// module doc for why this returns `SearchResult` directly rather than an
+/// `AppResult`.
+pub async fn execute_search(pool: &PgPool, user_id: &str, query: &SearchQueryBody) -> SearchResult {
+    let graph = resolve_graph_clauses(pool, &query.clauses).await;
+
+    // Matches Node's `if (graphIds !== undefined && graphIds.length === 0)
+    // return { chunks: [], total: 0, graphMeta }` (`service.ts:130-132`):
+    // a graph clause that resolved to nothing short-circuits the whole
+    // query, but `graphMeta` still comes back — it's set the moment a
+    // graph clause runs, not the moment it finds something.
+    if let Some(ids) = &graph.ids
+        && ids.is_empty()
+    {
+        return SearchResult {
+            chunks: vec![],
+            total: 0,
+            graph_meta: graph.meta,
+            duplicate_hints: None,
+        };
+    }
+
+    let mut list_params = build_list_params(&query.clauses, query);
+    // Resolved graph ids become an ordinary filter, ANDed with
+    // `chunk::list`/`chunk::count`'s own mandatory `user_id = ..`
+    // predicate — see the module doc on why this can never leak another
+    // user's chunk even though AGE itself knows nothing about ownership.
+    if let Some(ids) = &graph.ids {
+        list_params.ids = Some(ids.clone());
+    }
+
+    let (chunks, total_count) = match list_and_count(pool, user_id, &list_params).await {
         Ok(pair) => pair,
-        Err(_) => return SearchResult::default(),
+        Err(_) => {
+            return SearchResult {
+                chunks: vec![],
+                total: 0,
+                graph_meta: graph.meta,
+                duplicate_hints: None,
+            };
+        }
     };
 
     // Matches Node's `if (filteredChunks.length === 0) return { chunks: [],
@@ -167,7 +389,12 @@ pub async fn execute_search(pool: &PgPool, user_id: &str, query: &SearchQueryBod
     // nonzero total (e.g. an `offset` past the end of the result set). This
     // looks like it should report the real total; it is Node's behaviour.
     if chunks.is_empty() {
-        return SearchResult::default();
+        return SearchResult {
+            chunks: vec![],
+            total: 0,
+            graph_meta: graph.meta,
+            duplicate_hints: None,
+        };
     }
 
     let chunk_ids: Vec<String> = chunks.iter().map(|c| c.id.clone()).collect();
@@ -192,10 +419,74 @@ pub async fn execute_search(pool: &PgPool, user_id: &str, query: &SearchQueryBod
         .map(|r| (r.chunk_id, r.count))
         .collect();
 
+    // Port of Node's `graphContextMap` construction (`service.ts:190-212`):
+    // built once per graph-clause type, keyed by chunk id, then looked up
+    // per result chunk below.
+    let mut graph_context_map: std::collections::HashMap<String, GraphContext> =
+        std::collections::HashMap::new();
+    if let (Some(ids), Some(meta)) = (&graph.ids, &graph.meta) {
+        match meta.meta_type.as_str() {
+            "path" => {
+                if let Some(path_chunks) = &graph.path_chunks {
+                    for (idx, id) in path_chunks.iter().enumerate() {
+                        graph_context_map.insert(
+                            id.clone(),
+                            GraphContext {
+                                hop_distance: None,
+                                path_position: Some(idx as i64),
+                                matched_requirement: None,
+                            },
+                        );
+                    }
+                }
+            }
+            "neighborhood" => {
+                for id in ids {
+                    graph_context_map.insert(
+                        id.clone(),
+                        GraphContext {
+                            hop_distance: graph.near_hops,
+                            path_position: None,
+                            matched_requirement: None,
+                        },
+                    );
+                }
+            }
+            "requirement-reach" => {
+                for id in ids {
+                    graph_context_map.insert(
+                        id.clone(),
+                        GraphContext {
+                            hop_distance: None,
+                            path_position: None,
+                            matched_requirement: None,
+                        },
+                    );
+                }
+            }
+            "semantic" => {
+                if let Some(query_text) = &graph.similar_to_query {
+                    for id in ids {
+                        graph_context_map.insert(
+                            id.clone(),
+                            GraphContext {
+                                hop_distance: None,
+                                path_position: None,
+                                matched_requirement: Some(format!("similar to \"{query_text}\"")),
+                            },
+                        );
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+
     let result_chunks: Vec<SearchResultChunk> = chunks
         .into_iter()
         .map(|c| {
             let connection_count = conn_by_chunk.get(&c.id).copied().unwrap_or(0);
+            let graph_context = graph_context_map.remove(&c.id);
             // Every field besides `content`/`summary`/`connectionCount` is
             // hardcoded in Node's call site too (`service.ts:216-229`):
             // `rationale`/`alternatives`/`consequences: null`,
@@ -225,16 +516,28 @@ pub async fn execute_search(pool: &PgPool, user_id: &str, query: &SearchQueryBod
                 tags: tags_by_chunk.remove(&c.id).unwrap_or_default(),
                 connection_count,
                 updated_at: c.updated_at,
-                graph_context: None,
+                graph_context,
                 health_score: health.total,
             }
         })
         .collect();
 
+    // Node: `const total = graphIds !== undefined ? chunks.length :
+    // result.total;` (`service.ts:243`) — when a graph clause was present,
+    // the reported total is the final filtered page length, not the SQL
+    // count (which would already agree here, since the ids filter is
+    // applied inside the same scoped query, but this mirrors Node's rule
+    // directly rather than relying on that agreement).
+    let total = if graph.ids.is_some() {
+        result_chunks.len() as i64
+    } else {
+        total_count
+    };
+
     SearchResult {
         chunks: result_chunks,
         total,
-        graph_meta: None,
+        graph_meta: graph.meta,
         duplicate_hints: None,
     }
 }

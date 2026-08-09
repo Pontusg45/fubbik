@@ -337,12 +337,15 @@ async fn join_or_is_accepted_and_produces_identical_results_to_and(pool: sqlx::P
     );
 }
 
-/// The Task 9 seam: a graph clause (`near`/`path`/`affected-by`/
-/// `similar-to`) makes the whole query degrade to an empty result, exactly
+/// A graph clause (`near`/`path`/`affected-by`/`similar-to`) that resolves
+/// to zero ids makes the whole query degrade to an empty result, exactly
 /// like Node does when its graph resolver returns zero ids — not an error,
 /// not a clause silently dropped and the rest of the query still run.
+/// `"some-id"` has no vertex in the graph at all, so `near:` resolves to no
+/// neighbours; `graphMeta` still comes back (Node sets it the moment the
+/// clause runs, not the moment it finds something).
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
-async fn query_with_a_graph_clause_returns_empty_until_task_9(pool: sqlx::PgPool) {
+async fn query_with_a_near_clause_that_resolves_to_no_ids_returns_empty(pool: sqlx::PgPool) {
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "query-graph@b.test", "Q").await;
     let uid = user_id_for_email(&pool, "query-graph@b.test").await;
@@ -361,6 +364,250 @@ async fn query_with_a_graph_clause_returns_empty_until_task_9(pool: sqlx::PgPool
     let body = json_body(res).await;
     assert_eq!(body["chunks"], serde_json::json!([]));
     assert_eq!(body["total"], 0);
+    assert_eq!(body["graphMeta"]["type"], "neighborhood");
+    assert_eq!(body["graphMeta"]["referenceChunk"], "some-id");
+}
+
+// ── Task 9: the four graph clauses ─────────────────────────────────────
+
+/// `near:` resolves via `age::get_neighborhood`, defaulting `hops` to 1
+/// when the parser attached none, and reports `graphMeta.type ==
+/// "neighborhood"` plus a per-chunk `hopDistance` context.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn near_clause_resolves_a_connected_chunk_and_sets_graph_meta(pool: sqlx::PgPool) {
+    if !fubbik_db::age::is_available(&pool).await {
+        eprintln!("AGE unavailable — skipping");
+        return;
+    }
+    let app = fubbik_api::router(state(pool.clone()));
+    let cookie = signup(app.clone(), "near-basic@b.test", "N").await;
+    let uid = user_id_for_email(&pool, "near-basic@b.test").await;
+    let a = seed_chunk(&pool, &uid, "A", "content a").await;
+    let b = seed_chunk(&pool, &uid, "B", "content b").await;
+    fubbik_db::age::ensure_vertex(&pool, &a).await.unwrap();
+    fubbik_db::age::ensure_vertex(&pool, &b).await.unwrap();
+    fubbik_db::age::create_edge(&pool, "related_to", &a, &b)
+        .await
+        .unwrap();
+
+    let res = post(
+        app,
+        "/api/search/query",
+        &cookie,
+        serde_json::json!({"clauses": [
+            {"field": "near", "operator": "is", "value": a}
+        ]}),
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = json_body(res).await;
+    let ids: Vec<&str> = body["chunks"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|c| c["id"].as_str().unwrap())
+        .collect();
+    assert_eq!(
+        ids,
+        vec![b.as_str()],
+        "near: with no hops must default to 1 hop"
+    );
+    assert_eq!(body["graphMeta"]["type"], "neighborhood");
+    assert_eq!(body["graphMeta"]["referenceChunk"], a);
+    assert_eq!(
+        body["chunks"][0]["graphContext"]["hopDistance"], 1,
+        "hop distance falls back to the effective hop count (1, the default)"
+    );
+}
+
+/// The one place in this port where ids arrive from outside a scoped SQL
+/// query: an AGE `:connects` edge knows nothing about `user_id`, so it can
+/// point straight at another user's chunk. `chunk::list`'s unconditional
+/// `user_id = ..` predicate must still exclude it even though the graph
+/// resolver itself found it.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn near_clause_must_not_leak_another_users_chunk_across_a_graph_edge(pool: sqlx::PgPool) {
+    if !fubbik_db::age::is_available(&pool).await {
+        eprintln!("AGE unavailable — skipping");
+        return;
+    }
+    let app = fubbik_api::router(state(pool.clone()));
+    let alice_cookie = signup(app.clone(), "near-cross-alice@b.test", "Alice").await;
+    let alice_id = user_id_for_email(&pool, "near-cross-alice@b.test").await;
+    let bob_id = {
+        signup(app.clone(), "near-cross-bob@b.test", "Bob").await;
+        user_id_for_email(&pool, "near-cross-bob@b.test").await
+    };
+    let alices_chunk = seed_chunk(&pool, &alice_id, "Alice's chunk", "mine").await;
+    let bobs_chunk = seed_chunk(&pool, &bob_id, "Bob's chunk", "not mine").await;
+    fubbik_db::age::ensure_vertex(&pool, &alices_chunk)
+        .await
+        .unwrap();
+    fubbik_db::age::ensure_vertex(&pool, &bobs_chunk)
+        .await
+        .unwrap();
+    // A graph edge spanning two different users' chunks — AGE has no
+    // concept of ownership, so this is legal at the graph layer.
+    fubbik_db::age::create_edge(&pool, "related_to", &alices_chunk, &bobs_chunk)
+        .await
+        .unwrap();
+
+    let res = post(
+        app,
+        "/api/search/query",
+        &alice_cookie,
+        serde_json::json!({"clauses": [
+            {"field": "near", "operator": "is", "value": alices_chunk}
+        ]}),
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = json_body(res).await;
+    let ids: Vec<&str> = body["chunks"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|c| c["id"].as_str().unwrap())
+        .collect();
+    assert!(
+        !ids.contains(&bobs_chunk.as_str()),
+        "AGE resolved bob's chunk id via the graph edge, but chunk::list's user_id predicate must still exclude it"
+    );
+}
+
+/// `affected-by:` resolves via `age::get_chunks_affected_by_requirement`,
+/// defaulting `hops` to 2, and reports `graphMeta.type ==
+/// "requirement-reach"`.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn affected_by_clause_resolves_chunks_covered_by_a_requirement(pool: sqlx::PgPool) {
+    if !fubbik_db::age::is_available(&pool).await {
+        eprintln!("AGE unavailable — skipping");
+        return;
+    }
+    let app = fubbik_api::router(state(pool.clone()));
+    let cookie = signup(app.clone(), "affected-basic@b.test", "A").await;
+    let uid = user_id_for_email(&pool, "affected-basic@b.test").await;
+    let covered = seed_chunk(&pool, &uid, "Covered", "content").await;
+    fubbik_db::age::ensure_vertex(&pool, &covered)
+        .await
+        .unwrap();
+
+    let requirement_id = fubbik_db::new_id();
+    fubbik_db::age::cypher(
+        &pool,
+        &format!(
+            "MERGE (:requirement {{id: '{}'}})",
+            fubbik_db::age::esc_cypher(&requirement_id)
+        ),
+    )
+    .await
+    .unwrap();
+    fubbik_db::age::cypher(
+        &pool,
+        &format!(
+            "MATCH (r:requirement {{id: '{}'}}), (c:chunk {{id: '{}'}}) CREATE (r)-[:covers]->(c)",
+            fubbik_db::age::esc_cypher(&requirement_id),
+            fubbik_db::age::esc_cypher(&covered)
+        ),
+    )
+    .await
+    .unwrap();
+
+    let res = post(
+        app,
+        "/api/search/query",
+        &cookie,
+        serde_json::json!({"clauses": [
+            {"field": "affected-by", "operator": "is", "value": requirement_id}
+        ]}),
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = json_body(res).await;
+    let ids: Vec<&str> = body["chunks"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|c| c["id"].as_str().unwrap())
+        .collect();
+    assert_eq!(ids, vec![covered.as_str()]);
+    assert_eq!(body["graphMeta"]["type"], "requirement-reach");
+}
+
+/// `path:` resolves via `age::find_shortest_path_with_details`, using the
+/// parser's `params.from`/`params.to` (not `clause.value.split(",")` —
+/// see `search::service`'s module doc), and reports `graphMeta.type ==
+/// "path"` with `pathChunks`/`pathEdges`.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn path_clause_resolves_the_chunk_chain_and_edges(pool: sqlx::PgPool) {
+    if !fubbik_db::age::is_available(&pool).await {
+        eprintln!("AGE unavailable — skipping");
+        return;
+    }
+    let app = fubbik_api::router(state(pool.clone()));
+    let cookie = signup(app.clone(), "path-basic@b.test", "P").await;
+    let uid = user_id_for_email(&pool, "path-basic@b.test").await;
+    let a = seed_chunk(&pool, &uid, "A", "content a").await;
+    let b = seed_chunk(&pool, &uid, "B", "content b").await;
+    fubbik_db::age::ensure_vertex(&pool, &a).await.unwrap();
+    fubbik_db::age::ensure_vertex(&pool, &b).await.unwrap();
+    fubbik_db::age::create_edge(&pool, "depends_on", &a, &b)
+        .await
+        .unwrap();
+
+    let res = post(
+        app,
+        "/api/search/query",
+        &cookie,
+        serde_json::json!({"clauses": [
+            {"field": "path", "operator": "is", "value": a, "params": {"from": a, "to": b}}
+        ]}),
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = json_body(res).await;
+    let ids: Vec<&str> = body["chunks"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|c| c["id"].as_str().unwrap())
+        .collect();
+    let mut sorted = ids.clone();
+    sorted.sort();
+    let mut expected = vec![a.as_str(), b.as_str()];
+    expected.sort();
+    assert_eq!(sorted, expected);
+    assert_eq!(body["graphMeta"]["type"], "path");
+    assert_eq!(body["graphMeta"]["pathChunks"], serde_json::json!([a, b]));
+    assert_eq!(body["graphMeta"]["pathEdges"][0]["relation"], "depends_on");
+}
+
+/// `similar-to:` has no embedding pipeline wired into this Rust port at
+/// all (no Ollama client exists anywhere in `crates/`), so it always
+/// degrades to zero ids — but `graphMeta.type` must still come back as the
+/// literal string `"semantic"`, the fourth value Node's own three-literal
+/// TS union doesn't declare (see the module doc). Must not fail the suite
+/// even though nothing resembling Ollama is running in this environment.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn similar_to_clause_degrades_to_empty_but_sets_graph_meta_type_semantic(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool.clone()));
+    let cookie = signup(app.clone(), "similar-basic@b.test", "S").await;
+
+    let res = post(
+        app,
+        "/api/search/query",
+        &cookie,
+        serde_json::json!({"clauses": [
+            {"field": "similar-to", "operator": "is", "value": "authentication flow"}
+        ]}),
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = json_body(res).await;
+    assert_eq!(body["chunks"], serde_json::json!([]));
+    assert_eq!(body["total"], 0);
+    assert_eq!(body["graphMeta"]["type"], "semantic");
+    assert_eq!(body["graphMeta"]["referenceChunk"], "authentication flow");
 }
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
