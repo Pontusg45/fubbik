@@ -2,10 +2,11 @@ use std::collections::HashSet;
 
 use fubbik_core::error::{AppError, AppResult};
 use fubbik_db::repo::activity::Activity;
-use fubbik_db::repo::plan::{self, ListFilter, Plan};
+use fubbik_db::repo::plan::{
+    self, CompletedAtPatch, ListFilter, Plan, PlanExternalLink, PlanListRow,
+};
 use sqlx::PgPool;
 
-use super::db::{self as plan_detail, CompletedAtPatch, PlanExternalLink, PlanListRow};
 use super::dto::{
     AnalyzeGrouped, CreateLinkBody, CreatePlanBody, PlanDetail, TaskDetail, UpdatePlanBody,
     acceptance_criteria_for_write, normalize_acceptance_criteria,
@@ -41,7 +42,7 @@ pub async fn list(pool: &PgPool, user_id: &str, filter: ListFilter) -> AppResult
     if let Some(status) = &filter.status {
         validate_status(status)?;
     }
-    plan_detail::list_with_rollups(pool, user_id, filter).await
+    plan::list_with_rollups(pool, user_id, filter).await
 }
 
 /// Mirrors Node's `getPlan` (`packages/api/src/plans/service.ts:58-62`):
@@ -60,14 +61,14 @@ pub async fn get_plan(pool: &PgPool, user_id: &str, id: &str) -> AppResult<Plan>
 /// attached), and task dependencies.
 pub async fn get_detail(pool: &PgPool, user_id: &str, id: &str) -> AppResult<PlanDetail> {
     let found = get_plan(pool, user_id, id).await?;
-    let requirements = plan_detail::list_requirements(pool, user_id, id).await?;
-    let analyze_items = plan_detail::list_analyze_items(pool, user_id, id).await?;
-    let tasks = plan_detail::list_tasks(pool, user_id, id).await?;
-    let dependencies = plan_detail::list_task_dependencies(pool, user_id, id).await?;
+    let requirements = plan::list_requirements(pool, user_id, id).await?;
+    let analyze_items = plan::list_analyze_items(pool, user_id, id).await?;
+    let tasks = plan::list_tasks(pool, user_id, id).await?;
+    let dependencies = plan::list_task_dependencies(pool, user_id, id).await?;
 
     let mut task_details = Vec::with_capacity(tasks.len());
     for t in tasks {
-        let chunks = plan_detail::list_task_chunks_with_titles(pool, &t.id).await?;
+        let chunks = plan::list_task_chunks_with_titles(pool, &t.id).await?;
         task_details.push(TaskDetail {
             id: t.id,
             plan_id: t.plan_id,
@@ -117,7 +118,7 @@ pub async fn create(pool: &PgPool, user_id: &str, body: CreatePlanBody) -> AppRe
     .await?;
 
     if let Some(metadata) = body.metadata {
-        created = plan_detail::apply_patch(
+        created = plan::apply_patch(
             pool,
             user_id,
             &created.id,
@@ -134,7 +135,7 @@ pub async fn create(pool: &PgPool, user_id: &str, body: CreatePlanBody) -> AppRe
 
     if let Some(requirement_ids) = &body.requirement_ids {
         for rid in requirement_ids {
-            plan_detail::add_requirement(pool, user_id, &created.id, rid).await?;
+            plan::add_requirement(pool, user_id, &created.id, rid).await?;
         }
     }
 
@@ -142,7 +143,7 @@ pub async fn create(pool: &PgPool, user_id: &str, body: CreatePlanBody) -> AppRe
         for t in tasks {
             let criteria =
                 acceptance_criteria_for_write(t.acceptance_criteria.as_deref().unwrap_or(&[]));
-            plan_detail::create_task(
+            plan::create_task(
                 pool,
                 user_id,
                 &created.id,
@@ -161,7 +162,7 @@ pub async fn create(pool: &PgPool, user_id: &str, body: CreatePlanBody) -> AppRe
 /// validates a provided `status`, 404s up front if the plan isn't the
 /// caller's, computes the `completed_at` side effect from the *existing*
 /// row's status vs. the incoming one, and delegates the actual write to
-/// `plan_detail::apply_patch` — see that function's doc comment for why
+/// `plan::apply_patch` — see that function's doc comment for why
 /// `plan::update` (Task 3) isn't sufficient here (no way to express
 /// tri-state clearing).
 pub async fn update(
@@ -184,7 +185,7 @@ pub async fn update(
     let description = body.description.as_ref().map(|d| d.as_deref());
     let space_id = body.space_id.as_ref().map(|s| s.as_deref());
 
-    plan_detail::apply_patch(
+    plan::apply_patch(
         pool,
         user_id,
         id,
@@ -244,13 +245,11 @@ pub async fn duplicate(pool: &PgPool, user_id: &str, source_id: &str) -> AppResu
 pub async fn get_activity(pool: &PgPool, user_id: &str, id: &str) -> AppResult<Vec<Activity>> {
     get_plan(pool, user_id, id).await?;
 
-    let tasks = plan_detail::list_tasks(pool, user_id, id).await?;
+    let tasks = plan::list_tasks(pool, user_id, id).await?;
     let task_ids: HashSet<String> = tasks.into_iter().map(|t| t.id).collect();
 
-    let plan_events =
-        plan_detail::list_activity_by_entity(pool, user_id, "plan", Some(id), 100).await?;
-    let task_events =
-        plan_detail::list_activity_by_entity(pool, user_id, "plan_task", None, 200).await?;
+    let plan_events = plan::list_activity_by_entity(pool, user_id, "plan", Some(id), 100).await?;
+    let task_events = plan::list_activity_by_entity(pool, user_id, "plan_task", None, 200).await?;
 
     let mut merged: Vec<Activity> = plan_events
         .into_iter()
@@ -272,7 +271,7 @@ pub async fn list_links(
     id: &str,
 ) -> AppResult<Vec<PlanExternalLink>> {
     get_plan(pool, user_id, id).await?;
-    plan_detail::list_links(pool, user_id, id).await
+    plan::list_links(pool, user_id, id).await
 }
 
 /// Mirrors Node's `POST /plans/:id/links` (`packages/api/src/plans/routes.ts:192-215`):
@@ -287,7 +286,7 @@ pub async fn add_link(
 ) -> AppResult<PlanExternalLink> {
     get_plan(pool, user_id, id).await?;
     let system = body.system.as_deref().unwrap_or("url");
-    plan_detail::add_link(pool, user_id, id, system, &body.url, body.label.as_deref())
+    plan::add_link(pool, user_id, id, system, &body.url, body.label.as_deref())
         .await?
         .ok_or_else(|| AppError::NotFound("Plan".into()))
 }
@@ -295,7 +294,7 @@ pub async fn add_link(
 /// Mirrors Node's `DELETE /plans/:id/links/:linkId` (`packages/api/src/plans/routes.ts:216-224`).
 pub async fn remove_link(pool: &PgPool, user_id: &str, id: &str, link_id: &str) -> AppResult<()> {
     get_plan(pool, user_id, id).await?;
-    if plan_detail::remove_link(pool, user_id, id, link_id).await? {
+    if plan::remove_link(pool, user_id, id, link_id).await? {
         Ok(())
     } else {
         Err(AppError::NotFound("PlanExternalLink".into()))

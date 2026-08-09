@@ -2,9 +2,8 @@ use axum::extract::{Path, State};
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use fubbik_db::repo::activity::Activity;
-use fubbik_db::repo::plan::Plan;
+use fubbik_db::repo::plan::{Plan, PlanExternalLink, PlanListRow};
 
-use super::db::{PlanExternalLink, PlanListRow};
 use super::dto::{
     CreateLinkBody, CreatePlanBody, ListPlansQuery, OkResponse, PlanDetail, UpdatePlanBody,
 };

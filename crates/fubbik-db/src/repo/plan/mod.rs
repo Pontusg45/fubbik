@@ -24,12 +24,26 @@
 //! That validation is the service layer's job (a later task), not this
 //! repo's.
 
+mod analyze;
+mod link;
+mod requirement;
+mod task;
+
+pub use analyze::{PlanAnalyzeItem, list_analyze_items};
+pub use link::{PlanExternalLink, add_link, list_links, remove_link};
+pub use requirement::{PlanRequirement, add_requirement, list_requirements};
+pub use task::{
+    PlanTask, PlanTaskChunkWithTitle, PlanTaskDependency, create_task,
+    list_task_chunks_with_titles, list_task_dependencies, list_tasks,
+};
+
 use std::collections::HashMap;
 
 use fubbik_core::error::AppResult;
 use sqlx::PgPool;
 use sqlx::types::Json;
 
+use crate::repo::activity::Activity;
 use crate::timestamp::UtcTimestamp;
 
 /// `camelCase` serialisation matches every other wire type in this crate.
@@ -463,4 +477,303 @@ pub async fn duplicate(pool: &PgPool, user_id: &str, source_id: &str) -> AppResu
 
     tx.commit().await?;
     Ok(Some(new_plan))
+}
+
+/// Row shape of `GET /api/plans` — `Plan`'s own columns plus four rollups
+/// used by the list page: the linked space's name (`codebaseName`), a
+/// task-count progress pair, the title of the first non-`done` task
+/// (`nextAction`), and the more-recent of the plan's own `updated_at` and
+/// its tasks' `updated_at` (`lastActivityAt`). Mirrors Node's
+/// `listPlansWithRollups` / `PlanListRow`
+/// (`packages/db/src/repository/plan.ts:65-143`) field-for-field — see
+/// `tests/fixtures/node-contract-2c/plans-list.json`, captured live, which
+/// carries all five rollup fields even though the task brief's own endpoint
+/// table just says "bare array". Trusting the fixture over the table's
+/// shorthand is deliberate, per this slice's own instruction to check each
+/// fixture rather than reason by analogy.
+#[derive(Debug, Clone, serde::Serialize, utoipa::ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct PlanListRow {
+    pub id: String,
+    pub title: String,
+    pub description: Option<String>,
+    pub status: String,
+    pub user_id: String,
+    pub space_id: Option<String>,
+    #[schema(value_type = chrono::NaiveDateTime)]
+    pub created_at: UtcTimestamp,
+    #[schema(value_type = chrono::NaiveDateTime)]
+    pub updated_at: UtcTimestamp,
+    #[schema(value_type = Option<chrono::NaiveDateTime>)]
+    pub completed_at: Option<UtcTimestamp>,
+    #[schema(value_type = std::collections::HashMap<String, serde_json::Value>)]
+    pub metadata: Json<serde_json::Value>,
+    pub codebase_name: Option<String>,
+    pub task_total: i64,
+    pub task_done: i64,
+    pub next_action: Option<String>,
+    #[schema(value_type = chrono::NaiveDateTime)]
+    pub last_activity_at: UtcTimestamp,
+}
+
+#[derive(Debug, sqlx::FromRow)]
+struct RollupRow {
+    id: String,
+    title: String,
+    description: Option<String>,
+    status: String,
+    user_id: String,
+    space_id: Option<String>,
+    created_at: UtcTimestamp,
+    updated_at: UtcTimestamp,
+    completed_at: Option<UtcTimestamp>,
+    metadata: Json<serde_json::Value>,
+    codebase_name: Option<String>,
+    task_total: i64,
+    task_done: i64,
+    last_task_update: Option<UtcTimestamp>,
+}
+
+/// `plan::list` + per-row rollups, used by `GET /api/plans`. Same
+/// `user_id`/`ListFilter` scoping as `plan::list` — `GET /plans` is the one
+/// plan endpoint Node itself already scopes by owner, so this adds no new
+/// divergence, just the extra columns.
+///
+/// `LEFT JOIN plan_task` + `GROUP BY p.id, s.name` mirrors Node's own query
+/// (`plan.ts:100-113`) exactly, including relying on `plan.id` being a
+/// primary key so Postgres allows every other selected `plan` column
+/// without listing it in `GROUP BY` (functional dependency) — the same
+/// trick Node's Drizzle query leans on.
+pub async fn list_with_rollups(
+    pool: &PgPool,
+    user_id: &str,
+    filter: ListFilter,
+) -> AppResult<Vec<PlanListRow>> {
+    let mut qb = sqlx::QueryBuilder::new(
+        "SELECT p.id, p.title, p.description, p.status, p.user_id, p.space_id, \
+         p.created_at, p.updated_at, p.completed_at, p.metadata, \
+         s.name AS codebase_name, \
+         COUNT(pt.id) AS task_total, \
+         COUNT(*) FILTER (WHERE pt.status = 'done') AS task_done, \
+         MAX(pt.updated_at) AS last_task_update \
+         FROM plan p \
+         LEFT JOIN space s ON s.id = p.space_id \
+         LEFT JOIN plan_task pt ON pt.plan_id = p.id",
+    );
+    qb.push(" WHERE p.user_id = ")
+        .push_bind(user_id.to_string());
+
+    if let Some(space_id) = &filter.space_id {
+        qb.push(" AND p.space_id = ").push_bind(space_id.clone());
+    }
+    if let Some(status) = &filter.status {
+        qb.push(" AND p.status = ").push_bind(status.clone());
+    } else if !filter.include_archived {
+        qb.push(" AND p.status <> 'archived'");
+    }
+    if let Some(requirement_id) = &filter.requirement_id {
+        qb.push(" AND p.id IN (SELECT plan_id FROM plan_requirement WHERE requirement_id = ")
+            .push_bind(requirement_id.clone())
+            .push(")");
+    }
+
+    qb.push(" GROUP BY p.id, s.name");
+    qb.push(" ORDER BY p.created_at ASC, p.id ASC");
+
+    let rows = qb.build_query_as::<RollupRow>().fetch_all(pool).await?;
+    if rows.is_empty() {
+        return Ok(vec![]);
+    }
+
+    // Second pass: title of the first non-done task per plan, matching
+    // Node's `SELECT DISTINCT ON (plan_id) ... ORDER BY plan_id, "order"`
+    // (`plan.ts:119-128`).
+    let plan_ids: Vec<String> = rows.iter().map(|r| r.id.clone()).collect();
+    let next_rows = sqlx::query!(
+        r#"SELECT DISTINCT ON (plan_id) plan_id, title
+           FROM plan_task
+           WHERE plan_id = ANY($1) AND status <> 'done'
+           ORDER BY plan_id, "order""#,
+        &plan_ids
+    )
+    .fetch_all(pool)
+    .await?;
+    let mut next_action_map: HashMap<String, String> = HashMap::new();
+    for r in next_rows {
+        next_action_map.insert(r.plan_id, r.title);
+    }
+
+    Ok(rows
+        .into_iter()
+        .map(|r| {
+            let last_activity_at = match r.last_task_update {
+                Some(t) if t > r.updated_at => t,
+                _ => r.updated_at,
+            };
+            let next_action = next_action_map.get(&r.id).cloned();
+            PlanListRow {
+                id: r.id,
+                title: r.title,
+                description: r.description,
+                status: r.status,
+                user_id: r.user_id,
+                space_id: r.space_id,
+                created_at: r.created_at,
+                updated_at: r.updated_at,
+                completed_at: r.completed_at,
+                metadata: r.metadata,
+                codebase_name: r.codebase_name,
+                task_total: r.task_total,
+                task_done: r.task_done,
+                next_action,
+                last_activity_at,
+            }
+        })
+        .collect())
+}
+
+/// How a `PATCH` should treat `completed_at`, computed by the service layer
+/// from the existing row's status vs. the incoming one — mirrors Node's
+/// `updatePlan` (`packages/api/src/plans/service.ts:178-184`): entering
+/// `"completed"` sets `completed_at = now()`, leaving it sets it back to
+/// `NULL`, anything else leaves the column untouched.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CompletedAtPatch {
+    Unchanged,
+    SetNow,
+    Clear,
+}
+
+/// General `PATCH /api/plans/{id}` update, superseding `fubbik_db::repo::
+/// plan::update` for every field that endpoint actually needs to touch:
+/// that function only threads `title`/`description`/`status` and has no
+/// way to express "clear this column" (a bound `NULL` under `COALESCE`
+/// means "don't change", not "clear"). `description` and `space_id` both
+/// need real tri-state ("omitted" vs "explicit null" vs "a value"), and
+/// `status`'s `completed_at` side effect and `metadata`'s wholesale
+/// replacement aren't expressible through `plan::update` at all.
+///
+/// Tri-state fields use the `CASE WHEN $flag::bool THEN $value ELSE column
+/// END` shape (not `COALESCE`, which cannot represent "set to NULL") — same
+/// pattern as `fubbik_db::repo::workspace::update`'s `description`
+/// handling. `title`/`status`/`metadata` stay plain `COALESCE`, since none
+/// of the three is tri-state in Node's own schema.
+///
+/// `AND user_id = $2` on the `UPDATE` — divergence #13 again, same guard
+/// shape as `plan::update`.
+#[allow(clippy::too_many_arguments)]
+pub async fn apply_patch(
+    pool: &PgPool,
+    user_id: &str,
+    id: &str,
+    title: Option<&str>,
+    description: Option<Option<&str>>,
+    status: Option<&str>,
+    space_id: Option<Option<&str>>,
+    metadata: Option<serde_json::Value>,
+    completed_at: CompletedAtPatch,
+) -> AppResult<Option<Plan>> {
+    let (desc_set, desc_val) = match description {
+        Some(v) => (true, v),
+        None => (false, None),
+    };
+    let (space_set, space_val) = match space_id {
+        Some(v) => (true, v),
+        None => (false, None),
+    };
+    let (completed_set, completed_clear) = match completed_at {
+        CompletedAtPatch::Unchanged => (false, false),
+        CompletedAtPatch::SetNow => (true, false),
+        CompletedAtPatch::Clear => (true, true),
+    };
+
+    let has_changes = title.is_some()
+        || desc_set
+        || status.is_some()
+        || space_set
+        || metadata.is_some()
+        || completed_set;
+
+    let p = if has_changes {
+        sqlx::query_as!(
+            Plan,
+            r#"UPDATE plan SET
+                 title = COALESCE($3, title),
+                 description = CASE WHEN $4::bool THEN $5 ELSE description END,
+                 status = COALESCE($6, status),
+                 space_id = CASE WHEN $7::bool THEN $8 ELSE space_id END,
+                 metadata = COALESCE($9, metadata),
+                 completed_at = CASE
+                   WHEN $10::bool THEN (CASE WHEN $11::bool THEN NULL::timestamp ELSE now() END)
+                   ELSE completed_at
+                 END,
+                 updated_at = now()
+               WHERE id = $1 AND user_id = $2
+               RETURNING id, title, description, status, user_id, space_id,
+                         created_at AS "created_at: UtcTimestamp",
+                         updated_at AS "updated_at: UtcTimestamp",
+                         completed_at AS "completed_at: UtcTimestamp",
+                         metadata AS "metadata: Json<serde_json::Value>""#,
+            id,
+            user_id,
+            title,
+            desc_set,
+            desc_val,
+            status,
+            space_set,
+            space_val,
+            metadata,
+            completed_set,
+            completed_clear
+        )
+        .fetch_optional(pool)
+        .await?
+    } else {
+        sqlx::query_as!(
+            Plan,
+            r#"SELECT id, title, description, status, user_id, space_id,
+                      created_at AS "created_at: UtcTimestamp",
+                      updated_at AS "updated_at: UtcTimestamp",
+                      completed_at AS "completed_at: UtcTimestamp",
+                      metadata AS "metadata: Json<serde_json::Value>"
+               FROM plan WHERE id = $1 AND user_id = $2"#,
+            id,
+            user_id
+        )
+        .fetch_optional(pool)
+        .await?
+    };
+    Ok(p)
+}
+
+/// Used internally by the plans domain to build the merged plan+task
+/// activity feed (`GET /api/plans/{id}/activity`). Matches Node's internal
+/// `listActivity(userId, {entityType, entityId, limit})` call shape at
+/// `packages/api/src/plans/routes.ts:165-173`: a plan-level call passes
+/// `entity_id = Some(planId)`, a task-level call passes `entity_id = None`
+/// (fetches every `plan_task` event for the user, filtered down to this
+/// plan's task ids by the caller).
+pub async fn list_activity_by_entity(
+    pool: &PgPool,
+    user_id: &str,
+    entity_type: &str,
+    entity_id: Option<&str>,
+    limit: i64,
+) -> AppResult<Vec<Activity>> {
+    let mut qb = sqlx::QueryBuilder::new(
+        "SELECT id, user_id, entity_type, entity_id, entity_title, action, space_id, created_at \
+         FROM activity_log WHERE user_id = ",
+    );
+    qb.push_bind(user_id.to_string());
+    qb.push(" AND entity_type = ")
+        .push_bind(entity_type.to_string());
+    if let Some(entity_id) = entity_id {
+        qb.push(" AND entity_id = ")
+            .push_bind(entity_id.to_string());
+    }
+    qb.push(" ORDER BY created_at DESC, id ASC");
+    qb.push(" LIMIT ").push_bind(limit);
+
+    let rows = qb.build_query_as::<Activity>().fetch_all(pool).await?;
+    Ok(rows)
 }

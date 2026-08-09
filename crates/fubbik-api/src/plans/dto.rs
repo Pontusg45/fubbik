@@ -1,6 +1,6 @@
-use fubbik_db::repo::plan::Plan;
-
-use super::db::{PlanAnalyzeItem, PlanRequirement, PlanTaskChunkWithTitle, PlanTaskDependency};
+use fubbik_db::repo::plan::{
+    Plan, PlanAnalyzeItem, PlanRequirement, PlanTaskChunkWithTitle, PlanTaskDependency,
+};
 
 /// Query params for `GET /api/plans`
 /// (`packages/api/src/plans/routes.ts:27-34`): all four optional,
