@@ -9,6 +9,7 @@ pub mod extract;
 pub mod favorites;
 pub mod notifications;
 pub mod openapi;
+pub mod search;
 pub mod settings;
 pub mod spaces;
 pub mod stats;
