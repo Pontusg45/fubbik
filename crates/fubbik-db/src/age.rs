@@ -453,8 +453,26 @@ pub struct PathDetails {
 /// caller gets when one genuinely doesn't exist, which is what lets the
 /// search service's `Effect.orElse` wrapper at the call site
 /// (`service.ts:99`) be redundant-but-harmless rather than load-bearing.
+///
+/// Thin wrapper over [`find_shortest_path_with_details_in_graph`] fixed to
+/// the `"knowledge"` graph, same shape as [`get_neighborhood`] over
+/// [`get_neighborhood_in_graph`].
 pub async fn find_shortest_path_with_details(
     pool: &PgPool,
+    from: &str,
+    to: &str,
+) -> AppResult<Option<PathDetails>> {
+    find_shortest_path_with_details_in_graph(pool, "knowledge", from, to).await
+}
+
+/// The `graph`-parameterized core of [`find_shortest_path_with_details`].
+/// The `graph` parameter exists purely so its degradation test can point at
+/// a nonexistent graph, simulating AGE being unavailable — every real
+/// caller goes through [`find_shortest_path_with_details`], which always
+/// passes `"knowledge"`.
+pub async fn find_shortest_path_with_details_in_graph(
+    pool: &PgPool,
+    graph: &str,
     from: &str,
     to: &str,
 ) -> AppResult<Option<PathDetails>> {
@@ -463,7 +481,7 @@ pub async fn find_shortest_path_with_details(
         esc_cypher(from),
         esc_cypher(to)
     );
-    let reachable = match cypher(pool, &check_query).await {
+    let reachable = match cypher_in_graph(pool, graph, &check_query).await {
         Ok(rows) => !rows.is_empty(),
         Err(_) => return Ok(None),
     };
@@ -472,13 +490,7 @@ pub async fn find_shortest_path_with_details(
     }
 
     let edges_query = "MATCH (x:chunk)-[e:connects]->(y:chunk) RETURN x.id AS source, y.id AS target, e.relation AS relation";
-    let rows = match cypher_multi(
-        pool,
-        "knowledge",
-        edges_query,
-        &["source", "target", "relation"],
-    )
-    .await
+    let rows = match cypher_multi(pool, graph, edges_query, &["source", "target", "relation"]).await
     {
         Ok(rows) => rows,
         Err(_) => return Ok(None),
@@ -570,8 +582,26 @@ pub async fn find_shortest_path_with_details(
 /// involved at all) from the "hop traversal" (`*1..hops`, only run when
 /// `hops > 0`) sidesteps the bug instead of relying on the broken
 /// zero-bound form.
+///
+/// Thin wrapper over [`get_chunks_affected_by_requirement_in_graph`] fixed
+/// to the `"knowledge"` graph, same shape as [`get_neighborhood`] over
+/// [`get_neighborhood_in_graph`].
 pub async fn get_chunks_affected_by_requirement(
     pool: &PgPool,
+    requirement_id: &str,
+    hops: i32,
+) -> AppResult<Vec<String>> {
+    get_chunks_affected_by_requirement_in_graph(pool, "knowledge", requirement_id, hops).await
+}
+
+/// The `graph`-parameterized core of [`get_chunks_affected_by_requirement`].
+/// The `graph` parameter exists purely so its degradation test can point at
+/// a nonexistent graph, simulating AGE being unavailable — every real
+/// caller goes through [`get_chunks_affected_by_requirement`], which always
+/// passes `"knowledge"`.
+pub async fn get_chunks_affected_by_requirement_in_graph(
+    pool: &PgPool,
+    graph: &str,
     requirement_id: &str,
     hops: i32,
 ) -> AppResult<Vec<String>> {
@@ -580,17 +610,18 @@ pub async fn get_chunks_affected_by_requirement(
     let covers_query = format!(
         "MATCH (r:requirement {{id: '{escaped}'}})-[:covers]->(c:chunk) RETURN DISTINCT c.id AS id"
     );
-    let mut ids: std::collections::HashSet<String> = match cypher(pool, &covers_query).await {
-        Ok(rows) => rows.iter().filter_map(|v| as_string(Some(v))).collect(),
-        Err(_) => return Ok(vec![]),
-    };
+    let mut ids: std::collections::HashSet<String> =
+        match cypher_in_graph(pool, graph, &covers_query).await {
+            Ok(rows) => rows.iter().filter_map(|v| as_string(Some(v))).collect(),
+            Err(_) => return Ok(vec![]),
+        };
 
     if hops > 0 {
         let related_query = format!(
             "MATCH (r:requirement {{id: '{escaped}'}})-[:covers]->(c:chunk)-[:connects*1..{hops}]-(related:chunk) \
              RETURN DISTINCT related.id AS id"
         );
-        if let Ok(rows) = cypher(pool, &related_query).await {
+        if let Ok(rows) = cypher_in_graph(pool, graph, &related_query).await {
             ids.extend(rows.iter().filter_map(|v| as_string(Some(v))));
         }
     }
@@ -653,14 +684,31 @@ fn distance_decay(hops: i64) -> f64 {
 /// derives `hops` (`.len()`) and each edge's `relation` property in Rust
 /// after parsing — same inputs, same weighting formula below, no AGE
 /// version-specific Cypher feature required.
+///
+/// Thin wrapper over [`compute_impact_ripple_in_graph`] fixed to the
+/// `"knowledge"` graph, same shape as [`get_neighborhood`] over
+/// [`get_neighborhood_in_graph`].
 pub async fn compute_impact_ripple(pool: &PgPool, chunk_id: &str) -> AppResult<Vec<String>> {
+    compute_impact_ripple_in_graph(pool, "knowledge", chunk_id).await
+}
+
+/// The `graph`-parameterized core of [`compute_impact_ripple`]. The `graph`
+/// parameter exists purely so its degradation test can point at a
+/// nonexistent graph, simulating AGE being unavailable — every real caller
+/// goes through [`compute_impact_ripple`], which always passes
+/// `"knowledge"`.
+pub async fn compute_impact_ripple_in_graph(
+    pool: &PgPool,
+    graph: &str,
+    chunk_id: &str,
+) -> AppResult<Vec<String>> {
     let escaped = esc_cypher(chunk_id);
     let query = format!(
         "MATCH (source:chunk {{id: '{escaped}'}})-[r:connects*1..3]->(downstream:chunk) \
          WHERE downstream.id <> '{escaped}' \
          RETURN downstream.id AS did, r AS path"
     );
-    let rows = match cypher_multi(pool, "knowledge", &query, &["did", "path"]).await {
+    let rows = match cypher_multi(pool, graph, &query, &["did", "path"]).await {
         Ok(rows) => rows,
         Err(_) => return Ok(vec![]),
     };

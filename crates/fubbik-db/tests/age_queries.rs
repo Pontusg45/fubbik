@@ -196,6 +196,27 @@ async fn shortest_path_is_none_when_no_path_exists(pool: sqlx::PgPool) {
     assert!(path.is_none(), "two disconnected chunks have no path");
 }
 
+/// Companion to `a_graph_clause_degrades_via_ok_empty_not_a_propagated_error`
+/// above, for `find_shortest_path_with_details`'s own `Err(_) => Ok(None)`
+/// degrade branch. Neither "path found" nor "genuinely unreachable" above
+/// forces the AGE-error branch (both point at real chunks in the real
+/// `"knowledge"` graph); this test points at a graph that doesn't exist,
+/// which cannot be reached via `find_shortest_path_with_details`'s
+/// unparameterized public signature — hence
+/// `find_shortest_path_with_details_in_graph`. Uses `.expect()`, not
+/// `.unwrap_or_default()`/`.unwrap_or(None)`: this is the one that actually
+/// goes red if the degrade-to-`Ok(None)` behaviour is removed.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn shortest_path_degrades_to_none_not_a_propagated_error(pool: sqlx::PgPool) {
+    let path =
+        age::find_shortest_path_with_details_in_graph(&pool, "no_such_graph", "a", "b")
+            .await
+            .expect(
+                "must be Ok(None), not Err — Node degrades every graph clause to empty results via Effect.orElse, never a 500",
+            );
+    assert!(path.is_none());
+}
+
 // ── get_chunks_affected_by_requirement ──────────────────────────────────
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
@@ -275,6 +296,26 @@ async fn affected_by_requirement_includes_the_covered_chunk_even_with_zero_conne
     );
 }
 
+/// `get_chunks_affected_by_requirement`'s own `Err(_) => Ok(vec![])`
+/// degrade branch, previously untested — the one existing test above only
+/// covers the real `"knowledge"` graph. Points at a nonexistent graph via
+/// `get_chunks_affected_by_requirement_in_graph`, and uses `.expect()`, not
+/// `.unwrap_or_default()`, so it goes red if the degrade is removed.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn affected_by_requirement_degrades_to_empty_not_a_propagated_error(pool: sqlx::PgPool) {
+    let ids = age::get_chunks_affected_by_requirement_in_graph(
+        &pool,
+        "no_such_graph",
+        "whatever",
+        1,
+    )
+    .await
+    .expect(
+        "must be Ok(vec![]), not Err — Node degrades every graph clause to empty results via Effect.orElse, never a 500",
+    );
+    assert_eq!(ids, Vec::<String>::new());
+}
+
 // ── compute_impact_ripple ───────────────────────────────────────────────
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
@@ -316,5 +357,22 @@ async fn impact_ripple_is_empty_for_a_chunk_with_no_downstream_connections(pool:
     age::ensure_vertex(&pool, &lonely).await.unwrap();
 
     let ids = age::compute_impact_ripple(&pool, &lonely).await.unwrap();
+    assert_eq!(ids, Vec::<String>::new());
+}
+
+/// `compute_impact_ripple`'s own `Err(_) => Ok(vec![])` degrade branch,
+/// previously untested — lower risk than the other two functions here
+/// because its only caller (`staleness::flag_impact_ripple`) propagates
+/// *other* errors via `?`, but the AGE-failure case itself was never
+/// exercised. Points at a nonexistent graph via
+/// `compute_impact_ripple_in_graph`, and uses `.expect()`, not
+/// `.unwrap_or_default()`, so it goes red if the degrade is removed.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn impact_ripple_degrades_to_empty_not_a_propagated_error(pool: sqlx::PgPool) {
+    let ids = age::compute_impact_ripple_in_graph(&pool, "no_such_graph", "whatever")
+        .await
+        .expect(
+            "must be Ok(vec![]), not Err — Node degrades every graph clause to empty results via Effect.orElse, never a 500",
+        );
     assert_eq!(ids, Vec::<String>::new());
 }
