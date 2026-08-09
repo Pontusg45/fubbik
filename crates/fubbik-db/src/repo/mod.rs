@@ -6,6 +6,7 @@ pub mod collection;
 pub mod connection;
 pub mod favorite;
 pub mod notification;
+pub mod plan;
 pub mod session;
 pub mod settings;
 pub mod space;

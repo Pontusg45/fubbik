@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT requirement_id, \"order\" FROM plan_requirement WHERE plan_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "requirement_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "order",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "fd1c289096046d0f7458d73c083257a179bb390e4944969b89bb4c69b282945b"
+}

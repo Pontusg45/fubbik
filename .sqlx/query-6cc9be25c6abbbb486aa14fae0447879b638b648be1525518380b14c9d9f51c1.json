@@ -1,0 +1,34 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT task_id, chunk_id, relation\n               FROM plan_task_chunk WHERE task_id = ANY($1)",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "task_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "chunk_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "relation",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "TextArray"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "6cc9be25c6abbbb486aa14fae0447879b638b648be1525518380b14c9d9f51c1"
+}
