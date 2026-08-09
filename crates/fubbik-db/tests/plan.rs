@@ -926,7 +926,10 @@ async fn list_tasks_breaks_order_ties_by_id(pool: PgPool) {
         .execute(&pool)
         .await
         .unwrap();
-    sqlx::query("ANALYZE plan_task").execute(&pool).await.unwrap();
+    sqlx::query("ANALYZE plan_task")
+        .execute(&pool)
+        .await
+        .unwrap();
 
     let tasks = plan::list_tasks(&pool, &alice, &p.id).await.unwrap();
     let ids: Vec<String> = tasks.iter().map(|t| t.id.clone()).collect();
@@ -1036,14 +1039,20 @@ async fn update_task_round_trip_and_no_op_is_a_reselect(pool: PgPool) {
     .unwrap()
     .expect("owned task must update");
     assert_eq!(updated.title, "changed");
-    assert!(updated.description.is_none(), "explicit null must clear description");
+    assert!(
+        updated.description.is_none(),
+        "explicit null must clear description"
+    );
     assert_eq!(updated.status, "in_progress");
 
     let noop = plan::update_task(&pool, &alice, &p.id, &t.id, None, None, None, None, None)
         .await
         .unwrap()
         .expect("no-op patch must still find the row");
-    assert_eq!(noop.updated_at, updated.updated_at, "a no-op patch must not bump updated_at");
+    assert_eq!(
+        noop.updated_at, updated.updated_at,
+        "a no-op patch must not bump updated_at"
+    );
 }
 
 #[sqlx::test]
@@ -1093,7 +1102,9 @@ async fn cannot_delete_another_users_task(pool: PgPool) {
         "alice's task must survive bob's rejected delete"
     );
 
-    let deleted = plan::delete_task(&pool, &alice, &p.id, &t.id).await.unwrap();
+    let deleted = plan::delete_task(&pool, &alice, &p.id, &t.id)
+        .await
+        .unwrap();
     assert!(deleted, "alice can delete her own task");
 }
 
@@ -1135,8 +1146,14 @@ async fn cannot_reorder_another_users_tasks(pool: PgPool) {
     let tasks = plan::list_tasks(&pool, &alice, &p.id).await.unwrap();
     let a_after = tasks.iter().find(|t| t.id == a.id).unwrap();
     let b_after = tasks.iter().find(|t| t.id == b.id).unwrap();
-    assert_eq!(a_after.order, a.order, "bob's rejected reorder must not touch alice's task order");
-    assert_eq!(b_after.order, b.order, "bob's rejected reorder must not touch alice's task order");
+    assert_eq!(
+        a_after.order, a.order,
+        "bob's rejected reorder must not touch alice's task order"
+    );
+    assert_eq!(
+        b_after.order, b.order,
+        "bob's rejected reorder must not touch alice's task order"
+    );
 }
 
 // ── B2: list_task_chunks_with_titles ownership guard ────────────────
@@ -1183,7 +1200,10 @@ async fn cannot_add_a_chunk_to_another_users_task(pool: PgPool) {
     let links = plan::list_task_chunks_with_titles(&pool, &alice, &p.id, &t.id)
         .await
         .unwrap();
-    assert!(links.is_empty(), "the victim's task must have gained no chunk link");
+    assert!(
+        links.is_empty(),
+        "the victim's task must have gained no chunk link"
+    );
 }
 
 #[sqlx::test]
@@ -1227,7 +1247,10 @@ async fn cannot_add_a_dependency_to_another_users_task(pool: PgPool) {
     let deps = plan::list_task_dependencies(&pool, &alice, &p.id)
         .await
         .unwrap();
-    assert!(deps.is_empty(), "the victim's task must have gained no dependency");
+    assert!(
+        deps.is_empty(),
+        "the victim's task must have gained no dependency"
+    );
 }
 
 #[sqlx::test]
@@ -1245,7 +1268,10 @@ async fn cannot_remove_another_users_task_dependency(pool: PgPool) {
     let res = plan::remove_task_dependency(&pool, &bob, &p.id, &b.id, &dep.id)
         .await
         .unwrap();
-    assert!(!res, "bob does not own the plan; the dependency must survive");
+    assert!(
+        !res,
+        "bob does not own the plan; the dependency must survive"
+    );
 
     let deps = plan::list_task_dependencies(&pool, &alice, &p.id)
         .await
@@ -1278,7 +1304,10 @@ async fn cannot_add_a_link_to_another_users_task(pool: PgPool) {
     let links = plan::list_task_links(&pool, &alice, &p.id, &t.id)
         .await
         .unwrap();
-    assert!(links.is_empty(), "the victim's task must have gained no link");
+    assert!(
+        links.is_empty(),
+        "the victim's task must have gained no link"
+    );
 }
 
 #[sqlx::test]
@@ -1325,7 +1354,15 @@ async fn marking_done_and_unblocking_is_atomic(pool: PgPool) {
         .await
         .unwrap();
     plan::update_task(
-        &pool, &alice, &p.id, &b.id, None, None, None, None, Some("blocked"),
+        &pool,
+        &alice,
+        &p.id,
+        &b.id,
+        None,
+        None,
+        None,
+        None,
+        Some("blocked"),
     )
     .await
     .unwrap();
@@ -1412,7 +1449,9 @@ async fn list_requirements_is_user_scoped(pool: PgPool) {
     let bob = seed_user(&pool, "bob").await;
     let p = plan::create(&pool, &alice, "p", None, None).await.unwrap();
     let r = seed_requirement(&pool, &alice).await;
-    plan::add_requirement(&pool, &alice, &p.id, &r).await.unwrap();
+    plan::add_requirement(&pool, &alice, &p.id, &r)
+        .await
+        .unwrap();
 
     let bobs_view = plan::list_requirements(&pool, &bob, &p.id).await.unwrap();
     assert!(
@@ -1439,7 +1478,9 @@ async fn list_analyze_items_is_user_scoped(pool: PgPool) {
         "bob must not read alice's analyze items, even by a correct plan id"
     );
 
-    let alices_view = plan::list_analyze_items(&pool, &alice, &p.id).await.unwrap();
+    let alices_view = plan::list_analyze_items(&pool, &alice, &p.id)
+        .await
+        .unwrap();
     assert_eq!(alices_view.len(), 1);
 }
 
@@ -1466,8 +1507,14 @@ async fn cannot_reorder_another_users_requirements(pool: PgPool) {
     let links = plan::list_requirements(&pool, &alice, &p.id).await.unwrap();
     let a_after = links.iter().find(|l| l.id == a.id).unwrap();
     let b_after = links.iter().find(|l| l.id == b.id).unwrap();
-    assert_eq!(a_after.order, a.order, "bob's rejected reorder must not touch alice's links");
-    assert_eq!(b_after.order, b.order, "bob's rejected reorder must not touch alice's links");
+    assert_eq!(
+        a_after.order, a.order,
+        "bob's rejected reorder must not touch alice's links"
+    );
+    assert_eq!(
+        b_after.order, b.order,
+        "bob's rejected reorder must not touch alice's links"
+    );
 }
 
 #[sqlx::test]
@@ -1486,10 +1533,17 @@ async fn cannot_reorder_another_users_analyze_items(pool: PgPool) {
         .await
         .unwrap();
 
-    let items = plan::list_analyze_items(&pool, &alice, &p.id).await.unwrap();
+    let items = plan::list_analyze_items(&pool, &alice, &p.id)
+        .await
+        .unwrap();
     let a_after = items.iter().find(|i| i.id == a.id).unwrap();
     let b_after = items.iter().find(|i| i.id == b.id).unwrap();
-    assert_eq!(a_after.order, a.order, "bob's rejected reorder must not touch alice's items");
-    assert_eq!(b_after.order, b.order, "bob's rejected reorder must not touch alice's items");
+    assert_eq!(
+        a_after.order, a.order,
+        "bob's rejected reorder must not touch alice's items"
+    );
+    assert_eq!(
+        b_after.order, b.order,
+        "bob's rejected reorder must not touch alice's items"
+    );
 }
-

@@ -1814,6 +1814,536 @@
         }
       }
     },
+    "/api/plans/{id}/tasks": {
+      "post": {
+        "tags": [
+          "crate::plans::routes"
+        ],
+        "summary": "Bare created `PlanTask` row — raw, not run through\n`normalize_acceptance_criteria`, matching `_mutating.md`'s \"created\n`PlanTask` row (status forced to `pending`)\".",
+        "operationId": "create_plan_task",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTaskBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanTask"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/plans/{id}/tasks/reorder": {
+      "post": {
+        "tags": [
+          "crate::plans::routes"
+        ],
+        "operationId": "reorder_plan_tasks",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReorderTasksBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/plans/{id}/tasks/{taskId}": {
+      "delete": {
+        "tags": [
+          "crate::plans::routes"
+        ],
+        "operationId": "delete_plan_task",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "taskId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "crate::plans::routes"
+        ],
+        "operationId": "update_plan_task",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "taskId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTaskBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanTask"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/plans/{id}/tasks/{taskId}/chunks": {
+      "post": {
+        "tags": [
+          "crate::plans::routes"
+        ],
+        "operationId": "add_plan_task_chunk",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "taskId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddTaskChunkBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanTaskChunk"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/plans/{id}/tasks/{taskId}/chunks/{linkId}": {
+      "delete": {
+        "tags": [
+          "crate::plans::routes"
+        ],
+        "operationId": "remove_plan_task_chunk",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "taskId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "linkId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/plans/{id}/tasks/{taskId}/dependencies": {
+      "post": {
+        "tags": [
+          "crate::plans::routes"
+        ],
+        "summary": "**Does not write an activity_log row** — the one mutating task endpoint\nthat doesn't, matching Node exactly. See `service::add_task_dependency`'s\ndoc comment.",
+        "operationId": "add_plan_task_dependency",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "taskId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddTaskDependencyBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanTaskDependency"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/plans/{id}/tasks/{taskId}/dependencies/{depId}": {
+      "delete": {
+        "tags": [
+          "crate::plans::routes"
+        ],
+        "operationId": "remove_plan_task_dependency",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "taskId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "depId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/plans/{id}/tasks/{taskId}/links": {
+      "get": {
+        "tags": [
+          "crate::plans::routes"
+        ],
+        "operationId": "list_plan_task_links",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "taskId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PlanTaskExternalLink"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "crate::plans::routes"
+        ],
+        "summary": "`system` defaults to `\"url\"`, `label` to `null` when omitted — applied\nin `service::add_task_link`.",
+        "operationId": "add_plan_task_link",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "taskId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateLinkBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanTaskExternalLink"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/plans/{id}/tasks/{taskId}/links/{linkId}": {
+      "delete": {
+        "tags": [
+          "crate::plans::routes"
+        ],
+        "operationId": "remove_plan_task_link",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "taskId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "linkId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
     "/api/settings/codebase": {
       "get": {
         "tags": [
@@ -2796,6 +3326,29 @@
           }
         }
       },
+      "AcceptanceCriterionEntry": {
+        "oneOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "object",
+            "required": [
+              "text",
+              "done"
+            ],
+            "properties": {
+              "done": {
+                "type": "boolean"
+              },
+              "text": {
+                "type": "string"
+              }
+            }
+          }
+        ],
+        "description": "One entry of the write-side `acceptanceCriteria` array accepted by\n`POST`/`PATCH /api/plans/{id}/tasks[/:taskId]` — Node's\n`acceptanceCriteriaBodySchema` (`tasks.ts:15`) is `t.Array(t.Union([\nt.String(), t.Object({text: t.String(), done: t.Boolean()})]))`: a bare\nstring OR an object with both `text` and `done` present (not the more\nlenient shape `normalize_acceptance_criteria` tolerates on read paths,\nwhere a malformed object degrades to `{text:\"\", done:false}` instead of\nbeing rejected). `#[serde(untagged)]` reproduces that union at\ndeserialisation time — a value matching neither variant is a 400 via\n`crate::extract::Json`'s rejection mapping, same as an Elysia schema\nmismatch."
+      },
       "Activity": {
         "type": "object",
         "description": "`camelCase` serialisation matches every other wire type in this crate.",
@@ -2861,6 +3414,34 @@
         ],
         "properties": {
           "spaceId": {
+            "type": "string"
+          }
+        }
+      },
+      "AddTaskChunkBody": {
+        "type": "object",
+        "description": "Body of `POST /api/plans/{id}/tasks/{taskId}/chunks` (`tasks.ts:191`).\n`relation` is validated in the service layer against `context | created\n| modified`, never a Rust enum — same free-text-at-the-schema-level\nconvention as `status`.",
+        "required": [
+          "chunkId",
+          "relation"
+        ],
+        "properties": {
+          "chunkId": {
+            "type": "string"
+          },
+          "relation": {
+            "type": "string"
+          }
+        }
+      },
+      "AddTaskDependencyBody": {
+        "type": "object",
+        "description": "Body of `POST /api/plans/{id}/tasks/{taskId}/dependencies` (`tasks.ts:213`).\nNo self-reference (`dependsOnTaskId == taskId`) guard — deliberately not\nadded, matching Node, which has none either (see `fubbik_db::repo::\nplan::task::add_task_dependency`'s doc comment).",
+        "required": [
+          "dependsOnTaskId"
+        ],
+        "properties": {
+          "dependsOnTaskId": {
             "type": "string"
           }
         }
@@ -3612,6 +4193,52 @@
           }
         }
       },
+      "CreateTaskBody": {
+        "type": "object",
+        "description": "Body of `POST /api/plans/{id}/tasks` (`tasks.ts:88-97`). Distinct from\n[`CreateTaskInput`], which is the narrower shape accepted for the nested\n`tasks` array of `POST /api/plans` itself (no `chunks`/\n`dependsOnTaskIds`/`metadata` there — matching Node's two separate body\nschemas at `routes.ts:67-75` vs `tasks.ts:89-96`).",
+        "required": [
+          "title"
+        ],
+        "properties": {
+          "acceptanceCriteria": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/AcceptanceCriterionEntry"
+            }
+          },
+          "chunks": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/TaskChunkInput"
+            }
+          },
+          "dependsOnTaskIds": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "metadata": {},
+          "title": {
+            "type": "string"
+          }
+        }
+      },
       "CreateTaskInput": {
         "type": "object",
         "description": "Body of one entry in `POST /api/plans`'s optional `tasks` array\n(`packages/api/src/plans/routes.ts:67-75`). `acceptanceCriteria` is the\nlegacy `string[]` write shape — normalised to `{text,done}[]` before\ninsert by `normalize_acceptance_criteria`, same as every other write\npath in this domain.",
@@ -4195,7 +4822,7 @@
       },
       "PlanTask": {
         "type": "object",
-        "description": "Raw `plan_task` row — `acceptance_criteria` stays the untouched stored\nJSON; the service layer normalises it to `{text,done}[]` on the way out.",
+        "description": "Raw `plan_task` row — `acceptance_criteria` stays the untouched stored\nJSON; the service layer normalises it to `{text,done}[]` on the way out\nfor read paths, but every mutating endpoint in this file (`POST`/`PATCH`)\nreturns this raw row unmodified, matching the task brief's \"raw (NOT\nnormalised)\" instruction.",
         "required": [
           "id",
           "planId",
@@ -4251,9 +4878,38 @@
           }
         }
       },
+      "PlanTaskChunk": {
+        "type": "object",
+        "description": "Bare `plan_task_chunk` row — the `POST /plans/:id/tasks/:taskId/chunks`\nresponse shape, distinct from [`PlanTaskChunkWithTitle`] (which is only\nused by the plan-detail envelope).",
+        "required": [
+          "id",
+          "taskId",
+          "chunkId",
+          "relation",
+          "createdAt"
+        ],
+        "properties": {
+          "chunkId": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string"
+          },
+          "relation": {
+            "type": "string"
+          },
+          "taskId": {
+            "type": "string"
+          }
+        }
+      },
       "PlanTaskChunkWithTitle": {
         "type": "object",
-        "description": "A `plan_task_chunk` row joined with the linked chunk's title/type, for\nthe detail page's task chunk chips. Matches Node's\n`listTaskChunksWithTitles` (`packages/db/src/repository/plan.ts:449-481`).\nNo ownership guard here — `task_id` only ever reaches this function\nalready scoped, from a `list_tasks` result.",
+        "description": "A `plan_task_chunk` row joined with the linked chunk's title/type, for\nthe detail page's task chunk chips. Matches Node's\n`listTaskChunksWithTitles` (`packages/db/src/repository/plan.ts:449-481`).\n\n**B2 fix**: this previously took only `task_id`, with no ownership guard\nat all (`WHERE ptc.task_id = $1`) — not exploitable at the time because\nits only caller sourced ids from an already-scoped `list_tasks` result,\nbut the function was `pub`, so any future caller could read another\nuser's task-chunk links (id, chunk_id, relation, chunk title, chunk\ntype). This task adds task-chunk endpoints that call exactly this\nfunction with a caller-supplied `task_id`, so the guard is no longer\noptional. Ownership derives through **two** levels — `plan_task_chunk ->\nplan_task -> plan` — matching divergence #13's usual scoping-in-SQL\nrule (the same pattern Phase 1's review found missing in `chunk_meta`).\nNo `ORDER BY` — matches Node exactly, which has none either; not added\nhere per the task brief's explicit instruction to leave that alone.\nProven load-bearing in `tests/plan.rs::list_task_chunks_with_titles_is_user_scoped`.",
         "required": [
           "id",
           "taskId",
@@ -4317,6 +4973,46 @@
           }
         }
       },
+      "PlanTaskExternalLink": {
+        "type": "object",
+        "description": "`camelCase` wire shape of a `plan_task_external_link` row — the task-level\ncounterpart to `link::PlanExternalLink`.",
+        "required": [
+          "id",
+          "taskId",
+          "system",
+          "url",
+          "order",
+          "createdAt"
+        ],
+        "properties": {
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string"
+          },
+          "label": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "order": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "system": {
+            "type": "string"
+          },
+          "taskId": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        }
+      },
       "ReorderAnalyzeItemsBody": {
         "type": "object",
         "description": "Body of `POST /api/plans/{id}/analyze/reorder` (`analyze.ts:107-120`).",
@@ -4361,6 +5057,21 @@
         ],
         "properties": {
           "requirementIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "ReorderTasksBody": {
+        "type": "object",
+        "description": "Body of `POST /api/plans/{id}/tasks/reorder` (`tasks.ts:178`).",
+        "required": [
+          "taskIds"
+        ],
+        "properties": {
+          "taskIds": {
             "type": "array",
             "items": {
               "type": "string"
@@ -4692,6 +5403,22 @@
           }
         }
       },
+      "TaskChunkInput": {
+        "type": "object",
+        "description": "One entry of `POST /api/plans/{id}/tasks`'s optional `chunks` array\n(`tasks.ts:93`).",
+        "required": [
+          "chunkId",
+          "relation"
+        ],
+        "properties": {
+          "chunkId": {
+            "type": "string"
+          },
+          "relation": {
+            "type": "string"
+          }
+        }
+      },
       "TaskDetail": {
         "type": "object",
         "description": "A task in the `GET /api/plans/{id}` detail envelope: the raw\n`plan_task` row's fields, plus `acceptanceCriteria` normalised (not the\nraw stored JSON) and the task's linked chunks — matching Node's\n`tasksWithChunks` (`packages/api/src/plans/service.ts:89-94`).",
@@ -4956,6 +5683,40 @@
             ]
           },
           "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "UpdateTaskBody": {
+        "type": "object",
+        "description": "Body of `PATCH /api/plans/{id}/tasks/{taskId}` (`tasks.ts:138-145`).\n`description` is tri-state, same `deserialize_some` trick as\n`UpdatePlanBody::description`; `status` is validated in the service\nlayer against the five known task statuses, never a Rust enum — see\n`fubbik_db::repo::plan::mod`'s doc comment for why `plan_task.status`\nstays plain text end to end. `title`/`acceptanceCriteria`/`metadata` are\nplain two-state (Node declares none of them with a `t.Null()` union).",
+        "properties": {
+          "acceptanceCriteria": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/AcceptanceCriterionEntry"
+            }
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "metadata": {},
+          "status": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "title": {
             "type": [
               "string",
               "null"

@@ -3,13 +3,15 @@ use axum::routing::{get, patch, post};
 use axum::{Json, Router};
 use fubbik_db::repo::activity::Activity;
 use fubbik_db::repo::plan::{
-    Plan, PlanAnalyzeItem, PlanExternalLink, PlanListRow, PlanRequirement,
+    Plan, PlanAnalyzeItem, PlanExternalLink, PlanListRow, PlanRequirement, PlanTask, PlanTaskChunk,
+    PlanTaskDependency, PlanTaskExternalLink,
 };
 
 use super::dto::{
-    AddRequirementBody, AnalyzeGrouped, CreateAnalyzeItemBody, CreateLinkBody, CreatePlanBody,
-    ListPlansQuery, OkResponse, PlanDetail, ReorderAnalyzeItemsBody, ReorderRequirementsBody,
-    UpdateAnalyzeItemBody, UpdatePlanBody,
+    AddRequirementBody, AddTaskChunkBody, AddTaskDependencyBody, AnalyzeGrouped,
+    CreateAnalyzeItemBody, CreateLinkBody, CreatePlanBody, CreateTaskBody, ListPlansQuery,
+    OkResponse, PlanDetail, ReorderAnalyzeItemsBody, ReorderRequirementsBody, ReorderTasksBody,
+    UpdateAnalyzeItemBody, UpdatePlanBody, UpdateTaskBody,
 };
 use super::service;
 use crate::AppState;
@@ -272,6 +274,162 @@ pub async fn reorder_plan_analyze_items(
     Ok(Json(OkResponse::default()))
 }
 
+// ── Tasks ────────────────────────────────────────────────────────────
+
+/// Bare created `PlanTask` row — raw, not run through
+/// `normalize_acceptance_criteria`, matching `_mutating.md`'s "created
+/// `PlanTask` row (status forced to `pending`)".
+#[utoipa::path(post, path = "/api/plans/{id}/tasks", request_body = CreateTaskBody,
+    params(("id" = String, Path,)),
+    responses((status = 200, body = PlanTask), (status = 400), (status = 404)))]
+pub async fn create_plan_task(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path(id): Path<String>,
+    ReqJson(body): ReqJson<CreateTaskBody>,
+) -> ApiResult<Json<PlanTask>> {
+    Ok(Json(
+        service::create_task(&state.pool, &user.id, &id, body).await?,
+    ))
+}
+
+#[utoipa::path(patch, path = "/api/plans/{id}/tasks/{taskId}", request_body = UpdateTaskBody,
+    params(("id" = String, Path,), ("taskId" = String, Path,)),
+    responses((status = 200, body = PlanTask), (status = 400), (status = 404)))]
+pub async fn update_plan_task(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path((id, task_id)): Path<(String, String)>,
+    ReqJson(body): ReqJson<UpdateTaskBody>,
+) -> ApiResult<Json<PlanTask>> {
+    Ok(Json(
+        service::update_task(&state.pool, &user.id, &id, &task_id, body).await?,
+    ))
+}
+
+#[utoipa::path(delete, path = "/api/plans/{id}/tasks/{taskId}",
+    params(("id" = String, Path,), ("taskId" = String, Path,)),
+    responses((status = 200, body = OkResponse), (status = 404)))]
+pub async fn delete_plan_task(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path((id, task_id)): Path<(String, String)>,
+) -> ApiResult<Json<OkResponse>> {
+    service::delete_task(&state.pool, &user.id, &id, &task_id).await?;
+    Ok(Json(OkResponse::default()))
+}
+
+#[utoipa::path(post, path = "/api/plans/{id}/tasks/reorder", request_body = ReorderTasksBody,
+    params(("id" = String, Path,)),
+    responses((status = 200, body = OkResponse), (status = 404)))]
+pub async fn reorder_plan_tasks(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path(id): Path<String>,
+    ReqJson(body): ReqJson<ReorderTasksBody>,
+) -> ApiResult<Json<OkResponse>> {
+    service::reorder_tasks(&state.pool, &user.id, &id, body).await?;
+    Ok(Json(OkResponse::default()))
+}
+
+#[utoipa::path(post, path = "/api/plans/{id}/tasks/{taskId}/chunks",
+    request_body = AddTaskChunkBody,
+    params(("id" = String, Path,), ("taskId" = String, Path,)),
+    responses((status = 200, body = PlanTaskChunk), (status = 400), (status = 404)))]
+pub async fn add_plan_task_chunk(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path((id, task_id)): Path<(String, String)>,
+    ReqJson(body): ReqJson<AddTaskChunkBody>,
+) -> ApiResult<Json<PlanTaskChunk>> {
+    Ok(Json(
+        service::add_task_chunk(&state.pool, &user.id, &id, &task_id, body).await?,
+    ))
+}
+
+#[utoipa::path(delete, path = "/api/plans/{id}/tasks/{taskId}/chunks/{linkId}",
+    params(("id" = String, Path,), ("taskId" = String, Path,), ("linkId" = String, Path,)),
+    responses((status = 200, body = OkResponse), (status = 404)))]
+pub async fn remove_plan_task_chunk(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path((id, task_id, link_id)): Path<(String, String, String)>,
+) -> ApiResult<Json<OkResponse>> {
+    service::remove_task_chunk(&state.pool, &user.id, &id, &task_id, &link_id).await?;
+    Ok(Json(OkResponse::default()))
+}
+
+/// **Does not write an activity_log row** — the one mutating task endpoint
+/// that doesn't, matching Node exactly. See `service::add_task_dependency`'s
+/// doc comment.
+#[utoipa::path(post, path = "/api/plans/{id}/tasks/{taskId}/dependencies",
+    request_body = AddTaskDependencyBody,
+    params(("id" = String, Path,), ("taskId" = String, Path,)),
+    responses((status = 200, body = PlanTaskDependency), (status = 404)))]
+pub async fn add_plan_task_dependency(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path((id, task_id)): Path<(String, String)>,
+    ReqJson(body): ReqJson<AddTaskDependencyBody>,
+) -> ApiResult<Json<PlanTaskDependency>> {
+    Ok(Json(
+        service::add_task_dependency(&state.pool, &user.id, &id, &task_id, body).await?,
+    ))
+}
+
+#[utoipa::path(delete, path = "/api/plans/{id}/tasks/{taskId}/dependencies/{depId}",
+    params(("id" = String, Path,), ("taskId" = String, Path,), ("depId" = String, Path,)),
+    responses((status = 200, body = OkResponse), (status = 404)))]
+pub async fn remove_plan_task_dependency(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path((id, task_id, dep_id)): Path<(String, String, String)>,
+) -> ApiResult<Json<OkResponse>> {
+    service::remove_task_dependency(&state.pool, &user.id, &id, &task_id, &dep_id).await?;
+    Ok(Json(OkResponse::default()))
+}
+
+#[utoipa::path(get, path = "/api/plans/{id}/tasks/{taskId}/links",
+    params(("id" = String, Path,), ("taskId" = String, Path,)),
+    responses((status = 200, body = Vec<PlanTaskExternalLink>), (status = 404)))]
+pub async fn list_plan_task_links(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path((id, task_id)): Path<(String, String)>,
+) -> ApiResult<Json<Vec<PlanTaskExternalLink>>> {
+    Ok(Json(
+        service::list_task_links(&state.pool, &user.id, &id, &task_id).await?,
+    ))
+}
+
+/// `system` defaults to `"url"`, `label` to `null` when omitted — applied
+/// in `service::add_task_link`.
+#[utoipa::path(post, path = "/api/plans/{id}/tasks/{taskId}/links", request_body = CreateLinkBody,
+    params(("id" = String, Path,), ("taskId" = String, Path,)),
+    responses((status = 200, body = PlanTaskExternalLink), (status = 404)))]
+pub async fn add_plan_task_link(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path((id, task_id)): Path<(String, String)>,
+    ReqJson(body): ReqJson<CreateLinkBody>,
+) -> ApiResult<Json<PlanTaskExternalLink>> {
+    Ok(Json(
+        service::add_task_link(&state.pool, &user.id, &id, &task_id, body).await?,
+    ))
+}
+
+#[utoipa::path(delete, path = "/api/plans/{id}/tasks/{taskId}/links/{linkId}",
+    params(("id" = String, Path,), ("taskId" = String, Path,), ("linkId" = String, Path,)),
+    responses((status = 200, body = OkResponse), (status = 404)))]
+pub async fn remove_plan_task_link(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path((id, task_id, link_id)): Path<(String, String, String)>,
+) -> ApiResult<Json<OkResponse>> {
+    service::remove_task_link(&state.pool, &user.id, &id, &task_id, &link_id).await?;
+    Ok(Json(OkResponse::default()))
+}
+
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/api/plans", get(list_plans).post(create_plan))
@@ -309,5 +467,35 @@ pub fn router() -> Router<AppState> {
         .route(
             "/api/plans/{id}/analyze/{itemId}",
             patch(update_plan_analyze_item).delete(delete_plan_analyze_item),
+        )
+        .route("/api/plans/{id}/tasks", post(create_plan_task))
+        .route("/api/plans/{id}/tasks/reorder", post(reorder_plan_tasks))
+        .route(
+            "/api/plans/{id}/tasks/{taskId}",
+            patch(update_plan_task).delete(delete_plan_task),
+        )
+        .route(
+            "/api/plans/{id}/tasks/{taskId}/chunks",
+            post(add_plan_task_chunk),
+        )
+        .route(
+            "/api/plans/{id}/tasks/{taskId}/chunks/{linkId}",
+            axum::routing::delete(remove_plan_task_chunk),
+        )
+        .route(
+            "/api/plans/{id}/tasks/{taskId}/dependencies",
+            post(add_plan_task_dependency),
+        )
+        .route(
+            "/api/plans/{id}/tasks/{taskId}/dependencies/{depId}",
+            axum::routing::delete(remove_plan_task_dependency),
+        )
+        .route(
+            "/api/plans/{id}/tasks/{taskId}/links",
+            get(list_plan_task_links).post(add_plan_task_link),
+        )
+        .route(
+            "/api/plans/{id}/tasks/{taskId}/links/{linkId}",
+            axum::routing::delete(remove_plan_task_link),
         )
 }

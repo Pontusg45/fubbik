@@ -1084,6 +1084,597 @@ async fn analyze_on_another_users_plan_is_404_and_leaves_it_intact(pool: sqlx::P
     );
 }
 
+// ── tasks (Task 6) ───────────────────────────────────────────────────
+
+async fn activity_rows_for(
+    pool: &sqlx::PgPool,
+    user_id: &str,
+    entity_id: &str,
+) -> Vec<(String, String)> {
+    sqlx::query_as(
+        "SELECT action, entity_type FROM activity_log WHERE user_id = $1 AND entity_id = $2 ORDER BY created_at",
+    )
+    .bind(user_id)
+    .bind(entity_id)
+    .fetch_all(pool)
+    .await
+    .unwrap()
+}
+
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn create_task_returns_raw_row_with_status_forced_to_pending(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool.clone()));
+    let cookie = signup(app.clone(), "alice-createtask@b.test", "Alice").await;
+    let user_id = user_id_for_email(&pool, "alice-createtask@b.test").await;
+    let id = create_plan(app.clone(), &cookie, "x").await;
+
+    let res = post(
+        app.clone(),
+        &cookie,
+        &format!("/api/plans/{id}/tasks"),
+        serde_json::json!({
+            "title": "Do the thing",
+            "description": "details",
+            "acceptanceCriteria": ["a plain string", {"text": "an object", "done": true}],
+            "status": "done",
+            "metadata": {"k": "v"}
+        }),
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::OK, "never 201");
+    let body = json_body(res).await;
+    assert_eq!(body["title"], "Do the thing");
+    assert_eq!(body["description"], "details");
+    assert_eq!(
+        body["status"], "pending",
+        "status is always forced to pending on create, regardless of body"
+    );
+    assert_eq!(body["planId"], id);
+    assert_eq!(body["order"], 0);
+    assert_eq!(body["metadata"], serde_json::json!({"k": "v"}));
+    assert_eq!(
+        body["acceptanceCriteria"],
+        serde_json::json!([
+            {"text": "a plain string", "done": false},
+            {"text": "an object", "done": true}
+        ]),
+        "raw persisted shape, not run through the read-side normaliser"
+    );
+
+    let rows = activity_rows_for(&pool, &user_id, body["id"].as_str().unwrap()).await;
+    assert_eq!(rows, vec![("created".to_string(), "plan_task".to_string())]);
+}
+
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn create_task_rejects_an_unknown_chunk_relation(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool.clone()));
+    let cookie = signup(app.clone(), "alice-badrelation@b.test", "Alice").await;
+    let id = create_plan(app.clone(), &cookie, "x").await;
+
+    let res = post(
+        app.clone(),
+        &cookie,
+        &format!("/api/plans/{id}/tasks"),
+        serde_json::json!({
+            "title": "t",
+            "chunks": [{"chunkId": "does-not-exist", "relation": "bogus"}]
+        }),
+    )
+    .await;
+    assert_eq!(
+        res.status(),
+        StatusCode::BAD_REQUEST,
+        "relation is validated in the service layer, not by a DB enum"
+    );
+}
+
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn create_task_on_another_users_plan_is_404(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool.clone()));
+    let alice_cookie = signup(app.clone(), "alice-crosstaskcreate@b.test", "Alice").await;
+    let bob_cookie = signup(app.clone(), "bob-crosstaskcreate@b.test", "Bob").await;
+    let id = create_plan(app.clone(), &alice_cookie, "alices").await;
+
+    let res = post(
+        app.clone(),
+        &bob_cookie,
+        &format!("/api/plans/{id}/tasks"),
+        serde_json::json!({ "title": "evil" }),
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+
+    let detail =
+        json_body(get(app.clone(), &alice_cookie, &format!("/api/plans/{id}")).await).await;
+    assert_eq!(detail["tasks"].as_array().unwrap().len(), 0);
+}
+
+async fn create_task(
+    app: axum::Router,
+    cookie: &str,
+    plan_id: &str,
+    title: &str,
+) -> serde_json::Value {
+    json_body(
+        post(
+            app,
+            cookie,
+            &format!("/api/plans/{plan_id}/tasks"),
+            serde_json::json!({ "title": title }),
+        )
+        .await,
+    )
+    .await
+}
+
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn update_task_patches_fields_and_clears_description_on_null(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool.clone()));
+    let cookie = signup(app.clone(), "alice-updatetask@b.test", "Alice").await;
+    let user_id = user_id_for_email(&pool, "alice-updatetask@b.test").await;
+    let id = create_plan(app.clone(), &cookie, "x").await;
+    let task = create_task(app.clone(), &cookie, &id, "original").await;
+    let task_id = task["id"].as_str().unwrap().to_string();
+
+    let res = patch(
+        app.clone(),
+        &cookie,
+        &format!("/api/plans/{id}/tasks/{task_id}"),
+        serde_json::json!({ "title": "changed", "description": null, "status": "in_progress" }),
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = json_body(res).await;
+    assert_eq!(body["title"], "changed");
+    assert_eq!(body["description"], serde_json::Value::Null);
+    assert_eq!(body["status"], "in_progress");
+
+    let rows = activity_rows_for(&pool, &user_id, &task_id).await;
+    assert_eq!(
+        rows,
+        vec![
+            ("created".to_string(), "plan_task".to_string()),
+            ("status_changed".to_string(), "plan_task".to_string())
+        ]
+    );
+}
+
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn update_task_rejects_an_unknown_status(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool.clone()));
+    let cookie = signup(app.clone(), "alice-badtaskstatus@b.test", "Alice").await;
+    let id = create_plan(app.clone(), &cookie, "x").await;
+    let task = create_task(app.clone(), &cookie, &id, "t").await;
+    let task_id = task["id"].as_str().unwrap();
+
+    let res = patch(
+        app.clone(),
+        &cookie,
+        &format!("/api/plans/{id}/tasks/{task_id}"),
+        serde_json::json!({ "status": "bogus" }),
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+}
+
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn marking_a_task_done_unblocks_its_blocked_dependent(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool.clone()));
+    let cookie = signup(app.clone(), "alice-unblock@b.test", "Alice").await;
+    let id = create_plan(app.clone(), &cookie, "x").await;
+    let a = create_task(app.clone(), &cookie, &id, "a").await;
+    let b = create_task(app.clone(), &cookie, &id, "b").await;
+    let a_id = a["id"].as_str().unwrap();
+    let b_id = b["id"].as_str().unwrap();
+
+    post(
+        app.clone(),
+        &cookie,
+        &format!("/api/plans/{id}/tasks/{b_id}/dependencies"),
+        serde_json::json!({ "dependsOnTaskId": a_id }),
+    )
+    .await;
+    patch(
+        app.clone(),
+        &cookie,
+        &format!("/api/plans/{id}/tasks/{b_id}"),
+        serde_json::json!({ "status": "blocked" }),
+    )
+    .await;
+
+    let res = patch(
+        app.clone(),
+        &cookie,
+        &format!("/api/plans/{id}/tasks/{a_id}"),
+        serde_json::json!({ "status": "done" }),
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(json_body(res).await["status"], "done");
+
+    let detail = json_body(get(app.clone(), &cookie, &format!("/api/plans/{id}")).await).await;
+    let tasks = detail["tasks"].as_array().unwrap();
+    let b_after = tasks.iter().find(|t| t["id"] == b_id).unwrap();
+    assert_eq!(
+        b_after["status"], "pending",
+        "b depended on a and was blocked, so it must be unblocked to pending"
+    );
+}
+
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn update_task_on_another_users_plan_is_404_and_leaves_it_intact(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool.clone()));
+    let alice_cookie = signup(app.clone(), "alice-crosstaskupdate@b.test", "Alice").await;
+    let bob_cookie = signup(app.clone(), "bob-crosstaskupdate@b.test", "Bob").await;
+    let id = create_plan(app.clone(), &alice_cookie, "alices").await;
+    let task = create_task(app.clone(), &alice_cookie, &id, "mine").await;
+    let task_id = task["id"].as_str().unwrap();
+
+    let res = patch(
+        app.clone(),
+        &bob_cookie,
+        &format!("/api/plans/{id}/tasks/{task_id}"),
+        serde_json::json!({ "title": "hijacked" }),
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+
+    let detail =
+        json_body(get(app.clone(), &alice_cookie, &format!("/api/plans/{id}")).await).await;
+    let tasks = detail["tasks"].as_array().unwrap();
+    assert_eq!(tasks[0]["title"], "mine");
+}
+
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn delete_task_returns_ok_true_and_404s_on_second_call(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool.clone()));
+    let cookie = signup(app.clone(), "alice-deletetask@b.test", "Alice").await;
+    let user_id = user_id_for_email(&pool, "alice-deletetask@b.test").await;
+    let id = create_plan(app.clone(), &cookie, "x").await;
+    let task = create_task(app.clone(), &cookie, &id, "t").await;
+    let task_id = task["id"].as_str().unwrap().to_string();
+
+    let res = delete(
+        app.clone(),
+        &cookie,
+        &format!("/api/plans/{id}/tasks/{task_id}"),
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(json_body(res).await, serde_json::json!({ "ok": true }));
+
+    let rows = activity_rows_for(&pool, &user_id, &task_id).await;
+    assert_eq!(
+        rows,
+        vec![
+            ("created".to_string(), "plan_task".to_string()),
+            ("deleted".to_string(), "plan_task".to_string())
+        ]
+    );
+
+    let res = delete(
+        app.clone(),
+        &cookie,
+        &format!("/api/plans/{id}/tasks/{task_id}"),
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+}
+
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn delete_task_on_another_users_plan_is_404_and_leaves_it_intact(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool.clone()));
+    let alice_cookie = signup(app.clone(), "alice-crosstaskdelete@b.test", "Alice").await;
+    let bob_cookie = signup(app.clone(), "bob-crosstaskdelete@b.test", "Bob").await;
+    let id = create_plan(app.clone(), &alice_cookie, "alices").await;
+    let task = create_task(app.clone(), &alice_cookie, &id, "mine").await;
+    let task_id = task["id"].as_str().unwrap();
+
+    let res = delete(
+        app.clone(),
+        &bob_cookie,
+        &format!("/api/plans/{id}/tasks/{task_id}"),
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+
+    let detail =
+        json_body(get(app.clone(), &alice_cookie, &format!("/api/plans/{id}")).await).await;
+    assert_eq!(detail["tasks"].as_array().unwrap().len(), 1);
+}
+
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn reorder_tasks_leaves_unmentioned_rows_and_returns_ok_true(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool.clone()));
+    let cookie = signup(app.clone(), "alice-reordertasks@b.test", "Alice").await;
+    let id = create_plan(app.clone(), &cookie, "x").await;
+    let a = create_task(app.clone(), &cookie, &id, "a").await;
+    let b = create_task(app.clone(), &cookie, &id, "b").await;
+    let a_id = a["id"].as_str().unwrap().to_string();
+    let b_id = b["id"].as_str().unwrap().to_string();
+
+    let res = post(
+        app.clone(),
+        &cookie,
+        &format!("/api/plans/{id}/tasks/reorder"),
+        serde_json::json!({ "taskIds": [b_id, a_id] }),
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(json_body(res).await, serde_json::json!({ "ok": true }));
+
+    let detail = json_body(get(app.clone(), &cookie, &format!("/api/plans/{id}")).await).await;
+    let tasks = detail["tasks"].as_array().unwrap();
+    assert_eq!(tasks[0]["title"], "b");
+    assert_eq!(tasks[1]["title"], "a");
+}
+
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn add_task_chunk_returns_bare_row(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool.clone()));
+    let cookie = signup(app.clone(), "alice-addtaskchunk@b.test", "Alice").await;
+    let user_id = user_id_for_email(&pool, "alice-addtaskchunk@b.test").await;
+    let id = create_plan(app.clone(), &cookie, "x").await;
+    let task = create_task(app.clone(), &cookie, &id, "t").await;
+    let task_id = task["id"].as_str().unwrap().to_string();
+    let chunk_id = fubbik_db::repo::chunk::create(
+        &pool,
+        &user_id,
+        fubbik_db::repo::chunk::NewChunk {
+            title: "c".into(),
+            content: "content".into(),
+            chunk_type: "note".into(),
+            rationale: None,
+        },
+    )
+    .await
+    .unwrap()
+    .id;
+
+    let res = post(
+        app.clone(),
+        &cookie,
+        &format!("/api/plans/{id}/tasks/{task_id}/chunks"),
+        serde_json::json!({ "chunkId": chunk_id, "relation": "context" }),
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = json_body(res).await;
+    assert_eq!(body["taskId"], task_id);
+    assert_eq!(body["chunkId"], chunk_id);
+    assert_eq!(body["relation"], "context");
+
+    // No activity_log row for chunk links, matching Node.
+    let rows = activity_rows_for(&pool, &user_id, &task_id).await;
+    assert_eq!(rows, vec![("created".to_string(), "plan_task".to_string())]);
+}
+
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn remove_task_chunk_returns_ok_true_and_404_on_missing(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool.clone()));
+    let cookie = signup(app.clone(), "alice-removetaskchunk@b.test", "Alice").await;
+    let user_id = user_id_for_email(&pool, "alice-removetaskchunk@b.test").await;
+    let id = create_plan(app.clone(), &cookie, "x").await;
+    let task = create_task(app.clone(), &cookie, &id, "t").await;
+    let task_id = task["id"].as_str().unwrap().to_string();
+    let chunk_id = fubbik_db::repo::chunk::create(
+        &pool,
+        &user_id,
+        fubbik_db::repo::chunk::NewChunk {
+            title: "c".into(),
+            content: "content".into(),
+            chunk_type: "note".into(),
+            rationale: None,
+        },
+    )
+    .await
+    .unwrap()
+    .id;
+    let link = json_body(
+        post(
+            app.clone(),
+            &cookie,
+            &format!("/api/plans/{id}/tasks/{task_id}/chunks"),
+            serde_json::json!({ "chunkId": chunk_id, "relation": "context" }),
+        )
+        .await,
+    )
+    .await;
+    let link_id = link["id"].as_str().unwrap().to_string();
+
+    let res = delete(
+        app.clone(),
+        &cookie,
+        &format!("/api/plans/{id}/tasks/{task_id}/chunks/{link_id}"),
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(json_body(res).await, serde_json::json!({ "ok": true }));
+
+    let res = delete(
+        app.clone(),
+        &cookie,
+        &format!("/api/plans/{id}/tasks/{task_id}/chunks/{link_id}"),
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+}
+
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn add_task_dependency_returns_bare_row_with_no_activity_log(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool.clone()));
+    let cookie = signup(app.clone(), "alice-adddep@b.test", "Alice").await;
+    let user_id = user_id_for_email(&pool, "alice-adddep@b.test").await;
+    let id = create_plan(app.clone(), &cookie, "x").await;
+    let a = create_task(app.clone(), &cookie, &id, "a").await;
+    let b = create_task(app.clone(), &cookie, &id, "b").await;
+    let a_id = a["id"].as_str().unwrap();
+    let b_id = b["id"].as_str().unwrap().to_string();
+
+    let res = post(
+        app.clone(),
+        &cookie,
+        &format!("/api/plans/{id}/tasks/{b_id}/dependencies"),
+        serde_json::json!({ "dependsOnTaskId": a_id }),
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = json_body(res).await;
+    assert_eq!(body["taskId"], b_id);
+    assert_eq!(body["dependsOnTaskId"], a_id);
+
+    // "created" from create_task only — the dependency POST itself must not
+    // have added a second activity row, matching Node exactly.
+    let rows = activity_rows_for(&pool, &user_id, &b_id).await;
+    assert_eq!(rows, vec![("created".to_string(), "plan_task".to_string())]);
+}
+
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn remove_task_dependency_returns_ok_true_and_404_on_missing(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool.clone()));
+    let cookie = signup(app.clone(), "alice-removedep@b.test", "Alice").await;
+    let id = create_plan(app.clone(), &cookie, "x").await;
+    let a = create_task(app.clone(), &cookie, &id, "a").await;
+    let b = create_task(app.clone(), &cookie, &id, "b").await;
+    let a_id = a["id"].as_str().unwrap();
+    let b_id = b["id"].as_str().unwrap().to_string();
+    let dep = json_body(
+        post(
+            app.clone(),
+            &cookie,
+            &format!("/api/plans/{id}/tasks/{b_id}/dependencies"),
+            serde_json::json!({ "dependsOnTaskId": a_id }),
+        )
+        .await,
+    )
+    .await;
+    let dep_id = dep["id"].as_str().unwrap().to_string();
+
+    let res = delete(
+        app.clone(),
+        &cookie,
+        &format!("/api/plans/{id}/tasks/{b_id}/dependencies/{dep_id}"),
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(json_body(res).await, serde_json::json!({ "ok": true }));
+
+    let res = delete(
+        app.clone(),
+        &cookie,
+        &format!("/api/plans/{id}/tasks/{b_id}/dependencies/{dep_id}"),
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+}
+
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn task_links_round_trip_defaults_system_and_returns_bare_array(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool.clone()));
+    let cookie = signup(app.clone(), "alice-tasklinks@b.test", "Alice").await;
+    let id = create_plan(app.clone(), &cookie, "x").await;
+    let task = create_task(app.clone(), &cookie, &id, "t").await;
+    let task_id = task["id"].as_str().unwrap().to_string();
+
+    let empty = get(
+        app.clone(),
+        &cookie,
+        &format!("/api/plans/{id}/tasks/{task_id}/links"),
+    )
+    .await;
+    assert_eq!(json_body(empty).await, serde_json::json!([]));
+
+    let res = post(
+        app.clone(),
+        &cookie,
+        &format!("/api/plans/{id}/tasks/{task_id}/links"),
+        serde_json::json!({ "url": "https://example.com" }),
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = json_body(res).await;
+    assert_eq!(body["system"], "url", "defaults to url when omitted");
+    assert_eq!(body["taskId"], task_id);
+    let link_id = body["id"].as_str().unwrap().to_string();
+
+    let listed = json_body(
+        get(
+            app.clone(),
+            &cookie,
+            &format!("/api/plans/{id}/tasks/{task_id}/links"),
+        )
+        .await,
+    )
+    .await;
+    assert_eq!(listed.as_array().unwrap().len(), 1);
+
+    let res = delete(
+        app.clone(),
+        &cookie,
+        &format!("/api/plans/{id}/tasks/{task_id}/links/{link_id}"),
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(json_body(res).await, serde_json::json!({ "ok": true }));
+
+    let res = delete(
+        app.clone(),
+        &cookie,
+        &format!("/api/plans/{id}/tasks/{task_id}/links/{link_id}"),
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+}
+
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn task_chunks_and_links_on_another_users_task_are_404_and_leave_it_intact(
+    pool: sqlx::PgPool,
+) {
+    let app = fubbik_api::router(state(pool.clone()));
+    let alice_cookie = signup(app.clone(), "alice-crosstasklinks@b.test", "Alice").await;
+    let bob_cookie = signup(app.clone(), "bob-crosstasklinks@b.test", "Bob").await;
+    let id = create_plan(app.clone(), &alice_cookie, "alices").await;
+    let task = create_task(app.clone(), &alice_cookie, &id, "mine").await;
+    let task_id = task["id"].as_str().unwrap().to_string();
+
+    let res = get(
+        app.clone(),
+        &bob_cookie,
+        &format!("/api/plans/{id}/tasks/{task_id}/links"),
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+
+    let res = post(
+        app.clone(),
+        &bob_cookie,
+        &format!("/api/plans/{id}/tasks/{task_id}/links"),
+        serde_json::json!({ "url": "https://evil.example" }),
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+
+    let res = post(
+        app.clone(),
+        &bob_cookie,
+        &format!("/api/plans/{id}/tasks/{task_id}/chunks"),
+        serde_json::json!({ "chunkId": "whatever", "relation": "context" }),
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+
+    let links = json_body(
+        get(
+            app.clone(),
+            &alice_cookie,
+            &format!("/api/plans/{id}/tasks/{task_id}/links"),
+        )
+        .await,
+    )
+    .await;
+    assert_eq!(links.as_array().unwrap().len(), 0);
+}
+
 // ── auth ─────────────────────────────────────────────────────────────
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]

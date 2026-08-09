@@ -93,6 +93,114 @@ pub struct CreateLinkBody {
     pub label: Option<String>,
 }
 
+/// One entry of the write-side `acceptanceCriteria` array accepted by
+/// `POST`/`PATCH /api/plans/{id}/tasks[/:taskId]` — Node's
+/// `acceptanceCriteriaBodySchema` (`tasks.ts:15`) is `t.Array(t.Union([
+/// t.String(), t.Object({text: t.String(), done: t.Boolean()})]))`: a bare
+/// string OR an object with both `text` and `done` present (not the more
+/// lenient shape `normalize_acceptance_criteria` tolerates on read paths,
+/// where a malformed object degrades to `{text:"", done:false}` instead of
+/// being rejected). `#[serde(untagged)]` reproduces that union at
+/// deserialisation time — a value matching neither variant is a 400 via
+/// `crate::extract::Json`'s rejection mapping, same as an Elysia schema
+/// mismatch.
+#[derive(serde::Deserialize, utoipa::ToSchema)]
+#[serde(untagged)]
+pub enum AcceptanceCriterionEntry {
+    Text(String),
+    Full { text: String, done: bool },
+}
+
+/// Reproduces Node's `normaliseCriteriaForWrite` (`tasks.ts:17-20`) exactly:
+/// a bare string becomes `{text: item, done: false}`; an object entry is
+/// passed through unchanged (already validated by
+/// [`AcceptanceCriterionEntry`]'s union shape at deserialisation).
+pub fn normalize_criteria_for_write(raw: &[AcceptanceCriterionEntry]) -> serde_json::Value {
+    serde_json::Value::Array(
+        raw.iter()
+            .map(|item| match item {
+                AcceptanceCriterionEntry::Text(s) => {
+                    serde_json::json!({ "text": s, "done": false })
+                }
+                AcceptanceCriterionEntry::Full { text, done } => {
+                    serde_json::json!({ "text": text, "done": done })
+                }
+            })
+            .collect(),
+    )
+}
+
+/// One entry of `POST /api/plans/{id}/tasks`'s optional `chunks` array
+/// (`tasks.ts:93`).
+#[derive(serde::Deserialize, utoipa::ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct TaskChunkInput {
+    pub chunk_id: String,
+    pub relation: String,
+}
+
+/// Body of `POST /api/plans/{id}/tasks` (`tasks.ts:88-97`). Distinct from
+/// [`CreateTaskInput`], which is the narrower shape accepted for the nested
+/// `tasks` array of `POST /api/plans` itself (no `chunks`/
+/// `dependsOnTaskIds`/`metadata` there — matching Node's two separate body
+/// schemas at `routes.ts:67-75` vs `tasks.ts:89-96`).
+#[derive(serde::Deserialize, utoipa::ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateTaskBody {
+    pub title: String,
+    pub description: Option<String>,
+    pub acceptance_criteria: Option<Vec<AcceptanceCriterionEntry>>,
+    pub chunks: Option<Vec<TaskChunkInput>>,
+    pub depends_on_task_ids: Option<Vec<String>>,
+    pub metadata: Option<serde_json::Value>,
+}
+
+/// Body of `PATCH /api/plans/{id}/tasks/{taskId}` (`tasks.ts:138-145`).
+/// `description` is tri-state, same `deserialize_some` trick as
+/// `UpdatePlanBody::description`; `status` is validated in the service
+/// layer against the five known task statuses, never a Rust enum — see
+/// `fubbik_db::repo::plan::mod`'s doc comment for why `plan_task.status`
+/// stays plain text end to end. `title`/`acceptanceCriteria`/`metadata` are
+/// plain two-state (Node declares none of them with a `t.Null()` union).
+#[derive(serde::Deserialize, utoipa::ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateTaskBody {
+    pub title: Option<String>,
+    #[serde(default, deserialize_with = "deserialize_some")]
+    pub description: Option<Option<String>>,
+    pub acceptance_criteria: Option<Vec<AcceptanceCriterionEntry>>,
+    pub status: Option<String>,
+    pub metadata: Option<serde_json::Value>,
+}
+
+/// Body of `POST /api/plans/{id}/tasks/reorder` (`tasks.ts:178`).
+#[derive(serde::Deserialize, utoipa::ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct ReorderTasksBody {
+    pub task_ids: Vec<String>,
+}
+
+/// Body of `POST /api/plans/{id}/tasks/{taskId}/chunks` (`tasks.ts:191`).
+/// `relation` is validated in the service layer against `context | created
+/// | modified`, never a Rust enum — same free-text-at-the-schema-level
+/// convention as `status`.
+#[derive(serde::Deserialize, utoipa::ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct AddTaskChunkBody {
+    pub chunk_id: String,
+    pub relation: String,
+}
+
+/// Body of `POST /api/plans/{id}/tasks/{taskId}/dependencies` (`tasks.ts:213`).
+/// No self-reference (`dependsOnTaskId == taskId`) guard — deliberately not
+/// added, matching Node, which has none either (see `fubbik_db::repo::
+/// plan::task::add_task_dependency`'s doc comment).
+#[derive(serde::Deserialize, utoipa::ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct AddTaskDependencyBody {
+    pub depends_on_task_id: String,
+}
+
 /// Body of `POST /api/plans/{id}/requirements` (`requirements.ts:9-20`).
 #[derive(serde::Deserialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]

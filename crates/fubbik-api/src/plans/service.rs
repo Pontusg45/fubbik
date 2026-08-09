@@ -1,18 +1,19 @@
 use std::collections::HashSet;
 
 use fubbik_core::error::{AppError, AppResult};
-use fubbik_db::repo::activity::Activity;
+use fubbik_db::repo::activity::{self, Activity};
 use fubbik_db::repo::plan::{
     self, CompletedAtPatch, ListFilter, Plan, PlanAnalyzeItem, PlanExternalLink, PlanListRow,
-    PlanRequirement,
+    PlanRequirement, PlanTask, PlanTaskChunk, PlanTaskDependency, PlanTaskExternalLink,
 };
 use sqlx::PgPool;
 
 use super::dto::{
-    AddRequirementBody, AnalyzeGrouped, CreateAnalyzeItemBody, CreateLinkBody, CreatePlanBody,
-    PlanDetail, ReorderAnalyzeItemsBody, ReorderRequirementsBody, TaskDetail,
-    UpdateAnalyzeItemBody, UpdatePlanBody, acceptance_criteria_for_write,
-    normalize_acceptance_criteria,
+    AddRequirementBody, AddTaskChunkBody, AddTaskDependencyBody, AnalyzeGrouped,
+    CreateAnalyzeItemBody, CreateLinkBody, CreatePlanBody, CreateTaskBody, PlanDetail,
+    ReorderAnalyzeItemsBody, ReorderRequirementsBody, ReorderTasksBody, TaskDetail,
+    UpdateAnalyzeItemBody, UpdatePlanBody, UpdateTaskBody, acceptance_criteria_for_write,
+    normalize_acceptance_criteria, normalize_criteria_for_write,
 };
 
 /// Node's `VALID_ANALYZE_KINDS` (`packages/api/src/plans/service.ts:8`).
@@ -90,7 +91,7 @@ pub async fn get_detail(pool: &PgPool, user_id: &str, id: &str) -> AppResult<Pla
 
     let mut task_details = Vec::with_capacity(tasks.len());
     for t in tasks {
-        let chunks = plan::list_task_chunks_with_titles(pool, &t.id).await?;
+        let chunks = plan::list_task_chunks_with_titles(pool, user_id, id, &t.id).await?;
         task_details.push(TaskDetail {
             id: t.id,
             plan_id: t.plan_id,
@@ -172,6 +173,7 @@ pub async fn create(pool: &PgPool, user_id: &str, body: CreatePlanBody) -> AppRe
                 &t.title,
                 t.description.as_deref(),
                 criteria,
+                None,
             )
             .await?;
         }
@@ -254,16 +256,17 @@ pub async fn duplicate(pool: &PgPool, user_id: &str, source_id: &str) -> AppResu
 /// limit 200, filtered down to this plan's own task ids), sorts the union
 /// by `createdAt` descending, and takes the first 100.
 ///
-/// **Known gap, not attempted here**: no domain in this port (plans
-/// included) currently writes `activity_log` rows on mutation — Node's
-/// `createActivity` calls scattered through `plans/routes.ts` have no Rust
-/// equivalent yet in *any* ported domain (`fubbik_db::repo::activity` is a
-/// read-only surface today; confirmed by grep — see this crate's
-/// `activity` module). Wiring activity writes into every mutating route is
-/// out of scope for "the 10 core plans endpoints" and is consistent with
-/// the rest of the port's current state, not a plans-specific omission.
-/// This endpoint's read/merge/sort/truncate logic is nonetheless complete
-/// and correct against whatever rows exist.
+/// **Partial gap, narrowed by Task 6**: `create_task`/`update_task`/
+/// `delete_task` below now write `entityType: "plan_task"` rows via
+/// `fubbik_db::repo::activity::create` (Node's `createActivity`,
+/// `tasks.ts:74-81,123-130,154-160`), so this endpoint's `task_events` half
+/// is populated for tasks created/updated/deleted through this port. The
+/// `entityType: "plan"` half (`plan_events`) is still unpopulated — none of
+/// this file's plan-level mutations (`create`/`update`/`delete`/
+/// `duplicate`/links/requirements/analyze items) write an activity row yet;
+/// wiring those in is out of scope for this task. This endpoint's read/
+/// merge/sort/truncate logic is complete and correct against whatever rows
+/// exist either way.
 pub async fn get_activity(pool: &PgPool, user_id: &str, id: &str) -> AppResult<Vec<Activity>> {
     get_plan(pool, user_id, id).await?;
 
@@ -455,4 +458,340 @@ pub async fn reorder_analyze_items(
     validate_analyze_kind(&body.kind)?;
     get_plan(pool, user_id, id).await?;
     plan::reorder_analyze_items(pool, user_id, id, &body.kind, &body.item_ids).await
+}
+
+// ── Tasks ────────────────────────────────────────────────────────────
+
+/// Node's `VALID_TASK_STATUSES` (`packages/api/src/plans/tasks.ts:22`).
+/// `plan_task.status` is unconstrained free text at the DB and schema
+/// level, validated only here — never a Rust enum, same rule as every
+/// other status-shaped column in this domain.
+const VALID_TASK_STATUSES: [&str; 5] = ["pending", "in_progress", "done", "skipped", "blocked"];
+
+/// Node's `VALID_TASK_RELATIONS` (`packages/api/src/plans/service.ts:9`).
+/// `plan_task_chunk.relation` is unconstrained free text at the DB and
+/// schema level, validated only here.
+const VALID_TASK_RELATIONS: [&str; 3] = ["context", "created", "modified"];
+
+fn validate_task_status(status: &str) -> AppResult<()> {
+    if VALID_TASK_STATUSES.contains(&status) {
+        Ok(())
+    } else {
+        Err(AppError::Validation(format!(
+            "Invalid task status: {status}"
+        )))
+    }
+}
+
+fn validate_task_relation(relation: &str) -> AppResult<()> {
+    if VALID_TASK_RELATIONS.contains(&relation) {
+        Ok(())
+    } else {
+        Err(AppError::Validation(format!(
+            "Invalid task chunk relation: {relation}"
+        )))
+    }
+}
+
+/// Mirrors Node's `POST /plans/:id/tasks` (`tasks.ts:46-98`): creates the
+/// task (status forced to `"pending"`, never caller-supplied — see
+/// `plan::create_task`'s doc comment), then loops any `chunks`/
+/// `dependsOnTaskIds` through the link-creation repo calls, then fires
+/// activity `"created"`.
+pub async fn create_task(
+    pool: &PgPool,
+    user_id: &str,
+    id: &str,
+    body: CreateTaskBody,
+) -> AppResult<PlanTask> {
+    if let Some(chunks) = &body.chunks {
+        for c in chunks {
+            validate_task_relation(&c.relation)?;
+        }
+    }
+    let plan = get_plan(pool, user_id, id).await?;
+
+    let criteria = body
+        .acceptance_criteria
+        .as_deref()
+        .map(normalize_criteria_for_write)
+        .unwrap_or_else(|| serde_json::json!([]));
+
+    let task = plan::create_task(
+        pool,
+        user_id,
+        id,
+        &body.title,
+        body.description.as_deref(),
+        criteria,
+        body.metadata,
+    )
+    .await?
+    .ok_or_else(|| AppError::NotFound("Plan".into()))?;
+
+    if let Some(chunks) = &body.chunks {
+        for c in chunks {
+            plan::add_task_chunk(pool, user_id, id, &task.id, &c.chunk_id, &c.relation).await?;
+        }
+    }
+    if let Some(deps) = &body.depends_on_task_ids {
+        for dep_id in deps {
+            plan::add_task_dependency(pool, user_id, id, &task.id, dep_id).await?;
+        }
+    }
+
+    activity::create(
+        pool,
+        user_id,
+        "plan_task",
+        &task.id,
+        Some(&task.title),
+        "created",
+        plan.space_id.as_deref(),
+    )
+    .await?;
+
+    Ok(task)
+}
+
+/// Mirrors Node's `PATCH /plans/:id/tasks/:taskId` (`tasks.ts:99-146`).
+///
+/// **This is where divergence #12's fix is wired in.** Node applies the
+/// whole patch — including `status: "done"` — in one `updateTask` call,
+/// then separately (non-atomically) calls `unblockDependentsOf`. This port
+/// keeps that non-atomicity out of the "done" transition specifically: when
+/// the incoming `status` is `"done"`, the `status` column is *not* passed
+/// to the generic `plan::update_task` call below (its own `status` param
+/// stays `None`, so `COALESCE` leaves the column untouched) — instead,
+/// `plan::mark_task_done_and_unblock` sets `status = 'done'` and unblocks
+/// any `'blocked'` dependents in one transaction (see that function's doc
+/// comment). Any other patched fields (`title`/`description`/
+/// `acceptanceCriteria`/`metadata`) are still applied via the ordinary
+/// `plan::update_task` call first — only the done+unblock pair needs to be
+/// atomic, since that pair is the one divergence-#12 failure mode; a crash
+/// between the two calls here can only leave "other fields updated, status
+/// unchanged", never "done with a stuck dependent".
+///
+/// Activity action is `"status_changed"` if `status` was in the body, else
+/// `"updated"` — matching Node's `ctx.body.status !== undefined ?
+/// "status_changed" : "updated"` (`tasks.ts:128`).
+pub async fn update_task(
+    pool: &PgPool,
+    user_id: &str,
+    id: &str,
+    task_id: &str,
+    body: UpdateTaskBody,
+) -> AppResult<PlanTask> {
+    if let Some(status) = &body.status {
+        validate_task_status(status)?;
+    }
+    let plan = get_plan(pool, user_id, id).await?;
+
+    let description = body.description.as_ref().map(|d| d.as_deref());
+    let criteria = body
+        .acceptance_criteria
+        .as_deref()
+        .map(normalize_criteria_for_write);
+    let is_done = body.status.as_deref() == Some("done");
+    let status_for_generic_update = if is_done {
+        None
+    } else {
+        body.status.as_deref()
+    };
+
+    let mut task = plan::update_task(
+        pool,
+        user_id,
+        id,
+        task_id,
+        body.title.as_deref(),
+        description,
+        criteria,
+        body.metadata.clone(),
+        status_for_generic_update,
+    )
+    .await?
+    .ok_or_else(|| AppError::NotFound("PlanTask".into()))?;
+
+    if is_done {
+        plan::mark_task_done_and_unblock(pool, user_id, id, task_id).await?;
+        task = plan::find_task_by_id(pool, user_id, id, task_id)
+            .await?
+            .ok_or_else(|| AppError::NotFound("PlanTask".into()))?;
+    }
+
+    let action = if body.status.is_some() {
+        "status_changed"
+    } else {
+        "updated"
+    };
+    activity::create(
+        pool,
+        user_id,
+        "plan_task",
+        &task.id,
+        Some(&task.title),
+        action,
+        plan.space_id.as_deref(),
+    )
+    .await?;
+
+    Ok(task)
+}
+
+/// Mirrors Node's `DELETE /plans/:id/tasks/:taskId` (`tasks.ts:147-166`):
+/// no `entityTitle` in the fired activity event, matching Node's
+/// `entityId: ctx.params.taskId` with no `entityTitle` field at all
+/// (`tasks.ts:157`) — the one task activity call that omits it.
+pub async fn delete_task(pool: &PgPool, user_id: &str, id: &str, task_id: &str) -> AppResult<()> {
+    let plan = get_plan(pool, user_id, id).await?;
+    if plan::delete_task(pool, user_id, id, task_id).await? {
+        activity::create(
+            pool,
+            user_id,
+            "plan_task",
+            task_id,
+            None,
+            "deleted",
+            plan.space_id.as_deref(),
+        )
+        .await?;
+        Ok(())
+    } else {
+        Err(AppError::NotFound("PlanTask".into()))
+    }
+}
+
+/// Mirrors Node's `POST /plans/:id/tasks/reorder` (`tasks.ts:167-179`). No
+/// activity event — Node's reorder handler doesn't call `createActivity`
+/// either.
+pub async fn reorder_tasks(
+    pool: &PgPool,
+    user_id: &str,
+    id: &str,
+    body: ReorderTasksBody,
+) -> AppResult<()> {
+    get_plan(pool, user_id, id).await?;
+    plan::reorder_tasks(pool, user_id, id, &body.task_ids).await
+}
+
+/// Mirrors Node's `POST /plans/:id/tasks/:taskId/chunks` (`tasks.ts:180-192`).
+/// No activity event, matching Node.
+pub async fn add_task_chunk(
+    pool: &PgPool,
+    user_id: &str,
+    id: &str,
+    task_id: &str,
+    body: AddTaskChunkBody,
+) -> AppResult<PlanTaskChunk> {
+    validate_task_relation(&body.relation)?;
+    get_plan(pool, user_id, id).await?;
+    plan::add_task_chunk(pool, user_id, id, task_id, &body.chunk_id, &body.relation)
+        .await?
+        .ok_or_else(|| AppError::NotFound("PlanTask".into()))
+}
+
+/// Mirrors Node's `DELETE /plans/:id/tasks/:taskId/chunks/:linkId`
+/// (`tasks.ts:193-201`).
+pub async fn remove_task_chunk(
+    pool: &PgPool,
+    user_id: &str,
+    id: &str,
+    task_id: &str,
+    link_id: &str,
+) -> AppResult<()> {
+    get_plan(pool, user_id, id).await?;
+    if plan::remove_task_chunk(pool, user_id, id, task_id, link_id).await? {
+        Ok(())
+    } else {
+        Err(AppError::NotFound("PlanTaskChunk".into()))
+    }
+}
+
+/// Mirrors Node's `POST /plans/:id/tasks/:taskId/dependencies`
+/// (`tasks.ts:204-214`). **No activity event** — the one mutating task
+/// endpoint that doesn't fire `createActivity`, matching Node exactly (no
+/// `createActivity` call anywhere in this handler). No self-reference
+/// guard either — see `plan::add_task_dependency`'s doc comment.
+pub async fn add_task_dependency(
+    pool: &PgPool,
+    user_id: &str,
+    id: &str,
+    task_id: &str,
+    body: AddTaskDependencyBody,
+) -> AppResult<PlanTaskDependency> {
+    get_plan(pool, user_id, id).await?;
+    plan::add_task_dependency(pool, user_id, id, task_id, &body.depends_on_task_id)
+        .await?
+        .ok_or_else(|| AppError::NotFound("PlanTask".into()))
+}
+
+/// Mirrors Node's `DELETE /plans/:id/tasks/:taskId/dependencies/:depId`
+/// (`tasks.ts:215-223`).
+pub async fn remove_task_dependency(
+    pool: &PgPool,
+    user_id: &str,
+    id: &str,
+    task_id: &str,
+    dep_id: &str,
+) -> AppResult<()> {
+    get_plan(pool, user_id, id).await?;
+    if plan::remove_task_dependency(pool, user_id, id, task_id, dep_id).await? {
+        Ok(())
+    } else {
+        Err(AppError::NotFound("PlanTaskDependency".into()))
+    }
+}
+
+/// Mirrors Node's `GET /plans/:id/tasks/:taskId/links` (`tasks.ts:225-232`).
+pub async fn list_task_links(
+    pool: &PgPool,
+    user_id: &str,
+    id: &str,
+    task_id: &str,
+) -> AppResult<Vec<PlanTaskExternalLink>> {
+    get_plan(pool, user_id, id).await?;
+    plan::list_task_links(pool, user_id, id, task_id).await
+}
+
+/// Mirrors Node's `POST /plans/:id/tasks/:taskId/links` (`tasks.ts:233-256`):
+/// `system` defaults to `"url"`, `label` to `null` when omitted, same
+/// convention as `service::add_link`.
+pub async fn add_task_link(
+    pool: &PgPool,
+    user_id: &str,
+    id: &str,
+    task_id: &str,
+    body: CreateLinkBody,
+) -> AppResult<PlanTaskExternalLink> {
+    get_plan(pool, user_id, id).await?;
+    let system = body.system.as_deref().unwrap_or("url");
+    plan::add_task_link(
+        pool,
+        user_id,
+        id,
+        task_id,
+        system,
+        &body.url,
+        body.label.as_deref(),
+    )
+    .await?
+    .ok_or_else(|| AppError::NotFound("PlanTask".into()))
+}
+
+/// Mirrors Node's `DELETE /plans/:id/tasks/:taskId/links/:linkId`
+/// (`tasks.ts:257-265`).
+pub async fn remove_task_link(
+    pool: &PgPool,
+    user_id: &str,
+    id: &str,
+    task_id: &str,
+    link_id: &str,
+) -> AppResult<()> {
+    get_plan(pool, user_id, id).await?;
+    if plan::remove_task_link(pool, user_id, id, task_id, link_id).await? {
+        Ok(())
+    } else {
+        Err(AppError::NotFound("PlanTaskExternalLink".into()))
+    }
 }
