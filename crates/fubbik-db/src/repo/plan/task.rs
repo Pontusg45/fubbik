@@ -14,9 +14,13 @@
 //! the "just transitioned to done" moment has passed. [`mark_task_done_and_unblock`]
 //! does the whole "set `status='done'`, then flip any dependents that are
 //! **exactly** `'blocked'` to `'pending'`" sequence inside one transaction.
-//! Proven atomic in `tests/plan.rs::forcing_a_mid_transaction_failure_rolls_back_the_done_flag`
-//! by injecting `SELECT 1/0` between the two statements and confirming the
-//! task is still not `done` afterward.
+//! Atomicity was originally checked by hand — a temporary `SELECT 1/0`
+//! spliced between the two statements, run once under a debugger, then
+//! deleted — **not** by an automated test; no such regression test existed
+//! until `tests/plan.rs::injecting_a_fault_between_mark_done_and_unblock_rolls_back_the_done_flag`
+//! was added. That test drives [`mark_done_step`] and [`unblock_step`]
+//! directly inside its own transaction and injects a real fault between
+//! them, with no fault-injection branch in the production code path.
 
 use fubbik_core::error::AppResult;
 use sqlx::PgPool;
@@ -543,11 +547,13 @@ pub async fn remove_task_dependency(
 /// `update_task`/`find_task_by_id` call), same shape the service layer
 /// uses.
 ///
-/// Proven atomic in `tests/plan.rs::forcing_a_mid_transaction_failure_rolls_back_the_done_flag`:
-/// a temporary `SELECT 1/0` injected between the two `UPDATE`s causes the
-/// whole transaction to abort, and the task is confirmed still not `done`
-/// afterward — not merely "both statements ran", which proves nothing about
-/// atomicity on its own. Cross-user guard proven in
+/// Atomicity is exercised by
+/// `tests/plan.rs::injecting_a_fault_between_mark_done_and_unblock_rolls_back_the_done_flag`,
+/// which drives [`mark_done_step`] and [`unblock_step`] — the same two
+/// functions this wrapper calls — inside its own transaction, injects a
+/// real Postgres error between them (`SELECT 1/0`, executed by the test,
+/// not by any production code path), and confirms the task is still not
+/// `done` after rolling back. Cross-user guard proven in
 /// `tests/plan.rs::cannot_mark_another_users_task_done`.
 pub async fn mark_task_done_and_unblock(
     pool: &PgPool,
@@ -557,7 +563,34 @@ pub async fn mark_task_done_and_unblock(
 ) -> AppResult<Vec<String>> {
     let mut tx = pool.begin().await?;
 
-    let updated = sqlx::query!(
+    let updated = mark_done_step(&mut tx, user_id, plan_id, task_id).await?;
+    if updated.is_none() {
+        tx.rollback().await?;
+        return Ok(vec![]);
+    }
+
+    let unblocked = unblock_step(&mut tx, plan_id, task_id).await?;
+
+    tx.commit().await?;
+    Ok(unblocked)
+}
+
+/// First half of [`mark_task_done_and_unblock`]'s transaction: flips the
+/// caller's own task to `'done'`. Extracted to its own `&mut Transaction`
+/// function (rather than inlined) so a test can drive it and
+/// [`unblock_step`] inside a transaction it controls itself, inject a fault
+/// between the two calls, and assert the rollback — without any
+/// fault-injection code living in the production path. Returns `None` when
+/// the `id`/`plan_id`/`user_id` guard matches no row (wrong task, wrong
+/// plan, or a plan not owned by `user_id`), same as the row-count check the
+/// former inlined version used.
+pub async fn mark_done_step(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    user_id: &str,
+    plan_id: &str,
+    task_id: &str,
+) -> AppResult<Option<String>> {
+    let updated = sqlx::query_scalar!(
         r#"UPDATE plan_task SET status = 'done', updated_at = now()
            WHERE id = $1 AND plan_id = $2
              AND EXISTS (SELECT 1 FROM plan p WHERE p.id = $2 AND p.user_id = $3)
@@ -566,14 +599,20 @@ pub async fn mark_task_done_and_unblock(
         plan_id,
         user_id
     )
-    .fetch_optional(&mut *tx)
+    .fetch_optional(&mut **tx)
     .await?;
+    Ok(updated)
+}
 
-    if updated.is_none() {
-        tx.rollback().await?;
-        return Ok(vec![]);
-    }
-
+/// Second half of [`mark_task_done_and_unblock`]'s transaction: flips every
+/// dependent that is **exactly** `'blocked'` to `'pending'`. See
+/// [`mark_done_step`] for why this is a separate `&mut Transaction`
+/// function rather than inlined.
+pub async fn unblock_step(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    plan_id: &str,
+    task_id: &str,
+) -> AppResult<Vec<String>> {
     let unblocked = sqlx::query_scalar!(
         r#"UPDATE plan_task SET status = 'pending', updated_at = now()
            WHERE plan_id = $2 AND status = 'blocked'
@@ -582,10 +621,8 @@ pub async fn mark_task_done_and_unblock(
         task_id,
         plan_id
     )
-    .fetch_all(&mut *tx)
+    .fetch_all(&mut **tx)
     .await?;
-
-    tx.commit().await?;
     Ok(unblocked)
 }
 

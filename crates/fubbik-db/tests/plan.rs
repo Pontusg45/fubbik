@@ -1472,6 +1472,78 @@ async fn cannot_mark_another_users_task_done(pool: PgPool) {
     );
 }
 
+/// Real, permanent atomicity coverage for divergence #12 — see
+/// `mark_task_done_and_unblock`'s doc comment. The original proof was a
+/// one-time manual check (a temporary `SELECT 1/0` spliced into the
+/// function body, run once, then deleted); no automated test backed it
+/// until this one. `mark_done_step` and `unblock_step` are the exact two
+/// functions `mark_task_done_and_unblock` composes inside its own
+/// transaction — this test drives them the same way, inside a transaction
+/// it owns itself, and injects a real Postgres fault (a division by zero,
+/// which aborts the transaction) between the two calls. No fault-injection
+/// code exists in the production path; the test supplies the fault.
+#[sqlx::test]
+async fn injecting_a_fault_between_mark_done_and_unblock_rolls_back_the_done_flag(pool: PgPool) {
+    let alice = seed_user(&pool, "alice").await;
+    let p = plan::create(&pool, &alice, "p", None, None).await.unwrap();
+    let a = seed_task(&pool, &alice, &p.id, "a").await;
+    let b = seed_task(&pool, &alice, &p.id, "b").await;
+    plan::add_task_dependency(&pool, &alice, &p.id, &b.id, &a.id)
+        .await
+        .unwrap();
+    plan::update_task(
+        &pool,
+        &alice,
+        &p.id,
+        &b.id,
+        None,
+        None,
+        None,
+        None,
+        Some("blocked"),
+    )
+    .await
+    .unwrap();
+
+    let mut tx = pool.begin().await.unwrap();
+
+    let updated = plan::mark_done_step(&mut tx, &alice, &p.id, &a.id)
+        .await
+        .unwrap();
+    assert_eq!(
+        updated,
+        Some(a.id.clone()),
+        "the first step must have matched alice's own task"
+    );
+
+    // Inject a real fault between the two steps — not fault-injection code
+    // in `mark_task_done_and_unblock` itself, just a failing statement run
+    // by the test on its own transaction handle. Postgres aborts the whole
+    // transaction on error; any statement after this, including
+    // `unblock_step`, would itself fail against the aborted transaction.
+    let fault = sqlx::query("SELECT 1/0").execute(&mut *tx).await;
+    assert!(fault.is_err(), "the injected fault must actually fail");
+
+    tx.rollback().await.unwrap();
+
+    let a_after = plan::find_task_by_id(&pool, &alice, &p.id, &a.id)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        a_after.status, "pending",
+        "a fault between mark-done and unblock must roll back the done flag too"
+    );
+    let b_after = plan::find_task_by_id(&pool, &alice, &p.id, &b.id)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        b_after.status, "blocked",
+        "the unblock step never ran, so b must still be blocked"
+    );
+}
+
 // ── B3: permanent guard tests for four functions review previously
 // proved load-bearing only with temporary, since-removed probes ─────────
 

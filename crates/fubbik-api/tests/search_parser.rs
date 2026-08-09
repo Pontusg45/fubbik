@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use fubbik_api::search::parser::{QueryClause, clauses_to_query_string, parse_query_string};
 
 fn c(field: &str, operator: &str, value: &str) -> QueryClause {
@@ -148,5 +150,50 @@ fn serialiser_round_trips_params_and_quotes_text_values_containing_spaces() {
         parse_query_string(&s),
         clauses,
         "round trip must be lossless"
+    );
+}
+
+/// C1: pins the exact clause list for `near:"Auth Flow" hops:2`, the full
+/// truth captured in
+/// `tests/fixtures/node-contract-2c/search-parse-near-quoted-hops-2.json`:
+/// `{"clauses":[{"field":"near","operator":"is","value":"Auth","params":{"hops":"2"}},{"field":"text","operator":"contains","value":"Flow\""}]}`.
+/// Only a NEGATIVE used to be asserted here (that no clause equals the
+/// literal `"Auth Flow"`) — see the NOTE above on why that round-trip input
+/// doesn't behave the way a naive reading suggests. This test locks the
+/// full positive shape: the tokenizer only special-cases a `"` that opens a
+/// *whole* token, so `near:"Auth` and `Flow"` become two separate tokens —
+/// a `near` clause valued `"Auth"` (quote-opening token, `hops:2` attaches
+/// to it as usual) **plus** a stray `text` clause valued `Flow"` (note the
+/// trailing double-quote baked into the value itself, since the tokenizer
+/// only strips a *leading* quote from a token that starts with one, not a
+/// trailing one that isn't the whole token). This looks exactly like a
+/// tokenizer bug that a future reader would "clean up" — it is Node's
+/// verified behaviour, reproduced byte-for-byte.
+#[test]
+fn near_quoted_with_a_space_produces_a_near_clause_plus_a_stray_text_clause() {
+    let got = parse_query_string("near:\"Auth Flow\" hops:2");
+
+    let mut hops = BTreeMap::new();
+    hops.insert("hops".to_string(), "2".to_string());
+
+    assert_eq!(
+        got,
+        vec![
+            QueryClause {
+                field: "near".into(),
+                operator: "is".into(),
+                value: "Auth".into(),
+                params: Some(hops),
+                negate: None,
+            },
+            QueryClause {
+                field: "text".into(),
+                operator: "contains".into(),
+                value: "Flow\"".into(),
+                params: None,
+                negate: None,
+            },
+        ],
+        "must match tests/fixtures/node-contract-2c/search-parse-near-quoted-hops-2.json exactly"
     );
 }
