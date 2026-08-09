@@ -277,6 +277,16 @@ pub async fn ensure_vertex(pool: &PgPool, chunk_id: &str) -> AppResult<()> {
 /// `createEdge("connects", "chunk", sourceId, "chunk", targetId, { id,
 /// relation })`, minus the `id` property, which nothing in this module's
 /// query helpers reads).
+///
+/// **`MERGE`, not `CREATE`.** The whole pattern — both endpoints AND the
+/// `{relation: '...'}` property — is the merge key, so re-running this for
+/// the same `(from_id, to_id, relation)` triple is a no-op instead of
+/// stacking a second parallel edge; this is what makes
+/// [`backfill_connections`] safe to run more than once (Task 10's whole
+/// justification for `MERGE` over `CREATE`). A *different* `relation`
+/// between the same two vertices still creates a distinct edge, matching
+/// `chunk_connection`'s own `(source_id, target_id, relation)` unique index
+/// — each connection row is its own real-world edge.
 pub async fn create_edge(
     pool: &PgPool,
     relation: &str,
@@ -284,13 +294,86 @@ pub async fn create_edge(
     to_id: &str,
 ) -> AppResult<()> {
     let query = format!(
-        "MATCH (a:chunk {{id: '{}'}}), (b:chunk {{id: '{}'}}) CREATE (a)-[:connects {{relation: '{}'}}]->(b)",
+        "MATCH (a:chunk {{id: '{}'}}), (b:chunk {{id: '{}'}}) MERGE (a)-[:connects {{relation: '{}'}}]->(b)",
         esc_cypher(from_id),
         esc_cypher(to_id),
         esc_cypher(relation)
     );
     cypher(pool, &query).await?;
     Ok(())
+}
+
+/// Removes the `:connects` edge carrying this exact `relation` property
+/// between two `chunk` vertices — the inverse of [`create_edge`], called
+/// after `chunk_connection`'s row is deleted (`connection::delete`). Scoped
+/// to the specific `relation`, not "any edge between these two vertices":
+/// if multiple relation types exist between the same pair (each backed by
+/// its own `chunk_connection` row), removing one must not touch the
+/// others.
+///
+/// A `MATCH ... DELETE` with no matching edge (already gone, vertices
+/// never projected, AGE unavailable) is simply a no-op — same "missing is
+/// fine" tolerance [`ensure_vertex`]/[`create_edge`] have via `MERGE`.
+pub async fn delete_edge(
+    pool: &PgPool,
+    relation: &str,
+    from_id: &str,
+    to_id: &str,
+) -> AppResult<()> {
+    let query = format!(
+        "MATCH (a:chunk {{id: '{}'}})-[e:connects {{relation: '{}'}}]->(b:chunk {{id: '{}'}}) DELETE e",
+        esc_cypher(from_id),
+        esc_cypher(relation),
+        esc_cypher(to_id)
+    );
+    cypher(pool, &query).await?;
+    Ok(())
+}
+
+/// Counts `:connects` edges from `a` to `b`, irrespective of the
+/// `relation` property — a test helper for proving [`backfill_connections`]
+/// is idempotent (`count_edges_between` must stay `1` after the backfill
+/// runs twice over the same source row, not climb to `2`).
+pub async fn count_edges_between(pool: &PgPool, a: &str, b: &str) -> AppResult<i64> {
+    let query = format!(
+        "MATCH (x:chunk {{id: '{}'}})-[e:connects]->(y:chunk {{id: '{}'}}) RETURN count(e) AS c",
+        esc_cypher(a),
+        esc_cypher(b)
+    );
+    let rows = cypher(pool, &query).await?;
+    Ok(rows.first().and_then(|v| v.as_i64()).unwrap_or(0))
+}
+
+/// One-time, idempotent walk of `chunk_connection`, projecting every row
+/// into the AGE graph via [`ensure_vertex`]/[`create_edge`] — the backfill
+/// for rows that existed before this port started projecting connections
+/// on write. Ordered by `id` purely for deterministic, reproducible runs;
+/// nothing about correctness depends on the order.
+///
+/// Returns the number of rows walked (processed), **not** the number of
+/// edges newly created — every row is re-projected on every call, and
+/// `create_edge`'s `MERGE` is what makes that safe to repeat: running this
+/// twice against the same data returns the same count both times, and
+/// [`count_edges_between`] confirms the edge set itself did not grow.
+///
+/// Never called from the server's startup path — exposed only as an
+/// explicit `fubbik` CLI subcommand (`crates/fubbik/src/main.rs`). An
+/// implicit graph rewrite at boot is exactly the kind of surprise this is
+/// meant to avoid.
+pub async fn backfill_connections(pool: &PgPool) -> AppResult<u64> {
+    let rows =
+        sqlx::query!("SELECT source_id, target_id, relation FROM chunk_connection ORDER BY id")
+            .fetch_all(pool)
+            .await?;
+
+    let mut count = 0u64;
+    for row in &rows {
+        ensure_vertex(pool, &row.source_id).await?;
+        ensure_vertex(pool, &row.target_id).await?;
+        create_edge(pool, &row.relation, &row.source_id, &row.target_id).await?;
+        count += 1;
+    }
+    Ok(count)
 }
 
 // ---------------------------------------------------------------------------

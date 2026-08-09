@@ -80,6 +80,29 @@ pub async fn create(
     )
     .fetch_optional(pool)
     .await?;
+
+    // Project into AGE *after* the SQL insert has already succeeded,
+    // mirroring Node's ordering (`packages/db/src/repository/connection.ts`
+    // calls `ensureVertex` twice then `createEdge` only once the row
+    // exists). Deliberately NOT rolled back if projection fails: Node's own
+    // projection errors don't undo the insert either, so a stricter Rust
+    // here would silently diverge — the connection would vanish where Node
+    // keeps it. Logged and swallowed instead; the row this function just
+    // created is still returned as a success.
+    if let Some(conn) = &row {
+        if let Err(e) = crate::age::ensure_vertex(pool, &conn.source_id).await {
+            tracing::warn!(error = %e, connection_id = %conn.id, chunk_id = %conn.source_id, "failed to project source vertex into AGE graph");
+        }
+        if let Err(e) = crate::age::ensure_vertex(pool, &conn.target_id).await {
+            tracing::warn!(error = %e, connection_id = %conn.id, chunk_id = %conn.target_id, "failed to project target vertex into AGE graph");
+        }
+        if let Err(e) =
+            crate::age::create_edge(pool, &conn.relation, &conn.source_id, &conn.target_id).await
+        {
+            tracing::warn!(error = %e, connection_id = %conn.id, "failed to project connects edge into AGE graph");
+        }
+    }
+
     Ok(row)
 }
 
@@ -124,19 +147,33 @@ pub async fn find_by_id(pool: &PgPool, id: &str) -> AppResult<Option<Connection>
 /// layer, matching Node, which maps both cases to the same 404 `{resource:
 /// "Connection"}`.
 pub async fn delete(pool: &PgPool, user_id: &str, id: &str) -> AppResult<bool> {
-    let res = sqlx::query!(
+    let deleted = sqlx::query!(
         r#"DELETE FROM chunk_connection c
            WHERE c.id = $1
              AND (
                EXISTS (SELECT 1 FROM chunk s WHERE s.id = c.source_id AND s.user_id = $2)
                OR EXISTS (SELECT 1 FROM chunk t WHERE t.id = c.target_id AND t.user_id = $2)
-             )"#,
+             )
+           RETURNING c.source_id, c.target_id, c.relation"#,
         id,
         user_id
     )
-    .execute(pool)
+    .fetch_optional(pool)
     .await?;
-    Ok(res.rows_affected() > 0)
+
+    let Some(row) = deleted else {
+        return Ok(false);
+    };
+
+    // Remove the projected edge after the row is gone, same "log and
+    // swallow, never roll back the SQL write" stance as `create` above.
+    if let Err(e) =
+        crate::age::delete_edge(pool, &row.relation, &row.source_id, &row.target_id).await
+    {
+        tracing::warn!(error = %e, connection_id = %id, "failed to remove projected AGE edge for deleted connection");
+    }
+
+    Ok(true)
 }
 
 /// One `(chunkId, count)` pair — the bulk shape `search::service` uses to
