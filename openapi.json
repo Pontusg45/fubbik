@@ -1067,6 +1067,411 @@
         }
       }
     },
+    "/api/plans": {
+      "get": {
+        "tags": [
+          "crate::plans::routes"
+        ],
+        "summary": "`PlanListRow`, not the bare `Plan` — see that struct's doc comment.\nConfirmed against `tests/fixtures/node-contract-2c/plans-list.json`,\nwhich carries the rollup fields even though the task brief's own\nendpoint table just says \"bare array\".",
+        "operationId": "list_plans",
+        "parameters": [
+          {
+            "name": "spaceId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "requirementId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "includeArchived",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PlanListRow"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "crate::plans::routes"
+        ],
+        "summary": "Every plans POST/PATCH/DELETE returns 200, never 201 — confirmed by grep\nagainst Node's `plans/routes.ts` (`_mutating.md`): zero `set.status =\n201` calls anywhere in this slice. `Json<T>`'s default status is already\n200, so none of these handlers wrap their response in an explicit\n`StatusCode`.",
+        "operationId": "create_plan",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePlanBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Plan"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/plans/{id}": {
+      "get": {
+        "tags": [
+          "crate::plans::routes"
+        ],
+        "summary": "Enveloped `{plan, requirements, analyze, tasks, dependencies}` — the one\nplan GET that isn't a bare array/object, confirmed against\n`tests/fixtures/node-contract-2c/plans-detail.json`.",
+        "operationId": "get_plan",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "crate::plans::routes"
+        ],
+        "summary": "`{ ok: true }`, not `{ message: \"Deleted\" }` — Node's plans routes\ndiscard the delete Effect's own result (`_mutating.md`).",
+        "operationId": "delete_plan",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "crate::plans::routes"
+        ],
+        "operationId": "update_plan",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePlanBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Plan"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/plans/{id}/activity": {
+      "get": {
+        "tags": [
+          "crate::plans::routes"
+        ],
+        "summary": "Bare array, merged plan+task events sorted `createdAt` desc and sliced\nto 100 — see `service::get_activity`'s doc comment.",
+        "operationId": "plan_activity",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Activity"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/plans/{id}/duplicate": {
+      "post": {
+        "tags": [
+          "crate::plans::routes"
+        ],
+        "summary": "Response is the new `Plan` row only — not its copied children, matching\nthe plain create/update endpoints' shape (`_mutating.md`).",
+        "operationId": "duplicate_plan",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Plan"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/plans/{id}/links": {
+      "get": {
+        "tags": [
+          "crate::plans::routes"
+        ],
+        "operationId": "list_plan_links",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PlanExternalLink"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "crate::plans::routes"
+        ],
+        "summary": "`system` defaults to `\"url\"`, `label` to `null` when omitted — applied\nin `service::add_link`.",
+        "operationId": "add_plan_link",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateLinkBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanExternalLink"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/plans/{id}/links/{linkId}": {
+      "delete": {
+        "tags": [
+          "crate::plans::routes"
+        ],
+        "operationId": "remove_plan_link",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "linkId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
     "/api/settings/codebase": {
       "get": {
         "tags": [
@@ -2033,6 +2438,22 @@
   },
   "components": {
     "schemas": {
+      "AcceptanceCriterion": {
+        "type": "object",
+        "description": "One normalised acceptance-criterion entry. `acceptanceCriteria` was\noriginally stored as `string[]`; both the legacy shape and the newer\n`{text,done}[]` shape are read and always normalised to this object\nshape on the way out — matching Node's `normaliseAcceptanceCriteria`\n(`packages/api/src/plans/service.ts:110-122`).",
+        "required": [
+          "text",
+          "done"
+        ],
+        "properties": {
+          "done": {
+            "type": "boolean"
+          },
+          "text": {
+            "type": "string"
+          }
+        }
+      },
       "Activity": {
         "type": "object",
         "description": "`camelCase` serialisation matches every other wire type in this crate.",
@@ -2087,6 +2508,49 @@
         "properties": {
           "spaceId": {
             "type": "string"
+          }
+        }
+      },
+      "AnalyzeGrouped": {
+        "type": "object",
+        "description": "The five fixed analyze-item buckets, always present even when empty —\nconfirmed against real bytes in `tests/fixtures/node-contract-2c/\nplans-detail-analyze.json` (Q1 in `_questions.md`): `{chunk:[],file:[],\nrisk:[],assumption:[],question:[]}`, never an omitted key. Matches\nNode's `groupByKind` (`packages/api/src/plans/analyze.ts:14-28`), which\ninitialises all five keys unconditionally before bucketing.",
+        "required": [
+          "chunk",
+          "file",
+          "risk",
+          "assumption",
+          "question"
+        ],
+        "properties": {
+          "assumption": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlanAnalyzeItem"
+            }
+          },
+          "chunk": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlanAnalyzeItem"
+            }
+          },
+          "file": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlanAnalyzeItem"
+            }
+          },
+          "question": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlanAnalyzeItem"
+            }
+          },
+          "risk": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlanAnalyzeItem"
+            }
           }
         }
       },
@@ -2618,6 +3082,73 @@
           }
         }
       },
+      "CreateLinkBody": {
+        "type": "object",
+        "description": "Body of `POST /api/plans/{id}/links`\n(`packages/api/src/plans/routes.ts:208-214`): `system` defaults to\n`\"url\"`, `label` to `null` when omitted — applied in `service::add_link`,\nnot here, since the defaulting happens after the field is already known\nto be absent (Elysia's `?? \"url\"` / `?? null`, not a serde default that\nwould collapse \"omitted\" and \"empty string\").",
+        "required": [
+          "url"
+        ],
+        "properties": {
+          "label": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "system": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "url": {
+            "type": "string"
+          }
+        }
+      },
+      "CreatePlanBody": {
+        "type": "object",
+        "description": "Body of `POST /api/plans` (`packages/api/src/plans/routes.ts:62-77`).",
+        "required": [
+          "title"
+        ],
+        "properties": {
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "metadata": {},
+          "requirementIds": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "spaceId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "tasks": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/CreateTaskInput"
+            }
+          },
+          "title": {
+            "type": "string"
+          }
+        }
+      },
       "CreateSpaceBody": {
         "type": "object",
         "required": [
@@ -2692,6 +3223,33 @@
             ]
           },
           "name": {
+            "type": "string"
+          }
+        }
+      },
+      "CreateTaskInput": {
+        "type": "object",
+        "description": "Body of one entry in `POST /api/plans`'s optional `tasks` array\n(`packages/api/src/plans/routes.ts:67-75`). `acceptanceCriteria` is the\nlegacy `string[]` write shape — normalised to `{text,done}[]` before\ninsert by `normalize_acceptance_criteria`, same as every other write\npath in this domain.",
+        "required": [
+          "title"
+        ],
+        "properties": {
+          "acceptanceCriteria": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "title": {
             "type": "string"
           }
         }
@@ -2886,6 +3444,18 @@
           }
         }
       },
+      "OkResponse": {
+        "type": "object",
+        "description": "Shape of every `{ ok: true }` response in this domain — Node's plans\nroutes discard the delete/unlink Effect's own result and return this\nliteral instead (`_mutating.md`), unlike most other domains' `{ message:\n\"Deleted\" }` convention.",
+        "required": [
+          "ok"
+        ],
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          }
+        }
+      },
       "Origin": {
         "type": "string",
         "enum": [
@@ -2918,6 +3488,447 @@
             "items": {
               "type": "string"
             }
+          }
+        }
+      },
+      "Plan": {
+        "type": "object",
+        "description": "`camelCase` serialisation matches every other wire type in this crate.",
+        "required": [
+          "id",
+          "title",
+          "status",
+          "userId",
+          "createdAt",
+          "updatedAt",
+          "metadata"
+        ],
+        "properties": {
+          "completedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": {},
+            "propertyNames": {
+              "type": "string"
+            }
+          },
+          "spaceId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "userId": {
+            "type": "string"
+          }
+        }
+      },
+      "PlanAnalyzeItem": {
+        "type": "object",
+        "description": "`camelCase` wire shape of a `plan_analyze_item` row. `kind` stays plain\n`String` for the same reason `plan.status` does — no DB `CHECK`,\nvalidated only by Node's service layer.",
+        "required": [
+          "id",
+          "planId",
+          "kind",
+          "order",
+          "metadata",
+          "createdAt",
+          "updatedAt"
+        ],
+        "properties": {
+          "chunkId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "filePath": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": {},
+            "propertyNames": {
+              "type": "string"
+            }
+          },
+          "order": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "planId": {
+            "type": "string"
+          },
+          "text": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "PlanDetail": {
+        "type": "object",
+        "description": "Response envelope of `GET /api/plans/{id}`\n(`tests/fixtures/node-contract-2c/plans-detail.json`) — `{plan,\nrequirements, analyze, tasks, dependencies}`, NOT the bare `Plan` that\n`GET /api/plans` (as a rollup row) and every plan-mutating endpoint\nreturn.",
+        "required": [
+          "plan",
+          "requirements",
+          "analyze",
+          "tasks",
+          "dependencies"
+        ],
+        "properties": {
+          "analyze": {
+            "$ref": "#/components/schemas/AnalyzeGrouped"
+          },
+          "dependencies": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlanTaskDependency"
+            }
+          },
+          "plan": {
+            "$ref": "#/components/schemas/Plan"
+          },
+          "requirements": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlanRequirement"
+            }
+          },
+          "tasks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TaskDetail"
+            }
+          }
+        }
+      },
+      "PlanExternalLink": {
+        "type": "object",
+        "description": "`camelCase` wire shape of a `plan_external_link` row.",
+        "required": [
+          "id",
+          "planId",
+          "system",
+          "url",
+          "order",
+          "createdAt"
+        ],
+        "properties": {
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string"
+          },
+          "label": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "order": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "planId": {
+            "type": "string"
+          },
+          "system": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        }
+      },
+      "PlanListRow": {
+        "type": "object",
+        "description": "Row shape of `GET /api/plans` — `Plan`'s own columns plus four rollups\nused by the list page: the linked space's name (`codebaseName`), a\ntask-count progress pair, the title of the first non-`done` task\n(`nextAction`), and the more-recent of the plan's own `updated_at` and\nits tasks' `updated_at` (`lastActivityAt`). Mirrors Node's\n`listPlansWithRollups` / `PlanListRow`\n(`packages/db/src/repository/plan.ts:65-143`) field-for-field — see\n`tests/fixtures/node-contract-2c/plans-list.json`, captured live, which\ncarries all five rollup fields even though the task brief's own endpoint\ntable just says \"bare array\". Trusting the fixture over the table's\nshorthand is deliberate, per this slice's own instruction to check each\nfixture rather than reason by analogy.",
+        "required": [
+          "id",
+          "title",
+          "status",
+          "userId",
+          "createdAt",
+          "updatedAt",
+          "metadata",
+          "taskTotal",
+          "taskDone",
+          "lastActivityAt"
+        ],
+        "properties": {
+          "codebaseName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "completedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "lastActivityAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": {},
+            "propertyNames": {
+              "type": "string"
+            }
+          },
+          "nextAction": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "spaceId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "type": "string"
+          },
+          "taskDone": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "taskTotal": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "title": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "userId": {
+            "type": "string"
+          }
+        }
+      },
+      "PlanRequirement": {
+        "type": "object",
+        "description": "`camelCase` wire shape of a `plan_requirement` row.",
+        "required": [
+          "id",
+          "planId",
+          "requirementId",
+          "order",
+          "createdAt"
+        ],
+        "properties": {
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string"
+          },
+          "order": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "planId": {
+            "type": "string"
+          },
+          "requirementId": {
+            "type": "string"
+          }
+        }
+      },
+      "PlanTask": {
+        "type": "object",
+        "description": "Raw `plan_task` row — `acceptance_criteria` stays the untouched stored\nJSON; the service layer normalises it to `{text,done}[]` on the way out.",
+        "required": [
+          "id",
+          "planId",
+          "title",
+          "acceptanceCriteria",
+          "status",
+          "order",
+          "createdAt",
+          "updatedAt",
+          "metadata"
+        ],
+        "properties": {
+          "acceptanceCriteria": {
+            "type": "array",
+            "items": {}
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": {},
+            "propertyNames": {
+              "type": "string"
+            }
+          },
+          "order": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "planId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "PlanTaskChunkWithTitle": {
+        "type": "object",
+        "description": "A `plan_task_chunk` row joined with the linked chunk's title/type, for\nthe detail page's task chunk chips. Matches Node's\n`listTaskChunksWithTitles` (`packages/db/src/repository/plan.ts:449-481`).\nNo ownership guard here — `task_id` only ever reaches this function\nalready scoped, from a `list_tasks` result.",
+        "required": [
+          "id",
+          "taskId",
+          "chunkId",
+          "relation",
+          "createdAt"
+        ],
+        "properties": {
+          "chunkId": {
+            "type": "string"
+          },
+          "chunkTitle": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "chunkType": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string"
+          },
+          "relation": {
+            "type": "string"
+          },
+          "taskId": {
+            "type": "string"
+          }
+        }
+      },
+      "PlanTaskDependency": {
+        "type": "object",
+        "description": "`camelCase` wire shape of a `plan_task_dependency` row.",
+        "required": [
+          "id",
+          "taskId",
+          "dependsOnTaskId",
+          "createdAt"
+        ],
+        "properties": {
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "dependsOnTaskId": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "taskId": {
+            "type": "string"
           }
         }
       },
@@ -3262,6 +4273,73 @@
           }
         }
       },
+      "TaskDetail": {
+        "type": "object",
+        "description": "A task in the `GET /api/plans/{id}` detail envelope: the raw\n`plan_task` row's fields, plus `acceptanceCriteria` normalised (not the\nraw stored JSON) and the task's linked chunks — matching Node's\n`tasksWithChunks` (`packages/api/src/plans/service.ts:89-94`).",
+        "required": [
+          "id",
+          "planId",
+          "title",
+          "acceptanceCriteria",
+          "status",
+          "order",
+          "createdAt",
+          "updatedAt",
+          "metadata",
+          "chunks"
+        ],
+        "properties": {
+          "acceptanceCriteria": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AcceptanceCriterion"
+            }
+          },
+          "chunks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlanTaskChunkWithTitle"
+            }
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": {},
+            "propertyNames": {
+              "type": "string"
+            }
+          },
+          "order": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "planId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
       "UpdateChunkBody": {
         "type": "object",
         "properties": {
@@ -3318,6 +4396,37 @@
             ]
           },
           "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "UpdatePlanBody": {
+        "type": "object",
+        "description": "Body of `PATCH /api/plans/{id}` (`packages/api/src/plans/routes.ts:104-110`).\n\n`description` and `space_id` are tri-state, matching Node's\n`t.Optional(t.Union([t.String(), t.Null()]))` for both: omitted\n(`None`) leaves the field untouched, explicit `null`\n(`Some(None)`) clears it, a string (`Some(Some(..))`) sets it — same\n`deserialize_some` trick as `workspaces::dto::UpdateWorkspaceBody::description`.\n`status` and `metadata` are plain two-state (Node declares neither with\na `t.Null()` union).",
+        "properties": {
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "metadata": {},
+          "spaceId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "title": {
             "type": [
               "string",
               "null"

@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT DISTINCT ON (plan_id) plan_id, title\n           FROM plan_task\n           WHERE plan_id = ANY($1) AND status <> 'done'\n           ORDER BY plan_id, \"order\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "plan_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "title",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "TextArray"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "25276974ea5fe7e29cb3dbecebc8ee5212b81cba0ed8c8420c6897e4753ee370"
+}
