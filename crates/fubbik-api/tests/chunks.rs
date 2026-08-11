@@ -292,8 +292,9 @@ async fn list_envelope_echoes_clamped_limit(pool: sqlx::PgPool) {
     let body = res.into_body().collect().await.unwrap().to_bytes();
     let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
     assert_eq!(
-        json["limit"], 500,
-        "limit must be clamped to the max of 500"
+        json["limit"], 100,
+        "limit must be clamped to the max of 100, matching Node's \
+         `Math.min(Number(query.limit ?? 50), 100)` (packages/api/src/chunks/service.ts:50)"
     );
     assert_eq!(json["offset"], 0, "offset must not go negative");
 }

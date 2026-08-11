@@ -114,11 +114,19 @@ impl ListChunksQuery {
             enrichment: self.enrichment,
             min_connections,
             space_id: self.space_id,
+            ids: None,
+            // Capped at 100, matching Node's `Math.min(Number(query.limit ?? 50), 100)`
+            // (`packages/api/src/chunks/service.ts:50`) — this used to clamp to 500,
+            // which was invisible to the differential harness because its only limit
+            // case (`?limit=5`) sits below both caps. See
+            // `chunk_list_limit_is_clamped_identically_above_both_caps` in
+            // `crates/fubbik-api/tests/differential.rs` for the case that closes that
+            // blind spot (divergence #11, resolved).
             limit: self
                 .limit
                 .and_then(|s| s.parse().ok())
                 .unwrap_or(50)
-                .clamp(1, 500),
+                .clamp(1, 100),
             offset: self.offset.and_then(|s| s.parse().ok()).unwrap_or(0).max(0),
         }
     }

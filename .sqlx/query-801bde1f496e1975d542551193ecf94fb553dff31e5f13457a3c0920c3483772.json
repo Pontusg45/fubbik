@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ANALYZE chunk_staleness",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "801bde1f496e1975d542551193ecf94fb553dff31e5f13457a3c0920c3483772"
+}

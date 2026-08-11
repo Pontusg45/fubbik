@@ -1,0 +1,84 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE plan_task SET\n                 title = COALESCE($4, title),\n                 description = CASE WHEN $5::bool THEN $6 ELSE description END,\n                 acceptance_criteria = COALESCE($7, acceptance_criteria),\n                 metadata = COALESCE($8, metadata),\n                 status = COALESCE($9, status),\n                 updated_at = now()\n               WHERE id = $1 AND plan_id = $2\n                 AND EXISTS (SELECT 1 FROM plan p WHERE p.id = $2 AND p.user_id = $3)\n               RETURNING id, plan_id, title, description,\n                         acceptance_criteria AS \"acceptance_criteria: Json<serde_json::Value>\",\n                         status, \"order\",\n                         created_at AS \"created_at: UtcTimestamp\",\n                         updated_at AS \"updated_at: UtcTimestamp\",\n                         metadata AS \"metadata: Json<serde_json::Value>\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "plan_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "title",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "acceptance_criteria: Json<serde_json::Value>",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 5,
+        "name": "status",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "order",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 7,
+        "name": "created_at: UtcTimestamp",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 8,
+        "name": "updated_at: UtcTimestamp",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 9,
+        "name": "metadata: Json<serde_json::Value>",
+        "type_info": "Jsonb"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Bool",
+        "Text",
+        "Jsonb",
+        "Jsonb",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "a1bdaaf065bfdc7f3d6a23b0f5699c1ad0daeae786299261859663fe6a0ef3fc"
+}

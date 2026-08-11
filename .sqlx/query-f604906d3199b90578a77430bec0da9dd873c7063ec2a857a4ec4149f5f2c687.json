@@ -1,0 +1,35 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM chunk_connection c\n           WHERE c.id = $1\n             AND (\n               EXISTS (SELECT 1 FROM chunk s WHERE s.id = c.source_id AND s.user_id = $2)\n               OR EXISTS (SELECT 1 FROM chunk t WHERE t.id = c.target_id AND t.user_id = $2)\n             )\n           RETURNING c.source_id, c.target_id, c.relation",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "source_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "target_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "relation",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "f604906d3199b90578a77430bec0da9dd873c7063ec2a857a4ec4149f5f2c687"
+}

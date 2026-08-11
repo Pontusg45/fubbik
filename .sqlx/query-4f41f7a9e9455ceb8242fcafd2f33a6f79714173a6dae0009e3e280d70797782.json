@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT c.id AS \"chunk_id!\", COUNT(cc.id) AS \"count!\"\n           FROM unnest($1::text[]) AS c(id)\n           LEFT JOIN chunk_connection cc\n             ON cc.source_id = c.id OR cc.target_id = c.id\n           GROUP BY c.id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "chunk_id!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "count!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "TextArray"
+      ]
+    },
+    "nullable": [
+      null,
+      null
+    ]
+  },
+  "hash": "4f41f7a9e9455ceb8242fcafd2f33a6f79714173a6dae0009e3e280d70797782"
+}

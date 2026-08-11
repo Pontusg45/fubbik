@@ -1,0 +1,41 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT ptd.id, ptd.task_id, ptd.depends_on_task_id,\n                  ptd.created_at AS \"created_at: UtcTimestamp\"\n           FROM plan_task_dependency ptd\n           JOIN plan_task pt ON pt.id = ptd.task_id\n           WHERE pt.plan_id = $1\n             AND EXISTS (SELECT 1 FROM plan p WHERE p.id = $1 AND p.user_id = $2)\n           ORDER BY ptd.created_at ASC, ptd.id ASC",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "task_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "depends_on_task_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "created_at: UtcTimestamp",
+        "type_info": "Timestamp"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "7b2de22e9da4efdc950b8cf4a52378a860d9d34f780e59647457ba99c8e5dc8a"
+}

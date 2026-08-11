@@ -354,3 +354,43 @@ pub async fn tags_for_chunk(pool: &PgPool, user_id: &str, chunk_id: &str) -> App
     .await?;
     Ok(rows)
 }
+
+/// One `(chunkId, tagName)` pair — the bulk-fetch shape `search::service`
+/// uses to enrich a page of search results with tag names in one query
+/// instead of one round trip per chunk. Mirrors Node's `getTagsForChunks`
+/// (`packages/db/src/repository/tag-new.ts:143-157`).
+#[derive(Debug, Clone)]
+pub struct ChunkTagName {
+    pub chunk_id: String,
+    pub tag_name: String,
+}
+
+/// Bulk variant of [`tags_for_chunk`] for a whole page of chunk ids at
+/// once. Scoped the same way: a chunk id not owned by `user_id` simply
+/// contributes no rows, via the same `EXISTS` join against `chunk`. An
+/// empty `chunk_ids` returns an empty result without querying, matching
+/// Node's `getTagsForChunks`, which short-circuits to `Effect.succeed([])`
+/// on an empty input array rather than issuing a query with an empty
+/// `IN ()`.
+pub async fn tags_for_chunks(
+    pool: &PgPool,
+    user_id: &str,
+    chunk_ids: &[String],
+) -> AppResult<Vec<ChunkTagName>> {
+    if chunk_ids.is_empty() {
+        return Ok(vec![]);
+    }
+    let rows = sqlx::query_as!(
+        ChunkTagName,
+        r#"SELECT ct.chunk_id AS "chunk_id!", t.name AS "tag_name!"
+           FROM chunk_tag ct
+           JOIN tag t ON t.id = ct.tag_id
+           WHERE ct.chunk_id = ANY($1)
+             AND EXISTS (SELECT 1 FROM chunk c WHERE c.id = ct.chunk_id AND c.user_id = $2)"#,
+        chunk_ids,
+        user_id
+    )
+    .fetch_all(pool)
+    .await?;
+    Ok(rows)
+}

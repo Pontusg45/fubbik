@@ -1,0 +1,395 @@
+use fubbik_db::repo::plan::{
+    Plan, PlanAnalyzeItem, PlanRequirement, PlanTaskChunkWithTitle, PlanTaskDependency,
+};
+
+/// Query params for `GET /api/plans`
+/// (`packages/api/src/plans/routes.ts:27-34`): all four optional,
+/// `includeArchived` arrives as a string compared `=== "true"` — same
+/// not-a-real-boolean quirk as `notifications::dto::ListNotificationsQuery`.
+#[derive(serde::Deserialize, utoipa::IntoParams)]
+#[serde(rename_all = "camelCase")]
+pub struct ListPlansQuery {
+    pub space_id: Option<String>,
+    pub status: Option<String>,
+    pub requirement_id: Option<String>,
+    pub include_archived: Option<String>,
+}
+
+impl ListPlansQuery {
+    pub fn into_filter(self) -> fubbik_db::repo::plan::ListFilter {
+        fubbik_db::repo::plan::ListFilter {
+            space_id: self.space_id,
+            status: self.status,
+            requirement_id: self.requirement_id,
+            include_archived: self.include_archived.as_deref() == Some("true"),
+        }
+    }
+}
+
+/// Body of one entry in `POST /api/plans`'s optional `tasks` array
+/// (`packages/api/src/plans/routes.ts:67-75`). `acceptanceCriteria` is the
+/// legacy `string[]` write shape — normalised to `{text,done}[]` before
+/// insert by `normalize_acceptance_criteria`, same as every other write
+/// path in this domain.
+#[derive(serde::Deserialize, utoipa::ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateTaskInput {
+    pub title: String,
+    pub description: Option<String>,
+    pub acceptance_criteria: Option<Vec<String>>,
+}
+
+/// Body of `POST /api/plans` (`packages/api/src/plans/routes.ts:62-77`).
+#[derive(serde::Deserialize, utoipa::ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct CreatePlanBody {
+    pub title: String,
+    pub description: Option<String>,
+    pub space_id: Option<String>,
+    pub requirement_ids: Option<Vec<String>>,
+    pub tasks: Option<Vec<CreateTaskInput>>,
+    pub metadata: Option<serde_json::Value>,
+}
+
+/// Body of `PATCH /api/plans/{id}` (`packages/api/src/plans/routes.ts:104-110`).
+///
+/// `description` and `space_id` are tri-state, matching Node's
+/// `t.Optional(t.Union([t.String(), t.Null()]))` for both: omitted
+/// (`None`) leaves the field untouched, explicit `null`
+/// (`Some(None)`) clears it, a string (`Some(Some(..))`) sets it — same
+/// `deserialize_some` trick as `workspaces::dto::UpdateWorkspaceBody::description`.
+/// `status` and `metadata` are plain two-state (Node declares neither with
+/// a `t.Null()` union).
+#[derive(serde::Deserialize, utoipa::ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdatePlanBody {
+    pub title: Option<String>,
+    #[serde(default, deserialize_with = "deserialize_some")]
+    pub description: Option<Option<String>>,
+    pub status: Option<String>,
+    #[serde(default, deserialize_with = "deserialize_some")]
+    pub space_id: Option<Option<String>>,
+    pub metadata: Option<serde_json::Value>,
+}
+
+fn deserialize_some<'de, D, T>(deserializer: D) -> Result<Option<T>, D::Error>
+where
+    T: serde::Deserialize<'de>,
+    D: serde::Deserializer<'de>,
+{
+    T::deserialize(deserializer).map(Some)
+}
+
+/// Body of `POST /api/plans/{id}/links`
+/// (`packages/api/src/plans/routes.ts:208-214`): `system` defaults to
+/// `"url"`, `label` to `null` when omitted — applied in `service::add_link`,
+/// not here, since the defaulting happens after the field is already known
+/// to be absent (Elysia's `?? "url"` / `?? null`, not a serde default that
+/// would collapse "omitted" and "empty string").
+#[derive(serde::Deserialize, utoipa::ToSchema)]
+pub struct CreateLinkBody {
+    pub url: String,
+    pub system: Option<String>,
+    pub label: Option<String>,
+}
+
+/// One entry of the write-side `acceptanceCriteria` array accepted by
+/// `POST`/`PATCH /api/plans/{id}/tasks[/:taskId]` — Node's
+/// `acceptanceCriteriaBodySchema` (`tasks.ts:15`) is `t.Array(t.Union([
+/// t.String(), t.Object({text: t.String(), done: t.Boolean()})]))`: a bare
+/// string OR an object with both `text` and `done` present (not the more
+/// lenient shape `normalize_acceptance_criteria` tolerates on read paths,
+/// where a malformed object degrades to `{text:"", done:false}` instead of
+/// being rejected). `#[serde(untagged)]` reproduces that union at
+/// deserialisation time — a value matching neither variant is a 400 via
+/// `crate::extract::Json`'s rejection mapping, same as an Elysia schema
+/// mismatch.
+#[derive(serde::Deserialize, utoipa::ToSchema)]
+#[serde(untagged)]
+pub enum AcceptanceCriterionEntry {
+    Text(String),
+    Full { text: String, done: bool },
+}
+
+/// Reproduces Node's `normaliseCriteriaForWrite` (`tasks.ts:17-20`) exactly:
+/// a bare string becomes `{text: item, done: false}`; an object entry is
+/// passed through unchanged (already validated by
+/// [`AcceptanceCriterionEntry`]'s union shape at deserialisation).
+pub fn normalize_criteria_for_write(raw: &[AcceptanceCriterionEntry]) -> serde_json::Value {
+    serde_json::Value::Array(
+        raw.iter()
+            .map(|item| match item {
+                AcceptanceCriterionEntry::Text(s) => {
+                    serde_json::json!({ "text": s, "done": false })
+                }
+                AcceptanceCriterionEntry::Full { text, done } => {
+                    serde_json::json!({ "text": text, "done": done })
+                }
+            })
+            .collect(),
+    )
+}
+
+/// One entry of `POST /api/plans/{id}/tasks`'s optional `chunks` array
+/// (`tasks.ts:93`).
+#[derive(serde::Deserialize, utoipa::ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct TaskChunkInput {
+    pub chunk_id: String,
+    pub relation: String,
+}
+
+/// Body of `POST /api/plans/{id}/tasks` (`tasks.ts:88-97`). Distinct from
+/// [`CreateTaskInput`], which is the narrower shape accepted for the nested
+/// `tasks` array of `POST /api/plans` itself (no `chunks`/
+/// `dependsOnTaskIds`/`metadata` there — matching Node's two separate body
+/// schemas at `routes.ts:67-75` vs `tasks.ts:89-96`).
+#[derive(serde::Deserialize, utoipa::ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateTaskBody {
+    pub title: String,
+    pub description: Option<String>,
+    pub acceptance_criteria: Option<Vec<AcceptanceCriterionEntry>>,
+    pub chunks: Option<Vec<TaskChunkInput>>,
+    pub depends_on_task_ids: Option<Vec<String>>,
+    pub metadata: Option<serde_json::Value>,
+}
+
+/// Body of `PATCH /api/plans/{id}/tasks/{taskId}` (`tasks.ts:138-145`).
+/// `description` is tri-state, same `deserialize_some` trick as
+/// `UpdatePlanBody::description`; `status` is validated in the service
+/// layer against the five known task statuses, never a Rust enum — see
+/// `fubbik_db::repo::plan::mod`'s doc comment for why `plan_task.status`
+/// stays plain text end to end. `title`/`acceptanceCriteria`/`metadata` are
+/// plain two-state (Node declares none of them with a `t.Null()` union).
+#[derive(serde::Deserialize, utoipa::ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateTaskBody {
+    pub title: Option<String>,
+    #[serde(default, deserialize_with = "deserialize_some")]
+    pub description: Option<Option<String>>,
+    pub acceptance_criteria: Option<Vec<AcceptanceCriterionEntry>>,
+    pub status: Option<String>,
+    pub metadata: Option<serde_json::Value>,
+}
+
+/// Body of `POST /api/plans/{id}/tasks/reorder` (`tasks.ts:178`).
+#[derive(serde::Deserialize, utoipa::ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct ReorderTasksBody {
+    pub task_ids: Vec<String>,
+}
+
+/// Body of `POST /api/plans/{id}/tasks/{taskId}/chunks` (`tasks.ts:191`).
+/// `relation` is validated in the service layer against `context | created
+/// | modified`, never a Rust enum — same free-text-at-the-schema-level
+/// convention as `status`.
+#[derive(serde::Deserialize, utoipa::ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct AddTaskChunkBody {
+    pub chunk_id: String,
+    pub relation: String,
+}
+
+/// Body of `POST /api/plans/{id}/tasks/{taskId}/dependencies` (`tasks.ts:213`).
+/// No self-reference (`dependsOnTaskId == taskId`) guard — deliberately not
+/// added, matching Node, which has none either (see `fubbik_db::repo::
+/// plan::task::add_task_dependency`'s doc comment).
+#[derive(serde::Deserialize, utoipa::ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct AddTaskDependencyBody {
+    pub depends_on_task_id: String,
+}
+
+/// Body of `POST /api/plans/{id}/requirements` (`requirements.ts:9-20`).
+#[derive(serde::Deserialize, utoipa::ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct AddRequirementBody {
+    pub requirement_id: String,
+}
+
+/// Body of `POST /api/plans/{id}/requirements/reorder` (`requirements.ts:30-42`).
+#[derive(serde::Deserialize, utoipa::ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct ReorderRequirementsBody {
+    pub requirement_ids: Vec<String>,
+}
+
+/// Body of `POST /api/plans/{id}/analyze` (`analyze.ts:49-78`). `kind` is
+/// validated in the service layer, never a Rust enum — see `fubbik_db::
+/// repo::plan`'s module doc for why `plan_analyze_item.kind` is
+/// unconstrained free text, matched only by Node's own `t.String()` +
+/// `Array.includes` runtime check.
+#[derive(serde::Deserialize, utoipa::ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateAnalyzeItemBody {
+    pub kind: String,
+    pub chunk_id: Option<String>,
+    pub file_path: Option<String>,
+    pub text: Option<String>,
+    pub metadata: Option<serde_json::Value>,
+}
+
+/// Body of `PATCH /api/plans/{id}/analyze/{itemId}` (`analyze.ts:79-97`).
+/// `kind` is deliberately absent — Node's own body schema has no field for
+/// it, so an analyze item's kind can never change after creation.
+#[derive(serde::Deserialize, utoipa::ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateAnalyzeItemBody {
+    pub text: Option<String>,
+    pub metadata: Option<serde_json::Value>,
+    pub chunk_id: Option<String>,
+    pub file_path: Option<String>,
+}
+
+/// Body of `POST /api/plans/{id}/analyze/reorder` (`analyze.ts:107-120`).
+#[derive(serde::Deserialize, utoipa::ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct ReorderAnalyzeItemsBody {
+    pub kind: String,
+    pub item_ids: Vec<String>,
+}
+
+/// Shape of every `{ ok: true }` response in this domain — Node's plans
+/// routes discard the delete/unlink Effect's own result and return this
+/// literal instead (`_mutating.md`), unlike most other domains' `{ message:
+/// "Deleted" }` convention.
+#[derive(serde::Serialize, utoipa::ToSchema)]
+pub struct OkResponse {
+    pub ok: bool,
+}
+
+impl Default for OkResponse {
+    fn default() -> Self {
+        Self { ok: true }
+    }
+}
+
+/// One normalised acceptance-criterion entry. `acceptanceCriteria` was
+/// originally stored as `string[]`; both the legacy shape and the newer
+/// `{text,done}[]` shape are read and always normalised to this object
+/// shape on the way out — matching Node's `normaliseAcceptanceCriteria`
+/// (`packages/api/src/plans/service.ts:110-122`).
+#[derive(serde::Serialize, utoipa::ToSchema)]
+pub struct AcceptanceCriterion {
+    pub text: String,
+    pub done: bool,
+}
+
+/// Reproduces Node's `normaliseAcceptanceCriteria` exactly: a bare string
+/// becomes `{text: item, done: false}`; an object with a `text` key keeps
+/// its `done` flag (defaulting to `false` if absent or not a bool);
+/// anything else (a stray number, `null`, ...) becomes `{text: "", done:
+/// false}`. Not `Vec::new()` on a non-array input's *elements* — only a
+/// non-array `raw` itself yields the empty vec (`Array.isArray(raw)` guard).
+pub fn normalize_acceptance_criteria(raw: &serde_json::Value) -> Vec<AcceptanceCriterion> {
+    let Some(arr) = raw.as_array() else {
+        return vec![];
+    };
+    arr.iter()
+        .map(|item| match item {
+            serde_json::Value::String(s) => AcceptanceCriterion {
+                text: s.clone(),
+                done: false,
+            },
+            serde_json::Value::Object(obj) if obj.contains_key("text") => AcceptanceCriterion {
+                text: match obj.get("text") {
+                    Some(serde_json::Value::String(s)) => s.clone(),
+                    Some(other) => other.to_string(),
+                    None => String::new(),
+                },
+                done: obj.get("done").and_then(|v| v.as_bool()).unwrap_or(false),
+            },
+            _ => AcceptanceCriterion {
+                text: String::new(),
+                done: false,
+            },
+        })
+        .collect()
+}
+
+/// Normalises a write-side `Vec<String>` (the legacy shape Node's create
+/// body still accepts) into the stored `{text,done}[]` JSON, matching
+/// `normaliseAcceptanceCriteria(t.acceptanceCriteria ?? [])` at plan-create
+/// time (`packages/api/src/plans/service.ts:150`).
+pub fn acceptance_criteria_for_write(items: &[String]) -> serde_json::Value {
+    serde_json::Value::Array(
+        items
+            .iter()
+            .map(|text| serde_json::json!({ "text": text, "done": false }))
+            .collect(),
+    )
+}
+
+/// A task in the `GET /api/plans/{id}` detail envelope: the raw
+/// `plan_task` row's fields, plus `acceptanceCriteria` normalised (not the
+/// raw stored JSON) and the task's linked chunks — matching Node's
+/// `tasksWithChunks` (`packages/api/src/plans/service.ts:89-94`).
+#[derive(serde::Serialize, utoipa::ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct TaskDetail {
+    pub id: String,
+    pub plan_id: String,
+    pub title: String,
+    pub description: Option<String>,
+    pub acceptance_criteria: Vec<AcceptanceCriterion>,
+    pub status: String,
+    pub order: i32,
+    #[schema(value_type = chrono::NaiveDateTime)]
+    pub created_at: fubbik_db::timestamp::UtcTimestamp,
+    #[schema(value_type = chrono::NaiveDateTime)]
+    pub updated_at: fubbik_db::timestamp::UtcTimestamp,
+    #[schema(value_type = std::collections::HashMap<String, serde_json::Value>)]
+    pub metadata: serde_json::Value,
+    pub chunks: Vec<PlanTaskChunkWithTitle>,
+}
+
+/// The five fixed analyze-item buckets, always present even when empty —
+/// confirmed against real bytes in `tests/fixtures/node-contract-2c/
+/// plans-detail-analyze.json` (Q1 in `_questions.md`): `{chunk:[],file:[],
+/// risk:[],assumption:[],question:[]}`, never an omitted key. Matches
+/// Node's `groupByKind` (`packages/api/src/plans/analyze.ts:14-28`), which
+/// initialises all five keys unconditionally before bucketing.
+#[derive(serde::Serialize, utoipa::ToSchema, Default)]
+pub struct AnalyzeGrouped {
+    pub chunk: Vec<PlanAnalyzeItem>,
+    pub file: Vec<PlanAnalyzeItem>,
+    pub risk: Vec<PlanAnalyzeItem>,
+    pub assumption: Vec<PlanAnalyzeItem>,
+    pub question: Vec<PlanAnalyzeItem>,
+}
+
+impl AnalyzeGrouped {
+    pub fn from_items(items: Vec<PlanAnalyzeItem>) -> Self {
+        let mut grouped = Self::default();
+        for item in items {
+            match item.kind.as_str() {
+                "chunk" => grouped.chunk.push(item),
+                "file" => grouped.file.push(item),
+                "risk" => grouped.risk.push(item),
+                "assumption" => grouped.assumption.push(item),
+                "question" => grouped.question.push(item),
+                // An unrecognised `kind` is dropped, matching Node's
+                // `isAnalyzeKind` guard (`plans/service.ts:15-17,83-87`),
+                // which silently skips anything outside the five known
+                // kinds rather than erroring.
+                _ => {}
+            }
+        }
+        grouped
+    }
+}
+
+/// Response envelope of `GET /api/plans/{id}`
+/// (`tests/fixtures/node-contract-2c/plans-detail.json`) — `{plan,
+/// requirements, analyze, tasks, dependencies}`, NOT the bare `Plan` that
+/// `GET /api/plans` (as a rollup row) and every plan-mutating endpoint
+/// return.
+#[derive(serde::Serialize, utoipa::ToSchema)]
+pub struct PlanDetail {
+    pub plan: Plan,
+    pub requirements: Vec<PlanRequirement>,
+    pub analyze: AnalyzeGrouped,
+    pub tasks: Vec<TaskDetail>,
+    pub dependencies: Vec<PlanTaskDependency>,
+}

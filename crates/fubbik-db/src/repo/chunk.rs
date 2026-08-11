@@ -276,6 +276,18 @@ pub struct ListParams {
     /// behaviour would need a filter this port does not expose, same as
     /// Node.
     pub space_id: Option<String>,
+    /// Restricts the result to exactly these ids (still ANDed with the
+    /// mandatory `user_id = ..` predicate below, and with every other
+    /// filter). Added for Task 9's graph-clause search wiring
+    /// (`near`/`path`/`affected-by`): Apache AGE resolves matching chunk
+    /// ids from outside this crate's user-scoped SQL entirely, so a graph
+    /// edge can point at another user's chunk. Applying those ids as an
+    /// ordinary filter *on top of* this function's own `user_id` predicate
+    /// — rather than fetching by id first and trusting the result — is
+    /// what keeps a resolved graph id from ever being able to bypass
+    /// ownership scoping. See
+    /// `crates/fubbik-api/tests/search.rs`'s cross-user graph-edge test.
+    pub ids: Option<Vec<String>>,
     pub limit: i64,
     pub offset: i64,
 }
@@ -293,6 +305,7 @@ impl Default for ListParams {
             enrichment: None,
             min_connections: None,
             space_id: None,
+            ids: None,
             limit: 50,
             offset: 0,
         }
@@ -357,6 +370,9 @@ fn push_filters<'a>(
     }
     if let Some(after) = &params.after {
         qb.push(" AND updated_at >= ").push_bind(*after);
+    }
+    if let Some(ids) = &params.ids {
+        qb.push(" AND id = ANY(").push_bind(ids).push(")");
     }
     if let Some(min_connections) = params.min_connections
         && min_connections > 0
@@ -428,7 +444,20 @@ pub async fn list(pool: &PgPool, user_id: &str, params: &ListParams) -> AppResul
         Sort::Updated => " ORDER BY updated_at DESC, id ASC",
     });
 
-    qb.push(" LIMIT ").push_bind(params.limit.clamp(1, 500));
+    // Clamped to 100, the same cap `chunks::dto::ListChunksQuery::into_params`
+    // applies before `GET /api/chunks` ever reaches here (divergence #11).
+    // This clamp is the *only* one `POST /api/search/query` hits — nothing
+    // upstream in `search::service::build_list_params` pre-clamps — so this
+    // single line is the shared cap for both chunk-listing endpoints.
+    // Deliberately still a floor of 1, not 0: `limit: 0` clamps *up* to 1
+    // row, matching this port's existing (documented) lower-bound
+    // behaviour, not "no rows" — see `chunk_list_limit_is_clamped_identically_above_both_caps`
+    // (`fubbik-api/tests/differential.rs`) and `query_limit_is_clamped_to_100`
+    // (`fubbik-api/tests/search.rs`) for the pinned cases. Node has no cap on
+    // the search path at all (search bypasses the chunks service where the
+    // 100-cap lives), so `limit: 1000` is a documented divergence: Node
+    // returns 1000 rows, this port 100.
+    qb.push(" LIMIT ").push_bind(params.limit.clamp(1, 100));
     qb.push(" OFFSET ").push_bind(params.offset.max(0));
 
     let rows = qb.build_query_as::<Chunk>().fetch_all(pool).await?;
@@ -446,4 +475,85 @@ pub async fn count(pool: &PgPool, user_id: &str, params: &ListParams) -> AppResu
 
     let total: i64 = qb.build_query_scalar().fetch_one(pool).await?;
     Ok(total)
+}
+
+/// Narrows an arbitrary id list down to the ones `user_id` may see: not
+/// archived, and owned by `user_id`. Exists for callers that receive chunk
+/// ids from a source with no ownership notion at all — Apache AGE graph
+/// traversal (`fubbik_db::age`), specifically — and need to redact hidden
+/// ids from a response payload *before* it's built, not just filter the
+/// final chunk list. `chunk::list`/`count`'s `ids` filter already keeps a
+/// foreign id from ever hydrating into a returned `Chunk` row; this
+/// function is for the narrower case of scrubbing a bare id (or an edge
+/// list referencing one) that would otherwise be echoed back verbatim in
+/// metadata never routed through `list`/`count` at all. See
+/// `fubbik-api/src/search/service.rs`'s `path:` clause handling and
+/// `tests/chunk.rs::filter_visible_ids_drops_another_users_chunk`.
+///
+/// Uses `QueryBuilder` rather than `query_as!`/`query_scalar!` to match
+/// [`list`]/[`count`]'s own style in this module, and to avoid a new
+/// `.sqlx` cache entry for what is otherwise a one-line query.
+pub async fn filter_visible_ids(
+    pool: &PgPool,
+    user_id: &str,
+    ids: &[String],
+) -> AppResult<Vec<String>> {
+    if ids.is_empty() {
+        return Ok(Vec::new());
+    }
+    let mut qb =
+        sqlx::QueryBuilder::new("SELECT id FROM chunk WHERE archived_at IS NULL AND user_id = ");
+    qb.push_bind(user_id);
+    qb.push(" AND id = ANY(");
+    qb.push_bind(ids);
+    qb.push(")");
+
+    let rows: Vec<String> = qb.build_query_scalar().fetch_all(pool).await?;
+    Ok(rows)
+}
+
+/// One `(id, title)` match from [`search_titles`].
+#[derive(Debug, Clone)]
+pub struct ChunkTitleMatch {
+    pub id: String,
+    pub title: String,
+}
+
+/// Backs `GET /api/search/autocomplete?field=chunk`. Direct port of
+/// Node's `searchChunkTitles` (`packages/db/src/repository/chunk.ts:586-594`),
+/// with one intentional deviation — divergence #17 (Phase 2c task 8b):
+/// Node's original has **no `user_id` filter at all**, leaking every
+/// user's chunk titles into the nav search bar's autocomplete. The human
+/// partner decided to scope it here; this port now adds `AND user_id =
+/// $2`, matching every other chunk query in this crate.
+///
+/// Everything else remains a faithful port, including what still looks
+/// like a bug:
+///
+/// - **Not filtered by `archived_at IS NULL`.** Archived chunks' titles
+///   are still suggested.
+/// - **`ILIKE '%prefix%'` — contains, not a prefix match** — and the
+///   pattern is **not escaped** (`%`/`_` in `prefix` act as wildcards),
+///   unlike `push_filters`'s `search` branch, which does escape them. Two
+///   different call sites, two different (both faithfully ported)
+///   behaviours.
+/// - **No `ORDER BY`.** Result order is whatever Postgres's query plan
+///   happens to produce.
+pub async fn search_titles(
+    pool: &PgPool,
+    user_id: &str,
+    prefix: &str,
+    limit: i64,
+) -> AppResult<Vec<ChunkTitleMatch>> {
+    let pattern = format!("%{prefix}%");
+    let rows = sqlx::query_as!(
+        ChunkTitleMatch,
+        r#"SELECT id, title FROM chunk WHERE title ILIKE $1 AND user_id = $2 LIMIT $3"#,
+        pattern,
+        user_id,
+        limit
+    )
+    .fetch_all(pool)
+    .await?;
+    Ok(rows)
 }

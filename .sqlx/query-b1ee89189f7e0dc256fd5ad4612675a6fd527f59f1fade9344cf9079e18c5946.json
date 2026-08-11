@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM plan_requirement\n           WHERE plan_id = $1 AND requirement_id = $2\n             AND EXISTS (SELECT 1 FROM plan p WHERE p.id = $1 AND p.user_id = $3)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "b1ee89189f7e0dc256fd5ad4612675a6fd527f59f1fade9344cf9079e18c5946"
+}

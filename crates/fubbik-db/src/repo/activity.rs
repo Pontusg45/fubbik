@@ -136,3 +136,41 @@ pub async fn list(pool: &PgPool, user_id: &str, params: &ListParams) -> AppResul
     let rows = qb.build_query_as::<Activity>().fetch_all(pool).await?;
     Ok(rows)
 }
+
+/// Writes one fire-and-forget audit-log row, matching Node's
+/// `createActivity` (`packages/db/src/repository/activity.ts:31-44`) —
+/// called directly by other domains' service layers (first consumer: the
+/// `plans` domain's task create/update/delete handlers), never exposed as
+/// its own HTTP route, same as Node. No ownership guard needed here: unlike
+/// every read path in this module, a `create` call always writes under the
+/// caller's own `user_id`, supplied by the service layer from the
+/// authenticated session — there is no id a caller could substitute to
+/// write into someone else's log.
+pub async fn create(
+    pool: &PgPool,
+    user_id: &str,
+    entity_type: &str,
+    entity_id: &str,
+    entity_title: Option<&str>,
+    action: &str,
+    space_id: Option<&str>,
+) -> AppResult<Activity> {
+    let id = crate::new_id();
+    let row = sqlx::query_as!(
+        Activity,
+        r#"INSERT INTO activity_log (id, user_id, entity_type, entity_id, entity_title, action, space_id)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)
+           RETURNING id, user_id, entity_type, entity_id, entity_title, action, space_id,
+                     created_at AS "created_at: UtcTimestamp""#,
+        id,
+        user_id,
+        entity_type,
+        entity_id,
+        entity_title,
+        action,
+        space_id
+    )
+    .fetch_one(pool)
+    .await?;
+    Ok(row)
+}

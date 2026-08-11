@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT cs.chunk_id FROM chunk_staleness cs\n           JOIN chunk c ON c.id = cs.chunk_id\n           WHERE c.user_id = $1\n             AND cs.reason = 'upstream_impact'\n             AND cs.dismissed_at IS NULL\n             AND cs.related_chunk_id = $2",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "chunk_id",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "b773736fbb3f108c76ad4a23a0762b5d50aaa6980286465dce3b154a6178a090"
+}

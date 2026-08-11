@@ -25,6 +25,13 @@ enum Commands {
     Mcp,
     /// Print the OpenAPI document to stdout
     Openapi,
+    /// One-time backfill: project every existing `chunk_connection` row
+    /// into the AGE graph (`ensure_vertex` + `create_edge` per row).
+    ///
+    /// Idempotent — safe to run more than once, since `create_edge` uses
+    /// Cypher `MERGE` rather than `CREATE`. Never runs automatically; this
+    /// is the only entry point.
+    BackfillConnections,
     #[command(flatten)]
     Cli(fubbik_cli::Command),
 }
@@ -118,6 +125,7 @@ async fn main() -> anyhow::Result<()> {
 
             let pool = fubbik_db::connect(&database_url).await?;
             fubbik_db::warn_if_not_icu_collation(&pool).await;
+            fubbik_api::staleness::service::spawn_background_scan(pool.clone());
             let state = fubbik_api::AppState {
                 pool,
                 implicit_dev_session,
@@ -151,6 +159,14 @@ async fn main() -> anyhow::Result<()> {
             use utoipa::OpenApi;
             let doc = fubbik_api::openapi::ApiDoc::openapi();
             println!("{}", serde_json::to_string_pretty(&doc)?);
+            Ok(())
+        }
+        Commands::BackfillConnections => {
+            let database_url = std::env::var("DATABASE_URL")
+                .map_err(|_| anyhow::anyhow!("DATABASE_URL is required"))?;
+            let pool = fubbik_db::connect(&database_url).await?;
+            let count = fubbik_db::age::backfill_connections(&pool).await?;
+            println!("projected {count} chunk_connection row(s) into the AGE graph");
             Ok(())
         }
         Commands::Cli(cmd) => {

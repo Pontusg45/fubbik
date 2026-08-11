@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT ct.chunk_id AS \"chunk_id!\", t.name AS \"tag_name!\"\n           FROM chunk_tag ct\n           JOIN tag t ON t.id = ct.tag_id\n           WHERE ct.chunk_id = ANY($1)\n             AND EXISTS (SELECT 1 FROM chunk c WHERE c.id = ct.chunk_id AND c.user_id = $2)",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "chunk_id!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "tag_name!",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "TextArray",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "8141f4c3b3ece99fe9048c15aaddcf031923f915ffce26b8b85092208a0efbeb"
+}

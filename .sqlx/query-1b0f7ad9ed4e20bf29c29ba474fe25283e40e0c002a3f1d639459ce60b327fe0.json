@@ -1,0 +1,47 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, plan_id, requirement_id, \"order\", created_at AS \"created_at: UtcTimestamp\"\n           FROM plan_requirement\n           WHERE plan_id = $1\n             AND EXISTS (SELECT 1 FROM plan p WHERE p.id = $1 AND p.user_id = $2)\n           ORDER BY \"order\" ASC, id ASC",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "plan_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "requirement_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "order",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 4,
+        "name": "created_at: UtcTimestamp",
+        "type_info": "Timestamp"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "1b0f7ad9ed4e20bf29c29ba474fe25283e40e0c002a3f1d639459ce60b327fe0"
+}

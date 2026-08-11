@@ -119,6 +119,87 @@
 //! order (just not a total one). It cannot close the gap for `/api/tags`,
 //! because Node's tag list has no order to make total in the first place
 //! — hence divergence #6 above and the unordered comparison below.
+//!
+//! ## Divergence #11, resolved: the chunk-list limit clamp
+//!
+//! Rust used to clamp `GET /api/chunks?limit=` to `.clamp(1, 500)`
+//! (`chunks::dto::ListChunksQuery::into_params`); Node clamps to 100
+//! (`Math.min(Number(query.limit ?? 50), 100)`,
+//! `packages/api/src/chunks/service.ts:50`). This survived three phases
+//! unnoticed because the only limit case here, `?limit=5`, sits below BOTH
+//! caps and can never observe a difference between them. Rust now also
+//! clamps to 100, and `chunk_list_limit_is_clamped_identically_above_both_caps`
+//! below adds a case *above* both caps (`?limit=200`) specifically so this
+//! class of bug can't hide the same way twice.
+//!
+//! ## Phase 2c coverage (plans/search/staleness)
+//!
+//! Every `GET` these three domains' routers actually expose (read from
+//! `crates/fubbik-api/src/{plans,search,staleness}/routes.rs`) is now
+//! diffed. `connections::routes` has no `GET` at all (only `POST`/`DELETE`),
+//! so there is nothing to add there.
+//!
+//! **Plans** (`crates/fubbik-api/src/plans/routes.rs`):
+//! - `/api/plans` — Node: `packages/db/src/repository/plan.ts:113`,
+//!   `.orderBy(asc(plan.createdAt))` on `listPlansWithRollups`. Ordered,
+//!   sequence-compared.
+//! - `/api/plans/{id}` — an envelope of five fields with genuinely mixed
+//!   ordering, so it gets its own comparator, `assert_plan_detail_same`,
+//!   rather than joining the plain sequence/multiset split:
+//!   - `plan`: a single object, not a list.
+//!   - `requirements`: Node `plan.ts:296`, `.orderBy(asc(planRequirement.order))`.
+//!     Ordered.
+//!   - `analyze`: Node `plan.ts:342`,
+//!     `.orderBy(asc(planAnalyzeItem.kind), asc(planAnalyzeItem.order))`.
+//!     Ordered (each of the five kind-buckets internally).
+//!   - `tasks` (top level): Node `plan.ts:398`, `.orderBy(asc(planTask.order))`.
+//!     Ordered.
+//!   - `tasks[].chunks` (nested per task): Node `plan.ts:449-481`,
+//!     `listTaskChunks`/`listTaskChunksWithTitles` — **no** `.orderBy`
+//!     anywhere in either. Unordered; sorted in place before comparing.
+//!   - `dependencies` (top level, flat): Node `plan.ts:503-516`,
+//!     `listTaskDependencies` — **no** `.orderBy`. Unordered; sorted in
+//!     place before comparing.
+//! - `/api/plans/{id}/activity` — no longer always `[]`. Both stacks now write
+//!   `activity_log` rows for plan create/update/delete/duplicate and for the
+//!   three task-level mutations, so this compares real data. Node orders by
+//!   `createdAt` desc and slices to 100; sequence-compared.
+//! - `/api/plans/{id}/links` — Node: `plan.ts:566`,
+//!   `.orderBy(asc(planExternalLink.order), asc(planExternalLink.createdAt))`.
+//!   Ordered.
+//! - `/api/plans/{id}/analyze` — same `listAnalyzeItems` query as the
+//!   nested `analyze` field above (`plan.ts:342`). Ordered.
+//! - `/api/plans/{id}/tasks/{taskId}/links` — Node: `plan.ts:590`,
+//!   `.orderBy(asc(planTaskExternalLink.order), asc(planTaskExternalLink.createdAt))`.
+//!   Ordered. Its `taskId` is fetched live from a real plan's first task
+//!   (`first_task_id`), same reasoning as `first_id` elsewhere in this file.
+//!
+//! **Search** (`crates/fubbik-api/src/search/routes.rs`):
+//! - `/api/search/parse` — no database call at all (pure parser). Trivially
+//!   sequence-compared.
+//! - `/api/search/autocomplete` — Node: `search/service.ts`'s `autocomplete`
+//!   dispatches on `field` to `getTagsForUser` (`tag-new.ts`, no
+//!   `.orderBy`, already divergence #6), `searchChunkTitles`
+//!   (`chunk.ts:586-594`, no `.orderBy`), or `searchRequirementTitles`
+//!   (`requirement.ts:292-300`, no `.orderBy`) — every reachable branch is
+//!   unordered, so this path joins `is_order_undefined_in_node` outright
+//!   rather than needing a per-`field` special case.
+//! - `/api/search/saved` — Node: `packages/db/src/repository/
+//!   saved-query.ts:14`, `.orderBy(desc(savedQuery.createdAt))`. Ordered.
+//!
+//! **Staleness** (`crates/fubbik-api/src/staleness/routes.rs`, mounted
+//! under `/api/chunks/stale*`):
+//! - `/api/chunks/stale` — Node: `packages/db/src/repository/
+//!   staleness.ts:42`, `.orderBy(desc(chunkStaleness.detectedAt))`. Ordered.
+//! - `/api/chunks/stale/count` — a **bare number** rendered as `text/plain`
+//!   (the literal byte `0`, verified with `xxd`), NOT a `{count: N}` object.
+//!   Phase 2b's `/api/notifications/count` DOES return an object, so reasoning
+//!   by analogy gets this wrong; response shape is per-endpoint here. "order"
+//!   doesn't apply — sequence-compared.
+//!
+//! (`getStaleFlagsForChunk`, `staleness.ts:61-74`, no `.orderBy`, feeds the
+//! chunk-detail context resolver rather than any endpoint this harness
+//! diffs — noted here only because the task brief calls it out by name.)
 
 use serde_json::{Value, json};
 
@@ -183,18 +264,29 @@ async fn fetch(base: &str, path: &str) -> (u16, Value) {
 /// (`packages/db/src/repository/workspace.ts:37`) has no `.orderBy` either
 /// — see the module doc's "Phase 2b coverage" section.
 ///
+/// `/api/search/autocomplete` joins this set in Phase 2c: every branch of
+/// Node's `autocomplete` (`getTagsForUser`, `searchChunkTitles`,
+/// `searchRequirementTitles`) has no `.orderBy` — see the module doc's
+/// "Phase 2c coverage" section.
+///
 /// Every OTHER list endpoint this harness diffs (`/api/chunks*`,
 /// `/api/notifications`, `/api/favorites`, `/api/collections`,
-/// `/api/collections/{id}/chunks`, `/api/activity`) DOES have an explicit
-/// `ORDER BY` in Node — for those, sequence comparison stays in effect,
-/// because an ordering regression there is real signal, not noise. Matched
-/// on the path with any query string stripped, so e.g. `/api/tags?search=x`
-/// (should such a variant ever be added here) would still be treated as
-/// unordered.
+/// `/api/collections/{id}/chunks`, `/api/activity`, `/api/plans`,
+/// `/api/plans/{id}/links`, `/api/plans/{id}/analyze`,
+/// `/api/plans/{id}/tasks/{taskId}/links`, `/api/search/saved`,
+/// `/api/chunks/stale`) DOES have an explicit `ORDER BY` in Node — for
+/// those, sequence comparison stays in effect, because an ordering
+/// regression there is real signal, not noise. Matched on the path with
+/// any query string stripped, so e.g. `/api/tags?search=x` (should such a
+/// variant ever be added here) would still be treated as unordered.
 fn is_order_undefined_in_node(path: &str) -> bool {
     matches!(
         path.split('?').next().unwrap_or(path),
-        "/api/spaces" | "/api/tags" | "/api/tag-types" | "/api/workspaces"
+        "/api/spaces"
+            | "/api/tags"
+            | "/api/tag-types"
+            | "/api/workspaces"
+            | "/api/search/autocomplete"
     )
 }
 
@@ -256,6 +348,21 @@ async fn first_id(base: &str, list_path: &str) -> Option<String> {
         .map(String::from)
 }
 
+/// Fetches `GET {base}/api/plans/{plan_id}` and returns the first task's
+/// `id` from the nested `tasks` array, or `None` if the plan has no tasks.
+/// Used to make `/api/plans/{id}/tasks/{taskId}/links` meaningful against
+/// whatever plan/task data the diff database happens to hold — same
+/// reasoning as `first_id`, one level deeper.
+async fn first_task_id(base: &str, plan_id: &str) -> Option<String> {
+    let (_, body) = fetch(base, &format!("/api/plans/{plan_id}")).await;
+    body.get("tasks")?
+        .as_array()?
+        .first()?
+        .get("id")?
+        .as_str()
+        .map(String::from)
+}
+
 /// Canonicalises a JSON value into a string for multiset comparison.
 /// `serde_json::Value::to_string` on an object always emits keys in
 /// `BTreeMap` order — this crate does not enable serde_json's
@@ -304,6 +411,55 @@ async fn assert_same(path: &str) {
     }
 }
 
+/// Sorts the two nested arrays of a `GET /api/plans/{id}` response that
+/// Node leaves unordered — `dependencies` (top level, flat) and each
+/// element of `tasks[].chunks` (nested per task) — in place, by canonical
+/// JSON string. `plan`, `requirements`, `analyze`, and the top-level
+/// `tasks` sequence itself are all left untouched because Node orders all
+/// of them (see the module doc's "Phase 2c coverage" section for the
+/// per-field citations).
+fn sort_plan_detail_unordered_fields(value: &mut Value) {
+    let Value::Object(map) = value else {
+        return;
+    };
+    if let Some(Value::Array(deps)) = map.get_mut("dependencies") {
+        deps.sort_by_key(canonical);
+    }
+    if let Some(Value::Array(tasks)) = map.get_mut("tasks") {
+        for task in tasks.iter_mut() {
+            if let Value::Object(task_map) = task
+                && let Some(Value::Array(chunks)) = task_map.get_mut("chunks")
+            {
+                chunks.sort_by_key(canonical);
+            }
+        }
+    }
+}
+
+/// Like `assert_same`, but for `GET /api/plans/{id}`, whose response mixes
+/// ordered and unordered nested arrays within the same object (see the
+/// module doc's "Phase 2c coverage" section) — too irregular a shape for
+/// either `assert_same`'s single-path branch or
+/// `assert_same_with_unordered_field`'s single-named-field sort.
+async fn assert_plan_detail_same(path: &str) {
+    let (node, rust) = urls();
+
+    let (node_status, mut node_body) = fetch(&node, path).await;
+    let (rust_status, mut rust_body) = fetch(&rust, path).await;
+
+    assert_eq!(node_status, rust_status, "status mismatch for {path}");
+
+    normalise(&mut node_body);
+    normalise(&mut rust_body);
+    sort_plan_detail_unordered_fields(&mut node_body);
+    sort_plan_detail_unordered_fields(&mut rust_body);
+
+    assert_eq!(
+        node_body, rust_body,
+        "body mismatch for {path} (after sorting `dependencies` and each task's `chunks`)"
+    );
+}
+
 #[tokio::test]
 #[ignore = "requires both stacks running"]
 async fn chunk_endpoints_match() {
@@ -316,6 +472,29 @@ async fn chunk_endpoints_match() {
     ] {
         assert_same(path).await;
     }
+}
+
+/// Divergence #11, resolved: the pre-existing `?limit=5` case above sits
+/// below BOTH Node's cap (100) and Rust's old cap (500), so it could never
+/// see the two stacks disagree — that blind spot is exactly how this
+/// divergence survived three phases. `?limit=200` sits above both, so a
+/// clamp mismatch is now visible: before the fix, Node returns at most 100
+/// chunks and Rust returned up to 200, and this assertion fails; after the
+/// fix, both return at most 100 and it passes. See the module doc's
+/// "Divergence #11, resolved" section.
+#[tokio::test]
+#[ignore = "requires both stacks running"]
+async fn chunk_list_limit_is_clamped_identically_above_both_caps() {
+    let (node, rust) = urls();
+
+    let (_, node_body) = fetch(&node, "/api/chunks?limit=200").await;
+    let (_, rust_body) = fetch(&rust, "/api/chunks?limit=200").await;
+
+    assert_eq!(
+        node_body["chunks"].as_array().unwrap().len(),
+        rust_body["chunks"].as_array().unwrap().len(),
+        "both stacks must clamp the chunk list to the same maximum"
+    );
 }
 
 /// The four GET endpoints ported in this slice. Unlike the chunk endpoints
@@ -422,6 +601,101 @@ async fn settings_codebase_matches() {
         return;
     };
     assert_same(&format!("/api/settings/codebase?codebaseId={space_id}")).await;
+}
+
+/// `/api/plans` (Node orders by `createdAt`, sequence-compared) plus the
+/// plan-scoped GETs that need no more than a plan id to be meaningful:
+/// `/api/plans/{id}/activity` (always `[]` on both stacks), `/api/plans/{id}/links`,
+/// and `/api/plans/{id}/analyze` — all three ordered in Node, per the
+/// module doc's "Phase 2c coverage" section. `/api/plans/{id}` itself
+/// (mixed ordering) and `/api/plans/{id}/tasks/{taskId}/links` (needs a
+/// task id, not just a plan id) get their own tests below.
+#[tokio::test]
+#[ignore = "requires both stacks running"]
+async fn plans_list_and_simple_details_match() {
+    assert_same("/api/plans").await;
+
+    let (_, rust) = urls();
+    let Some(id) = first_id(&rust, "/api/plans").await else {
+        eprintln!("skipping /api/plans/{{id}}/*: no plans in the diff database");
+        return;
+    };
+    assert_same(&format!("/api/plans/{id}/activity")).await;
+    assert_same(&format!("/api/plans/{id}/links")).await;
+    assert_same(&format!("/api/plans/{id}/analyze")).await;
+}
+
+/// `/api/plans/{id}` mixes ordered and unordered nested arrays — see
+/// `assert_plan_detail_same`'s doc comment and the module doc's "Phase 2c
+/// coverage" section for the per-field citations.
+#[tokio::test]
+#[ignore = "requires both stacks running"]
+async fn plan_detail_matches() {
+    let (_, rust) = urls();
+    let Some(id) = first_id(&rust, "/api/plans").await else {
+        eprintln!("skipping /api/plans/{{id}}: no plans in the diff database");
+        return;
+    };
+    assert_plan_detail_same(&format!("/api/plans/{id}")).await;
+}
+
+/// `/api/plans/{id}/tasks/{taskId}/links` (Node: ordered, see the module
+/// doc) needs both a plan id and one of its task ids — both fetched live
+/// via `first_id`/`first_task_id` rather than hardcoded, same reasoning as
+/// every other path-parameterised endpoint in this file.
+#[tokio::test]
+#[ignore = "requires both stacks running"]
+async fn plan_task_links_match() {
+    let (_, rust) = urls();
+    let Some(plan_id) = first_id(&rust, "/api/plans").await else {
+        eprintln!(
+            "skipping /api/plans/{{id}}/tasks/{{taskId}}/links: no plans in the diff database"
+        );
+        return;
+    };
+    let Some(task_id) = first_task_id(&rust, &plan_id).await else {
+        eprintln!("skipping /api/plans/{{id}}/tasks/{{taskId}}/links: plan {plan_id} has no tasks");
+        return;
+    };
+    assert_same(&format!("/api/plans/{plan_id}/tasks/{task_id}/links")).await;
+}
+
+/// `/api/search/parse` (no DB call at all) and `/api/search/saved` (Node
+/// orders by `createdAt`, sequence-compared) — see the module doc's "Phase
+/// 2c coverage" section. `/api/search/autocomplete` gets its own test below
+/// since every valid `field` value is unordered in Node.
+#[tokio::test]
+#[ignore = "requires both stacks running"]
+async fn search_parse_and_saved_match() {
+    assert_same("/api/search/parse?q=type:note").await;
+    assert_same("/api/search/saved").await;
+}
+
+/// `/api/search/autocomplete` — unordered for every valid `field`
+/// (`tag`/`chunk`/`requirement`), per the module doc's "Phase 2c coverage"
+/// section and `is_order_undefined_in_node`'s doc comment. An unrecognised
+/// `field` falling through to Node's `return [];` is trivially order-safe
+/// too, so it doesn't need its own case here.
+#[tokio::test]
+#[ignore = "requires both stacks running"]
+async fn search_autocomplete_matches() {
+    for path in [
+        "/api/search/autocomplete?field=tag&prefix=a",
+        "/api/search/autocomplete?field=chunk&prefix=a",
+        "/api/search/autocomplete?field=requirement&prefix=a",
+    ] {
+        assert_same(path).await;
+    }
+}
+
+/// `/api/chunks/stale` (Node orders by `detectedAt`, sequence-compared) and
+/// `/api/chunks/stale/count` (a bare number as `text/plain`, not an object and
+/// not a list) — see the module doc's "Phase 2c coverage" section.
+#[tokio::test]
+#[ignore = "requires both stacks running"]
+async fn staleness_endpoints_match() {
+    assert_same("/api/chunks/stale").await;
+    assert_same("/api/chunks/stale/count").await;
 }
 
 /// `normalise` must strip exactly the four volatile keys (at any nesting
@@ -574,19 +848,22 @@ fn normalise_does_not_mask_a_stats_count_difference() {
     );
 }
 
-/// Exactly the four endpoints named in "deliberate divergences" #6 plus
-/// Phase 2b's `/api/workspaces` must be treated as unordered — not the
-/// chunk/notifications/favorites/collections/activity endpoints, which DO
+/// Exactly the four endpoints named in "deliberate divergences" #6, plus
+/// Phase 2b's `/api/workspaces` and Phase 2c's `/api/search/autocomplete`,
+/// must be treated as unordered — not the chunk/notifications/favorites/
+/// collections/activity/plans/search-saved/staleness endpoints, which DO
 /// have a Node `ORDER BY` and must stay sequence-compared, and not
-/// `/api/stats` or `/api/notifications/count`, which are single objects
-/// rather than lists at all.
+/// `/api/stats` or `/api/notifications/count` (single objects rather than
+/// lists), nor `/api/chunks/stale/count` (a bare number as `text/plain`).
 #[test]
-fn is_order_undefined_in_node_covers_exactly_the_four_unordered_lists() {
+fn is_order_undefined_in_node_covers_exactly_the_five_unordered_lists() {
     for path in [
         "/api/spaces",
         "/api/tags",
         "/api/tag-types",
         "/api/workspaces",
+        "/api/search/autocomplete",
+        "/api/search/autocomplete?field=chunk&prefix=a",
     ] {
         assert!(
             is_order_undefined_in_node(path),
@@ -609,6 +886,14 @@ fn is_order_undefined_in_node_covers_exactly_the_four_unordered_lists() {
         "/api/settings/user",
         "/api/settings/instance",
         "/api/settings/features",
+        "/api/plans",
+        "/api/plans/abc/links",
+        "/api/plans/abc/analyze",
+        "/api/plans/abc/tasks/def/links",
+        "/api/search/parse?q=type:note",
+        "/api/search/saved",
+        "/api/chunks/stale",
+        "/api/chunks/stale/count",
     ] {
         assert!(
             !is_order_undefined_in_node(path),
@@ -664,6 +949,81 @@ fn sort_nested_array_does_not_mask_a_real_difference() {
     assert_ne!(
         node, rust,
         "a genuinely different spaces set must survive sorting and still compare unequal"
+    );
+}
+
+/// `sort_plan_detail_unordered_fields` must ignore pure reordering of the
+/// two fields Node leaves unordered — the top-level `dependencies` array
+/// and each task's nested `chunks` array — while every ordered field
+/// (`tasks` itself, and each task's other fields) stays untouched.
+#[test]
+fn sort_plan_detail_unordered_fields_ignores_pure_reordering() {
+    let mut node = json!({
+        "plan": { "id": "p1" },
+        "requirements": [],
+        "analyze": {},
+        "tasks": [
+            { "id": "t1", "order": 0, "chunks": [{ "chunkId": "c1" }, { "chunkId": "c2" }] },
+            { "id": "t2", "order": 1, "chunks": [] }
+        ],
+        "dependencies": [
+            { "taskId": "t2", "dependsOnTaskId": "t1" },
+            { "taskId": "t3", "dependsOnTaskId": "t1" }
+        ]
+    });
+    let mut rust = json!({
+        "plan": { "id": "p1" },
+        "requirements": [],
+        "analyze": {},
+        "tasks": [
+            { "id": "t1", "order": 0, "chunks": [{ "chunkId": "c2" }, { "chunkId": "c1" }] },
+            { "id": "t2", "order": 1, "chunks": [] }
+        ],
+        "dependencies": [
+            { "taskId": "t3", "dependsOnTaskId": "t1" },
+            { "taskId": "t2", "dependsOnTaskId": "t1" }
+        ]
+    });
+
+    sort_plan_detail_unordered_fields(&mut node);
+    sort_plan_detail_unordered_fields(&mut rust);
+
+    assert_eq!(
+        node, rust,
+        "reordering only `dependencies` and per-task `chunks` must not fail the comparison"
+    );
+}
+
+/// The plan-detail comparator must not be a rubber stamp: a genuinely
+/// different `chunks` set on one task, or a genuinely different top-level
+/// `tasks` order (which Node DOES define — `plan.ts:398`,
+/// `.orderBy(asc(planTask.order))`), must still compare unequal after
+/// sorting.
+#[test]
+fn sort_plan_detail_unordered_fields_does_not_mask_real_differences() {
+    let mut node = json!({
+        "tasks": [{ "id": "t1", "chunks": [{ "chunkId": "c1" }] }],
+        "dependencies": []
+    });
+    let mut different_chunks = json!({
+        "tasks": [{ "id": "t1", "chunks": [{ "chunkId": "c9" }] }],
+        "dependencies": []
+    });
+    sort_plan_detail_unordered_fields(&mut node);
+    sort_plan_detail_unordered_fields(&mut different_chunks);
+    assert_ne!(
+        node, different_chunks,
+        "a genuinely different per-task chunks set must survive sorting and still differ"
+    );
+
+    let mut task_order_a = json!({ "tasks": [{ "id": "t1" }, { "id": "t2" }], "dependencies": [] });
+    let mut task_order_b = json!({ "tasks": [{ "id": "t2" }, { "id": "t1" }], "dependencies": [] });
+    sort_plan_detail_unordered_fields(&mut task_order_a);
+    sort_plan_detail_unordered_fields(&mut task_order_b);
+    assert_ne!(
+        task_order_a, task_order_b,
+        "the top-level `tasks` sequence is ordered in Node and must NOT be sorted \
+         away by the plan-detail comparator"
     );
 }
 

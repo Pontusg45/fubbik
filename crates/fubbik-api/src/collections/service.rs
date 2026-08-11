@@ -117,6 +117,7 @@ fn filter_to_list_params(filter: &CollectionFilter) -> ListParams {
             .as_deref()
             .and_then(|s| s.parse().ok()),
         space_id: None,
+        ids: None,
         // `GET /collections/{id}/chunks` takes no query params of its own in
         // Node (`packages/api/src/collections/routes.ts:69-73` reads only
         // `ctx.params.id`) — the inline `listChunks(...)` call omits

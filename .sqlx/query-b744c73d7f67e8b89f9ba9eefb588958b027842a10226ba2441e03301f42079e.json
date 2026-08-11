@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO chunk_staleness (id, chunk_id, reason, detail, related_chunk_id) VALUES ($1, $2, 'upstream_impact', $3, $4)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "b744c73d7f67e8b89f9ba9eefb588958b027842a10226ba2441e03301f42079e"
+}

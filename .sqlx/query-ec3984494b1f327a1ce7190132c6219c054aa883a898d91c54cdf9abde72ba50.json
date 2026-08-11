@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE plan_task SET \"order\" = $3\n               WHERE id = $1 AND plan_id = $2\n                 AND EXISTS (SELECT 1 FROM plan p WHERE p.id = $2 AND p.user_id = $4)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Int4",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "ec3984494b1f327a1ce7190132c6219c054aa883a898d91c54cdf9abde72ba50"
+}
