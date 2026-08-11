@@ -464,6 +464,41 @@ pub async fn count(pool: &PgPool, user_id: &str, params: &ListParams) -> AppResu
     Ok(total)
 }
 
+/// Narrows an arbitrary id list down to the ones `user_id` may see: not
+/// archived, and owned by `user_id`. Exists for callers that receive chunk
+/// ids from a source with no ownership notion at all — Apache AGE graph
+/// traversal (`fubbik_db::age`), specifically — and need to redact hidden
+/// ids from a response payload *before* it's built, not just filter the
+/// final chunk list. `chunk::list`/`count`'s `ids` filter already keeps a
+/// foreign id from ever hydrating into a returned `Chunk` row; this
+/// function is for the narrower case of scrubbing a bare id (or an edge
+/// list referencing one) that would otherwise be echoed back verbatim in
+/// metadata never routed through `list`/`count` at all. See
+/// `fubbik-api/src/search/service.rs`'s `path:` clause handling and
+/// `tests/chunk.rs::filter_visible_ids_drops_another_users_chunk`.
+///
+/// Uses `QueryBuilder` rather than `query_as!`/`query_scalar!` to match
+/// [`list`]/[`count`]'s own style in this module, and to avoid a new
+/// `.sqlx` cache entry for what is otherwise a one-line query.
+pub async fn filter_visible_ids(
+    pool: &PgPool,
+    user_id: &str,
+    ids: &[String],
+) -> AppResult<Vec<String>> {
+    if ids.is_empty() {
+        return Ok(Vec::new());
+    }
+    let mut qb =
+        sqlx::QueryBuilder::new("SELECT id FROM chunk WHERE archived_at IS NULL AND user_id = ");
+    qb.push_bind(user_id);
+    qb.push(" AND id = ANY(");
+    qb.push_bind(ids);
+    qb.push(")");
+
+    let rows: Vec<String> = qb.build_query_scalar().fetch_all(pool).await?;
+    Ok(rows)
+}
+
 /// One `(id, title)` match from [`search_titles`].
 #[derive(Debug, Clone)]
 pub struct ChunkTitleMatch {

@@ -582,6 +582,162 @@ async fn path_clause_resolves_the_chunk_chain_and_edges(pool: sqlx::PgPool) {
     assert_eq!(body["graphMeta"]["pathEdges"][0]["relation"], "depends_on");
 }
 
+/// `affected-by:` resolves ids via `age::get_chunks_affected_by_requirement`,
+/// which has no ownership notion at all — a `:covers` edge can point
+/// straight at another user's chunk. `chunk::list`'s mandatory `user_id =
+/// ..` predicate (proved directly at the repo layer by
+/// `tests/chunk.rs::list_with_ids_filter_cannot_leak_another_users_chunk`)
+/// is what keeps it out of the response here; this test pins the
+/// end-to-end HTTP behaviour, including that the id doesn't leak via any
+/// other field in the body.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn affected_by_clause_must_not_leak_another_users_chunk_across_a_graph_edge(
+    pool: sqlx::PgPool,
+) {
+    if !fubbik_db::age::is_available(&pool).await {
+        eprintln!("AGE unavailable — skipping");
+        return;
+    }
+    let app = fubbik_api::router(state(pool.clone()));
+    let alice_cookie = signup(app.clone(), "affected-cross-alice@b.test", "Alice").await;
+    let bob_id = {
+        signup(app.clone(), "affected-cross-bob@b.test", "Bob").await;
+        user_id_for_email(&pool, "affected-cross-bob@b.test").await
+    };
+    let bobs_chunk = seed_chunk(&pool, &bob_id, "Bob's chunk", "not mine").await;
+    fubbik_db::age::ensure_vertex(&pool, &bobs_chunk)
+        .await
+        .unwrap();
+
+    let requirement_id = fubbik_db::new_id();
+    fubbik_db::age::cypher(
+        &pool,
+        &format!(
+            "MERGE (:requirement {{id: '{}'}})",
+            fubbik_db::age::esc_cypher(&requirement_id)
+        ),
+    )
+    .await
+    .unwrap();
+    // A requirement covering another user's chunk — AGE has no concept of
+    // ownership, so this is legal at the graph layer.
+    fubbik_db::age::cypher(
+        &pool,
+        &format!(
+            "MATCH (r:requirement {{id: '{}'}}), (c:chunk {{id: '{}'}}) CREATE (r)-[:covers]->(c)",
+            fubbik_db::age::esc_cypher(&requirement_id),
+            fubbik_db::age::esc_cypher(&bobs_chunk)
+        ),
+    )
+    .await
+    .unwrap();
+
+    let res = post(
+        app,
+        "/api/search/query",
+        &alice_cookie,
+        serde_json::json!({"clauses": [
+            {"field": "affected-by", "operator": "is", "value": requirement_id}
+        ]}),
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = json_body(res).await;
+    assert_eq!(
+        body["chunks"],
+        serde_json::json!([]),
+        "the graph resolved bob's chunk, but chunk::list's user_id predicate must still exclude it, leaving nothing on the page"
+    );
+    let raw = body.to_string();
+    assert!(
+        !raw.contains(&bobs_chunk),
+        "bob's chunk id must not appear anywhere in the response body, graphMeta included: {raw}"
+    );
+}
+
+/// `path:`'s shortest-path search can route *through* another user's chunk
+/// even when both endpoints belong to the caller — AGE walks edges with no
+/// ownership notion at all. Divergence: this is a live disclosure this port
+/// introduced (`path:` is dead code in Node — see the module doc), fixed by
+/// `chunk::filter_visible_ids` in `resolve_graph_clauses`'s `path` arm.
+/// Both the hidden chunk's id (`pathChunks`) and both edges touching it
+/// (`pathEdges`) must be gone from `graphMeta`, not just from `chunks`.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn path_clause_must_not_leak_another_users_chunk_in_graph_meta(pool: sqlx::PgPool) {
+    if !fubbik_db::age::is_available(&pool).await {
+        eprintln!("AGE unavailable — skipping");
+        return;
+    }
+    let app = fubbik_api::router(state(pool.clone()));
+    let alice_cookie = signup(app.clone(), "path-cross-alice@b.test", "Alice").await;
+    let alice_id = user_id_for_email(&pool, "path-cross-alice@b.test").await;
+    let bob_id = {
+        signup(app.clone(), "path-cross-bob@b.test", "Bob").await;
+        user_id_for_email(&pool, "path-cross-bob@b.test").await
+    };
+    let a = seed_chunk(&pool, &alice_id, "A", "content a").await;
+    let b = seed_chunk(&pool, &alice_id, "B", "content b").await;
+    // Only route from A to B passes through Bob's hidden chunk.
+    let hidden = seed_chunk(&pool, &bob_id, "Bob's midpoint", "not mine").await;
+    fubbik_db::age::ensure_vertex(&pool, &a).await.unwrap();
+    fubbik_db::age::ensure_vertex(&pool, &b).await.unwrap();
+    fubbik_db::age::ensure_vertex(&pool, &hidden).await.unwrap();
+    fubbik_db::age::create_edge(&pool, "related_to", &a, &hidden)
+        .await
+        .unwrap();
+    fubbik_db::age::create_edge(&pool, "related_to", &hidden, &b)
+        .await
+        .unwrap();
+
+    let res = post(
+        app,
+        "/api/search/query",
+        &alice_cookie,
+        serde_json::json!({"clauses": [
+            {"field": "path", "operator": "is", "value": a, "params": {"from": a, "to": b}}
+        ]}),
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = json_body(res).await;
+
+    let chunk_ids: Vec<&str> = body["chunks"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|c| c["id"].as_str().unwrap())
+        .collect();
+    assert!(
+        !chunk_ids.contains(&hidden.as_str()),
+        "hidden chunk must not appear in chunks"
+    );
+
+    assert_eq!(body["graphMeta"]["type"], "path");
+    let path_chunks: Vec<&str> = body["graphMeta"]["pathChunks"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|v| v.as_str().unwrap())
+        .collect();
+    assert!(
+        !path_chunks.contains(&hidden.as_str()),
+        "graphMeta.pathChunks must not disclose the hidden chunk's id: {path_chunks:?}"
+    );
+    let edges = body["graphMeta"]["pathEdges"].as_array().unwrap();
+    assert!(
+        edges
+            .iter()
+            .all(|e| e["source"] != hidden.as_str() && e["target"] != hidden.as_str()),
+        "graphMeta.pathEdges must drop every edge touching the hidden chunk: {edges:?}"
+    );
+
+    let raw = body.to_string();
+    assert!(
+        !raw.contains(&hidden),
+        "hidden chunk id must not appear anywhere in the response body, graphMeta included: {raw}"
+    );
+}
+
 /// `similar-to:` has no embedding pipeline wired into this Rust port at
 /// all (no Ollama client exists anywhere in `crates/`), so it always
 /// degrades to zero ids — but `graphMeta.type` must still come back as the

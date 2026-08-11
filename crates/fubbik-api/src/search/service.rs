@@ -218,7 +218,11 @@ struct GraphResolution {
 /// with any other field are ignored here (the same implicit no-op
 /// `build_list_params`'s own `_ => {}` arm gives them), so callers can pass
 /// a query's *entire* clause list rather than pre-filtering it.
-async fn resolve_graph_clauses(pool: &PgPool, clauses: &[QueryClause]) -> GraphResolution {
+async fn resolve_graph_clauses(
+    pool: &PgPool,
+    user_id: &str,
+    clauses: &[QueryClause],
+) -> GraphResolution {
     let mut out = GraphResolution::default();
 
     for clause in clauses {
@@ -302,14 +306,67 @@ async fn resolve_graph_clauses(pool: &PgPool, clauses: &[QueryClause]) -> GraphR
                         .unwrap_or_default();
                     let hop_count = detail.as_ref().map(|d| d.edges.len() as i64).unwrap_or(0);
 
+                    // `resolved`/`edges` come straight from AGE, which knows
+                    // nothing about `user_id` — a shortest path between two
+                    // of the caller's own chunks can still *route through*
+                    // another user's chunk in the middle. `out.ids` below is
+                    // safe: it's re-intersected against `chunk::list`'s own
+                    // mandatory `user_id = ..` predicate before any chunk
+                    // row is hydrated. `graphMeta.pathChunks`/`pathEdges`
+                    // are not — they're returned to the caller verbatim as
+                    // part of the response envelope, never routed through
+                    // `chunk::list` at all. Redact them here, against the
+                    // same visibility notion `chunk::list` uses.
+                    //
+                    // Choice: truncate, don't stitch. A hidden midpoint
+                    // drops both its id and the two edges touching it,
+                    // rather than being silently spliced out with a
+                    // synthetic edge reconnecting its visible neighbours.
+                    // Stitching would assert a direct relationship between
+                    // two chunks that the graph itself never claims exists
+                    // (the real edge runs through a node the caller can't
+                    // see) — that's actively misleading, not just
+                    // incomplete. A truncated, possibly-disconnected chain
+                    // is honest about what it is: everything the caller is
+                    // allowed to see along a path that may pass through
+                    // territory it isn't.
+                    let visible: std::collections::HashSet<String> =
+                        chunk::filter_visible_ids(pool, user_id, &resolved)
+                            .await
+                            .unwrap_or_else(|err| {
+                                tracing::error!(
+                                    error = %err,
+                                    "chunk::filter_visible_ids failed while redacting a path: result — degrading to empty (safe: nothing hidden leaks, caller just sees no path)"
+                                );
+                                Vec::new()
+                            })
+                            .into_iter()
+                            .collect();
+                    let visible_chunks: Vec<String> = resolved
+                        .iter()
+                        .filter(|id| visible.contains(*id))
+                        .cloned()
+                        .collect();
+                    let visible_edges: Vec<PathEdgeInfo> = edges
+                        .into_iter()
+                        .filter(|e| visible.contains(&e.source) && visible.contains(&e.target))
+                        .collect();
+
                     out.ids = Some(intersect_ids(out.ids, resolved.clone()));
                     out.meta = Some(GraphMeta {
                         meta_type: "path".to_string(),
                         reference_chunk: None,
-                        path_chunks: Some(resolved.clone()),
-                        path_edges: Some(edges),
+                        path_chunks: Some(visible_chunks),
+                        path_edges: Some(visible_edges),
                         hops: Some(hop_count),
                     });
+                    // Internal only — used below to compute each *visible*
+                    // result chunk's `pathPosition` within the full
+                    // (unredacted) chain. This never leaves the function as
+                    // a list of ids; only a per-chunk integer index does,
+                    // and only for chunks that already passed
+                    // `chunk::list`'s own `user_id` filter. See the
+                    // `graph_context_map` "path" arm below.
                     out.path_chunks = Some(resolved);
                 }
             }
@@ -369,7 +426,7 @@ async fn resolve_graph_clauses(pool: &PgPool, clauses: &[QueryClause]) -> GraphR
 /// module doc for why this returns `SearchResult` directly rather than an
 /// `AppResult`.
 pub async fn execute_search(pool: &PgPool, user_id: &str, query: &SearchQueryBody) -> SearchResult {
-    let graph = resolve_graph_clauses(pool, &query.clauses).await;
+    let graph = resolve_graph_clauses(pool, user_id, &query.clauses).await;
 
     // Matches Node's `if (graphIds !== undefined && graphIds.length === 0)
     // return { chunks: [], total: 0, graphMeta }` (`service.ts:130-132`):

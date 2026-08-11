@@ -632,3 +632,71 @@ async fn space_id_filters_to_the_space_or_global_chunks_and_excludes_other_space
         "space_id: None must apply no space filter at all"
     );
 }
+
+/// Backs the `affected-by:`/`near:` graph-clause id filter in
+/// `search::service::execute_search` (`crates/fubbik-api/src/search/service.rs`):
+/// AGE resolves ids with no ownership notion at all, so a graph clause can
+/// hand back another user's chunk id. `list`'s `ids` filter is what keeps
+/// that id from ever hydrating into a returned row — it must still be ANDed
+/// with the mandatory `user_id = ..` predicate, not applied on its own.
+///
+/// Load-bearing: commenting out `push_filters`'s `user_id = ` bind (leaving
+/// only the `ids` filter) turns this from an empty result into
+/// `[bob's chunk]`, failing this test.
+#[sqlx::test]
+async fn list_with_ids_filter_cannot_leak_another_users_chunk(pool: sqlx::PgPool) {
+    let alice = seed_user(&pool).await;
+    let bob = user::create(&pool, "bob-ids-filter@b.test", "Bob", None)
+        .await
+        .unwrap()
+        .id;
+    let bobs_chunk = a_chunk(&pool, &bob, "Bob's secret").await;
+
+    let found = chunk::list(
+        &pool,
+        &alice,
+        &chunk::ListParams {
+            ids: Some(vec![bobs_chunk.id.clone()]),
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
+    assert!(
+        found.is_empty(),
+        "an id resolved by an ownership-blind source (AGE) must still be excluded by the mandatory user_id predicate"
+    );
+}
+
+/// Backs the `path:` clause's `graphMeta.pathChunks`/`pathEdges` redaction
+/// in `search::service::resolve_graph_clauses` — unlike the `ids` filter
+/// above, `graphMeta` is built from AGE's raw resolved chain and never
+/// routed through `list`/`count` at all, so it needs its own explicit
+/// ownership check: [`chunk::filter_visible_ids`].
+///
+/// Load-bearing: deleting the `archived_at IS NULL AND user_id = ..`
+/// predicate from `filter_visible_ids` (or the `id = ANY(..)` bind) turns
+/// `visible` into `[alice's chunk, bob's chunk]`, failing this test.
+#[sqlx::test]
+async fn filter_visible_ids_drops_another_users_chunk(pool: sqlx::PgPool) {
+    let alice = seed_user(&pool).await;
+    let bob = user::create(&pool, "bob-visible-ids@b.test", "Bob", None)
+        .await
+        .unwrap()
+        .id;
+    let alices_chunk = a_chunk(&pool, &alice, "Alice's").await;
+    let bobs_chunk = a_chunk(&pool, &bob, "Bob's").await;
+
+    let visible = chunk::filter_visible_ids(
+        &pool,
+        &alice,
+        &[alices_chunk.id.clone(), bobs_chunk.id.clone()],
+    )
+    .await
+    .unwrap();
+    assert_eq!(
+        visible,
+        vec![alices_chunk.id.clone()],
+        "must drop bob's id even though it was passed in explicitly"
+    );
+}
