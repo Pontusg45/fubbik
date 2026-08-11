@@ -618,6 +618,102 @@ async fn activity_on_another_users_plan_is_404(pool: sqlx::PgPool) {
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 }
 
+/// Final review Fix 4: Node writes `activity_log` rows for plan create,
+/// update, delete, and duplicate (`packages/api/src/plans/routes.ts:47,
+/// 89, 120, 140`) — this proves all four are ported, matching Node's
+/// `action`/`entityType`/`entityTitle` values exactly.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn create_update_delete_duplicate_each_write_a_plan_activity_event(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool.clone()));
+    let cookie = signup(app.clone(), "alice-plan-activity@b.test", "Alice").await;
+
+    let id = create_plan(app.clone(), &cookie, "Original title").await;
+
+    patch(
+        app.clone(),
+        &cookie,
+        &format!("/api/plans/{id}"),
+        serde_json::json!({ "title": "Renamed title" }),
+    )
+    .await;
+    patch(
+        app.clone(),
+        &cookie,
+        &format!("/api/plans/{id}"),
+        serde_json::json!({ "status": "ready" }),
+    )
+    .await;
+
+    let dup_body = json_body(
+        post(
+            app.clone(),
+            &cookie,
+            &format!("/api/plans/{id}/duplicate"),
+            serde_json::json!({}),
+        )
+        .await,
+    )
+    .await;
+    let dup_id = dup_body["id"].as_str().unwrap().to_string();
+
+    delete(app.clone(), &cookie, &format!("/api/plans/{id}")).await;
+
+    // `GET /:id/activity` 404s once the plan's gone, so read the events
+    // straight from the repo instead of the route — same approach
+    // `activity_is_a_bare_array` and friends use for shape, but this needs
+    // to survive past the delete.
+    let events = fubbik_db::repo::plan::list_activity_by_entity(
+        &pool,
+        &user_id_for_email(&pool, "alice-plan-activity@b.test").await,
+        "plan",
+        None,
+        50,
+    )
+    .await
+    .unwrap();
+
+    let created = events
+        .iter()
+        .find(|e| e.entity_id == id && e.action == "created")
+        .expect("create must write action=created");
+    assert_eq!(created.entity_title.as_deref(), Some("Original title"));
+
+    let updated = events
+        .iter()
+        .find(|e| e.entity_id == id && e.action == "updated")
+        .expect("a title-only patch must write action=updated");
+    assert_eq!(updated.entity_title.as_deref(), Some("Renamed title"));
+
+    let status_changed = events
+        .iter()
+        .find(|e| e.entity_id == id && e.action == "status_changed")
+        .expect("a status patch must write action=status_changed, not updated");
+
+    let deleted = events
+        .iter()
+        .find(|e| e.entity_id == id && e.action == "deleted")
+        .expect("delete must write action=deleted");
+    assert_eq!(
+        deleted.entity_title.as_deref(),
+        Some("Renamed title"),
+        "delete's event must carry the pre-delete title"
+    );
+
+    let duplicated = events
+        .iter()
+        .find(|e| e.entity_id == dup_id && e.action == "duplicated")
+        .expect("duplicate must write action=duplicated, keyed to the NEW plan's id");
+    assert_eq!(
+        duplicated.entity_title.as_deref(),
+        Some(dup_body["title"].as_str().unwrap()),
+        "entityTitle must be the duplicate's own title, not the source's"
+    );
+
+    // Sanity: status_changed is a distinct row from the earlier title-only
+    // update, not the same row re-asserted.
+    assert_ne!(status_changed.id, updated.id);
+}
+
 // ── links ────────────────────────────────────────────────────────────
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]

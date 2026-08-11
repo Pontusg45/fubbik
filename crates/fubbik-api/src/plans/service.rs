@@ -179,6 +179,17 @@ pub async fn create(pool: &PgPool, user_id: &str, body: CreatePlanBody) -> AppRe
         }
     }
 
+    activity::create(
+        pool,
+        user_id,
+        "plan",
+        &created.id,
+        Some(&created.title),
+        "created",
+        created.space_id.as_deref(),
+    )
+    .await?;
+
     Ok(created)
 }
 
@@ -208,8 +219,17 @@ pub async fn update(
 
     let description = body.description.as_ref().map(|d| d.as_deref());
     let space_id = body.space_id.as_ref().map(|s| s.as_deref());
+    // Captured before `apply_patch` moves `body.metadata` out — Node reads
+    // `ctx.body.status !== undefined` for this same decision
+    // (`routes.ts:89`), so it must reflect the *incoming* patch, not
+    // whatever `plan::apply_patch` ends up returning.
+    let action = if body.status.is_some() {
+        "status_changed"
+    } else {
+        "updated"
+    };
 
-    plan::apply_patch(
+    let updated = plan::apply_patch(
         pool,
         user_id,
         id,
@@ -221,32 +241,73 @@ pub async fn update(
         completed_at,
     )
     .await?
-    .ok_or_else(|| AppError::NotFound("Plan".into()))
+    .ok_or_else(|| AppError::NotFound("Plan".into()))?;
+
+    activity::create(
+        pool,
+        user_id,
+        "plan",
+        &updated.id,
+        Some(&updated.title),
+        action,
+        updated.space_id.as_deref(),
+    )
+    .await?;
+
+    Ok(updated)
 }
 
-/// Mirrors Node's `deletePlan` (`packages/api/src/plans/service.ts:190-195`):
-/// 404 pre-check, then delete — `plan::delete`'s own `AND user_id = $2`
-/// guard is defense-in-depth, same belt-and-suspenders shape used
-/// throughout this port.
+/// Mirrors Node's `deletePlan` (`packages/api/src/plans/service.ts:190-195`)
+/// plus the activity write at its call site (`routes.ts:120-133`): the
+/// `existing` row is fetched *before* the delete specifically so the
+/// activity event can still carry its `id`/`title`/`spaceId` after the row
+/// is gone. 404 pre-check, then delete — `plan::delete`'s own `AND
+/// user_id = $2` guard is defense-in-depth, same belt-and-suspenders shape
+/// used throughout this port.
 pub async fn delete(pool: &PgPool, user_id: &str, id: &str) -> AppResult<()> {
-    get_plan(pool, user_id, id).await?;
+    let existing = get_plan(pool, user_id, id).await?;
     if plan::delete(pool, user_id, id).await? {
+        activity::create(
+            pool,
+            user_id,
+            "plan",
+            &existing.id,
+            Some(&existing.title),
+            "deleted",
+            existing.space_id.as_deref(),
+        )
+        .await?;
         Ok(())
     } else {
         Err(AppError::NotFound("Plan".into()))
     }
 }
 
-/// Mirrors Node's `duplicatePlan` (`packages/api/src/plans/service.ts:51-56`):
+/// Mirrors Node's `duplicatePlan` (`packages/api/src/plans/service.ts:51-56`)
+/// plus the activity write at its call site (`routes.ts:135-152`): the
+/// event describes the newly-created *duplicate*, not the source plan.
 /// 404 if the source plan doesn't exist / isn't the caller's before
 /// attempting the deep copy — `plan::duplicate`'s own ownership guard on
 /// the source `SELECT` is defense-in-depth, proven load-bearing in Task 3's
 /// `tests/plan.rs::duplicate_is_user_scoped`.
 pub async fn duplicate(pool: &PgPool, user_id: &str, source_id: &str) -> AppResult<Plan> {
     get_plan(pool, user_id, source_id).await?;
-    plan::duplicate(pool, user_id, source_id)
+    let created = plan::duplicate(pool, user_id, source_id)
         .await?
-        .ok_or_else(|| AppError::NotFound("Plan".into()))
+        .ok_or_else(|| AppError::NotFound("Plan".into()))?;
+
+    activity::create(
+        pool,
+        user_id,
+        "plan",
+        &created.id,
+        Some(&created.title),
+        "duplicated",
+        created.space_id.as_deref(),
+    )
+    .await?;
+
+    Ok(created)
 }
 
 /// Mirrors Node's `GET /plans/:id/activity` handler
@@ -256,17 +317,15 @@ pub async fn duplicate(pool: &PgPool, user_id: &str, source_id: &str) -> AppResu
 /// limit 200, filtered down to this plan's own task ids), sorts the union
 /// by `createdAt` descending, and takes the first 100.
 ///
-/// **Partial gap, narrowed by Task 6**: `create_task`/`update_task`/
-/// `delete_task` below now write `entityType: "plan_task"` rows via
-/// `fubbik_db::repo::activity::create` (Node's `createActivity`,
-/// `tasks.ts:74-81,123-130,154-160`), so this endpoint's `task_events` half
-/// is populated for tasks created/updated/deleted through this port. The
-/// `entityType: "plan"` half (`plan_events`) is still unpopulated — none of
-/// this file's plan-level mutations (`create`/`update`/`delete`/
-/// `duplicate`/links/requirements/analyze items) write an activity row yet;
-/// wiring those in is out of scope for this task. This endpoint's read/
-/// merge/sort/truncate logic is complete and correct against whatever rows
-/// exist either way.
+/// Both halves are populated: `create_task`/`update_task`/`delete_task`
+/// below write `entityType: "plan_task"` rows (Node's `createActivity`,
+/// `tasks.ts:74-81,123-130,154-160`), and `create`/`update`/`delete`/
+/// `duplicate` above write `entityType: "plan"` rows (Node's
+/// `routes.ts:47,89,120,140`) — this endpoint's read/merge/sort/truncate
+/// logic just consumes whatever rows exist from either source. Plan-level
+/// links/requirements/analyze-item mutations still write no activity row,
+/// matching Node exactly: none of *their* Node route handlers call
+/// `createActivity` either.
 pub async fn get_activity(pool: &PgPool, user_id: &str, id: &str) -> AppResult<Vec<Activity>> {
     get_plan(pool, user_id, id).await?;
 
