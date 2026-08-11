@@ -4,6 +4,7 @@
 //! and write any other user's plan). Every guard proven load-bearing here
 //! is named explicitly in each repo function's doc comment.
 
+use fubbik_db::repo::activity;
 use fubbik_db::repo::chunk::{self, NewChunk};
 use fubbik_db::repo::plan::{self, ListFilter};
 use fubbik_db::repo::space::{self, NewSpace};
@@ -1685,4 +1686,158 @@ async fn cannot_reorder_another_users_analyze_items(pool: PgPool) {
         b_after.order, b.order,
         "bob's rejected reorder must not touch alice's items"
     );
+}
+
+// ── Final review Fix 3: five correct guards, previously zero repo-level
+// tests. An API-level test can't reach these — the service layer 404s on
+// its own ownership pre-check before the repo query ever runs, so a
+// deleted SQL guard leaves the whole suite green until now.
+
+/// `plan::link::list_links` (`crates/fubbik-db/src/repo/plan/link.rs:25`):
+/// `WHERE plan_id = $1 AND EXISTS (SELECT 1 FROM plan p WHERE p.id = $1 AND
+/// p.user_id = $2)`.
+///
+/// Load-bearing: deleting the `EXISTS` clause (leaving only `WHERE plan_id
+/// = $1`) turns `bobs_view` into a 1-element vec containing alice's link,
+/// failing this test.
+#[sqlx::test]
+async fn list_links_is_user_scoped(pool: PgPool) {
+    let alice = seed_user(&pool, "alice").await;
+    let bob = seed_user(&pool, "bob").await;
+    let p = plan::create(&pool, &alice, "p", None, None).await.unwrap();
+    plan::add_link(
+        &pool,
+        &alice,
+        &p.id,
+        "github",
+        "https://alice.example",
+        None,
+    )
+    .await
+    .unwrap();
+
+    let bobs_view = plan::list_links(&pool, &bob, &p.id).await.unwrap();
+    assert!(
+        bobs_view.is_empty(),
+        "bob must not read alice's plan-level links, even by a correct plan id"
+    );
+
+    let alices_view = plan::list_links(&pool, &alice, &p.id).await.unwrap();
+    assert_eq!(alices_view.len(), 1);
+}
+
+/// `plan::link::add_link` (`crates/fubbik-db/src/repo/plan/link.rs:50`):
+/// `INSERT ... SELECT ... FROM plan p WHERE p.id = $2 AND p.user_id = $6`.
+///
+/// Load-bearing: relaxing the `WHERE` to just `p.id = $2` turns `res` into
+/// `Some(..)` and leaves alice with a link she never created, failing this
+/// test.
+#[sqlx::test]
+async fn cannot_add_a_plan_level_link_to_another_users_plan(pool: PgPool) {
+    let alice = seed_user(&pool, "alice").await;
+    let bob = seed_user(&pool, "bob").await;
+    let p = plan::create(&pool, &alice, "p", None, None).await.unwrap();
+
+    let res = plan::add_link(&pool, &bob, &p.id, "github", "https://evil.example", None)
+        .await
+        .unwrap();
+    assert!(res.is_none(), "ownership check must reject bob's insert");
+
+    let links = plan::list_links(&pool, &alice, &p.id).await.unwrap();
+    assert!(
+        links.is_empty(),
+        "the victim's plan must have gained no link"
+    );
+}
+
+/// `plan::link::remove_link` (`crates/fubbik-db/src/repo/plan/link.rs:82`):
+/// `DELETE ... WHERE id = $1 AND plan_id = $2 AND EXISTS (SELECT 1 FROM
+/// plan p WHERE p.id = $2 AND p.user_id = $3)`.
+///
+/// Load-bearing: deleting the `EXISTS` clause turns `res` into `true` and
+/// deletes alice's link, failing this test.
+#[sqlx::test]
+async fn cannot_remove_another_users_plan_level_link(pool: PgPool) {
+    let alice = seed_user(&pool, "alice").await;
+    let bob = seed_user(&pool, "bob").await;
+    let p = plan::create(&pool, &alice, "p", None, None).await.unwrap();
+    let link = plan::add_link(
+        &pool,
+        &alice,
+        &p.id,
+        "github",
+        "https://alice.example",
+        None,
+    )
+    .await
+    .unwrap()
+    .unwrap();
+
+    let res = plan::remove_link(&pool, &bob, &p.id, &link.id)
+        .await
+        .unwrap();
+    assert!(!res, "bob does not own the plan; the link must survive");
+
+    let links = plan::list_links(&pool, &alice, &p.id).await.unwrap();
+    assert_eq!(links.len(), 1, "the victim's link must be untouched");
+}
+
+/// `plan::list_with_rollups` (`crates/fubbik-db/src/repo/plan/mod.rs:555`,
+/// backs `GET /api/plans`): `WHERE p.user_id = $1` (plus optional filters).
+///
+/// Load-bearing: deleting the `p.user_id = ` predicate turns `alices_view`
+/// into a 2-element vec including bob's plan, failing this test.
+#[sqlx::test]
+async fn list_with_rollups_is_user_scoped(pool: PgPool) {
+    let alice = seed_user(&pool, "alice").await;
+    let bob = seed_user(&pool, "bob").await;
+    plan::create(&pool, &alice, "alice's plan", None, None)
+        .await
+        .unwrap();
+    plan::create(&pool, &bob, "bob's plan", None, None)
+        .await
+        .unwrap();
+
+    let alices_view = plan::list_with_rollups(&pool, &alice, ListFilter::default())
+        .await
+        .unwrap();
+    assert_eq!(alices_view.len(), 1);
+    assert_eq!(alices_view[0].title, "alice's plan");
+}
+
+/// `plan::list_activity_by_entity` (`crates/fubbik-db/src/repo/plan/mod.rs:764`,
+/// backs `GET /api/plans/{id}/activity`): `WHERE user_id = $1 AND
+/// entity_type = $2 [AND entity_id = $3]` against `activity_log`, which
+/// carries no plan-ownership join at all — the `user_id` predicate on the
+/// activity row itself is the entire guard. Two rows share the same
+/// `entity_id` here specifically to prove the `entity_id` match alone
+/// isn't what's protecting this query.
+///
+/// Load-bearing: deleting the `user_id = ` predicate (leaving only
+/// `entity_type`/`entity_id`) turns the result into a 2-element vec
+/// including bob's row, failing this test.
+#[sqlx::test]
+async fn list_activity_by_entity_is_user_scoped(pool: PgPool) {
+    let alice = seed_user(&pool, "alice").await;
+    let bob = seed_user(&pool, "bob").await;
+    let p = plan::create(&pool, &alice, "p", None, None).await.unwrap();
+    activity::create(&pool, &alice, "plan", &p.id, Some("p"), "created", None)
+        .await
+        .unwrap();
+    // Same entity_type/entity_id as alice's row, different user — only
+    // realistic as a same-id coincidence, but that's exactly what proves
+    // `entity_id` alone doesn't scope this query.
+    activity::create(&pool, &bob, "plan", &p.id, Some("p"), "created", None)
+        .await
+        .unwrap();
+
+    let alices_view = plan::list_activity_by_entity(&pool, &alice, "plan", Some(&p.id), 50)
+        .await
+        .unwrap();
+    assert_eq!(
+        alices_view.len(),
+        1,
+        "must not include bob's row even though entity_type and entity_id both match"
+    );
+    assert_eq!(alices_view[0].user_id, alice);
 }
