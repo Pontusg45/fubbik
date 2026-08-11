@@ -42,15 +42,27 @@ pub async fn cypher(pool: &PgPool, query: &str) -> Result<Vec<serde_json::Value>
 /// # Safety
 ///
 /// `query` is interpolated directly into a `$$`-dollar-quoted SQL statement
-/// via `format!` — it is NOT parameterized. `esc_cypher` only escapes
-/// backslashes and single quotes for Cypher string-literal safety; it does
-/// NOT protect the surrounding `$$ ... $$` SQL dollar-quoting. A value
-/// containing the literal substring `$$` can terminate the dollar-quoted
-/// block early and inject arbitrary SQL. Callers must never build `query`
-/// from untrusted input without additional sanitization (e.g. rejecting or
-/// escaping `$$`). This flaw is inherited unchanged from the TypeScript
-/// original (`packages/db/src/age/client.ts`) and is not addressed by this
-/// helper.
+/// via `format!` — it is NOT parameterized. `esc_cypher` escapes backslashes
+/// and single quotes for Cypher string-literal safety, but does NOT escape
+/// `$$`, so a value containing that substring terminates the dollar-quoted
+/// block early.
+///
+/// **Impact, measured rather than assumed: the query degrades to empty
+/// results. It is not exploitable as SQL injection.** Every caller embeds
+/// user input inside a Cypher string literal (`{id: '<escaped>'}`), and
+/// `esc_cypher` escapes every `'`, so the fragment preceding an injected
+/// `$$` always ends inside an unterminated literal. Postgres rejects the
+/// statement at parse time — reproduced as
+/// `ERROR: unterminated quoted string at or near "'x"` — before anything
+/// executes, and [`cypher_in_graph`] then degrades the error to `Ok(vec![])`.
+/// Statement chaining is independently impossible: [`run_primed`] uses
+/// `sqlx::query(..).fetch_all(..)`, i.e. the extended protocol.
+///
+/// The unescaped `$$` is still worth fixing, because that reasoning holds
+/// only while every caller keeps its input inside a quoted Cypher literal.
+/// A future caller interpolating user input *outside* one would turn this
+/// into a genuine injection. Inherited from the TypeScript original
+/// (`packages/db/src/age/client.ts`) and not addressed by this helper.
 async fn cypher_in_graph(
     pool: &PgPool,
     graph: &str,

@@ -455,10 +455,15 @@ async fn detect_uncovered_chunks_is_idempotent(pool: sqlx::PgPool) {
 /// (`age::compute_impact_ripple`) walks through it to get there.
 #[sqlx::test]
 async fn flag_impact_ripple_does_not_flag_a_cross_user_ripple_target(pool: sqlx::PgPool) {
-    if !age::is_available(&pool).await {
-        eprintln!("AGE unavailable — skipping");
-        return;
-    }
+    // Deliberately NOT guarded by `age::is_available`. This test IS the proof of
+    // divergence #19, so a silent early return would let the guarantee lapse
+    // wherever AGE happened to be missing — a security property must not rest on
+    // a test that can quietly no-op. AGE ships in this project's test container;
+    // if it is absent the test should fail loudly and be fixed.
+    assert!(
+        age::is_available(&pool).await,
+        "AGE must be installed for the divergence #19 tests to mean anything"
+    );
     let alice = seed_user(&pool, "alice-ripple@b.test").await;
     let bob = seed_user(&pool, "bob-ripple@b.test").await;
     let source = seed_chunk(&pool, &alice).await;
@@ -508,10 +513,11 @@ async fn flag_impact_ripple_does_not_flag_a_cross_user_ripple_target(pool: sqlx:
 /// never written (and so is invisible to the `already_flagged` pre-filter).
 #[sqlx::test]
 async fn flag_impact_ripple_rerun_does_not_accumulate_duplicate_flags(pool: sqlx::PgPool) {
-    if !age::is_available(&pool).await {
-        eprintln!("AGE unavailable — skipping");
-        return;
-    }
+    // Deliberately NOT guarded by `age::is_available` — see the sibling test above.
+    assert!(
+        age::is_available(&pool).await,
+        "AGE must be installed for the divergence #19 tests to mean anything"
+    );
     let alice = seed_user(&pool, "alice-ripple-rerun@b.test").await;
     let bob = seed_user(&pool, "bob-ripple-rerun@b.test").await;
     let source = seed_chunk(&pool, &alice).await;

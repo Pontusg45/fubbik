@@ -160,10 +160,10 @@
 //!   - `dependencies` (top level, flat): Node `plan.ts:503-516`,
 //!     `listTaskDependencies` — **no** `.orderBy`. Unordered; sorted in
 //!     place before comparing.
-//! - `/api/plans/{id}/activity` — always `[]` on both stacks (no ported
-//!   domain writes `activity_log` rows, per the module doc's "Also
-//!   expected, not defects" list in the task brief); trivially
-//!   sequence-compared.
+//! - `/api/plans/{id}/activity` — no longer always `[]`. Both stacks now write
+//!   `activity_log` rows for plan create/update/delete/duplicate and for the
+//!   three task-level mutations, so this compares real data. Node orders by
+//!   `createdAt` desc and slices to 100; sequence-compared.
 //! - `/api/plans/{id}/links` — Node: `plan.ts:566`,
 //!   `.orderBy(asc(planExternalLink.order), asc(planExternalLink.createdAt))`.
 //!   Ordered.
@@ -191,8 +191,11 @@
 //! under `/api/chunks/stale*`):
 //! - `/api/chunks/stale` — Node: `packages/db/src/repository/
 //!   staleness.ts:42`, `.orderBy(desc(chunkStaleness.detectedAt))`. Ordered.
-//! - `/api/chunks/stale/count` — a bare count object, not a list; "order"
-//!   doesn't apply, sequence-compared like `/api/stats`.
+//! - `/api/chunks/stale/count` — a **bare number** rendered as `text/plain`
+//!   (the literal byte `0`, verified with `xxd`), NOT a `{count: N}` object.
+//!   Phase 2b's `/api/notifications/count` DOES return an object, so reasoning
+//!   by analogy gets this wrong; response shape is per-endpoint here. "order"
+//!   doesn't apply — sequence-compared.
 //!
 //! (`getStaleFlagsForChunk`, `staleness.ts:61-74`, no `.orderBy`, feeds the
 //! chunk-detail context resolver rather than any endpoint this harness
@@ -686,8 +689,8 @@ async fn search_autocomplete_matches() {
 }
 
 /// `/api/chunks/stale` (Node orders by `detectedAt`, sequence-compared) and
-/// `/api/chunks/stale/count` (a bare count object, not a list) — see the
-/// module doc's "Phase 2c coverage" section.
+/// `/api/chunks/stale/count` (a bare number as `text/plain`, not an object and
+/// not a list) — see the module doc's "Phase 2c coverage" section.
 #[tokio::test]
 #[ignore = "requires both stacks running"]
 async fn staleness_endpoints_match() {
@@ -850,8 +853,8 @@ fn normalise_does_not_mask_a_stats_count_difference() {
 /// must be treated as unordered — not the chunk/notifications/favorites/
 /// collections/activity/plans/search-saved/staleness endpoints, which DO
 /// have a Node `ORDER BY` and must stay sequence-compared, and not
-/// `/api/stats`, `/api/notifications/count`, or `/api/chunks/stale/count`,
-/// which are single objects rather than lists at all.
+/// `/api/stats` or `/api/notifications/count` (single objects rather than
+/// lists), nor `/api/chunks/stale/count` (a bare number as `text/plain`).
 #[test]
 fn is_order_undefined_in_node_covers_exactly_the_five_unordered_lists() {
     for path in [
