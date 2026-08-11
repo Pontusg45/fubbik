@@ -352,6 +352,120 @@ Carrying 2b's lessons forward, plus one new obligation:
   had survived two phases as a carried item. What remains for the graph domain is the `/api/graph`
   endpoints themselves, not the projection.
 
+## Outcome
+
+Delivered: all three domains, **41 endpoints — zero omissions**, verified by counting both
+stacks' routers and cross-checking `openapi.json`. AGE is live in **both** directions after two
+phases as dead code. **586 tests** (branch-point baseline 355), plus 13 ignored cross-stack tests.
+Clippy clean at `-D warnings`, fmt clean, offline check clean, migrations byte-identical to base,
+`.sqlx` additive apart from queries whose text genuinely changed, and `apps/web` **and**
+`packages/` byte-identical with the web type check at zero errors.
+
+### The premises that held, and the two that did not
+
+Collections-style luck did not repeat. **Plans is 29 endpoints, not the 10 a `routes.ts`-only
+reading suggests** — sibling route files carry the rest, the same trap that under-counted
+`requirements` earlier. Any estimate derived from `routes.ts` alone is wrong.
+
+Two spec claims were falsified during planning, both by reading source rather than trusting
+summaries:
+
+1. **"Only `scan-impact` needs AGE."** Wrong: `search/service.ts:24` declares
+   `GRAPH_FIELDS = {near, path, affected-by, similar-to}`. Search is chunk-only in *response
+   shape*, not in implementation.
+2. **"Search ships whole, with no divergence."** Wrong, and it hid a cross-user read — see #20.
+
+### Divergences introduced by this slice
+
+12. **Mark-done and unblock are atomic.** Node issues them as two independent effects; a failure
+    between leaves a task `done` with dependents still `blocked`. Only dependents in exactly
+    `blocked` move to `pending`.
+13. **The plans domain gets ownership enforcement across 26 of 29 endpoints.**
+    `packages/db/src/repository/plan.ts:145-150` selects by id alone, so **any authenticated user
+    can read and write any other user's plan** — its tasks, analyze items, links. Only
+    `GET /plans` filters by owner, hiding the data from browsing while leaving it reachable.
+14. `dismissStaleFlag` gains an ownership guard; Node lets any user dismiss any flag by id.
+15. `suppress_duplicate` gains one too, on **both** the chunk and the related chunk.
+16. The raw `pg` `QueryResult` bodies are trimmed from 9 keys to 5, dropping internal driver
+    fields (`_types` embeds a live OID registry). Unobservable: the web app discards these bodies.
+17. **Autocomplete title lookups are user-scoped.** `chunk.ts:586-594` has no `userId` filter, and
+    `autocomplete` passes `userId` only to the `tag` branch — so Node returns **any user's chunk
+    and requirement titles from a nav-bar keystroke**, with the correctly-scoped `tag` branch
+    sitting right beside the unscoped ones.
+18. The `path:` clause **works**. Node's is dead code: `service.ts:97` splits `clause.value` on a
+    comma, but the parser only ever puts the `from` endpoint there, so `if (chunkA && chunkB)`
+    never passes.
+19. **`scan-impact`'s ripple targets are scoped to the caller.** Node writes staleness flags on
+    every chunk the graph traversal reaches, including other users', and its dedupe pre-filter
+    joins on the *caller's* `user_id` — so cross-user targets were re-flagged on every run,
+    accumulating without bound on someone else's data.
+20. **`POST /api/search/query` stays user-scoped when a graph clause resolves.**
+    `search/service.ts:145-157` issues a second `listChunks({limit, offset})` with **no `userId`**,
+    and `chunk.ts:36` (`params.userId ? [...] : []`) drops the ownership predicate entirely — so
+    Node can return another user's chunks. This is also a result-set change, not only a security
+    one: Node post-filters an already-paginated page and back-fills, Rust filters in SQL, so the
+    same query yields different chunks and a different `total`. **Invisible to the harness**,
+    which is GET-only while `/search/query` is POST.
+21. `POST /api/search/query` clamps `limit` to 100. Node has **no cap** on that path — search
+    bypasses the chunks service where the cap lives. Also pinned: `limit:0` → Node 0 rows, Rust 1
+    (the clamp's lower bound); `offset:-1` → Node degrades to empty, Rust returns page 1.
+
+**#11 resolved**: the chunk-list clamp aligned 500 → 100, landing with a harness case at
+`?limit=200` — above both caps, which is why the divergence had survived three phases invisible
+to a harness whose only limit case was `?limit=5`.
+
+### The finding that outlived the slice
+
+**A test that cannot fail has verified nothing, and "a test exists" is a different claim from
+"a test protects the invariant."** Divergence #12 went unprotected across three consecutive
+attempts: shipped with no test, then "fixed" by a doc comment citing a test that did not exist,
+then "fixed" by a test that never called the production wrapper — breaking atomicity in the real
+function left all 52 tests green. It was closed only when the acceptance criterion changed from
+*is there a test?* to *does it go red when I break the thing?*
+
+The same shape recurred three more ways: a degradation test using `unwrap_or_default()`, which
+cannot distinguish `Ok(vec![])` from `Err`; the `?limit=5` harness case sitting below both caps;
+and two divergence-#19 tests that returned early when AGE was absent — silently voiding the proof
+of the guarantee they existed to establish.
+
+**And fixing the noticed instance is not fixing the class.** The `unwrap_or_default()` diagnosis
+was correct and applied to one function while three siblings kept the identical branch untested.
+
+**Enumeration found what spot-checking did not, every time**: three missing `id` tiebreakers, two
+unguarded functions, and nine guards with no repo-level test — none surfaced by reviewing what a
+brief happened to name.
+
+### Carried forward
+
+- **`GET /api/activity` now compares real data.** Node's four plan-level `activity_log` writes are
+  ported, so the two stacks no longer desynchronise permanently after a plan mutation.
+- The `$$` hazard in `age.rs` is **not exploitable** — every caller embeds input inside a quoted
+  Cypher literal and `esc_cypher` escapes every `'`, so a breakout always leaves an unterminated
+  literal that Postgres rejects at parse time. Still worth escaping, because that reasoning holds
+  only while every caller keeps input inside a literal.
+- The limit-clamp harness case passes **vacuously against live data** until the knowledge base
+  exceeds 100 chunks; the property is proven by a controlled synthetic dataset.
+- `scripts/differential.sh` leaks `DATABASE_URL` into the `cargo test` compile, breaking sqlx's
+  macro checks — a tooling bug whose symptom looks like a code error.
+- The dev-user bootstrap is unported across the whole port (safe warn-and-skip).
+- 404 casing splits by domain, pinned by `error_responses.rs:161`. Carried from 2b, now with
+  `/api/chunks` self-inconsistent: `scan-impact` emits `Chunk`, `GET /api/chunks/{id}` emits
+  `chunk`.
+
+### The live differential run
+
+10 passed, 3 failed. Two are divergence #6 (tie ordering). The third is **a Node bug**:
+`/api/plans` returns `lastActivityAt` as `.780Z` where the database holds `.782149` and Node's own
+documented rule (`plan.ts:140`) should select `.782`. Reproducible across three calls. **Rust
+matches the database; Node does not.** Recorded, not fixed.
+
+Three live runs, three real findings: 2a found the tied-timestamp ordering bug in both stacks, 2b
+found two #6 instances, 2c found a Node correctness bug the port would otherwise have been blamed
+for.
+
+**The harness diffs GET endpoints only and runs as a single user**, so it cannot see divergences
+#13, #14, #15, #17, #19 or #20 at all. A clean run is not parity.
+
 ## What this slice does NOT deliver
 
 The web app will be *able* to boot on Rust; it will not have been migrated. That is deliberate
