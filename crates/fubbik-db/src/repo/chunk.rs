@@ -444,7 +444,20 @@ pub async fn list(pool: &PgPool, user_id: &str, params: &ListParams) -> AppResul
         Sort::Updated => " ORDER BY updated_at DESC, id ASC",
     });
 
-    qb.push(" LIMIT ").push_bind(params.limit.clamp(1, 500));
+    // Clamped to 100, the same cap `chunks::dto::ListChunksQuery::into_params`
+    // applies before `GET /api/chunks` ever reaches here (divergence #11).
+    // This clamp is the *only* one `POST /api/search/query` hits — nothing
+    // upstream in `search::service::build_list_params` pre-clamps — so this
+    // single line is the shared cap for both chunk-listing endpoints.
+    // Deliberately still a floor of 1, not 0: `limit: 0` clamps *up* to 1
+    // row, matching this port's existing (documented) lower-bound
+    // behaviour, not "no rows" — see `chunk_list_limit_is_clamped_identically_above_both_caps`
+    // (`fubbik-api/tests/differential.rs`) and `query_limit_is_clamped_to_100`
+    // (`fubbik-api/tests/search.rs`) for the pinned cases. Node has no cap on
+    // the search path at all (search bypasses the chunks service where the
+    // 100-cap lives), so `limit: 1000` is a documented divergence: Node
+    // returns 1000 rows, this port 100.
+    qb.push(" LIMIT ").push_bind(params.limit.clamp(1, 100));
     qb.push(" OFFSET ").push_bind(params.offset.max(0));
 
     let rows = qb.build_query_as::<Chunk>().fetch_all(pool).await?;

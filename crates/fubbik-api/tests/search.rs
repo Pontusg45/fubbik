@@ -223,6 +223,41 @@ async fn query_never_returns_another_users_chunks(pool: sqlx::PgPool) {
     assert_eq!(titles, vec!["Alice's chunk"]);
 }
 
+/// User decision (Phase 2c final review, Fix 2): align `POST
+/// /api/search/query`'s limit clamp to the same 100 cap `GET /api/chunks`
+/// applies (`chunks::dto::ListChunksQuery::into_params`, divergence #11) —
+/// both chunk-listing endpoints now share one cap, enforced at
+/// `chunk::list`'s own `LIMIT` clause (`crates/fubbik-db/src/repo/chunk.rs`),
+/// which is the *only* clamp `search::service::build_list_params` ever hits
+/// (nothing pre-clamps upstream the way `GET /api/chunks` does). Node has no
+/// cap on the search path at all, so `limit: 1000` is a documented
+/// divergence going forward: Node returns every matching row, this port 100.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn query_limit_is_clamped_to_100(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool.clone()));
+    let cookie = signup(app.clone(), "query-limit-cap@b.test", "L").await;
+    let uid = user_id_for_email(&pool, "query-limit-cap@b.test").await;
+
+    for i in 0..105 {
+        seed_chunk(&pool, &uid, &format!("Chunk {i}"), "content").await;
+    }
+
+    let res = post(
+        app,
+        "/api/search/query",
+        &cookie,
+        serde_json::json!({"clauses": [], "limit": 1000}),
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = json_body(res).await;
+    assert_eq!(
+        body["chunks"].as_array().unwrap().len(),
+        100,
+        "limit: 1000 must clamp down to 100, matching GET /api/chunks's own cap"
+    );
+}
+
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn query_connections_gte_filters_by_connection_count(pool: sqlx::PgPool) {
     let app = fubbik_api::router(state(pool.clone()));
