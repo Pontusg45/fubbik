@@ -7,6 +7,7 @@ fn dev_state(pool: sqlx::PgPool) -> fubbik_api::AppState {
     fubbik_api::AppState {
         pool,
         implicit_dev_session: true,
+        better_auth_secret: "test-secret".into(),
     }
 }
 
@@ -70,6 +71,7 @@ async fn unauthenticated_request_is_401(pool: sqlx::PgPool) {
     let app = fubbik_api::router(fubbik_api::AppState {
         pool,
         implicit_dev_session: false,
+        better_auth_secret: "test-secret".into(),
     });
 
     let res = app

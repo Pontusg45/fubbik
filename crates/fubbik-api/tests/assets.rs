@@ -7,6 +7,7 @@ async fn unknown_api_path_is_404_not_spa_fallback(pool: sqlx::PgPool) {
     let app = fubbik_api::router(fubbik_api::AppState {
         pool,
         implicit_dev_session: true,
+        better_auth_secret: "test-secret".into(),
     });
 
     let res = app

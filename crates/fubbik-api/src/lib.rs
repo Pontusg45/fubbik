@@ -30,6 +30,10 @@ use crate::error::ApiResult;
 pub struct AppState {
     pub pool: PgPool,
     pub implicit_dev_session: bool,
+    /// `BETTER_AUTH_SECRET`, resolved once at startup — never read from the
+    /// environment per request. Used to verify the HMAC signature on
+    /// better-auth's session cookies (see `auth::better_auth_cookie`).
+    pub better_auth_secret: String,
 }
 
 /// Deliberately unauthenticated and not utoipa-annotated — it's an

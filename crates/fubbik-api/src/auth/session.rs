@@ -4,10 +4,22 @@ use axum_extra::extract::CookieJar;
 use fubbik_core::error::AppError;
 use fubbik_db::repo::{session, user};
 
+use super::better_auth_cookie;
 use crate::AppState;
 use crate::error::ApiError;
 
 pub const COOKIE_NAME: &str = "fubbik_session";
+
+/// better-auth's own cookie name. HMAC-signed as `${rawToken}.${signature}`
+/// — must be run through `better_auth_cookie::verify` before the raw token
+/// inside it can be looked up.
+pub const BETTER_AUTH_COOKIE_NAME: &str = "better-auth.session_token";
+
+/// The `__Secure-` prefixed variant better-auth uses when `BETTER_AUTH_URL`
+/// is `https://`. This is chosen by the URL scheme, not `NODE_ENV`, so the
+/// server cannot predict which one a given browser will send — both names
+/// are accepted unconditionally.
+pub const BETTER_AUTH_SECURE_COOKIE_NAME: &str = "__Secure-better-auth.session_token";
 
 /// Extractor yielding the authenticated user, or rejecting with 401.
 pub struct CurrentUser(pub user::User);
@@ -20,6 +32,16 @@ impl FromRequestParts<AppState> for CurrentUser {
         state: &AppState,
     ) -> Result<Self, Self::Rejection> {
         let jar = CookieJar::from_headers(&parts.headers);
+
+        for name in [BETTER_AUTH_COOKIE_NAME, BETTER_AUTH_SECURE_COOKIE_NAME] {
+            if let Some(cookie) = jar.get(name)
+                && let Some(raw_token) =
+                    better_auth_cookie::verify(cookie.value(), &state.better_auth_secret)
+                && let Some(u) = session::find_valid(&state.pool, &raw_token).await?
+            {
+                return Ok(CurrentUser(u));
+            }
+        }
 
         if let Some(cookie) = jar.get(COOKIE_NAME)
             && let Some(u) = session::find_valid(&state.pool, cookie.value()).await?

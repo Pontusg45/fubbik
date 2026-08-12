@@ -98,6 +98,8 @@ async fn main() -> anyhow::Result<()> {
         Commands::Serve { port, host } => {
             let database_url = std::env::var("DATABASE_URL")
                 .map_err(|_| anyhow::anyhow!("DATABASE_URL is required"))?;
+            let better_auth_secret = std::env::var("BETTER_AUTH_SECRET")
+                .map_err(|_| anyhow::anyhow!("BETTER_AUTH_SECRET is required"))?;
             let node_env = std::env::var("NODE_ENV").ok();
             let explicit_flag =
                 std::env::var("FUBBIK_IMPLICIT_DEV_SESSION").as_deref() == Ok("true");
@@ -129,6 +131,7 @@ async fn main() -> anyhow::Result<()> {
             let state = fubbik_api::AppState {
                 pool,
                 implicit_dev_session,
+                better_auth_secret,
             };
 
             let cors = tower_http::cors::CorsLayer::new()

@@ -9,6 +9,7 @@ fn state(pool: sqlx::PgPool) -> fubbik_api::AppState {
     fubbik_api::AppState {
         pool,
         implicit_dev_session: false,
+        better_auth_secret: "test-secret".into(),
     }
 }
 
@@ -16,6 +17,7 @@ fn state_dev(pool: sqlx::PgPool) -> fubbik_api::AppState {
     fubbik_api::AppState {
         pool,
         implicit_dev_session: true,
+        better_auth_secret: "test-secret".into(),
     }
 }
 
