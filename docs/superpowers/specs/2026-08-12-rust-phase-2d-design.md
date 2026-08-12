@@ -61,10 +61,16 @@ emits `dist/client/` (assets + `robots.txt`) and `dist/server/entry-server.js`, 
 **Sessions do not interoperate.** Two independent breaks:
 1. Rust reads cookie `fubbik_session` (`crates/fubbik-api/src/auth/session.rs:10`); better-auth
    writes `better-auth.session_token`.
-2. better-auth **signs** the value — `${rawToken}.${base64url(HMAC-SHA256(rawToken, secret))}` —
+2. better-auth **signs** the value — `${rawToken}.${base64(HMAC-SHA256(rawToken, secret))}` —
    while Rust passes the whole cookie verbatim to `session::find_valid`, which does
    `WHERE s.token = $1` against a column holding only the raw token
    (`crates/fubbik-db/src/repo/session.rs:28-40`). It can never match.
+
+   **Correction, caught while extracting values for the plan:** an earlier draft of this spec
+   said `base64url`. It is **standard base64, padded** — `better-call/dist/crypto.mjs` signs with
+   `btoa(...)`, and its own verifier (`context.mjs:48`) requires the signature to be exactly 44
+   characters ending in `=`, which base64url never produces. That error was load-bearing: a
+   verifier built on it would reject every valid session while looking correct.
 
 Rust's `crates/fubbik-api/src/auth/routes.rs` is a full parallel implementation — its own
 sign-up/sign-in/sign-out, Argon2id where better-auth uses scrypt, and a flat user response where
