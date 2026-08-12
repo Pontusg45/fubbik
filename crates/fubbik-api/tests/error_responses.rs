@@ -19,7 +19,11 @@ fn dev_state(pool: sqlx::PgPool) -> fubbik_api::AppState {
 }
 
 async fn seed_dev_user(pool: &sqlx::PgPool) {
-    fubbik_db::repo::user::create(pool, "dev@localhost", "Dev", None)
+    // The canonical bootstrap, not a bare `user::create`: the implicit-dev
+    // fallback now looks the row up by the fixed `id = "dev-user"`
+    // (matching Node's `IMPLICIT_DEV_USER_ID`), so a same-email row under
+    // an arbitrary id is no longer an equivalent fixture.
+    fubbik_db::repo::user::ensure_implicit_dev_user(pool)
         .await
         .unwrap();
 }

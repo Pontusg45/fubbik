@@ -1,5 +1,4 @@
 pub mod activity;
-pub mod assets;
 pub mod auth;
 pub mod chunks;
 pub mod collections;
@@ -67,5 +66,4 @@ pub fn router(state: AppState) -> Router {
         .merge(workspaces::routes::router())
         .route("/api/health", get(health))
         .with_state(state)
-        .fallback(assets::serve)
 }

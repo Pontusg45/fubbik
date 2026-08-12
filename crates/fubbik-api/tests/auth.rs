@@ -243,9 +243,14 @@ async fn get_session_with_garbage_cookie_is_unauthorized_not_500(pool: sqlx::PgP
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn get_session_falls_back_to_dev_user_when_no_cookie(pool: sqlx::PgPool) {
-    user::create(&pool, DEV_EMAIL, "Dev User", None)
-        .await
-        .unwrap();
+    // Seeded via the canonical bootstrap, not `user::create`: the fallback
+    // now enforces the fixed `id = "dev-user"` invariant (matching Node's
+    // `IMPLICIT_DEV_USER_ID`), so a same-email row under an arbitrary id —
+    // what `user::create` would produce — is no longer an equivalent
+    // fixture; it would collide with the bootstrap's own insert on the
+    // `email` unique constraint, same failure mode Node's
+    // `onConflictDoNothing({ target: user.id })` has for the same reason.
+    user::ensure_implicit_dev_user(&pool).await.unwrap();
 
     let app = fubbik_api::router(state_dev(pool));
     let res = app
@@ -262,8 +267,13 @@ async fn get_session_falls_back_to_dev_user_when_no_cookie(pool: sqlx::PgPool) {
     assert_eq!(json["email"], DEV_EMAIL);
 }
 
+/// Was `..._401s_when_dev_user_missing`: on an unseeded database the
+/// fallback used to 401 rather than create its own user row. That was the
+/// exact bug `user::ensure_implicit_dev_user` fixes — see
+/// `dev_user_bootstrap.rs` for the dedicated regression coverage — so this
+/// pre-existing test's expected status flips from 401 to 200 along with it.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
-async fn get_session_dev_fallback_401s_when_dev_user_missing(pool: sqlx::PgPool) {
+async fn get_session_dev_fallback_creates_dev_user_when_missing(pool: sqlx::PgPool) {
     let app = fubbik_api::router(state_dev(pool));
     let res = app
         .oneshot(
@@ -273,7 +283,10 @@ async fn get_session_dev_fallback_401s_when_dev_user_missing(pool: sqlx::PgPool)
         )
         .await
         .unwrap();
-    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+    assert_eq!(res.status(), StatusCode::OK);
+
+    let json = json_body(res).await;
+    assert_eq!(json["email"], DEV_EMAIL);
 }
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
