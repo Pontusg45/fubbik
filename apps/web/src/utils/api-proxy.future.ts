@@ -13,27 +13,22 @@
 //
 // Why it is NOT wired in (originally attempted in a51c380, then reverted):
 //
-//   1. This repo sets `noUncheckedIndexedAccess: true` in
-//      `packages/config/tsconfig.base.json`. Dot-access through an index
-//      signature (which the generated `paths` type and this Proxy's
-//      recursive `Client` type both rely on) yields `| undefined`, so
-//      `api.api.chunks` is "possibly undefined" everywhere it's used. Not
-//      fixable without `any` or editing every call site.
-//   2. More fundamentally: the web app calls 27 API domains (activity, ai,
-//      chunks, collections, connections, context, density, documents,
-//      favorites, features, graph, health, matrices, notifications, plans,
-//      proposals, requirements, search, settings, spaces, stats, tags,
-//      templates, timeline, vocabulary, workspaces). The Rust backend
-//      currently implements exactly ONE of them (chunks). `openapi.json`
-//      has no types for the other 26 regardless of how the client is shaped.
+//   1. [RESOLVED] This repo sets `noUncheckedIndexedAccess: true` in
+//      `packages/config/tsconfig.base.json`. An index-signature-based
+//      `Client` type made every property access `| undefined`. Fixed by
+//      deriving `Client` from the generated `paths` via literal
+//      template-string matching (`./api-client-types.ts`) instead of an
+//      index signature — see `BuildNode` there.
+//   2. Still open: the web app calls ~27 API domains. The Rust backend's
+//      `openapi.json` currently covers 14 (activity, chunks, collections,
+//      connections, favorites, notifications, plans, search, settings,
+//      spaces, stats, tag-types, tags, workspaces) — the rest have no types
+//      regardless of how the client is shaped.
 //
 // What has to be true before this can be adopted:
-//   - The Rust backend implements the API domains the web app actually uses
-//     (or the web app is migrated domain-by-domain against a hybrid setup).
-//   - The `noUncheckedIndexedAccess` interaction is solved (either by a
-//     typing approach that doesn't route through an index signature, or by
-//     accepting/annotating the possibly-undefined access at call sites) —
-//     WITHOUT weakening the shared `noUncheckedIndexedAccess` config.
+//   - The Rust backend implements the remaining API domains the web app
+//     uses (or the web app is migrated domain-by-domain against a hybrid
+//     setup).
 //
 // When ready: rename this file back to `api.ts` (replacing the Eden
 // client), rename `api-proxy.future.test.ts` back to `api.test.ts`, and
@@ -41,6 +36,7 @@
 
 import { env } from "@fubbik/env/web";
 
+import type { Client } from "./api-client-types";
 import type { paths } from "./api-types";
 
 type Method = "get" | "post" | "patch" | "put" | "delete";
@@ -64,20 +60,11 @@ type PathSegments<P extends string> = P extends `/${infer Head}/${infer Rest}`
       ? [Last]
       : [];
 
-// Declared as an `interface` (not a `type` alias) so the self-reference
-// resolves consistently across module boundaries — with a recursive type
-// alias, tsgo's cross-file inference collapses the intersection and loses
-// the index signature branch, turning every property access into a hard
-// "does not exist" error instead of the expected `noUncheckedIndexedAccess`
-// possibly-undefined warning.
-interface Client {
-    [segment: string]: Client & ((params: Record<string, string>) => Client) & {
-        [M in Method]: (
-            body?: unknown,
-            options?: { query?: Record<string, string | undefined> }
-        ) => Promise<EdenLikeResponse<unknown>>;
-    };
-}
+// `Client` is derived from the generated OpenAPI `paths` by literal
+// template-string matching (see `./api-client-types.ts`), producing literal
+// keys instead of an index signature — so `noUncheckedIndexedAccess` never
+// applies here; an unknown segment is a hard "does not exist" error instead
+// of "possibly undefined" everywhere.
 
 function buildUrl(base: string, segments: string[], query?: Record<string, string | undefined>): string {
     const path = segments.join("/");
