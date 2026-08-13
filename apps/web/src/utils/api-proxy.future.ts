@@ -124,7 +124,7 @@ export function createClient(base: string): Client {
     return make([]) as Client;
 }
 
-export const api = createClient(env.VITE_SERVER_URL);
+export const api = createClient(env.VITE_API_URL);
 
 // Referenced so the generated types participate in type-checking even
 // though the Proxy is dynamically typed at the boundary.

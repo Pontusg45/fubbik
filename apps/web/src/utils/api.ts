@@ -51,12 +51,10 @@ import { createClient } from "./api-proxy.future";
 // the route doesn't exist (or isn't complete) on Rust yet — even though
 // `chunks` as a whole is ported.
 //
-// `VITE_API_URL` (a dedicated URL for the Rust API) doesn't exist yet —
-// it's added in a later task. Until then both clients point at
-// `VITE_SERVER_URL`; `api`'s requests are routed to Rust at the reverse
-// proxy / dev-server level. Once `VITE_API_URL` exists, swap `api`'s base
-// below to it.
-export const api = createClient(env.VITE_SERVER_URL);
+// `api` hits the Rust server directly via `VITE_API_URL` (port 3100 by
+// default). `legacyApi` stays on `VITE_SERVER_URL` (Node, port 3000), which
+// also keeps serving SSR and authentication for the whole app.
+export const api = createClient(env.VITE_API_URL);
 
 export const legacyApi = treaty<Api>(env.VITE_SERVER_URL, {
     fetch: { credentials: "include" }
