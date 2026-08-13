@@ -13,7 +13,7 @@ import { StepBuilder } from "@/features/requirements/step-builder";
 import { validateSteps, type Keyword, type StepRow, type StepError } from "@/features/requirements/validation";
 import { useActiveSpace } from "@/features/spaces/use-active-space";
 import { getUser } from "@/functions/get-user";
-import { api } from "@/utils/api";
+import { legacyApi } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 export const Route = createFileRoute("/requirements_/new")({
@@ -64,7 +64,7 @@ function NewRequirement() {
                 description: aiDescription.trim()
             };
             if (spaceId) body.spaceId = spaceId;
-            const result = unwrapEden(await api.api.ai["structure-requirement"].post(body)) as {
+            const result = unwrapEden(await legacyApi.api.ai["structure-requirement"].post(body)) as {
                 steps: Array<{ keyword: Keyword; text: string }>;
             };
             return result;
@@ -86,7 +86,7 @@ function NewRequirement() {
             try {
                 const query: { spaceId?: string } = {};
                 if (spaceId) query.spaceId = spaceId;
-                const result = unwrapEden(await api.api["use-cases"].get({ query })) as Array<{ id: string; name: string }>;
+                const result = unwrapEden(await legacyApi.api["use-cases"].get({ query })) as Array<{ id: string; name: string }>;
                 return result ?? [];
             } catch {
                 return [];
@@ -132,7 +132,7 @@ function NewRequirement() {
             if (spaceId) body.spaceId = spaceId;
             if (useCaseId) body.useCaseId = useCaseId;
 
-            const result = unwrapEden(await api.api.requirements.post(body)) as unknown as {
+            const result = unwrapEden(await legacyApi.api.requirements.post(body)) as unknown as {
                 requirement: { id: string };
                 warnings: Array<{ step: number; type: string; reference: string }>;
             };
@@ -140,7 +140,7 @@ function NewRequirement() {
             // Link chunks if any selected
             if (selectedChunkIds.length > 0) {
                 try {
-                    await api.api.requirements({ id: result.requirement.id }).chunks.put({
+                    await legacyApi.api.requirements({ id: result.requirement.id }).chunks.put({
                         chunkIds: selectedChunkIds
                     });
                 } catch {

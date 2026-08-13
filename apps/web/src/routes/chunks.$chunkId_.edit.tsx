@@ -15,7 +15,7 @@ import { loadDraft, useAutosave } from "@/features/chunks/use-autosave";
 import { MarkdownEditor } from "@/features/editor/markdown-editor";
 import { useActiveFeatures } from "@/features/feature-flags/use-active-features";
 import { getUser } from "@/functions/get-user";
-import { api } from "@/utils/api";
+import { api, legacyApi } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 export const Route = createFileRoute("/chunks/$chunkId_/edit")({
@@ -125,7 +125,7 @@ function EditChunk() {
 
     const { data: featuresData } = useQuery({
         queryKey: ["features"],
-        queryFn: async () => unwrapEden(await api.api.features.get({ query: {} })),
+        queryFn: async () => unwrapEden(await legacyApi.api.features.get({ query: {} })),
         staleTime: 60_000
     });
 

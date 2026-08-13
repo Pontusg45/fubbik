@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 
 import { AlphabeticalIndex } from "@/features/browse/alphabetical-index";
 import { TagCloud } from "@/features/browse/tag-cloud";
-import { api } from "@/utils/api";
+import { api, legacyApi } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 export const Route = createFileRoute("/browse")({
@@ -21,7 +21,7 @@ function BrowsePage() {
 
     const graphQuery = useQuery({
         queryKey: ["browse-graph-tags"],
-        queryFn: async () => unwrapEden(await api.api.graph.get({ query: {} })),
+        queryFn: async () => unwrapEden(await legacyApi.api.graph.get({ query: {} })),
         enabled: view === "tags"
     });
 

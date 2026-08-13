@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { PageContainer, PageEmpty, PageHeader, PageLoading } from "@/components/ui/page";
 import { getUser } from "@/functions/get-user";
 import { useApiQuery } from "@/hooks/use-api-query";
-import { api } from "@/utils/api";
+import { legacyApi } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 export const Route = createFileRoute("/matrices")({
@@ -50,13 +50,13 @@ function MatricesPage() {
 
     const matricesQuery = useApiQuery<Matrix[]>({
         queryKey: ["matrices"],
-        queryFn: () => api.api.matrices.get({ query: {} }),
+        queryFn: () => legacyApi.api.matrices.get({ query: {} }),
         fallback: []
     });
 
     const createMutation = useMutation({
         mutationFn: async (body: { name: string; layer: "invariant" | "contract"; description?: string }) =>
-            unwrapEden(await api.api.matrices.post(body)),
+            unwrapEden(await legacyApi.api.matrices.post(body)),
         onSuccess: data => {
             queryClient.invalidateQueries({ queryKey: ["matrices"] });
             setShowCreate(false);

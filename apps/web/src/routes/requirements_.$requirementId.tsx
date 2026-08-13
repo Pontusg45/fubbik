@@ -17,7 +17,7 @@ import { StepBuilder } from "@/features/requirements/step-builder";
 import { validateSteps, type Keyword, type StepRow, type StepError } from "@/features/requirements/validation";
 import { useActiveSpace } from "@/features/spaces/use-active-space";
 import { getUser } from "@/functions/get-user";
-import { api } from "@/utils/api";
+import { legacyApi } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 export const Route = createFileRoute("/requirements_/$requirementId")({
@@ -75,7 +75,7 @@ function RequirementDetail() {
     const { data, isLoading, error } = useQuery({
         queryKey: ["requirement", requirementId],
         queryFn: async () => {
-            const res = await api.api.requirements({ id: requirementId }).get();
+            const res = await legacyApi.api.requirements({ id: requirementId }).get();
             if (res.error) throw new Error("Failed to fetch");
             return res.data as Record<string, unknown>;
         }
@@ -86,14 +86,14 @@ function RequirementDetail() {
         queryFn: async () => {
             const query: { spaceId?: string } = {};
             if (spaceId) query.spaceId = spaceId;
-            return unwrapEden(await api.api["use-cases"].get({ query })) as Array<{ id: string; name: string }>;
+            return unwrapEden(await legacyApi.api["use-cases"].get({ query })) as Array<{ id: string; name: string }>;
         },
         enabled: editing
     });
 
     const statusMutation = useMutation({
         mutationFn: async (status: Status) => {
-            return unwrapEden(await api.api.requirements({ id: requirementId }).status.patch({ status }));
+            return unwrapEden(await legacyApi.api.requirements({ id: requirementId }).status.patch({ status }));
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["requirement", requirementId] });
@@ -105,7 +105,7 @@ function RequirementDetail() {
 
     const reviewMutation = useMutation({
         mutationFn: async (reviewStatus: "reviewed" | "approved") => {
-            return unwrapEden(await api.api.requirements({ id: requirementId }).patch({ reviewStatus }));
+            return unwrapEden(await legacyApi.api.requirements({ id: requirementId }).patch({ reviewStatus }));
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["requirement", requirementId] });
@@ -116,7 +116,7 @@ function RequirementDetail() {
 
     const deleteMutation = useMutation({
         mutationFn: async () => {
-            return unwrapEden(await api.api.requirements({ id: requirementId }).delete());
+            return unwrapEden(await legacyApi.api.requirements({ id: requirementId }).delete());
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["requirements"] });
@@ -138,12 +138,12 @@ function RequirementDetail() {
             if (stepsChanged) body.steps = editSteps.map(s => ({ keyword: s.keyword, text: s.text.trim() }));
 
             if (Object.keys(body).length > 0) {
-                await unwrapEden(await api.api.requirements({ id: requirementId }).patch(body));
+                await unwrapEden(await legacyApi.api.requirements({ id: requirementId }).patch(body));
             }
 
             const chunksChanged = JSON.stringify([...editChunkIds].sort()) !== JSON.stringify(chunks.map(c => c.id).sort());
             if (chunksChanged) {
-                await unwrapEden(await api.api.requirements({ id: requirementId }).chunks.put({ chunkIds: editChunkIds }));
+                await unwrapEden(await legacyApi.api.requirements({ id: requirementId }).chunks.put({ chunkIds: editChunkIds }));
             }
         },
         onSuccess: () => {
@@ -179,7 +179,7 @@ function RequirementDetail() {
 
     async function handleExport(format: "gherkin" | "vitest" | "markdown") {
         try {
-            const result = unwrapEden(await api.api.requirements({ id: requirementId }).export.get({ query: { format } }));
+            const result = unwrapEden(await legacyApi.api.requirements({ id: requirementId }).export.get({ query: { format } }));
             const text = typeof result === "string" ? result : JSON.stringify(result, null, 2);
             await navigator.clipboard.writeText(text);
             toast.success(`${format.charAt(0).toUpperCase() + format.slice(1)} copied to clipboard`);

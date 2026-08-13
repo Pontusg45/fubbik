@@ -10,7 +10,7 @@ import { PageContainer, PageHeader } from "@/components/ui/page";
 import { Separator } from "@/components/ui/separator";
 import { useActiveSpace } from "@/features/spaces/use-active-space";
 import { getUser } from "@/functions/get-user";
-import { api } from "@/utils/api";
+import { legacyApi } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 export const Route = createFileRoute("/timeline")({
@@ -61,7 +61,7 @@ function TimelinePage() {
         queryFn: async () => {
             const query: Record<string, string> = { range };
             if (spaceId) query.spaceId = spaceId;
-            return unwrapEden(await api.api.timeline.get({ query }));
+            return unwrapEden(await legacyApi.api.timeline.get({ query }));
         }
     });
 

@@ -8,7 +8,7 @@ import { Card, CardPanel } from "@/components/ui/card";
 import { PageContainer, PageHeader } from "@/components/ui/page";
 import { useActiveSpace } from "@/features/spaces/use-active-space";
 import { getUser } from "@/functions/get-user";
-import { api } from "@/utils/api";
+import { legacyApi } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 export const Route = createFileRoute("/density")({
@@ -51,7 +51,7 @@ function DensityPage() {
         queryFn: async () => {
             const query: Record<string, string> = {};
             if (spaceId) query.spaceId = spaceId;
-            return unwrapEden(await api.api.density.get({ query }));
+            return unwrapEden(await legacyApi.api.density.get({ query }));
         }
     });
 

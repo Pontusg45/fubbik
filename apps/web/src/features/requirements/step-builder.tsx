@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { Keyword, StepRow, StepError } from "@/features/requirements/validation";
-import { api } from "@/utils/api";
+import { legacyApi } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 type VocabCategory = "actor" | "action" | "target" | "outcome" | "state" | "modifier";
@@ -91,7 +91,7 @@ export function StepBuilder({ steps, onStepsChange, spaceId: spaceId, stepErrors
 
             debounceTimers.current[stepIndex] = setTimeout(async () => {
                 try {
-                    const result = unwrapEden(await api.api.vocabulary.parse.post({ text, spaceId })) as ParseResult;
+                    const result = unwrapEden(await legacyApi.api.vocabulary.parse.post({ text, spaceId })) as ParseResult;
                     setParseResults(prev => ({ ...prev, [stepIndex]: result }));
                 } catch {
                     // Silently ignore parse errors
@@ -112,7 +112,7 @@ export function StepBuilder({ steps, onStepsChange, spaceId: spaceId, stepErrors
 
     const addWordMutation = useMutation({
         mutationFn: async (body: { word: string; category: VocabCategory; expects?: string[]; spaceId: string }) => {
-            return unwrapEden(await api.api.vocabulary.post(body));
+            return unwrapEden(await legacyApi.api.vocabulary.post(body));
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["vocabulary", spaceId] });

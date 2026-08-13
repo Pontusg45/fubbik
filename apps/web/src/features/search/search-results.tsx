@@ -11,7 +11,7 @@ import { Separator } from "@/components/ui/separator";
 import { SkeletonList } from "@/components/ui/skeleton-list";
 import { PathView } from "@/features/search/path-view";
 import { SearchGraph } from "@/features/search/search-graph";
-import { api } from "@/utils/api";
+import { api, legacyApi } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 interface GraphContext {
@@ -117,7 +117,7 @@ function SearchBulkActionBar({ selectedIds, onClear }: BulkActionBarProps) {
     const reqSearchQuery = useQuery({
         queryKey: ["requirements", "search-bulk", reqSearch],
         queryFn: async () => {
-            const result = unwrapEden(await api.api.requirements.get({ query: { search: reqSearch, limit: "10" } })) as {
+            const result = unwrapEden(await legacyApi.api.requirements.get({ query: { search: reqSearch, limit: "10" } })) as {
                 requirements?: Array<{ id: string; title: string }>;
             } | null;
             return result?.requirements ?? [];
@@ -128,7 +128,7 @@ function SearchBulkActionBar({ selectedIds, onClear }: BulkActionBarProps) {
     const linkRequirementMutation = useMutation({
         mutationFn: async ({ reqId, existingChunkIds }: { reqId: string; existingChunkIds: string[] }) => {
             const merged = Array.from(new Set([...existingChunkIds, ...selectedIds]));
-            const { error } = await (api.api.requirements as any)[reqId].chunks.put({ chunkIds: merged });
+            const { error } = await (legacyApi.api.requirements as any)[reqId].chunks.put({ chunkIds: merged });
             if (error) throw new Error("Failed to link requirement");
         },
         onSuccess: () => {
@@ -169,7 +169,7 @@ function SearchBulkActionBar({ selectedIds, onClear }: BulkActionBarProps) {
 
     async function handleLinkRequirement(req: { id: string; title: string }) {
         try {
-            const result = unwrapEden(await (api.api.requirements as any)[req.id].get()) as { chunkIds?: string[] } | null;
+            const result = unwrapEden(await (legacyApi.api.requirements as any)[req.id].get()) as { chunkIds?: string[] } | null;
             linkRequirementMutation.mutate({ reqId: req.id, existingChunkIds: result?.chunkIds ?? [] });
         } catch {
             linkRequirementMutation.mutate({ reqId: req.id, existingChunkIds: [] });

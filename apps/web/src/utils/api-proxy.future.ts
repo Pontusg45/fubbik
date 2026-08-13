@@ -36,17 +36,14 @@
 
 import { env } from "@fubbik/env/web";
 
-import type { Client } from "./api-client-types";
+import type { Client, EdenLikeResponse } from "./api-client-types";
 import type { paths } from "./api-types";
 
 type Method = "get" | "post" | "patch" | "put" | "delete";
 
 const METHODS: readonly string[] = ["get", "post", "patch", "put", "delete"];
 
-export interface EdenLikeResponse<T> {
-    data: T | null;
-    error: { status: number; value: unknown } | null;
-}
+export type { EdenLikeResponse };
 
 /**
  * Recursively maps the generated OpenAPI `paths` object into Eden's

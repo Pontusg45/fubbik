@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "@tanstack/react-router";
 import { createContext, useContext, useMemo, type ReactNode } from "react";
 
-import { api } from "@/utils/api";
+import { api, legacyApi } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 /* ─── Types ─── */
@@ -195,7 +195,7 @@ export function SmartLinkProvider({ children }: { children: ReactNode }) {
             try {
                 // Vocabulary requires a codebaseId — fetch without to get all.
                 // If this fails (no codebase selected), return empty.
-                const result = unwrapEden(await api.api.vocabulary.get({ query: {} as any }));
+                const result = unwrapEden(await legacyApi.api.vocabulary.get({ query: {} as any }));
                 return (result as any[]) ?? [];
             } catch {
                 return [];

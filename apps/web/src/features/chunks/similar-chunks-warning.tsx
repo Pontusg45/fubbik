@@ -2,7 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
-import { api } from "@/utils/api";
+// `chunks/check-similar` has no Rust route yet — see the "chunks" note in `@/utils/api`.
+import { legacyApi } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 interface SimilarChunksWarningProps {

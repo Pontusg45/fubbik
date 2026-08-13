@@ -24,7 +24,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { relationColor } from "@/features/chunks/relation-colors";
 import { GraphDetailPanel } from "@/features/graph/graph-detail-panel";
 import { TypedEdge } from "@/features/graph/typed-edge";
-import { api } from "@/utils/api";
+import { api, legacyApi } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 const EDGE_TYPES = { floating: TypedEdge };
@@ -140,18 +140,18 @@ function SavedGraphViewInner() {
     // Fetch saved graph
     const { data: savedGraph, isLoading: isLoadingSavedGraph } = useQuery({
         queryKey: ["saved-graphs", graphId],
-        queryFn: async () => unwrapEden(await api.api["saved-graphs"]({ id: graphId }).get()),
+        queryFn: async () => unwrapEden(await legacyApi.api["saved-graphs"]({ id: graphId }).get()),
         enabled: !!graphId
     });
 
     // Fetch full graph data (we filter to only saved chunk IDs)
     const { data: graphData, isLoading: isLoadingGraph } = useQuery({
         queryKey: ["graph"],
-        queryFn: async () => unwrapEden(await api.api.graph.get({ query: {} }))
+        queryFn: async () => unwrapEden(await legacyApi.api.graph.get({ query: {} }))
     });
 
     const deleteMutation = useMutation({
-        mutationFn: async () => unwrapEden(await api.api["saved-graphs"]({ id: graphId }).delete()),
+        mutationFn: async () => unwrapEden(await legacyApi.api["saved-graphs"]({ id: graphId }).delete()),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["saved-graphs"] });
             toast.success("Saved graph deleted");
@@ -162,7 +162,7 @@ function SavedGraphViewInner() {
     // Update positions mutation (for saving repositioned nodes)
     const updatePositionsMutation = useMutation({
         mutationFn: async (positions: Record<string, { x: number; y: number }>) => {
-            return unwrapEden(await api.api["saved-graphs"]({ id: graphId }).patch({ positions }));
+            return unwrapEden(await legacyApi.api["saved-graphs"]({ id: graphId }).patch({ positions }));
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["saved-graphs", graphId] });
@@ -173,7 +173,7 @@ function SavedGraphViewInner() {
     // Save edit changes mutation
     const saveEditMutation = useMutation({
         mutationFn: async (payload: { chunkIds: string[]; positions: Record<string, { x: number; y: number }> }) => {
-            return unwrapEden(await api.api["saved-graphs"]({ id: graphId }).patch(payload));
+            return unwrapEden(await legacyApi.api["saved-graphs"]({ id: graphId }).patch(payload));
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["saved-graphs", graphId] });

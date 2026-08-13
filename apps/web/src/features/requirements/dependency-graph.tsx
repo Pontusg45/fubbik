@@ -6,7 +6,7 @@ import { Background, Controls, ReactFlow, ReactFlowProvider, type Edge, type Nod
 import { useState, useCallback, useMemo } from "react";
 
 import { Button } from "@/components/ui/button";
-import { api } from "@/utils/api";
+import { legacyApi } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 interface DependencyGraphProps {
@@ -51,7 +51,7 @@ function DependencyGraphInner({ requirementId }: DependencyGraphProps) {
     const { data, isLoading } = useQuery({
         queryKey: ["dependency-graph", requirementId],
         queryFn: async () => {
-            return unwrapEden(await api.api.requirements({ id: requirementId }).dependencies.graph.get()) as {
+            return unwrapEden(await legacyApi.api.requirements({ id: requirementId }).dependencies.graph.get()) as {
                 nodes: GraphNode[];
                 edges: GraphEdge[];
             };

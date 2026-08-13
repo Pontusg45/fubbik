@@ -2,7 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { Compass } from "lucide-react";
 
-import { api } from "@/utils/api";
+// `chunks/{id}/neighbors` has no Rust route yet — see the "chunks" note in `@/utils/api`.
+import { legacyApi } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 interface ChunkNeighborsProps {
@@ -26,7 +27,7 @@ export function ChunkNeighbors({ chunkId }: ChunkNeighborsProps) {
     const neighborsQuery = useQuery({
         queryKey: ["chunk-neighbors", chunkId],
         queryFn: async () =>
-            unwrapEden(await api.api.chunks({ id: chunkId }).neighbors.get({ query: { k: "10" } })) as {
+            unwrapEden(await legacyApi.api.chunks({ id: chunkId }).neighbors.get({ query: { k: "10" } })) as {
                 note?: string;
                 neighbors?: Neighbor[];
             }

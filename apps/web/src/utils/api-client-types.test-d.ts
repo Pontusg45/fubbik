@@ -1,6 +1,8 @@
 import type { Client } from "./api-client-types";
 
-declare const api: { api: Client };
+// `Client` is built from `BuildNode<"">`, so it already includes the "api"
+// segment as its root child — no synthetic wrapper needed.
+declare const api: Client;
 
 // 1. plain chain (140 `.get(` sites)
 const _a = api.api.spaces.get();

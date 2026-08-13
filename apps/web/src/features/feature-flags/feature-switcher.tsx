@@ -11,7 +11,7 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
-import { api } from "@/utils/api";
+import { legacyApi } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 import { useActiveFeatures } from "./use-active-features";
@@ -30,7 +30,7 @@ export function FeatureSwitcher() {
 
     const { data: features } = useQuery({
         queryKey: ["features"],
-        queryFn: async () => unwrapEden(await api.api.features.get({ query: {} })) as FeatureItem[],
+        queryFn: async () => unwrapEden(await legacyApi.api.features.get({ query: {} })) as FeatureItem[],
         staleTime: 60_000
     });
 

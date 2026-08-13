@@ -10,7 +10,7 @@ import { PageContainer, PageHeader, PageLoading } from "@/components/ui/page";
 import { BrokenLinkChecker } from "@/features/health/broken-link-checker";
 import { useActiveSpace } from "@/features/spaces/use-active-space";
 import { getUser } from "@/functions/get-user";
-import { api } from "@/utils/api";
+import { api, legacyApi } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 export const Route = createFileRoute("/knowledge-health")({
@@ -53,7 +53,7 @@ function KnowledgeHealthPage() {
             if (spaceId) {
                 query.spaceId = spaceId;
             }
-            return unwrapEden(await api.api.health.knowledge.get({ query }));
+            return unwrapEden(await legacyApi.api.health.knowledge.get({ query }));
         }
     });
 
@@ -295,7 +295,7 @@ function GapRow({ gap, spaceId }: { gap: { description: string; frequency: numbe
     const createReqMutation = useMutation({
         mutationFn: async () => {
             await unwrapEden(
-                await api.api.requirements.post({
+                await legacyApi.api.requirements.post({
                     title: gap.description.slice(0, 100),
                     description: `Knowledge gap from ${gap.frequency} session(s).\n\n${gap.description}`,
                     priority: "should",

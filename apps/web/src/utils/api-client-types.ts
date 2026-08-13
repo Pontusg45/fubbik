@@ -13,6 +13,30 @@ import type { paths } from "./api-types";
 
 type Method = "get" | "post" | "patch" | "put" | "delete";
 
+/**
+ * Eden treaty's response envelope, reproduced here so the derived `Client`
+ * type matches what call sites already destructure (`const { data, error } =
+ * await api.api.chunks.get()`). The runtime shape comes from `request()` in
+ * `./api-proxy.future.ts` — this is only the type.
+ */
+export interface EdenLikeResponse<T> {
+    data: T | null;
+    error: { status: number; value: unknown } | null;
+}
+
+/** The value type of an OpenAPI `content` object, regardless of media type key
+ * (`"application/json"`, `"text/plain"`, ...) — content objects always have
+ * exactly one key in this API's generated types. */
+type ContentValue<C> = C extends object ? C[keyof C] : never;
+
+/** The 2xx response body for an `operations[...]` entry. Every route in this
+ * API succeeds with either 200 or 201 (never both) — see `./api-types.ts`. */
+type SuccessBody<Op> = Op extends { responses: infer R }
+    ? {
+          [K in (200 | 201) & keyof R]: R[K] extends { content: infer C } ? ContentValue<C> : never;
+      }[(200 | 201) & keyof R]
+    : unknown;
+
 /** Path keys that continue below `Prefix`, e.g. "/api/chunks" under "/api". */
 type ChildRoutes<Prefix extends string> = Extract<keyof paths, `${Prefix}/${string}`>;
 
@@ -42,7 +66,10 @@ type Methods<Route extends string> = {
                 ? never
                 : M
             : never
-        : never]: (body?: unknown, options?: { query?: Record<string, unknown> }) => Promise<unknown>;
+        : never]: (
+        body?: unknown,
+        options?: { query?: Record<string, unknown> }
+    ) => Promise<EdenLikeResponse<Route extends keyof paths ? SuccessBody<paths[Route][M]> : unknown>>;
 };
 
 export type BuildNode<Prefix extends string> = Methods<Prefix> &
@@ -51,4 +78,4 @@ export type BuildNode<Prefix extends string> = Methods<Prefix> &
         ? unknown
         : (params: Record<string, string>) => BuildNode<`${Prefix}/${ParamSegment<Prefix>}`>);
 
-export type Client = BuildNode<"/api">;
+export type Client = BuildNode<"">;

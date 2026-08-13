@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { useApiQuery } from "@/hooks/use-api-query";
-import { api } from "@/utils/api";
+import { api, legacyApi } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 import { FileDetailPanel } from "../file-detail-panel";
@@ -63,7 +63,7 @@ export function StepPreview({
 
     const { data: rawTemplates } = useApiQuery<any[]>({
         queryKey: ["templates"],
-        queryFn: () => api.api.templates.get(),
+        queryFn: () => legacyApi.api.templates.get(),
         fallback: []
     });
 

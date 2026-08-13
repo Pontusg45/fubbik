@@ -5,7 +5,7 @@ import { AlertTriangle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardPanel } from "@/components/ui/card";
 import { useActiveSpace } from "@/features/spaces/use-active-space";
-import { api } from "@/utils/api";
+import { legacyApi } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 const STATUS_STYLES: Record<string, string> = {
@@ -42,7 +42,7 @@ export function TraceabilityContent() {
         queryFn: async () => {
             const query: { codebaseId?: string } = {};
             if (spaceId) query.codebaseId = spaceId;
-            return unwrapEden(await api.api.requirements.traceability.get({ query })) as TraceabilityRow[];
+            return unwrapEden(await legacyApi.api.requirements.traceability.get({ query })) as TraceabilityRow[];
         }
     });
 
