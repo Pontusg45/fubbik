@@ -17,7 +17,10 @@ import { getUser } from "@/functions/get-user";
 import { useReaderSettings, getReaderClasses } from "@/hooks/use-reader-settings";
 import { useReadingTrail } from "@/hooks/use-reading-trail";
 import { useRecentlyViewed } from "@/hooks/use-recently-viewed";
-import { api } from "@/utils/api";
+// Chunk detail page needs Node's enriched detail shape (chunk, connections,
+// appliesTo, fileReferences, tags, healthScore, deltas) — Rust's GET /api/chunks/{id}
+// returns only the bare chunk row. See the "chunks" note in `@/utils/api`.
+import { legacyApi } from "@/utils/api";
 import { archiveChunk } from "@/utils/api-helpers";
 
 export const Route = createFileRoute("/chunks/$chunkId")({
@@ -37,7 +40,7 @@ export const Route = createFileRoute("/chunks/$chunkId")({
             qc.prefetchQuery({
                 queryKey: ["chunk", params.chunkId],
                 queryFn: async () => {
-                    const { data, error } = await api.api.chunks({ id: params.chunkId }).get();
+                    const { data, error } = await legacyApi.api.chunks({ id: params.chunkId }).get();
                     if (error) throw new Error("Failed to load chunk");
                     return data;
                 },
@@ -94,7 +97,7 @@ function ChunkDetail() {
     const { data, isLoading, error } = useQuery({
         queryKey: ["chunk", chunkId],
         queryFn: async () => {
-            const { data, error } = await api.api.chunks({ id: chunkId }).get();
+            const { data, error } = await legacyApi.api.chunks({ id: chunkId }).get();
             if (error) throw new Error("Failed to load chunk");
             return data;
         }
@@ -111,7 +114,7 @@ function ChunkDetail() {
 
     const reviewMutation = useMutation({
         mutationFn: async (reviewStatus: "reviewed" | "approved") => {
-            const { error } = await api.api.chunks({ id: chunkId }).patch({ reviewStatus });
+            const { error } = await legacyApi.api.chunks({ id: chunkId }).patch({ reviewStatus });
             if (error) throw new Error("Failed to update review status");
         },
         onSuccess: () => {
@@ -140,7 +143,7 @@ function ChunkDetail() {
 
     const deleteMutation = useMutation({
         mutationFn: async () => {
-            const { error } = await api.api.chunks({ id: chunkId }).delete();
+            const { error } = await legacyApi.api.chunks({ id: chunkId }).delete();
             if (error) throw new Error("Failed to delete chunk");
         },
         onSuccess: () => {
@@ -156,7 +159,7 @@ function ChunkDetail() {
 
     const tagMutation = useMutation({
         mutationFn: async (tags: string[]) => {
-            const { error } = await api.api.chunks({ id: chunkId }).patch({ tags });
+            const { error } = await legacyApi.api.chunks({ id: chunkId }).patch({ tags });
             if (error) throw new Error("Failed to update tags");
         },
         onSuccess: () => {
@@ -172,7 +175,7 @@ function ChunkDetail() {
     const toggleEntryPointMutation = useMutation({
         mutationFn: async () => {
             const isEntryPoint = !(data?.chunk as any)?.isEntryPoint;
-            const { error } = await api.api.chunks({ id: chunkId }).patch({ isEntryPoint } as any);
+            const { error } = await legacyApi.api.chunks({ id: chunkId }).patch({ isEntryPoint } as any);
             if (error) throw new Error("Failed to update entry point");
         },
         onSuccess: () => {

@@ -7,7 +7,8 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardPanel, CardTitle } from "@/components/ui/card";
-import { api } from "@/utils/api";
+// `chunks/{id}/suggestions` has no Rust route yet — see the "chunks" note in `@/utils/api`.
+import { api, legacyApi } from "@/utils/api";
 
 interface Suggestion {
     id: string;
@@ -23,7 +24,7 @@ export function SuggestedConnections({ chunkId }: { chunkId: string }) {
     const suggestionsQuery = useQuery<Suggestion[]>({
         queryKey: ["chunk-suggestions", chunkId],
         queryFn: async () => {
-            const { data, error } = await api.api.chunks({ id: chunkId }).suggestions.get();
+            const { data, error } = await legacyApi.api.chunks({ id: chunkId }).suggestions.get();
             if (error) throw new Error("Failed to load suggestions");
             return data as Suggestion[];
         },

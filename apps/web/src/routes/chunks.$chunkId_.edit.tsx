@@ -15,6 +15,12 @@ import { loadDraft, useAutosave } from "@/features/chunks/use-autosave";
 import { MarkdownEditor } from "@/features/editor/markdown-editor";
 import { useActiveFeatures } from "@/features/feature-flags/use-active-features";
 import { getUser } from "@/functions/get-user";
+// GET needs Node's enriched detail shape (chunk, appliesTo, fileReferences) —
+// Rust's GET /api/chunks/{id} returns only the bare chunk row. The PATCH body
+// here also needs `tags`/`alternatives`, which Rust's UpdateChunkBody doesn't
+// accept yet, and `deltas` (feature overlays) has no Rust route at all — see
+// the "chunks" note in `@/utils/api`. `applies-to`/`file-refs` PUT bodies do
+// match Rust's schema, so those stay on `api`.
 import { api, legacyApi } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
@@ -132,7 +138,7 @@ function EditChunk() {
     const { data, isLoading, error } = useQuery({
         queryKey: ["chunk", chunkId],
         queryFn: async () => {
-            return unwrapEden(await api.api.chunks({ id: chunkId }).get());
+            return unwrapEden(await legacyApi.api.chunks({ id: chunkId }).get());
         }
     });
 
@@ -230,7 +236,7 @@ function EditChunk() {
                 .map(s => s.trim())
                 .filter(Boolean);
             await unwrapEden(
-                await api.api.chunks({ id: chunkId }).patch({
+                await legacyApi.api.chunks({ id: chunkId }).patch({
                     title,
                     content,
                     type,
@@ -296,7 +302,7 @@ function EditChunk() {
             if (Object.keys(delta).length === 0) {
                 throw new Error("No changes to save as feature overlay");
             }
-            await unwrapEden(await (api.api.chunks({ id: chunkId }) as any).deltas({ featureId }).put({ delta }));
+            await unwrapEden(await legacyApi.api.chunks({ id: chunkId }).deltas({ featureId }).put({ delta }));
         },
         onSuccess: () => {
             clearDraft();

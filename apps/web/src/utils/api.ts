@@ -34,11 +34,13 @@ import { createClient } from "./api-proxy.future";
 // A few call sites hit routes *inside* an otherwise-ported domain that
 // Rust hasn't finished:
 //   - chunks: `search/semantic`, `search/federated`, `grouped`,
-//     `check-similar`, `clusters`, `import-docs`, `bulk-update`,
-//     `{id}/neighbors`, `{id}/suggestions`, `{id}/enrich` have no Rust
-//     route yet (see `openapi.json` — only list/create/detail/patch/
-//     delete/applies-to/dismiss-staleness/file-refs/history/scan-impact/
-//     stale/stale-count/stale-scan-age/suppress-duplicate exist).
+//     `check-similar`, `clusters`, `import-docs` (+ `import-docs/preview`),
+//     `bulk-update`, `{id}/neighbors`, `{id}/suggestions`, `{id}/enrich`,
+//     `{id}/deltas/{featureId}` (part of the `features` domain, not
+//     `chunks`, despite the URL prefix) have no Rust route yet (see
+//     `openapi.json` — only list/create/detail/patch/delete/applies-to/
+//     dismiss-staleness/file-refs/history/scan-impact/stale/stale-count/
+//     stale-scan-age/suppress-duplicate exist).
 //   - chunks: `GET /api/chunks/{id}` exists in Rust, but returns the bare
 //     `Chunk` row only — Node's enriched detail shape (`{ chunk,
 //     connections, appliesTo, fileReferences, ... }`) isn't there yet.

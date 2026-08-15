@@ -7,7 +7,10 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { getChunkSize } from "@/features/chunks/chunk-size";
 import { relationColor } from "@/features/chunks/relation-colors";
-import { api } from "@/utils/api";
+// Graph side panel needs Node's enriched detail shape (chunk, connections) —
+// Rust's GET /api/chunks/{id} returns only the bare chunk row. See the
+// "chunks" note in `@/utils/api`.
+import { legacyApi } from "@/utils/api";
 
 export function GraphDetailPanel({
     chunkId,
@@ -21,7 +24,7 @@ export function GraphDetailPanel({
     const { data, isLoading } = useQuery({
         queryKey: ["chunk", chunkId],
         queryFn: async () => {
-            const { data, error } = await api.api.chunks({ id: chunkId }).get();
+            const { data, error } = await legacyApi.api.chunks({ id: chunkId }).get();
             if (error) throw new Error("Failed to load chunk");
             return data;
         }

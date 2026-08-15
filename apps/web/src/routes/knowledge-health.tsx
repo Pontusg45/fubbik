@@ -343,7 +343,8 @@ function StaleEmbeddingsCard({
     const queryClient = useQueryClient();
     const enrichMutation = useMutation({
         mutationFn: async (chunkId: string) => {
-            const res = await api.api.chunks({ id: chunkId }).enrich.post();
+            // `chunks/{id}/enrich` has no Rust route yet — see the "chunks" note in `@/utils/api`.
+            const res = await legacyApi.api.chunks({ id: chunkId }).enrich.post();
             if (res.error) throw new Error("Enrich failed");
             return res.data;
         },

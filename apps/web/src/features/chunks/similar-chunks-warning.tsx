@@ -20,7 +20,7 @@ export function SimilarChunksWarning({ title, content, excludeId }: SimilarChunk
         queryKey: ["check-similar", debouncedTitle, debouncedContent, excludeId],
         queryFn: async () => {
             const result = unwrapEden(
-                await api.api.chunks["check-similar"].post({
+                await legacyApi.api.chunks["check-similar"].post({
                     title: debouncedTitle,
                     content: debouncedContent,
                     ...(excludeId ? { excludeId } : {})

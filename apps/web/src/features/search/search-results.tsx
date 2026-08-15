@@ -95,7 +95,8 @@ function SearchBulkActionBar({ selectedIds, onClear }: BulkActionBarProps) {
 
     const addTagMutation = useMutation({
         mutationFn: async (tags: string) => {
-            const { data, error } = await api.api.chunks["bulk-update"].post({
+            // `chunks/bulk-update` has no Rust route yet — see the "chunks" note in `@/utils/api`.
+            const { data, error } = await legacyApi.api.chunks["bulk-update"].post({
                 ids: [...selectedIds],
                 action: "add_tags",
                 value: tags

@@ -2,8 +2,9 @@ import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tansta
 import { useMemo, useState } from "react";
 
 import { getChunkSize } from "@/features/chunks/chunk-size";
+import type { ChunkRowChunk } from "@/features/chunks/chunk-row";
 import { usePinnedChunks } from "@/features/chunks/use-pinned-chunks";
-import { api } from "@/utils/api";
+import { api, legacyApi } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 const LIMIT = 20;
@@ -76,7 +77,8 @@ export function useChunksData({
         queryKey: ["chunks-federated", type, q, sort, tags, origin, reviewStatus],
         queryFn: async ({ pageParam = 1 }) => {
             try {
-                const res = await api.api.chunks.search.federated.get({
+                // No Rust route for `search/federated` yet — stays on legacyApi.
+                const res = await legacyApi.api.chunks.search.federated.get({
                     query: {
                         type,
                         search: q,
@@ -113,12 +115,19 @@ export function useChunksData({
     });
 
     const activeQuery = isFederated ? federatedQuery : chunksQuery;
-    const allChunks = activeQuery.data?.pages.flatMap(p => p?.chunks ?? []) ?? [];
+    // Rust (`chunksQuery`) and Node (`federatedQuery`) return differently-shaped chunk
+    // rows; both satisfy the common `ChunkRowChunk` shape the UI actually reads. Branch
+    // before flatMap — calling it on the `activeQuery` union directly confuses inference.
+    const allChunks = (
+        isFederated
+            ? (federatedQuery.data?.pages.flatMap(p => p?.chunks ?? []) ?? [])
+            : (chunksQuery.data?.pages.flatMap(p => p?.chunks ?? []) ?? [])
+    ) as ChunkRowChunk[];
 
     const { pinnedIds, togglePin, isPinned } = usePinnedChunks();
 
     const processedChunks = useMemo(() => {
-        const filtered = size ? allChunks.filter(c => getChunkSize(c.content).level === size) : allChunks;
+        const filtered = size ? allChunks.filter(c => getChunkSize(c.content ?? "").level === size) : allChunks;
         const pinnedSet = new Set(pinnedIds);
         return [...filtered].sort((a, b) => {
             const aPinned = pinnedSet.has(a.id) ? 0 : 1;

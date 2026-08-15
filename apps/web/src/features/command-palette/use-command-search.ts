@@ -108,8 +108,9 @@ export function useCommandSearch({
         queryFn: async () => {
             if (!debouncedFederatedQuery.trim()) return null;
             try {
+                // No Rust route for `search/federated` yet — stays on legacyApi.
                 return unwrapEden(
-                    await api.api.chunks.search.federated.get({
+                    await legacyApi.api.chunks.search.federated.get({
                         query: { search: debouncedFederatedQuery, limit: "8" }
                     })
                 );
@@ -215,8 +216,10 @@ export function useCommandSearch({
                 const results = await Promise.all(
                     recentIds.slice(0, 5).map(async id => {
                         try {
+                            // Bare chunk fields (id/title) suffice here, so this stays on `api`;
+                            // wrap to match `buildRecentChunkItems`'s `{ chunk }` shape.
                             const data = unwrapEden(await api.api.chunks({ id }).get());
-                            return data;
+                            return data ? { chunk: data as Record<string, unknown> } : null;
                         } catch {
                             return null;
                         }

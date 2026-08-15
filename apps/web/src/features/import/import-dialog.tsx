@@ -5,7 +5,8 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogFooter, DialogHeader, DialogPopup, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { api } from "@/utils/api";
+// `chunks/import-docs` has no Rust route yet — see the "chunks" note in `@/utils/api`.
+import { api, legacyApi } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 interface FileEntry {
@@ -48,7 +49,7 @@ export function ImportDocsDialog() {
     const importMutation = useMutation({
         mutationFn: async (payload: { files: FileEntry[]; spaceId: string }) => {
             const result = unwrapEden(
-                await api.api.chunks["import-docs"].post({
+                await legacyApi.api.chunks["import-docs"].post({
                     files: payload.files,
                     spaceId: payload.spaceId
                 })
