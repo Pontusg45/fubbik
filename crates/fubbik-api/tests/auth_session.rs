@@ -19,6 +19,13 @@ const SECRET: &str = "test-secret-value-at-least-32-chars-long-000000";
 const TOKEN: &str = "AbCdEfGhIjKlMnOpQrStUvWxYz012345";
 const SIG: &str = "OyhRBnvMlgxzHjKlrRsQqjXwtDV99cAmrGDWxOTAkzU=";
 
+// SIG contains neither `+` nor `/`, so it decodes identically under STANDARD and
+// URL_SAFE base64 - it cannot prove which engine `better_auth_cookie::verify` actually
+// uses. This second fixture (a real HMAC-SHA256, standard-base64-encoded, reused from
+// `better_auth_cookie`'s unit tests) does: its signature contains both.
+const TOKEN2: &str = "OhbVrpoiVgRV5IfLBcbfnoGMbJmTPSIA";
+const SIG2: &str = "Pi3J0fsd+AmVxEWC6E0wD4ogSLZbc38P/WBMT/6Fwts=";
+
 async fn seed_user(pool: &PgPool, email: &str) -> String {
     let user = fubbik_db::repo::user::create(pool, email, "Test User", None)
         .await
@@ -81,6 +88,29 @@ async fn a_better_auth_cookie_authenticates(pool: PgPool) {
         res.status(),
         StatusCode::OK,
         "a validly-signed better-auth cookie must authenticate"
+    );
+}
+
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn a_better_auth_cookie_with_reserved_base64_chars_authenticates(pool: PgPool) {
+    // Regression test for the base64 engine choice at better_auth_cookie.rs:24: unlike
+    // SIG above, SIG2's signature contains `+` and `/`, which are outside the URL_SAFE
+    // alphabet - only the STANDARD engine decodes it.
+    let user_id = seed_user(&pool, "a@b.test").await;
+    seed_session(&pool, &user_id, TOKEN2).await;
+    let app = test_app_with_secret(pool.clone(), SECRET).await;
+
+    let res = get_with_cookie(
+        &app,
+        "/api/chunks",
+        &format!("better-auth.session_token={TOKEN2}.{SIG2}"),
+    )
+    .await;
+    assert_eq!(
+        res.status(),
+        StatusCode::OK,
+        "a validly-signed better-auth cookie with reserved base64url characters in its \
+         signature must authenticate"
     );
 }
 

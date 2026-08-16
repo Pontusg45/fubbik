@@ -38,6 +38,15 @@ mod tests {
     const TOKEN: &str = "AbCdEfGhIjKlMnOpQrStUvWxYz012345";
     const SIG: &str = "OyhRBnvMlgxzHjKlrRsQqjXwtDV99cAmrGDWxOTAkzU=";
 
+    // A real HMAC-SHA256(TOKEN2, SECRET), standard-base64-encoded (computed honestly via
+    // Python's hmac/base64, searching token values until the signature contained both `+`
+    // and `/`). SIG above happens to contain neither, so it decodes identically under
+    // STANDARD and URL_SAFE - it can't tell the two engines apart. This one can: `+` and
+    // `/` are not in the URL_SAFE alphabet (which uses `-` and `_` instead), so switching
+    // the engine at line 24 to URL_SAFE makes `.decode()` fail outright on this fixture.
+    const TOKEN2: &str = "OhbVrpoiVgRV5IfLBcbfnoGMbJmTPSIA";
+    const SIG2: &str = "Pi3J0fsd+AmVxEWC6E0wD4ogSLZbc38P/WBMT/6Fwts=";
+
     #[test]
     fn accepts_a_cookie_signed_by_better_auth() {
         let cookie = format!("{TOKEN}.{SIG}");
@@ -69,6 +78,14 @@ mod tests {
     #[test]
     fn rejects_a_cookie_with_no_signature() {
         assert_eq!(verify(TOKEN, SECRET), None);
+    }
+
+    #[test]
+    fn accepts_a_cookie_whose_signature_contains_reserved_base64url_characters() {
+        // Proves STANDARD (not URL_SAFE) is actually load-bearing: SIG contains neither
+        // `+` nor `/`, so it can't distinguish the two engines. This fixture can.
+        let cookie = format!("{TOKEN2}.{SIG2}");
+        assert_eq!(verify(&cookie, SECRET).as_deref(), Some(TOKEN2));
     }
 
     #[test]
