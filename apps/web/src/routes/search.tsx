@@ -189,7 +189,7 @@ function SearchPage() {
     // Delete a saved query
     async function handleDeleteSavedQuery(id: string) {
         try {
-            await unwrapEden(await (api.api.search.saved as any)[id].delete());
+            await unwrapEden(await api.api.search.saved({ id }).delete());
             void queryClient.invalidateQueries({ queryKey: ["search-saved"] });
         } catch {
             // ignore

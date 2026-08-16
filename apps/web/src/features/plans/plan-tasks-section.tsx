@@ -30,7 +30,7 @@ export function PlanTasksSection({ planId, tasks, dependencies, onUpdate }: Plan
     const [showDescription, setShowDescription] = useState(false);
 
     const reorderMutation = useApiMutation<unknown, { taskIds: string[] }>({
-        mutationFn: async ({ taskIds }) => await (api.api as any).plans[planId].tasks.reorder.post({ taskIds }),
+        mutationFn: async ({ taskIds }) => await api.api.plans({ id: planId }).tasks.reorder.post({ taskIds }),
         successToast: false,
         errorToast: "Failed to reorder tasks",
         onSuccess: () => onUpdate()
@@ -40,7 +40,7 @@ export function PlanTasksSection({ planId, tasks, dependencies, onUpdate }: Plan
         mutationFn: async ({ title, description }) => {
             const body: Record<string, unknown> = { title };
             if (description) body.description = description;
-            return await (api.api as any).plans[planId].tasks.post(body);
+            return await api.api.plans({ id: planId }).tasks.post(body);
         },
         successToast: false,
         errorToast: "Failed to add task",

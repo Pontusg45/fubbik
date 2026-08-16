@@ -42,7 +42,8 @@ export function PlanRequirementsSection({ planId, requirements, onUpdate }: Plan
     });
 
     const addMutation = useMutation({
-        mutationFn: async (requirementId: string) => unwrapEden(await (api.api as any).plans[planId].requirements.post({ requirementId })),
+        mutationFn: async (requirementId: string) =>
+            unwrapEden(await api.api.plans({ id: planId }).requirements.post({ requirementId })),
         onSuccess: () => {
             setPickerOpen(false);
             setPickerQuery("");
@@ -51,7 +52,8 @@ export function PlanRequirementsSection({ planId, requirements, onUpdate }: Plan
     });
 
     const removeMutation = useMutation({
-        mutationFn: async (requirementId: string) => unwrapEden(await (api.api as any).plans[planId].requirements[requirementId].delete()),
+        mutationFn: async (requirementId: string) =>
+            unwrapEden(await api.api.plans({ id: planId }).requirements({ requirementId }).delete()),
         onSuccess: () => onUpdate()
     });
 

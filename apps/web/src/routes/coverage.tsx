@@ -101,7 +101,7 @@ function ChunkCoverageTab({
             const query: { codebaseId?: string; detail?: string } = {};
             if (spaceId) query.codebaseId = spaceId;
             if (showMatrix) query.detail = "true";
-            return unwrapEden(await (legacyApi.api.requirements as any).coverage.get({ query }));
+            return unwrapEden(await legacyApi.api.requirements.coverage.get({ query }));
         }
     });
 

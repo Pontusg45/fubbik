@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { api } from "@/utils/api";
+import { api, legacyApi } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 function Dot() {
@@ -15,7 +15,8 @@ export function StatsBar() {
 
     const proposalsQuery = useQuery({
         queryKey: ["proposals-count"],
-        queryFn: async () => unwrapEden(await (api.api as any).proposals.count.get()),
+        // proposals is a Node-only domain (no Rust route) — must stay on legacyApi.
+        queryFn: async () => unwrapEden(await legacyApi.api.proposals.count.get()),
         staleTime: 30_000,
         refetchInterval: 60_000
     });

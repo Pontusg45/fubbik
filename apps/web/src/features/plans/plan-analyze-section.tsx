@@ -111,7 +111,7 @@ function AnalyzeKindBlock({
             } else if (kind === "chunk") {
                 body.chunkId = draftText;
             }
-            return unwrapEden(await (api.api as any).plans[planId].analyze.post(body));
+            return unwrapEden(await api.api.plans({ id: planId }).analyze.post(body));
         },
         onSuccess: () => {
             setAdding(false);
@@ -122,7 +122,8 @@ function AnalyzeKindBlock({
     });
 
     const deleteMutation = useMutation({
-        mutationFn: async (itemId: string) => unwrapEden(await (api.api as any).plans[planId].analyze[itemId].delete()),
+        mutationFn: async (itemId: string) =>
+            unwrapEden(await api.api.plans({ id: planId }).analyze({ itemId }).delete()),
         onSuccess: () => onUpdate()
     });
 

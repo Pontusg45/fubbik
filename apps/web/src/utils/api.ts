@@ -19,17 +19,25 @@ import { createClient } from "./api-proxy.future";
 // authentication regardless), so nothing user-facing degrades while the
 // port is incomplete.
 //
-// As of this writing, Rust's `openapi.json` has no entry at all for 17
+// As of this writing, Rust's `openapi.json` has no entry at all for 20
 // domains:
 //
-//   ai, chunk-types, connection-relations, context, density, documents,
-//   features, graph, health, matrices, proposals, requirements,
-//   saved-graphs, templates, timeline, use-cases, vocabulary
+//   ai, chunk-types, comments, connection-relations, context, density,
+//   documents, features, file-refs (top-level list/lookup — the
+//   chunks/{id}/file-refs sub-resource IS on Rust), graph, health,
+//   learning-paths, matrices, proposals, requirements, saved-graphs,
+//   templates, timeline, use-cases, vocabulary
 //
 // Every call site under those top-level segments (`api.api.<domain>...`)
 // is on `legacyApi` instead. This list SHRINKS as Rust ports each domain —
 // when one lands, move its call sites back to `api` and drop it from the
 // list above (both here and in the call sites themselves).
+//
+// `sessions/knowledge-gaps` (used by `routes/knowledge-health.tsx`) is a
+// separate, unresolved problem: it is on NEITHER backend. It is not in this
+// list because it isn't a domain to route anywhere — it's a live broken
+// call left behind an `as any` cast. Needs a real fix or removal, not a
+// backend swap.
 //
 // A few call sites hit routes *inside* an otherwise-ported domain that
 // Rust hasn't finished:

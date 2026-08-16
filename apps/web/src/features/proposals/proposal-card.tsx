@@ -5,7 +5,7 @@ import { useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { api } from "@/utils/api";
+import { api, legacyApi } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 import { ProposalDiff } from "./proposal-diff";
@@ -37,17 +37,20 @@ export function ProposalCard({ proposal, showChunkInfo = true, onUpdate }: Propo
     // Fetch chunk detail for diff rendering when expanded
     const chunkQuery = useQuery({
         queryKey: ["chunk-for-diff", proposal.chunkId],
-        queryFn: async () => unwrapEden(await (api.api as any).chunks[proposal.chunkId].get()),
+        // Only bare fields (title/content/type/rationale) are needed for the diff,
+        // which Rust's GET /chunks/{id} already serves.
+        queryFn: async () => unwrapEden(await api.api.chunks({ id: proposal.chunkId }).get()),
         enabled: expanded
     });
 
+    // proposals is a Node-only domain (no Rust route) — must stay on legacyApi.
     const approveMutation = useMutation({
-        mutationFn: async () => unwrapEden(await (api.api as any).proposals[proposal.id].approve.post({})),
+        mutationFn: async () => unwrapEden(await legacyApi.api.proposals({ proposalId: proposal.id }).approve.post({})),
         onSuccess: () => onUpdate()
     });
 
     const rejectMutation = useMutation({
-        mutationFn: async () => unwrapEden(await (api.api as any).proposals[proposal.id].reject.post({})),
+        mutationFn: async () => unwrapEden(await legacyApi.api.proposals({ proposalId: proposal.id }).reject.post({})),
         onSuccess: () => onUpdate()
     });
 

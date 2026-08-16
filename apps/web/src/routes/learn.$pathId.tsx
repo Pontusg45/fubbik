@@ -4,7 +4,7 @@ import { ArrowLeft, BookOpen } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { api } from "@/utils/api";
+import { api, legacyApi } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 export const Route = createFileRoute("/learn/$pathId")({
@@ -16,7 +16,8 @@ function LearnPathDetail() {
 
     const { data: path } = useQuery({
         queryKey: ["learning-path", pathId],
-        queryFn: async () => unwrapEden(await (api.api as any)["learning-paths"]({ id: pathId }).get())
+        // learning-paths is a Node-only domain (no Rust route) — must stay on legacyApi.
+        queryFn: async () => unwrapEden(await legacyApi.api["learning-paths"]({ id: pathId }).get())
     });
 
     const { data: allChunks } = useQuery({

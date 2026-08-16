@@ -10,7 +10,7 @@ export interface PlanDescriptionSectionProps {
 
 export function PlanDescriptionSection({ planId, description, onUpdate }: PlanDescriptionSectionProps) {
     const updateMutation = useApiMutation({
-        mutationFn: async (body: Record<string, unknown>) => await (api.api as any).plans[planId].patch(body),
+        mutationFn: async (body: Record<string, unknown>) => await api.api.plans({ id: planId }).patch(body),
         successToast: false,
         errorToast: "Failed to update description",
         onSuccess: () => onUpdate()

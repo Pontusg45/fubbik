@@ -209,7 +209,8 @@ export function SmartLinkProvider({ children }: { children: ReactNode }) {
         queryKey: ["smart-link-file-refs"],
         queryFn: async () => {
             try {
-                const result = unwrapEden(await (api.api as any)["file-refs"].get());
+                // file-refs (top-level list) is a Node-only domain (no Rust route) — must stay on legacyApi.
+                const result = unwrapEden(await legacyApi.api["file-refs"].get());
                 return (result as any[]) ?? [];
             } catch {
                 return [];
