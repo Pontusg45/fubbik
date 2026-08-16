@@ -1,38 +1,32 @@
-// PARKED — NOT WIRED IN. Do not import this from app code.
+// LIVE — this is the API client the app uses. Imported by `./api.ts`, which
+// exports it as `api`. (The `.future` suffix is historical; renaming the file
+// is deliberate churn nobody has spent yet.)
 //
-// This is a JS Proxy-based API client built over openapi-typescript-generated
-// types (see `./api-types.ts`), designed as a drop-in replacement for the
-// Eden treaty client (`./api.ts`) once the Rust backend is ready. It
-// preserves Eden's call shape (`api.api.chunks.get()`, path params via a
-// call segment, etc.) so existing call sites would not need to change.
+// A JS Proxy-based client over openapi-typescript-generated types
+// (`./api-types.ts`), preserving Eden's call shape (`api.api.chunks.get()`,
+// path params via a call segment) so call sites did not have to change.
+// Runtime behaviour is covered by `./api-proxy.future.test.ts`.
 //
-// Verified working at runtime: all 7 tests in `./api-proxy.future.test.ts`
-// pass, confirming the Proxy correctly builds URLs, interpolates path
-// params, serialises query strings, and mirrors Eden's `{ data, error }`
-// response shape.
+// It is typed from RUST's `openapi.json`, so it only knows routes Rust
+// actually serves. Anything Rust does not serve must go through `legacyApi`
+// (Eden -> Node) — see the inventory in `./api.ts`.
 //
-// Why it is NOT wired in (originally attempted in a51c380, then reverted):
+// History, kept because it explains the design:
+//   1. [RESOLVED] `noUncheckedIndexedAccess: true` made every property access
+//      on an index-signature `Client` type `| undefined`, which is where the
+//      ~1,016 errors came from. Fixed by deriving `Client` from the generated
+//      `paths` via literal template-string matching — see `BuildNode` in
+//      `./api-client-types.ts`. The count tracked call-site chains, not
+//      endpoints, so porting more domains would never have reduced it.
+//   2. [RESOLVED, differently than planned] The web app calls more domains
+//      than Rust serves. Rather than waiting for parity, the app runs a
+//      hybrid: this client for what Rust serves, `legacyApi` for the rest.
 //
-//   1. [RESOLVED] This repo sets `noUncheckedIndexedAccess: true` in
-//      `packages/config/tsconfig.base.json`. An index-signature-based
-//      `Client` type made every property access `| undefined`. Fixed by
-//      deriving `Client` from the generated `paths` via literal
-//      template-string matching (`./api-client-types.ts`) instead of an
-//      index signature — see `BuildNode` there.
-//   2. Still open: the web app calls ~27 API domains. The Rust backend's
-//      `openapi.json` currently covers 14 (activity, chunks, collections,
-//      connections, favorites, notifications, plans, search, settings,
-//      spaces, stats, tag-types, tags, workspaces) — the rest have no types
-//      regardless of how the client is shaped.
-//
-// What has to be true before this can be adopted:
-//   - The Rust backend implements the remaining API domains the web app
-//     uses (or the web app is migrated domain-by-domain against a hybrid
-//     setup).
-//
-// When ready: rename this file back to `api.ts` (replacing the Eden
-// client), rename `api-proxy.future.test.ts` back to `api.test.ts`, and
-// update call sites as needed.
+// WARNING, learned the hard way: an `as any` cast on this client erases the
+// types downstream, which is exactly how archive/restore/enrich/bulk-update,
+// comments, and proposals silently 404ed after the swap — they were calling
+// Rust for Node-only routes and nothing complained. If you reach for
+// `as any`, confirm which backend serves the route first.
 
 import { env } from "@fubbik/env/web";
 
