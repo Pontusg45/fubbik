@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Activity, FileText, Lightbulb, RefreshCw } from "lucide-react";
+import { Activity, FileText, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
@@ -10,7 +10,7 @@ import { PageContainer, PageHeader, PageLoading } from "@/components/ui/page";
 import { BrokenLinkChecker } from "@/features/health/broken-link-checker";
 import { useActiveSpace } from "@/features/spaces/use-active-space";
 import { getUser } from "@/functions/get-user";
-import { api, legacyApi } from "@/utils/api";
+import { legacyApi } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 export const Route = createFileRoute("/knowledge-health")({
@@ -35,16 +35,6 @@ function daysAgo(date: string | Date): string {
 
 function KnowledgeHealthPage() {
     const { spaceId } = useActiveSpace();
-
-    const gapsQuery = useQuery({
-        queryKey: ["knowledge-gaps"],
-        queryFn: async () => {
-            const result = unwrapEden(await (api.api as any).sessions["knowledge-gaps"].get());
-            // db.execute() returns { rows: [...] } — extract the rows array
-            const rows = Array.isArray(result) ? result : ((result as any)?.rows ?? []);
-            return rows as Array<{ description: string; frequency: number; session_ids: string[] }>;
-        }
-    });
 
     const healthQuery = useQuery({
         queryKey: ["knowledge-health", spaceId],
@@ -263,72 +253,9 @@ function KnowledgeHealthPage() {
                     <BrokenLinkChecker />
 
                     {/* Knowledge Gaps from AI Sessions */}
-                    {gapsQuery.data && gapsQuery.data.length > 0 && (
-                        <Card>
-                            <CardPanel className="p-6">
-                                <div className="mb-3 flex items-center gap-2">
-                                    <Lightbulb className="size-4 text-amber-500" />
-                                    <h2 className="text-lg font-semibold">Knowledge Gaps from AI</h2>
-                                    <Badge variant="secondary">{gapsQuery.data.length}</Badge>
-                                </div>
-                                <p className="text-muted-foreground mb-4 text-sm">
-                                    These knowledge gaps were identified during AI review sessions. Consider creating chunks to address
-                                    them.
-                                </p>
-                                <div className="divide-y">
-                                    {gapsQuery.data.map((gap: any, i: number) => (
-                                        <GapRow key={i} gap={gap} spaceId={spaceId} />
-                                    ))}
-                                </div>
-                            </CardPanel>
-                        </Card>
-                    )}
                 </div>
             ) : null}
         </PageContainer>
-    );
-}
-
-function GapRow({ gap, spaceId }: { gap: { description: string; frequency: number; session_ids: string[] }; spaceId: string | null }) {
-    const queryClient = useQueryClient();
-
-    const createReqMutation = useMutation({
-        mutationFn: async () => {
-            await unwrapEden(
-                await legacyApi.api.requirements.post({
-                    title: gap.description.slice(0, 100),
-                    description: `Knowledge gap from ${gap.frequency} session(s).\n\n${gap.description}`,
-                    priority: "should",
-                    steps: [{ keyword: "given" as const, text: gap.description }],
-                    spaceId: spaceId ?? undefined
-                })
-            );
-        },
-        onSuccess: () => {
-            toast.success("Requirement created");
-            queryClient.invalidateQueries({ queryKey: ["knowledge-gaps"] });
-            queryClient.invalidateQueries({ queryKey: ["requirements"] });
-        },
-        onError: () => toast.error("Failed to create requirement")
-    });
-
-    return (
-        <div className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
-            <div className="min-w-0 flex-1">
-                <span className="text-sm">{gap.description}</span>
-                <span className="text-muted-foreground ml-2 text-xs">
-                    ({gap.frequency}x across {gap.session_ids?.length ?? 0} sessions)
-                </span>
-            </div>
-            <div className="flex gap-1.5">
-                <Button variant="outline" size="sm" onClick={() => createReqMutation.mutate()} disabled={createReqMutation.isPending}>
-                    {createReqMutation.isPending ? "Creating..." : "Create Requirement"}
-                </Button>
-                <Button variant="outline" size="sm" render={<Link to="/chunks/new" />}>
-                    Create chunk
-                </Button>
-            </div>
-        </div>
     );
 }
 
