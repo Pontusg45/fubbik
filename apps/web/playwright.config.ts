@@ -36,7 +36,16 @@ export default defineConfig({
             reuseExistingServer: !process.env.CI,
             timeout: 30_000,
             env: {
-                BETTER_AUTH_SECRET: E2E_BETTER_AUTH_SECRET
+                BETTER_AUTH_SECRET: E2E_BETTER_AUTH_SECRET,
+                // Node and Rust must see the SAME `user`/`session` rows for
+                // the cross-server cookie check to mean anything — Rust's
+                // `CurrentUser` extractor looks the session token up in its
+                // own `state.pool`, which is pinned to the scratch DB below.
+                // `crates/fubbik-db/migrations/0001_init.sql` is a full copy
+                // of Node's schema (including `user`/`session`), so Node can
+                // run against it unmodified. Still the scratch DB, never the
+                // live one — see RUST_DATABASE_URL's own comment.
+                DATABASE_URL: RUST_DATABASE_URL
             }
         },
         {

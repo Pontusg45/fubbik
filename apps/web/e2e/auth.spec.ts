@@ -43,7 +43,13 @@ test.describe.serial("Auth flow", () => {
         await page.getByRole("menuitem", { name: "Sign Out" }).click();
 
         await page.waitForURL("/");
-        await expect(page.getByRole("link", { name: "Sign In" })).toBeVisible();
+        // The landing page header is hidden entirely (see __root.tsx `isLanding`),
+        // so there is no "Sign In" link to assert against here — that string
+        // doesn't exist anywhere in routes/index.tsx. Assert instead that the
+        // authenticated user-name button (the same locator line 36 uses to prove
+        // a *successful* sign-in) is gone, which is what actually demonstrates
+        // sign-out took effect. Do not restore the "Sign In" link check.
+        await expect(page.getByRole("button", { name: TEST_USER.name })).not.toBeVisible();
     });
 
     test("sign in with existing account works", async ({ page }) => {
