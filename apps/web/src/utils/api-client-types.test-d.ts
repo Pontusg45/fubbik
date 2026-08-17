@@ -25,6 +25,14 @@ api.api.chunks.nonexistent.get();
 // @ts-expect-error method not defined on this route
 api.api.spaces.put();
 
+// 6. body shape — `CreateChunkBody` (crates/fubbik-api/src/chunks/dto.rs) has
+// no `tags` field and no `deny_unknown_fields`, so Rust silently drops it and
+// returns 200. This is the exact shape of the tags/alternatives/consequences
+// data-loss bug from this phase; the negative control below is the check
+// that would have caught it at authoring time.
+// @ts-expect-error — `tags` is not a field of Rust's CreateChunkBody.
+api.api.chunks.post({ title: "x", content: "y", type: "note", tags: ["a"] });
+
 void _a;
 void _b;
 void _c;

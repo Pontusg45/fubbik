@@ -38,7 +38,9 @@ export function PlanTasksSection({ planId, tasks, dependencies, onUpdate }: Plan
 
     const addMutation = useApiMutation<unknown, { title: string; description: string }>({
         mutationFn: async ({ title, description }) => {
-            const body: Record<string, unknown> = { title };
+            // Typed as the literal shape the route accepts (not `Record<string,
+            // unknown>`) so the client's `title`-required body check applies.
+            const body: { title: string; description?: string } = { title };
             if (description) body.description = description;
             return await api.api.plans({ id: planId }).tasks.post(body);
         },

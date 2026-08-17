@@ -37,6 +37,48 @@ type SuccessBody<Op> = Op extends { responses: infer R }
       }[(200 | 201) & keyof R]
     : unknown;
 
+/** The JSON request body type for an `operations[...]` entry, or `undefined`
+ * when the route has no body at all — openapi-typescript emits `requestBody?:
+ * never` for those (mostly GETs), never `requestBody?: { content: ... }`, so
+ * "has a body" and "body is required" coincide here (verified against every
+ * emission in `./api-types.ts`).
+ *
+ * The `[RB] extends [...]` tuple wrapping isn't optional: `RB` is a naked
+ * type parameter here, and a bare `RB extends {content: infer C} ? ... :
+ * undefined` distributes when `RB` is instantiated to `never` (the type
+ * openapi-typescript gives the property) — a distributive conditional over
+ * `never` collapses to `never` itself, not to the `undefined` branch,
+ * silently reintroducing "no body is checked" for every no-body route. Same
+ * pitfall as `Methods` above; confirmed empirically before writing this. */
+type RequestBodyOf<Op> = Op extends { requestBody?: infer RB }
+    ? [RB] extends [{ content: infer C }]
+        ? ContentValue<C>
+        : undefined
+    : undefined;
+
+/** The method's call signature: a body param is required and typed from the
+ * route's `requestBody` when one exists, omittable when it doesn't. This is
+ * what makes an extra or missing field on a real POST/PATCH/PUT body a
+ * compile error instead of a silent 2xx that drops data (the nine bugs this
+ * phase fixed — see the `CreateChunkBody` negative control in
+ * `api-client-types.test-d.ts`). */
+type MethodFn<Op> = [RequestBodyOf<Op>] extends [undefined]
+    ? // No request body on this route (mostly GETs). The runtime
+      // (`request()` in `./api-proxy.future.ts`) reads query params for GET
+      // off the *first* argument (`body.query`), not the second — every
+      // call site in this codebase calls GETs as `.get({ query: {...} })`,
+      // never with a second `options` argument. So "no body" still needs to
+      // accept the query-carrier shape here, or every existing GET call
+      // site would fail to compile despite passing no real body.
+      (
+          body?: { query?: Record<string, unknown> },
+          options?: { query?: Record<string, unknown> }
+      ) => Promise<EdenLikeResponse<SuccessBody<Op>>>
+    : (
+          body: RequestBodyOf<Op>,
+          options?: { query?: Record<string, unknown> }
+      ) => Promise<EdenLikeResponse<SuccessBody<Op>>>;
+
 /** Path keys that continue below `Prefix`, e.g. "/api/chunks" under "/api". */
 type ChildRoutes<Prefix extends string> = Extract<keyof paths, `${Prefix}/${string}`>;
 
@@ -66,10 +108,7 @@ type Methods<Route extends string> = {
                 ? never
                 : M
             : never
-        : never]: (
-        body?: unknown,
-        options?: { query?: Record<string, unknown> }
-    ) => Promise<EdenLikeResponse<Route extends keyof paths ? SuccessBody<paths[Route][M]> : unknown>>;
+        : never]: Route extends keyof paths ? MethodFn<paths[Route][M]> : never;
 };
 
 export type BuildNode<Prefix extends string> = Methods<Prefix> &

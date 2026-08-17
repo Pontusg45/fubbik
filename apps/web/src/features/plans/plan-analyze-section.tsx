@@ -95,7 +95,17 @@ function AnalyzeKindBlock({
 
     const addMutation = useMutation({
         mutationFn: async () => {
-            const body: Record<string, unknown> = { kind };
+            // Typed as the literal shape the route accepts (not `Record<string,
+            // unknown>`) so the client's `kind`-required, per-field-typed body
+            // check actually applies here — a loosely-typed carrier would
+            // defeat the point of the tightened `body` type.
+            const body: {
+                kind: AnalyzeKind;
+                filePath?: string;
+                text?: string;
+                metadata?: unknown;
+                chunkId?: string;
+            } = { kind };
             if (kind === "file") {
                 body.filePath = draftFilePath;
                 body.text = draftText;
