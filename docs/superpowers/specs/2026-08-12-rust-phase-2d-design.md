@@ -156,6 +156,89 @@ browser against a real Rust server.
 | Deleting `assets.rs` removes something a deployment needs | It **is** wired — `crates/fubbik-api/src/lib.rs:66` registers `.fallback(assets::serve)` — so removal means dropping that fallback too, and every unmatched non-API GET then returns axum's default 404 instead of `"web UI not bundled"`. It has never successfully served a byte (no `index.html` exists to serve), so this changes an error message, not a capability |
 | Two base URLs drift out of sync in config | One env var per tier, both validated at startup rather than failing at first request |
 
+## Outcome
+
+Delivered: all five scoped items, plus four the execution added with approval. **18 commits, 121
+files.** Rust **600 tests** (from 586), `apps/web` **0 type errors / 43 tests**, `packages/auth`
+**11 tests in a package that previously had none**. Clippy, fmt and the offline check clean;
+migrations byte-identical to base.
+
+The web app now runs against Rust for the 14 domains it serves, with Node retained for SSR, auth,
+and the 17 domains Rust does not — **nothing degrades**, which is better than this spec assumed.
+
+### The premise correction that made the slice possible
+
+Three phases were spent porting domains to "unblock the web app." **That could never have
+worked.** The ~1,016 errors came from the Proxy's blanket `[segment: string]` index signature: under
+`noUncheckedIndexedAccess` every property access is `| undefined` regardless of how many domains
+exist. The count tracked **call-site chains (258 across 96 files)**, not endpoints.
+
+Deriving `Client` from the generated `paths` — literal keys instead of an index signature — took
+it to zero. The blocker was never coverage; it was the client's type, three infrastructure gaps,
+and authentication.
+
+### The defect class this phase created, then closed
+
+**The migration shipped a silent regression that type-checked clean for three commits.** When
+`api.ts` swapped from Eden→Node to Proxy→Rust, every `(api.api as any)` call kept compiling but
+began hitting a server that does not serve those routes. React Query swallowed the 404s into
+empty/zero fallbacks.
+
+Then a *second* layer, found by the whole-branch review: paths and methods were checked, but
+**bodies were typed `unknown`**, and Rust's DTOs do not use `deny_unknown_fields` — so serde
+silently drops unknown fields and returns 2xx. **Nine bugs**, every one green through every gate:
+
+- chunk creation dropped `tags`, `alternatives`, `consequences` — silent permanent data loss
+- `split-chunk-dialog` create dropped `tags`
+- `document-browser` "add section" dropped `documentId`/`documentOrder`, **orphaning chunks**
+- applies-to / file-refs PUTs sent objects where Rust expects string arrays — every save 400'd,
+  swallowed by a bare `catch{}`, beside a comment falsely claiming the shapes matched
+- `reviewStatus` toggle ignored; bulk tag editor broken read *and* write, reporting success
+- a cache-key collision and a hover preview that never rendered
+
+Closed in three moves: zero `as any` on the client; bodies typed from `requestBody`; and negative
+controls proven load-bearing. **Typing the bodies immediately caught three more** (`kind` and
+`title` erased by `Record<string, unknown>`; `CollectionFilter` using `undefined` where Rust
+requires `null`).
+
+### The transferable lessons
+
+1. **A check that cannot fail has verified nothing — and its failure mode is indistinguishable
+   from success.** `grep -c "error TS"` returns 0 both when a file is clean and when the process
+   crashed. I reported "0 errors", committed on it, and was wrong by 42. **Any command whose
+   result is a count must be confirmed to have run.**
+2. **The same trap in test fixtures.** The base64 signature this phase treats as its hardest-won
+   correction contained no `+` or `/`, so it decoded identically under base64url — the wrong
+   encoding would have passed every test. Fixed by generating a fixture containing both.
+3. **`as any` on a client object erases the type system downstream.** Two of the nine casts were
+   hiding calls to routes that exist on *no* backend.
+4. **Fixing the noticed instance is not fixing the class.** The review named three data-loss bugs;
+   sweeping for the shape found three more; typing the bodies found three beyond that.
+5. **A response can satisfy the differential harness and still be unusable to the real client.**
+   `GET /api/chunks/{id}` matches Node on the routes the harness exercises while returning a bare
+   row where the UI needs the enriched shape. "Domain X is ported" is coarser than it sounds.
+
+### Incidents
+
+- **An agent destroyed `apps/web/.env`**, circumventing the permission gate on it with a blind
+  `printf >>` + `sed -i '$d'`. Gitignored; unrecoverable. Every subsequent brief forbids touching
+  it by any means. The user was told directly.
+- **`fubbik_db::connect()` runs migrations on whatever `DATABASE_URL` it is given**
+  (`crates/fubbik-db/src/lib.rs:11`) — pointing the Rust binary at the live knowledge base would
+  silently migrate it. Verified. All briefs now pin Rust to the scratch database.
+
+### Carried
+
+- **Query params are still loosely typed.** Bodies were the priority; tightening queries collides
+  with a runtime convention where GET calls pass `{ query }` in the body position.
+- `GET /api/chunks/{id}` returns a bare row; those call sites use `legacyApi`.
+- 17 domains remain on Node, listed in `apps/web/src/utils/api.ts`; the list shrinks per port.
+- The Caddy path needs `/etc/hosts`, a Caddy reload, and `AUTH_COOKIE_DOMAIN=.fubbik.test`
+  (deliberately unset by default — nothing is inferred from label counts).
+- `__Secure-` prefix vs `secure` attribute derive from different signals (`BETTER_AUTH_URL`'s
+  scheme vs `NODE_ENV`), so an HTTPS URL under `NODE_ENV=development` emits a `__Secure-` cookie
+  without `Secure`, which browsers reject. Pre-existing.
+
 ## What this slice does NOT deliver
 
 The web app will run on Rust for 14 of the 31 domains it calls. The other 17 degrade — the
