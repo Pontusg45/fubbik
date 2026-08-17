@@ -18,7 +18,7 @@ import {
     DialogTrigger
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
-import { api } from "@/utils/api";
+import { api, legacyApi } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 interface SplitSection {
@@ -83,8 +83,10 @@ export function SplitChunkDialog({
             const created: { id: string; title: string }[] = [];
 
             for (const section of included) {
+                // Rust's CreateChunkBody has no `tags` field — it would 200
+                // and silently drop them, same defect class as chunks.new.tsx.
                 const result = unwrapEden(
-                    await api.api.chunks.post({
+                    await legacyApi.api.chunks.post({
                         title: section.title,
                         content: section.content,
                         type,

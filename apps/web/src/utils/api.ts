@@ -33,12 +33,6 @@ import { createClient } from "./api-proxy.future";
 // when one lands, move its call sites back to `api` and drop it from the
 // list above (both here and in the call sites themselves).
 //
-// `sessions/knowledge-gaps` (used by `routes/knowledge-health.tsx`) is a
-// separate, unresolved problem: it is on NEITHER backend. It is not in this
-// list because it isn't a domain to route anywhere — it's a live broken
-// call left behind an `as any` cast. Needs a real fix or removal, not a
-// backend swap.
-//
 // A few call sites hit routes *inside* an otherwise-ported domain that
 // Rust hasn't finished:
 //   - chunks: `search/semantic`, `search/federated`, `grouped`,

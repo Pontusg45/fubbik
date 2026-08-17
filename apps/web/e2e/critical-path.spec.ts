@@ -2,9 +2,11 @@ import { expect, type Page, test } from "@playwright/test";
 
 // This suite proves the Rust slice end-to-end along the path a real user
 // takes: sign in through Node (which still owns auth/SSR), then exercise
-// domains that are ported to Rust (dashboard stats/plans/activity, chunk
-// create) alongside a domain that is NOT yet ported (features, served via
-// `legacyApi` -> Node). See `apps/web/src/utils/api.ts` for the hybrid
+// domains that are ported to Rust (dashboard stats/plans/activity) alongside
+// a domain that is NOT yet ported (features, served via `legacyApi` ->
+// Node). Chunk create/edit both route through legacyApi/Node too — Rust's
+// CreateChunkBody/UpdateChunkBody don't accept tags/alternatives/
+// consequences yet — see `apps/web/src/utils/api.ts` for the hybrid
 // client's routing rules.
 
 const TEST_USER = {
@@ -98,17 +100,46 @@ test.describe.serial("Critical path (Rust backend)", () => {
 
         const chunkTitle = `Critical path chunk ${Date.now()}`;
         const chunkContent = "Original content from the critical-path e2e test.";
+        const tagName = `critpath-${Date.now()}`;
+        const alternativeA = "Option A considered";
+        const alternativeB = "Option B considered";
+        const consequencesText = "Easier onboarding, harder rollback.";
 
-        // Create (POST goes through Rust — see chunks.new.tsx).
+        // Create. POST now goes through legacyApi/Node, not Rust — see the
+        // note in chunks.new.tsx. Rust's CreateChunkBody has no
+        // tags/alternatives/consequences fields, so a request built against
+        // Rust would 200 while silently dropping all three; this test
+        // exercises exactly the fields Rust's DTO is missing, not just
+        // title/content (which Rust does accept and would have let this
+        // pass even before the C1 fix).
         await page.goto("/chunks/new");
         await waitForHydration(page);
         await page.locator("#chunk-title").fill(chunkTitle);
         await page.getByPlaceholder("Write your content...").fill(chunkContent);
+
+        await page.locator("#chunk-tags").fill(tagName);
+        await page.locator("#chunk-tags").press("Enter");
+        await expect(page.getByText(tagName, { exact: true })).toBeVisible();
+
+        await page.getByRole("button", { name: "Decision Context" }).click();
+        await page.locator("#chunk-alternatives").fill(`${alternativeA}, ${alternativeB}`);
+        await page.locator("#chunk-consequences").fill(consequencesText);
+
         await page.getByRole("button", { name: /Create Chunk/ }).click();
         await page.waitForURL(/\/chunks\/[^/]+$/, { timeout: 15000 });
 
         await expect(page.getByRole("heading", { level: 1, name: chunkTitle })).toBeVisible();
         await expect(page.getByText(chunkContent)).toBeVisible();
+        await expect(page.getByText(tagName, { exact: true })).toBeVisible();
+
+        // Alternatives/consequences live behind the "More context" drawer's
+        // "Context" tab (chunks.$chunkId.tsx / more-context-context-tab.tsx).
+        await page.getByRole("button", { name: /More context/ }).click();
+        await page.getByRole("button", { name: "Context" }).click();
+        await expect(page.getByText(alternativeA)).toBeVisible();
+        await expect(page.getByText(alternativeB)).toBeVisible();
+        await expect(page.getByText(consequencesText)).toBeVisible();
+        await page.keyboard.press("Escape");
 
         // Edit (PATCH goes through legacyApi/Node — see the note in
         // chunks.$chunkId_.edit.tsx).
@@ -124,12 +155,20 @@ test.describe.serial("Critical path (Rust backend)", () => {
         await expect(page.getByRole("heading", { level: 1, name: updatedTitle })).toBeVisible();
         await expect(page.getByText(updatedContent)).toBeVisible();
 
-        // Persistence: reload wipes any client-only state; content must
-        // come back from the server, not just React Query's cache.
+        // Persistence: reload wipes any client-only state; content, tags,
+        // and decision-context fields must come back from the server, not
+        // just React Query's cache.
         await page.reload();
         await waitForHydration(page);
         await expect(page.getByRole("heading", { level: 1, name: updatedTitle })).toBeVisible();
         await expect(page.getByText(updatedContent)).toBeVisible();
+        await expect(page.getByText(tagName, { exact: true })).toBeVisible();
+
+        await page.getByRole("button", { name: /More context/ }).click();
+        await page.getByRole("button", { name: "Context" }).click();
+        await expect(page.getByText(alternativeA)).toBeVisible();
+        await expect(page.getByText(alternativeB)).toBeVisible();
+        await expect(page.getByText(consequencesText)).toBeVisible();
     });
 
     test("features page (unported domain, routed to Node via legacyApi) shows real content", async ({ page }) => {

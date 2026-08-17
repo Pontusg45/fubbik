@@ -20,8 +20,14 @@ import { getUser } from "@/functions/get-user";
 // here also needs `tags`/`alternatives`, which Rust's UpdateChunkBody doesn't
 // accept yet, and `deltas` (feature overlays) has no Rust route at all — see
 // the "chunks" note in `@/utils/api`. `applies-to`/`file-refs` PUT bodies do
-// match Rust's schema, so those stay on `api`.
-import { api, legacyApi } from "@/utils/api";
+// NOT match Rust's schema either: Rust's `PatternsBody`/`PathsBody` are
+// `{patterns: string[]}`/`{paths: string[]}` (plain strings, no `note`/
+// `anchor`/`relation`), while this page sends a bare array of
+// `{pattern, note}`/`{path, anchor, relation}` objects — the shape Node's
+// `applies-to`/`file-refs` routes actually expect. Against Rust this 400s
+// and was being silently swallowed by the `catch { // non-critical }` below,
+// so patterns/file refs were never actually saved. Both stay on `legacyApi`.
+import { legacyApi } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 export const Route = createFileRoute("/chunks/$chunkId_/edit")({
@@ -250,7 +256,7 @@ function EditChunk() {
             // Update applies-to
             const validAppliesTo = appliesTo.filter(a => a.pattern.trim());
             try {
-                await api.api.chunks({ id: chunkId })["applies-to"].put(
+                await legacyApi.api.chunks({ id: chunkId })["applies-to"].put(
                     validAppliesTo.map(a => ({
                         pattern: a.pattern.trim(),
                         ...(a.note.trim() ? { note: a.note.trim() } : {})
@@ -263,7 +269,7 @@ function EditChunk() {
             // Update file refs
             const validFileRefs = fileRefs.filter(f => f.path.trim());
             try {
-                await api.api.chunks({ id: chunkId })["file-refs"].put(
+                await legacyApi.api.chunks({ id: chunkId })["file-refs"].put(
                     validFileRefs.map(f => ({
                         path: f.path.trim(),
                         ...(f.anchor.trim() ? { anchor: f.anchor.trim() } : {}),

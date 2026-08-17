@@ -42,7 +42,9 @@ export function useBulkChunkOperations() {
 
     const reviewMutation = useMutation({
         mutationFn: async ({ id, status }: { id: string; status: string }) => {
-            const { error } = await api.api.chunks({ id }).patch({ reviewStatus: status as any });
+            // Rust's UpdateChunkBody has no `reviewStatus` field — it would
+            // 200 and silently drop the write. Must stay on legacyApi.
+            const { error } = await legacyApi.api.chunks({ id }).patch({ reviewStatus: status as any });
             if (error) throw new Error("Failed to update review status");
         },
         onMutate: async ({ id, status }) => {
