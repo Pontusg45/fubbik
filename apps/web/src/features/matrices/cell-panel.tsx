@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useApiQuery } from "@/hooks/use-api-query";
-import { api } from "@/utils/api";
+import { legacyApi } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 interface CellPanelProps {
@@ -75,25 +75,25 @@ export function CellPanel({ matrixId, cellId, ruleTitle, dimensionName, onClose 
 
     const requirementsQuery = useApiQuery<CellRequirement[]>({
         queryKey: ["matrix-cell-requirements", cellId],
-        queryFn: () => api.api.matrices({ id: matrixId }).cells({ cellId }).requirements.get(),
+        queryFn: () => legacyApi.api.matrices({ id: matrixId }).cells({ cellId }).requirements.get(),
         fallback: []
     });
 
     const codeQuery = useApiQuery<CellCodeLink[]>({
         queryKey: ["matrix-cell-code", cellId],
-        queryFn: () => api.api.matrices({ id: matrixId }).cells({ cellId }).code.get(),
+        queryFn: () => legacyApi.api.matrices({ id: matrixId }).cells({ cellId }).code.get(),
         fallback: []
     });
 
     const testResultsQuery = useApiQuery<CellTestResult[]>({
         queryKey: ["matrix-cell-test-results", cellId],
-        queryFn: () => api.api.matrices({ id: matrixId }).cells({ cellId })["test-results"].get(),
+        queryFn: () => legacyApi.api.matrices({ id: matrixId }).cells({ cellId })["test-results"].get(),
         fallback: []
     });
 
     const linkMutation = useMutation({
         mutationFn: async (reqId: string) =>
-            unwrapEden(await api.api.matrices({ id: matrixId }).cells({ cellId }).requirements.post({ requirementId: reqId })),
+            unwrapEden(await legacyApi.api.matrices({ id: matrixId }).cells({ cellId }).requirements.post({ requirementId: reqId })),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["matrix-cell-requirements", cellId] });
             queryClient.invalidateQueries({ queryKey: ["matrix-view", matrixId] });
@@ -108,7 +108,7 @@ export function CellPanel({ matrixId, cellId, ruleTitle, dimensionName, onClose 
 
     const unlinkMutation = useMutation({
         mutationFn: async (reqId: string) =>
-            unwrapEden(await api.api.matrices({ id: matrixId }).cells({ cellId }).requirements({ reqId }).delete()),
+            unwrapEden(await legacyApi.api.matrices({ id: matrixId }).cells({ cellId }).requirements({ reqId }).delete()),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["matrix-cell-requirements", cellId] });
             queryClient.invalidateQueries({ queryKey: ["matrix-view", matrixId] });
@@ -122,7 +122,7 @@ export function CellPanel({ matrixId, cellId, ruleTitle, dimensionName, onClose 
 
     const addCodeMutation = useMutation({
         mutationFn: async (body: { kind: "file" | "symbol" | "test"; ref: string }) =>
-            unwrapEden(await api.api.matrices({ id: matrixId }).cells({ cellId }).code.post(body)),
+            unwrapEden(await legacyApi.api.matrices({ id: matrixId }).cells({ cellId }).code.post(body)),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["matrix-cell-code", cellId] });
             queryClient.invalidateQueries({ queryKey: ["matrix-view", matrixId] });
@@ -137,7 +137,7 @@ export function CellPanel({ matrixId, cellId, ruleTitle, dimensionName, onClose 
 
     const removeCodeMutation = useMutation({
         mutationFn: async (codeId: string) =>
-            unwrapEden(await api.api.matrices({ id: matrixId }).cells({ cellId }).code({ codeId }).delete()),
+            unwrapEden(await legacyApi.api.matrices({ id: matrixId }).cells({ cellId }).code({ codeId }).delete()),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["matrix-cell-code", cellId] });
             queryClient.invalidateQueries({ queryKey: ["matrix-view", matrixId] });
@@ -151,7 +151,7 @@ export function CellPanel({ matrixId, cellId, ruleTitle, dimensionName, onClose 
 
     const addTestResultMutation = useMutation({
         mutationFn: async (body: { testRef: string; status: "pass" | "fail"; detail?: string }) =>
-            unwrapEden(await api.api.matrices({ id: matrixId }).cells({ cellId })["test-results"].post(body)),
+            unwrapEden(await legacyApi.api.matrices({ id: matrixId }).cells({ cellId })["test-results"].post(body)),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["matrix-cell-test-results", cellId] });
             queryClient.invalidateQueries({ queryKey: ["matrix-view", matrixId] });

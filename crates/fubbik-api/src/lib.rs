@@ -1,5 +1,4 @@
 pub mod activity;
-pub mod assets;
 pub mod auth;
 pub mod chunks;
 pub mod collections;
@@ -30,6 +29,10 @@ use crate::error::ApiResult;
 pub struct AppState {
     pub pool: PgPool,
     pub implicit_dev_session: bool,
+    /// `BETTER_AUTH_SECRET`, resolved once at startup — never read from the
+    /// environment per request. Used to verify the HMAC signature on
+    /// better-auth's session cookies (see `auth::better_auth_cookie`).
+    pub better_auth_secret: String,
 }
 
 /// Deliberately unauthenticated and not utoipa-annotated — it's an
@@ -63,5 +66,4 @@ pub fn router(state: AppState) -> Router {
         .merge(workspaces::routes::router())
         .route("/api/health", get(health))
         .with_state(state)
-        .fallback(assets::serve)
 }

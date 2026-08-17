@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { PageContainer, PageEmpty, PageHeader, PageLoading } from "@/components/ui/page";
 import { getUser } from "@/functions/get-user";
 import { useApiQuery } from "@/hooks/use-api-query";
-import { api } from "@/utils/api";
+import { legacyApi } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 export const Route = createFileRoute("/templates")({
@@ -51,7 +51,7 @@ function TemplatesPage() {
 
     const templatesQuery = useApiQuery<Template[]>({
         queryKey: ["templates"],
-        queryFn: () => api.api.templates.get(),
+        queryFn: () => legacyApi.api.templates.get(),
         fallback: []
     });
 
@@ -59,7 +59,7 @@ function TemplatesPage() {
 
     const createMutation = useMutation({
         mutationFn: async (body: { name: string; description?: string; type: string; content: string }) => {
-            return unwrapEden(await api.api.templates.post(body));
+            return unwrapEden(await legacyApi.api.templates.post(body));
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["templates"] });
@@ -79,7 +79,7 @@ function TemplatesPage() {
             id: string;
             body: { name?: string; description?: string; type?: string; content?: string };
         }) => {
-            return unwrapEden(await api.api.templates({ id }).patch(body));
+            return unwrapEden(await legacyApi.api.templates({ id }).patch(body));
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["templates"] });
@@ -93,7 +93,7 @@ function TemplatesPage() {
 
     const deleteMutation = useMutation({
         mutationFn: async (id: string) => {
-            return unwrapEden(await api.api.templates({ id }).delete());
+            return unwrapEden(await legacyApi.api.templates({ id }).delete());
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["templates"] });

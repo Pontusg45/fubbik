@@ -9,7 +9,7 @@ import { Card, CardHeader, CardPanel, CardTitle } from "@/components/ui/card";
 import { TraceabilityContent } from "@/features/coverage/traceability-content";
 import { useActiveSpace } from "@/features/spaces/use-active-space";
 import { getUser } from "@/functions/get-user";
-import { api } from "@/utils/api";
+import { legacyApi } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 export const Route = createFileRoute("/coverage")({
@@ -101,7 +101,7 @@ function ChunkCoverageTab({
             const query: { codebaseId?: string; detail?: string } = {};
             if (spaceId) query.codebaseId = spaceId;
             if (showMatrix) query.detail = "true";
-            return unwrapEden(await (api.api.requirements as any).coverage.get({ query }));
+            return unwrapEden(await legacyApi.api.requirements.coverage.get({ query }));
         }
     });
 

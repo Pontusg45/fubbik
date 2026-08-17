@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { PageContainer, PageEmpty, PageHeader, PageLoading } from "@/components/ui/page";
 import { useActiveSpace } from "@/features/spaces/use-active-space";
 import { getUser } from "@/functions/get-user";
-import { api } from "@/utils/api";
+import { legacyApi } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 export const Route = createFileRoute("/context")({
@@ -76,7 +76,7 @@ function ContextPage() {
         queryKey: ["context-for-file", searchPath, spaceId],
         queryFn: async () => {
             const result = unwrapEden(
-                await api.api.context["for-file"].get({
+                await legacyApi.api.context["for-file"].get({
                     query: {
                         path: searchPath,
                         ...(spaceId && spaceId !== "global" ? { spaceId } : {})

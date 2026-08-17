@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useRef, useState } from "react";
 
-import { api } from "@/utils/api";
+import { legacyApi } from "@/utils/api";
 
 import { ChunkPreviewCard } from "./chunk-preview";
 
@@ -18,8 +18,12 @@ export function ChunkLink({ chunkId, children }: { chunkId: string; children: Re
 
     const { data: previewData } = useQuery({
         queryKey: ["chunk", chunkId],
+        // Rust's `GET /api/chunks/{id}` returns the bare chunk row, not the
+        // `{ chunk, tags, ... }` shape this component (and this cache key)
+        // needs — see the "chunks" note in `@/utils/api`. Also matches the
+        // shape the detail page/edit page/graph panel put under this same key.
         queryFn: async () => {
-            const { data, error } = await api.api.chunks({ id: chunkId }).get();
+            const { data, error } = await legacyApi.api.chunks({ id: chunkId }).get();
             if (error) throw new Error("Failed to load chunk");
             return data as unknown as ChunkPreviewData;
         },

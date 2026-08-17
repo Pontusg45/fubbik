@@ -52,7 +52,10 @@ function ArchivedChunks() {
         }
     });
 
-    const chunks = (archivedQuery.data as Array<{ id: string; title: string; type: string; archivedAt: string }>) ?? [];
+    // Bridge through `unknown`: `getArchivedChunks()` now returns Eden's full chunk row
+    // shape (Date fields etc.), which doesn't structurally overlap this trimmed local shape.
+    const chunks =
+        (archivedQuery.data as unknown as Array<{ id: string; title: string; type: string; archivedAt: string }>) ?? [];
 
     function handleRestore(id: string) {
         restoreMutation.mutate(id);

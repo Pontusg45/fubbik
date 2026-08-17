@@ -88,6 +88,33 @@ fn resolve_implicit_dev_session(
     Ok(explicit_flag || !is_production)
 }
 
+/// Splits `CORS_ORIGIN` on `,` and trims each entry, mirroring Node's
+/// `env.CORS_ORIGIN.includes(",") ? env.CORS_ORIGIN.split(",").map(s =>
+/// s.trim()) : env.CORS_ORIGIN` (`apps/server/src/index.ts:36`), which
+/// `CLAUDE.md` documents as supported. Deliberately does **not** strip
+/// trailing slashes from any entry — Node doesn't either, and matching its
+/// normalisation exactly matters more than "improving" on it, since a
+/// silently-added slash would make an origin that used to match stop
+/// matching.
+///
+/// A malformed entry (not a valid HTTP header value) panics rather than
+/// silently dropping the origin: `CORS_ORIGIN` is fixed configuration read
+/// once at startup, same fail-fast posture as the `?` this replaced when
+/// the whole variable was parsed as one `HeaderValue`.
+fn parse_cors_origins(value: &str) -> Vec<axum::http::HeaderValue> {
+    value
+        .split(',')
+        .map(str::trim)
+        .map(|origin| {
+            origin
+                .parse::<axum::http::HeaderValue>()
+                .unwrap_or_else(|_| {
+                    panic!("CORS_ORIGIN entry {origin:?} is not a valid header value")
+                })
+        })
+        .collect()
+}
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt()
@@ -98,6 +125,8 @@ async fn main() -> anyhow::Result<()> {
         Commands::Serve { port, host } => {
             let database_url = std::env::var("DATABASE_URL")
                 .map_err(|_| anyhow::anyhow!("DATABASE_URL is required"))?;
+            let better_auth_secret = std::env::var("BETTER_AUTH_SECRET")
+                .map_err(|_| anyhow::anyhow!("BETTER_AUTH_SECRET is required"))?;
             let node_env = std::env::var("NODE_ENV").ok();
             let explicit_flag =
                 std::env::var("FUBBIK_IMPLICIT_DEV_SESSION").as_deref() == Ok("true");
@@ -129,14 +158,15 @@ async fn main() -> anyhow::Result<()> {
             let state = fubbik_api::AppState {
                 pool,
                 implicit_dev_session,
+                better_auth_secret,
             };
 
+            let cors_origin_env =
+                std::env::var("CORS_ORIGIN").unwrap_or_else(|_| "http://localhost:3001".into());
             let cors = tower_http::cors::CorsLayer::new()
-                .allow_origin(
-                    std::env::var("CORS_ORIGIN")
-                        .unwrap_or_else(|_| "http://localhost:3001".into())
-                        .parse::<axum::http::HeaderValue>()?,
-                )
+                .allow_origin(tower_http::cors::AllowOrigin::list(parse_cors_origins(
+                    &cors_origin_env,
+                )))
                 .allow_credentials(true)
                 // `Any` panics when combined with `allow_credentials(true)`
                 // (browsers reject the combination outright); mirroring the
@@ -179,7 +209,24 @@ async fn main() -> anyhow::Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use super::resolve_implicit_dev_session;
+    use super::{parse_cors_origins, resolve_implicit_dev_session};
+
+    #[test]
+    fn cors_accepts_a_comma_separated_origin_list() {
+        let origins = parse_cors_origins("http://localhost:3001, https://app.fubbik.test:8443");
+        assert_eq!(
+            origins.len(),
+            2,
+            "CLAUDE.md documents comma-separated CORS_ORIGIN as supported"
+        );
+    }
+
+    #[test]
+    fn cors_single_origin_still_works() {
+        let origins = parse_cors_origins("http://localhost:3001");
+        assert_eq!(origins.len(), 1);
+        assert_eq!(origins[0], "http://localhost:3001");
+    }
 
     // Pure-function tests only: `NODE_ENV`/`FUBBIK_IMPLICIT_DEV_SESSION` are
     // process-global and tests run in parallel, so the resolution logic is

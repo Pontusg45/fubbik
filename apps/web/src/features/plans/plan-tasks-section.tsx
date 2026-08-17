@@ -30,7 +30,7 @@ export function PlanTasksSection({ planId, tasks, dependencies, onUpdate }: Plan
     const [showDescription, setShowDescription] = useState(false);
 
     const reorderMutation = useApiMutation<unknown, { taskIds: string[] }>({
-        mutationFn: async ({ taskIds }) => await (api.api as any).plans[planId].tasks.reorder.post({ taskIds }),
+        mutationFn: async ({ taskIds }) => await api.api.plans({ id: planId }).tasks.reorder.post({ taskIds }),
         successToast: false,
         errorToast: "Failed to reorder tasks",
         onSuccess: () => onUpdate()
@@ -38,9 +38,11 @@ export function PlanTasksSection({ planId, tasks, dependencies, onUpdate }: Plan
 
     const addMutation = useApiMutation<unknown, { title: string; description: string }>({
         mutationFn: async ({ title, description }) => {
-            const body: Record<string, unknown> = { title };
+            // Typed as the literal shape the route accepts (not `Record<string,
+            // unknown>`) so the client's `title`-required body check applies.
+            const body: { title: string; description?: string } = { title };
             if (description) body.description = description;
-            return await (api.api as any).plans[planId].tasks.post(body);
+            return await api.api.plans({ id: planId }).tasks.post(body);
         },
         successToast: false,
         errorToast: "Failed to add task",

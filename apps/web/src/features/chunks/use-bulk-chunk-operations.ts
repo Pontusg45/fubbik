@@ -2,7 +2,9 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useRef, useState } from "react";
 import { toast } from "sonner";
 
-import { api } from "@/utils/api";
+import { api, legacyApi } from "@/utils/api";
+
+type BulkAction = "add_tags" | "remove_tags" | "set_type" | "set_codebase" | "set_review_status" | "archive" | "delete";
 
 export function useBulkChunkOperations() {
     const queryClient = useQueryClient();
@@ -10,8 +12,9 @@ export function useBulkChunkOperations() {
     const lastSelectedIndex = useRef<number | null>(null);
 
     const bulkUpdateMutation = useMutation({
-        mutationFn: async (body: { ids: string[]; action: string; value?: string | null }) => {
-            const { error } = await (api.api.chunks as any)["bulk-update"].post(body);
+        mutationFn: async (body: { ids: string[]; action: BulkAction; value?: string | null }) => {
+            // /chunks/bulk-update is Node-only (no Rust route yet) — must stay on legacyApi.
+            const { error } = await legacyApi.api.chunks["bulk-update"].post(body);
             if (error) throw new Error("Bulk update failed");
         },
         onSuccess: () => {
@@ -39,7 +42,9 @@ export function useBulkChunkOperations() {
 
     const reviewMutation = useMutation({
         mutationFn: async ({ id, status }: { id: string; status: string }) => {
-            const { error } = await api.api.chunks({ id }).patch({ reviewStatus: status as any });
+            // Rust's UpdateChunkBody has no `reviewStatus` field — it would
+            // 200 and silently drop the write. Must stay on legacyApi.
+            const { error } = await legacyApi.api.chunks({ id }).patch({ reviewStatus: status as any });
             if (error) throw new Error("Failed to update review status");
         },
         onMutate: async ({ id, status }) => {

@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { PageContainer, PageHeader } from "@/components/ui/page";
 import { Textarea } from "@/components/ui/textarea";
 import { useApiQuery } from "@/hooks/use-api-query";
-import { api } from "@/utils/api";
+import { api, legacyApi } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 interface RequirementRow {
@@ -45,7 +45,7 @@ function NewPlanPage() {
     const requirementsListQuery = useApiQuery<RequirementRow[]>({
         queryKey: ["requirements-for-plan-picker"],
         queryFn: async () => {
-            const response = await api.api.requirements.get({ query: {} });
+            const response = await legacyApi.api.requirements.get({ query: {} });
             const raw = unwrapEden(response);
             const arr = Array.isArray(raw) ? raw : ((raw as { requirements?: RequirementRow[] })?.requirements ?? []);
             return { data: arr as RequirementRow[], error: null };

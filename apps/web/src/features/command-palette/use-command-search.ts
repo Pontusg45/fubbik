@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { useRecentChunks } from "@/features/chunks/use-recent-chunks";
 import { useActiveSpace } from "@/features/spaces/use-active-space";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
-import { api } from "@/utils/api";
+import { api, legacyApi } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 import {
@@ -108,8 +108,9 @@ export function useCommandSearch({
         queryFn: async () => {
             if (!debouncedFederatedQuery.trim()) return null;
             try {
+                // No Rust route for `search/federated` yet — stays on legacyApi.
                 return unwrapEden(
-                    await api.api.chunks.search.federated.get({
+                    await legacyApi.api.chunks.search.federated.get({
                         query: { search: debouncedFederatedQuery, limit: "8" }
                     })
                 );
@@ -145,7 +146,7 @@ export function useCommandSearch({
             if (!debouncedQuery.trim()) return null;
             try {
                 return unwrapEden(
-                    await api.api.requirements.get({
+                    await legacyApi.api.requirements.get({
                         query: { search: debouncedQuery, limit: "5" }
                     })
                 ) as { requirements: Array<{ id: string; title: string; status: string; priority: string }>; total: number };
@@ -215,8 +216,10 @@ export function useCommandSearch({
                 const results = await Promise.all(
                     recentIds.slice(0, 5).map(async id => {
                         try {
+                            // Bare chunk fields (id/title) suffice here, so this stays on `api`;
+                            // wrap to match `buildRecentChunkItems`'s `{ chunk }` shape.
                             const data = unwrapEden(await api.api.chunks({ id }).get());
-                            return data;
+                            return data ? { chunk: data as Record<string, unknown> } : null;
                         } catch {
                             return null;
                         }

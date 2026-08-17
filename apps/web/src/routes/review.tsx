@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { PageContainer, PageHeader, PageLoading } from "@/components/ui/page";
 import { ProposalCard, type Proposal } from "@/features/proposals/proposal-card";
 import { useApiQuery } from "@/hooks/use-api-query";
-import { api } from "@/utils/api";
+import { legacyApi } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 export const Route = createFileRoute("/review")({ component: ReviewPage });
@@ -19,20 +19,20 @@ function ReviewPage() {
         queryFn: () => {
             const query: Record<string, string> = {};
             if (statusFilter !== "all") query.status = statusFilter;
-            return api.api.proposals.get({ query });
+            return legacyApi.api.proposals.get({ query });
         }
     });
 
     const countQuery = useApiQuery<any>({
         queryKey: ["proposals-count"],
-        queryFn: () => api.api.proposals.count.get()
+        queryFn: () => legacyApi.api.proposals.count.get()
     });
 
     const bulkApproveMutation = useMutation({
         mutationFn: async () => {
             const pending = ((proposalsQuery.data ?? []) as Proposal[]).filter(p => p.status === "pending");
             const actions = pending.map(p => ({ proposalId: p.id, action: "approve" as const }));
-            return unwrapEden(await api.api.proposals.bulk.post({ actions }));
+            return unwrapEden(await legacyApi.api.proposals.bulk.post({ actions }));
         },
         onSuccess: () => {
             void proposalsQuery.refetch();
@@ -44,7 +44,7 @@ function ReviewPage() {
         mutationFn: async () => {
             const pending = ((proposalsQuery.data ?? []) as Proposal[]).filter(p => p.status === "pending");
             const actions = pending.map(p => ({ proposalId: p.id, action: "reject" as const }));
-            return unwrapEden(await api.api.proposals.bulk.post({ actions }));
+            return unwrapEden(await legacyApi.api.proposals.bulk.post({ actions }));
         },
         onSuccess: () => {
             void proposalsQuery.refetch();

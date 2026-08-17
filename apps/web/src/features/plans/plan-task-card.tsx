@@ -85,12 +85,13 @@ export function PlanTaskCard({
     }, [task.description]);
 
     const updateMutation = useMutation({
-        mutationFn: async (patch: Record<string, unknown>) => unwrapEden(await (api.api as any).plans[planId].tasks[task.id].patch(patch)),
+        mutationFn: async (patch: Record<string, unknown>) =>
+            unwrapEden(await api.api.plans({ id: planId }).tasks({ taskId: task.id }).patch(patch)),
         onSuccess: () => onUpdate()
     });
 
     const deleteMutation = useMutation({
-        mutationFn: async () => unwrapEden(await (api.api as any).plans[planId].tasks[task.id].delete()),
+        mutationFn: async () => unwrapEden(await api.api.plans({ id: planId }).tasks({ taskId: task.id }).delete()),
         onSuccess: () => onUpdate()
     });
 
@@ -100,12 +101,17 @@ export function PlanTaskCard({
 
     const addDependencyMutation = useMutation({
         mutationFn: async (dependsOnTaskId: string) =>
-            unwrapEden(await (api.api as any).plans[planId].tasks[task.id].dependencies.post({ dependsOnTaskId })),
+            unwrapEden(
+                await api.api.plans({ id: planId }).tasks({ taskId: task.id }).dependencies.post({ dependsOnTaskId })
+            ),
         onSuccess: () => onUpdate()
     });
 
     const removeDependencyMutation = useMutation({
-        mutationFn: async (depId: string) => unwrapEden(await (api.api as any).plans[planId].tasks[task.id].dependencies[depId].delete()),
+        mutationFn: async (depId: string) =>
+            unwrapEden(
+                await api.api.plans({ id: planId }).tasks({ taskId: task.id }).dependencies({ depId }).delete()
+            ),
         onSuccess: () => onUpdate()
     });
 

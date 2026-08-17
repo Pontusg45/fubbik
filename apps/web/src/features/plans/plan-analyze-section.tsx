@@ -95,7 +95,17 @@ function AnalyzeKindBlock({
 
     const addMutation = useMutation({
         mutationFn: async () => {
-            const body: Record<string, unknown> = { kind };
+            // Typed as the literal shape the route accepts (not `Record<string,
+            // unknown>`) so the client's `kind`-required, per-field-typed body
+            // check actually applies here — a loosely-typed carrier would
+            // defeat the point of the tightened `body` type.
+            const body: {
+                kind: AnalyzeKind;
+                filePath?: string;
+                text?: string;
+                metadata?: unknown;
+                chunkId?: string;
+            } = { kind };
             if (kind === "file") {
                 body.filePath = draftFilePath;
                 body.text = draftText;
@@ -111,7 +121,7 @@ function AnalyzeKindBlock({
             } else if (kind === "chunk") {
                 body.chunkId = draftText;
             }
-            return unwrapEden(await (api.api as any).plans[planId].analyze.post(body));
+            return unwrapEden(await api.api.plans({ id: planId }).analyze.post(body));
         },
         onSuccess: () => {
             setAdding(false);
@@ -122,7 +132,8 @@ function AnalyzeKindBlock({
     });
 
     const deleteMutation = useMutation({
-        mutationFn: async (itemId: string) => unwrapEden(await (api.api as any).plans[planId].analyze[itemId].delete()),
+        mutationFn: async (itemId: string) =>
+            unwrapEden(await api.api.plans({ id: planId }).analyze({ itemId }).delete()),
         onSuccess: () => onUpdate()
     });
 

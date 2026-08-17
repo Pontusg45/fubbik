@@ -4,6 +4,29 @@
  */
 
 export interface paths {
+    "/api/activity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Bare array, no `total` field — Node's `listActivityRepo` applies
+         *     `LIMIT`/`OFFSET` in the query itself but never returns a count
+         *     (`_questions.md` Q3), unlike `chunks`' `{chunks, total, limit, offset}`
+         *     envelope. A foreign `spaceId` 404s — see `service::list`'s doc comment
+         *     for why that's a deliberate divergence from Node's 200-with-`[]`.
+         */
+        get: operations["list_activity"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/chunks": {
         parameters: {
             query?: never;
@@ -14,6 +37,79 @@ export interface paths {
         get: operations["list_chunks"];
         put?: never;
         post: operations["create_chunk"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/chunks/stale": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_stale"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/chunks/stale/count": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Returns a **bare number**, not `{"count": N}` — Node's `getStaleCount`
+         *     resolves the route handler to a plain `number`, and Elysia serialises a
+         *     primitive response as `text/plain`, not JSON
+         *     (`tests/fixtures/node-contract-2c/chunks-stale-count.json`: literally
+         *     `0`). `String`'s `IntoResponse` impl is what axum uses to produce a
+         *     `text/plain; charset=utf-8` body here, matching that content type —
+         *     `Json<i64>` would emit the right bytes but the wrong content-type.
+         */
+        get: operations["stale_count"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/chunks/stale/scan-age": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["scan_age"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/chunks/suppress-duplicate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["suppress_duplicate"];
         delete?: never;
         options?: never;
         head?: never;
@@ -52,6 +148,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/chunks/{id}/dismiss-staleness": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["dismiss_staleness"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/chunks/{id}/file-refs": {
         parameters: {
             query?: never;
@@ -84,10 +196,1166 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/chunks/{id}/scan-impact": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * `title` falls back to `"Unknown"` when absent — matches Node's
+         *     `ctx.body.title ?? "Unknown"` (`packages/api/src/staleness/routes.ts:98`).
+         */
+        post: operations["scan_impact"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/collections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_collections"];
+        put?: never;
+        post: operations["create_collection"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/collections/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["delete_collection"];
+        options?: never;
+        head?: never;
+        patch: operations["update_collection"];
+        trace?: never;
+    };
+    "/api/collections/{id}/chunks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Returns the chunks `{chunks, total, limit, offset}` envelope, NOT a bare
+         *     array — the one endpoint in this slice that inherits the chunks
+         *     envelope by delegating to the same `chunks::service::list` that backs
+         *     `GET /api/chunks`. See `service::get_chunks`'s doc comment.
+         */
+        get: operations["get_collection_chunks"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/connections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["create_connection"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/connections/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["delete_connection"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/favorites": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_favorites"];
+        put?: never;
+        /**
+         * Status is set to 201 unconditionally, even when the chunk was already
+         *     favorited and the body is `null` — matching Node's `Effect.tap` block,
+         *     which sets `ctx.set.status = 201` before ever inspecting the result
+         *     (`packages/api/src/favorites/routes.ts:11-29`, `_mutating.md`). This is
+         *     a deliberately preserved quirk, not a bug: do not "improve" it to
+         *     200/409/an idempotent echo of the existing row.
+         */
+        post: operations["add_favorite"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/favorites/reorder": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["reorder_favorites"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/favorites/{chunkId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Always 200 with `{"message":"Deleted"}`, even if the chunk was never
+         *     favorited by this caller — Node's `removeFavorite` has no 404 path at
+         *     all (`_mutating.md`: "no way to distinguish 'deleted something' from
+         *     'there was nothing to delete'"). Reproduced faithfully, not "fixed".
+         */
+        delete: operations["remove_favorite"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_notifications"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notifications/count": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["unread_count"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notifications/read-all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["mark_all_read"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notifications/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["delete_notification"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notifications/{id}/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["mark_notification_read"];
+        trace?: never;
+    };
+    "/api/plans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * `PlanListRow`, not the bare `Plan` — see that struct's doc comment.
+         *     Confirmed against `tests/fixtures/node-contract-2c/plans-list.json`,
+         *     which carries the rollup fields even though the task brief's own
+         *     endpoint table just says "bare array".
+         */
+        get: operations["list_plans"];
+        put?: never;
+        /**
+         * Every plans POST/PATCH/DELETE returns 200, never 201 — confirmed by grep
+         *     against Node's `plans/routes.ts` (`_mutating.md`): zero `set.status =
+         *     201` calls anywhere in this slice. `Json<T>`'s default status is already
+         *     200, so none of these handlers wrap their response in an explicit
+         *     `StatusCode`.
+         */
+        post: operations["create_plan"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/plans/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Enveloped `{plan, requirements, analyze, tasks, dependencies}` — the one
+         *     plan GET that isn't a bare array/object, confirmed against
+         *     `tests/fixtures/node-contract-2c/plans-detail.json`.
+         */
+        get: operations["get_plan"];
+        put?: never;
+        post?: never;
+        /**
+         * `{ ok: true }`, not `{ message: "Deleted" }` — Node's plans routes
+         *     discard the delete Effect's own result (`_mutating.md`).
+         */
+        delete: operations["delete_plan"];
+        options?: never;
+        head?: never;
+        patch: operations["update_plan"];
+        trace?: never;
+    };
+    "/api/plans/{id}/activity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Bare array, merged plan+task events sorted `createdAt` desc and sliced
+         *     to 100 — see `service::get_activity`'s doc comment.
+         */
+        get: operations["plan_activity"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/plans/{id}/analyze": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Object keyed by kind — `{chunk:[],file:[],risk:[],assumption:[],
+         *     question:[]}`, all five keys always present, confirmed against
+         *     `tests/fixtures/node-contract-2c/plans-detail-analyze.json` — the one
+         *     list-shaped GET in this domain that isn't a bare array.
+         */
+        get: operations["list_plan_analyze"];
+        put?: never;
+        post: operations["create_plan_analyze_item"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/plans/{id}/analyze/reorder": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["reorder_plan_analyze_items"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/plans/{id}/analyze/{itemId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["delete_plan_analyze_item"];
+        options?: never;
+        head?: never;
+        patch: operations["update_plan_analyze_item"];
+        trace?: never;
+    };
+    "/api/plans/{id}/duplicate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Response is the new `Plan` row only — not its copied children, matching
+         *     the plain create/update endpoints' shape (`_mutating.md`).
+         */
+        post: operations["duplicate_plan"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/plans/{id}/links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_plan_links"];
+        put?: never;
+        /**
+         * `system` defaults to `"url"`, `label` to `null` when omitted — applied
+         *     in `service::add_link`.
+         */
+        post: operations["add_plan_link"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/plans/{id}/links/{linkId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["remove_plan_link"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/plans/{id}/requirements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Bare created `PlanRequirement` row — not `{ok:true}`, matching Node's
+         *     `addPlanRequirement` return shape (`_mutating.md`: "POST /plans/:id/
+         *     requirements ... Response: created PlanRequirement row").
+         */
+        post: operations["add_plan_requirement"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/plans/{id}/requirements/reorder": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["reorder_plan_requirements"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/plans/{id}/requirements/{requirementId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["remove_plan_requirement"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/plans/{id}/tasks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Bare created `PlanTask` row — raw, not run through
+         *     `normalize_acceptance_criteria`, matching `_mutating.md`'s "created
+         *     `PlanTask` row (status forced to `pending`)".
+         */
+        post: operations["create_plan_task"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/plans/{id}/tasks/reorder": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["reorder_plan_tasks"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/plans/{id}/tasks/{taskId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["delete_plan_task"];
+        options?: never;
+        head?: never;
+        patch: operations["update_plan_task"];
+        trace?: never;
+    };
+    "/api/plans/{id}/tasks/{taskId}/chunks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["add_plan_task_chunk"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/plans/{id}/tasks/{taskId}/chunks/{linkId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["remove_plan_task_chunk"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/plans/{id}/tasks/{taskId}/dependencies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * **Does not write an activity_log row** — the one mutating task endpoint
+         *     that doesn't, matching Node exactly. See `service::add_task_dependency`'s
+         *     doc comment.
+         */
+        post: operations["add_plan_task_dependency"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/plans/{id}/tasks/{taskId}/dependencies/{depId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["remove_plan_task_dependency"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/plans/{id}/tasks/{taskId}/links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_plan_task_links"];
+        put?: never;
+        /**
+         * `system` defaults to `"url"`, `label` to `null` when omitted — applied
+         *     in `service::add_task_link`.
+         */
+        post: operations["add_plan_task_link"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/plans/{id}/tasks/{taskId}/links/{linkId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["remove_plan_task_link"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/search/autocomplete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * `GET /api/search/autocomplete` — bare `string[]`. No error path beyond
+         *     the session guard; see `search::service::autocomplete`'s doc comment.
+         */
+        get: operations["autocomplete"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/search/parse": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * `GET /api/search/parse` — `{clauses: parse_query_string(q)}`. No error
+         *     path beyond the session guard: `parse_query_string` never fails
+         *     (`search::parser`'s module doc), so the only non-200 this route can
+         *     produce is a 401.
+         */
+        get: operations["parse"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/search/query": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * `POST /api/search/query` — always 200, even on a database error; see
+         *     `search::service`'s module doc. `body.join` is accepted and ignored —
+         *     see `SearchQueryBody`'s doc comment.
+         */
+        post: operations["query"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/search/saved": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * `GET /api/search/saved` — bare array, user-scoped, optionally narrowed
+         *     to one space.
+         */
+        get: operations["list_saved"];
+        put?: never;
+        /** `POST /api/search/saved` — bare object, the created row. */
+        post: operations["create_saved"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/search/saved/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * `DELETE /api/search/saved/{id}` — **never 404s**, even cross-user or for
+         *     a nonexistent id. The delete is still user-scoped in SQL
+         *     (`fubbik_db::repo::saved_query::delete`'s doc comment); the response
+         *     alone can never reveal that, only a surviving-row assertion can — see
+         *     `tests/search.rs`.
+         */
+        delete: operations["delete_saved"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/settings/codebase": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get_codebase_settings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["set_codebase_setting"];
+        trace?: never;
+    };
+    "/api/settings/features": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Unauthenticated, matching Node exactly
+         *     (`packages/api/src/settings/routes.ts:8` — `GET /settings/features` has
+         *     no `requireSession`). See `get_instance_settings` for the full note on
+         *     why this crate has two deliberately open `GET`s in this domain.
+         */
+        get: operations["get_feature_flags"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/settings/instance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * **Deliberately unauthenticated** — matches Node exactly
+         *     (`packages/api/src/settings/routes.ts:55`: `GET /settings/instance` has
+         *     no `requireSession`, and there is no global auth middleware in
+         *     `packages/api/src/index.ts` to backstop it). This was escalated to and
+         *     decided by the human partner explicitly (captured, then corrected on
+         *     review, in `tests/fixtures/node-contract-2b/_questions.md` Q2): faithful
+         *     port, `GET` open, `PATCH` session-gated (see `set_instance_setting`
+         *     below), exactly as Node. `instance_settings` holds zero rows today, the
+         *     server binds `127.0.0.1` by default, and the web app may legitimately
+         *     need to read feature flags before login — do NOT add a session guard
+         *     here believing it an oversight; that would silently diverge from an
+         *     already-made decision and could break pre-login flag reads.
+         * @description The real property this leaves: any caller reachable on localhost can
+         *     read the raw instance-settings map with no session at all.
+         */
+        get: operations["get_instance_settings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Session-gated (unlike its `GET` sibling above), but with **no
+         *     role/admin check** — any authenticated user can flip instance-wide
+         *     flags like `aiEnabled`, matching Node's `requireSession`-only guard
+         *     (`packages/api/src/settings/routes.ts:56-60`). This is also a faithful
+         *     port, not an oversight.
+         */
+        patch: operations["set_instance_setting"];
+        trace?: never;
+    };
+    "/api/settings/user": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get_user_settings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["set_user_setting"];
+        trace?: never;
+    };
+    "/api/spaces": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_spaces"];
+        put?: never;
+        post: operations["create_space"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/spaces/detect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["detect_space"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/spaces/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get_space"];
+        put?: never;
+        post?: never;
+        delete: operations["delete_space"];
+        options?: never;
+        head?: never;
+        patch: operations["update_space"];
+        trace?: never;
+    };
+    "/api/spaces/{id}/reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["reset_space"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * `GET /api/stats` returns a **bare object** — not an array, and not the
+         *     `{chunks,total,limit,offset}` envelope `GET /api/chunks` uses. Matches
+         *     Node's `statsRoutes` (`packages/api/src/stats/routes.ts`), which returns
+         *     `statsService.getUserStats(session.user.id)` directly as the response
+         *     body.
+         */
+        get: operations["get_stats"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tag-types": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_tag_types"];
+        put?: never;
+        post: operations["create_tag_type"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tag-types/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["delete_tag_type"];
+        options?: never;
+        head?: never;
+        patch: operations["update_tag_type"];
+        trace?: never;
+    };
+    "/api/tags": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_tags"];
+        put?: never;
+        post: operations["create_tag"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tags/merge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["merge_tags"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tags/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["delete_tag"];
+        options?: never;
+        head?: never;
+        patch: operations["update_tag"];
+        trace?: never;
+    };
+    "/api/workspaces": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_workspaces"];
+        put?: never;
+        post: operations["create_workspace"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/workspaces/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get_workspace"];
+        put?: never;
+        post?: never;
+        delete: operations["delete_workspace"];
+        options?: never;
+        head?: never;
+        patch: operations["update_workspace"];
+        trace?: never;
+    };
+    "/api/workspaces/{id}/spaces": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["add_workspace_space"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/workspaces/{id}/spaces/{spaceId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["remove_workspace_space"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * @description One normalised acceptance-criterion entry. `acceptanceCriteria` was
+         *     originally stored as `string[]`; both the legacy shape and the newer
+         *     `{text,done}[]` shape are read and always normalised to this object
+         *     shape on the way out — matching Node's `normaliseAcceptanceCriteria`
+         *     (`packages/api/src/plans/service.ts:110-122`).
+         */
+        AcceptanceCriterion: {
+            done: boolean;
+            text: string;
+        };
+        /**
+         * @description One entry of the write-side `acceptanceCriteria` array accepted by
+         *     `POST`/`PATCH /api/plans/{id}/tasks[/:taskId]` — Node's
+         *     `acceptanceCriteriaBodySchema` (`tasks.ts:15`) is `t.Array(t.Union([
+         *     t.String(), t.Object({text: t.String(), done: t.Boolean()})]))`: a bare
+         *     string OR an object with both `text` and `done` present (not the more
+         *     lenient shape `normalize_acceptance_criteria` tolerates on read paths,
+         *     where a malformed object degrades to `{text:"", done:false}` instead of
+         *     being rejected). `#[serde(untagged)]` reproduces that union at
+         *     deserialisation time — a value matching neither variant is a 400 via
+         *     `crate::extract::Json`'s rejection mapping, same as an Elysia schema
+         *     mismatch.
+         */
+        AcceptanceCriterionEntry: string | {
+            done: boolean;
+            text: string;
+        };
+        /** @description `camelCase` serialisation matches every other wire type in this crate. */
+        Activity: {
+            action: string;
+            /** Format: date-time */
+            createdAt: string;
+            entityId: string;
+            entityTitle?: string | null;
+            entityType: string;
+            id: string;
+            spaceId?: string | null;
+            userId: string;
+        };
+        /** @description Body of `POST /api/plans/{id}/requirements` (`requirements.ts:9-20`). */
+        AddRequirementBody: {
+            requirementId: string;
+        };
+        /** @description Body of `POST /api/workspaces/{id}/spaces` (`packages/api/src/workspaces/routes.ts:60-78`). */
+        AddSpaceBody: {
+            spaceId: string;
+        };
+        /**
+         * @description Body of `POST /api/plans/{id}/tasks/{taskId}/chunks` (`tasks.ts:191`).
+         *     `relation` is validated in the service layer against `context | created
+         *     | modified`, never a Rust enum — same free-text-at-the-schema-level
+         *     convention as `status`.
+         */
+        AddTaskChunkBody: {
+            chunkId: string;
+            relation: string;
+        };
+        /**
+         * @description Body of `POST /api/plans/{id}/tasks/{taskId}/dependencies` (`tasks.ts:213`).
+         *     No self-reference (`dependsOnTaskId == taskId`) guard — deliberately not
+         *     added, matching Node, which has none either (see `fubbik_db::repo::
+         *     plan::task::add_task_dependency`'s doc comment).
+         */
+        AddTaskDependencyBody: {
+            dependsOnTaskId: string;
+        };
+        /**
+         * @description The five fixed analyze-item buckets, always present even when empty —
+         *     confirmed against real bytes in `tests/fixtures/node-contract-2c/
+         *     plans-detail-analyze.json` (Q1 in `_questions.md`): `{chunk:[],file:[],
+         *     risk:[],assumption:[],question:[]}`, never an omitted key. Matches
+         *     Node's `groupByKind` (`packages/api/src/plans/analyze.ts:14-28`), which
+         *     initialises all five keys unconditionally before bucketing.
+         */
+        AnalyzeGrouped: {
+            assumption: components["schemas"]["PlanAnalyzeItem"][];
+            chunk: components["schemas"]["PlanAnalyzeItem"][];
+            file: components["schemas"]["PlanAnalyzeItem"][];
+            question: components["schemas"]["PlanAnalyzeItem"][];
+            risk: components["schemas"]["PlanAnalyzeItem"][];
+        };
         AppliesTo: {
             chunkId: string;
             id: string;
@@ -99,22 +1367,55 @@ export interface components {
          *     Emitting snake_case would silently break every one of them.
          */
         Chunk: {
+            aliases: string[];
+            alternatives?: string[] | null;
             /** Format: date-time */
             archivedAt?: string | null;
             consequences?: string | null;
             content: string;
             /** Format: date-time */
             createdAt: string;
+            documentId?: string | null;
+            /** Format: int32 */
+            documentOrder?: number | null;
+            embedding?: number[] | null;
+            /** Format: date-time */
+            embeddingUpdatedAt?: string | null;
             id: string;
+            isEntryPoint: boolean;
+            notAbout: string[];
             origin: string;
             rationale?: string | null;
             reviewStatus: string;
+            /** Format: date-time */
+            reviewedAt?: string | null;
+            reviewedBy?: string | null;
+            scope: {
+                [key: string]: string;
+            };
             summary?: string | null;
             title: string;
             type: string;
             /** Format: date-time */
             updatedAt: string;
             userId: string;
+        };
+        /**
+         * @description Response envelope for `GET /api/chunks`, matching the Node/Elysia
+         *     backend's `{ chunks, total, limit, offset }` shape (the web app reads
+         *     `.chunks` and `.total` directly). `total` is the count of rows matching
+         *     the same filters as `chunks` but WITHOUT `limit`/`offset` applied — see
+         *     `fubbik_db::repo::chunk::count`, which shares its filter-building logic
+         *     with `list` so the two can never disagree.
+         */
+        ChunkListResponse: {
+            chunks: components["schemas"]["Chunk"][];
+            /** Format: int64 */
+            limit: number;
+            /** Format: int64 */
+            offset: number;
+            /** Format: int64 */
+            total: number;
         };
         ChunkVersion: {
             chunkId: string;
@@ -129,16 +1430,374 @@ export interface components {
             /** Format: int32 */
             version: number;
         };
+        /** @description `camelCase` serialisation matches every other wire type in this crate. */
+        Collection: {
+            /** Format: date-time */
+            createdAt: string;
+            description?: string | null;
+            filter: components["schemas"]["CollectionFilter"];
+            id: string;
+            name: string;
+            spaceId?: string | null;
+            /** Format: date-time */
+            updatedAt: string;
+            userId: string;
+        };
+        /**
+         * @description The nine keys `CollectionFilterSchema` accepts, all optional strings,
+         *     stored and echoed back exactly as received —
+         *     `#[serde(skip_serializing_if = "Option::is_none")]` on every field keeps
+         *     a partial filter (e.g. seed data's `{"type": "convention"}`) from
+         *     growing eight extra `null` keys on the way back out. See
+         *     `tests/fixtures/node-contract-2b/collections-list.json`.
+         */
+        CollectionFilter: {
+            /** @default null */
+            after: string | null;
+            /** @default null */
+            enrichment: string | null;
+            /** @default null */
+            minConnections: string | null;
+            /** @default null */
+            origin: string | null;
+            /** @default null */
+            reviewStatus: string | null;
+            /** @default null */
+            search: string | null;
+            /** @default null */
+            sort: string | null;
+            /** @default null */
+            tags: string | null;
+            /** @default null */
+            type: string | null;
+        };
+        /**
+         * @description `chunk_connection` row shape, matching Node's bare-row response for both
+         *     `POST /api/connections` (create) and the implicit shape returned by
+         *     `getConnectionById`/`deleteConnection` in
+         *     `packages/db/src/repository/connection.ts`.
+         */
+        Connection: {
+            /** Format: date-time */
+            createdAt: string;
+            id: string;
+            origin: string;
+            relation: string;
+            reviewStatus: string;
+            /** Format: date-time */
+            reviewedAt?: string | null;
+            reviewedBy?: string | null;
+            sourceId: string;
+            targetId: string;
+            /** Format: int32 */
+            weight: number;
+        };
+        /**
+         * @description Shape of `GET /api/notifications/count`
+         *     (`tests/fixtures/node-contract-2b/notifications-count.json`): a bare
+         *     `{ "count": N }` object, not the chunks-style envelope.
+         */
+        CountResponse: {
+            /** Format: int64 */
+            count: number;
+        };
+        /**
+         * @description Body of `POST /api/plans/{id}/analyze` (`analyze.ts:49-78`). `kind` is
+         *     validated in the service layer, never a Rust enum — see `fubbik_db::
+         *     repo::plan`'s module doc for why `plan_analyze_item.kind` is
+         *     unconstrained free text, matched only by Node's own `t.String()` +
+         *     `Array.includes` runtime check.
+         */
+        CreateAnalyzeItemBody: {
+            chunkId?: string | null;
+            filePath?: string | null;
+            kind: string;
+            metadata?: unknown;
+            text?: string | null;
+        };
         CreateChunkBody: {
             content?: string;
             rationale?: string | null;
             title: string;
             type?: string | null;
         };
+        /**
+         * @description Body of `POST /api/collections`
+         *     (`packages/api/src/collections/routes.ts:23-44`). `filter` is required
+         *     as a whole object but every one of its nine keys is itself optional —
+         *     see `CollectionFilter`'s doc comment.
+         */
+        CreateCollectionBody: {
+            description?: string | null;
+            filter: components["schemas"]["CollectionFilter"];
+            name: string;
+            spaceId?: string | null;
+        };
+        /**
+         * @description Matches Node's body schema exactly (`packages/api/src/connections/routes.ts:22-27`):
+         *     `sourceId`/`targetId`/`relation` required, `origin` optional and
+         *     constrained to the two literals Node accepts (`t.Union([t.Literal("human"),
+         *     t.Literal("ai")])`) — anything else fails validation before reaching the
+         *     service layer, matching Node's Elysia schema rejecting the request
+         *     outright rather than letting an arbitrary `origin` string through.
+         */
+        CreateConnectionBody: {
+            origin?: null | components["schemas"]["Origin"];
+            relation: string;
+            sourceId: string;
+            targetId: string;
+        };
+        /**
+         * @description Body of `POST /api/favorites` (`packages/api/src/favorites/routes.ts:12-14`):
+         *     `chunkId` only, a plain `String` with no length cap. Node's schema
+         *     declares `t.String({ maxLength: 100 })`, but this port does not enforce
+         *     that bound — an accepted, deliberate divergence (a `chunkId` over 100
+         *     chars simply fails the downstream chunk-ownership lookup instead of
+         *     being rejected up front), not something silently missing.
+         */
+        CreateFavoriteBody: {
+            chunkId: string;
+        };
+        /**
+         * @description Body of `POST /api/plans/{id}/links`
+         *     (`packages/api/src/plans/routes.ts:208-214`): `system` defaults to
+         *     `"url"`, `label` to `null` when omitted — applied in `service::add_link`,
+         *     not here, since the defaulting happens after the field is already known
+         *     to be absent (Elysia's `?? "url"` / `?? null`, not a serde default that
+         *     would collapse "omitted" and "empty string").
+         */
+        CreateLinkBody: {
+            label?: string | null;
+            system?: string | null;
+            url: string;
+        };
+        /** @description Body of `POST /api/plans` (`packages/api/src/plans/routes.ts:62-77`). */
+        CreatePlanBody: {
+            description?: string | null;
+            metadata?: unknown;
+            requirementIds?: string[] | null;
+            spaceId?: string | null;
+            tasks?: components["schemas"]["CreateTaskInput"][] | null;
+            title: string;
+        };
+        /**
+         * @description Body of `POST /api/search/saved`
+         *     (`packages/api/src/search/routes.ts:93-103`).
+         */
+        CreateSavedQueryBody: {
+            name: string;
+            query: components["schemas"]["SavedQueryPayload"];
+            spaceId?: string | null;
+        };
+        CreateSpaceBody: {
+            description?: string | null;
+            kind?: string | null;
+            localPaths?: string[] | null;
+            name: string;
+            remoteUrl?: string | null;
+        };
+        CreateTagBody: {
+            name: string;
+            tagTypeId?: string | null;
+        };
+        CreateTagTypeBody: {
+            color?: string | null;
+            icon?: string | null;
+            name: string;
+        };
+        /**
+         * @description Body of `POST /api/plans/{id}/tasks` (`tasks.ts:88-97`). Distinct from
+         *     [`CreateTaskInput`], which is the narrower shape accepted for the nested
+         *     `tasks` array of `POST /api/plans` itself (no `chunks`/
+         *     `dependsOnTaskIds`/`metadata` there — matching Node's two separate body
+         *     schemas at `routes.ts:67-75` vs `tasks.ts:89-96`).
+         */
+        CreateTaskBody: {
+            acceptanceCriteria?: components["schemas"]["AcceptanceCriterionEntry"][] | null;
+            chunks?: components["schemas"]["TaskChunkInput"][] | null;
+            dependsOnTaskIds?: string[] | null;
+            description?: string | null;
+            metadata?: unknown;
+            title: string;
+        };
+        /**
+         * @description Body of one entry in `POST /api/plans`'s optional `tasks` array
+         *     (`packages/api/src/plans/routes.ts:67-75`). `acceptanceCriteria` is the
+         *     legacy `string[]` write shape — normalised to `{text,done}[]` before
+         *     insert by `normalize_acceptance_criteria`, same as every other write
+         *     path in this domain.
+         */
+        CreateTaskInput: {
+            acceptanceCriteria?: string[] | null;
+            description?: string | null;
+            title: string;
+        };
+        /**
+         * @description Body of `POST /api/workspaces` (`packages/api/src/workspaces/routes.ts:11-30`):
+         *     `name` (required, trimmed and validated non-blank at the service layer —
+         *     see `service::create`) and `description` (optional, passed through
+         *     as-is).
+         */
+        CreateWorkspaceBody: {
+            description?: string | null;
+            name: string;
+        };
+        DuplicateHint: {
+            chunkIdA: string;
+            chunkIdB: string;
+            /** Format: double */
+            similarity: number;
+        };
+        /**
+         * @description Mirrors Node's `enrichment: "missing" | "complete"` filter
+         *     (`packages/db/src/repository/chunk.ts:123-127`). Used both as a strict
+         *     `GET /api/chunks?enrichment=` query-string enum (an unrecognised value is
+         *     a 400, same divergence as `Sort`) and, via `from_loose_str`, as a lenient
+         *     interpreter of a collection's stored `filter.enrichment` string.
+         * @enum {string}
+         */
+        Enrichment: "missing" | "complete";
+        /**
+         * @description `user_favorite` row shape. `order` is `"order"` in every SQL statement
+         *     in this module — it is a SQL reserved word, quoted exactly the way
+         *     `"user"` is quoted everywhere else in this codebase. Unlike the
+         *     composite join tables (`chunk_tag`, `chunk_space`), this table carries
+         *     its own `id` and `user_id`, so listing/removing don't need to go
+         *     through the parent `chunk` row — but the row it references still
+         *     belongs to someone, so `add` below does scope through `chunk` in SQL.
+         *
+         *     `camelCase` serialisation matches every other wire type in this crate —
+         *     see the note on `chunk::Chunk` for why that's mandatory, not cosmetic.
+         */
+        Favorite: {
+            chunkId: string;
+            /** Format: date-time */
+            createdAt: string;
+            id: string;
+            /** Format: int32 */
+            order: number;
+            userId: string;
+        };
+        /**
+         * @description `GET /api/settings/features` — a **computed 5-key projection** over
+         *     `instance_settings`, not a stored table
+         *     (`tests/fixtures/node-contract-2b/_questions.md` Q2). Every field
+         *     independently defaults to `true` when its key is absent from
+         *     `instance_settings`, matching Node's `(map.x as boolean) ?? true`
+         *     fallback (`packages/api/src/settings/service.ts:59-75`) for the
+         *     documented case — a key that is simply absent. Confirmed live against
+         *     the empty-table fixture: `settings-features.json` returns all five
+         *     `true` even though `instance_settings` has zero rows.
+         *
+         *     Node's `?? true` only falls back on `null`/`undefined`, and its `as
+         *     boolean` cast is a compile-time-only no-op — so a value present but not
+         *     actually boolean (e.g. a stored string) would pass through unchanged at
+         *     runtime, breaking `InstanceSettingsMap`'s own typing. Rust's `bool`
+         *     fields can't reproduce that untyped leak; `service::get_feature_flags`
+         *     treats "present but not a JSON boolean" the same as "absent" (defaults
+         *     `true`), which is a consequence of Rust's stricter typing, not an
+         *     untested behavioural choice — the only case the fixtures actually
+         *     exercise is "absent", and that path matches Node exactly.
+         */
+        FeatureFlags: {
+            aiEnabled: boolean;
+            aiSuggestionsEnabled: boolean;
+            enrichmentEnabled: boolean;
+            semanticSearchEnabled: boolean;
+            vocabularySuggestEnabled: boolean;
+        };
         FileRef: {
             chunkId: string;
             id: string;
             path: string;
+        };
+        GraphContext: {
+            /** Format: int64 */
+            hopDistance?: number | null;
+            matchedRequirement?: string | null;
+            /** Format: int64 */
+            pathPosition?: number | null;
+        };
+        /**
+         * @description See module doc — never populated by this task's implementation, present
+         *     for shape parity and Task 9 to fill in.
+         */
+        GraphMeta: {
+            /** Format: int64 */
+            hops?: number | null;
+            pathChunks?: string[] | null;
+            pathEdges?: components["schemas"]["PathEdgeInfo"][] | null;
+            referenceChunk?: string | null;
+            type: string;
+        };
+        MergeBody: {
+            sourceId: string;
+            targetId: string;
+        };
+        /**
+         * @description Return value of [`merge`], matching Node's `mergeTags` return shape
+         *     (`packages/db/src/repository/tag-new.ts:105-107`).
+         */
+        MergeResult: {
+            /** Format: int64 */
+            chunkCount: number;
+            targetId: string;
+        };
+        /**
+         * @description Shape of every `{ message: "Deleted" }` response in this domain,
+         *     matching Node's convention (`_mutating.md`).
+         */
+        MessageResponse: {
+            message: string;
+        };
+        /**
+         * @description `notification.type` is `text NOT NULL` with no check constraint and no
+         *     enum anywhere in the Node source (`packages/db/src/schema/notification.ts`
+         *     just leaves a comment listing example values). The Phase 2b plan's
+         *     general instruction to model constrained value sets as enum-typed DTO
+         *     fields (like `connections::dto::Origin`) does NOT apply here — the
+         *     captured contract found no constraint to enforce, so this stays a plain
+         *     `String` end to end. Adding validation Node doesn't have would be a
+         *     silent, undocumented divergence.
+         *
+         *     `camelCase` serialisation matches every other wire type in this crate —
+         *     see the note on `chunk::Chunk` for why that's mandatory, not cosmetic.
+         *     `notification_type` is renamed to the reserved SQL/JSON word `type` for
+         *     the same reason `chunk::Chunk::chunk_type` is.
+         */
+        Notification: {
+            /** Format: date-time */
+            createdAt: string;
+            id: string;
+            linkTo?: string | null;
+            message: string;
+            read: boolean;
+            title: string;
+            type: string;
+            userId: string;
+        };
+        /**
+         * @description Shape of every `{ ok: true }` response in this domain — Node's plans
+         *     routes discard the delete/unlink Effect's own result and return this
+         *     literal instead (`_mutating.md`), unlike most other domains' `{ message:
+         *     "Deleted" }` convention.
+         */
+        OkResponse: {
+            ok: boolean;
+        };
+        /** @enum {string} */
+        Origin: "human" | "ai";
+        /**
+         * @description `GET /api/search/parse` response: `{clauses: [...]}` — the raw clause
+         *     array, not a normalised query string or a validation verdict.
+         */
+        ParseResponse: {
+            clauses: components["schemas"]["QueryClause"][];
+        };
+        PathEdgeInfo: {
+            relation: string;
+            source: string;
+            target: string;
         };
         PathsBody: {
             paths: string[];
@@ -146,14 +1805,818 @@ export interface components {
         PatternsBody: {
             patterns: string[];
         };
+        /** @description `camelCase` serialisation matches every other wire type in this crate. */
+        Plan: {
+            /** Format: date-time */
+            completedAt?: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            description?: string | null;
+            id: string;
+            metadata: {
+                [key: string]: unknown;
+            };
+            spaceId?: string | null;
+            status: string;
+            title: string;
+            /** Format: date-time */
+            updatedAt: string;
+            userId: string;
+        };
+        /**
+         * @description `camelCase` wire shape of a `plan_analyze_item` row. `kind` stays plain
+         *     `String` for the same reason `plan.status` does — no DB `CHECK`,
+         *     validated only by Node's service layer.
+         */
+        PlanAnalyzeItem: {
+            chunkId?: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            filePath?: string | null;
+            id: string;
+            kind: string;
+            metadata: {
+                [key: string]: unknown;
+            };
+            /** Format: int32 */
+            order: number;
+            planId: string;
+            text?: string | null;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        /**
+         * @description Response envelope of `GET /api/plans/{id}`
+         *     (`tests/fixtures/node-contract-2c/plans-detail.json`) — `{plan,
+         *     requirements, analyze, tasks, dependencies}`, NOT the bare `Plan` that
+         *     `GET /api/plans` (as a rollup row) and every plan-mutating endpoint
+         *     return.
+         */
+        PlanDetail: {
+            analyze: components["schemas"]["AnalyzeGrouped"];
+            dependencies: components["schemas"]["PlanTaskDependency"][];
+            plan: components["schemas"]["Plan"];
+            requirements: components["schemas"]["PlanRequirement"][];
+            tasks: components["schemas"]["TaskDetail"][];
+        };
+        /** @description `camelCase` wire shape of a `plan_external_link` row. */
+        PlanExternalLink: {
+            /** Format: date-time */
+            createdAt: string;
+            id: string;
+            label?: string | null;
+            /** Format: int32 */
+            order: number;
+            planId: string;
+            system: string;
+            url: string;
+        };
+        /**
+         * @description Row shape of `GET /api/plans` — `Plan`'s own columns plus four rollups
+         *     used by the list page: the linked space's name (`codebaseName`), a
+         *     task-count progress pair, the title of the first non-`done` task
+         *     (`nextAction`), and the more-recent of the plan's own `updated_at` and
+         *     its tasks' `updated_at` (`lastActivityAt`). Mirrors Node's
+         *     `listPlansWithRollups` / `PlanListRow`
+         *     (`packages/db/src/repository/plan.ts:65-143`) field-for-field — see
+         *     `tests/fixtures/node-contract-2c/plans-list.json`, captured live, which
+         *     carries all five rollup fields even though the task brief's own endpoint
+         *     table just says "bare array". Trusting the fixture over the table's
+         *     shorthand is deliberate, per this slice's own instruction to check each
+         *     fixture rather than reason by analogy.
+         */
+        PlanListRow: {
+            codebaseName?: string | null;
+            /** Format: date-time */
+            completedAt?: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            description?: string | null;
+            id: string;
+            /** Format: date-time */
+            lastActivityAt: string;
+            metadata: {
+                [key: string]: unknown;
+            };
+            nextAction?: string | null;
+            spaceId?: string | null;
+            status: string;
+            /** Format: int64 */
+            taskDone: number;
+            /** Format: int64 */
+            taskTotal: number;
+            title: string;
+            /** Format: date-time */
+            updatedAt: string;
+            userId: string;
+        };
+        /** @description `camelCase` wire shape of a `plan_requirement` row. */
+        PlanRequirement: {
+            /** Format: date-time */
+            createdAt: string;
+            id: string;
+            /** Format: int32 */
+            order: number;
+            planId: string;
+            requirementId: string;
+        };
+        /**
+         * @description Raw `plan_task` row — `acceptance_criteria` stays the untouched stored
+         *     JSON; the service layer normalises it to `{text,done}[]` on the way out
+         *     for read paths, but every mutating endpoint in this file (`POST`/`PATCH`)
+         *     returns this raw row unmodified, matching the task brief's "raw (NOT
+         *     normalised)" instruction.
+         */
+        PlanTask: {
+            acceptanceCriteria: unknown[];
+            /** Format: date-time */
+            createdAt: string;
+            description?: string | null;
+            id: string;
+            metadata: {
+                [key: string]: unknown;
+            };
+            /** Format: int32 */
+            order: number;
+            planId: string;
+            status: string;
+            title: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        /**
+         * @description Bare `plan_task_chunk` row — the `POST /plans/:id/tasks/:taskId/chunks`
+         *     response shape, distinct from [`PlanTaskChunkWithTitle`] (which is only
+         *     used by the plan-detail envelope).
+         */
+        PlanTaskChunk: {
+            chunkId: string;
+            /** Format: date-time */
+            createdAt: string;
+            id: string;
+            relation: string;
+            taskId: string;
+        };
+        /**
+         * @description A `plan_task_chunk` row joined with the linked chunk's title/type, for
+         *     the detail page's task chunk chips. Matches Node's
+         *     `listTaskChunksWithTitles` (`packages/db/src/repository/plan.ts:449-481`).
+         *
+         *     **B2 fix**: this previously took only `task_id`, with no ownership guard
+         *     at all (`WHERE ptc.task_id = $1`) — not exploitable at the time because
+         *     its only caller sourced ids from an already-scoped `list_tasks` result,
+         *     but the function was `pub`, so any future caller could read another
+         *     user's task-chunk links (id, chunk_id, relation, chunk title, chunk
+         *     type). This task adds task-chunk endpoints that call exactly this
+         *     function with a caller-supplied `task_id`, so the guard is no longer
+         *     optional. Ownership derives through **two** levels — `plan_task_chunk ->
+         *     plan_task -> plan` — matching divergence #13's usual scoping-in-SQL
+         *     rule (the same pattern Phase 1's review found missing in `chunk_meta`).
+         *     No `ORDER BY` — matches Node exactly, which has none either; not added
+         *     here per the task brief's explicit instruction to leave that alone.
+         *     Proven load-bearing in `tests/plan.rs::list_task_chunks_with_titles_is_user_scoped`.
+         */
+        PlanTaskChunkWithTitle: {
+            chunkId: string;
+            chunkTitle?: string | null;
+            chunkType?: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            id: string;
+            relation: string;
+            taskId: string;
+        };
+        /** @description `camelCase` wire shape of a `plan_task_dependency` row. */
+        PlanTaskDependency: {
+            /** Format: date-time */
+            createdAt: string;
+            dependsOnTaskId: string;
+            id: string;
+            taskId: string;
+        };
+        /**
+         * @description `camelCase` wire shape of a `plan_task_external_link` row — the task-level
+         *     counterpart to `link::PlanExternalLink`.
+         */
+        PlanTaskExternalLink: {
+            /** Format: date-time */
+            createdAt: string;
+            id: string;
+            label?: string | null;
+            /** Format: int32 */
+            order: number;
+            system: string;
+            taskId: string;
+            url: string;
+        };
+        QueryClause: {
+            field: string;
+            negate?: boolean | null;
+            operator: string;
+            params?: {
+                [key: string]: string;
+            } | null;
+            value: string;
+        };
+        /**
+         * @description The visible surface of a raw `pg` driver `QueryResult`, which is exactly
+         *     what Node's `dismissStaleFlag`/`suppressDuplicatePair` leak to the HTTP
+         *     response: neither calls `.returning()`, so drizzle's node-postgres
+         *     session (`node_modules/drizzle-orm/node-postgres/session.js`, the
+         *     `!fields && !customResultMapper` branch) resolves the query builder's
+         *     promise with `client.query(...)`'s return value unmodified — the raw
+         *     `pg.Result` instance — and Elysia serialises whatever that Effect
+         *     resolves to.
+         *
+         *     Verified against a disposable database (not the real `pg`/`pg-types`
+         *     version pinned in `packages/db`, but the same `pg@8.20.0` this
+         *     workspace's `pnpm-lock.yaml` resolves, run directly against
+         *     `fubbik-rs-db`): `JSON.stringify(result)` for an `UPDATE ... ` with no
+         *     matching `RETURNING` includes `command`, `rowCount`, `oid`, `rows`,
+         *     `fields` — the five fields `pg`'s README documents as the `Result`
+         *     API — plus `_types`, `RowCtor`, `rowAsArray`, `_prebuiltEmptyResultObject`
+         *     (`_parsers` is present as an own property but serialises to nothing:
+         *     its value is `undefined`). Those four extra keys are underscore- or
+         *     otherwise internal-prefixed implementation details of the installed
+         *     `pg`/`pg-types` version — `_types` in particular embeds that version's
+         *     entire OID-to-typename registry (60+ entries) as a live object
+         *     reference, not stable response data. Hardcoding that blob here would
+         *     give zero behavioural value and would silently drift out of sync with
+         *     whatever `pg` version Node is actually running. This port reproduces
+         *     only the five documented, stable fields and omits the rest — a
+         *     deliberate divergence from a byte-for-byte leak, not a guess.
+         */
+        RawUpdateResult: {
+            command: string;
+            fields: unknown[];
+            /** Format: int64 */
+            oid?: number | null;
+            /** Format: int64 */
+            rowCount: number;
+            rows: unknown[];
+        };
+        /** @description Body of `POST /api/plans/{id}/analyze/reorder` (`analyze.ts:107-120`). */
+        ReorderAnalyzeItemsBody: {
+            itemIds: string[];
+            kind: string;
+        };
+        /**
+         * @description One entry of `PUT /api/favorites/reorder`'s bare-array body
+         *     (`packages/api/src/favorites/routes.ts:39-44`). The body is a plain
+         *     `t.Array(...)`, not wrapped in an object — see `ReorderBody` below.
+         */
+        ReorderEntry: {
+            chunkId: string;
+            /** Format: int32 */
+            order: number;
+        };
+        /** @description Body of `POST /api/plans/{id}/requirements/reorder` (`requirements.ts:30-42`). */
+        ReorderRequirementsBody: {
+            requirementIds: string[];
+        };
+        /** @description Body of `POST /api/plans/{id}/tasks/reorder` (`tasks.ts:178`). */
+        ReorderTasksBody: {
+            taskIds: string[];
+        };
+        /**
+         * @description Return value of [`reset`], matching Node's `resetSpaceData` return shape
+         *     (`packages/db/src/repository/space.ts:144-184`).
+         */
+        ResetResult: {
+            /** Format: int64 */
+            chunksDeleted: number;
+            /** Format: int64 */
+            docsDeleted: number;
+            /** Format: int64 */
+            plansDeleted: number;
+            /** Format: int64 */
+            requirementsDeleted: number;
+        };
+        /**
+         * @description Matches Node's body schema exactly (`packages/api/src/tags/routes.ts:39`):
+         *     `t.Optional(t.Union([t.Literal("draft"), t.Literal("reviewed"),
+         *     t.Literal("approved")]))`. Modelled the same way as
+         *     `connections::dto::Origin` — a proper enum, not `Option<String>` — so an
+         *     invalid value (e.g. `"totally-bogus"`) is rejected by serde at
+         *     deserialisation, before it ever reaches the service or database layer.
+         *     There is no database check constraint backstopping this column
+         *     (`review_status text NOT NULL DEFAULT 'approved'`), so this enum is the
+         *     only thing standing between an arbitrary client string and storage.
+         * @enum {string}
+         */
+        ReviewStatus: "draft" | "reviewed" | "approved";
+        /**
+         * @description `camelCase` serialisation matches every other wire type in this crate —
+         *     see the note on `chunk::Chunk` for why that's mandatory, not cosmetic.
+         */
+        SavedQuery: {
+            /** Format: date-time */
+            createdAt: string;
+            id: string;
+            name: string;
+            query: unknown;
+            spaceId?: string | null;
+            userId: string;
+        };
+        /**
+         * @description The `query` object nested in `POST /api/search/saved`'s body, matching
+         *     Node's schema exactly (`packages/api/src/search/routes.ts:93-101`):
+         *     `clauses`, `join`, `sort`, `spaceId`, all validated at write time. Once
+         *     stored, `saved_query.query` is opaque JSONB never re-validated on read
+         *     (see `fubbik_db::repo::saved_query`'s module doc) — this type exists
+         *     only to validate the shape going *in*.
+         */
+        SavedQueryPayload: {
+            clauses: components["schemas"]["QueryClause"][];
+            join?: string | null;
+            sort?: string | null;
+            spaceId?: string | null;
+        };
+        /**
+         * @description Body of `POST /api/chunks/stale/scan-age`
+         *     (`packages/api/src/staleness/routes.ts:87-90`). Both fields optional:
+         *     an absent `thresholdDays` lets `detect_age_stale_chunks` fall back to
+         *     its own default (90); `detect_uncovered_chunks`'s threshold (30) is
+         *     never overridable from this body at all — see the doc comment on
+         *     `service::scan_age`.
+         */
+        ScanAgeBody: {
+            spaceId?: string | null;
+            /** Format: int64 */
+            thresholdDays?: number | null;
+        };
+        /**
+         * @description Body of `POST /api/chunks/{id}/scan-impact`
+         *     (`packages/api/src/staleness/routes.ts:101-104`). `title` is optional —
+         *     an absent value falls back to `"Unknown"` in the detail message Node
+         *     writes (`ctx.body.title ?? "Unknown"`, `routes.ts:98`), reproduced the
+         *     same way at the service call site.
+         */
+        ScanImpactBody: {
+            title?: string | null;
+        };
+        /**
+         * @description Shape of `POST /api/chunks/stale/scan-age`'s response: the *sum* of
+         *     both detectors' newly-flagged counts, matching Node's
+         *     `{ flagged: ageResult.flagged + uncoveredResult.flagged }`.
+         *
+         *     Also reused as `POST /api/chunks/{id}/scan-impact`'s response shape:
+         *     Node's `flagImpactRipple` returns the same `{ flagged: n }` envelope
+         *     (`packages/api/src/staleness/detect-impact.ts:8,30`).
+         */
+        ScanResult: {
+            /** Format: int64 */
+            flagged: number;
+        };
+        /**
+         * @description Body of `POST /api/search/query`
+         *     (`packages/api/src/search/routes.ts:34-43`). `join` is accepted and
+         *     **completely ignored** — see `search::service`'s module doc for why:
+         *     Node's schema declares it (`t.Optional(t.Union([t.Literal("and"), t.Literal("or")]))`)
+         *     but `service.ts`'s `executeSearch` never reads `searchQuery.join`
+         *     anywhere; every clause is AND-combined by `listChunks`'s SQL
+         *     regardless. Kept as a loose `Option<String>` rather than a `Literal`
+         *     enum precisely because nothing ever inspects its value.
+         */
+        SearchQueryBody: {
+            clauses: components["schemas"]["QueryClause"][];
+            join?: string | null;
+            /** Format: int64 */
+            limit?: number | null;
+            /** Format: int64 */
+            offset?: number | null;
+            sort?: string | null;
+            spaceId?: string | null;
+        };
+        /**
+         * @description `POST /api/search/query`'s response envelope, matching Node's
+         *     `SearchResult` (`packages/api/src/search/types.ts:48-59`).
+         */
+        SearchResult: {
+            chunks: components["schemas"]["SearchResultChunk"][];
+            duplicateHints?: components["schemas"]["DuplicateHint"][] | null;
+            graphMeta?: null | components["schemas"]["GraphMeta"];
+            /** Format: int64 */
+            total: number;
+        };
+        SearchResultChunk: {
+            /** Format: int64 */
+            connectionCount: number;
+            graphContext?: null | components["schemas"]["GraphContext"];
+            /** Format: int64 */
+            healthScore: number;
+            id: string;
+            summary?: string | null;
+            tags: string[];
+            title: string;
+            type: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        /**
+         * @description Body of `PATCH /api/settings/codebase`
+         *     (`packages/api/src/settings/routes.ts:38-54`). `codebaseId` here is a
+         *     `spaceId` — the field name is a legacy holdover predating the
+         *     codebase->space rename elsewhere in the codebase (see the top-level
+         *     CLAUDE.md's "Spaces & Workspaces" section and `codebase_settings`'s
+         *     own doc comment in `fubbik_db::repo::settings`).
+         */
+        SetCodebaseSettingBody: {
+            codebaseId: string;
+            key: string;
+            value: unknown;
+        };
+        /**
+         * @description Body of `PATCH /api/settings/user` and `PATCH /api/settings/instance`
+         *     (`packages/api/src/settings/routes.ts`): both share the identical
+         *     `{ key, value }` shape. `value` is a bare `serde_json::Value`, not a
+         *     typed union — Node's schema is `value: t.Unknown()`, i.e. **no
+         *     validation at all** on the value's shape, despite the typed
+         *     `UserSettingsMap` / `InstanceSettingsMap` interfaces in
+         *     `packages/db/src/schema/settings.ts:54-80` existing purely as TS-side
+         *     documentation, never enforced at the API boundary. A client can PATCH
+         *     `theme` to `42` and this stores it as-is, matching Node exactly.
+         */
+        SetSettingBody: {
+            key: string;
+            value: unknown;
+        };
         /** @enum {string} */
         Sort: "newest" | "oldest" | "alpha" | "updated";
+        /**
+         * @description Bare `space` row shape — what `GET /api/spaces` (list), `POST /api/spaces`
+         *     (create), `PATCH /api/spaces/{id}` (update), and `GET /api/spaces/detect`
+         *     on a match all return. **Not** the shape of `GET /api/spaces/{id}`
+         *     (detail) — that one nests this struct inside [`SpaceDetail`] alongside
+         *     `space_code_metadata`. Three different endpoints, three different "space"
+         *     shapes: reusing this struct for all of them would silently flatten or
+         *     drop the `code` metadata on the detail route. See `_questions.md` in
+         *     `tests/fixtures/node-contract/` ("space detail vs list: nested `code`
+         *     metadata, not flattened").
+         */
+        Space: {
+            /** Format: date-time */
+            createdAt: string;
+            description?: string | null;
+            id: string;
+            kind: string;
+            name: string;
+            /** Format: date-time */
+            updatedAt: string;
+            userId: string;
+        };
+        /**
+         * @description `space_code_metadata` side-table row, holding the extra fields that only
+         *     apply to `kind = 'code'` spaces. Only ever surfaced nested inside
+         *     [`SpaceDetail`] — never flattened into `Space` itself.
+         */
+        SpaceCodeMetadata: {
+            localPaths: string[];
+            remoteUrl?: string | null;
+            spaceId: string;
+            userId: string;
+        };
+        /**
+         * @description Shape of `GET /api/spaces/{id}` — `{ space, code }`, matching Node's
+         *     `getSpaceWithCodeMetadata` (`packages/db/src/repository/space.ts:58-72`),
+         *     which `leftJoin`s `space_code_metadata` and returns the two halves as
+         *     sibling keys, un-flattened. `code` is `null` for a non-`code`-kind space
+         *     (no side-table row ever exists for it).
+         */
+        SpaceDetail: {
+            code?: null | components["schemas"]["SpaceCodeMetadata"];
+            space: components["schemas"]["Space"];
+        };
+        /**
+         * @description One row of `GET /api/chunks/stale`
+         *     (`packages/db/src/repository/staleness.ts::getStaleFlags`): the flag
+         *     joined to its parent chunk's `title`/`type` for display. `camelCase`
+         *     serialisation matches every other wire type in this crate.
+         */
+        StaleFlag: {
+            chunkId: string;
+            chunkTitle: string;
+            chunkType: string;
+            detail?: string | null;
+            /** Format: date-time */
+            detectedAt: string;
+            id: string;
+            reason: string;
+            relatedChunkId?: string | null;
+        };
+        /**
+         * @description Aggregate per-user counts backing `GET /api/stats`. Bare-object shape,
+         *     not an array and not the `{chunks,total,limit,offset}` envelope the
+         *     chunks *list* endpoint uses — matches Node's `getUserStats`
+         *     (`packages/api/src/stats/service.ts`) field-for-field. No fields beyond
+         *     what Node returns: this is a parity port, not a place to add "useful"
+         *     counts.
+         */
+        Stats: {
+            /** Format: int64 */
+            chunks: number;
+            /** Format: int64 */
+            connections: number;
+            /** Format: int64 */
+            tags: number;
+        };
+        /**
+         * @description Body of `POST /api/chunks/suppress-duplicate`
+         *     (`packages/api/src/staleness/routes.ts:63-66`).
+         */
+        SuppressDuplicateBody: {
+            chunkIdA: string;
+            chunkIdB: string;
+        };
+        /**
+         * @description `camelCase` serialisation matches every other wire type in this crate —
+         *     see the note on `chunk::Chunk` for why that's mandatory, not cosmetic.
+         *
+         *     This is the *bare* row shape — what `POST /api/tags` and
+         *     `PATCH /api/tags/{id}` return. `GET /api/tags` returns a different,
+         *     joined shape ([`TagListItem`]); Node's `service-new.ts` explicitly notes
+         *     create/update responses carry no `tagTypeName`/`tagTypeColor`/
+         *     `chunkCount` fields, unlike the list endpoint.
+         */
+        Tag: {
+            /** Format: date-time */
+            createdAt: string;
+            id: string;
+            name: string;
+            origin: string;
+            reviewStatus: string;
+            /** Format: date-time */
+            reviewedAt?: string | null;
+            reviewedBy?: string | null;
+            tagTypeId?: string | null;
+            userId: string;
+        };
+        /**
+         * @description Shape of `GET /api/tags` list items — joined with `tag_type` and a
+         *     `chunk_tag` count, matching Node's `getTagsForUser`
+         *     (`packages/db/src/repository/tag-new.ts:23-38`).
+         */
+        TagListItem: {
+            /** Format: int64 */
+            chunkCount: number;
+            id: string;
+            name: string;
+            tagTypeColor?: string | null;
+            tagTypeIcon?: string | null;
+            tagTypeId?: string | null;
+            tagTypeName?: string | null;
+        };
+        /**
+         * @description `camelCase` serialisation matches every other wire type in this crate —
+         *     see the note on `chunk::Chunk` for why that's mandatory, not cosmetic.
+         */
+        TagType: {
+            color: string;
+            /** Format: date-time */
+            createdAt: string;
+            icon?: string | null;
+            id: string;
+            name: string;
+            userId: string;
+        };
+        /**
+         * @description One entry of `POST /api/plans/{id}/tasks`'s optional `chunks` array
+         *     (`tasks.ts:93`).
+         */
+        TaskChunkInput: {
+            chunkId: string;
+            relation: string;
+        };
+        /**
+         * @description A task in the `GET /api/plans/{id}` detail envelope: the raw
+         *     `plan_task` row's fields, plus `acceptanceCriteria` normalised (not the
+         *     raw stored JSON) and the task's linked chunks — matching Node's
+         *     `tasksWithChunks` (`packages/api/src/plans/service.ts:89-94`).
+         */
+        TaskDetail: {
+            acceptanceCriteria: components["schemas"]["AcceptanceCriterion"][];
+            chunks: components["schemas"]["PlanTaskChunkWithTitle"][];
+            /** Format: date-time */
+            createdAt: string;
+            description?: string | null;
+            id: string;
+            metadata: {
+                [key: string]: unknown;
+            };
+            /** Format: int32 */
+            order: number;
+            planId: string;
+            status: string;
+            title: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        /**
+         * @description Body of `PATCH /api/plans/{id}/analyze/{itemId}` (`analyze.ts:79-97`).
+         *     `kind` is deliberately absent — Node's own body schema has no field for
+         *     it, so an analyze item's kind can never change after creation.
+         */
+        UpdateAnalyzeItemBody: {
+            chunkId?: string | null;
+            filePath?: string | null;
+            metadata?: unknown;
+            text?: string | null;
+        };
         UpdateChunkBody: {
             consequences?: string | null;
             content?: string | null;
             rationale?: string | null;
             title?: string | null;
             type?: string | null;
+        };
+        /**
+         * @description Body of `PATCH /api/collections/{id}`
+         *     (`packages/api/src/collections/routes.ts:45-60`). All three fields are
+         *     plain two-state `Option<T>` (omitted = untouched, present = set) — this
+         *     schema has no `t.Null()` variant on any field, unlike
+         *     `workspaces::dto::UpdateWorkspaceBody::description`, so there is no way
+         *     to explicitly clear `description` through this endpoint. `filter`, when
+         *     provided, **replaces** the stored filter wholesale rather than merging
+         *     it — see `fubbik_db::repo::collection::CollectionPatch`'s doc comment.
+         *     `spaceId` is deliberately absent from this body: Node's schema doesn't
+         *     declare it either, so a collection's space is immutable after creation.
+         */
+        UpdateCollectionBody: {
+            description?: string | null;
+            filter?: null | components["schemas"]["CollectionFilter"];
+            name?: string | null;
+        };
+        /**
+         * @description Body of `PATCH /api/plans/{id}` (`packages/api/src/plans/routes.ts:104-110`).
+         *
+         *     `description` and `space_id` are tri-state, matching Node's
+         *     `t.Optional(t.Union([t.String(), t.Null()]))` for both: omitted
+         *     (`None`) leaves the field untouched, explicit `null`
+         *     (`Some(None)`) clears it, a string (`Some(Some(..))`) sets it — same
+         *     `deserialize_some` trick as `workspaces::dto::UpdateWorkspaceBody::description`.
+         *     `status` and `metadata` are plain two-state (Node declares neither with
+         *     a `t.Null()` union).
+         */
+        UpdatePlanBody: {
+            description?: string | null;
+            metadata?: unknown;
+            spaceId?: string | null;
+            status?: string | null;
+            title?: string | null;
+        };
+        /**
+         * @description `description` and `remote_url` are tri-state, matching Node's
+         *     `t.Optional(t.Union([t.String(), t.Null()]))` for both: omitted leaves
+         *     the field untouched (or, for `remoteUrl` on a code-kind space, falls
+         *     through to Node's `?? null` — see `service::update`), explicit `null`
+         *     clears it, a string sets it. Same `deserialize_some` trick as
+         *     `tags::dto::UpdateTagBody::tag_type_id` — plain `Option<Option<T>>`
+         *     collapses "omitted" and "explicit null" to the same `None` without it.
+         *
+         *     `local_paths` is NOT tri-state at the schema level (`t.Optional(t.Array(...))`,
+         *     no `t.Null()` union) — a plain `Option<Vec<String>>` is correct here.
+         */
+        UpdateSpaceBody: {
+            description?: string | null;
+            localPaths?: string[] | null;
+            name?: string | null;
+            remoteUrl?: string | null;
+        };
+        /**
+         * @description `tag_type_id` is deliberately `Option<Option<String>>`, not
+         *     `Option<String>`: it mirrors Node's `t.Optional(t.Union([t.String(),
+         *     t.Null()]))` body schema, which is three-state — omitted (leave
+         *     untouched), explicit `null` (clear), or a string (set).
+         *
+         *     Plain `#[derive(Deserialize)]` on a bare `Option<Option<String>>` field
+         *     does NOT give tri-state semantics: `Option<T>`'s own `Deserialize` impl
+         *     maps a JSON `null` straight to `None` regardless of nesting depth, so an
+         *     explicit `"tagTypeId": null` would be indistinguishable from the key
+         *     being absent entirely — both would collapse to the outer `None`. The
+         *     `#[serde(default, deserialize_with = "deserialize_some")]` pair below is
+         *     the standard fix: `default` makes a missing key `None`, while
+         *     `deserialize_some` runs only when the key IS present and always wraps
+         *     its result (even `Option::None` from a `null`) in an extra `Some`.
+         */
+        UpdateTagBody: {
+            name?: string | null;
+            reviewStatus?: null | components["schemas"]["ReviewStatus"];
+            tagTypeId?: string | null;
+        };
+        /**
+         * @description `icon` is deliberately `Option<Option<String>>`, not `Option<String>`: it
+         *     mirrors Node's `t.Optional(t.Union([t.String(), t.Null()]))` body schema
+         *     for `icon`, which is three-state — omitted (leave untouched), explicit
+         *     `null` (clear), or a string (set). `color` stays plain `Option<String>`
+         *     because Node's schema for it has no `t.Null()` union
+         *     (`t.Optional(t.String({ maxLength: 7 }))`) — it is not clearable via this
+         *     endpoint.
+         *
+         *     Plain `#[derive(Deserialize)]` on a bare `Option<Option<String>>` field
+         *     does NOT give tri-state semantics: `Option<T>`'s own `Deserialize` impl
+         *     maps a JSON `null` straight to `None` regardless of nesting depth, so an
+         *     explicit `"icon": null` would be indistinguishable from the key being
+         *     absent entirely — both would collapse to the outer `None`. The
+         *     `#[serde(default, deserialize_with = "deserialize_some")]` pair below is
+         *     the same fix used by `tags::dto::UpdateTagBody::tag_type_id` and
+         *     `spaces::dto::UpdateSpaceBody::{description, remote_url}`: `default`
+         *     makes a missing key `None`, while `deserialize_some` runs only when the
+         *     key IS present and always wraps its result (even `Option::None` from a
+         *     `null`) in an extra `Some`.
+         */
+        UpdateTagTypeBody: {
+            color?: string | null;
+            icon?: string | null;
+            name?: string | null;
+        };
+        /**
+         * @description Body of `PATCH /api/plans/{id}/tasks/{taskId}` (`tasks.ts:138-145`).
+         *     `description` is tri-state, same `deserialize_some` trick as
+         *     `UpdatePlanBody::description`; `status` is validated in the service
+         *     layer against the five known task statuses, never a Rust enum — see
+         *     `fubbik_db::repo::plan::mod`'s doc comment for why `plan_task.status`
+         *     stays plain text end to end. `title`/`acceptanceCriteria`/`metadata` are
+         *     plain two-state (Node declares none of them with a `t.Null()` union).
+         */
+        UpdateTaskBody: {
+            acceptanceCriteria?: components["schemas"]["AcceptanceCriterionEntry"][] | null;
+            description?: string | null;
+            metadata?: unknown;
+            status?: string | null;
+            title?: string | null;
+        };
+        /**
+         * @description Body of `PATCH /api/workspaces/{id}` (`packages/api/src/workspaces/routes.ts:36-50`).
+         *
+         *     `description` is tri-state, matching Node's `t.Optional(t.Union([t.String(),
+         *     t.Null()]))`: omitted (`None`) leaves it untouched, explicit `null`
+         *     (`Some(None)`) clears it, a string (`Some(Some(..))`) sets it — same
+         *     `deserialize_some` trick as `spaces::dto::UpdateSpaceBody::description`,
+         *     needed because a plain `Option<Option<T>>` collapses "omitted" and
+         *     "explicit null" to the same `None` without it.
+         */
+        UpdateWorkspaceBody: {
+            description?: string | null;
+            name?: string | null;
+        };
+        /**
+         * @description `camelCase` serialisation matches every other wire type in this crate —
+         *     see the note on `chunk::Chunk` for why that's mandatory, not cosmetic.
+         */
+        Workspace: {
+            /** Format: date-time */
+            createdAt: string;
+            description?: string | null;
+            id: string;
+            name: string;
+            /** Format: date-time */
+            updatedAt: string;
+            userId: string;
+        };
+        /**
+         * @description Response shape of `GET /api/workspaces/{id}`, matching Node's spread
+         *     `{ ...found, spaces }` (`packages/api/src/workspaces/service.ts:19-28`)
+         *     — the workspace row's own fields at the top level, plus a `spaces`
+         *     array, NOT nested under a `workspace` key (contrast
+         *     `fubbik_db::repo::space::SpaceDetail`, which nests `{ space, code }`).
+         *     See `tests/fixtures/node-contract-2b/workspaces-detail.json`.
+         */
+        WorkspaceDetail: {
+            /** Format: date-time */
+            createdAt: string;
+            description?: string | null;
+            id: string;
+            name: string;
+            spaces: components["schemas"]["WorkspaceSpaceSummary"][];
+            /** Format: date-time */
+            updatedAt: string;
+            userId: string;
+        };
+        /**
+         * @description `workspace_space` has only these two columns (no `id`, no timestamps) —
+         *     this is both the row shape and the response shape of
+         *     `POST /api/workspaces/{id}/spaces`, matching Node's
+         *     `addSpaceToWorkspace` return value: either the row just inserted, or,
+         *     on an `onConflictDoNothing` no-op, a literal `{ workspaceId, spaceId }`
+         *     fallback (`packages/db/src/repository/workspace.ts:94-99`) —
+         *     structurally identical either way.
+         */
+        WorkspaceSpaceLink: {
+            spaceId: string;
+            workspaceId: string;
+        };
+        /**
+         * @description Bare summary of a space attached to a workspace — `{id, name, kind}`
+         *     only, matching Node's `getSpacesForWorkspace`
+         *     (`packages/db/src/repository/workspace.ts:80-92`), which selects just
+         *     these three columns, not a full `Space` row (no `description`,
+         *     `userId`, timestamps). See
+         *     `tests/fixtures/node-contract-2b/workspaces-detail.json`.
+         */
+        WorkspaceSpaceSummary: {
+            id: string;
+            kind: string;
+            name: string;
         };
     };
     responses: never;
@@ -164,14 +2627,11 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    list_chunks: {
+    list_activity: {
         parameters: {
             query?: {
-                type?: string | null;
-                search?: string | null;
-                origin?: string | null;
-                reviewStatus?: string | null;
-                sort?: null | components["schemas"]["Sort"];
+                spaceId?: string | null;
+                entityType?: string | null;
                 limit?: string | null;
                 offset?: string | null;
             };
@@ -186,7 +2646,66 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Chunk"][];
+                    "application/json": components["schemas"]["Activity"][];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    list_chunks: {
+        parameters: {
+            query?: {
+                type?: string | null;
+                search?: string | null;
+                origin?: string | null;
+                reviewStatus?: string | null;
+                sort?: null | components["schemas"]["Sort"];
+                /**
+                 * @description Comma-separated tag names, OR semantics — matches the `tags` key of
+                 *     `CollectionFilterSchema` and Node's own `?tags=` query param
+                 *     (`packages/api/src/chunks/service.ts:61-65`). Parsed with
+                 *     [`parse_tags`].
+                 */
+                tags?: string | null;
+                /**
+                 * @description Days-ago offset (e.g. `?after=7` = "updated in the last 7 days"), not
+                 *     a timestamp — matches Node's `new Date(Date.now() - Number(after) *
+                 *     86400000)` (`packages/api/src/chunks/service.ts:66`). Parsed with
+                 *     [`parse_after`].
+                 */
+                after?: string | null;
+                enrichment?: null | components["schemas"]["Enrichment"];
+                minConnections?: string | null;
+                /**
+                 * @description `None` = no space filter (every space, plus global chunks) —
+                 *     matches Node's `listChunks` `spaceId` branch exactly, including its
+                 *     "or has no space at all" half. See `chunk::ListParams::space_id`'s
+                 *     doc comment. Added as a side effect of threading `collection.spaceId`
+                 *     through `GET /collections/{id}/chunks` — a second Phase-1 parity
+                 *     improvement arriving alongside `tags`/`after`/`enrichment`/
+                 *     `minConnections`, not something this task set out to add on its own.
+                 */
+                spaceId?: string | null;
+                limit?: string | null;
+                offset?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChunkListResponse"];
                 };
             };
         };
@@ -211,6 +2730,102 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Chunk"];
                 };
+            };
+        };
+    };
+    list_stale: {
+        parameters: {
+            query?: {
+                reason?: string | null;
+                spaceId?: string | null;
+                limit?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StaleFlag"][];
+                };
+            };
+        };
+    };
+    stale_count: {
+        parameters: {
+            query?: {
+                spaceId?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/plain": number;
+                };
+            };
+        };
+    };
+    scan_age: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScanAgeBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScanResult"];
+                };
+            };
+        };
+    };
+    suppress_duplicate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SuppressDuplicateBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RawUpdateResult"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -343,6 +2958,33 @@ export interface operations {
             };
         };
     };
+    dismiss_staleness: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RawUpdateResult"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     get_file_refs: {
         parameters: {
             query?: never;
@@ -407,6 +3049,2265 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ChunkVersion"][];
                 };
+            };
+        };
+    };
+    scan_impact: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScanImpactBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScanResult"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    list_collections: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Collection"][];
+                };
+            };
+        };
+    };
+    create_collection: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCollectionBody"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Collection"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    delete_collection: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    update_collection: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateCollectionBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Collection"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_collection_chunks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChunkListResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    create_connection: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateConnectionBody"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Connection"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    delete_connection: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    list_favorites: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Favorite"][];
+                };
+            };
+        };
+    };
+    add_favorite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateFavoriteBody"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": null | components["schemas"]["Favorite"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    reorder_favorites: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReorderEntry"][];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponse"];
+                };
+            };
+        };
+    };
+    remove_favorite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                chunkId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponse"];
+                };
+            };
+        };
+    };
+    list_notifications: {
+        parameters: {
+            query?: {
+                limit?: string | null;
+                unreadOnly?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Notification"][];
+                };
+            };
+        };
+    };
+    unread_count: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CountResponse"];
+                };
+            };
+        };
+    };
+    mark_all_read: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponse"];
+                };
+            };
+        };
+    };
+    delete_notification: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    mark_notification_read: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Notification"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    list_plans: {
+        parameters: {
+            query?: {
+                spaceId?: string | null;
+                status?: string | null;
+                requirementId?: string | null;
+                includeArchived?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanListRow"][];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    create_plan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePlanBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Plan"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_plan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanDetail"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    delete_plan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OkResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    update_plan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdatePlanBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Plan"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    plan_activity: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Activity"][];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    list_plan_analyze: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnalyzeGrouped"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    create_plan_analyze_item: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateAnalyzeItemBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanAnalyzeItem"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    reorder_plan_analyze_items: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReorderAnalyzeItemsBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OkResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    delete_plan_analyze_item: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OkResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    update_plan_analyze_item: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateAnalyzeItemBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanAnalyzeItem"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    duplicate_plan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Plan"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    list_plan_links: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanExternalLink"][];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    add_plan_link: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateLinkBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanExternalLink"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    remove_plan_link: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                linkId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OkResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    add_plan_requirement: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddRequirementBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanRequirement"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    reorder_plan_requirements: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReorderRequirementsBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OkResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    remove_plan_requirement: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                requirementId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OkResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    create_plan_task: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateTaskBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanTask"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    reorder_plan_tasks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReorderTasksBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OkResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    delete_plan_task: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                taskId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OkResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    update_plan_task: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                taskId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateTaskBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanTask"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    add_plan_task_chunk: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                taskId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddTaskChunkBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanTaskChunk"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    remove_plan_task_chunk: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                taskId: string;
+                linkId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OkResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    add_plan_task_dependency: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                taskId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddTaskDependencyBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanTaskDependency"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    remove_plan_task_dependency: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                taskId: string;
+                depId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OkResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    list_plan_task_links: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                taskId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanTaskExternalLink"][];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    add_plan_task_link: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                taskId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateLinkBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanTaskExternalLink"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    remove_plan_task_link: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                taskId: string;
+                linkId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OkResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    autocomplete: {
+        parameters: {
+            query: {
+                field: string;
+                prefix: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string[];
+                };
+            };
+        };
+    };
+    parse: {
+        parameters: {
+            query: {
+                q: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ParseResponse"];
+                };
+            };
+        };
+    };
+    query: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SearchQueryBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SearchResult"];
+                };
+            };
+        };
+    };
+    list_saved: {
+        parameters: {
+            query?: {
+                spaceId?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SavedQuery"][];
+                };
+            };
+        };
+    };
+    create_saved: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateSavedQueryBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SavedQuery"];
+                };
+            };
+        };
+    };
+    delete_saved: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponse"];
+                };
+            };
+        };
+    };
+    get_codebase_settings: {
+        parameters: {
+            query: {
+                codebaseId: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    set_codebase_setting: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetCodebaseSettingBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_feature_flags: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeatureFlags"];
+                };
+            };
+        };
+    };
+    get_instance_settings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    set_instance_setting: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetSettingBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponse"];
+                };
+            };
+        };
+    };
+    get_user_settings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    set_user_setting: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetSettingBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponse"];
+                };
+            };
+        };
+    };
+    list_spaces: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Space"][];
+                };
+            };
+        };
+    };
+    create_space: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateSpaceBody"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Space"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    detect_space: {
+        parameters: {
+            query?: {
+                remoteUrl?: string | null;
+                localPath?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description no match: empty body */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_space: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SpaceDetail"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    delete_space: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    update_space: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateSpaceBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Space"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    reset_space: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResetResult"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_stats: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Stats"];
+                };
+            };
+        };
+    };
+    list_tag_types: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TagType"][];
+                };
+            };
+        };
+    };
+    create_tag_type: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateTagTypeBody"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TagType"];
+                };
+            };
+        };
+    };
+    delete_tag_type: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    update_tag_type: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateTagTypeBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TagType"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    list_tags: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TagListItem"][];
+                };
+            };
+        };
+    };
+    create_tag: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateTagBody"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Tag"];
+                };
+            };
+        };
+    };
+    merge_tags: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MergeBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MergeResult"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    delete_tag: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    update_tag: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateTagBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Tag"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    list_workspaces: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Workspace"][];
+                };
+            };
+        };
+    };
+    create_workspace: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateWorkspaceBody"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Workspace"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_workspace: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkspaceDetail"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    delete_workspace: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    update_workspace: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateWorkspaceBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Workspace"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    add_workspace_space: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddSpaceBody"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkspaceSpaceLink"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    remove_workspace_space: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                spaceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

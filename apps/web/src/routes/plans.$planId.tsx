@@ -21,7 +21,7 @@ function PlanDetailPage() {
 
     const detailQuery = useQuery({
         queryKey: ["plan-detail", planId],
-        queryFn: async () => unwrapEden(await (api.api as any).plans[planId].get())
+        queryFn: async () => unwrapEden(await api.api.plans({ id: planId }).get())
     });
 
     // Keyboard shortcuts for the detail page:

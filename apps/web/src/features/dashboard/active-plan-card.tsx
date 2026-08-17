@@ -52,13 +52,13 @@ export function ActivePlanCard() {
 
     const detailQuery = useQuery({
         queryKey: ["plan-detail", activePlan?.id],
-        queryFn: async () => unwrapEden(await (api.api as any).plans[activePlan!.id].get()),
+        queryFn: async () => unwrapEden(await api.api.plans({ id: activePlan!.id }).get()),
         enabled: !!activePlan?.id
     });
 
     const updateTaskMutation = useMutation({
         mutationFn: async ({ taskId, status }: { taskId: string; status: TaskStatus }) =>
-            unwrapEden(await (api.api as any).plans[activePlan!.id].tasks[taskId].patch({ status })),
+            unwrapEden(await api.api.plans({ id: activePlan!.id }).tasks({ taskId }).patch({ status })),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["plan-detail", activePlan?.id] });
         }

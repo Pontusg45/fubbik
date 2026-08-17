@@ -5,7 +5,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
-import { api } from "@/utils/api";
+import { legacyApi } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 import { RequirementCard } from "./requirement-card";
@@ -74,7 +74,7 @@ export function SortableRequirementList({
     const reorderMutation = useMutation({
         mutationFn: async (requirementIds: string[]) => {
             return unwrapEden(
-                await api.api.requirements.reorder.patch({
+                await legacyApi.api.requirements.reorder.patch({
                     requirementIds
                 })
             );

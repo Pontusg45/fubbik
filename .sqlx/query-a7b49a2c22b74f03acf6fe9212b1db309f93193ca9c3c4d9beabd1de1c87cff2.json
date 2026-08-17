@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO \"user\" (id, name, email, email_verified)\n           VALUES ($1, $2, $3, $4)\n           ON CONFLICT (id) DO NOTHING",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a7b49a2c22b74f03acf6fe9212b1db309f93193ca9c3c4d9beabd1de1c87cff2"
+}

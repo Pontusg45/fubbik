@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { BookOpen, CheckSquare, Compass, Database, FileText, Lightbulb, Scale, StickyNote, Wrench, type LucideIcon } from "lucide-react";
 
-import { api } from "@/utils/api";
+import { legacyApi } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 /**
@@ -41,7 +41,7 @@ export function useChunkTypes(spaceId?: string) {
     return useQuery({
         queryKey: ["chunk-types", spaceId ?? null],
         queryFn: async () =>
-            unwrapEden(await api.api["chunk-types"].get({ query: spaceId ? { spaceId } : ({} as never) })) as ChunkTypeMeta[],
+            unwrapEden(await legacyApi.api["chunk-types"].get({ query: spaceId ? { spaceId } : ({} as never) })) as ChunkTypeMeta[],
         staleTime: STALE_FOREVER,
         gcTime: STALE_FOREVER
     });
@@ -52,7 +52,7 @@ export function useConnectionRelations(spaceId?: string) {
         queryKey: ["connection-relations", spaceId ?? null],
         queryFn: async () =>
             unwrapEden(
-                await api.api["connection-relations"].get({ query: spaceId ? { spaceId } : ({} as never) })
+                await legacyApi.api["connection-relations"].get({ query: spaceId ? { spaceId } : ({} as never) })
             ) as ConnectionRelationMeta[],
         staleTime: STALE_FOREVER,
         gcTime: STALE_FOREVER

@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useLocalStorage } from "@/hooks/use-local-storage";
-import { api } from "@/utils/api";
+import { api, legacyApi } from "@/utils/api";
 
 interface RelatedSuggestionsProps {
     chunkId: string;
@@ -21,7 +21,8 @@ export function RelatedSuggestions({ chunkId, chunkTitle, connectedIds }: Relate
     const { data, isLoading, isError } = useQuery({
         queryKey: ["related-suggestions", chunkId],
         queryFn: async () => {
-            const { data, error } = await api.api.chunks.search.semantic.get({
+            // `chunks/search/semantic` has no Rust route yet — see the "chunks" note in `@/utils/api`.
+            const { data, error } = await legacyApi.api.chunks.search.semantic.get({
                 query: { q: chunkTitle, limit: "8" }
             });
             if (error) throw new Error("Failed to load similar chunks");

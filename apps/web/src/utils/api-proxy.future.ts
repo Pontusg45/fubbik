@@ -1,56 +1,43 @@
-// PARKED — NOT WIRED IN. Do not import this from app code.
+// LIVE — this is the API client the app uses. Imported by `./api.ts`, which
+// exports it as `api`. (The `.future` suffix is historical; renaming the file
+// is deliberate churn nobody has spent yet.)
 //
-// This is a JS Proxy-based API client built over openapi-typescript-generated
-// types (see `./api-types.ts`), designed as a drop-in replacement for the
-// Eden treaty client (`./api.ts`) once the Rust backend is ready. It
-// preserves Eden's call shape (`api.api.chunks.get()`, path params via a
-// call segment, etc.) so existing call sites would not need to change.
+// A JS Proxy-based client over openapi-typescript-generated types
+// (`./api-types.ts`), preserving Eden's call shape (`api.api.chunks.get()`,
+// path params via a call segment) so call sites did not have to change.
+// Runtime behaviour is covered by `./api-proxy.future.test.ts`.
 //
-// Verified working at runtime: all 7 tests in `./api-proxy.future.test.ts`
-// pass, confirming the Proxy correctly builds URLs, interpolates path
-// params, serialises query strings, and mirrors Eden's `{ data, error }`
-// response shape.
+// It is typed from RUST's `openapi.json`, so it only knows routes Rust
+// actually serves. Anything Rust does not serve must go through `legacyApi`
+// (Eden -> Node) — see the inventory in `./api.ts`.
 //
-// Why it is NOT wired in (originally attempted in a51c380, then reverted):
+// History, kept because it explains the design:
+//   1. [RESOLVED] `noUncheckedIndexedAccess: true` made every property access
+//      on an index-signature `Client` type `| undefined`, which is where the
+//      ~1,016 errors came from. Fixed by deriving `Client` from the generated
+//      `paths` via literal template-string matching — see `BuildNode` in
+//      `./api-client-types.ts`. The count tracked call-site chains, not
+//      endpoints, so porting more domains would never have reduced it.
+//   2. [RESOLVED, differently than planned] The web app calls more domains
+//      than Rust serves. Rather than waiting for parity, the app runs a
+//      hybrid: this client for what Rust serves, `legacyApi` for the rest.
 //
-//   1. This repo sets `noUncheckedIndexedAccess: true` in
-//      `packages/config/tsconfig.base.json`. Dot-access through an index
-//      signature (which the generated `paths` type and this Proxy's
-//      recursive `Client` type both rely on) yields `| undefined`, so
-//      `api.api.chunks` is "possibly undefined" everywhere it's used. Not
-//      fixable without `any` or editing every call site.
-//   2. More fundamentally: the web app calls 27 API domains (activity, ai,
-//      chunks, collections, connections, context, density, documents,
-//      favorites, features, graph, health, matrices, notifications, plans,
-//      proposals, requirements, search, settings, spaces, stats, tags,
-//      templates, timeline, vocabulary, workspaces). The Rust backend
-//      currently implements exactly ONE of them (chunks). `openapi.json`
-//      has no types for the other 26 regardless of how the client is shaped.
-//
-// What has to be true before this can be adopted:
-//   - The Rust backend implements the API domains the web app actually uses
-//     (or the web app is migrated domain-by-domain against a hybrid setup).
-//   - The `noUncheckedIndexedAccess` interaction is solved (either by a
-//     typing approach that doesn't route through an index signature, or by
-//     accepting/annotating the possibly-undefined access at call sites) —
-//     WITHOUT weakening the shared `noUncheckedIndexedAccess` config.
-//
-// When ready: rename this file back to `api.ts` (replacing the Eden
-// client), rename `api-proxy.future.test.ts` back to `api.test.ts`, and
-// update call sites as needed.
+// WARNING, learned the hard way: an `as any` cast on this client erases the
+// types downstream, which is exactly how archive/restore/enrich/bulk-update,
+// comments, and proposals silently 404ed after the swap — they were calling
+// Rust for Node-only routes and nothing complained. If you reach for
+// `as any`, confirm which backend serves the route first.
 
 import { env } from "@fubbik/env/web";
 
+import type { Client, EdenLikeResponse } from "./api-client-types";
 import type { paths } from "./api-types";
 
 type Method = "get" | "post" | "patch" | "put" | "delete";
 
 const METHODS: readonly string[] = ["get", "post", "patch", "put", "delete"];
 
-export interface EdenLikeResponse<T> {
-    data: T | null;
-    error: { status: number; value: unknown } | null;
-}
+export type { EdenLikeResponse };
 
 /**
  * Recursively maps the generated OpenAPI `paths` object into Eden's
@@ -64,20 +51,11 @@ type PathSegments<P extends string> = P extends `/${infer Head}/${infer Rest}`
       ? [Last]
       : [];
 
-// Declared as an `interface` (not a `type` alias) so the self-reference
-// resolves consistently across module boundaries — with a recursive type
-// alias, tsgo's cross-file inference collapses the intersection and loses
-// the index signature branch, turning every property access into a hard
-// "does not exist" error instead of the expected `noUncheckedIndexedAccess`
-// possibly-undefined warning.
-interface Client {
-    [segment: string]: Client & ((params: Record<string, string>) => Client) & {
-        [M in Method]: (
-            body?: unknown,
-            options?: { query?: Record<string, string | undefined> }
-        ) => Promise<EdenLikeResponse<unknown>>;
-    };
-}
+// `Client` is derived from the generated OpenAPI `paths` by literal
+// template-string matching (see `./api-client-types.ts`), producing literal
+// keys instead of an index signature — so `noUncheckedIndexedAccess` never
+// applies here; an unknown segment is a hard "does not exist" error instead
+// of "possibly undefined" everywhere.
 
 function buildUrl(base: string, segments: string[], query?: Record<string, string | undefined>): string {
     const path = segments.join("/");
@@ -140,7 +118,7 @@ export function createClient(base: string): Client {
     return make([]) as Client;
 }
 
-export const api = createClient(env.VITE_SERVER_URL);
+export const api = createClient(env.VITE_API_URL);
 
 // Referenced so the generated types participate in type-checking even
 // though the Proxy is dynamically typed at the boundary.

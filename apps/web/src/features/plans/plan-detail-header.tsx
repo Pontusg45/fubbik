@@ -34,21 +34,21 @@ export function PlanDetailHeader({ plan, taskCount, onUpdate }: PlanDetailHeader
     const [copiedUrl, setCopiedUrl] = useState(false);
 
     const updateMutation = useApiMutation({
-        mutationFn: async (patch: Record<string, unknown>) => await (api.api as any).plans[plan.id].patch(patch),
+        mutationFn: async (patch: Record<string, unknown>) => await api.api.plans({ id: plan.id }).patch(patch),
         errorToast: "Failed to update plan",
         successToast: false,
         onSuccess: () => onUpdate()
     });
 
     const duplicateMutation = useApiMutation<{ id: string; title: string }, void>({
-        mutationFn: async () => await (api.api as any).plans[plan.id].duplicate.post(),
+        mutationFn: async () => await api.api.plans({ id: plan.id }).duplicate.post(),
         errorToast: "Failed to duplicate plan",
         successToast: created => `Duplicated as "${created.title}"`,
         onSuccess: created => navigate({ to: "/plans/$planId", params: { planId: created.id } })
     });
 
     const deleteMutation = useApiMutation<unknown, void>({
-        mutationFn: async () => await (api.api as any).plans[plan.id].delete(),
+        mutationFn: async () => await api.api.plans({ id: plan.id }).delete(),
         successToast: "Plan deleted",
         errorToast: "Failed to delete plan",
         onSuccess: () => navigate({ to: "/plans" })

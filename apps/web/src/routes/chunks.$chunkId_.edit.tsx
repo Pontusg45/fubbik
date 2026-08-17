@@ -15,7 +15,19 @@ import { loadDraft, useAutosave } from "@/features/chunks/use-autosave";
 import { MarkdownEditor } from "@/features/editor/markdown-editor";
 import { useActiveFeatures } from "@/features/feature-flags/use-active-features";
 import { getUser } from "@/functions/get-user";
-import { api } from "@/utils/api";
+// GET needs Node's enriched detail shape (chunk, appliesTo, fileReferences) —
+// Rust's GET /api/chunks/{id} returns only the bare chunk row. The PATCH body
+// here also needs `tags`/`alternatives`, which Rust's UpdateChunkBody doesn't
+// accept yet, and `deltas` (feature overlays) has no Rust route at all — see
+// the "chunks" note in `@/utils/api`. `applies-to`/`file-refs` PUT bodies do
+// NOT match Rust's schema either: Rust's `PatternsBody`/`PathsBody` are
+// `{patterns: string[]}`/`{paths: string[]}` (plain strings, no `note`/
+// `anchor`/`relation`), while this page sends a bare array of
+// `{pattern, note}`/`{path, anchor, relation}` objects — the shape Node's
+// `applies-to`/`file-refs` routes actually expect. Against Rust this 400s
+// and was being silently swallowed by the `catch { // non-critical }` below,
+// so patterns/file refs were never actually saved. Both stay on `legacyApi`.
+import { legacyApi } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 export const Route = createFileRoute("/chunks/$chunkId_/edit")({
@@ -125,14 +137,14 @@ function EditChunk() {
 
     const { data: featuresData } = useQuery({
         queryKey: ["features"],
-        queryFn: async () => unwrapEden(await api.api.features.get({ query: {} })),
+        queryFn: async () => unwrapEden(await legacyApi.api.features.get({ query: {} })),
         staleTime: 60_000
     });
 
     const { data, isLoading, error } = useQuery({
         queryKey: ["chunk", chunkId],
         queryFn: async () => {
-            return unwrapEden(await api.api.chunks({ id: chunkId }).get());
+            return unwrapEden(await legacyApi.api.chunks({ id: chunkId }).get());
         }
     });
 
@@ -230,7 +242,7 @@ function EditChunk() {
                 .map(s => s.trim())
                 .filter(Boolean);
             await unwrapEden(
-                await api.api.chunks({ id: chunkId }).patch({
+                await legacyApi.api.chunks({ id: chunkId }).patch({
                     title,
                     content,
                     type,
@@ -244,7 +256,7 @@ function EditChunk() {
             // Update applies-to
             const validAppliesTo = appliesTo.filter(a => a.pattern.trim());
             try {
-                await api.api.chunks({ id: chunkId })["applies-to"].put(
+                await legacyApi.api.chunks({ id: chunkId })["applies-to"].put(
                     validAppliesTo.map(a => ({
                         pattern: a.pattern.trim(),
                         ...(a.note.trim() ? { note: a.note.trim() } : {})
@@ -257,7 +269,7 @@ function EditChunk() {
             // Update file refs
             const validFileRefs = fileRefs.filter(f => f.path.trim());
             try {
-                await api.api.chunks({ id: chunkId })["file-refs"].put(
+                await legacyApi.api.chunks({ id: chunkId })["file-refs"].put(
                     validFileRefs.map(f => ({
                         path: f.path.trim(),
                         ...(f.anchor.trim() ? { anchor: f.anchor.trim() } : {}),
@@ -296,7 +308,7 @@ function EditChunk() {
             if (Object.keys(delta).length === 0) {
                 throw new Error("No changes to save as feature overlay");
             }
-            await unwrapEden(await (api.api.chunks({ id: chunkId }) as any).deltas({ featureId }).put({ delta }));
+            await unwrapEden(await legacyApi.api.chunks({ id: chunkId }).deltas({ featureId }).put({ delta }));
         },
         onSuccess: () => {
             clearDraft();

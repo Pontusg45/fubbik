@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { api } from "@/utils/api";
+import { legacyApi } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 interface DependencySectionProps {
@@ -35,7 +35,7 @@ export function DependencySection({ requirementId }: DependencySectionProps) {
     const { data } = useQuery({
         queryKey: ["dependencies", requirementId],
         queryFn: async () => {
-            return unwrapEden(await api.api.requirements({ id: requirementId }).dependencies.get()) as {
+            return unwrapEden(await legacyApi.api.requirements({ id: requirementId }).dependencies.get()) as {
                 dependsOn: DepItem[];
                 dependedOnBy: DepItem[];
             };
@@ -45,7 +45,7 @@ export function DependencySection({ requirementId }: DependencySectionProps) {
     const searchQuery = useQuery({
         queryKey: ["requirements-search", search],
         queryFn: async () => {
-            const result = unwrapEden(await api.api.requirements.get({ query: { search } })) as {
+            const result = unwrapEden(await legacyApi.api.requirements.get({ query: { search } })) as {
                 requirements: Array<{ id: string; title: string; status: string }>;
                 total: number;
             };
@@ -56,7 +56,7 @@ export function DependencySection({ requirementId }: DependencySectionProps) {
 
     const addMutation = useMutation({
         mutationFn: async (dependsOnId: string) => {
-            return unwrapEden(await api.api.requirements({ id: requirementId }).dependencies.post({ dependsOnId }));
+            return unwrapEden(await legacyApi.api.requirements({ id: requirementId }).dependencies.post({ dependsOnId }));
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["dependencies", requirementId] });
@@ -68,7 +68,7 @@ export function DependencySection({ requirementId }: DependencySectionProps) {
 
     const removeMutation = useMutation({
         mutationFn: async (dependsOnId: string) => {
-            return unwrapEden(await api.api.requirements({ id: requirementId }).dependencies({ dependsOnId }).delete());
+            return unwrapEden(await legacyApi.api.requirements({ id: requirementId }).dependencies({ dependsOnId }).delete());
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["dependencies", requirementId] });

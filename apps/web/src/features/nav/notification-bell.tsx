@@ -66,7 +66,7 @@ export function NotificationBell() {
     const unreadCount = countQuery.data?.count ?? 0;
     const notifications = listQuery.data ?? [];
 
-    function handleNotificationClick(n: { id: string; linkTo: string | null; read: boolean }) {
+    function handleNotificationClick(n: { id: string; linkTo?: string | null; read: boolean }) {
         if (!n.read) {
             markReadMutation.mutate(n.id);
         }

@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardPanel, CardTitle } from "@/components/ui/card";
-import { api } from "@/utils/api";
+import { legacyApi } from "@/utils/api";
 
 function timeAgo(date: string | Date): string {
     const seconds = Math.floor((Date.now() - new Date(date).getTime()) / 1000);
@@ -28,10 +28,13 @@ export function ChunkComments({ chunkId }: { chunkId: string }) {
 
     const commentsQuery = useQuery({
         queryKey: ["comments", chunkId],
+        // comments is a Node-only domain (no Rust route) — must stay on legacyApi.
         queryFn: async () => {
-            const { data, error } = await (api.api.chunks as any)({ id: chunkId }).comments.get();
+            const { data, error } = await legacyApi.api.chunks({ id: chunkId }).comments.get();
             if (error) throw new Error("Failed to load comments");
-            return data as Array<{
+            // Eden types `createdAt`/`updatedAt` as `Date` from the server-side schema, but the
+            // wire response is JSON (ISO strings) — bridge through `unknown` for the local shape.
+            return data as unknown as Array<{
                 id: string;
                 chunkId: string;
                 userId: string;
@@ -44,7 +47,7 @@ export function ChunkComments({ chunkId }: { chunkId: string }) {
 
     const addMutation = useMutation({
         mutationFn: async (content: string) => {
-            const { error } = await (api.api.chunks as any)({ id: chunkId }).comments.post({ content });
+            const { error } = await legacyApi.api.chunks({ id: chunkId }).comments.post({ content });
             if (error) throw new Error("Failed to add comment");
         },
         onSuccess: () => {
@@ -57,7 +60,7 @@ export function ChunkComments({ chunkId }: { chunkId: string }) {
 
     const updateMutation = useMutation({
         mutationFn: async ({ id, content }: { id: string; content: string }) => {
-            const { error } = await (api.api as any).comments({ id }).patch({ content });
+            const { error } = await legacyApi.api.comments({ id }).patch({ content });
             if (error) throw new Error("Failed to update comment");
         },
         onSuccess: () => {
@@ -70,7 +73,7 @@ export function ChunkComments({ chunkId }: { chunkId: string }) {
 
     const deleteMutation = useMutation({
         mutationFn: async (id: string) => {
-            const { error } = await (api.api as any).comments({ id }).delete();
+            const { error } = await legacyApi.api.comments({ id }).delete();
             if (error) throw new Error("Failed to delete comment");
         },
         onSuccess: () => {

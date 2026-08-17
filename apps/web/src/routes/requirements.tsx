@@ -13,7 +13,7 @@ import { SidebarFilters } from "@/features/requirements/sidebar-filters";
 import { SortableRequirementList, type RequirementRecord } from "@/features/requirements/sortable-requirement-list";
 import { useActiveSpace } from "@/features/spaces/use-active-space";
 import { getUser } from "@/functions/get-user";
-import { api } from "@/utils/api";
+import { legacyApi } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 export const Route = createFileRoute("/requirements")({
@@ -83,7 +83,7 @@ function RequirementsPage() {
         queryFn: async () => {
             const query: { spaceId?: string } = {};
             if (spaceId) query.spaceId = spaceId;
-            return unwrapEden(await api.api.requirements.stats.get({ query }));
+            return unwrapEden(await legacyApi.api.requirements.stats.get({ query }));
         }
     });
 
@@ -92,7 +92,7 @@ function RequirementsPage() {
         queryFn: async () => {
             const query: { spaceId?: string } = {};
             if (spaceId) query.spaceId = spaceId;
-            return unwrapEden(await api.api["use-cases"].get({ query })) as UseCase[];
+            return unwrapEden(await legacyApi.api["use-cases"].get({ query })) as UseCase[];
         }
     });
 
@@ -144,7 +144,7 @@ function RequirementsPage() {
             if (activeUseCaseIds && activeUseCaseIds.size === 1) {
                 query.useCaseId = activeUseCaseId!;
             }
-            return unwrapEden(await api.api.requirements.get({ query }));
+            return unwrapEden(await legacyApi.api.requirements.get({ query }));
         },
         enabled: activeTab === "requirements"
     });

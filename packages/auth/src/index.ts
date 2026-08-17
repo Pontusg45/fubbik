@@ -3,6 +3,9 @@ import * as schema from "@fubbik/db/schema/auth";
 import { env } from "@fubbik/env/server";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { crossSubDomainCookies } from "./cross-subdomain-cookie";
+
+export { crossSubDomainCookies } from "./cross-subdomain-cookie";
 
 const relaxedHttpAuth = env.NODE_ENV !== "production" || env.FUBBIK_IMPLICIT_DEV_SESSION === "true";
 
@@ -17,6 +20,7 @@ export const auth = betterAuth({
         enabled: true
     },
     advanced: {
+        crossSubDomainCookies: crossSubDomainCookies(env.BETTER_AUTH_URL),
         defaultCookieAttributes: {
             sameSite: relaxedHttpAuth ? "lax" : "none",
             secure: !relaxedHttpAuth,

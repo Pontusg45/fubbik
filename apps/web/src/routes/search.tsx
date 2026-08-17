@@ -12,7 +12,7 @@ import { SearchResults } from "@/features/search/search-results";
 import { useQueryBuilder } from "@/features/search/use-query-builder";
 import { useActiveSpace } from "@/features/spaces/use-active-space";
 import { getUser } from "@/functions/get-user";
-import { api } from "@/utils/api";
+import { api, legacyApi } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 export const Route = createFileRoute("/search")({
@@ -118,7 +118,7 @@ function SearchPage() {
     const healthQuery = useQuery({
         queryKey: ["health"],
         queryFn: async () => {
-            const res = await api.api.health.get();
+            const res = await legacyApi.api.health.get();
             return (res as any)?.data ?? null;
         },
         staleTime: 5 * 60 * 1000 // 5 minutes
@@ -189,7 +189,7 @@ function SearchPage() {
     // Delete a saved query
     async function handleDeleteSavedQuery(id: string) {
         try {
-            await unwrapEden(await (api.api.search.saved as any)[id].delete());
+            await unwrapEden(await api.api.search.saved({ id }).delete());
             void queryClient.invalidateQueries({ queryKey: ["search-saved"] });
         } catch {
             // ignore

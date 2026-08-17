@@ -7,11 +7,16 @@ fn dev_state(pool: sqlx::PgPool) -> fubbik_api::AppState {
     fubbik_api::AppState {
         pool,
         implicit_dev_session: true,
+        better_auth_secret: "test-secret".into(),
     }
 }
 
 async fn seed_dev_user(pool: &sqlx::PgPool) {
-    fubbik_db::repo::user::create(pool, "dev@localhost", "Dev", None)
+    // The canonical bootstrap, not a bare `user::create`: the implicit-dev
+    // fallback now looks the row up by the fixed `id = "dev-user"`
+    // (matching Node's `IMPLICIT_DEV_USER_ID`), so a same-email row under
+    // an arbitrary id is no longer an equivalent fixture.
+    fubbik_db::repo::user::ensure_implicit_dev_user(pool)
         .await
         .unwrap();
 }
@@ -70,6 +75,7 @@ async fn unauthenticated_request_is_401(pool: sqlx::PgPool) {
     let app = fubbik_api::router(fubbik_api::AppState {
         pool,
         implicit_dev_session: false,
+        better_auth_secret: "test-secret".into(),
     });
 
     let res = app

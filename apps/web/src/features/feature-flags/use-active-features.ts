@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { api } from "@/utils/api";
+import { legacyApi } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 export function useActiveFeatures() {
@@ -8,13 +8,13 @@ export function useActiveFeatures() {
 
     const { data: activeFeatureIds = [] } = useQuery({
         queryKey: ["features", "active"],
-        queryFn: async () => unwrapEden(await api.api.features.active.get()),
+        queryFn: async () => unwrapEden(await legacyApi.api.features.active.get()),
         staleTime: 60_000
     });
 
     const toggleMutation = useMutation({
         mutationFn: async (featureIds: string[]) => {
-            unwrapEden(await api.api.features.active.put({ featureIds }));
+            unwrapEden(await legacyApi.api.features.active.put({ featureIds }));
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["features", "active"] });

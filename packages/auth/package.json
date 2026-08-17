@@ -6,7 +6,8 @@
     },
     "scripts": {
         "check-types": "tsgo -b",
-        "lint": "oxlint src"
+        "lint": "oxlint src",
+        "test": "vitest run"
     },
     "dependencies": {
         "@fubbik/db": "workspace:*",
@@ -16,6 +17,7 @@
     },
     "devDependencies": {
         "@fubbik/config": "workspace:*",
-        "typescript": "catalog:"
+        "typescript": "catalog:",
+        "vitest": "catalog:"
     }
 }

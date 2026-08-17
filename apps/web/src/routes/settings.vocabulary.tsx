@@ -20,7 +20,7 @@ import {
     type ConnectionRelationMeta
 } from "@/features/vocabularies/use-vocabularies";
 import { getUser } from "@/functions/get-user";
-import { api } from "@/utils/api";
+import { legacyApi } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 export const Route = createFileRoute("/settings/vocabulary")({
@@ -61,7 +61,7 @@ function ChunkTypesPanel() {
     const [adding, setAdding] = useState(false);
 
     const createMutation = useMutation({
-        mutationFn: async (body: ChunkTypeCreateBody) => unwrapEden(await api.api["chunk-types"].post(body)) as ChunkTypeMeta,
+        mutationFn: async (body: ChunkTypeCreateBody) => unwrapEden(await legacyApi.api["chunk-types"].post(body)) as ChunkTypeMeta,
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: ["chunk-types"] });
             toast.success("Chunk type added");
@@ -72,7 +72,7 @@ function ChunkTypesPanel() {
 
     const updateMutation = useMutation({
         mutationFn: async ({ id, body }: { id: string; body: Partial<ChunkTypeCreateBody> }) =>
-            unwrapEden(await api.api["chunk-types"]({ id }).patch(body)) as ChunkTypeMeta,
+            unwrapEden(await legacyApi.api["chunk-types"]({ id }).patch(body)) as ChunkTypeMeta,
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: ["chunk-types"] });
             toast.success("Chunk type updated");
@@ -81,7 +81,7 @@ function ChunkTypesPanel() {
     });
 
     const deleteMutation = useMutation({
-        mutationFn: async (id: string) => unwrapEden(await api.api["chunk-types"]({ id }).delete()),
+        mutationFn: async (id: string) => unwrapEden(await legacyApi.api["chunk-types"]({ id }).delete()),
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: ["chunk-types"] });
             toast.success("Chunk type deleted");
@@ -330,7 +330,7 @@ function ConnectionRelationsPanel() {
 
     const createMutation = useMutation({
         mutationFn: async (body: RelationCreateBody) =>
-            unwrapEden(await api.api["connection-relations"].post(body)) as ConnectionRelationMeta,
+            unwrapEden(await legacyApi.api["connection-relations"].post(body)) as ConnectionRelationMeta,
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: ["connection-relations"] });
             toast.success("Relation added");
@@ -341,7 +341,7 @@ function ConnectionRelationsPanel() {
 
     const updateMutation = useMutation({
         mutationFn: async ({ id, body }: { id: string; body: Partial<RelationCreateBody> }) =>
-            unwrapEden(await api.api["connection-relations"]({ id }).patch(body)) as ConnectionRelationMeta,
+            unwrapEden(await legacyApi.api["connection-relations"]({ id }).patch(body)) as ConnectionRelationMeta,
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: ["connection-relations"] });
             toast.success("Relation updated");
@@ -350,7 +350,7 @@ function ConnectionRelationsPanel() {
     });
 
     const deleteMutation = useMutation({
-        mutationFn: async (id: string) => unwrapEden(await api.api["connection-relations"]({ id }).delete()),
+        mutationFn: async (id: string) => unwrapEden(await legacyApi.api["connection-relations"]({ id }).delete()),
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: ["connection-relations"] });
             toast.success("Relation deleted");

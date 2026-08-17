@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogPopup, DialogHeader, DialogTitle, DialogDescription, DialogPanel, DialogFooter } from "@/components/ui/dialog";
-import { api } from "@/utils/api";
+import { api, legacyApi } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 interface BulkTagEditorProps {
@@ -39,14 +39,17 @@ export function BulkTagEditor({ chunkIds, open, onOpenChange }: BulkTagEditorPro
 
     const allTagNames = useMemo(() => (tagsQuery.data ?? []).map(t => t.name), [tagsQuery.data]);
 
-    // Fetch chunk details for all selected IDs
+    // Fetch chunk details for all selected IDs. Rust's GET /api/chunks/{id}
+    // returns the bare chunk row, which has no `tags` — every chunk would
+    // render untagged. Node's enriched detail shape carries tags, so this
+    // stays on legacyApi.
     const chunksQuery = useQuery({
         queryKey: ["bulk-tag-chunks", chunkIds],
         queryFn: async () => {
             const results = await Promise.all(
                 chunkIds.map(async id => {
                     try {
-                        const data = unwrapEden(await api.api.chunks({ id }).get());
+                        const data = unwrapEden(await legacyApi.api.chunks({ id }).get());
                         return data;
                     } catch {
                         return null;
@@ -111,8 +114,10 @@ export function BulkTagEditor({ chunkIds, open, onOpenChange }: BulkTagEditorPro
                 const curr = cs.tags.slice().sort().join(",");
                 return orig !== curr;
             });
+            // Rust's UpdateChunkBody has no `tags` field — it would 200 and
+            // silently drop the write while this dialog reports success.
             for (const cs of changed) {
-                await api.api.chunks({ id: cs.id }).patch({ tags: cs.tags });
+                await legacyApi.api.chunks({ id: cs.id }).patch({ tags: cs.tags });
             }
             return changed.length;
         },
