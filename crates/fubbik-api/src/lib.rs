@@ -9,6 +9,7 @@ pub mod favorites;
 pub mod notifications;
 pub mod openapi;
 pub mod plans;
+pub mod proposals;
 pub mod search;
 pub mod settings;
 pub mod spaces;
@@ -56,6 +57,7 @@ pub fn router(state: AppState) -> Router {
         .merge(favorites::routes::router())
         .merge(notifications::routes::router())
         .merge(plans::routes::router())
+        .merge(proposals::routes::router())
         .merge(search::routes::router())
         .merge(settings::routes::router())
         .merge(spaces::routes::router())
