@@ -1,0 +1,80 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO chunk_proposal (id, chunk_id, changes, reason, status, proposed_by)\n           VALUES ($1, $2, $3, $4, 'pending', $5)\n           RETURNING id, chunk_id, changes AS \"changes: Json<ProposedChanges>\",\n                     reason, status, proposed_by, reviewed_by,\n                     reviewed_at AS \"reviewed_at: UtcTimestamp\", review_note,\n                     created_at AS \"created_at: UtcTimestamp\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "chunk_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "changes: Json<ProposedChanges>",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 3,
+        "name": "reason",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "status",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "proposed_by",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "reviewed_by",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "reviewed_at: UtcTimestamp",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 8,
+        "name": "review_note",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "created_at: UtcTimestamp",
+        "type_info": "Timestamp"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Jsonb",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      true,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "4b3bd07dc4547f97eaa13f654eeba46a08578744f395578af5eefbac2994a946"
+}

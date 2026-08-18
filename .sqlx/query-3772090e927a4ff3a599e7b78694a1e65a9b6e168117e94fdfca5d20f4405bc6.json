@@ -1,0 +1,91 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT p.id, p.chunk_id, p.changes AS \"changes: Json<ProposedChanges>\",\n                  p.reason, p.status, p.proposed_by, p.reviewed_by,\n                  p.reviewed_at AS \"reviewed_at: UtcTimestamp\", p.review_note,\n                  p.created_at AS \"created_at: UtcTimestamp\",\n                  c.title AS chunk_title, c.type AS chunk_type\n           FROM chunk_proposal p\n           INNER JOIN chunk c ON c.id = p.chunk_id\n           WHERE p.status = $1 AND ($2::text IS NULL OR p.chunk_id = $2)\n           ORDER BY p.created_at DESC, p.id ASC\n           LIMIT $3 OFFSET $4",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "chunk_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "changes: Json<ProposedChanges>",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 3,
+        "name": "reason",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "status",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "proposed_by",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "reviewed_by",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "reviewed_at: UtcTimestamp",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 8,
+        "name": "review_note",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "created_at: UtcTimestamp",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 10,
+        "name": "chunk_title",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 11,
+        "name": "chunk_type",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "3772090e927a4ff3a599e7b78694a1e65a9b6e168117e94fdfca5d20f4405bc6"
+}
