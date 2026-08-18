@@ -17,5 +17,6 @@ pub mod staleness;
 pub mod stats;
 pub mod tag;
 pub mod tag_type;
+pub mod template;
 pub mod user;
 pub mod workspace;
