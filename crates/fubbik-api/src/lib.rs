@@ -20,6 +20,7 @@ pub mod tag_types;
 pub mod tags;
 pub mod templates;
 pub mod use_cases;
+pub mod vocabulary;
 pub mod workspaces;
 
 use axum::extract::State;
@@ -71,6 +72,7 @@ pub fn router(state: AppState) -> Router {
         .merge(tags::routes::router())
         .merge(templates::routes::router())
         .merge(use_cases::routes::router())
+        .merge(vocabulary::routes::router())
         .merge(workspaces::routes::router())
         .route("/api/health", get(health))
         .with_state(state)
